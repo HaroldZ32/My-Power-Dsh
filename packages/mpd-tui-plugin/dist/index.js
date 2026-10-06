@@ -95,7 +95,7 @@ __export(exports_lib, {
   noop: () => noop,
   omit: () => omit,
   paramCase: () => paramCase,
-  pick: () => pick,
+  pick: () => pick2,
   remove: () => remove,
   sanitize: () => sanitize,
   snakeCase: () => snakeCase,
@@ -120,7 +120,7 @@ function filterKeys(object, filter) {
 function mapValues(object, transform) {
   return Object.fromEntries(Object.entries(object).map(([key, value]) => [key, transform(value, key)]));
 }
-function pick(source, keys, forced) {
+function pick2(source, keys, forced) {
   if (!keys)
     return { ...source };
   const result = {};
@@ -1128,8 +1128,108 @@ var require_lib = __commonJS(function(exports, module) {
 });
 
 // packages/mpd-tui-plugin/src/index.ts
+import { homedir as homedir5 } from "node:os";
+
+// packages/mpd-tui-plugin/src/i18n.ts
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+var HOST_PREFS_DIR = ".dsh-tui";
+var HOST_LANG_FILE = "lang.json";
+var LANG_ENV = "DSH_TUI_LANG";
+var LOCALE_ENV_VARS = ["LC_ALL", "LC_MESSAGES", "LANG"];
+function isLang(value) {
+  return value === "zh" || value === "en";
+}
+function detectLocaleLang(env) {
+  let raw = "";
+  for (const name of LOCALE_ENV_VARS) {
+    const stated = env[name];
+    if (typeof stated === "string" && stated.length > 0) {
+      raw = stated;
+      break;
+    }
+  }
+  const locale = raw.split(".")[0]?.toLowerCase() ?? "";
+  if (locale === "")
+    return "zh";
+  return locale.startsWith("zh") ? "zh" : "en";
+}
+function readLangPref(inputs = {}) {
+  const read = inputs.readFile ?? ((path) => readFileSync(path, "utf8"));
+  const dir = join(inputs.home ?? homedir(), HOST_PREFS_DIR);
+  let text;
+  try {
+    text = read(join(dir, HOST_LANG_FILE));
+  } catch {
+    return;
+  }
+  try {
+    const parsed = JSON.parse(text);
+    const tag = typeof parsed === "object" && parsed !== null ? parsed.lang : undefined;
+    return isLang(tag) ? tag : undefined;
+  } catch {
+    return;
+  }
+}
+function resolveLang(inputs = {}) {
+  const env = inputs.env ?? process.env;
+  const pinned = env[LANG_ENV];
+  if (isLang(pinned))
+    return pinned;
+  return readLangPref(inputs) ?? detectLocaleLang(env);
+}
+function pick(text, lang) {
+  return lang === "en" ? text.en : text.zh;
+}
+var TUI_TEXT = {
+  "scene.board": { zh: "MPD 面板", en: "MPD board" },
+  "scene.team": { zh: "MPD 团队", en: "MPD team" },
+  "scene.plan": { zh: "MPD 计划审批", en: "MPD plan approval" },
+  "scene.subagents": { zh: "MPD 子代理 · 团队", en: "MPD subagents · team" },
+  "command.boardMissing": { zh: "mpd: 该组合不提供面板场景", en: "mpd: the board scene is not available in this composition" },
+  "command.teamMissing": { zh: "mpd: 该组合不提供团队工作流场景", en: "mpd: the team workflow scene is not available in this composition" },
+  "command.subagentsMissing": { zh: "mpd: 该组合不提供子代理与团队合并面板", en: "mpd: the subagents + team panel is not available in this composition" },
+  "command.planMissing": { zh: "mpd: 该组合不提供计划审批场景", en: "mpd: the plan approval scene is not available in this composition" },
+  "command.unknownAction": { zh: "mpd: 未知动作“{action}” —— 用法：{usage}", en: 'mpd: unknown action "{action}" — usage: {usage}' },
+  "command.workmatesNone": { zh: "mpd workmates：无", en: "mpd workmates: none" },
+  "command.workmatesList": { zh: "mpd workmates（{count}）：{names}", en: "mpd workmates ({count}): {names}" },
+  "scene.planNeedsStaged": { zh: "计划审批需要一个待定计划", en: "plan approval needs a staged team" },
+  "scene.planMissing": { zh: "该组合不提供计划审批界面", en: "the plan approval surface is not available in this composition" },
+  "board.noTeam": { zh: "团队       （本工作区无）", en: "team       (none in this workspace)" },
+  "board.noBoulder": { zh: "boulder    （无工作台账）", en: "boulder    (no work ledger)" },
+  "status.teamRow": { zh: "团队 {name} {members}·{done}/{total}", en: "team {name} {members}·{done}/{total}" },
+  "status.teamNone": { zh: "团队 -", en: "team -" },
+  "status.failed": { zh: "失败 {n}", en: "failed {n}" },
+  "status.boulder": { zh: "boulder {active}/{works}", en: "boulder {active}/{works}" },
+  "status.plans": { zh: "计划 {n}", en: "plans {n}" },
+  "status.workmates": { zh: "workmate {n}", en: "workmates {n}" },
+  "status.notes": { zh: "提示 {n}", en: "notes {n}" },
+  "watchdog.notice": { zh: "看门狗：{parts}", en: "watchdog: {parts}" },
+  "watchdog.held": { zh: "已暂停 {teams}", en: "held {teams}" },
+  "watchdog.unread": { zh: "{n} 条未读事件", en: "{n} unread incidents" },
+  "watchdog.unreadOne": { zh: "{n} 条未读事件", en: "{n} unread incident" },
+  "watchdog.holdDetail": { zh: "团队 {teams} 被团队看门狗暂停（有成员静默）。", en: "Team {teams} is held by the team watchdog (a member went silent)." },
+  "watchdog.replayDetail": { zh: "团队看门狗在无人观看时记录了事件。", en: "The team watchdog recorded incidents while nobody was watching." },
+  "watchdog.acknowledge": { zh: "确认", en: "Acknowledge" },
+  "watchdog.acknowledgeHint": { zh: "把这些事件标记为已读，不再重复提示", en: "mark these incidents as read so they stop being replayed" },
+  "watchdog.later": { zh: "稍后", en: "Later" },
+  "watchdog.laterHint": { zh: "保持未读，下次启动再显示", en: "keep them unread; they will be shown again on the next start" }
+};
+function t(key, params, inputs = {}) {
+  return substitute(pick(TUI_TEXT[key], resolveLang(inputs)), params);
+}
+function substitute(text, params) {
+  if (params === undefined)
+    return text;
+  let out = text;
+  for (const [name, value] of Object.entries(params))
+    out = out.split(`{${name}}`).join(String(value));
+  return out;
+}
+
+// packages/mpd-tui-plugin/src/index.ts
 var import_schemastery2 = __toESM(require_lib(), 1);
-import { homedir as homedir4 } from "node:os";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -1146,8 +1246,8 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-var LOG_SUBDIR = join(".mpd", "logs");
+import { join as join2, resolve } from "node:path";
+var LOG_SUBDIR = join2(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
 var DEFAULT_RING_LINES = 64;
@@ -1184,9 +1284,9 @@ function resolveLogRoots(env = process.env, cwd) {
 }
 function tryOpenRoot(root, name) {
   try {
-    const dir = join(root, LOG_SUBDIR);
+    const dir = join2(root, LOG_SUBDIR);
     mkdirSync(dir, { recursive: true });
-    const file = join(dir, `${name}.log`);
+    const file = join2(dir, `${name}.log`);
     return { fd: openSync(file, "a"), file };
   } catch {
     return null;
@@ -2678,9 +2778,9 @@ function createLog(logger, prefix, env = process.env, sink) {
 }
 
 // packages/mpd-tui-adapter-plugin/src/index.ts
-import { appendFileSync, mkdirSync as mkdirSync2, readdirSync, readFileSync, statSync as statSync2, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join as join2 } from "node:path";
+import { appendFileSync, mkdirSync as mkdirSync2, readdirSync, readFileSync as readFileSync2, statSync as statSync2, writeFileSync } from "node:fs";
+import { homedir as homedir2 } from "node:os";
+import { dirname, join as join3 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 var TUI_SEAMS = {
   scenes: "tuiScenes",
@@ -2751,7 +2851,7 @@ function createFileSink(options) {
       return defaultLogRoot();
     }
   };
-  const pathOf = () => join2(rootOf(), ".mpd", "logs", fileName);
+  const pathOf = () => join3(rootOf(), ".mpd", "logs", fileName);
   return {
     path: pathOf,
     write(line) {
@@ -2760,7 +2860,7 @@ function createFileSink(options) {
         mkdirSync2(dirname(file), { recursive: true });
         try {
           if (statSync2(file).size > cap) {
-            const existing = readFileSync(file, "utf8");
+            const existing = readFileSync2(file, "utf8");
             writeFileSync(file, existing.slice(Math.floor(existing.length / 2)), "utf8");
           }
         } catch {}
@@ -2802,7 +2902,7 @@ function readHostStdinValue(value) {
     return { detail: `the host stdin context could not be read: ${String(error?.message ?? error)}` };
   }
 }
-function hostRootCandidates(env = process.env, home = homedir()) {
+function hostRootCandidates(env = process.env, home = homedir2()) {
   const pinned = env[HOST_ROOT_ENV];
   if (typeof pinned === "string" && pinned.length > 0)
     return [pinned];
@@ -2817,7 +2917,7 @@ function hostRootCandidates(env = process.env, home = homedir()) {
   for (const anchor of anchors) {
     let dir = anchor;
     for (let level = 0;level < HOST_ANCHOR_LEVELS; level += 1) {
-      roots.push(join2(dir, ...HOST_PACKAGE_PATH));
+      roots.push(join3(dir, ...HOST_PACKAGE_PATH));
       const parent = dirname(dir);
       if (parent === dir)
         break;
@@ -2828,17 +2928,17 @@ function hostRootCandidates(env = process.env, home = homedir()) {
   if (typeof env.DSH_HOME === "string" && env.DSH_HOME.length > 0)
     homes.push(env.DSH_HOME);
   for (const name of HOST_HOME_DIRS)
-    homes.push(join2(home, name));
+    homes.push(join3(home, name));
   for (const root of homes) {
     let entries = [];
     try {
-      entries = readdirSync(join2(root, "profiles"), { withFileTypes: true });
+      entries = readdirSync(join3(root, "profiles"), { withFileTypes: true });
     } catch {
       entries = [];
     }
     for (const entry of entries) {
       if (entry.isDirectory())
-        roots.push(join2(root, "profiles", entry.name, ...HOST_PACKAGE_PATH));
+        roots.push(join3(root, "profiles", entry.name, ...HOST_PACKAGE_PATH));
     }
   }
   return [...new Set(roots)];
@@ -2848,7 +2948,7 @@ async function probeHostInput(candidates) {
   if (candidates.length === 0)
     return { detail: `no candidate host root (no DSH profile carries ${HOST_PACKAGE_PATH.join("/")})` };
   for (const root of candidates) {
-    const file = join2(root, HOST_UI_MODULE);
+    const file = join3(root, HOST_UI_MODULE);
     try {
       if (!statSync2(file).isFile())
         continue;
@@ -3454,9 +3554,9 @@ function resolveTuiAdapter(ctx) {
 }
 
 // packages/mpd-tui-plugin/src/state.ts
-import { readFileSync as readFileSync2, readdirSync as readdirSync2 } from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import { join as join3 } from "node:path";
+import { readFileSync as readFileSync3, readdirSync as readdirSync2 } from "node:fs";
+import { homedir as homedir3 } from "node:os";
+import { join as join4 } from "node:path";
 
 // packages/mpd-tui-plugin/src/sanitize.ts
 var CONTROL = /[\u0000-\u001f\u007f-\u009f]/gu;
@@ -3520,7 +3620,7 @@ var MAX_WORKMATES = 200;
 var MAX_TASKS = 5000;
 var MAX_PROBLEMS = 5;
 function readJson(path) {
-  return JSON.parse(readFileSync2(path, "utf8"));
+  return JSON.parse(readFileSync3(path, "utf8"));
 }
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -3614,7 +3714,7 @@ function readRecordTeam(record) {
   };
 }
 function readBoulder(root, problems) {
-  const path = join3(root, ".mpd", "boulder.json");
+  const path = join4(root, ".mpd", "boulder.json");
   let document;
   try {
     document = readJson(path);
@@ -3648,7 +3748,7 @@ function readBoulder(root, problems) {
   return summary;
 }
 function readPlans(root) {
-  const dir = join3(root, ".mpd", "plans");
+  const dir = join4(root, ".mpd", "plans");
   try {
     const names = readdirSync2(dir).filter((name) => name.endsWith(".md")).sort();
     return { count: names.length, newest: scalarText(names[names.length - 1], 120) };
@@ -3657,13 +3757,13 @@ function readPlans(root) {
   }
 }
 function readWorkmates(home) {
-  const dir = join3(home, ".mpd", "workmate");
+  const dir = join4(home, ".mpd", "workmate");
   try {
     const names = readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.name.startsWith(".")).map((entry) => entry.name).slice(0, MAX_WORKMATES);
     const present = [];
     for (const name of names) {
       try {
-        const meta = readJson(join3(dir, name, "meta.json"));
+        const meta = readJson(join4(dir, name, "meta.json"));
         const label = isRecord(meta) ? scalarText(meta.name ?? name, 60) : undefined;
         present.push(label ?? scalarText(name, 60) ?? "?");
       } catch {}
@@ -3674,7 +3774,7 @@ function readWorkmates(home) {
     return { count: 0, names: [] };
   }
 }
-function readBoardState(workspace, home = homedir2(), views = [], records = []) {
+function readBoardState(workspace, home = homedir3(), views = [], records = []) {
   const problems = [];
   const state = {
     workspace,
@@ -3705,18 +3805,19 @@ function statusLine(state, notice) {
   if (state.team !== undefined) {
     const done = state.team.tasks.completed;
     const total = state.team.tasks.total;
-    parts.push(`team ${state.team.name} ${state.team.members}·${done}/${total}`);
+    parts.push(t("status.teamRow", { name: state.team.name, members: state.team.members, done: String(done), total: String(total) }));
     if (state.team.tasks.failed > 0)
-      parts.push(`failed ${state.team.tasks.failed}`);
+      parts.push(t("status.failed", { n: String(state.team.tasks.failed) }));
   } else {
-    parts.push("team -");
+    parts.push(t("status.teamNone"));
   }
-  if (state.boulder !== undefined && state.boulder.works > 0)
-    parts.push(`boulder ${state.boulder.active}/${state.boulder.works}`);
-  parts.push(`plans ${state.plans.count}`);
-  parts.push(`workmates ${state.workmates.count}`);
+  if (state.boulder !== undefined && state.boulder.works > 0) {
+    parts.push(t("status.boulder", { active: String(state.boulder.active), works: String(state.boulder.works) }));
+  }
+  parts.push(t("status.plans", { n: String(state.plans.count) }));
+  parts.push(t("status.workmates", { n: String(state.workmates.count) }));
   if (state.problems.length > 0)
-    parts.push(`notes ${state.problems.length}`);
+    parts.push(t("status.notes", { n: String(state.problems.length) }));
   if (notice !== undefined && notice.length > 0)
     parts.push(notice);
   return `mpd: ${parts.join(" · ")}`;
@@ -3735,7 +3836,7 @@ function boardLines(state, holds = []) {
     }
   } else {
     lines.push("");
-    lines.push("team       (none in this workspace)");
+    lines.push(t("board.noTeam"));
   }
   if (holds.length > 0)
     lines.push(`team-hold  held (${holds.join(", ")})`);
@@ -3743,7 +3844,7 @@ function boardLines(state, holds = []) {
   if (state.boulder !== undefined && state.boulder.works > 0) {
     lines.push(`boulder    ${state.boulder.works} work(s) · ${state.boulder.active} active · ${state.boulder.completed} completed${state.boulder.newestPlan === undefined ? "" : ` · newest ${state.boulder.newestPlan}`}`);
   } else {
-    lines.push("boulder    (no work ledger)");
+    lines.push(t("board.noBoulder"));
   }
   lines.push(`plans      ${state.plans.count}${state.plans.newest === undefined ? "" : ` · newest ${state.plans.newest}`}`);
   lines.push(`workmates  ${state.workmates.count}${state.workmates.names.length === 0 ? "" : ` · ${state.workmates.names.slice(0, 6).join(", ")}`}`);
@@ -3771,11 +3872,11 @@ function registerStatus(ctx, tui, log, workspaceRoot, home, intervalMs, bridgeNo
 // packages/mpd-tui-plugin/src/registration.ts
 import { createRequire } from "node:module";
 import { readdirSync as readdirSync3 } from "node:fs";
-import { homedir as homedir3 } from "node:os";
-import { join as join4 } from "node:path";
+import { homedir as homedir4 } from "node:os";
+import { join as join5 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 var BOARD_OPENED_EVENT = "mpd-tui/board-opened";
-function candidateAnchors(env = process.env, home = homedir3()) {
+function candidateAnchors(env = process.env, home = homedir4()) {
   const anchors = [];
   try {
     anchors.push(fileURLToPath2(import.meta.url));
@@ -3786,13 +3887,13 @@ function candidateAnchors(env = process.env, home = homedir3()) {
   const homes = [];
   if (typeof env.DSH_HOME === "string" && env.DSH_HOME.length > 0)
     homes.push(env.DSH_HOME);
-  homes.push(join4(home, ".dsh"), join4(home, ".dsh-tui"));
+  homes.push(join5(home, ".dsh"), join5(home, ".dsh-tui"));
   for (const root of homes) {
-    const profiles = join4(root, "profiles");
+    const profiles = join5(root, "profiles");
     try {
       for (const entry of readdirSync3(profiles, { withFileTypes: true })) {
         if (entry.isDirectory())
-          anchors.push(join4(profiles, entry.name, "package.json"));
+          anchors.push(join5(profiles, entry.name, "package.json"));
       }
     } catch {}
   }
@@ -4092,6 +4193,10 @@ function knobHint2(key, semantics) {
   const pointer = `mpd.jsonc ${key}`;
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
 }
+function knobHintPair(knob) {
+  const key = knob.path.join(".");
+  return { zh: knobHint2(key, knob.semanticsZh), en: knobHint2(key, knob.semantics) };
+}
 var TEAM_MODEL_LEAVES = ["provider", "model", "reasoningEffort"];
 function dedupeOptions(pairs) {
   const seen = new Set;
@@ -4135,11 +4240,11 @@ function teamModelOptionLists(catalog) {
     }
   }
   const live = { provider: dedupeOptions(providers), model: dedupeOptions(models), reasoningEffort: dedupeOptions(efforts) };
-  const pick2 = (leaf) => live[leaf].length > 0 ? live[leaf] : declaredOptions(leaf);
+  const pick3 = (leaf) => live[leaf].length > 0 ? live[leaf] : declaredOptions(leaf);
   return {
-    provider: pick2("provider"),
-    model: pick2("model"),
-    reasoningEffort: pick2("reasoningEffort"),
+    provider: pick3("provider"),
+    model: pick3("model"),
+    reasoningEffort: pick3("reasoningEffort"),
     source: {
       provider: live.provider.length > 0 ? "live" : "declared",
       model: live.model.length > 0 ? "live" : "declared",
@@ -4175,11 +4280,13 @@ function configPluginPresent(ctx) {
   }
 }
 function declaredField(knob) {
+  const hints = knobHintPair(knob);
   return {
     path: [...knob.path],
     label: knob.label,
     descriptions: { zh: knob.zh },
-    hint: knobHint2(knob.path.join("."), knob.semantics),
+    hint: hints.en,
+    ...hints.zh === hints.en ? {} : { hintDescriptions: { zh: hints.zh } },
     kind: knob.kind,
     ...knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }
   };
@@ -5136,7 +5243,6 @@ function planProjectionLines(workflow) {
 
 // packages/mpd-tui-plugin/src/subagent-scene.ts
 var SUBAGENT_SCENE_ID = "mpd-tui-subagents";
-var SUBAGENT_SCENE_TITLE = "MPD subagents + team";
 var MERGED_ROW_MAX_CELLS = 4000;
 var FALLBACK_COLS = 100;
 var REFRESH_MS = 2000;
@@ -5558,7 +5664,7 @@ function createSubagentSceneComponent(readWorkflow, onHostKit) {
       });
     }
     const children = [];
-    children.push(React.createElement(ui.Text, { key: "title", bold: true }, safeRow(`${SUBAGENT_SCENE_TITLE}${measured.size === "" ? "" : ` · ${measured.size}`}`)));
+    children.push(React.createElement(ui.Text, { key: "title", bold: true }, safeRow(`${t("scene.subagents")}${measured.size === "" ? "" : ` · ${measured.size}`}`)));
     if (detailOpen) {
       const detailRows = detailFacts === undefined ? [{ text: "details: this entry is unreadable", dim: true }] : subagentDetailRows(detailFacts, detailScroll);
       for (let index = 0;index < detailRows.length; index += 1) {
@@ -6014,14 +6120,14 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         } else if (input === "a") {
           const staged = latestRef?.current?.staged === true;
           if (!staged) {
-            setNotice("plan approval needs a staged team");
+            setNotice(t("scene.planNeedsStaged"));
             return;
           }
           setNotice("");
           nav.planFromTeam = true;
           nav.planTeamId = latestRef?.current?.teamId;
           if (!openScene(PLAN_SCENE_ID))
-            setNotice("the plan approval surface is not available in this composition");
+            setNotice(t("scene.planMissing"));
         }
       });
     }
@@ -6368,12 +6474,12 @@ function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], pla
       return;
     }
     try {
-      tui.registerScene({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx);
-      tui.registerScene({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx);
-      tui.registerScene({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit) }, ctx);
+      tui.registerScene({ id: BOARD_SCENE_ID, title: t("scene.board"), component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx);
+      tui.registerScene({ id: TEAM_SCENE_ID, title: t("scene.team"), component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx);
+      tui.registerScene({ id: PLAN_SCENE_ID, title: t("scene.plan"), component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit) }, ctx);
       tui.registerScene({
         id: SUBAGENT_SCENE_ID,
-        title: SUBAGENT_SCENE_TITLE,
+        title: t("scene.subagents"),
         component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords), onHostKit)
       }, ctx);
       handle.record({ state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID}, ${SUBAGENT_SCENE_ID} requested (no host read-back)` });
@@ -6411,20 +6517,35 @@ function boardSummary(workspaceRoot, home, teamViews, teamRecords) {
 
 // packages/mpd-tui-plugin/src/command-trees.ts
 var COMMAND_ROOT = "mpd";
+var MODEL_COMMAND = "mpd-model";
 var COMMAND_ACTIONS = ["board", "team", "plan", "subagents", "workmates", "status"];
 var COMMAND_CHILDREN = [
-  { name: "board", description: "Open the mpd board scene", descriptions: { zh: "打开 MPD 面板" } },
-  { name: "team", description: "Open the team workflow scene", descriptions: { zh: "打开团队工作流面板" } },
-  { name: "plan", description: "Review and approve a staged plan", descriptions: { zh: "审阅并批准待定计划" } },
-  { name: "subagents", description: "Open the subagents + team panel", descriptions: { zh: "打开子代理与团队合并面板" } },
-  { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库" } },
-  { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行" } }
+  { name: "board", description: "Open the mpd board scene", descriptions: { zh: "打开 MPD 面板", en: "Open the mpd board scene" } },
+  { name: "team", description: "Open the team workflow scene", descriptions: { zh: "打开团队工作流面板", en: "Open the team workflow scene" } },
+  { name: "plan", description: "Review and approve a staged plan", descriptions: { zh: "审阅并批准待定计划", en: "Review and approve a staged plan" } },
+  { name: "subagents", description: "Open the subagents + team panel", descriptions: { zh: "打开子代理与团队合并面板", en: "Open the subagents + team panel" } },
+  { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库", en: "List the durable workmate library" } },
+  { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行", en: "Print the mpd status line" } }
 ];
+var COMMAND_ROOT_DESCRIPTIONS = {
+  zh: "MPD 面板与状态",
+  en: "MPD surfaces: the board, the team workflow and the status line"
+};
+var MODEL_COMMAND_DESCRIPTIONS = {
+  zh: "选择式模型设置：槽位 → 提供商 → 模型 → 推理强度",
+  en: "Pick-list model settings: slot → provider → model → reasoning effort"
+};
+var MODEL_COMMAND_DESCRIPTION = MODEL_COMMAND_DESCRIPTIONS.en;
 function registerCommandTrees(tui) {
   const handle = tui.registerCommandTree({
     root: COMMAND_ROOT,
-    descriptions: { zh: "MPD 面板与状态" },
+    descriptions: COMMAND_ROOT_DESCRIPTIONS,
     children: (canonicalPath) => canonicalPath.length <= 1 ? COMMAND_CHILDREN : []
+  });
+  tui.registerCommandTree({
+    root: MODEL_COMMAND,
+    descriptions: MODEL_COMMAND_DESCRIPTIONS,
+    children: () => []
   });
   return { outcome: () => handle.outcome() };
 }
@@ -6551,22 +6672,24 @@ function readWatchdogView(service, reader, workspace) {
 function watchdogNotice(view) {
   const parts = [];
   if (view.holds.length > 0)
-    parts.push(`held ${view.holds.join(", ")}`);
-  if (view.unread.length > 0)
-    parts.push(`${view.unread.length} unread incident${view.unread.length === 1 ? "" : "s"}`);
-  return parts.length === 0 ? undefined : `${WATCHDOG_NOTICE_PREFIX}: ${parts.join(" · ")}`;
+    parts.push(t("watchdog.held", { teams: view.holds.join(", ") }));
+  if (view.unread.length > 0) {
+    const n = String(view.unread.length);
+    parts.push(t(view.unread.length === 1 ? "watchdog.unreadOne" : "watchdog.unread", { n }));
+  }
+  return parts.length === 0 ? undefined : t("watchdog.notice", { parts: parts.join(" · ") });
 }
 function composeNotices(...notices) {
   const parts = notices.filter((notice) => typeof notice === "string" && notice.length > 0);
   return parts.length === 0 ? undefined : parts.join(" · ");
 }
 function watchdogDialog(view) {
-  const detail = view.holds.length > 0 ? `Team ${view.holds.join(", ")} is held by the team watchdog (a member went silent).` : "The team watchdog recorded incidents while nobody was watching.";
+  const detail = view.holds.length > 0 ? t("watchdog.holdDetail", { teams: view.holds.join(", ") }) : t("watchdog.replayDetail");
   return {
     title: `${watchdogNotice(view) ?? WATCHDOG_NOTICE_PREFIX} — ${detail}`,
     options: [
-      { id: ACKNOWLEDGE_OPTION, label: "Acknowledge", description: "mark these incidents as read so they stop being replayed" },
-      { id: "later", label: "Later", description: "keep them unread; they will be shown again on the next start" }
+      { id: ACKNOWLEDGE_OPTION, label: t("watchdog.acknowledge"), description: t("watchdog.acknowledgeHint") },
+      { id: "later", label: t("watchdog.later"), description: t("watchdog.laterHint") }
     ]
   };
 }
@@ -6728,28 +6851,33 @@ function registerCommands(tui, actions) {
       return runAction(head, actions, session);
     }
   });
+  tui.registerCommand({
+    name: MODEL_COMMAND,
+    description: MODEL_COMMAND_DESCRIPTION,
+    handler: async () => actions.openModelMenu()
+  });
   return { outcome: () => handle.outcome() };
 }
 function runAction(action, actions, session) {
   if (action === "board") {
     actions.recordBoardOpened("command", session);
     const opened = actions.openBoard("command");
-    return opened ? { kind: "success" } : { kind: "error", text: "mpd: the board scene is not available in this composition" };
+    return opened ? { kind: "success" } : { kind: "error", text: t("command.boardMissing") };
   }
   if (action === "workmates")
     return { kind: "success", text: clamp(actions.workmatesText()) };
   if (action === "status")
     return { kind: "success", text: clamp(actions.statusText()) };
   if (action === "team") {
-    return actions.openTeam() ? { kind: "success" } : { kind: "error", text: "mpd: the team workflow scene is not available in this composition" };
+    return actions.openTeam() ? { kind: "success" } : { kind: "error", text: t("command.teamMissing") };
   }
   if (action === "subagents") {
-    return actions.openSubagents() ? { kind: "success" } : { kind: "error", text: "mpd: the subagents + team panel is not available in this composition" };
+    return actions.openSubagents() ? { kind: "success" } : { kind: "error", text: t("command.subagentsMissing") };
   }
   if (action === "plan") {
-    return actions.openPlan() ? { kind: "success" } : { kind: "error", text: "mpd: the plan approval scene is not available in this composition" };
+    return actions.openPlan() ? { kind: "success" } : { kind: "error", text: t("command.planMissing") };
   }
-  return { kind: "error", text: `mpd: unknown action "${clamp(action, 40)}" — usage: ${USAGE}` };
+  return { kind: "error", text: t("command.unknownAction", { action: clamp(action, 40), usage: USAGE }) };
 }
 function appendBoardOpened(session, typeKnown, via, view, log) {
   if (session === undefined || typeof session.append !== "function")
@@ -6768,6 +6896,211 @@ function appendBoardOpened(session, typeKnown, via, view, log) {
 }
 function clamp(value, maxCells = 800) {
   return scalarText(value, maxCells) ?? "";
+}
+
+// packages/mpd-tui-plugin/src/model-menu.ts
+var MODEL_NAMESPACE = "mpd";
+var TEAM_MODELS_PREFIX = "teamModels";
+var PANEL_TIMEOUT_MS = 120000;
+var MENU_TEXT = {
+  titleSlot: { zh: "MPD 模型槽位", en: "MPD model slot" },
+  titleProvider: { zh: "MPD 提供商", en: "MPD provider" },
+  titleModel: { zh: "MPD 模型", en: "MPD model" },
+  titleEffort: { zh: "MPD 推理强度", en: "MPD reasoning effort" },
+  slotHint: { zh: "该槽位驱动的成员组：{group}", en: "the member group this slot drives: {group}" },
+  providerHint: { zh: "该槽位的提供商；模型列表来自它", en: "this slot's provider; the model list comes from it" },
+  modelHint: { zh: "该槽位的模型", en: "this slot's model" },
+  effortHint: { zh: "该槽位的推理强度", en: "this slot's reasoning effort" },
+  sealedByDialogs: {
+    zh: "mpd-model: 该组合没有对话框接缝（无界面嵌入），未打开菜单，也未写入任何设置",
+    en: "mpd-model: this composition has no dialogs seam (a headless embedder) — no menu was opened and nothing was written"
+  },
+  sealedByCancelSlot: { zh: "mpd-model: 已取消槽位选择，未写入任何设置", en: "mpd-model: the slot panel was cancelled — nothing was written" },
+  sealedByCancelProvider: { zh: "mpd-model: 已取消提供商选择，未写入任何设置", en: "mpd-model: the provider panel was cancelled — nothing was written" },
+  sealedByCancelModel: { zh: "mpd-model: 已取消模型选择，未写入任何设置", en: "mpd-model: the model panel was cancelled — nothing was written" },
+  sealedByCancelEffort: { zh: "mpd-model: 已取消推理强度选择，未写入任何设置", en: "mpd-model: the reasoning-effort panel was cancelled — nothing was written" },
+  sealedByNoNamespace: {
+    zh: "mpd-model: 该组合没有可写的设置接缝，未写入任何设置",
+    en: "mpd-model: this composition exposes no settings write seam — nothing was written"
+  },
+  sealedByRefused: { zh: "mpd-model: 设置写入被拒绝（{error}）", en: "mpd-model: the settings write was refused ({error})" },
+  sealedByNoSlot: { zh: "mpd-model: 未知槽位“{slot}”，未写入任何设置", en: 'mpd-model: unknown slot "{slot}" — nothing was written' },
+  catalogFallback: {
+    zh: "实时模型目录不可用（{why}）——面板列出的是内置回退清单，不是实时目录",
+    en: "the live model catalog is unavailable ({why}) — the panels list the declared fallback, not the live catalog"
+  },
+  catalogDegraded: { zh: "模型目录读取不完整", en: "the catalog read was incomplete" },
+  catalogAbsent: { zh: "该组合没有 llmCatalog 接缝", en: "this composition exposes no llmCatalog seam" },
+  catalogThrew: { zh: "读取抛错：{error}", en: "the read threw: {error}" },
+  wrote: {
+    zh: "mpd-model: 槽位 {slot} 已设置 提供商 {provider} · 模型 {model} · 推理强度 {effort}；{disclosure}。{notLost}",
+    en: "mpd-model: slot {slot} set to provider {provider} · model {model} · reasoning effort {effort}; {disclosure}. {notLost}"
+  }
+};
+function fill(text, params) {
+  let out = text;
+  for (const [name, value] of Object.entries(params))
+    out = out.split(`{${name}}`).join(value);
+  return out;
+}
+function say(key, lang, params = {}) {
+  return fill(pick(MENU_TEXT[key], lang), params);
+}
+function short(value) {
+  return scalarText(value, 60) ?? value;
+}
+function slotPanelOptions(lang) {
+  return TEAM_MODEL_SLOTS.map((slot, index) => {
+    const group = TEAM_MODEL_SLOT_GROUPS[slot];
+    return {
+      id: slot,
+      label: `${index + 1}. ${lang === "en" ? group.en : group.zh}`,
+      description: say("slotHint", lang, { group: lang === "en" ? group.en : group.zh })
+    };
+  });
+}
+function panelOptions(lists, provider, model, catalog) {
+  const providers = isRecord2(catalog) && Array.isArray(catalog.providers) ? catalog.providers : [];
+  const providerRow = provider === undefined ? undefined : providers.find((entry) => isRecord2(entry) && entry.id === provider);
+  const keyedModels = [];
+  if (isRecord2(providerRow) && Array.isArray(providerRow.models)) {
+    for (const entry of providerRow.models) {
+      if (isRecord2(entry) && typeof entry.id === "string" && entry.id.length > 0) {
+        keyedModels.push({ value: entry.id, label: typeof entry.name === "string" && entry.name.length > 0 ? entry.name : entry.id });
+      }
+    }
+  }
+  const modelRow = model === undefined ? undefined : findModel(providers, model);
+  const keyedEfforts = [];
+  if (isRecord2(modelRow) && Array.isArray(modelRow.efforts)) {
+    for (const entry of modelRow.efforts) {
+      if (isRecord2(entry) && typeof entry.id === "string" && entry.id.length > 0) {
+        keyedEfforts.push({ value: entry.id, label: typeof entry.name === "string" && entry.name.length > 0 ? entry.name : entry.id });
+      }
+    }
+  }
+  return {
+    provider: lists.provider,
+    model: keyedModels.length > 0 ? keyedModels : lists.model,
+    reasoningEffort: keyedEfforts.length > 0 ? keyedEfforts : lists.reasoningEffort
+  };
+}
+function findModel(providers, model) {
+  for (const provider of providers) {
+    if (!isRecord2(provider) || !Array.isArray(provider.models))
+      continue;
+    for (const entry of provider.models) {
+      if (isRecord2(entry) && entry.id === model)
+        return entry;
+    }
+  }
+  return;
+}
+function isRecord2(value) {
+  return typeof value === "object" && value !== null;
+}
+function storedSlot(value, slot) {
+  if (!isRecord2(value))
+    return {};
+  const block = slotBlock(value, slot);
+  const out = {};
+  if (!isRecord2(block))
+    return out;
+  for (const leaf of ["provider", "model", "reasoningEffort"]) {
+    const found = block[leaf];
+    if (typeof found === "string" && found.length > 0)
+      out[leaf] = found;
+  }
+  return out;
+}
+function slotBlock(value, slot) {
+  for (const candidate of [value, value.user, value.value]) {
+    if (!isRecord2(candidate))
+      continue;
+    const teamModels = candidate[TEAM_MODELS_PREFIX];
+    if (isRecord2(teamModels) && teamModels[slot] !== undefined)
+      return teamModels[slot];
+  }
+  return;
+}
+function locateNamespace(adapter, slot) {
+  let revision;
+  for (const namespace of [SETTINGS_ENTRY, MODEL_NAMESPACE]) {
+    const reader = adapter.settingsReader?.(namespace);
+    if (reader === undefined)
+      continue;
+    try {
+      revision = reader.describe()?.revision;
+    } catch {}
+    const hasSlot = Object.keys(storedSlot(reader.get(), slot)).length > 0;
+    if (hasSlot)
+      return { namespace, revision };
+  }
+  return { namespace: SETTINGS_ENTRY, revision };
+}
+async function openModelMenu(tui, log, options = {}) {
+  const lang = resolveLang(options.langInputs);
+  const dialogs = options.dialogs ?? createDialogs(tui, log);
+  if (!dialogs.available())
+    return { kind: "error", text: say("sealedByDialogs", lang) };
+  const adapter = options.adapter ?? resolveCatalogReader(options.ctx);
+  let catalog;
+  let catalogWhy;
+  if (typeof adapter.llmCatalog !== "function") {
+    catalogWhy = say("catalogAbsent", lang);
+  } else {
+    try {
+      catalog = await adapter.llmCatalog();
+      if (catalog === undefined || catalog === null)
+        catalogWhy = say("catalogAbsent", lang);
+      else if (catalog.degraded === true)
+        catalogWhy = say("catalogDegraded", lang);
+    } catch (error) {
+      catalogWhy = say("catalogThrew", lang, { error: String(error?.message ?? error) });
+    }
+  }
+  const lists = teamModelOptionLists(catalog);
+  log.info(`/${MODEL_COMMAND} catalog=${catalogWhy === undefined ? "live" : "fallback"}` + ` provider=${lists.source.provider}(${lists.provider.length}) model=${lists.source.model}(${lists.model.length})` + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})`);
+  const slot = await dialogs.select(say("titleSlot", lang), slotPanelOptions(lang), PANEL_TIMEOUT_MS);
+  if (slot === undefined)
+    return { kind: "error", text: say("sealedByCancelSlot", lang) };
+  if (!TEAM_MODEL_SLOTS.includes(slot))
+    return { kind: "error", text: say("sealedByNoSlot", lang, { slot: short(slot) }) };
+  const provider = await dialogs.select(say("titleProvider", lang), lists.provider.map((option) => ({ id: option.value, label: option.label, description: say("providerHint", lang) })), PANEL_TIMEOUT_MS);
+  if (provider === undefined)
+    return { kind: "error", text: say("sealedByCancelProvider", lang) };
+  const models = panelOptions(lists, provider, undefined, catalog).model;
+  const model = await dialogs.select(say("titleModel", lang), models.map((option) => ({ id: option.value, label: option.label, description: say("modelHint", lang) })), PANEL_TIMEOUT_MS);
+  if (model === undefined)
+    return { kind: "error", text: say("sealedByCancelModel", lang) };
+  const efforts = panelOptions(lists, provider, model, catalog).reasoningEffort;
+  const effort = await dialogs.select(say("titleEffort", lang), efforts.map((option) => ({ id: option.value, label: option.label, description: say("effortHint", lang) })), PANEL_TIMEOUT_MS);
+  if (effort === undefined)
+    return { kind: "error", text: say("sealedByCancelEffort", lang) };
+  const target = locateNamespace(adapter, slot);
+  if (typeof adapter.settingsMutate !== "function")
+    return { kind: "error", text: say("sealedByNoNamespace", lang) };
+  const ops = ["provider", "model", "reasoningEffort"].map((leaf) => ({
+    op: "set",
+    path: [TEAM_MODELS_PREFIX, slot, leaf],
+    value: leaf === "provider" ? provider : leaf === "model" ? model : effort
+  }));
+  const written = await adapter.settingsMutate(target.namespace, ops, target.revision);
+  if (!written.ok)
+    return { kind: "error", text: say("sealedByRefused", lang, { error: short(written.error) }) };
+  log.info(`/${MODEL_COMMAND} wrote ${target.namespace}.${TEAM_MODELS_PREFIX}.${slot} = ${provider}/${model}/${effort}`);
+  const fallback = catalogWhy === undefined ? "" : ` · ${say("catalogFallback", lang, { why: catalogWhy })}`;
+  return {
+    kind: "success",
+    text: `${say("wrote", lang, {
+      slot,
+      provider: short(provider),
+      model: short(model),
+      effort: short(effort),
+      disclosure: BRIDGE_DISCLOSURE,
+      notLost: BRIDGE_NOT_LOST
+    })}${fallback}`
+  };
 }
 
 // packages/mpd-tui-plugin/src/index.ts
@@ -6867,7 +7200,7 @@ function homeDir() {
   if (typeof env === "string" && env.length > 0)
     return env;
   try {
-    return homedir4();
+    return homedir5();
   } catch {
     return "";
   }
@@ -6964,9 +7297,10 @@ function apply(ctx, config = {}) {
     statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
     workmatesText: () => {
       const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords());
-      return state.workmates.count === 0 ? "mpd workmates: none" : `mpd workmates (${state.workmates.count}): ${state.workmates.names.join(", ")}`;
+      return state.workmates.count === 0 ? t("command.workmatesNone") : t("command.workmatesList", { count: String(state.workmates.count), names: state.workmates.names.join(", ") });
     },
     pickAction: () => pickAction(log, dialogs),
+    openModelMenu: () => openModelMenu(tui, log, { dialogs, ctx }),
     recordBoardOpened: (via, session) => {
       if (!resolved.sessionEvents)
         return;

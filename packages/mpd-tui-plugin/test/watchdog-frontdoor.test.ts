@@ -1,3 +1,5 @@
+// The language pin for this process: see `test/__dshtui-lang.ts` for WHY it is required.
+import "./__dshtui-lang"
 // w6/w6b — the TUI front door for the team watchdog (notice composition, dialog, unread replay).
 //
 // The fakes model the host: a service is reachable ONLY inside `ctx.inject([id], …)` (the measured

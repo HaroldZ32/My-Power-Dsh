@@ -1,3 +1,5 @@
+// The language pin for this process: see `test/__dshtui-lang.ts` for WHY it is required.
+import "./__dshtui-lang"
 // Unit tests for the data + rendering helpers: the state projection the status
 // line and the board read, the untrusted-input sanitizer, the transcript
 // renderer table, and the log-only event-type registration.

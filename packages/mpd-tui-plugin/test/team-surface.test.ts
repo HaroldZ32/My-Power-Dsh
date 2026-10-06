@@ -1,3 +1,5 @@
+// The language pin for this process: see `test/__dshtui-lang.ts` for WHY it is required.
+import "./__dshtui-lang"
 // The team-workflow + plan-approval surfaces (frozen contract `.mpd/plans/tui-team-surface.md`).
 //
 // What these tests pin, and why each one is falsifiable:

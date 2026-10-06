@@ -9,6 +9,7 @@
 // section plus a bounded problem note, because a status line or a board must
 // never be able to take the TUI down.
 import { readFileSync, readdirSync, statSync } from "node:fs"
+import { t } from "./i18n.js"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { isRecord } from "../../mpd-dsh-adapter-plugin/src/index.js"
@@ -341,15 +342,20 @@ export function statusLine(state: BoardState, notice?: string): string {
     const done = state.team.tasks.completed
     /** Total task count of the team row. */
     const total = state.team.tasks.total
-    parts.push(`team ${state.team.name} ${state.team.members}·${done}/${total}`)
-    if (state.team.tasks.failed > 0) parts.push(`failed ${state.team.tasks.failed}`)
+    // The status string has NO localized contribution field on this host (a status entry carries
+    // one `text`), so it is resolved through MPD's own dictionary. The line is rebuilt on every
+    // publish, so a `/lang` switch reaches it at the next refresh.
+    parts.push(t("status.teamRow", { name: state.team.name, members: state.team.members, done: String(done), total: String(total) }))
+    if (state.team.tasks.failed > 0) parts.push(t("status.failed", { n: String(state.team.tasks.failed) }))
   } else {
-    parts.push("team -")
+    parts.push(t("status.teamNone"))
   }
-  if (state.boulder !== undefined && state.boulder.works > 0) parts.push(`boulder ${state.boulder.active}/${state.boulder.works}`)
-  parts.push(`plans ${state.plans.count}`)
-  parts.push(`workmates ${state.workmates.count}`)
-  if (state.problems.length > 0) parts.push(`notes ${state.problems.length}`)
+  if (state.boulder !== undefined && state.boulder.works > 0) {
+    parts.push(t("status.boulder", { active: String(state.boulder.active), works: String(state.boulder.works) }))
+  }
+  parts.push(t("status.plans", { n: String(state.plans.count) }))
+  parts.push(t("status.workmates", { n: String(state.workmates.count) }))
+  if (state.problems.length > 0) parts.push(t("status.notes", { n: String(state.problems.length) }))
   // The bridge notice goes LAST so the counts stay readable, and it is the exact sentence
   // the design fixes for this case (never a paraphrase).
   if (notice !== undefined && notice.length > 0) parts.push(notice)
@@ -377,7 +383,7 @@ export function boardLines(state: BoardState, holds: readonly string[] = []): st
     }
   } else {
     lines.push("")
-    lines.push("team       (none in this workspace)")
+    lines.push(t("board.noTeam"))
   }
   // T3: the team watchdog's own HOLD, a different fact from `halted` (snapshot.js:94).
   if (holds.length > 0) lines.push(`team-hold  held (${holds.join(", ")})`)
@@ -387,7 +393,7 @@ export function boardLines(state: BoardState, holds: readonly string[] = []): st
       `boulder    ${state.boulder.works} work(s) · ${state.boulder.active} active · ${state.boulder.completed} completed${state.boulder.newestPlan === undefined ? "" : ` · newest ${state.boulder.newestPlan}`}`,
     )
   } else {
-    lines.push("boulder    (no work ledger)")
+    lines.push(t("board.noBoulder"))
   }
   lines.push(`plans      ${state.plans.count}${state.plans.newest === undefined ? "" : ` · newest ${state.plans.newest}`}`)
   lines.push(

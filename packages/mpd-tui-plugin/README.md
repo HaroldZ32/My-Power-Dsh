@@ -24,7 +24,8 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
 | Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
 | Plan scene (READ-ONLY, 0.1.7) | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`. It renders the live board and states that no approval flow exists on the official Agent Teams plane; the retired type-the-phrase / `Ctrl+X` approval and the `Ctrl+D` discard are gone with the tools that served them (`agent_teams_approve`, `agent_teams_delete` are registered by no row) |
-| Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd workmates` completion |
+| Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd workmates` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
+| Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks slot → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
 | Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: open with `alt+a`, or with **`Ctrl+A`** whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
 | `Ctrl+A` take-over | a `ctx.tuiStatus` view + the adapter's host-input contact | `Ctrl+A` opens the merged panel instead of the host's own dashboard while the team projection holds a team with at least one task; with no team — or on a host whose input bus the adapter cannot reach — the key behaves exactly as before (`tui.dashboardKey`, default `true`; see NOT CLAIMED 7-9) |
@@ -109,6 +110,32 @@ plan scene can no longer mutate anything at all — every refusal says exactly t
 row by row in `docs/tui-parity.md` (+ `docs/tui-parity.zh-CN.md`): status, reason
 and evidence level per surface, with the still-open deviations recorded rather than
 smoothed over. Read it before quoting a parity claim from this file.
+
+## The language of every surface (R4)
+
+The host localizes a contribution through per-field maps it resolves with its OWN active language.
+Where such a field exists, this package uses it and nothing else:
+
+| Contribution | Localized field | Carries |
+|---|---|---|
+| Settings field label | `TuiSettingsField.descriptions` | `{ zh }` — the English is the `label` base (the host's own pattern; `pick(text, descriptions)` falls back to the base) |
+| Settings field hint | `TuiSettingsField.hintDescriptions` | `{ zh }` — the English is the `hint` base. Set only for the twelve slot leaves, whose hint has a translated sentence; the other rows keep `hint` alone |
+| Settings section | `TuiSettingsSection.descriptions` | `{ zh, en }` — the section's own disclosure sentence in both languages |
+| Command tree (root + every child) | `TuiCommandTreeProvider.descriptions` | `{ zh, en }` — the English half IS the node's `description` base by construction |
+
+What the host gives NO localized field for — a scene `title`, a shortcut `description`, a status
+entry's `text`, a dialog's own title and labels, and every literal this package renders — is
+resolved by `src/i18n.ts` through the **host's own chain**, verbatim
+(`lib/types/i18n.js`): `DSH_TUI_LANG` → `~/.dsh-tui/lang.json` → `LC_ALL` / `LC_MESSAGES` / `LANG`
+(a `zh` prefix is zh; **any other STATED locale is en**, so `C.UTF-8` ⇒ en; zh only when the whole
+chain is empty) → `zh`.
+
+**Limits, stated rather than skirted (see NOT CLAIMED 10–12).** `~/.dsh-tui` is READ ONLY — MPD
+owns no language preference, `/lang` stays the single switch, and nothing is ever written there. A
+string resolved by MPD is evaluated **at use**, so it follows the next command / the next status
+publish after a `/lang` switch; it is **not** a per-frame subscription, and no surface here claims
+one. A scene `title` is fixed when the scene is REGISTERED (the host's descriptor carries one
+string), so it follows a restart instead.
 
 ## Static assets
 
@@ -248,6 +275,24 @@ only when no logger exists to `stderr`, with `debug` gated behind
     (measured on dsh-tui 0.12.0: that import's `useStdin()` answers nothing, while the kit a scene
     receives returns the live context). Until then the contact falls back to that module and `Ctrl+A`
     keeps its current behaviour. Nothing is claimed about a host whose kit never arrives.
+
+13. **`/mpd-model` writes a value; it does not make team creation succeed.** The menu offers what the
+    live catalog lists, and a route the provider does not actually serve still FAILS team creation
+    loudly (naming the member and the slot) — that failure is the honest outcome, and this command
+    does not pre-validate it. Neither does it clamp a choice: every panel offers ids, never labels.
+14. **`LocalCommand.descriptions` is UNREACHABLE on this host, so `/mpd-model` does not declare one.**
+    `dsh-commands`' `normalizeDefinition` rebuilds every definition as
+    `{definitionId?, name, description, input?, recordInput?, handler}` and drops unknown fields, so a
+    `descriptions` map never survives to the registry. The string a user sees in the slash menu is the
+    command-TREE node, which DOES carry both languages; the command's own `description` stays the
+    English base the host's `tOr('cmd-desc-<name>', description)` fallback reads.
+15. **The language resolution is NOT a per-frame subscription, and MPD writes no language preference.**
+    It reads `DSH_TUI_LANG` → `~/.dsh-tui/lang.json` → the OS locale (`zh` prefix ⇒ zh, any other
+    STATED locale ⇒ en, so `C.UTF-8` ⇒ en; zh only when the whole chain is empty) → `zh`, evaluated at
+    use. `~/.dsh-tui` is READ ONLY: `/lang` stays the single switch, and a `/lang` switch reaches a
+    MPD-resolved string at its next use — a scene `title` (fixed at registration) only after a
+    restart. A host whose language is pinned by `cordis.yml`'s `lang` is a KNOWN gap: that key is read
+    by the host's own `plugin.apply` and is invisible to a plugin.
 
 ## Build and test
 

@@ -1,3 +1,5 @@
+// The language pin for this process: see `test/__dshtui-lang.ts` for WHY it is required.
+import "./__dshtui-lang"
 // The Ctrl+A takeover's contract, driven WITHOUT a terminal, a renderer or a live host.
 //
 // The three things these arms pin:

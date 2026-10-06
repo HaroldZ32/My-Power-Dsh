@@ -37,6 +37,7 @@
 // patch — this package deliberately ships NO `cordis.patch.yml`, because a second
 // mount would duplicate a loader entry id.
 import { homedir } from "node:os"
+import { t } from "./i18n.js"
 // The Config schema comes from the schemastery copy the bundle ALREADY vendors
 // (packages/mpd-agent-teams-plugin/_deps/schemastery): this package declares no
 // dependency of its own and resolves nothing over the network. It is the one
@@ -65,6 +66,7 @@ import { createDialogs } from "./dialogs.js"
 import { attachWatchdogFrontDoor, composeNotices, type WatchdogFrontDoor } from "./watchdog.js"
 import { attemptDecisionEvents } from "./decisions.js"
 import { appendBoardOpened, registerCommands } from "./commands.js"
+import { openModelMenu } from "./model-menu.js"
 import { BOARD_OPENED_EVENT, registerLogOnlyEventType } from "./registration.js"
 import { scalarText } from "./sanitize.js"
 
@@ -539,11 +541,17 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         workmatesText: () => {
           /** The board projection the workmate text is rendered from. */
           const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords())
+          // Command output is read by a person at the moment it appears, so it is resolved here
+          // rather than stored: `/lang` reaches it on the next invocation.
           return state.workmates.count === 0
-            ? "mpd workmates: none"
-            : `mpd workmates (${state.workmates.count}): ${state.workmates.names.join(", ")}`
+            ? t("command.workmatesNone")
+            : t("command.workmatesList", { count: String(state.workmates.count), names: state.workmates.names.join(", ") })
         },
         pickAction: () => pickAction(log, dialogs),
+        // `/mpd-model`: the pick-list chain. It resolves the SAME catalog/settings seam the
+        // `/settings` section registers its options from (`resolveCatalogReader`), so the menu and
+        // the rows cannot name different providers.
+        openModelMenu: () => openModelMenu(tui, log, { dialogs, ctx }),
         recordBoardOpened: (via: "command" | "shortcut", session: SessionLike | undefined) => {
           if (!resolved.sessionEvents) return
           appendBoardOpened(session, sessionEventTypeKnown, via, "board", log)

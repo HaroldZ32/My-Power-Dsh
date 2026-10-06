@@ -23,7 +23,8 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 | 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库；已路由团队在面板上多两行：`team-plan …`（仅 staged 时）与 `team-hold held (…)`（仅看门狗 hold 持续期间） |
 | 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
 | 计划场景（0.1.7 起**只读**） | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开。它渲染实时任务板，并说明官方 Agent Teams 平面上不存在批准流程；原先“逐字输入短语 + `Ctrl+X` 批准 / `Ctrl+D` 丢弃”的交互已随其工具（`agent_teams_approve`、`agent_teams_delete`，现已无任何行注册）一同移除 |
-| 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd workmates` 补全 |
+| 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd workmates` 补全，以及 `/mpd-model` 根；两个根与每个子项都在 `descriptions` 中同时提供中英双语，由宿主按其当前 `/lang` 解析 |
+| 模型菜单（R3） | `ctx.tuiDialogs` + 共享的目录/设置接缝 | **`/mpd-model`** —— 一个真正的选择式菜单，依次选择 槽位 → 提供商 → 模型 → 推理强度，并把所选路由写入 `/settings` 区块所编辑的 `mpd-config` 条目。选项来自该区块**自己**的投影（`teamModelOptionLists`）与同一份实时模型目录，因此菜单与设置行不可能互相矛盾；输出结果携带与区块完全相同的披露语句。任一档取消即不写入任何内容 |
 | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+a` 子代理 + 团队面板 · `alt+t` 团队工作流 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
 | 合并面板 | `ctx.tuiScenes` | `mpd-tui-subagents`——宿主自己的子代理行（含其 运行中/已完成/失败 计数）、团队正文，以及每条**已绘制**依赖边都以方向箭头 `▼` 收尾、下方带图例的任务 DAG：`alt+a` 打开，工作区存在团队时也可用 **`Ctrl+A`** 打开（见下方接管说明）。`enter` 打开选中子代理的详情，`i` 中断选中的活跃运行，鼠标点击选中行 |
 | `Ctrl+A` 接管 | 一个 `ctx.tuiStatus` 视图 + 适配器的宿主输入接触面 | 当团队投影含有一个至少带一项任务的团队时，`Ctrl+A` 打开合并面板而非宿主自带的 dashboard；没有团队时——或宿主输入总线无法被适配器触达时——该键行为与今天完全一致（`tui.dashboardKey`，默认 `true`；见"明确不声明"第 7–9 条） |
@@ -96,6 +97,21 @@ TUI 原生等价物。它**只读**状态：
 **Web 版每一个界面与 TUI 对应物的关系**，在 `docs/tui-parity.md`
 （+ `docs/tui-parity.zh-CN.md`）中逐行回答：每个界面的状态、原因与证据层级，
 仍处于未修复状态的偏差如实记录而不做平滑。引用本文件中的一致性主张之前请先读那一页。
+
+## 每个界面的语言（R4）
+
+宿主通过**按字段声明的本地化映射**、并按自己的当前语言解析来本地化贡献项。只要存在这样的字段，本包就只使用它：
+
+| 贡献项 | 本地化字段 | 内容 |
+|---|---|---|
+| 设置字段标签 | `TuiSettingsField.descriptions` | `{ zh }` —— 英文是 `label` 基准值（宿主自身的写法；`pick(text, descriptions)` 会在缺失时回落到基准值） |
+| 设置字段提示 | `TuiSettingsField.hintDescriptions` | `{ zh }` —— 英文是 `hint` 基准值。仅十二个槽位叶子设置了它（它们的提示有可翻译的句子）；其余行只保留 `hint` |
+| 设置区块 | `TuiSettingsSection.descriptions` | `{ zh, en }` —— 区块自身的披露语句，双语齐备 |
+| 命令树（根与每个子项） | `TuiCommandTreeProvider.descriptions` | `{ zh, en }` —— 英文一半在构造上就是节点的 `description` 基准值 |
+
+宿主**没有**提供本地化字段的部分 —— 场景 `title`、快捷键 `description`、状态项 `text`、对话框自身的标题与标签，以及本包自己渲染的每一个字面量 —— 由 `src/i18n.ts` 按**宿主自己的**优先级链原样解析（`lib/types/i18n.js`）：`DSH_TUI_LANG` → `~/.dsh-tui/lang.json` → `LC_ALL` / `LC_MESSAGES` / `LANG`（`zh` 前缀为中文；**其他任何已声明的 locale 一律为英文**，因此 `C.UTF-8` ⇒ 英文；整条链都为空时才用 `zh`）→ `zh`。
+
+**限制如实写出，不含糊带过（见"明确不声明"第 10–12 条）。** `~/.dsh-tui` 是**只读**的 —— MPD 不持有自己的语言偏好，`/lang` 始终是唯一开关，本包从不写入该目录。由 MPD 解析的字符串在**使用时**求值，因此在 `/lang` 切换后跟随下一条命令 / 下一次状态发布生效；它**不是**逐帧订阅，本包任何界面都不作此声明。场景 `title` 在**注册**时固定（宿主的描述符只带一个字符串），因此需要重启才会跟随。
 
 ## 静态资产
 
@@ -208,6 +224,10 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
     实例，它的 `useStdin()` 什么也不返回。因此钩子会保存它收到的第一份 kit：你在本次会话里打开过任意 MPD
     面板或场景（`alt+a`、`alt+t`、`alt+m`、`/mpd board`）之后接管即生效；在那之前 `Ctrl+A` 保持宿主原
     有行为。对于 kit 从不送达的宿主，本包不做任何声明。
+
+13. **`/mpd-model` 写入的是取值，并不保证建队成功。** 菜单只提供实时模型目录列出的内容；某个提供商实际并不提供的路由，仍会让建队**明确失败**（并点名成员与槽位）—— 这个失败就是如实的结果，本命令不做预校验，也不做钳制：每一档提供的都是 id，绝不是显示名。
+14. **`LocalCommand.descriptions` 在本宿主上不可达，因此 `/mpd-model` 不声明它。** `dsh-commands` 的 `normalizeDefinition` 会把每个定义重建为 `{definitionId?, name, description, input?, recordInput?, handler}` 并丢弃未知字段，所以 `descriptions` 映射永远到不了注册表。用户在斜杠菜单里看到的文案来自**命令树节点**，而它确实携带双语；命令自身的 `description` 保持英文基准值，供宿主的 `tOr('cmd-desc-<name>', description)` 回落读取。
+15. **语言解析不是逐帧订阅，且 MPD 不写任何语言偏好。** 它按 `DSH_TUI_LANG` → `~/.dsh-tui/lang.json` → 操作系统 locale（`zh` 前缀 ⇒ 中文；其他任何**已声明**的 locale ⇒ 英文，因此 `C.UTF-8` ⇒ 英文；整条链都为空时才用 `zh`）→ `zh` 的顺序、在**使用时**求值。`~/.dsh-tui` **只读**：`/lang` 始终是唯一开关，`/lang` 切换会在该字符串下一次使用时对其生效 —— 场景 `title`（在注册时固定）则要等重启。语言由 `cordis.yml` 的 `lang` 固定时属于**已知缺口**：该键由宿主自己的 `plugin.apply` 读取，插件看不见。
 
 ## 构建与测试
 

@@ -1,3 +1,5 @@
+// The language pin for this process: see `test/__dshtui-lang.ts` for WHY it is required.
+import "./__dshtui-lang"
 // The merged panel: the HOST's own subagent rows ABOVE the MPD team panel.
 //
 // HARNESS: the React/ui double and the row-aware text flattening below are the SAME ones
