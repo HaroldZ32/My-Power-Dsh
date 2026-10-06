@@ -1194,6 +1194,9 @@ var TUI_TEXT = {
   "command.unknownAction": { zh: "mpd: 未知动作“{action}” —— 用法：{usage}", en: 'mpd: unknown action "{action}" — usage: {usage}' },
   "command.workmatesNone": { zh: "mpd workmates：无", en: "mpd workmates: none" },
   "command.workmatesList": { zh: "mpd workmates（{count}）：{names}", en: "mpd workmates ({count}): {names}" },
+  "panel.opened": { zh: "mpd 侧栏面板：已打开（{id}）", en: "mpd sidebar panel: opened ({id})" },
+  "panel.fallback": { zh: "mpd 侧栏面板：宿主拒绝了打开请求（{id}），已改为全屏面板", en: "mpd sidebar panel: the host refused the open request ({id}); opened the full-screen panel instead" },
+  "panel.unavailable": { zh: "mpd 侧栏面板：该宿主不提供面板接缝，使用全屏面板", en: "mpd sidebar panel: this host exposes no panel seam; using the full-screen panel" },
   "scene.planNeedsStaged": { zh: "计划审批需要一个待定计划", en: "plan approval needs a staged team" },
   "scene.planMissing": { zh: "该组合不提供计划审批界面", en: "the plan approval surface is not available in this composition" },
   "board.noTeam": { zh: "团队       （本工作区无）", en: "team       (none in this workspace)" },
@@ -2808,6 +2811,7 @@ var TUI_SEAMS = {
   messageObserver: "tuiMessageObserver",
   effectLedger: "tuiEffectLedger",
   workspaces: "tuiWorkspaces",
+  panels: "tuiPanels",
   prompt: "tuiPrompt",
   commands: "commands",
   settings: "settings"
@@ -2827,6 +2831,7 @@ var TUI_SEAM_KEYS = [
   "messageObserver",
   "effectLedger",
   "workspaces",
+  "panels",
   "prompt",
   "commands",
   "settings"
@@ -3156,6 +3161,7 @@ function createTuiAdapter(ctx, options = {}) {
     messageObserver: () => bindings.messageObserver.service,
     effectLedger: () => bindings.effectLedger.service,
     workspaces: () => bindings.workspaces.service,
+    panels: () => bindings.panels.service,
     prompt: () => bindings.prompt.service,
     commands: () => bindings.commands.service,
     settings: () => bindings.settings.service,
@@ -3423,6 +3429,67 @@ function createTuiAdapter(ctx, options = {}) {
       });
       return handle;
     },
+    registerPanel(descriptor) {
+      const handle = makeHandle("panels");
+      let finalId;
+      let release;
+      let disposed = false;
+      const dispose = () => {
+        if (disposed)
+          return;
+        disposed = true;
+        const call = release;
+        release = undefined;
+        finalId = undefined;
+        if (typeof call !== "function")
+          return;
+        try {
+          call();
+        } catch {}
+      };
+      whenBoundInternal("panels", (service, scope) => {
+        const registry = service;
+        if (typeof registry?.register !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.panels}.register is missing` });
+          return;
+        }
+        const before = new Set((typeof registry.list === "function" ? registry.list() ?? [] : []).map((row) => row.id));
+        try {
+          const disposer = registry.register(descriptor, scope);
+          if (typeof disposer === "function") {
+            release = disposer;
+            effectOn(scope, dispose, `mpd-tui panel ${descriptor.id}`);
+          }
+          if (typeof registry.list === "function") {
+            finalId = (registry.list() ?? []).map((row) => row.id).find((id) => !before.has(id));
+          }
+          handle.record(finalId === undefined ? { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` } : { state: "confirmed", detail: `${finalId} registered` });
+        } catch (error) {
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return { ...handle, id: () => finalId, dispose };
+    },
+    openPanel(id) {
+      const handle = makeHandle("panels");
+      let opened;
+      whenBoundInternal("panels", (service) => {
+        const registry = service;
+        if (typeof registry?.open !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.panels}.open is missing` });
+          return;
+        }
+        try {
+          opened = registry.open(id) === true;
+          handle.record(opened ? { state: "confirmed", detail: `${id} handed to the side panel` } : { state: "refused", detail: `${id} refused (not this activation's panel, one open per 5000 ms, or no live panel consumer)` });
+        } catch (error) {
+          opened = false;
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return { ...handle, opened: () => opened };
+    },
+    panelSeamBound: () => bindings.panels.bound,
     requestDecisionEvent(event, listener, options2 = {}) {
       let supported = false;
       let granted;
@@ -4195,7 +4262,7 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
-  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view", zh: "Ctrl+A 依赖视图", kind: "boolean", hint: "while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard" }
+  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];
 
 // packages/mpd-tui-plugin/src/settings.ts
@@ -5866,11 +5933,160 @@ function registerDashboardKey(ctx, tui, deps) {
   return { outcome: () => view.outcome() };
 }
 
+// packages/mpd-tui-plugin/src/panel.ts
+var PANEL_SLUG = "team";
+var PANEL_TITLE = "MPD";
+var PANEL_MIN_COLUMNS = 32;
+var PANEL_ORDER = 10;
+var FALLBACK_COLS2 = PANEL_MIN_COLUMNS;
+var ROW_MAX_CELLS = 4000;
+var PANEL_DESCRIPTOR_FROZEN = {
+  apiVersion: 1,
+  id: PANEL_SLUG,
+  title: PANEL_TITLE,
+  minColumns: PANEL_MIN_COLUMNS,
+  order: PANEL_ORDER
+};
+function takeoverArmed(seamBound, savedKnob, floor) {
+  if (seamBound)
+    return false;
+  return typeof savedKnob === "boolean" ? savedKnob : floor;
+}
+function panelKit(React, ui) {
+  if (React === null || React === undefined || ui === null || ui === undefined)
+    return;
+  if (typeof React.createElement !== "function")
+    return;
+  const kit = ui;
+  if (typeof kit.Box !== "function" || typeof kit.Text !== "function")
+    return;
+  return { React, ui: kit };
+}
+function measurePanel(ui) {
+  if (typeof ui.useTerminalSize !== "function")
+    return { cols: FALLBACK_COLS2 };
+  try {
+    const size = ui.useTerminalSize();
+    const columns = size?.columns;
+    if (typeof columns !== "number" || !Number.isFinite(columns) || columns <= 0)
+      return { cols: FALLBACK_COLS2 };
+    return { cols: Math.floor(columns) };
+  } catch {
+    return { cols: FALLBACK_COLS2 };
+  }
+}
+function safeRow2(value) {
+  try {
+    return clampCells(stripControl(value), ROW_MAX_CELLS);
+  } catch {
+    return "";
+  }
+}
+function readSnapshot(host) {
+  if (host === null || host === undefined)
+    return;
+  const api = host;
+  if (typeof api.snapshot !== "function")
+    return;
+  try {
+    return api.snapshot();
+  } catch {
+    return;
+  }
+}
+function createPanelComponent(readWorkflow) {
+  return function MpdTuiPanel(props) {
+    const kit = panelKit(props?.React, props?.ui);
+    if (kit === undefined) {
+      return null;
+    }
+    const React = kit.React;
+    const ui = kit.ui;
+    const measured = measurePanel(ui);
+    const snapshot = readSnapshot(props?.host);
+    let workflow;
+    try {
+      workflow = readWorkflow();
+    } catch {
+      workflow = undefined;
+    }
+    const children = [];
+    const section = subagentSectionRows(snapshot);
+    for (let index = 0;index < section.length; index += 1) {
+      const row = section[index];
+      children.push(React.createElement(ui.Text, {
+        key: `sub-${index}`,
+        ...row.header === true ? { bold: true } : {},
+        ...row.dim === true ? { dimColor: true } : {}
+      }, safeRow2(row.text)));
+    }
+    if (typeof ui.Divider === "function")
+      children.push(React.createElement(ui.Divider, { key: "sep" }));
+    else
+      children.push(React.createElement(ui.Text, { key: "sep", dimColor: true }, safeRow2("─")));
+    const view = teamGraphView(workflow, measured.cols);
+    if (view === undefined) {
+      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow2("task dependency graph: no team in this workspace")));
+    } else {
+      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow2(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}`)));
+      for (let index = 0;index < view.lines.length; index += 1) {
+        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text));
+        children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans));
+      }
+      let legend = [];
+      try {
+        legend = legendLines(measured.cols);
+      } catch {
+        legend = [];
+      }
+      for (let index = 0;index < legend.length; index += 1) {
+        children.push(React.createElement(ui.Text, { key: `legend-${index}`, dimColor: true }, safeRow2(legend[index])));
+      }
+    }
+    const body = typeof ui.ScrollBox === "function" ? React.createElement(ui.ScrollBox, { key: "body" }, children) : children;
+    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", height: "100%", paddingX: 1 }, body);
+  };
+}
+function registerPanelSurface(tui, deps) {
+  const panel = deps.enabled ? tui.registerPanel({
+    ...PANEL_DESCRIPTOR_FROZEN,
+    component: createPanelComponent(deps.readWorkflow)
+  }) : undefined;
+  return {
+    panel,
+    registered: () => panel !== undefined && panel.id() !== undefined,
+    id: () => panel?.id(),
+    outcome: () => {
+      if (panel !== undefined)
+        return panel.outcome();
+      return tui.skipped("panels", "the sidebar panel is disabled by the mpd-tui row config (panel: false)").outcome();
+    },
+    openOrScene: () => {
+      const id = panel?.id();
+      if (!tui.panelSeamBound() || id === undefined) {
+        return { outcome: "unavailable", sceneOpened: deps.openMergedScene() };
+      }
+      const result = tui.openPanel(id);
+      if (result.opened() === true)
+        return { outcome: "opened", sceneOpened: false };
+      deps.log.debug(`panel open(${id}) refused; falling back to the full-screen merged scene`);
+      return { outcome: "fallback", sceneOpened: deps.openMergedScene() };
+    }
+  };
+}
+function panelStatusLine(outcome, id) {
+  if (outcome === "opened")
+    return t("panel.opened", { id: id ?? "?" });
+  if (outcome === "fallback")
+    return t("panel.fallback", { id: id ?? "?" });
+  return t("panel.unavailable");
+}
+
 // packages/mpd-tui-plugin/src/scenes.ts
 var BOARD_SCENE_ID = "mpd-tui-board";
 var TEAM_SCENE_ID = "mpd-tui-team";
 var PLAN_SCENE_ID = "mpd-tui-plan";
-var FALLBACK_COLS2 = 100;
+var FALLBACK_COLS3 = 100;
 var BOARD_REFRESH_MS = 2000;
 var DISCARD_WINDOW_MS = 1e4;
 var SCENE_ROW_MAX_CELLS = 4000;
@@ -5939,7 +6155,7 @@ function wrapCells(value, cols) {
 }
 function measureTerminal2(ui) {
   if (typeof ui?.useTerminalSize !== "function")
-    return { size: "", cols: FALLBACK_COLS2, window: 20 };
+    return { size: "", cols: FALLBACK_COLS3, window: 20 };
   let columns = "?";
   let rows = "?";
   const measured = ui.useTerminalSize();
@@ -5952,7 +6168,7 @@ function measureTerminal2(ui) {
   const terminalCols = Number(columns);
   return {
     size,
-    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS2,
+    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS3,
     window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20
   };
 }
@@ -6529,12 +6745,13 @@ function boardSummary(workspaceRoot, home, teamViews, teamRecords) {
 // packages/mpd-tui-plugin/src/command-trees.ts
 var COMMAND_ROOT = "mpd";
 var MODEL_COMMAND = "mpd-model";
-var COMMAND_ACTIONS = ["board", "team", "plan", "subagents", "workmates", "status"];
+var COMMAND_ACTIONS = ["board", "team", "plan", "subagents", "panel", "workmates", "status"];
 var COMMAND_CHILDREN = [
   { name: "board", description: "Open the mpd board scene", descriptions: { zh: "打开 MPD 面板", en: "Open the mpd board scene" } },
   { name: "team", description: "Open the team workflow scene", descriptions: { zh: "打开团队工作流面板", en: "Open the team workflow scene" } },
   { name: "plan", description: "Review and approve a staged plan", descriptions: { zh: "审阅并批准待定计划", en: "Review and approve a staged plan" } },
   { name: "subagents", description: "Open the subagents + team panel", descriptions: { zh: "打开子代理与团队合并面板", en: "Open the subagents + team panel" } },
+  { name: "panel", description: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam", descriptions: { zh: "打开侧栏面板；宿主无面板接缝时使用全屏合并面板", en: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam" } },
   { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库", en: "List the durable workmate library" } },
   { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行", en: "Print the mpd status line" } }
 ];
@@ -6885,6 +7102,10 @@ function runAction(action, actions, session) {
   if (action === "subagents") {
     return actions.openSubagents() ? { kind: "success" } : { kind: "error", text: t("command.subagentsMissing") };
   }
+  if (action === "panel") {
+    const route = actions.openPanel();
+    return { kind: "success", text: clamp(panelStatusLine(route.outcome, route.id)) };
+  }
   if (action === "plan") {
     return actions.openPlan() ? { kind: "success" } : { kind: "error", text: t("command.planMissing") };
   }
@@ -7126,6 +7347,7 @@ var Config = import_schemastery2.default.object({
   commands: import_schemastery2.default.boolean().default(true),
   shortcuts: import_schemastery2.default.boolean().default(true),
   dialogs: import_schemastery2.default.boolean().default(true),
+  panel: import_schemastery2.default.boolean().default(true),
   dashboardKey: import_schemastery2.default.boolean().default(true),
   sessionEvents: import_schemastery2.default.boolean().default(true),
   decisionEvents: import_schemastery2.default.boolean().default(true),
@@ -7144,6 +7366,7 @@ function resolveConfig(config = {}) {
     commands: bool(config.commands, true),
     shortcuts: bool(config.shortcuts, true),
     dialogs: bool(config.dialogs, true),
+    panel: bool(config.panel, true),
     dashboardKey: bool(config.dashboardKey, true),
     sessionEvents: bool(config.sessionEvents, true),
     decisionEvents: bool(config.decisionEvents, true),
@@ -7299,28 +7522,42 @@ function apply(ctx, config = {}) {
     openPlan: () => false,
     openSubagents: () => false
   };
+  const panel = registerPanelSurface(tui, {
+    enabled: resolved.panel,
+    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+    openMergedScene: () => scene.openSubagents(),
+    log
+  });
   const dashboardKeyEnabled = () => {
+    let saved;
     try {
       const live = configHandle?.get?.(DASHBOARD_TAKEOVER_KNOB);
       if (typeof live === "boolean")
-        return live;
+        saved = live;
     } catch {}
-    return resolved.dashboardKey;
+    return takeoverArmed(tui.panelSeamBound(), saved, resolved.dashboardKey);
   };
-  const dashboardKey = resolved.dashboardKey ? registerDashboardKey(ctx, tui, {
+  const dashboardKey = !tui.panelSeamBound() ? resolved.dashboardKey ? registerDashboardKey(ctx, tui, {
     enabled: dashboardKeyEnabled,
     mergedSceneAvailable: () => resolved.scene && tui.scenes() !== undefined,
     readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
     openMergedScene: () => scene.openSubagents(),
     log
-  }) : tui.skipped("status", "the Ctrl+A takeover is disabled by the mpd-tui row config (dashboardKey: false)");
+  }) : tui.skipped("status", "the Ctrl+A takeover is disabled by the mpd-tui row config (dashboardKey: false)") : tui.skipped("status", "the host exposes the sidebar panel seam (dsh-tui 0.13.0+), so the legacy Ctrl+A host-input contact stays inert: Ctrl+A keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel");
   const renderers = resolved.renderers ? registerRenderers(ctx, tui, log) : skipped("renderers", "disabled by config");
   const settings = resolved.settingsSection ? registerSettingsSection(ctx, tui, log) : skipped("settingsSections", "disabled by config");
   const trees = resolved.commandTrees ? registerCommandTrees(tui) : skipped("commandTrees", "disabled by config");
+  const openMergedPanel = () => {
+    const routed = panel.openOrScene();
+    return { ...routed, id: panel.id() };
+  };
   const shortcuts = resolved.shortcuts ? registerShortcuts(ctx, tui, log, {
     openBoard: () => scene.open(),
     openTeam: () => scene.openTeam(),
-    openSubagents: () => scene.openSubagents(),
+    openSubagents: () => {
+      const route = openMergedPanel();
+      return route.outcome === "opened" || route.sceneOpened;
+    },
     refreshStatus: () => status.refresh(),
     pickWorkmate: () => {
       pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords);
@@ -7330,7 +7567,14 @@ function apply(ctx, config = {}) {
     openBoard: () => scene.open(),
     openTeam: () => scene.openTeam(),
     openPlan: () => scene.openPlan(),
-    openSubagents: () => scene.openSubagents(),
+    openSubagents: () => {
+      const route = openMergedPanel();
+      return route.outcome === "opened" || route.sceneOpened;
+    },
+    openPanel: () => {
+      const route = openMergedPanel();
+      return { outcome: route.outcome, id: route.id };
+    },
     statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
     workmatesText: () => {
       const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords());
@@ -7349,6 +7593,8 @@ function apply(ctx, config = {}) {
   record(renderers);
   record(settings);
   record(scene);
+  outcomes.push({ id: "panel", outcome: panel.outcome() });
+  log.debug(`sidebar panel id: ${panel.id() ?? "(not discovered)"}`);
   outcomes.push({ id: "dashboardKey", outcome: dashboardKey.outcome() });
   record(trees);
   record(shortcuts);
@@ -7367,6 +7613,7 @@ async function pickAction(log, dialogs) {
     { id: "team", label: "Team", description: "team workflow: phase, roster, task DAG" },
     { id: "plan", label: "Plan", description: "review and approve a staged plan" },
     { id: "subagents", label: "Subagents", description: "the host's subagent rows above the team panel" },
+    { id: "panel", label: "Panel", description: "the sidebar panel (dsh-tui 0.13.0), or the full-screen fallback" },
     { id: "workmates", label: "Workmates", description: "list the durable workmate library" },
     { id: "status", label: "Status", description: "print the mpd status line" }
   ]);

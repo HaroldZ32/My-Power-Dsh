@@ -197,6 +197,16 @@ export const TUI_TEXT = {
   "command.unknownAction": { zh: "mpd: 未知动作“{action}” —— 用法：{usage}", en: "mpd: unknown action \"{action}\" — usage: {usage}" },
   "command.workmatesNone": { zh: "mpd workmates：无", en: "mpd workmates: none" },
   "command.workmatesList": { zh: "mpd workmates（{count}）：{names}", en: "mpd workmates ({count}): {names}" },
+  /**
+   * The sidebar PANEL's own three status sentences (`/mpd panel`).
+   *
+   * One per outcome the routed open can produce, because the seam's own three answers must not read
+   * as one: the panel was opened, the panel declined and the full-screen scene opened instead, or
+   * this host has no panel seam at all and the scene IS the surface.
+   */
+  "panel.opened": { zh: "mpd 侧栏面板：已打开（{id}）", en: "mpd sidebar panel: opened ({id})" },
+  "panel.fallback": { zh: "mpd 侧栏面板：宿主拒绝了打开请求（{id}），已改为全屏面板", en: "mpd sidebar panel: the host refused the open request ({id}); opened the full-screen panel instead" },
+  "panel.unavailable": { zh: "mpd 侧栏面板：该宿主不提供面板接缝，使用全屏面板", en: "mpd sidebar panel: this host exposes no panel seam; using the full-screen panel" },
   /** The scene's own notices (a refused open, a missing precondition). */
   "scene.planNeedsStaged": { zh: "计划审批需要一个待定计划", en: "plan approval needs a staged team" },
   "scene.planMissing": { zh: "该组合不提供计划审批界面", en: "the plan approval surface is not available in this composition" },

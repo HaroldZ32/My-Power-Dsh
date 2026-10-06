@@ -119,7 +119,9 @@ export const SettingsSchema = z.object({
   // for the namespace schema and for the knob list both front doors render — a knob declared only
   // inside the TUI section would be drift. `dashboardKey` is the L0 default of the Ctrl+A takeover:
   // ON, i.e. the takeover applies whenever MPD's team projection has a team with at least one task,
-  // and with no team the key keeps its host behaviour.
+  // and with no team the key keeps its host behaviour. IT IS MEANINGFUL ON OLD dsh-tui BUILDS ONLY:
+  // a host that offers the sidebar panel seam (0.13.0+) keeps Ctrl+A for its own dashboard and opens
+  // MPD's merged view through `alt+a` / `/mpd panel`, so the contact is never armed there.
   tui: z.object({ dashboardKey: z.boolean().default(true) }),
 })
 
@@ -411,5 +413,5 @@ export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   // The TUI surface's own knob, LAST so every index-keyed assertion over the original thirteen and
   // the twelve slot leaves keeps its meaning. Its `hint` is the semantics sentence only — the
   // bridge/restart disclosure is appended by each front door's own hint builder, never hand-written.
-  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view", zh: "Ctrl+A 依赖视图", kind: "boolean", hint: "while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard" },
+  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" },
 ]

@@ -79,7 +79,10 @@
 #     name: '@deepseek-ai/dsh-agent-preset-registry'
 #     config:
 #       default: mpd
-# MEASURED against the installed `@deepseek-harness-tui/dsh-tui` (0.12.0): the TUI
+# MEASURED against the installed `@deepseek-harness-tui/dsh-tui` (0.12.0; the
+# reading below was RE-VERIFIED against 0.13.0 on 2026-10-06 by the
+# `dsh-tui-013-adaptation` wave — the row id, its `{ default: standard }` config
+# and its `presets/` contents are unchanged): the TUI
 # mints its OWN registry row under the scoped id `dsh-tui-agent-preset-registry`
 # (name '@deepseek-ai/dsh-agent-preset-registry', config `{ default: standard }`,
 # disabled when an enabled `agent-preset-registry` entry already exists), declared

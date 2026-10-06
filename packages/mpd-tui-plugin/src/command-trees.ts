@@ -19,7 +19,7 @@ export const COMMAND_ROOT = "mpd"
 export const MODEL_COMMAND = "mpd-model"
 
 /** Actions the `/mpd` grammar accepts (bare = picker, `<value>` = direct, `status` = print). */
-export const COMMAND_ACTIONS: readonly string[] = ["board", "team", "plan", "subagents", "workmates", "status"]
+export const COMMAND_ACTIONS: readonly string[] = ["board", "team", "plan", "subagents", "panel", "workmates", "status"]
 
 /**
  * One completion node: the English fallback the host holds in `description`, plus BOTH halves of
@@ -40,6 +40,7 @@ export const COMMAND_CHILDREN: readonly CommandChild[] = [
   { name: "team", description: "Open the team workflow scene", descriptions: { zh: "打开团队工作流面板", en: "Open the team workflow scene" } },
   { name: "plan", description: "Review and approve a staged plan", descriptions: { zh: "审阅并批准待定计划", en: "Review and approve a staged plan" } },
   { name: "subagents", description: "Open the subagents + team panel", descriptions: { zh: "打开子代理与团队合并面板", en: "Open the subagents + team panel" } },
+  { name: "panel", description: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam", descriptions: { zh: "打开侧栏面板；宿主无面板接缝时使用全屏合并面板", en: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam" } },
   { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库", en: "List the durable workmate library" } },
   { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行", en: "Print the mpd status line" } },
 ]
