@@ -1579,6 +1579,27 @@ function sameAuditOutcome(previous, next) {
     return member.member === other.member && member.outcome === other.outcome && (member.reason ?? "") === (other.reason ?? "") && (member.failureCode ?? "") === (other.failureCode ?? "");
   });
 }
+function projectMpdTeam(record) {
+  const id = String(record?.teamId ?? "");
+  if (id === "")
+    return;
+  return {
+    id,
+    name: String(record.name ?? ""),
+    captainSessionId: String(record.leadSessionId ?? ""),
+    ...typeof record.phase === "string" ? { phase: record.phase } : {},
+    members: (Array.isArray(record.members) ? record.members : []).map((member) => ({
+      id: typeof member.executorRef === "string" ? member.executorRef : "",
+      name: String(member.name ?? ""),
+      ...typeof member.status === "string" ? { status: member.status } : {}
+    })),
+    tasks: (Array.isArray(record.tasks) ? record.tasks : []).map((task) => ({
+      id: String(task.id ?? ""),
+      status: String(task.status ?? ""),
+      ...typeof task.owner === "string" && task.owner !== "" ? { assignee: task.owner } : {}
+    }))
+  };
+}
 function projectTeam(view) {
   const id = String(view?.teamId ?? "");
   if (id === "")
@@ -1603,7 +1624,24 @@ function projectTeam(view) {
     }))
   };
 }
-function readTeams(dsh) {
+function readTeams(dsh, workspace, mpdTeams) {
+  if (mpdTeams !== undefined) {
+    try {
+      const records = mpdTeams.list(workspace);
+      if (Array.isArray(records) && records.length > 0) {
+        const teams2 = [];
+        for (const record of records) {
+          const team = projectMpdTeam(record);
+          if (team === undefined)
+            continue;
+          if (team.members.length === 0 && team.tasks.length === 0)
+            continue;
+          teams2.push(team);
+        }
+        return teams2;
+      }
+    } catch {}
+  }
   let views;
   try {
     views = dsh.teamLiveTeams() ?? [];
@@ -1621,12 +1659,12 @@ function readTeams(dsh) {
   }
   return teams;
 }
-function readTeamRecord(dsh, teamId) {
+function readTeamRecord(dsh, workspace, teamId, mpdTeams) {
   const wanted = String(teamId);
-  return readTeams(dsh).find((team) => team.id === wanted);
+  return readTeams(dsh, workspace, mpdTeams).find((team) => team.id === wanted);
 }
-function listTeamIds(dsh) {
-  return readTeams(dsh).map((team) => team.id).sort();
+function listTeamIds(dsh, workspace, mpdTeams) {
+  return readTeams(dsh, workspace, mpdTeams).map((team) => team.id).sort();
 }
 function teamIsFinished(team, terminal) {
   if (!Array.isArray(team.tasks) || team.tasks.length === 0)
@@ -1797,6 +1835,16 @@ async function compactTeamPass(dsh, team, options) {
   }
   return { ...base, outcome: "compacted", members: records };
 }
+function mpdTeamsOf(ctx) {
+  try {
+    const service = ctx.get?.("mpdTeams", false);
+    if (service === null || typeof service !== "object")
+      return;
+    return typeof service.list === "function" ? service : undefined;
+  } catch {
+    return;
+  }
+}
 function apply(ctx) {
   const dsh = resolveDshAdapter(ctx);
   const log = ctx.logger ?? { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} };
@@ -1825,7 +1873,7 @@ function apply(ctx) {
     return audit;
   }
   async function runPass(workspace, teamId, caller, force = false) {
-    const team = readTeamRecord(dsh, teamId);
+    const team = readTeamRecord(dsh, workspace, teamId, mpdTeamsOf(ctx));
     if (team === undefined) {
       return writeOrSkip(workspace, teamId, {
         schema: "mpd/team-compact@1",
@@ -1846,8 +1894,8 @@ function apply(ctx) {
       const workspace = dsh.workspaceRoot();
       if (workspace === undefined || workspace === "")
         return;
-      for (const teamId of listTeamIds(dsh)) {
-        const team = readTeamRecord(dsh, teamId);
+      for (const teamId of listTeamIds(dsh, workspace, mpdTeamsOf(ctx))) {
+        const team = readTeamRecord(dsh, workspace, teamId, mpdTeamsOf(ctx));
         if (team === undefined)
           continue;
         if (!teamIsFinished(team, terminalStatuses()))
@@ -1870,8 +1918,8 @@ function apply(ctx) {
         return;
       (async () => {
         try {
-          for (const teamId of listTeamIds(dsh)) {
-            const team = readTeamRecord(dsh, teamId);
+          for (const teamId of listTeamIds(dsh, workspace, mpdTeamsOf(ctx))) {
+            const team = readTeamRecord(dsh, workspace, teamId, mpdTeamsOf(ctx));
             if (team === undefined)
               continue;
             if (!compactableMembers(team).some((member) => member.id === sessionId))
@@ -1910,7 +1958,7 @@ function apply(ctx) {
     },
     async execute(args, exec) {
       const workspace = dsh.workspaceRoot(exec);
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id];
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh, workspace, mpdTeamsOf(ctx)) : [args.team_id];
       const sessionId = String(exec?.agent?.session?.id ?? "");
       const caller = {
         via: "tool",
@@ -1947,7 +1995,7 @@ function apply(ctx) {
     },
     async execute(args, exec) {
       const workspace = dsh.workspaceRoot(exec);
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id];
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh, workspace, mpdTeamsOf(ctx)) : [args.team_id];
       return { teams: ids.map((teamId) => ({ teamId, passes: readAudits(workspace, teamId) })) };
     }
   });
@@ -1965,6 +2013,7 @@ export {
   listTeamIds,
   memberIsActive,
   name,
+  projectMpdTeam,
   readAudits,
   readTeamRecord,
   readTeams,

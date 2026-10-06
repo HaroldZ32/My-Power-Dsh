@@ -7,12 +7,13 @@
 // and the readout is deliberately left stale) so a regression to "read the official plane" reddens
 // instead of passing quietly.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
-import { listTeams, readTeam, teamRoot } from "../src/team-store"
+import { listTeams, readTeam, teamRoot, updateTeamTask, writeTeam } from "../src/team-store"
+import type { DispatchLedger } from "../src/dispatch"
 
 /** One captured tool registration, with `execute` kept so an arm can actually drive it. */
 interface Tool {
@@ -40,6 +41,8 @@ interface Harness {
   calls: ExecutorCall[]
   /** The `mpdTeams` service the plugin published, or undefined when it published none. */
   service: MpdTeamsService | undefined
+  /** Every `(teamId, workspace)` the dispatch gate asked the watchdog about, in order (T1). */
+  holdQueries: Array<{ teamId: string; workspace: string | undefined }>
   /** The tool exec payload a call carries (the workspace resolves from it). */
   exec: { agent: { session: { id: string } }; signal: undefined }
   /** Drive one registered tool by name. */
@@ -54,6 +57,11 @@ interface StubOptions {
   watchdogUnreadable?: boolean
   /** The member whose spawn throws, by name, when an arm needs a half-built team. */
   failMember?: string
+  /**
+   * Run a mutation on the REAL store WHILE a dispatch pass is awaiting its `send` — the only way to
+   * reproduce a claim that lands mid-pass (T2). It receives the sandbox workspace.
+   */
+  duringSend?: (workspace: string) => void
 }
 
 /**
@@ -70,6 +78,8 @@ function harness(options: StubOptions = {}): Harness {
   const calls: ExecutorCall[] = []
   /** The service the plugin published. */
   let service: MpdTeamsService | undefined
+  /** Every query the dispatch gate sent the watchdog, so the ARGUMENTS are pinned and not just the verdict. */
+  const holdQueries: Array<{ teamId: string; workspace: string | undefined }> = []
   // THE NATIVE BACKEND (W2). The double sits at the HARNESS boundary — `ctx.subagents` — and the
   // REAL adapter is built over it, so these arms exercise the executor implementation rather than a
   // stub of it. `spawnTeammate` is deliberately ABSENT: an approval that still reached for the
@@ -92,6 +102,9 @@ function harness(options: StubOptions = {}): Harness {
     /** Record the delivery and answer with an inbox id. */
     sendMessage(this: unknown, sender: unknown, targetId: unknown, content: unknown, opts: unknown): Promise<unknown> {
       calls.push({ method: "sendMessage", args: { sender, targetId, content, opts } })
+      // The concurrent mutation lands HERE: the pass is suspended at this await, which is exactly
+      // the window a member's own `agent_teams_task claim` writes into (T2).
+      options.duringSend?.(workspace)
       return Promise.resolve("m2")
     },
     /** Record the interrupt. */
@@ -107,16 +120,28 @@ function harness(options: StubOptions = {}): Harness {
         // object is truthy even when `held` is false, which is exactly why a gate that read it for
         // truthiness refused every pass with a hold the watchdog's own store did not have. The
         // double models the object so the gate's own reading is what the arm tests.
-        isHeld: () => ({
-          held: options.watchdogUnreadable === true ? "yes" : options.watchdogHolds === true,
-          holdId: options.watchdogHolds === true ? "hold-1" : null,
-          at: options.watchdogHolds === true ? 1_790_953_153_225 : null,
-          reason: options.watchdogHolds === true ? "silence" : null,
-          taskId: null,
-          attemptId: null,
-          workspace,
-          source: "file",
-        }),
+        //
+        // THE DOUBLE IS KEYED BY ID AND BY WORKSPACE (T1), exactly as the real store is: a hold
+        // exists for the team the WORKSPACE's record carries, so the query is answered against
+        // `listTeams(workspace)`. An id-space drift — the shipped defect, where the watchdog filed
+        // the hold under the Lead Session id while the gate asked about `team-<stamp>` — therefore
+        // answers `held: false` HERE and the "held" arm reddens, instead of an argument-blind stub
+        // saying yes to whatever id it was handed.
+        isHeld: (teamId: string, workspaceArg?: string) => {
+          holdQueries.push({ teamId, workspace: workspaceArg })
+          /** Whether a hold exists for THIS id in THIS workspace, as the real registry would answer. */
+          const held = options.watchdogHolds === true && listTeams(workspaceArg ?? "").some((record) => record.teamId === teamId)
+          return {
+            held: options.watchdogUnreadable === true ? "yes" : held,
+            holdId: held ? "hold-1" : null,
+            at: held ? 1_790_953_153_225 : null,
+            reason: held ? "silence" : null,
+            taskId: null,
+            attemptId: null,
+            workspace,
+            source: "file",
+          }
+        },
         holds: () => (options.watchdogHolds === true ? ["held"] : []),
       }
   /** The stub adapter: the plugin's own seams, plus the REAL executor over the harness double. */
@@ -145,7 +170,7 @@ function harness(options: StubOptions = {}): Harness {
   /** The exec payload every tool call carries; the session id is what binds the record. */
   const exec = { agent: { session: { id: "sess-1" } }, signal: undefined }
   return {
-    workspace, tools, calls, exec,
+    workspace, tools, calls, exec, holdQueries,
     /** The `mpdTeams` service the plugin published; read through a getter because `apply` runs after this literal is built. */
     get service(): MpdTeamsService | undefined { return service },
     call: async (name: string, args: unknown) => {
@@ -165,6 +190,25 @@ async function staged(h: Harness): Promise<void> {
   // The second task is blocked by the first task's SUBJECT, which is how a captain writes it.
   await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", write_scopes: ["packages/**"], owner: "Senior Engineer" } })
   await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review the core", description: "judge it", blocked_by: ["core"], owner: "Reviewer" } })
+}
+
+/**
+ * The dispatch ledger as this workspace has it ON DISK.
+ *
+ * Read straight from the documented sidecar path (`<workspace>/.mpd/team/dispatch.json`, named in the
+ * src header) instead of through a helper the fix could move, so the arm asserts the exact file two
+ * writers — a concurrent release and the pass's final write — actually agreed on.
+ * @param workspace - the sandbox workspace whose ledger is read.
+ * @returns the parsed ledger, or an empty one when the file is absent or unreadable.
+ */
+function ledgerOnDisk(workspace: string): DispatchLedger {
+  try {
+    /** The parsed ledger, accepted only when it is a plain object — the rule `readLedger` applies. */
+    const raw = JSON.parse(readFileSync(join(workspace, ".mpd", "team", "dispatch.json"), "utf8")) as DispatchLedger
+    return raw !== null && typeof raw === "object" ? raw : {}
+  } catch {
+    return {}
+  }
 }
 
 /** Every sandbox one arm created, removed even when the arm fails. */
@@ -403,5 +447,141 @@ describe("the watchdog hold stops a dispatch pass", () => {
     expect(result.holdRead).toContain("not-readable")
     // The pass really ran: the one ready task reached its member.
     expect(h.calls.filter((call) => call.method === "sendMessage").length).toBe(1)
+  })
+
+  test("the gate asks about the RECORD's team id in THIS workspace — the ARGUMENTS are pinned", async () => {
+    // WHY THIS ARM EXISTS (T1). The shipped defect was invisible to this suite because the stub was
+    // `isHeld: () => ({…})`: it answered yes to whatever id it was handed, so a gate that asked
+    // about the WRONG id passed. The double above is now keyed by id and workspace, and this arm
+    // states the contract in the open: the id asked about is the mpd record's own `team-<stamp>`,
+    // and the workspace is the calling session's.
+    /** The harness whose watchdog holds the record's own team id. */
+    const h = harness({ watchdogHolds: true })
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The record the pass must dispatch. */
+    const record = listTeams(h.workspace)[0]
+    // The id is OURS (`team-<stamp>`), never a session id — that is the whole point of the split.
+    expect(record.teamId).toMatch(/^team-\d{14}$/)
+    await h.call("agent_teams_dispatch", { action: "run" })
+    expect(h.holdQueries).toEqual([{ teamId: record.teamId, workspace: h.workspace }])
+  })
+})
+
+describe("a claim that lands while a dispatch pass is in flight is never reverted", () => {
+  // THE DEFECT THIS PINS (T2): the pass read the record ONCE, then rewrote the WHOLE FILE after
+  // each `await executor().send(...)` — so a `agent_teams_task {action:"claim"}` that landed during
+  // the await was erased by the next blind write. The board then showed an in-flight task as
+  // pending and its attempt counter regressed, so a later claim reused the same attempt number.
+  test("a concurrent claim on another task SURVIVES the pass's own write", async () => {
+    /** The harness whose `send` performs member B's claim on the real store, mid-await. */
+    const h = harness({
+      duringSend: (workspace) => {
+        /** The record as it stands on disk at that instant. */
+        const current = listTeams(workspace)[0]
+        // Member B claims T2 through the SAME store functions `agent_teams_task claim` uses.
+        writeTeam(workspace, updateTeamTask(current, "T2", { owner: "Reviewer", status: "in_progress", attempt: 1 }, new Date()))
+      },
+    })
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The record's id, needed to read the board back. */
+    const teamId = listTeams(h.workspace)[0].teamId
+    /** The dispatch result, which must pair the one READY task and keep the concurrent claim. */
+    const result = (await h.call("agent_teams_dispatch", { action: "run" })) as { pairs?: Array<{ taskId: string }> }
+    expect(result.pairs?.map((pair) => pair.taskId)).toEqual(["T1"])
+    /** The board as it stands AFTER the pass. */
+    const after = readTeam(h.workspace, teamId)
+    /** The task the pass dispatched itself. */
+    const dispatched = after?.tasks.find((task) => task.id === "T1")
+    expect(dispatched?.owner).toBe("Senior Engineer")
+    expect(dispatched?.status).toBe("in_progress")
+    /** The task member B claimed while the pass was awaiting its send. */
+    const claimed = after?.tasks.find((task) => task.id === "T2")
+    // The claim was NOT reverted. The discriminating half is status/attempt/revision: the plan had
+    // already left T2 owned by Reviewer, while ONLY the concurrent claim moved it to in_progress,
+    // set attempt 1 and bumped its revision to 2 — the three fields a stale snapshot restores.
+    expect(claimed?.owner).toBe("Reviewer")
+    expect(claimed?.status).toBe("in_progress")
+    expect(claimed?.attempt).toBe(1)
+    expect(claimed?.revision).toBe(2)
+  })
+
+  test("the falsifier: with NO concurrent claim the pass still records its own pairing", async () => {
+    /** The harness whose send mutates nothing. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The record's id. */
+    const teamId = listTeams(h.workspace)[0].teamId
+    await h.call("agent_teams_dispatch", { action: "run" })
+    /** The board after the pass. */
+    const after = readTeam(h.workspace, teamId)
+    // The pass's OWN write landed: the dispatched task is owned and in flight.
+    expect(after?.tasks.find((task) => task.id === "T1")?.owner).toBe("Senior Engineer")
+    expect(after?.tasks.find((task) => task.id === "T1")?.status).toBe("in_progress")
+    // And the task it did NOT dispatch is untouched.
+    expect(after?.tasks.find((task) => task.id === "T2")?.status).toBe("pending")
+  })
+})
+
+describe("a release that lands while a dispatch pass is in flight is never reverted", () => {
+  // THE DEFECT THIS PINS (T7). Same mechanism as T2, a different file: `agent_teams_dispatch
+  // {action:"run"}` read the dispatch LEDGER once BEFORE its pair loop, accumulated its own
+  // assignments in memory across each `await executor().send(...)`, and then wrote the WHOLE map back
+  // — so a `release` that landed on another task during that await (the ledger's other writer,
+  // `agent_teams_task {action:"release"}`, calls read-then-write on the same file) was silently
+  // erased: the member stayed recorded as busy and the freed task could never be dispatched again.
+  test("a concurrent release on ANOTHER task SURVIVES the pass's own final write", async () => {
+    /** Whether the send hook should land the concurrent release; false while the seeding pass runs. */
+    let releaseMidPass = false
+    /** The ledger's task ids as read INSIDE the await, right after the release wrote them. */
+    let ledgerAtSend: string[] | undefined
+    /** Drives `agent_teams_task release` from inside the executor's send hook; bound once the harness exists. */
+    let releaseTask: (() => void) | undefined
+    /** The harness under test. */
+    const h = harness({
+      duringSend: (workspace) => {
+        if (!releaseMidPass) return
+        // THE REAL WRITER, at the real moment: `agent_teams_task {action:"release"}` reads the ledger
+        // and writes it back with that one entry removed. Its release branch contains no `await`, so
+        // the whole read-modify-write completes synchronously here, while the pass is genuinely
+        // suspended inside its own `await executor().send(...)` — nothing is hand-rolled at the file.
+        releaseTask?.()
+        ledgerAtSend = Object.keys(ledgerOnDisk(workspace)).sort()
+      },
+    })
+    releaseTask = () => { void h.call("agent_teams_task", { action: "release", task_id: "T1" }) }
+    sandboxes.push(h.workspace)
+    await staged(h)
+    // A THIRD task, UNBLOCKED, so a later pass still has something to pair once T1 is claimed.
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "second opinion", description: "an unblocked second task", owner: "Reviewer" } })
+    await h.call("agent_teams_plan", { action: "approve" })
+    // PASS 1 seeds the ledger through the tool itself: `limit: 1` pairs ONLY the first ready task, so
+    // T1 is legitimately recorded as dispatched while T3 stays ready for the pass under test. No
+    // fixture file is written by this arm — the ledger's only writers are the plugin's own tools.
+    /** The seeding pass's result, which must record T1 and nothing else. */
+    const seeded = (await h.call("agent_teams_dispatch", { action: "run", limit: 1 })) as { pairs?: Array<{ taskId: string }> }
+    expect(seeded.pairs?.map((pair) => pair.taskId)).toEqual(["T1"])
+    expect(Object.keys(ledgerOnDisk(h.workspace)).sort()).toEqual(["T1"])
+    releaseMidPass = true
+    /** The pass under test: it pairs T3 while the concurrent release frees T1. */
+    const dispatched = (await h.call("agent_teams_dispatch", { action: "run" })) as { pairs?: Array<{ taskId: string }> }
+    expect(dispatched.pairs?.map((pair) => pair.taskId)).toEqual(["T3"])
+    // The interleaving really happened INSIDE the await: the ledger the hook read there no longer
+    // carried T1. Without this the arm could pass by never racing at all.
+    expect(ledgerAtSend).toEqual([])
+    /** The ledger as the pass left it on disk. */
+    const ledger = ledgerOnDisk(h.workspace)
+    // THE ASSERTION THIS ARM EXISTS FOR. Pre-fix this is ["T1","T3"]: the pass's stale pre-await
+    // snapshot restored the very entry the release had removed a moment earlier.
+    expect(Object.keys(ledger).sort()).toEqual(["T3"])
+    // And the pass's OWN just-sent pairing is still recorded — the fix MERGES the fresh ledger with
+    // this pass's accepted operations instead of discarding either half.
+    expect(ledger.T3?.memberName).toBe("Reviewer")
+    expect(ledger.T1).toBeUndefined()
   })
 })

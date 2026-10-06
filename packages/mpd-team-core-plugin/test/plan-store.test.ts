@@ -169,3 +169,64 @@ describe("plan identity", () => {
     expect(newPlanId(new Date("2026-01-02T03:04:06.000Z")) > newPlanId(new Date("2026-01-02T03:04:05.000Z"))).toBe(true)
   })
 })
+
+describe("a traversal-shaped id cannot escape .mpd/team", () => {
+  // THE DEFECT THIS PINS (T5): `stagingPath` and `contractPath` concatenated their id straight into
+  // a `join()`, while both sibling stores (`team-store.ts#sanitizeId`, the watchdog's `safeSegment`)
+  // reduced it first. `sessionId` reaches stagingPath from the WEB ROUTE's query string, so
+  // `sessionId=../../escape` read and wrote `<workspace>/escape.json` — any JSON carrying
+  // `version: 1` was then served as a staged plan. The guard REFUSES such an id; it never silently
+  // rewrites it to a different file, which would answer a path the caller did not ask for.
+  /** The traversal-shaped id every arm below uses: it climbs out of `.mpd/team/staging`. */
+  const TRAVERSAL = "../../escape"
+  /** A plan planted OUTSIDE `.mpd/team`, which no read may ever answer with. */
+  const planted = JSON.stringify({ version: 1, planId: "plan-planted", sessionId: TRAVERSAL, name: "planted", description: "outside the root", approval: "required", members: [], tasks: [], stagedAt: NOW.toISOString() })
+
+  test("readPlan REFUSES the id instead of returning a plan planted outside .mpd/team", () => {
+    writeFileSync(join(sandbox, "escape.json"), planted)
+    expect(() => readPlan(sandbox, TRAVERSAL)).toThrow(/path separator/)
+  })
+
+  test("writePlan REFUSES the id and creates no file outside .mpd/team", () => {
+    /** The plan whose session id is traversal-shaped. */
+    const plan = { version: 1 as const, planId: "plan-x", sessionId: TRAVERSAL, name: "escape", description: "must not land", approval: "required" as const, members: [], tasks: [], stagedAt: NOW.toISOString() }
+    expect(() => writePlan(sandbox, plan)).toThrow(/path separator/)
+    expect(existsSync(join(sandbox, "escape.json"))).toBe(false)
+  })
+
+  test("readContract and claimContract refuse a traversal-shaped taskId", () => {
+    writeFileSync(join(sandbox, "escape.json"), JSON.stringify({ version: 1, taskId: TRAVERSAL, subject: "x", description: "y", blockedBy: [], writeScopes: [], attempt: 1, claimedBy: "a", claimedAt: NOW.toISOString(), revision: 1 }))
+    expect(() => readContract(sandbox, TRAVERSAL)).toThrow(/path separator/)
+    expect(() => claimContract(sandbox, { id: TRAVERSAL, subject: "x", description: "y", revision: 1 }, "a", NOW)).toThrow(/path separator/)
+    // The planted file is untouched: nothing was read from it, nothing was written over it.
+    expect(JSON.parse(readFileSync(join(sandbox, "escape.json"), "utf8")).claimedBy).toBe("a")
+  })
+
+  test("a FILE-CONTROLLED planId cannot send the archive write outside .mpd/team", () => {
+    // THE THIRD ID IN THE SAME CLASS (found by review, reproduced): `planId` is read back from a
+    // staging FILE (`stagePlan` → `readPlan` → `archivePlan` → `archivePathFor`), so a planted plan
+    // whose `planId` carries `..` segments made the archive write `<workspace>/../../…/plan.json` —
+    // OUTSIDE the workspace, with no throw. The id is now reduced and refused like the other two.
+    /** Where the planted id would land if the join were still taken verbatim. */
+    const escapeTarget = join(tmpdir(), "mpd-t5-planid-escape")
+    rmSync(escapeTarget, { recursive: true, force: true })
+    mkdirSync(join(teamRoot(sandbox), "staging"), { recursive: true })
+    // FIVE `..` climb from `<ws>/.mpd/team/archive` to the filesystem root, then down into /tmp.
+    writeFileSync(join(teamRoot(sandbox), "staging", "sess-1.json"), JSON.stringify({
+      version: 1, planId: "../../../../../" + escapeTarget.replace(/^\//, ""), sessionId: "sess-1",
+      name: "planted", description: "outside the root", approval: "required", members: [], tasks: [], stagedAt: NOW.toISOString(),
+    }))
+    // BOTH sites are pinned: the path builder itself, and the reachable `stagePlan` path through it.
+    expect(() => archivePathFor(sandbox, "../../../../../tmp/x")).toThrow(/path separator/)
+    // Staging again archives the planted plan, which is the reachable path into `archivePlan`.
+    expect(() => stagePlan(sandbox, "sess-1", { name: "wave", description: "ship it", approval: "required" }, NOW)).toThrow(/path separator/)
+    expect(existsSync(join(escapeTarget, "plan.json"))).toBe(false)
+  })
+
+  test("the falsifier: an ORDINARY session id still stages, reads and archives", () => {
+    /** The plan staged under a normal id, which must pass the guard untouched. */
+    const plan = stagePlan(sandbox, "sess-1", { name: "wave", description: "ship it", approval: "required" }, NOW)
+    expect(readPlan(sandbox, "sess-1")?.planId).toBe(plan.planId)
+    expect(archivePlan(sandbox, plan)).toBe(archivePathFor(sandbox, plan.planId))
+  })
+})

@@ -27,6 +27,8 @@ import {
 } from "../src/index"
 import type { CompactAudit, CompactMemberRecord } from "../src/index"
 import type { DshAdapter, DshTeamView, DshToolDef } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { TeamRecord as MpdTeamRecord } from "../../mpd-team-core-plugin/src/team-store"
+import type { MpdTeamsRead } from "../src/index"
 
 /** The captain's session id: the official roster's Lead pseudo-row, never a compactable member. */
 const CAPTAIN = "session-captain"
@@ -210,7 +212,7 @@ test("t48 F6 HINGE: every drive goes to the MEMBER's own scoped engine, never a 
   const { workspace, teamId, dsh, engineCalls, engineLookups, hostEngine, cleanup } = fixture()
   try {
     /** The live team record; the fixture just seeded it, so the readout carries it. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     /** The audit of a pass over a finished team. */
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     expect(audit.outcome).toBe("compacted")
@@ -257,7 +259,7 @@ test("t48 CAPTAIN EXCLUSION: the captain session is never driven", async () => {
   })
   try {
     /** The live team record; its roster carries the captain row this case excludes. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     expect(compactableMembers(team).map((m) => m.name)).toEqual(["Senior Engineer"])
     /** The audit of the pass that must have skipped the captain. */
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
@@ -275,7 +277,7 @@ test("t48 NEGATIVE CONTROL: a team with ONE non-terminal task is REFUSED, nothin
   })
   try {
     /** The live team record; its board carries the still-open task. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     expect(teamIsFinished(team, TERMINAL)).toBe(false)
     /** The audit that must record a refusal without reaching the drive. */
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
@@ -293,7 +295,7 @@ test("t48 NEGATIVE CONTROL: an empty task list is NOT 'finished'", async () => {
   const { workspace, teamId, dsh, cleanup } = fixture({ tasks: [] })
   try {
     /** The live team record whose board is empty. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     expect(teamIsFinished(team, TERMINAL)).toBe(false)
     expect((await compactTeamPass(dsh, team, { terminal: TERMINAL })).outcome).toBe("refused")
   } finally { cleanup() }
@@ -304,7 +306,7 @@ test("t48 BARRIER: a busy member defers the whole pass (wait semantics + timeout
   const { workspace, teamId, dsh, engineCalls, cleanup } = fixture({ statuses: { [OTHER]: "working" } })
   try {
     /** The live team record; its member statuses are read through the live-agent seam. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     /** The audit of a pass whose barrier expired before every member was idle. */
     const audit = await compactTeamPass(dsh, team, {
       terminal: TERMINAL, idleWaitMs: 5, idlePollMs: 1,
@@ -327,7 +329,7 @@ test("t48 BARRIER: an idle member is compacted once every member is idle", async
   const { workspace, teamId, dsh, engineCalls, cleanup } = fixture({ statuses: { [OTHER]: "idle" } })
   try {
     /** The live team record the barrier lets through. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     /** The audit of the pass that drives both members. */
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL, idleWaitMs: 0 })
     expect(audit.outcome).toBe("compacted")
@@ -340,7 +342,7 @@ test("t48 NULL IS NOT AN ERROR: a null result is recorded as no-safe-range", asy
   const { workspace, teamId, dsh, cleanup } = fixture({ engine: () => ({ compactNow: async () => null }) })
   try {
     /** The live team record the pass drives. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     /** The audit whose rows must read `no-safe-range`, never an error. */
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     expect(audit.outcome).toBe("compacted")
@@ -378,7 +380,7 @@ test("t48 F5: a lifecycle error mid-pass is recorded against the member and does
   })
   try {
     /** The live team record the pass drives. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     /** The audit that must record both members rather than aborting on the first. */
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     /** The row of the member whose drive raised the lifecycle error. */
@@ -402,7 +404,7 @@ test("t48 STAGED: a member with no session id is skipped EXPLICITLY, never silen
   })
   try {
     /** The live team record whose first member carries an empty session id. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     expect(isStagedMember(team.members[0])).toBe(true)
     /** The audit that must record an explicit skip for the staged member. */
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
@@ -421,7 +423,7 @@ test("t48 NOT-LIVE: a dormant team is recorded, not ignored", async () => {
   try {
     live.clear() // the captain is gone, so no member Agent is in this process
     /** The live team record; the readout still carries it while no member Agent is resident. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     /** The audit of a pass that found nobody to drive. */
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     expect(audit.outcome).toBe("not-live")
@@ -487,43 +489,96 @@ test("t48 TERMINAL SET: mirror of the OFFICIAL lifecycle, with the non-terminal 
 
 test("t48: listTeamIds reports exactly the LIVE teams the adapter folds", () => {
   /** The fixture handles; only the stub adapter is read here. */
-  const { dsh, cleanup } = fixture()
+  const { workspace, dsh, cleanup } = fixture()
   try {
     // A solo session is the Lead of its own implicit team on the official plane; with no teammate
     // and no task it is NOT a team this plugin may consider.
     const solo: DshTeamView = { teamId: "solo", leadName: "lead", leadSessionId: "s", members: [{ id: "s", name: "lead", role: "lead", status: "running", diagnostics: [] }], tasks: [] }
     /** The same stub with the solo session appended to its readout. */
     const both = { ...dsh, teamLiveTeams: () => [...dsh.teamLiveTeams(), solo] }
-    expect(listTeamIds(both)).toEqual(["t48-team"])
+    expect(listTeamIds(both, workspace)).toEqual(["t48-team"])
     // …and the sorted id list is the readout's, not a directory scan: an "archive" entry cannot
     // appear because the official service has no such concept.
-    expect(listTeamIds(dsh)).toEqual(["t48-team"])
+    expect(listTeamIds(dsh, workspace)).toEqual(["t48-team"])
   } finally { cleanup() }
 })
 
 test("t48: a team the readout does not carry reads as undefined, never a throw", () => {
   /** The fixture handles; only the stub adapter is read here. */
-  const { dsh, cleanup } = fixture()
+  const { workspace, dsh, cleanup } = fixture()
   try {
     // The retired `.mpd/team/<id>/team.json` is no longer a source AT ALL: writing one changes
     // nothing, and an id the live readout does not carry has no record.
     writeFileSync(join(tmpdir(), "mpd-t48-irrelevant.json"), JSON.stringify({ id: "t48-team", members: [], tasks: [] }))
-    expect(readTeamRecord(dsh, "missing-team")).toBeUndefined()
+    expect(readTeamRecord(dsh, workspace, "missing-team")).toBeUndefined()
     // A view with no team identity is dropped rather than projected half-read.
     const empty = { ...dsh, teamLiveTeams: () => [{ teamId: "", leadName: "lead", leadSessionId: "s", members: [], tasks: [] }] }
-    expect(readTeamRecord(empty, "")).toBeUndefined()
+    expect(readTeamRecord(empty, workspace, "")).toBeUndefined()
     // …and a view whose readout throws degrades to "no teams", never a throw out of a tick.
     const broken = { ...dsh, teamLiveTeams: () => { throw new Error("service gone") } }
-    expect(readTeams(broken)).toEqual([])
+    expect(readTeams(broken, workspace)).toEqual([])
   } finally { cleanup() }
 })
+
+test("t48 T4: a team is READ FROM THE MPD RECORD — the native default composition is not blind", () => {
+  // THE DEFECT THIS PINS (T4): `readTeams` read ONLY `dsh.teamLiveTeams()`, the OFFICIAL readout,
+  // which reports a team only while its Lead is registered with the official service. The adapter's
+  // DEFAULT executor backend is `native`, a native team is never registered there, so the pass saw
+  // zero teams and `mpd_team_compact_run` answered "no finished team" forever.
+  /** The fixture handles; the OFFICIAL readout is emptied below so any answer comes from the record. */
+  const { workspace, dsh, cleanup } = fixture()
+  try {
+    /** One mpd team record: a FINISHED team the official plane does not carry at all. */
+    const record: MpdTeamRecord = {
+      version: 1,
+      teamId: "team-20261006120000",
+      name: "wave-3",
+      description: "split the plane",
+      leadSessionId: "sess-lead-1",
+      phase: "idle",
+      createdAt: "2026-10-06T12:00:00.000Z",
+      members: [
+        { id: "M1", name: "Senior Engineer", description: "implements", status: "inactive", spawnedAt: "2026-10-06T12:00:01.000Z", executorRef: "sess-m1" },
+      ],
+      tasks: [
+        { id: "T1", subject: "core", description: "own the record", kind: "work", status: "completed", blockedBy: [], writeScopes: [], createdAt: "2026-10-06T12:00:01.000Z", updatedAt: "2026-10-06T12:00:02.000Z", revision: 2 },
+      ],
+      nextMemberNumber: 2,
+      nextTaskNumber: 2,
+    }
+    /** The `mpdTeams` service face, answering that one record. */
+    const mpdTeams: MpdTeamsRead = { list: () => [record] }
+    /** The adapter whose OFFICIAL readout carries nothing, as a native composition's does. */
+    const officialBlind = { ...dsh, teamLiveTeams: () => [] as DshTeamView[] }
+    // The team is seen AT ALL — which is the whole fix.
+    expect(listTeamIds(officialBlind, workspace, mpdTeams)).toEqual(["team-20261006120000"])
+    /** The projected team, read through the same universe. */
+    const team = readTeamRecord(officialBlind, workspace, "team-20261006120000", mpdTeams)!
+    // A member's identity is the EXECUTOR's handle: that is the id `dsh.liveAgent` resolves, so a
+    // projection that kept mpd's short `M1` would report every member "not live".
+    expect(team.members).toEqual([{ id: "sess-m1", name: "Senior Engineer", status: "inactive" }])
+    expect(team.captainSessionId).toBe("sess-lead-1")
+    // The board is terminal, so the DERIVED "finished" predicate fires on the record's own vocabulary.
+    expect(teamTasks(team)).toEqual([["T1", "completed"]])
+    expect(teamIsFinished(team, terminalTaskStatuses())).toBe(true)
+    // The falsifier: with NO mpd service the OFFICIAL fold still answers, exactly as before.
+    expect(listTeamIds(dsh, workspace)).toEqual(["t48-team"])
+    // And a staged SHELL is still not a team on either plane.
+    expect(readTeams(officialBlind, workspace, { list: () => [{ ...record, members: [], tasks: [] }] })).toEqual([])
+  } finally { cleanup() }
+})
+
+/** One projected team's `[id, status]` pairs, so a board assertion stays readable. */
+function teamTasks(team: { tasks: Array<{ id: string; status: string }> }): Array<[string, string]> {
+  return team.tasks.map((task) => [task.id, task.status])
+}
 
 test("t48 NO SILENT NOTIFICATION: the pass writes an audit and returns; it never messages a member", async () => {
   /** The fixture handles; only the written audit is read here. */
   const { workspace, teamId, dsh, cleanup } = fixture()
   try {
     /** The live team record the pass reads. */
-    const team = readTeamRecord(dsh, teamId)!
+    const team = readTeamRecord(dsh, workspace, teamId)!
     /** The audit that must carry nothing addressed to a member. */
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     // the audit carries what was compacted; nothing in it is addressed to a member

@@ -14,6 +14,7 @@ import {
   addTeamTask,
   bindActiveTeam,
   blockingDependencies,
+  casClaimTask,
   createTeam,
   cycleIds,
   deleteTeam,
@@ -309,5 +310,68 @@ describe("the index and the files", () => {
     expect(activeTeamId(sandbox, undefined)).toBe("team-a")
     expect(activeTeamId(sandbox, "")).toBe("team-a")
     expect(readTeamsIndex(sandbox).active).toEqual({ workspace: "team-a" })
+  })
+})
+
+describe("the compare-and-set claim (T2)", () => {
+  // The dispatch pass writes the record AFTER an `await executor().send(...)`, so another caller may
+  // have written it in between. `casClaimTask` is the guard: it patches the record that is on disk
+  // NOW and refuses when the task moved, so a lost update is REPORTED instead of silently reverted.
+  /** A one-member, one-task team, written to the sandbox. */
+  function board(): TeamRecord {
+    /** The record as `agent_teams_plan approve` leaves it: one task, pending. */
+    const record = addTeamTask(
+      createTeam(sandbox, { name: "wave", description: "cas", leadSessionId: "s1" }, NOW),
+      { subject: "core", description: "own it", kind: "work" },
+      NOW,
+    )
+    writeTeam(sandbox, record)
+    return record
+  }
+
+  test("the patch lands on the FRESH record, so a concurrent write to ANOTHER task survives", () => {
+    /** The record the pass opened with. */
+    const opened = board()
+    /** The second task another caller adds while the pass is suspended. */
+    const concurrent = addTeamTask(opened, { subject: "other", description: "added mid-pass", kind: "work" }, NOW)
+    writeTeam(sandbox, concurrent)
+    /** The revision the pass based its decision on. */
+    const expected = opened.tasks[0].revision
+    /** The claim applied against the fresh read. */
+    const claimed = casClaimTask(readTeam(sandbox, opened.teamId)!, "T1", "Senior Engineer", expected, NOW)
+    expect(claimed.applied).toBe(true)
+    if (claimed.applied) {
+      // The fresh record's OTHER task is still there: the patch did not come from the stale snapshot.
+      expect(claimed.record.tasks.map((task) => task.id)).toEqual(["T1", "T2"])
+      expect(claimed.record.tasks[0].owner).toBe("Senior Engineer")
+      expect(claimed.record.tasks[0].status).toBe("in_progress")
+    }
+  })
+
+  test("a task that MOVED is refused by name, and the reason carries both revisions", () => {
+    /** The record the pass opened with. */
+    const opened = board()
+    /** The revision the pass based its decision on. */
+    const expected = opened.tasks[0].revision
+    // A concurrent CLAIM of the SAME task — the case a stale whole-file write used to erase.
+    writeTeam(sandbox, updateTeamTask(opened, "T1", { owner: "Reviewer", status: "in_progress", attempt: 1 }, NOW))
+    /** The refusal. */
+    const claimed = casClaimTask(readTeam(sandbox, opened.teamId)!, "T1", "Senior Engineer", expected, NOW)
+    expect(claimed.applied).toBe(false)
+    if (!claimed.applied) expect(claimed.reason).toContain(`revision ${expected} -> ${expected + 1}`)
+  })
+
+  test("a task that is GONE, or no longer pending, is refused with its own sentence", () => {
+    /** The record under test. */
+    const opened = board()
+    /** The revision the pass based its decision on. */
+    const expected = opened.tasks[0].revision
+    // Gone: the id is not on the fresh board at all.
+    expect(casClaimTask(opened, "T9", "Senior Engineer", expected, NOW)).toEqual({ applied: false, reason: "task T9 is no longer on the board" })
+    // Not pending: a concurrent COMPLETION (same revision as far as this call is told, which is why
+    // the status is checked separately — the caller may be replaying against a stale expectation).
+    /** The board with T1 completed. */
+    const done: TeamRecord = { ...opened, tasks: [{ ...opened.tasks[0], status: "completed" }] }
+    expect(casClaimTask(done, "T1", "Senior Engineer", expected, NOW)).toEqual({ applied: false, reason: 'task T1 is now "completed"' })
   })
 })

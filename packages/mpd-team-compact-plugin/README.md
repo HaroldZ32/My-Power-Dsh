@@ -16,11 +16,13 @@ compacted.
 
 ## Semantics
 
-- **Trigger** — a team whose EVERY task is terminal AND whose members are ALL idle. 0.1.7: the
-  retired `.mpd/team/<teamId>/team.json` is gone, and the OFFICIAL Agent Teams service exposes no
-  "finished team" predicate either, so the trigger is DERIVED from BOTH halves of its live readout —
-  every task terminal (`teamListTasks`) AND no member active (`teamListMembers`). The terminal
-  vocabulary is mirrored in `src/index.ts` (`TERMINAL_TASK_STATUSES`, official
+- **Trigger** — a team whose EVERY task is terminal AND whose members are ALL idle. The team is
+  read from the **MPD TEAM RECORD** first (`mpdTeams.list(workspace)`, `.mpd/team/teams/<id>.json`
+  — the AUTHORITATIVE plane, and the only one a composition on the DEFAULT native executor has),
+  with the OFFICIAL Agent Teams readout (`dsh.teamLiveTeams()`) as the fallback. Neither plane
+  exposes a "finished team" predicate, so the trigger is DERIVED from BOTH halves — every task
+  terminal AND no member active (`teamListTasks` / `teamListMembers` on the official plane). The
+  terminal vocabulary is mirrored in `src/index.ts` (`TERMINAL_TASK_STATUSES`, official
   `TeamTaskStatus = pending | in_progress | completed | deleted`) because the official package is not
   resolvable by a bare specifier from this repository (measured `MODULE_NOT_FOUND`).
 - **Who** — members only. The captain is never compacted (that is the user's `/compact`).
@@ -28,8 +30,8 @@ compacted.
 - **Method** — an unconditional explicit `compactNow`. A null answer means "no safely compactable
   range", which is recorded as a fact, not as an error.
 - **Audit** — `<workspace>/.mpd/team-compact/<teamId>/`, accumulated and never overwritten. It is
-  never `.mpd/team`: no harness team file lives there any more — the board is the harness's, in the
-  Lead Session log, and this plugin only ever READS it through the adapter.
+  never `.mpd/team`: this plugin only ever READS a team — the record through the `mpdTeams` service,
+  the official plane through the adapter — and writes nothing but its own audits.
 - **Silence** — audit only. A member is never notified; a notification would push context back in.
 - **Triggers** — TWO, and only one of them can reach a member. (1) `agent/status`, the harness's own
   status edge, which re-checks every finished team but fires when a released member is already gone;

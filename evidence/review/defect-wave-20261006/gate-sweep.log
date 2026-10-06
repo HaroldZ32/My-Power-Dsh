@@ -1,0 +1,954 @@
+=== verify-gates ===
+$ node ./scripts/verify-gates.ts
+[verify-gates] running 8 member gate(s) (declared table)
+[verify-gates] member vendor :: node ./scripts/verify-vendor.ts
+[verify-gates] vendor err| [verify-vendor] FAIL - upstream checkout not found at /home/haroldzhao
+[verify-gates] vendor err| [verify-vendor] set MPD_UPSTREAM_ROOT to the oh-my-openagent checkout pinned to 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-gates] member vendor: exit=1 FAIL - 63ms
+[verify-gates] member dist-fresh :: node ./scripts/verify-dist-fresh.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 251ae4c4d210… 18ms  <- packages/mpd-better-sidebar-host/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha c2b7c56418d8… 20ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-boulder-plugin/dist/index.js  sha f1d7b0a5c7f9… 20ms  <- packages/mpd-boulder-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-bundle-plugin/dist/index.js  sha ac8e177610a6… 21ms  <- packages/mpd-bundle-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 5e20b7f58d39… 23ms  <- packages/mpd-codegraph-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha 06b24137214c… 22ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-config-plugin/dist/index.js  sha e05764bd8e26… 22ms  <- packages/mpd-config-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha 49e9282d6cd0… 20ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-ext-plugin/dist/index.js  sha ce17fa60bf6c… 21ms  <- packages/mpd-ext-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 12ms  <- packages/mpd-ext-plugin/src/sdk.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-goal-plugin/dist/index.js  sha 31fd32fde781… 23ms  <- packages/mpd-goal-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-hashline-plugin/dist/index.js  sha b2a0e57fa211… 18ms  <- packages/mpd-hashline-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 8ebf954663eb… 15ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha f2da0d34b049… 13ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-mcp-gitbash/dist/launch.js  sha 09edda944246… 15ms  <- packages/mpd-mcp-gitbash/src/launch.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha 2654ed63e841… 15ms  <- packages/mpd-mcp-lsp/src/launch.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-memory-plugin/dist/index.js  sha 23cd55f391a6… 22ms  <- packages/mpd-memory-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha e096a15bf70d… 22ms  <- packages/mpd-modelchain-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha 6c29bc938a1d… 20ms  <- packages/mpd-qa-roles-probe/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-roles-plugin/dist/index.js  sha bc12c058e9a7… 20ms  <- packages/mpd-roles-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-roster-provider-plugin/dist/index.js  sha 29e1d44ecf89… 20ms  <- packages/mpd-roster-provider-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 07d7aaf23f5c… 22ms  <- packages/mpd-team-compact-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-team-core-plugin/dist/index.js  sha b673780a46e0… 24ms  <- packages/mpd-team-core-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha ea3b1d35596b… 20ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-tools-plugin/dist/index.js  sha 55d4155ba687… 21ms  <- packages/mpd-tools-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha 31c72adedea2… 18ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-tui-plugin/dist/index.js  sha b8f9b88b3b39… 28ms  <- packages/mpd-tui-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-ulw-plugin/dist/index.js  sha 0c54621f317b… 25ms  <- packages/mpd-ulw-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 43c3dbc9f0fe… 25ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-gates] dist-fresh out| [verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-gates] dist-fresh out| [verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-gates] dist-fresh out| [verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+[verify-gates] dist-fresh out|   packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+[verify-gates] dist-fresh out|   packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-gates] dist-fresh out|   packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-gates] dist-fresh out|   packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+[verify-gates] dist-fresh out|   packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-gates] dist-fresh out|   packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+[verify-gates] dist-fresh out|   packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-gates] dist-fresh out| [verify-dist-fresh] ok: 29/29 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 615ms
+[verify-gates] member dist-fresh: exit=0 PASS - 682ms
+[verify-gates] member rows-parity :: node ./scripts/verify-rows-parity.ts
+[verify-gates] rows-parity out| [verify-rows-parity] ok: 33 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-web-compat, mpd-workmate, preset-mpd)
+[verify-gates] member rows-parity: exit=0 PASS - 126ms
+[verify-gates] member docs-parity :: node ./scripts/verify-docs-parity.ts
+[verify-gates] docs-parity out| ok   README.md
+[verify-gates] docs-parity out| ok   docs/design.md
+[verify-gates] docs-parity out| ok   docs/development.md
+[verify-gates] docs-parity out| ok   docs/extension-adaptation-report.md
+[verify-gates] docs-parity out| ok   docs/extension-authoring-guide.md
+[verify-gates] docs-parity out| ok   docs/extensions.md
+[verify-gates] docs-parity out| ok   docs/feature-audit.md
+[verify-gates] docs-parity out| ok   docs/independence.md
+[verify-gates] docs-parity out| ok   docs/index.md
+[verify-gates] docs-parity out| ok   docs/preset-default.md
+[verify-gates] docs-parity out| ok   docs/tui-parity.md
+[verify-gates] docs-parity out| ok   docs/tui.md
+[verify-gates] docs-parity out| ok   docs/upstream-parity-ledger.md
+[verify-gates] docs-parity out| ok   docs/user-guide.md
+[verify-gates] docs-parity out| ok   extensions/README.md
+[verify-gates] docs-parity out| ok   templates/mpd-extension/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-better-sidebar-host/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-bootstrap-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-boulder-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-bundle/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-bundle-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-codegraph-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-comment-checker-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-config-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-dsh-adapter-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-ext-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-goal-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-hashline-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-astgrep/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-codegraph/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-gitbash/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-lsp/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-memory-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-modelchain-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-qa-roles-probe/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-roles-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-roster-provider-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-team-compact-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-team-core-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-team-watchdog-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-tools-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-tui-adapter-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-tui-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-ulw-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-workmate-plugin/README.md
+[verify-gates] docs-parity out| skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-webui-tui-i18n.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+[verify-gates] docs-parity out| skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+[verify-gates] docs-parity out| skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+[verify-gates] docs-parity out| skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+[verify-gates] docs-parity out| skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+[verify-gates] docs-parity out| note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+[verify-gates] docs-parity out| note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+[verify-gates] docs-parity out| note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **151**/13 vs derived 151/13 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.ts: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.ts: registry 73 id(s), live 73 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.ts: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.ts: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.ts: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.ts: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.ts: registry 5 id(s), live 5 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.ts: registry 6 id(s), live 6 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.ts: registry 4 id(s), live 4 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.ts: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/capabilities.ts: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/harness-compat.ts: registry 8 id(s), live 8 id(s) — agree; packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts: registry 1 id(s), live 1 id(s) — agree
+[verify-gates] docs-parity out| note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-gates] docs-parity out| [verify-docs-parity] links=439 checked=365 resolved=358 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=30 ignoredAnchorOnly=44 files=110
+[verify-gates] docs-parity out| 
+[verify-gates] docs-parity out| [verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=45 failed=0 violations=0 exempt=23 derived=3 links=439 dead=0 — PASS
+[verify-gates] member docs-parity: exit=0 PASS - 105ms
+[verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.ts --self-test
+[verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (i) retired `text:` persona form -> problems name the persona row :: /tmp/mpd-preset-conformance-SCxbqb/persona-text.patch.yml :: persona (@deepseek-ai/dsh-persona): $.prefix missing required value | /tmp/mpd-preset-conformance-SCxbqb/persona-text.patch.yml :: the persona row has no `pref
+[verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (ii) renamed required row -> the unmutated copy is clean and the mutated one names tool-fs AND tool-fs-renamed :: control problems=0; mutated: the mpd preset does not mount active row(s) the installed standard preset mounts: tool-fs | the mpd preset declares row(s) the installed standard preset does not declare at all: tool-fs-renam
+[verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (iii) the renamed copy really changed the document it audits :: bytes differ
+[verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (iv) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged :: fixture root /tmp/mpd-preset-conformance-SCxbqb (temp); live mtime 1791278668445.8337 -> 1791278668445.8337
+[verify-gates] preset-conformance out| [preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)
+[verify-gates] member preset-conformance: exit=0 PASS - 291ms
+[verify-gates] member plugin-manifest :: node ./scripts/verify-plugin-manifest.ts --pack
+[verify-gates] plugin-manifest out| # verify-plugin-manifest — repository manifest
+[verify-gates] plugin-manifest out| 
+[verify-gates] plugin-manifest out| ok    cordis-dependency: 5 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+[verify-gates] plugin-manifest out| ok    cordis-devDependency-note: devDependencies declare no cordis package
+[verify-gates] plugin-manifest out| ok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare
+[verify-gates] plugin-manifest out| ok    version:dsh-plugin.json: version = 0.11.6
+[verify-gates] plugin-manifest out| ok    version:dsh-distribution.json: distribution.version = 0.11.6
+[verify-gates] plugin-manifest out| ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+[verify-gates] plugin-manifest out| ok    row-module-paths: 26 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+[verify-gates] plugin-manifest out| ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+[verify-gates] plugin-manifest out| ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+[verify-gates] plugin-manifest out| ok    packed-content: npm pack --dry-run lists 967 file(s); 0 required path(s) absent
+[verify-gates] plugin-manifest out| 
+[verify-gates] plugin-manifest out| VERDICT: PASS — the install-time rules and the packaging contract hold.
+[verify-gates] member plugin-manifest: exit=0 PASS - 2033ms
+[verify-gates] member comment-coverage :: node ./scripts/verify-comment-coverage.ts
+[verify-gates] comment-coverage out| # verify-comment-coverage
+[verify-gates] comment-coverage out| 
+[verify-gates] comment-coverage out| scanned 394 TypeScript file(s) of 394 in the source set; inspected 32262 declaration(s); skipped 15433 inline callback(s) as out of family
+[verify-gates] comment-coverage out| 
+[verify-gates] comment-coverage out| VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[verify-gates] member comment-coverage: exit=0 PASS - 1837ms
+[verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+[verify-gates] workflows out| [verify-workflows] audited 1 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 69ms
+[verify-gates] FAIL - 1/8 member gate(s) failed: vendor (exit=1)
+error: script "verify:gates" exited with code 1
+GATES_EXIT=1
+=== typecheck ===
+$ tsgo --noEmit
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(36,31): error TS2307: Cannot find module 'typescript/unstable/ast' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(39,34): error TS2307: Cannot find module 'typescript/unstable/async' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(41,34): error TS2307: Cannot find module 'typescript/unstable/ast' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(265,47): error TS7006: Parameter 'm' implicitly has an 'any' type.
+error: script "typecheck" exited with code 1
+TYPECHECK_EXIT=1
+=== test:qa ===
+$ node scripts/run-qa-selftests.ts
+[test:qa] agent-teams-adopt.ts
+[agent-teams-adopt self-test] ok: retained adopted body — MIT notice + copyright + LICENSE + pinned 0.1.16-rc.3-mpd + _deps closure + AGENTS.md naming exception, and NO `agent-teams` row in the bundle patch; negative controls reddened (attribution removed 1, row re-declared 1 problem(s))
+[test:qa] agent-teams-messaging.ts
+[agent-teams-messaging self-test] ok: R1 exports + SHIPPED send/clear/interject wiring + this case drives the tool surface + scheduler exclusion on both reads + RED-arm transform applies (member revert consumed by its stable head) + VENDOR_LOCK skills pin current (334 files/501534fa38c2) + treeSha falsifiability probe on a temp COPY (nothing written under <repoRoot>/skills) + SKILL.md row + test:qa sweeps the case directory
+[test:qa] bundle-lifecycle.ts
+[bundle-lifecycle] FAIL: self-test: the agent-preset-registry id-target (default: mpd) is missing from the bundle patch
+[test:qa] codegraph-smoke.ts
+[codegraph-smoke self-test] ok: project-path precondition + composed codegraph server name (mcp__codegraph__codegraph_explore) verified on fixtures
+[test:qa] dual-track-smoke.ts
+[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand verified
+[test:qa] extension-isolation.ts
+[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified
+[test:qa] extension-lifecycle.ts
+[self-test] live packer route = flag (recorded, not asserted)
+[extension-lifecycle self-test] FAIL: an unavailable seam must be reported LOUDLY on stdout, not only through ctx.logger.warn
+[test:qa] extension-mcp-bridge.ts
+[extension-mcp-bridge self-test] ok: lsp server + row + public-name collision premise + fixture scenarios (incl. the stderr flood and the cap it must exceed) + example server verified
+[test:qa] extension-template.ts
+[extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cross-reference, persona and MCP name pinned) + SKILL.md row present
+[test:qa] goal-bridge.ts
+[goal-bridge self-test] offline assertions
+[goal-bridge self-test] ok: row declared in both mount paths + both unit suites pass
+[test:qa] install-dependencies.ts
+[install-dependencies self-test] ok: sidebar-row parsing (0/1/2 rows, raw !!js guard, decoys), F1-F3 signature scanning, two-sided route + served-client verdicts, the hand-built profile recipe, the hermetic ARM-5 stage, the pre-fix RED anchor and the cases.json/SKILL.md wiring are verified offline
+[test:qa] mcp-call.ts
+[mcp-call self-test] ok: tool-name detection + composed ast_grep server name + fixture content verified on fixtures
+[test:qa] memory-smoke.ts
+[memory-smoke self-test] ok: bundle row + dist symbols + unit suite verified
+[test:qa] mount-assert.ts
+[mount-assert self-test] ok: presence/absence detection verified on fixture
+[test:qa] plan-c-smoke.ts
+[plan-c-smoke self-test] ok: rows + unit suites verified
+[test:qa] preset-conformance.ts
+[preset-conformance self-test] PASS - (i) retired `text:` persona form -> problems name the persona row :: /tmp/mpd-preset-conformance-8VYLd1/persona-text.patch.yml :: persona (@deepseek-ai/dsh-persona): $.prefix missing required value | /tmp/mpd-preset-conformance-8VYLd1/persona-text.patch.yml :: the persona row has no `pref
+[preset-conformance self-test] PASS - (ii) renamed required row -> the unmutated copy is clean and the mutated one names tool-fs AND tool-fs-renamed :: control problems=0; mutated: the mpd preset does not mount active row(s) the installed standard preset mounts: tool-fs | the mpd preset declares row(s) the installed standard preset does not declare at all: tool-fs-renam
+[preset-conformance self-test] PASS - (iii) the renamed copy really changed the document it audits :: bytes differ
+[preset-conformance self-test] PASS - (iv) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged :: fixture root /tmp/mpd-preset-conformance-8VYLd1 (temp); live mtime 1791278668445.8337 -> 1791278668445.8337
+[preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)
+[test:qa] preset-register.ts
+[preset-register self-test] FAIL: devFlavor MCP operand is not the checkout-absolute mpd-mcp-gitbash/dist/cli.js
+[test:qa] readonly-deny.ts
+[readonly-deny self-test] ok: 23 checks
+[test:qa] relocate-smoke.ts
+[relocate-smoke self-test] ok: staged patch is path-clean
+[test:qa] session-start-team.ts
+[session-start-team self-test] ok: the shipped PURE gate module conforms to the MECHANICAL contract (3 simple / 2 soft-complex / 1 explicit / 1 boulder-probe prompt, both ways; signal D through the INJECTED reader AND the real filesystem, the mode FAIL-SAFE, the shell builder's honest bounds, both notices with the retired vocabulary scoped per text, and the session scope); THREE negative controls reddened (always-trigger 6, always-silent 12, advisory-only-mechanical 10 problem(s)); the LIVE verdict and the REAL `.mpd/team` stage scan were each driven offline BOTH ways (a matching shell passes; a spawned record, a plan-id mismatch, a leaked notice and a non-shell staged plan all redden); bundle mounts mpd-roles with the retired rows gone; preset carries the SESSION STARTUP RULE
+[test:qa] skill-catalog-probe.ts
+[skill-catalog-probe self-test] ok: staged skill corpus present + provider wiring verified
+[test:qa] software-smoke.ts
+[software-smoke self-test] ok: fixture semantics + deterministic self-play (winner P1, 11 plies) + 4 oracle probes green, mutation control RED (9 violation(s))
+[test:qa] team-watchdog-boot.ts
+[self-test] ok   C1: a completed turn passes as `completed`
+[self-test] ok   C2: a MODEL-level error passes as `model-error` (the turn reached the model call)
+[self-test] ok   C3: the veto signature FAILS as `veto` (veto)
+[self-test] ok   C4: an empty session log FAILS as `no-turn`
+[self-test] ok   C5: a boot without the row's apply line FAILS
+[self-test] ok   C6: a session not created on `mpd` FAILS
+[self-test] ok   C10: the GUI-activation checks pass on a clean boot (served 200, both tab ids, bridge, mirrored composition)
+[self-test] ok   C11: a boot log carrying `did not activate` REDDENS B8 (["B8"])
+[self-test] ok   C12: a `pending (waiting for service` line REDDENS B8
+[self-test] ok   C13: a `failed to apply loader entry` line REDDENS B8
+[self-test] ok   C14: a client route that 404s REDDENS B9
+[self-test] ok   C15: served bytes missing the workmate tab id REDDEN B10
+[self-test] ok   C16: served bytes without the export bridge REDDEN B11
+[self-test] ok   C17: a boot outside the user's composition REDDENS B12
+[self-test] ok   C7: the vendored cordis REALLY vetoes on the retired shape: the listener's return value became the decision ({"kind":"step","at":1})
+[self-test] ok   C8: the fixed shape (`return next()`) composes the fallback decision unchanged ({"kind":"enter","messages":["claimed-user-message"]})
+[self-test] ok   C9: the cordis control ran against the REAL vendored implementation at packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.ts
+[self-test] PASS — team-watchdog-boot (17 checks, 0 failed)
+[test:qa] team-watchdog-config.ts
+[self-test] ok   live-live: pass/0
+[self-test] ok   live-restart-needed: fail/1
+[self-test] ok   live-not-same-instance: fail/1
+[self-test] ok   healthy-observation: 10 checks passed on the healthy observation
+[self-test] ok   negative:missing-knob: the mutated observation FAILED its own check(s) ["C4"] — a knob missing from one front door
+[self-test] ok   negative:two-declarations: the mutated observation FAILED its own check(s) ["C2"] — a second declaration (the doors would drift)
+[self-test] ok   negative:row-ignored: the mutated observation FAILED its own check(s) ["C6"] — a row config that is not the effective default
+[self-test] ok   negative:namespace-loses: the mutated observation FAILED its own check(s) ["C7"] — a namespace that does not outrank the row config
+[self-test] ok   negative:restart-needed: the mutated observation FAILED its own check(s) ["C8"] — a re-read that only a restart could deliver
+[self-test] ok   negative:no-clamp: the mutated observation FAILED its own check(s) ["C9"] — an unclamped cadence beyond the silence threshold
+[self-test] ok   negative:halt-action: the mutated observation FAILED its own check(s) ["C10"] — an escalation wired to the halt path
+[self-test] PASS — team-watchdog-config (8 checks, 0 failed)
+[test:qa] team-watchdog-fault.ts
+[self-test] ok   healthy-observation: 15 checks passed on the healthy observation
+[self-test] ok   negative:non-stale-case-failed: the mutated observation FAILED its own check(s) ["F2"] — a fixture case that is NOT declared stale failing
+[self-test] ok   negative:stale-case-passes: the mutated observation FAILED its own check(s) ["F2b"] — a declared-stale case that now PASSES (the declaration must be re-checked)
+[self-test] ok   negative:stale-signature-lost: the mutated observation FAILED its own check(s) ["F2b"] — a stale case whose reading no longer matches its declared signature
+[self-test] ok   negative:warn-boundary: the mutated observation FAILED its own check(s) ["F3"] — a WARN below the 90 s threshold
+[self-test] ok   negative:label-regressed: the mutated observation FAILED its own check(s) ["F13"] — the pre-redesign tuple re-advertised as the product's frozen defaults (t65/S2)
+[self-test] ok   negative:product-defaults-wrong: the mutated observation FAILED its own check(s) ["F13"] — a lane that reports the injected tuple as the §3 product default
+[self-test] ok   negative:no-escalation-arm: the mutated observation FAILED its own check(s) ["F4"] — a §1 arm that never escalates (§1.2 of the contract)
+[self-test] ok   negative:arm-not-fold: the mutated observation FAILED its own check(s) ["F4"] — a §1 arm whose suppression came from the §4 fallback instead of the fold
+[self-test] ok   negative:arm-no-hold: the mutated observation FAILED its own check(s) ["F4"] — a §1 escalation that applied no hold (no scene leg either)
+[self-test] ok   negative:warn-only-holds: the mutated observation FAILED its own check(s) ["F4b"] — a hold applied while `actionOnEscalate` is warn-only
+[self-test] ok   negative:report-only-escalates: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm that escalates
+[self-test] ok   negative:report-only-warns-twice: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm warning more than once per task+attempt generation
+[self-test] ok   negative:report-only-holds: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm that held a team
+[self-test] ok   negative:report-only-cause: the mutated observation FAILED its own check(s) ["F12"] — a §4 warn not attributed to the heartbeat fallback
+[self-test] ok   negative:scene-hold-mismatch: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer whose hold disagrees with the sidecar
+[self-test] ok   negative:scene-not-escalate: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer that does not come from the escalation
+[self-test] ok   negative:not-preserving: the mutated observation FAILED its own check(s) ["F6"] — a pause that mutated the team record
+[self-test] ok   negative:deliveries: the mutated observation FAILED its own check(s) ["F6"] — a dispatch that reached a held team
+[self-test] ok   negative:no-contrast: the mutated observation FAILED its own check(s) ["F8"] — a halt control that no longer shows AC-17 going red
+[self-test] ok   negative:captain-missed: the mutated observation FAILED its own check(s) ["F5"] — a captain wedge that was not attributed
+[self-test] ok   negative:not-claimed-dropped: the mutated observation FAILED its own check(s) ["F10"] — a lane that silently dropped a NOT_CLAIMED entry
+[self-test] PASS — team-watchdog-fault (22 checks, 0 failed)
+[test:qa] team-watchdog-heartbeat.ts
+[self-test] ok   healthy-observation: 13 checks passed on the healthy observation
+[self-test] ok   negative:install: the mutated observation FAILED its own check(s) ["H1"] — a row that installed no writers
+[self-test] ok   negative:event: the mutated observation FAILED its own check(s) ["H2:tools/post-execute"] — a missing tool hook
+[self-test] ok   negative:tool-stamp: the mutated observation FAILED its own check(s) ["H4"] — a tool stamp that is not post-completion-success
+[self-test] ok   negative:captain: the mutated observation FAILED its own check(s) ["H8"] — no captain stamp (AC-2 needs both)
+[self-test] ok   negative:fresh-read: the mutated observation FAILED its own check(s) ["H9"] — a read that did not come from a fresh process
+[self-test] ok   negative:pre-hook-absent: the mutated observation FAILED its own check(s) ["H5"] — the built bytes lost the pre-dispatch hook
+[self-test] ok   negative:pre-hook-not-subscribed: the mutated observation FAILED its own check(s) ["H5"] — the row never subscribed tools/pre-execute
+[self-test] ok   negative:observe-only-veto: the mutated observation FAILED its own check(s) ["H5"] — a hook that REPLACES the gate decision (veto)
+[self-test] ok   negative:observe-only-mutates: the mutated observation FAILED its own check(s) ["H5"] — a live execution object handed to the listener (it could mutate the call)
+[self-test] ok   negative:observe-only-write-lands: the mutated observation FAILED its own check(s) ["H5"] — a listener write that was not rejected by the frozen copy
+[self-test] ok   negative:observe-only-throws: the mutated observation FAILED its own check(s) ["H5"] — a throwing listener that breaks the call it observes
+[self-test] ok   negative:observe-only-after-body: the mutated observation FAILED its own check(s) ["H5"] — a pre stamp that arrived after the tool body started
+[self-test] PASS — team-watchdog-heartbeat (13 checks, 0 failed)
+[test:qa] team-watchdog-notify.ts
+[self-test] ok   healthy-observation: 18 checks passed on the healthy observation
+[self-test] ok   negative:web-record-missing: the mutated observation FAILED its own check(s) ["W2"] — a payload with no activity record
+[self-test] ok   negative:web-not-top: the mutated observation FAILED its own check(s) ["W4"] — a banner that is not the panel's first child
+[self-test] ok   negative:web-no-first-poll: the mutated observation FAILED its own check(s) ["W3"] — a replay that needed a user action
+[self-test] ok   negative:web-ack-other-reader: the mutated observation FAILED its own check(s) ["W6"] — an acknowledge that clobbered the OTHER reader's key
+[self-test] ok   negative:web-replay-continues: the mutated observation FAILED its own check(s) ["W7"] — a replay that survived the acknowledge
+[self-test] ok   negative:tui-reader: the mutated observation FAILED its own check(s) ["T1","T5"] — a TUI front door using the web reader key
+[self-test] ok   negative:tui-dialog: the mutated observation FAILED its own check(s) ["T4"] — a dialog with no acknowledge action
+[self-test] ok   negative:tui-compose: the mutated observation FAILED its own check(s) ["T3"] — a notice that never reaches the status line
+[self-test] ok   negative:tui-ack: the mutated observation FAILED its own check(s) ["T5"] — a TUI acknowledge that did not advance its watermark
+[self-test] ok   negative:tui-ack-other: the mutated observation FAILED its own check(s) ["T5"] — a TUI acknowledge that clobbered the web reader's key
+[self-test] ok   negative:tui-replay-continues: the mutated observation FAILED its own check(s) ["T6"] — a TUI replay that survived the acknowledge
+[self-test] ok   negative:bytes: the mutated observation FAILED its own check(s) ["T7"] — built TUI bytes with no notice/dialog wiring
+[self-test] ok   negative:bytes-unchanged: the mutated observation FAILED its own check(s) ["N1"] — a watermark file whose bytes never changed
+[self-test] ok   negative:fallback-hidden: the mutated observation FAILED its own check(s) ["N2"] — a lane that hides the permanent-redisplay fallback
+[self-test] PASS — team-watchdog-notify (15 checks, 0 failed)
+[test:qa] team-watchdog-scene.ts
+[self-test] ok   healthy-observation: 10 checks passed on the healthy observation
+[self-test] ok   negative:field-set: the mutated observation FAILED its own check(s) ["S2","S5"] — a snapshot missing a contracted field
+[self-test] ok   negative:member-fields: the mutated observation FAILED its own check(s) ["S6"] — a member row without its liveness field
+[self-test] ok   negative:hold-mismatch: the mutated observation FAILED its own check(s) ["S4"] — a snapshot hold that disagrees with the sidecar
+[self-test] ok   negative:log-shorter: the mutated observation FAILED its own check(s) ["S7"] — an incident log with fewer records than the snapshot claims
+[self-test] ok   negative:pointer: the mutated observation FAILED its own check(s) ["S9"] — a latest.json pointer that is not the newest scene
+[self-test] ok   negative:fresh-process: the mutated observation FAILED its own check(s) ["S1"] — a read that was not made from a fresh process
+[self-test] PASS — team-watchdog-scene (7 checks, 0 failed)
+[test:qa] tool-output-validation.ts
+[tool-output-validation self-test] ok: bundle rows + dist symbols + unit suites verified
+[test:qa] tui-admission.ts
+[mpd-qa] SKIP case=tui-admission lane=real reason=absent-fixture prereq=dsh-ecosystem-spec with registry/registry-0.15.json remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+[test:qa] tui-deps-ctrla.ts
+[tui-deps-ctrla self-test] ok: 4 legacy + 3 seam-present arms asserted; the arrow, the takeover, the flip, the store pair and the contact controls all fail as required
+[test:qa] tui-distribution.ts
+[mpd-qa] SKIP case=tui-distribution lane=real reason=absent-fixture prereq=vendor/meta-protocols/dsh-distribution in a mounted dsh-ecosystem-spec checkout remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
+[tui-distribution self-test] ok: descriptor rules + CLI plan are two-sided
+[test:qa] tui-mount.ts
+[tui-mount self-test] ok: layering, crash-scan, boot-face and isolation predicates are two-sided
+[test:qa] tui-panels.ts
+[tui-panels self-test] ok: 8 surfaces asserted, negative controls fail as required
+[test:qa] tui-settings-bridge.ts
+[tui-settings-bridge self-test] ok: 18 web-arm + 7 TUI-arm + 4 client-shape injected faults each flip their own check; all three synthetic green artifacts pass
+[test:qa] tui-spec-conformance.ts
+[mpd-qa] SKIP case=tui-spec-conformance lane=real reason=absent-fixture prereq=dsh-ecosystem-spec with conformance/requirements-v0.15.json remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
+[tui-spec-conformance self-test] ok: the pinned suite checkout is absent on this host; the local arms were verified (see the SKIP marker)
+[test:qa] tui-team-surface.ts
+[tui-team-surface self-test] ok: fixture, parser, assertion falsifiability and the dist invariants all hold
+[test:qa] ultrawork-smoke.ts
+[ultrawork-smoke self-test] ok: engine symbols + bundle row verified
+[test:qa] ulw-command.ts
+[ulw-command self-test] ok: registry listing + usage + activation + directive order/objective + command lifecycle predicates, each with a negative control; shipped directive literal and SKILL.md row verified
+[test:qa] vision-smoke.ts
+[vision-e2e self-test] ok: fixture generator verified (155 bytes)
+[test:qa] watchdog-redesign.ts
+[self-test] ok   healthy-observation: 21 checks passed on the healthy observation
+[self-test] ok   negative:row-silent-on-red: the mutated observation FAILED its own check(s) ["R-a"] — a RED row that reproduced nothing (the contrast is the contract's whole point)
+[self-test] ok   negative:green-warns: the mutated observation FAILED its own check(s) ["G-d"] — a GREEN ladder that warns below 600 000 and holds
+[self-test] ok   negative:early-warn: the mutated observation FAILED its own check(s) ["G-d"] — a first WARN before the frozen threshold
+[self-test] ok   negative:vacuous-hold-row: the mutated observation FAILED its own check(s) ["G-c"] — a hold row whose success could not be falsified (the re-injection control did not refuse)
+[self-test] ok   negative:guard-read-from-tools: the mutated observation FAILED its own check(s) ["G-c"] — a tool-boundary hold read that survived the redesign
+[self-test] ok   negative:pin-broken: the mutated observation FAILED its own check(s) ["G-e"] — the r6 pin repeating the tool-expired bound or applying a hold
+[self-test] ok   negative:red-drifted: the mutated observation FAILED its own check(s) ["PIN-RED"] — a RED tree that no longer matches the contract's frozen hashes
+[self-test] ok   negative:settle-moved: the mutated observation FAILED its own check(s) ["SETTLED"] — a tree that changed under the run
+[self-test] ok   negative:fold-not-authoritative: the mutated observation FAILED its own check(s) ["FOLD-AUTHORITY"] — a GREEN reading whose suppression came from the §4 fallback, not the fold
+[self-test] ok   negative:knobs-drifted: the mutated observation FAILED its own check(s) ["KNOBS"] — a working tree still carrying the legacy tuple
+[self-test] ok   negative:replay-missing: the mutated observation FAILED its own check(s) ["REPLAY"] — no incident replay (contract §9 item 3)
+[self-test] ok   negative:replay-regression: the mutated observation FAILED its own check(s) ["REPLAY"] — a fold predicate that would have reproduced every historical hold
+[self-test] ok   negative:report-only-escalates: the mutated observation FAILED its own check(s) ["REPLAY"] — a §4 report-only replay that escalates (the fallback is not permitted to)
+[self-test] ok   negative:replay-unfaithful: the mutated observation FAILED its own check(s) ["REPLAY"] — a reconstruction that cannot even reproduce the recorded escalations
+[self-test] ok   negative:row-missing: the mutated observation FAILED its own check(s) ["CLEAN","R-b","G-b","FOLD-AUTHORITY"] — a contract row that never ran
+[self-test] PASS — watchdog-redesign (16 checks, 0 failed)
+[test:qa] wave2b-lane-d.ts
+[self-test] ok   t69-fixture-reddens — a fixture carrying a raw invocation is DETECTED by the scanner's own pattern
+[self-test] ok   t80-seeded-mismatch-reddens — a scratch copy claiming one key too many exits 1 with 1 violation(s)
+[self-test] ok   t25-two-frame-container — frames=2, naive read=first-frame-only
+[self-test] ok   t77-shape-and-near-miss — shape ignored=true, near-miss ignored=false
+[self-test] ok   t89-dot-slash-discovers — `./skills/dsh-qa/scripts` discovers 56 file(s)
+[self-test] ok   t69-json-stream-contract — live (profile headless): exit 1, stdout is the JSON envelope=true, banner on stderr=true, banner on stdout=false, MERGED capture parses=false | fixture child via --bin: envelope=true, child stdout reachable only through the field=true, merged parses=false
+[self-test] ok   t69-binding-reddens-and-spares — fixtures: 5, flagged: fixture-unbound.mjs (declared/imported/parameter/prose fixtures must NOT flag)
+[self-test] ok   t74-rule-sentence — the SKILL.md rule sentence is present byte-for-byte
+[self-test] PASS — wave2b-lane-d (8/8 arms)
+[test:qa] web-client-adapt.ts
+[web-client-adapt self-test] ok: 14 checks
+[test:qa] web-settings-bridge.ts
+[web-settings-bridge self-test] ok: 18 web-arm + 7 TUI-arm + 4 client-shape injected faults each flip their own check; all three synthetic green artifacts pass
+[test:qa] workmate-library.ts
+[workmate-library self-test] ok: 20 checks
+[test:qa] workmate-team-member.ts
+[workmate-team-member self-test] ok: 6 checks
+[test:qa] scripts/mpd-ext.ts --self-test
+  ok the shared validator exposes the four surfaces the CLI uses (source mode)
+  ok validate accepts templates/mpd-extension (got 0): 
+  ok the template declares all four contribution kinds
+  ok scaffold --with-mcp exits 0 (got 0): 
+  ok scaffold wrote mpd-ext.json
+  ok scaffold wrote skills/demo-ext-skill/SKILL.md
+  ok scaffold wrote flows/demo-ext-flow.json
+  ok scaffold wrote personas/demo-ext-reviewer.md
+  ok scaffold wrote server.ts
+  ok validate accepts the scaffold (got 0): 
+  ok the --with-mcp copy is the template modulo the token rewrite, file by file
+  ok scaffold (no flag) exits 0 (got 0): 
+  ok the default copy drops server.ts
+  ok the default copy drops the manifest mcp entry
+  ok the default copy wrote skills/demo-ext-plain-skill/SKILL.md
+  ok the default copy wrote flows/demo-ext-plain-flow.json
+  ok the default copy wrote personas/demo-ext-plain-reviewer.md
+  ok validate accepts the default copy (got 0): 
+  ok the default copy contributes three kinds
+  ok the default copy is the template modulo the token rewrite and the mcp drop, file by file
+  ok scaffold accepts an id longer than the serverName bound (got 0): mpd-ext scaffold: warning: ^[A-Za-z0-9_-]{1,32}$ caps serverName at 32 characters, so the copy declares "demo-ext-with-a-very-long-identi" instead of "demo-ext-with-a-very-long-identifier-1234"
+  ok the long-id fixture (41 chars) really is longer than the contract bound (32)
+  ok the copied serverName is capped at the contract bound (32), not at a literal
+  ok the cap is WARNED on stderr, never silent
+  ok the long-id copy still validates
+  ok scaffold refuses an id that violates the id grammar
+  ok the refusal names the id grammar
+  ok scaffold refuses an existing target
+  ok the refusal says the target exists
+  ok scaffold refuses the base-roster role collision for id "plan" (got 1)
+  ok the refusal is a CONTRACT refusal, not a CLI-defect message
+  ok the refusal quotes the roster's own collision sentence
+  ok the refusal states that nothing was written
+  ok a refused scaffold leaves nothing at the target
+  ok a refused scaffold leaves no staging container behind
+  ok validate exits 1 on a broken extension (got 1)
+  ok the broken run reports "typoKey"
+  ok the broken run reports "serverName"
+  ok the broken run reports "contributes.skills[0].root"
+  ok the broken run reports "escapes are rejected"
+  ok the broken run reports "surprise"
+  ok the broken run reports "persona file does not exist"
+  ok validate exits 1 on a deliberately broken copy of the template (got 1)
+  ok the broken copy reports "typoKey"
+  ok the broken copy reports "surprise"
+  ok the broken copy reports "serverName"
+  ok the broken copy reports "persona file does not exist"
+  ok the broken copy reports "frontmatter"
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (53 checks) [validator: source]
+[test:qa] scripts/mpd-ext.ts validate extensions/mpd-ext-example
+[mpd-ext] validate /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+[test:qa] FAILED: bundle-lifecycle.ts (exit 1)
+[test:qa] FAILED: extension-lifecycle.ts (exit 1)
+[test:qa] FAILED: preset-register.ts (exit 1)
+[test:qa] FAIL - 3 of 48 case(s) failed
+error: script "test:qa" exited with code 1
+TESTQA_EXIT=1
+=== verify:manifest ===
+$ node scripts/verify-plugin-manifest.ts
+# verify-plugin-manifest — repository manifest
+
+ok    cordis-dependency: 5 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+ok    cordis-devDependency-note: devDependencies declare no cordis package
+ok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare
+ok    version:dsh-plugin.json: version = 0.11.6
+ok    version:dsh-distribution.json: distribution.version = 0.11.6
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 26 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+MANIFEST_EXIT=0
+=== verify:comments ===
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 394 TypeScript file(s) of 394 in the source set; inspected 32262 declaration(s); skipped 15433 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+COMMENTS_EXIT=0
+=== no-host-override ===
+[verify-no-host-override] subject: 2 declared patch layer(s)
+[verify-no-host-override]   patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml
+[verify-no-host-override]   patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml
+[verify-no-host-override] bundle id-targets (overrides): 0 (none: this bundle is purely additive)
+[verify-no-host-override] bundle inserted rows (additive): 33
+[verify-no-host-override] unclassified top-level entries: 0
+[verify-no-host-override] host layers found on disk: 4
+[verify-no-host-override]   host: dsh-base -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base [1 patch file(s)]
+[verify-no-host-override]   host: dsh-web-app -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app [5 patch file(s)]
+[verify-no-host-override]   host: dsh-headless -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless [1 patch file(s)]
+[verify-no-host-override]   host: dsh-tui (profile dsh-tui) -> /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui [1 patch file(s)]
+[verify-no-host-override] host-declared row ids: 205
+[verify-no-host-override] declared exemptions (0): none
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 205 host-declared row ids)
+NOHOST_EXIT=0
+=== pack-closure ===
+[verify-pack-closure] FAIL - 2 closure violation(s)
+  TREE-DRIFT - docs/ differs from the source tree - dropped by the pack: plan-webui-tui-i18n.md; not in the source: (none)
+  TREE-DRIFT - agent-references/ differs from the source tree - dropped by the pack: glossary.md, installer-and-profiles.md, overview-and-provenance.md, plugin-authoring.md, qa-discipline.md; not in the source: (none)
+  packer: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/scripts/pack-mpd.ts
+  cli: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/scripts/mpd-ext.ts
+  packages dir: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages
+  patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml
+  packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (406 asset files); content bytes: 1226 file(s) compared, 1173 identical, 0 drift, 53 expected-after-pack; completeness: 449 declared source file(s) compared, 441 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-04T04:11:29.290Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time))
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md: source mtime 2026-10-06T09:24:28.445Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/install-dependencies.ts: source mtime 2026-10-06T11:32:38.323Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/lib/tui-lane.ts: source mtime 2026-10-06T11:32:38.323Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/session-start-team.ts: source mtime 2026-10-06T09:24:28.445Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/tui-admission.ts: source mtime 2026-10-06T11:32:38.323Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/tui-mount.ts: source mtime 2026-10-06T11:32:38.324Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/tui-panels.ts: source mtime 2026-10-06T11:32:38.324Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/tui-team-surface.ts: source mtime 2026-10-06T11:32:38.325Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/ulw-command.ts: source mtime 2026-10-06T09:24:28.446Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - presets/mpd.patch.yml: source mtime 2026-10-06T09:24:28.445Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/assets/images/team-lifecycle.svg: source mtime 2026-10-06T09:24:28.402Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/design.md: source mtime 2026-10-06T09:24:28.403Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/design.zh-CN.md: source mtime 2026-10-06T09:24:28.403Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/plan-team-plane-split.md: source mtime 2026-10-06T09:24:28.403Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/tui.md: source mtime 2026-10-06T11:32:38.254Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/tui.zh-CN.md: source mtime 2026-10-06T11:32:38.255Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/upstream-parity-ledger.md: source mtime 2026-10-06T09:24:28.404Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/upstream-parity-ledger.zh-CN.md: source mtime 2026-10-06T09:24:28.404Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/index.md: source mtime 2026-10-06T11:32:38.252Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/seam-adapters.md: source mtime 2026-10-06T11:32:38.252Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/upstream-dsh-tui-seam-request.md: source mtime 2026-10-06T11:32:38.252Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/verification-flow.md: source mtime 2026-10-06T09:24:28.395Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-bootstrap-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.426Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-boulder-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.426Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-bundle-plugin/client.js: source mtime 2026-10-06T11:32:38.315Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-bundle-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.428Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-codegraph-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.431Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-comment-checker-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.431Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-config-plugin/dist/index.js: source mtime 2026-10-06T11:32:38.317Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-dsh-adapter-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.432Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-ext-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.434Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-goal-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.434Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-hashline-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.435Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-memory-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.435Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-modelchain-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.435Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-roles-plugin/README.md: source mtime 2026-10-06T09:24:28.436Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-roles-plugin/README.zh-CN.md: source mtime 2026-10-06T09:24:28.436Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-roles-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.436Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-roster-provider-plugin/dist/index.js: source mtime 2026-10-06T11:32:38.317Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-team-compact-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.438Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-team-core-plugin/README.md: source mtime 2026-10-06T09:24:28.438Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-team-core-plugin/README.zh-CN.md: source mtime 2026-10-06T09:24:28.438Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-team-core-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.438Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-team-watchdog-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.440Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tools-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.440Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tui-adapter-plugin/README.md: source mtime 2026-10-06T11:32:38.318Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tui-adapter-plugin/README.zh-CN.md: source mtime 2026-10-06T11:32:38.318Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tui-adapter-plugin/dist/index.js: source mtime 2026-10-06T11:32:38.318Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tui-plugin/README.md: source mtime 2026-10-06T11:32:38.319Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tui-plugin/README.zh-CN.md: source mtime 2026-10-06T11:32:38.319Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tui-plugin/dist/index.js: source mtime 2026-10-06T11:32:38.320Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-ulw-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.444Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-workmate-plugin/dist/index.js: source mtime 2026-10-06T09:24:28.445Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/tui-deps-ctrla.ts: source mtime 2026-10-06T11:32:38.324Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/plan-webui-tui-i18n.md: source mtime 2026-10-06T09:24:28.403Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/glossary.md: source mtime 2026-10-06T09:24:28.395Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/installer-and-profiles.md: source mtime 2026-10-06T09:24:28.395Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/overview-and-provenance.md: source mtime 2026-10-06T09:24:28.395Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/plugin-authoring.md: source mtime 2026-10-06T11:32:38.252Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/qa-discipline.md: source mtime 2026-10-06T09:24:28.395Z is AFTER the artifact stamp 2026-10-04T04:11:29.290Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+PACKCLOSURE_EXIT=1
+=== manual-paths ===
+[verify-manual-paths] manual /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/AGENTS.md
+[verify-manual-paths] root /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+[verify-manual-paths] manual-sha256 b3c6b4b1b1ee3df2fffd3f52a23ffd1747b64393fa714fe3593e8c57cd5f04dd bytes=59988 mtime=2026-10-06T11:32:38.251Z
+[verify-manual-paths] rule candidate=path-shaped token | position=code span or ./|../-prefixed prose | shape=no glob/tilde/url/whitespace/placeholder/trailing-punctuation | anchor=./|-literal else first segment must be a repo-root entry | existence=stat <root>/<token>
+[verify-manual-paths] subjects audited=142 (resolved=142 unresolved=0); tokens that are not path-shaped are out of scope by the rule above and are counted nowhere
+[verify-manual-paths] census bucket=resolved direction=audited count=142 reason="audited: the path exists at the repo root"
+[verify-manual-paths] resolved AGENTS.md:9 -> README.md
+[verify-manual-paths] resolved AGENTS.md:16 -> scripts/verify-docs-parity.ts
+[verify-manual-paths] resolved AGENTS.md:19 -> docs
+[verify-manual-paths] resolved AGENTS.md:22 -> docs/index.md
+[verify-manual-paths] resolved AGENTS.md:28 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:33 -> docs
+[verify-manual-paths] resolved AGENTS.md:41 -> docs/decisions.md
+[verify-manual-paths] resolved AGENTS.md:41 -> docs/bline-report.md
+[verify-manual-paths] resolved AGENTS.md:42 -> docs/omo-parity-gap.md
+[verify-manual-paths] resolved AGENTS.md:42 -> docs/review-p0-p3.md
+[verify-manual-paths] resolved AGENTS.md:42 -> docs/track-a-report.md
+[verify-manual-paths] resolved AGENTS.md:43 -> docs/ulw-deepseek-optimization.md
+[verify-manual-paths] resolved AGENTS.md:43 -> docs/tui-edition-report.md
+[verify-manual-paths] resolved AGENTS.md:48 -> agent-references
+[verify-manual-paths] resolved AGENTS.md:50 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:52 -> agent-references/index.md
+[verify-manual-paths] resolved AGENTS.md:56 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:57 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] resolved AGENTS.md:57 -> scripts/patch-agent-teams-fixes.ts
+[verify-manual-paths] resolved AGENTS.md:57 -> scripts/vendor-agent-teams.ts
+[verify-manual-paths] resolved AGENTS.md:58 -> agent-references/verification-flow.md
+[verify-manual-paths] resolved AGENTS.md:59 -> agent-references/seam-adapters.md
+[verify-manual-paths] resolved AGENTS.md:60 -> agent-references/overview-and-provenance.md
+[verify-manual-paths] resolved AGENTS.md:61 -> agent-references/plugin-authoring.md
+[verify-manual-paths] resolved AGENTS.md:62 -> agent-references/qa-discipline.md
+[verify-manual-paths] resolved AGENTS.md:63 -> agent-references/installer-and-profiles.md
+[verify-manual-paths] resolved AGENTS.md:64 -> agent-references/glossary.md
+[verify-manual-paths] resolved AGENTS.md:72 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:75 -> docs/feature-audit.md
+[verify-manual-paths] resolved AGENTS.md:76 -> LICENSE.md
+[verify-manual-paths] resolved AGENTS.md:77 -> README.md
+[verify-manual-paths] resolved AGENTS.md:77 -> LICENSE-NOTICES.md
+[verify-manual-paths] resolved AGENTS.md:78 -> agent-references/overview-and-provenance.md
+[verify-manual-paths] resolved AGENTS.md:81 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:97 -> docs/plan-team-plane-split.md
+[verify-manual-paths] resolved AGENTS.md:99 -> packages/mpd-agent-teams-plugin
+[verify-manual-paths] resolved AGENTS.md:112 -> agent-references/overview-and-provenance.md
+[verify-manual-paths] resolved AGENTS.md:123 -> .mpd/boulder.json
+[verify-manual-paths] resolved AGENTS.md:125 -> agent-references/overview-and-provenance.md
+[verify-manual-paths] resolved AGENTS.md:128 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:138 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:218 -> scripts/verify-vendor.ts
+[verify-manual-paths] resolved AGENTS.md:218 -> scripts/repin-vendor.ts
+[verify-manual-paths] resolved AGENTS.md:218 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:219 -> scripts/verify-dist-fresh.ts
+[verify-manual-paths] resolved AGENTS.md:219 -> dist
+[verify-manual-paths] resolved AGENTS.md:220 -> skills/dsh-qa/scripts/preset-conformance.ts
+[verify-manual-paths] resolved AGENTS.md:221 -> scripts/verify-pack-closure.ts
+[verify-manual-paths] resolved AGENTS.md:225 -> scripts/install-profile.ts
+[verify-manual-paths] resolved AGENTS.md:226 -> scripts/verify-docs-parity.ts
+[verify-manual-paths] resolved AGENTS.md:226 -> docs
+[verify-manual-paths] resolved AGENTS.md:227 -> scripts/verify-plugin-manifest.ts
+[verify-manual-paths] resolved AGENTS.md:227 -> dsh-plugin.json
+[verify-manual-paths] resolved AGENTS.md:227 -> dsh-distribution.json
+[verify-manual-paths] resolved AGENTS.md:227 -> package.json
+[verify-manual-paths] resolved AGENTS.md:227 -> evidence
+[verify-manual-paths] resolved AGENTS.md:228 -> scripts/verify-comment-coverage.ts
+[verify-manual-paths] resolved AGENTS.md:229 -> scripts/verify-no-host-override.ts
+[verify-manual-paths] resolved AGENTS.md:230 -> scripts/verify-manual-paths.ts
+[verify-manual-paths] resolved AGENTS.md:231 -> scripts/mpd-ext.ts
+[verify-manual-paths] resolved AGENTS.md:231 -> extensions/mpd-ext-example
+[verify-manual-paths] resolved AGENTS.md:232 -> skills/dsh-qa/scripts/bundle-lifecycle.ts
+[verify-manual-paths] resolved AGENTS.md:232 -> skills/dsh-qa/scripts/preset-conformance.ts
+[verify-manual-paths] resolved AGENTS.md:233 -> scripts/dump-config.ts
+[verify-manual-paths] resolved AGENTS.md:234 -> scripts/docker-e2e.ts
+[verify-manual-paths] resolved AGENTS.md:237 -> agent-references/verification-flow.md
+[verify-manual-paths] resolved AGENTS.md:239 -> scripts/verify-pack-closure.ts
+[verify-manual-paths] resolved AGENTS.md:246 -> evidence/workmate/rename-delete-core/20260910T132303Z-mount
+[verify-manual-paths] resolved AGENTS.md:248 -> scripts/dump-config.ts
+[verify-manual-paths] resolved AGENTS.md:275 -> .git/HEAD
+[verify-manual-paths] resolved AGENTS.md:288 -> evidence
+[verify-manual-paths] resolved AGENTS.md:317 -> README.md
+[verify-manual-paths] resolved AGENTS.md:317 -> package.json
+[verify-manual-paths] resolved AGENTS.md:319 -> agent-references/plugin-authoring.md
+[verify-manual-paths] resolved AGENTS.md:323 -> packages/mpd-dsh-adapter-plugin
+[verify-manual-paths] resolved AGENTS.md:329 -> packages/mpd-tui-adapter-plugin
+[verify-manual-paths] resolved AGENTS.md:334 -> agent-references/seam-adapters.md
+[verify-manual-paths] resolved AGENTS.md:341 -> scripts/verify-no-host-override.ts
+[verify-manual-paths] resolved AGENTS.md:342 -> docs/preset-default.md
+[verify-manual-paths] resolved AGENTS.md:343 -> scripts/set-default-preset.ts
+[verify-manual-paths] resolved AGENTS.md:348 -> packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.ts
+[verify-manual-paths] resolved AGENTS.md:353 -> scripts/patch-agent-teams-client.ts
+[verify-manual-paths] resolved AGENTS.md:354 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] resolved AGENTS.md:356 -> agent-references/plugin-authoring.md
+[verify-manual-paths] resolved AGENTS.md:357 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] resolved AGENTS.md:363 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:372 -> evidence/session-workspace-root/b1-resolution
+[verify-manual-paths] resolved AGENTS.md:376 -> .codegraph
+[verify-manual-paths] resolved AGENTS.md:383 -> node_modules
+[verify-manual-paths] resolved AGENTS.md:384 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:385 -> tsconfig.json
+[verify-manual-paths] resolved AGENTS.md:393 -> packages/mpd-ext-plugin/src/sdk.ts
+[verify-manual-paths] resolved AGENTS.md:394 -> packages/mpd-ext-plugin/dist/sdk.js
+[verify-manual-paths] resolved AGENTS.md:396 -> scripts/verify-dist-fresh.ts
+[verify-manual-paths] resolved AGENTS.md:401 -> agent-references/seam-adapters.md
+[verify-manual-paths] resolved AGENTS.md:404 -> skills/dsh-qa/scripts/preset-register.ts
+[verify-manual-paths] resolved AGENTS.md:412 -> agent-references/qa-discipline.md
+[verify-manual-paths] resolved AGENTS.md:414 -> skills/dsh-qa
+[verify-manual-paths] resolved AGENTS.md:422 -> skills/dsh-qa/scripts/lib/workspace-isolation.ts
+[verify-manual-paths] resolved AGENTS.md:425 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:435 -> skills/dsh-qa/scripts/lib/session-evidence.ts
+[verify-manual-paths] resolved AGENTS.md:438 -> evidence/dsh-qa/codegraph
+[verify-manual-paths] resolved AGENTS.md:446 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:470 -> agent-references/installer-and-profiles.md
+[verify-manual-paths] resolved AGENTS.md:474 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:476 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:476 -> presets/mpd.patch.yml
+[verify-manual-paths] resolved AGENTS.md:481 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:481 -> skills
+[verify-manual-paths] resolved AGENTS.md:492 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:500 -> package.json
+[verify-manual-paths] resolved AGENTS.md:501 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:501 -> presets/mpd.patch.yml
+[verify-manual-paths] resolved AGENTS.md:513 -> scripts/pack-mpd.ts
+[verify-manual-paths] resolved AGENTS.md:514 -> dist/mpd-package
+[verify-manual-paths] resolved AGENTS.md:516 -> dist
+[verify-manual-paths] resolved AGENTS.md:518 -> package.json
+[verify-manual-paths] resolved AGENTS.md:520 -> scripts/install-profile.ts
+[verify-manual-paths] resolved AGENTS.md:522 -> scripts/install-profile.ts
+[verify-manual-paths] resolved AGENTS.md:524 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:532 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:537 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:556 -> package.json
+[verify-manual-paths] resolved AGENTS.md:556 -> dsh-plugin.json
+[verify-manual-paths] resolved AGENTS.md:556 -> dsh-distribution.json
+[verify-manual-paths] resolved AGENTS.md:558 -> scripts/repin-vendor.ts
+[verify-manual-paths] resolved AGENTS.md:561 -> skills/dsh-qa/scripts/preset-conformance.ts
+[verify-manual-paths] resolved AGENTS.md:562 -> scripts/verify-dist-fresh.ts
+[verify-manual-paths] resolved AGENTS.md:562 -> scripts/verify-pack-closure.ts
+[verify-manual-paths] resolved AGENTS.md:566 -> scripts/docker-e2e.ts
+[verify-manual-paths] resolved AGENTS.md:568 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:579 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:581 -> evidence/gates/agents-budget
+[verify-manual-paths] resolved AGENTS.md:590 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:593 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:597 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:599 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:601 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:611 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:612 -> evidence/platform/harness-close
+[verify-manual-paths] resolved AGENTS.md:619 -> agent-references/glossary.md
+[verify-manual-paths] resolved AGENTS.md:637 -> agent-references/glossary.md
+[verify-manual-paths] census bucket=unresolved direction=audited count=0 reason="audited: the path does NOT exist at the repo root"
+[verify-manual-paths] census bucket=anticipatory direction=declared count=2 reason="DECLARED anticipatory class: the manual names it, the repository keeps it by design and deliberately does NOT create it (AGENTS.md §3) — printed with its count so an exemption for a file that does not exist can never rot silently"
+[verify-manual-paths] anticipatory AGENTS.md:38 -> docs/adder4.md [ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.ts` as its own class, and deliberately not created yet]
+[verify-manual-paths] anticipatory AGENTS.md:38 -> docs/cnt8.md [ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.ts` as its own class, and deliberately not created yet]
+[verify-manual-paths] census bucket=declared-unreferenced direction=declared count=0 reason="ROT GUARD: a declared anticipatory path this manual no longer names — reported here rather than dropped silently"
+[verify-manual-paths] census bucket=over-report:url direction=over-report count=0 reason="contains `://` — a URL, not a repo path"
+[verify-manual-paths] census bucket=over-report:fragment direction=over-report count=44 reason="contains whitespace — a sentence or command fragment, not one path"
+[verify-manual-paths] over-report:fragment AGENTS.md:110 -> /ulw <objective> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:110 -> /ultrawork <objective> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:218 -> node scripts/verify-vendor.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:218 -> node scripts/repin-vendor.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:219 -> node scripts/verify-dist-fresh.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:220 -> node skills/dsh-qa/scripts/preset-conformance.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:221 -> node scripts/verify-pack-closure.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:224 -> node skills/dsh-qa/scripts/<case>.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:225 -> node scripts/install-profile.ts --dry-run [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:227 -> node scripts/verify-plugin-manifest.ts --pack [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:228 -> node scripts/verify-comment-coverage.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:229 -> node scripts/verify-no-host-override.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:230 -> node scripts/verify-manual-paths.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:231 -> bun scripts/mpd-ext.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:231 -> bun scripts/mpd-ext.ts validate extensions/mpd-ext-example [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:232 -> bun skills/dsh-qa/scripts/bundle-lifecycle.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:232 -> node skills/dsh-qa/scripts/preset-conformance.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:233 -> node scripts/dump-config.ts --profile <p> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:234 -> node scripts/docker-e2e.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:239 -> node scripts/verify-pack-closure.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:248 -> node scripts/dump-config.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:339 -> /mpd panel [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:341 -> node scripts/verify-no-host-override.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:343 -> node scripts/set-default-preset.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:378 -> node <file>.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:396 -> node scripts/verify-dist-fresh.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:418 -> agentsHome = $DSH_AGENTS_HOME ?? ~/.agents [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:440 -> evidence/<domain>/<slug>/<timestamp>/{result.json, output.log} [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:489 -> dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:489 -> … add @mpd-dsh/mpd [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:503 -> dsh plugin remove @mpd-dsh/mpd [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:513 -> node scripts/pack-mpd.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:522 -> node scripts/install-profile.ts --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain] [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:556 -> git checkout -b release/vX.Y.Z [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:558 -> node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:561 -> node skills/dsh-qa/scripts/preset-conformance.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:562 -> node scripts/verify-dist-fresh.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:562 -> node scripts/verify-pack-closure.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:566 -> node scripts/docker-e2e.ts --mode source --require-docker [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:593 -> node scripts/mpd-bg.ts reload-check <module-path> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:597 -> node scripts/mpd-bg.ts run --log <workspace-path> -- <cmd> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:599 -> node scripts/mpd-bg.ts probe <pidfile> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:601 -> node scripts/mpd-bg.ts check-write <path> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:611 -> node scripts/mpd-bg.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] census bucket=over-report:trailing direction=over-report count=1 reason="ends with punctuation — a bound-token fragment, not a path target"
+[verify-manual-paths] over-report:trailing AGENTS.md:436 -> request/header.data.header.tools[] [the token ends with "]"]
+[verify-manual-paths] census bucket=over-report:npm direction=over-report count=7 reason="starts with `@` — an npm package name, not a repo path"
+[verify-manual-paths] over-report:npm AGENTS.md:82 -> @deepseek-ai/dsh-llm-deepseek
+[verify-manual-paths] over-report:npm AGENTS.md:475 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:489 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:500 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:503 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:507 -> @ast-grep/cli
+[verify-manual-paths] over-report:npm AGENTS.md:508 -> @code-yeongyu/comment-checker
+[verify-manual-paths] census bucket=over-report:notRoot direction=over-report count=12 reason="first segment is not an entry at the repo root — a slug, route, branch, tool name or package-relative spelling, not a repo path"
+[verify-manual-paths] over-report:notRoot AGENTS.md:44 -> mpd-agent-teams-plugin/README.md [first segment "mpd-agent-teams-plugin"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:72 -> code-yeongyu/oh-my-openagent [first segment "code-yeongyu"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:269 -> release/vX.Y.Z [first segment "release"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:316 -> src/index.ts [first segment "src"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:327 -> src/index.ts [first segment "src"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:345 -> lib/mpd-adapter-ctx.ts [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:347 -> lib/members.ts [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:352 -> lib/client.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:435 -> tool/call.data.name [first segment "tool"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:435 -> tool/result [first segment "tool"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:489 -> github:HaroldZ32/My-Power-Dsh [first segment "github:HaroldZ32"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:556 -> release/vX.Y.Z [first segment "release"]
+[verify-manual-paths] census bucket=over-report:bare direction=over-report count=16 reason="a bare file name with no directory component and not a root file this repo is expected to carry"
+[verify-manual-paths] over-report:bare AGENTS.md:44 -> README_ZH.md
+[verify-manual-paths] over-report:bare AGENTS.md:50 -> AGENT.md
+[verify-manual-paths] over-report:bare AGENTS.md:50 -> CLAUDE.md
+[verify-manual-paths] over-report:bare AGENTS.md:63 -> install-profile.ts
+[verify-manual-paths] over-report:bare AGENTS.md:120 -> mpd.jsonc
+[verify-manual-paths] over-report:bare AGENTS.md:127 -> AGENT.md
+[verify-manual-paths] over-report:bare AGENTS.md:128 -> CLAUDE.md
+[verify-manual-paths] over-report:bare AGENTS.md:232 -> full-profile-boot.sh
+[verify-manual-paths] over-report:bare AGENTS.md:232 -> mount-proof.sh
+[verify-manual-paths] over-report:bare AGENTS.md:378 -> .ts
+[verify-manual-paths] over-report:bare AGENTS.md:380 -> .ts
+[verify-manual-paths] over-report:bare AGENTS.md:382 -> .cts
+[verify-manual-paths] over-report:bare AGENTS.md:426 -> settings.yaml
+[verify-manual-paths] over-report:bare AGENTS.md:630 -> roles.test.ts
+[verify-manual-paths] over-report:bare AGENTS.md:639 -> mpd.jsonc
+[verify-manual-paths] over-report:bare AGENTS.md:662 -> meta.json
+[verify-manual-paths] census bucket=under-report:glob direction=under-report count=39 reason="a glob pattern — there is no single file to stat"
+[verify-manual-paths] under-report:glob AGENTS.md:9 -> docs/*.md
+[verify-manual-paths] under-report:glob AGENTS.md:10 -> packages/*/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:10 -> *.zh-CN.md
+[verify-manual-paths] under-report:glob AGENTS.md:18 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:19 -> extensions/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:19 -> templates/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:20 -> packages/*/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:25 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:30 -> agent-references/**
+[verify-manual-paths] under-report:glob AGENTS.md:31 -> *.zh-CN.md
+[verify-manual-paths] under-report:glob AGENTS.md:33 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:37 -> docs/plan-*.md
+[verify-manual-paths] under-report:glob AGENTS.md:57 -> packages/mpd-agent-teams-plugin/**
+[verify-manual-paths] under-report:glob AGENTS.md:219 -> packages/*/src
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> extensions/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> templates/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> README*.md
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> docs/**
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> packages/*/README*.md
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> extensions/**
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> templates/**
+[verify-manual-paths] under-report:glob AGENTS.md:234 -> docker/**
+[verify-manual-paths] under-report:glob AGENTS.md:256 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:381 -> packages/*/src
+[verify-manual-paths] under-report:glob AGENTS.md:381 -> dist/*.js
+[verify-manual-paths] under-report:glob AGENTS.md:425 -> <repo>/.mpd/team/*
+[verify-manual-paths] under-report:glob AGENTS.md:445 -> packages/*/dist/**
+[verify-manual-paths] under-report:glob AGENTS.md:445 -> dist/mpd-package/**
+[verify-manual-paths] under-report:glob AGENTS.md:446 -> .mpd/plans/**
+[verify-manual-paths] under-report:glob AGENTS.md:447 -> dist/**
+[verify-manual-paths] under-report:glob AGENTS.md:502 -> ./packages/*
+[verify-manual-paths] under-report:glob AGENTS.md:502 -> ./skills/*
+[verify-manual-paths] under-report:glob AGENTS.md:502 -> ./presets/*
+[verify-manual-paths] under-report:glob AGENTS.md:536 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:540 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:559 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:569 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:571 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:582 -> skills/**
+[verify-manual-paths] census bucket=under-report:home direction=under-report count=8 reason="home-relative (`~`) — it resolves in the user's HOME, not in the repo"
+[verify-manual-paths] under-report:home AGENTS.md:142 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:364 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:375 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:416 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:418 -> ~/.agents
+[verify-manual-paths] under-report:home AGENTS.md:483 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:604 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:652 -> ~/.mpd/workmate/
+[verify-manual-paths] census bucket=under-report:absolute direction=under-report count=7 reason="absolute (`/`) — it is outside the repo root"
+[verify-manual-paths] under-report:absolute AGENTS.md:21 -> /docs/index.md
+[verify-manual-paths] under-report:absolute AGENTS.md:94 -> /plugins/mpd-team/state
+[verify-manual-paths] under-report:absolute AGENTS.md:110 -> /ulw
+[verify-manual-paths] under-report:absolute AGENTS.md:110 -> /ultrawork
+[verify-manual-paths] under-report:absolute AGENTS.md:339 -> /mpd
+[verify-manual-paths] under-report:absolute AGENTS.md:582 -> /tmp
+[verify-manual-paths] under-report:absolute AGENTS.md:595 -> /tmp
+[verify-manual-paths] census bucket=under-report:outside direction=under-report count=0 reason="escapes the repo root (`../`) — it is outside the repo root"
+[verify-manual-paths] census bucket=under-report:placeholder direction=under-report count=27 reason="carries a placeholder (`<name>`, `$VAR`, `{a,b}`) — not a literal path"
+[verify-manual-paths] under-report:placeholder AGENTS.md:12 -> [English](./<name>.md)
+[verify-manual-paths] under-report:placeholder AGENTS.md:93 -> .mpd/team/teams/<id>.json
+[verify-manual-paths] under-report:placeholder AGENTS.md:100 -> <workspace>/.mpd/team
+[verify-manual-paths] under-report:placeholder AGENTS.md:209 -> packages/<pkg>/README.md
+[verify-manual-paths] under-report:placeholder AGENTS.md:224 -> skills/dsh-qa/scripts/<case>.ts
+[verify-manual-paths] under-report:placeholder AGENTS.md:267 -> feature/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:268 -> fix/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:281 -> backup/<branch>-<sha>
+[verify-manual-paths] under-report:placeholder AGENTS.md:283 -> feature/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:283 -> fix/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:316 -> packages/<pkg>/dist/index.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:317 -> @mpd-dsh/<name>
+[verify-manual-paths] under-report:placeholder AGENTS.md:336 -> <root>/lib/types/ui.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:373 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:374 -> <bundle>/presets
+[verify-manual-paths] under-report:placeholder AGENTS.md:378 -> <file>.ts
+[verify-manual-paths] under-report:placeholder AGENTS.md:399 -> packages/{mpd-dsh,mpd-tui}-adapter-plugin/src
+[verify-manual-paths] under-report:placeholder AGENTS.md:418 -> <DSH_HOME>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:418 -> <agentsHome>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:424 -> <DSH_HOME>/sessions/<projectKey(realCwd)>
+[verify-manual-paths] under-report:placeholder AGENTS.md:440 -> evidence/<domain>/<slug>/<timestamp>/{result.json,
+[verify-manual-paths] under-report:placeholder AGENTS.md:479 -> <profile>/node_modules
+[verify-manual-paths] under-report:placeholder AGENTS.md:495 -> github:<owner>/<repo>
+[verify-manual-paths] under-report:placeholder AGENTS.md:498 -> github:<owner>/<repo>#dev
+[verify-manual-paths] under-report:placeholder AGENTS.md:512 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:525 -> $DSH_HOME/.agent-presets/
+[verify-manual-paths] under-report:placeholder AGENTS.md:627 -> personas/<id>.md
+[verify-manual-paths] census bucket=under-report:elided direction=under-report count=1 reason="contains an elision mark — the path is not written out, so no literal target exists"
+[verify-manual-paths] under-report:elided AGENTS.md:12 -> [中文](./<name>.zh-CN.md) [non-ASCII/elision characters]
+[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason="a directory spelled in words rather than as a token — nothing to stat"
+[verify-manual-paths] census family=over-report direction=over-report total=80 buckets=6 (counted apart from under-report and from unresolved)
+[verify-manual-paths] census family=under-report direction=under-report total=82 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] PASS resolved=142 over-report=80 under-report=82 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+MANUAL_EXIT=0
+=== mpd-ext self-test ===
+  ok the shared validator exposes the four surfaces the CLI uses (source mode)
+  ok validate accepts templates/mpd-extension (got 0): 
+  ok the template declares all four contribution kinds
+  ok scaffold --with-mcp exits 0 (got 0): 
+  ok scaffold wrote mpd-ext.json
+  ok scaffold wrote skills/demo-ext-skill/SKILL.md
+  ok scaffold wrote flows/demo-ext-flow.json
+  ok scaffold wrote personas/demo-ext-reviewer.md
+  ok scaffold wrote server.ts
+  ok validate accepts the scaffold (got 0): 
+  ok the --with-mcp copy is the template modulo the token rewrite, file by file
+  ok scaffold (no flag) exits 0 (got 0): 
+  ok the default copy drops server.ts
+  ok the default copy drops the manifest mcp entry
+  ok the default copy wrote skills/demo-ext-plain-skill/SKILL.md
+  ok the default copy wrote flows/demo-ext-plain-flow.json
+  ok the default copy wrote personas/demo-ext-plain-reviewer.md
+  ok validate accepts the default copy (got 0): 
+  ok the default copy contributes three kinds
+  ok the default copy is the template modulo the token rewrite and the mcp drop, file by file
+  ok scaffold accepts an id longer than the serverName bound (got 0): mpd-ext scaffold: warning: ^[A-Za-z0-9_-]{1,32}$ caps serverName at 32 characters, so the copy declares "demo-ext-with-a-very-long-identi" instead of "demo-ext-with-a-very-long-identifier-1234"
+  ok the long-id fixture (41 chars) really is longer than the contract bound (32)
+  ok the copied serverName is capped at the contract bound (32), not at a literal
+  ok the cap is WARNED on stderr, never silent
+  ok the long-id copy still validates
+  ok scaffold refuses an id that violates the id grammar
+  ok the refusal names the id grammar
+  ok scaffold refuses an existing target
+  ok the refusal says the target exists
+  ok scaffold refuses the base-roster role collision for id "plan" (got 1)
+  ok the refusal is a CONTRACT refusal, not a CLI-defect message
+  ok the refusal quotes the roster's own collision sentence
+  ok the refusal states that nothing was written
+  ok a refused scaffold leaves nothing at the target
+  ok a refused scaffold leaves no staging container behind
+  ok validate exits 1 on a broken extension (got 1)
+  ok the broken run reports "typoKey"
+  ok the broken run reports "serverName"
+  ok the broken run reports "contributes.skills[0].root"
+  ok the broken run reports "escapes are rejected"
+  ok the broken run reports "surprise"
+  ok the broken run reports "persona file does not exist"
+  ok validate exits 1 on a deliberately broken copy of the template (got 1)
+  ok the broken copy reports "typoKey"
+  ok the broken copy reports "surprise"
+  ok the broken copy reports "serverName"
+  ok the broken copy reports "persona file does not exist"
+  ok the broken copy reports "frontmatter"
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (53 checks) [validator: source]
+MPDEXT_EXIT=0
+=== SWEEP-DONE ===

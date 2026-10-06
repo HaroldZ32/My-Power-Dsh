@@ -1,5 +1,5 @@
 // packages/mpd-team-core-plugin/src/index.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync4, readdirSync as readdirSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync4, readdirSync as readdirSync3, renameSync as renameSync4, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join5 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
@@ -1757,175 +1757,42 @@ function reconcile(ledger, tasks) {
 }
 
 // packages/mpd-team-core-plugin/src/plan-store.ts
+import { existsSync as existsSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync3, readdirSync as readdirSync2, renameSync as renameSync3, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join4 } from "node:path";
+
+// packages/mpd-team-core-plugin/src/team-store.ts
 import { existsSync as existsSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync2, readdirSync, renameSync as renameSync2, rmSync as rmSync2, writeFileSync } from "node:fs";
 import { join as join3 } from "node:path";
 function teamRoot(workspace) {
   return join3(workspace, ".mpd", "team");
 }
-var stagingDir = (workspace) => join3(teamRoot(workspace), "staging");
-var stagingPath = (workspace, sessionId) => join3(stagingDir(workspace), sessionId + ".json");
-var contractsDir = (workspace) => join3(teamRoot(workspace), "contracts");
-var contractPath = (workspace, taskId) => join3(contractsDir(workspace), taskId + ".json");
-var holdPath = (workspace) => join3(teamRoot(workspace), "hold.json");
-var archiveDir = (workspace) => join3(teamRoot(workspace), "archive");
+function teamsDir(workspace) {
+  return join3(teamRoot(workspace), "teams");
+}
+function teamRecordPath(workspace, teamId) {
+  return join3(teamsDir(workspace), sanitizeId(teamId) + ".json");
+}
+function teamsIndexPath(workspace) {
+  return join3(teamRoot(workspace), "teams.json");
+}
+function sanitizeId(value) {
+  const cleaned = String(value).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "");
+  return cleaned === "" ? "unnamed" : cleaned;
+}
 function readJson(path) {
   try {
-    return JSON.parse(readFileSync2(path, "utf8"));
+    const parsed = JSON.parse(readFileSync2(path, "utf8"));
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : undefined;
   } catch {
     return;
   }
 }
 function writeJson(path, value) {
   mkdirSync3(join3(path, ".."), { recursive: true });
-  writeFileSync(path, JSON.stringify(value, null, 2) + `
+  const temp = path + ".tmp-" + process.pid;
+  writeFileSync(temp, JSON.stringify(value, null, 2) + `
 `);
-}
-function newPlanId(now) {
-  return "plan-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
-}
-function readPlan(workspace, sessionId) {
-  const plan = readJson(stagingPath(workspace, sessionId));
-  return plan === undefined || plan.version !== 1 ? undefined : plan;
-}
-function writePlan(workspace, plan) {
-  writeJson(stagingPath(workspace, plan.sessionId), plan);
-}
-function stagePlan(workspace, sessionId, input, now) {
-  const existing = readPlan(workspace, sessionId);
-  if (existing !== undefined && existing.approvedAt === undefined)
-    archivePlan(workspace, existing);
-  const plan = {
-    version: 1,
-    planId: newPlanId(now),
-    sessionId,
-    name: input.name,
-    description: input.description,
-    approval: input.approval,
-    members: [],
-    tasks: [],
-    stagedAt: now.toISOString()
-  };
-  writePlan(workspace, plan);
-  return plan;
-}
-function addMember(plan, member) {
-  const name = member.name.trim();
-  if (name === "")
-    throw new Error("a teammate needs a non-empty name");
-  if (plan.members.some((existing) => existing.name === name))
-    throw new Error(`teammate "${name}" is already staged`);
-  return { ...plan, members: [...plan.members, { ...member, name }] };
-}
-function addTask(plan, task) {
-  const subject = task.subject.trim();
-  if (subject === "")
-    throw new Error("a task needs a non-empty subject");
-  return { ...plan, tasks: [...plan.tasks, { ...task, subject }] };
-}
-function archivePlan(workspace, plan) {
-  const target = join3(archiveDir(workspace), plan.planId);
-  mkdirSync3(target, { recursive: true });
-  writeJson(join3(target, "plan.json"), plan);
-  const staged = stagingPath(workspace, plan.sessionId);
-  if (existsSync2(staged))
-    rmSync2(staged, { force: true });
-  return target;
-}
-function claimContract(workspace, task, claimant, now) {
-  const previous = readJson(contractPath(workspace, task.id));
-  const contract = {
-    version: 1,
-    taskId: task.id,
-    subject: task.subject,
-    description: task.description,
-    blockedBy: [...task.blockedBy ?? []],
-    writeScopes: [...task.writeScopes ?? []],
-    attempt: (previous?.attempt ?? 0) + 1,
-    claimedBy: claimant,
-    claimedAt: now.toISOString(),
-    revision: task.revision
-  };
-  writeJson(contractPath(workspace, task.id), contract);
-  return contract;
-}
-function readContract(workspace, taskId) {
-  const contract = readJson(contractPath(workspace, taskId));
-  return contract === undefined || contract.version !== 1 ? undefined : contract;
-}
-function listContracts(workspace) {
-  let names = [];
-  try {
-    names = readdirSync(contractsDir(workspace));
-  } catch {
-    return [];
-  }
-  const out = [];
-  for (const name of names) {
-    if (!name.endsWith(".json"))
-      continue;
-    const contract = readJson(join3(contractsDir(workspace), name));
-    if (contract !== undefined && contract.version === 1)
-      out.push(contract);
-  }
-  return out.sort((left, right) => right.claimedAt.localeCompare(left.claimedAt));
-}
-function readHold(workspace) {
-  const hold = readJson(holdPath(workspace));
-  return hold === undefined || hold.version !== 1 ? undefined : hold;
-}
-function placeHold(workspace, reason, heldBy, now) {
-  const hold = { version: 1, reason, heldAt: now.toISOString(), heldBy };
-  writeJson(holdPath(workspace), hold);
-  return hold;
-}
-function clearHold(workspace) {
-  const path = holdPath(workspace);
-  if (!existsSync2(path))
-    return false;
-  rmSync2(path, { force: true });
-  return true;
-}
-function archivePathFor(workspace, planId) {
-  return join3(archiveDir(workspace), planId);
-}
-function moveIntoArchive(workspace, from, planId) {
-  const target = archivePathFor(workspace, planId);
-  mkdirSync3(archiveDir(workspace), { recursive: true });
-  renameSync2(from, target);
-  return target;
-}
-
-// packages/mpd-team-core-plugin/src/team-store.ts
-import { existsSync as existsSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync3, readdirSync as readdirSync2, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join4 } from "node:path";
-function teamRoot2(workspace) {
-  return join4(workspace, ".mpd", "team");
-}
-function teamsDir(workspace) {
-  return join4(teamRoot2(workspace), "teams");
-}
-function teamRecordPath(workspace, teamId) {
-  return join4(teamsDir(workspace), sanitizeId(teamId) + ".json");
-}
-function teamsIndexPath(workspace) {
-  return join4(teamRoot2(workspace), "teams.json");
-}
-function sanitizeId(value) {
-  const cleaned = String(value).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "");
-  return cleaned === "" ? "unnamed" : cleaned;
-}
-function readJson2(path) {
-  try {
-    const parsed = JSON.parse(readFileSync3(path, "utf8"));
-    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : undefined;
-  } catch {
-    return;
-  }
-}
-function writeJson2(path, value) {
-  mkdirSync4(join4(path, ".."), { recursive: true });
-  writeFileSync2(path, JSON.stringify(value, null, 2) + `
-`);
+  renameSync2(temp, path);
 }
 function newTeamId(now) {
   return "team-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
@@ -1934,14 +1801,14 @@ function sessionKey(sessionId) {
   return typeof sessionId === "string" && sessionId !== "" ? sessionId : "workspace";
 }
 function readTeamsIndex(workspace) {
-  const index = readJson2(teamsIndexPath(workspace));
+  const index = readJson(teamsIndexPath(workspace));
   if (index === undefined || index.version !== 1 || index.active === null || typeof index.active !== "object" || Array.isArray(index.active)) {
     return { version: 1, active: {} };
   }
   return index;
 }
 function writeTeamsIndex(workspace, index) {
-  writeJson2(teamsIndexPath(workspace), index);
+  writeJson(teamsIndexPath(workspace), index);
 }
 function activeTeamId(workspace, sessionId) {
   const id = readTeamsIndex(workspace).active[sessionKey(sessionId)];
@@ -1953,7 +1820,7 @@ function bindActiveTeam(workspace, sessionId, teamId) {
   writeTeamsIndex(workspace, index);
 }
 function readTeam(workspace, teamId) {
-  const record = readJson2(teamRecordPath(workspace, teamId));
+  const record = readJson(teamRecordPath(workspace, teamId));
   if (record === undefined || record.version !== 1)
     return;
   if (!Array.isArray(record.members) || !Array.isArray(record.tasks))
@@ -1961,12 +1828,12 @@ function readTeam(workspace, teamId) {
   return record;
 }
 function writeTeam(workspace, record) {
-  writeJson2(teamRecordPath(workspace, record.teamId), record);
+  writeJson(teamRecordPath(workspace, record.teamId), record);
 }
 function listTeams(workspace) {
   let names = [];
   try {
-    names = readdirSync2(teamsDir(workspace));
+    names = readdirSync(teamsDir(workspace));
   } catch {
     return [];
   }
@@ -2069,6 +1936,17 @@ function updateTeamTask(record, taskId, patch, now) {
     return next;
   });
   return touched ? { ...record, tasks } : record;
+}
+function casClaimTask(fresh, taskId, owner, expectedRevision, now) {
+  const task = fresh.tasks.find((candidate) => candidate.id === taskId);
+  if (task === undefined)
+    return { applied: false, reason: `task ${taskId} is no longer on the board` };
+  if (task.revision !== expectedRevision) {
+    return { applied: false, reason: `task ${taskId} changed while the pass was in flight (revision ${expectedRevision} -> ${task.revision})` };
+  }
+  if (task.status !== "pending")
+    return { applied: false, reason: `task ${taskId} is now "${task.status}"` };
+  return { applied: true, record: updateTeamTask(fresh, taskId, { owner, status: "in_progress" }, now) };
 }
 function updateTeamMember(record, key, patch) {
   let touched = false;
@@ -2221,6 +2099,154 @@ function readyTasks(record) {
 function idleMembers(record) {
   const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner) => owner !== undefined));
   return record.members.filter((member) => member.status === "running" && !busy.has(member.name));
+}
+
+// packages/mpd-team-core-plugin/src/plan-store.ts
+function teamRoot2(workspace) {
+  return join4(workspace, ".mpd", "team");
+}
+function planFileId(value, what) {
+  const raw = String(value);
+  if (raw.includes("/") || raw.includes("\\")) {
+    throw new Error(`${what} "${raw}" carries a path separator and is refused: ids name ONE file under .mpd/team`);
+  }
+  const id = sanitizeId(raw);
+  if (id.includes("/") || id.includes("\\")) {
+    throw new Error(`${what} "${raw}" reduced to "${id}", which still carries a path separator and is refused`);
+  }
+  return id;
+}
+var stagingDir = (workspace) => join4(teamRoot2(workspace), "staging");
+var stagingPath = (workspace, sessionId) => join4(stagingDir(workspace), planFileId(sessionId, "staging session id") + ".json");
+var contractsDir = (workspace) => join4(teamRoot2(workspace), "contracts");
+var contractPath = (workspace, taskId) => join4(contractsDir(workspace), planFileId(taskId, "contract task id") + ".json");
+var holdPath = (workspace) => join4(teamRoot2(workspace), "hold.json");
+var archiveDir = (workspace) => join4(teamRoot2(workspace), "archive");
+function readJson2(path) {
+  try {
+    return JSON.parse(readFileSync3(path, "utf8"));
+  } catch {
+    return;
+  }
+}
+function writeJson2(path, value) {
+  mkdirSync4(join4(path, ".."), { recursive: true });
+  writeFileSync2(path, JSON.stringify(value, null, 2) + `
+`);
+}
+function newPlanId(now) {
+  return "plan-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+}
+function readPlan(workspace, sessionId) {
+  const plan = readJson2(stagingPath(workspace, sessionId));
+  return plan === undefined || plan.version !== 1 ? undefined : plan;
+}
+function writePlan(workspace, plan) {
+  writeJson2(stagingPath(workspace, plan.sessionId), plan);
+}
+function stagePlan(workspace, sessionId, input, now) {
+  const existing = readPlan(workspace, sessionId);
+  if (existing !== undefined && existing.approvedAt === undefined)
+    archivePlan(workspace, existing);
+  const plan = {
+    version: 1,
+    planId: newPlanId(now),
+    sessionId,
+    name: input.name,
+    description: input.description,
+    approval: input.approval,
+    members: [],
+    tasks: [],
+    stagedAt: now.toISOString()
+  };
+  writePlan(workspace, plan);
+  return plan;
+}
+function addMember(plan, member) {
+  const name = member.name.trim();
+  if (name === "")
+    throw new Error("a teammate needs a non-empty name");
+  if (plan.members.some((existing) => existing.name === name))
+    throw new Error(`teammate "${name}" is already staged`);
+  return { ...plan, members: [...plan.members, { ...member, name }] };
+}
+function addTask(plan, task) {
+  const subject = task.subject.trim();
+  if (subject === "")
+    throw new Error("a task needs a non-empty subject");
+  return { ...plan, tasks: [...plan.tasks, { ...task, subject }] };
+}
+function archivePlan(workspace, plan) {
+  const target = archivePathFor(workspace, plan.planId);
+  mkdirSync4(target, { recursive: true });
+  writeJson2(join4(target, "plan.json"), plan);
+  const staged = stagingPath(workspace, plan.sessionId);
+  if (existsSync3(staged))
+    rmSync3(staged, { force: true });
+  return target;
+}
+function claimContract(workspace, task, claimant, now) {
+  const previous = readJson2(contractPath(workspace, task.id));
+  const contract = {
+    version: 1,
+    taskId: task.id,
+    subject: task.subject,
+    description: task.description,
+    blockedBy: [...task.blockedBy ?? []],
+    writeScopes: [...task.writeScopes ?? []],
+    attempt: (previous?.attempt ?? 0) + 1,
+    claimedBy: claimant,
+    claimedAt: now.toISOString(),
+    revision: task.revision
+  };
+  writeJson2(contractPath(workspace, task.id), contract);
+  return contract;
+}
+function readContract(workspace, taskId) {
+  const contract = readJson2(contractPath(workspace, taskId));
+  return contract === undefined || contract.version !== 1 ? undefined : contract;
+}
+function listContracts(workspace) {
+  let names = [];
+  try {
+    names = readdirSync2(contractsDir(workspace));
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const name of names) {
+    if (!name.endsWith(".json"))
+      continue;
+    const contract = readJson2(join4(contractsDir(workspace), name));
+    if (contract !== undefined && contract.version === 1)
+      out.push(contract);
+  }
+  return out.sort((left, right) => right.claimedAt.localeCompare(left.claimedAt));
+}
+function readHold(workspace) {
+  const hold = readJson2(holdPath(workspace));
+  return hold === undefined || hold.version !== 1 ? undefined : hold;
+}
+function placeHold(workspace, reason, heldBy, now) {
+  const hold = { version: 1, reason, heldAt: now.toISOString(), heldBy };
+  writeJson2(holdPath(workspace), hold);
+  return hold;
+}
+function clearHold(workspace) {
+  const path = holdPath(workspace);
+  if (!existsSync3(path))
+    return false;
+  rmSync3(path, { force: true });
+  return true;
+}
+function archivePathFor(workspace, planId) {
+  return join4(archiveDir(workspace), planFileId(planId, "archived plan id"));
+}
+function moveIntoArchive(workspace, from, planId) {
+  const target = archivePathFor(workspace, planId);
+  mkdirSync4(archiveDir(workspace), { recursive: true });
+  renameSync3(from, target);
+  return target;
 }
 
 // packages/mpd-team-core-plugin/src/team-web.ts
@@ -2464,8 +2490,10 @@ function readLedger(workspace) {
 }
 function writeLedger(workspace, ledger) {
   mkdirSync5(join5(workspace, ".mpd", "team"), { recursive: true });
-  writeFileSync3(dispatchPath(workspace), JSON.stringify(ledger, null, 2) + `
+  const temp = dispatchPath(workspace) + ".tmp-" + process.pid;
+  writeFileSync3(temp, JSON.stringify(ledger, null, 2) + `
 `);
+  renameSync4(temp, dispatchPath(workspace));
 }
 function describePlan(plan) {
   if (plan === undefined)
@@ -2919,7 +2947,22 @@ function apply(ctx) {
         const task = tasks.find((candidate) => candidate.id === pair.taskId);
         try {
           await executor().send(exec.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String(task.description ?? "")), exec.signal);
-          record = updateTeamTask(record, pair.taskId, { owner: pair.memberName, status: "in_progress" }, now());
+          const onDisk = readTeam(workspace, opened.teamId);
+          if (onDisk === undefined) {
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: "the team record disappeared while the pass was in flight" });
+            continue;
+          }
+          const expected = record.tasks.find((candidate) => candidate.id === pair.taskId)?.revision;
+          if (expected === undefined) {
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `task ${pair.taskId} is no longer on the pass's board` });
+            continue;
+          }
+          const claimed = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, now());
+          if (!claimed.applied) {
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` });
+            continue;
+          }
+          record = claimed.record;
           writeTeam(workspace, record);
           ledger = assign(ledger, pair, now());
           sent.push(pair);
@@ -2927,7 +2970,11 @@ function apply(ctx) {
           skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String(error?.message ?? error)}` });
         }
       }
-      writeLedger(workspace, ledger);
+      const fresh = reconcile(readLedger(workspace), tasks);
+      const merged = { ...fresh.ledger };
+      for (const pair of sent)
+        merged[pair.taskId] = ledger[pair.taskId];
+      writeLedger(workspace, merged);
       return { pairs: sent, skipped, forgotten: pruned.forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote } };
     }
   }));
@@ -3135,6 +3182,6 @@ export {
   readHold,
   readPlan,
   stagePlan,
-  teamRoot,
+  teamRoot2 as teamRoot,
   writePlan
 };

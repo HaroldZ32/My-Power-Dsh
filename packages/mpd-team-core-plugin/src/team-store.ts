@@ -28,7 +28,7 @@
 //
 // Everything here is PURE filesystem + plain data — no ctx, no harness, no clock of its own (every
 // mutator takes the `Date` it should stamp) — so the whole state machine is unit-testable.
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 /** Where a team is in its lifecycle; `staged` means nothing has been spawned yet. */
@@ -194,10 +194,20 @@ function readJson<T>(path: string): T | undefined {
   }
 }
 
-/** Write one JSON file, creating its directory. Throws only on a real write failure. */
+/**
+ * Write one JSON file, creating its directory. Throws only on a real write failure.
+ *
+ * ATOMIC (T2): the bytes land in a sibling temp file that is then renamed over the target, so a
+ * reader — including the dispatch pass re-reading before its own write — sees either the whole old
+ * document or the whole new one, never a half-written record. The temp file lives in the SAME
+ * directory, so the rename stays on one filesystem.
+ */
 function writeJson(path: string, value: unknown): void {
   mkdirSync(join(path, ".."), { recursive: true })
-  writeFileSync(path, JSON.stringify(value, null, 2) + "\n")
+  /** The sibling temp file this write lands in before the rename. */
+  const temp = path + ".tmp-" + process.pid
+  writeFileSync(temp, JSON.stringify(value, null, 2) + "\n")
+  renameSync(temp, path)
 }
 
 /** A stable, sortable identity for one team, derived from the instant it was created. */
@@ -489,6 +499,57 @@ export function updateTeamTask(record: TeamRecord, taskId: string, patch: TaskPa
     return next
   })
   return touched ? { ...record, tasks } : record
+}
+
+/**
+ * The outcome of a compare-and-set task mutation: either the record to persist, or the refusal.
+ *
+ * A refusal is a RESULT, not an error: the caller reports it (the dispatch pass puts it in
+ * `skipped`) so a lost update is visible, which is the whole point of the compare-and-set.
+ */
+export type CasTaskOutcome =
+  | { /** The fresh record with the patch applied; persist THIS one. */ applied: true; record: TeamRecord }
+  | { /** Why nothing was written; already a sentence a caller can show. */ applied: false; reason: string }
+
+/**
+ * Claim one task for dispatch against the FRESHEST on-disk record (T2's compare-and-set).
+ *
+ * WHY THIS EXISTS. The dispatch pass used to read the record ONCE and then rewrite the WHOLE FILE
+ * after every `await executor().send(...)`. A member's own `agent_teams_task {action:"claim"}` that
+ * landed during that await was erased by the next write, which restored the pass's stale snapshot:
+ * the board then showed an in-flight task as pending and its attempt counter regressed, so a later
+ * claim reused the same attempt number. `updateTeamTask` bumps `task.revision` on every mpd-side
+ * mutation, and that counter is what this compares.
+ *
+ * The rule: the patch is applied to `fresh` — never to the snapshot the caller opened with — and
+ * only when the task is EXACTLY as the caller decided on it. Anything else is refused loudly and
+ * carries the reason, so the caller can report it rather than silently reverting a concurrent write.
+ *
+ * @param fresh - the record re-read from disk immediately before this call.
+ * @param taskId - the mpd task id to claim.
+ * @param owner - the member name taking the task.
+ * @param expectedRevision - the revision the caller's decision was based on.
+ * @param now - the instant to stamp as `updatedAt`.
+ * @returns the record to persist, or the refusal with its reason.
+ */
+export function casClaimTask(
+  fresh: TeamRecord,
+  taskId: string,
+  owner: string,
+  expectedRevision: number,
+  now: Date,
+): CasTaskOutcome {
+  /** The task as it stands on disk, or undefined when it is gone. */
+  const task = fresh.tasks.find((candidate) => candidate.id === taskId)
+  if (task === undefined) return { applied: false, reason: `task ${taskId} is no longer on the board` }
+  if (task.revision !== expectedRevision) {
+    return { applied: false, reason: `task ${taskId} changed while the pass was in flight (revision ${expectedRevision} -> ${task.revision})` }
+  }
+  if (task.status !== "pending") return { applied: false, reason: `task ${taskId} is now "${task.status}"` }
+  // The OWNER is deliberately NOT a refusal: a plan may pre-assign one (`create_task owner=…`), and
+  // that is a plan-time intent, not a claim. A concurrent CLAIM is still caught by the revision
+  // above, because every mpd-side mutation — a claim included — bumps it.
+  return { applied: true, record: updateTeamTask(fresh, taskId, { owner, status: "in_progress" }, now) }
 }
 
 /** The fields {@link updateTeamMember} may change. */
