@@ -73,7 +73,29 @@ now honest.
 | `skills/dsh-qa/scripts/preset-conformance.ts --self-test` | **PASS** (32 rows, parity 26/25, controls 4/4) |
 | `bun run test:qa` | **all self-tests passed** |
 | `bun run verify:vendor` | **NOT RUNNABLE** — no `oh-my-openagent` checkout / `MPD_UPSTREAM_ROOT` on this machine |
-| `node scripts/docker-e2e.ts --mode source --require-docker` | see below |
+| `node scripts/docker-e2e.ts --mode source --require-docker` | **ran, exit 0** — `passed=64 failed=0 null=30` |
+
+### The Docker real-machine lane (`--require-docker`, so a skip could not pass silently)
+
+Ran to completion on a real rootless `ubuntu:24.04`: **`[driver] ok=true complete=false passed=64 failed=0
+null=30`**. The 30 `NULL` rows are all credential-dependent assertions (`live.*`, `boot.llmTurn`) — the
+container stages no credentials by design (AGENTS.md §10) — and each is reported as *"not attempted"*
+rather than counted as a pass. That is why `complete=false`: the lane is honestly incomplete, not green.
+
+What DID pass, and it is the part this wave needed: the Web GUI **loads and renders in a real browser**
+(`ui.loads`, `ui.workspaceSelected`, `ui.composerPresent`, `ui.promptSent`, `ui.replyRendered`), the
+**Agent Teams sidebar panel opens with its roster and board** (`ui.teamPanel=true`), the MPD settings
+section registers (`ui.mpdSettingsSection`), **no console errors and no uncaught page errors**
+(`ui.noConsoleErrors=true`), browser lane `rows=8 failed=0`, and the isolation assertions
+(`isolation.home`, `isolation.realHome`, `isolation.noCredentials`).
+
+**Two bounds the driver states itself and this PR repeats:** the container's own workspace has **no team**,
+so the sidebar renders its empty state (*"No team in this workspace yet. Stage one with `agent_teams_plan`,
+then approve it."*) — the DAG itself is not exercised there; and `tui.mergedPanelOpens` /
+`tui.mergedPanelOrder` are **`NULL` on this host**: with the 0.13.0 panel seam present, a panel open is a
+sidebar event that **changes zero bytes of a tmux capture**, so it is not pane-observable. That is the
+SAME instrument limit that hid the invisibility defect for a whole wave, now stated by the gate itself
+instead of being discovered by a user.
 
 ### Verified on a real PTY, at the frozen revision
 
@@ -196,7 +218,26 @@ plus `team-feature-test/` (the team-build defects found while running this wave)
 | `preset-conformance.ts --self-test` | **PASS**（32 行、parity 26/25、负控 4/4） |
 | `bun run test:qa` | **all self-tests passed** |
 | `bun run verify:vendor` | **无法运行** —— 本机没有 `oh-my-openagent` 检出 / `MPD_UPSTREAM_ROOT` |
-| `node scripts/docker-e2e.ts --mode source --require-docker` | 见下 |
+| `node scripts/docker-e2e.ts --mode source --require-docker` | **已实机运行，exit 0** —— `passed=64 failed=0 null=30` |
+
+### Docker 实机验证（`--require-docker`，跳过不可能冒充通过）
+
+在真实的 rootless `ubuntu:24.04` 上跑完：**`[driver] ok=true complete=false passed=64 failed=0 null=30`**。
+那 30 个 `NULL` 全是依赖凭据的断言（`live.*`、`boot.llmTurn`）—— 容器按设计不注入任何凭据（AGENTS.md §10）——
+每一条都记为 *"not attempted"*，**而不是计入通过**。这正是 `complete=false` 的含义：这一 lane 是**诚实的不完整**，
+不是绿的。
+
+真正通过的部分，恰好是本波次需要的那部分：Web GUI 在真实浏览器里**能加载并渲染**（`ui.loads`、
+`ui.workspaceSelected`、`ui.composerPresent`、`ui.promptSent`、`ui.replyRendered`）、**Agent Teams 侧栏面板
+带名册与板子打开**（`ui.teamPanel=true`）、MPD 设置段注册（`ui.mpdSettingsSection`）、
+**无 console 错误、无未捕获页面异常**（`ui.noConsoleErrors=true`）、browser lane `rows=8 failed=0`，
+以及隔离断言（`isolation.home`、`isolation.realHome`、`isolation.noCredentials`）。
+
+**驱动自己声明、本 PR 照搬的两条边界**：容器自己的工作区里**没有队伍**，所以侧栏渲染的是空状态
+（*"No team in this workspace yet. Stage one with `agent_teams_plan`, then approve it."*）—— **DAG 本身在那里
+没有被执行到**；以及 `tui.mergedPanelOpens` / `tui.mergedPanelOrder` 在这台宿主上是 **`NULL`**：在 0.13.0
+面板接缝存在的宿主上，面板打开是一次侧栏事件，**对 tmux 截图改变零字节**，因此**不可由 pane 观测**。
+这与藏住"不可见"缺陷整整一波的是**同一个仪器局限** —— 现在由门禁自己说出来，而不是等用户发现。
 
 ### 诚实的边界 —— 本波次**不**声称的东西
 
