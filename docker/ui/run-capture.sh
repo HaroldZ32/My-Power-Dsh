@@ -62,6 +62,17 @@ cd /data
 # MPD_UI_BOARD picks the shape (`normal` | `malformed`); the driver seeds the same one inside the run,
 # so this pre-pass and the graded pass cannot disagree about which board is on screen.
 BOARD_KIND="${MPD_UI_BOARD:-normal}"
+
+# ── THE FIXTURE TOOLING MUST EXIST BEFORE THE DRIVER RUNS ─────────────────────────────────────────
+# The driver imports `seedBoard` from /tmp/mpd-fixture to bind the board to the session IT observes.
+# MEASURED 2026-10-06: that directory is NOT in the named volume — it is written by
+# `docker/ui/seed-team-fixture.sh` — so a RECREATED container made the driver log "no board fixture
+# available" and the panel rendered its empty state while everything else looked healthy. A hard
+# prerequisite is checked here rather than discovered as an empty screenshot.
+if [ ! -s /tmp/mpd-fixture/team-fixture.mts ] || [ ! -s /tmp/mpd-fixture/team-fixture-records.mts ]; then
+  echo "[capture] fixture tooling absent in /tmp/mpd-fixture — the caller must run docker/ui/seed-team-fixture.sh first" >&2
+  echo "[capture] continuing: the panel will render whatever is on disk, and the report will say so" >&2
+fi
 for sid in $(ls -1 /data/dsh-web/sessions/--data-ws-- 2>/dev/null); do
   node /tmp/mpd-fixture/team-fixture.mts "$sid" /data/ws "$BOARD_KIND" >/dev/null 2>&1 || true
 done

@@ -64,7 +64,7 @@
     "log: [mpd] settings section: form updated status=ready value=present",
     "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
     "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
-    "info: [mpd] team sidebar session: session-7de751cb-3db3-4ba6-94a8-dba3c0c26ebc"
+    "info: [mpd] team sidebar session: session-77ff9774-1f6d-4026-85e7-11adebf84b1a"
   ],
   "firstRunText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nAdd an API key to get started\nConfigure the official DeepSeek provider to start building.\nAPI key\nConfigure later\nSave and continue",
   "gatesDismissedOnHome": 1,
@@ -260,117 +260,94 @@
   "browserLocale": "",
   "sessionCreate": {
     "status": 200,
-    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791259473137\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-4412a70c-4f43-4096-ad09-0f2f5af337fc\",\"agentPreset\":\"mpd\"}}}"
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791267362055\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-cd0dba1e-7bbf-418d-9b79-5af86a800715\",\"agentPreset\":\"mpd\"}}}"
   },
-  "sessionId": "session-4412a70c-4f43-4096-ad09-0f2f5af337fc",
+  "sessionId": "session-cd0dba1e-7bbf-418d-9b79-5af86a800715",
   "sidebarButton": 1,
   "teamTabClick": "clicked",
-  "teamPanelText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nmalformed-board\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n0 running · 0 ready · 6 blocked\n2/8 complete · 0 running / 0 ready\nProgress 25%\nnative executor\nMEMBERS (5)\nlead\nLead\n1/1\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n1/2\ndeepseek-official/deepseek-flash\ncurrent T7\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T5\ntui-model-i18n\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T3\nui-reviewer\nReviewer\n0/1\ndeepseek-official/deepseek-v4-pro\ncurrent T8\nTASKS (8)\nCYCLE T7, T8\n✓\nT1\nREQ\nRequirement: freeze the interfaces\n✓\nT2\nWRK\nWork: the first independent piece\n○\nT3\nWRK\nWork: blocked by a task absent from this board\n○\nT8\nWRK\nWork: the other half of the cycle\n○\nT4\nREV\nReview: depends on the absent-blocker task\n○\nT7\nWRK\nWork: half of a dependency cycle\n○\nT5\nFIX\nRepair: opened from the failed review\n○\nT6\nINT\nIntegration: waits on everything\ncycle T7,T8",
+  "teamPanelText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nwebui-tui-i18n\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n1 running · 1 ready · 1 blocked · 1 released by a failed blocker\n2/6 complete · 1 running / 1 ready\nProgress 33%\nnative executor\nMEMBERS (5)\nlead\nLead\n0/0\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n1/2\ndeepseek-official/deepseek-flash\ncurrent T5\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T2\ntui-model-i18n\nSenior Engineer\n1/1\ndeepseek-official/deepseek-flash\nui-reviewer\nReviewer\n0/1\ndeepseek-official/deepseek-v4-pro\ncurrent T4\nTASKS (6)\n✓\nT1\nREQ\nWeb: rebuild the team panel body on the payload projection\n◐\nT2\nWRK\nWeb: restyle the settings card on the official design tokens\n✓\nT3\nWRK\nTUI: /mpd-model pick-list over the live catalog\n✗\nT4\nREV\nReview the integrated diff against the frozen contracts\n○\nT5\nFIX\nRepair the findings the review raised\n○\nT6\nINT\nIntegrate: thread the translator, rebuild dists, capture evidence",
   "teamRouteRequests": [],
   "teamPanelSession": "",
   "teamTabId": "team-2026-10-05T22-30-00.000Z",
-  "teamGraph": "ranks=5 edges=7",
+  "teamGraph": "ranks=4 edges=4",
   "teamNodes": [
     "T1",
     "T2",
     "T3",
-    "T8",
     "T4",
-    "T7",
     "T5",
     "T6"
   ],
   "teamEdges": [
-    "T2<-T1",
-    "T3<-T1",
-    "T8<-T7",
+    "T4<-T1",
     "T4<-T3",
-    "T7<-T8",
     "T5<-T4",
     "T6<-T5"
   ],
   "teamHoverReachable": true,
   "teamRanks": {
     "T1": 0,
-    "T2": 1,
-    "T3": 1,
-    "T8": 1,
-    "T4": 2,
-    "T7": 2,
-    "T5": 3,
-    "T6": 4
+    "T2": 0,
+    "T3": 0,
+    "T4": 1,
+    "T5": 2,
+    "T6": 3
   },
   "teamForwardEdges": [
-    "T2<-T1",
-    "T3<-T1",
+    "T4<-T1",
     "T4<-T3",
-    "T7<-T8",
     "T5<-T4",
     "T6<-T5"
   ],
-  "teamHoverTarget": "T5",
+  "teamHoverTarget": "T6",
   "teamFocusWhileHovered": "chain",
   "teamFocusAfterLeave": "none",
   "teamNodeBoxes": [
     {
       "id": "T1",
       "x": 897,
-      "y": 609,
+      "y": 574,
       "w": 160,
       "h": 42
     },
     {
       "id": "T2",
-      "x": 1065,
-      "y": 609,
+      "x": 897,
+      "y": 626,
       "w": 160,
       "h": 42
     },
     {
       "id": "T3",
-      "x": 1065,
-      "y": 661,
-      "w": 160,
-      "h": 42
-    },
-    {
-      "id": "T8",
-      "x": 1065,
-      "y": 713,
+      "x": 897,
+      "y": 678,
       "w": 160,
       "h": 42
     },
     {
       "id": "T4",
-      "x": 1233,
-      "y": 609,
-      "w": 160,
-      "h": 42
-    },
-    {
-      "id": "T7",
-      "x": 1233,
-      "y": 661,
+      "x": 1065,
+      "y": 574,
       "w": 160,
       "h": 42
     },
     {
       "id": "T5",
-      "x": 1401,
-      "y": 609,
+      "x": 1233,
+      "y": 574,
       "w": 160,
       "h": 42
     },
     {
       "id": "T6",
-      "x": 1569,
-      "y": 609,
+      "x": 1401,
+      "y": 574,
       "w": 160,
       "h": 42
     }
   ],
   "teamNodeOverlaps": [],
-  "teamDetailAfterClick": "T5",
+  "teamDetailAfterClick": "T6",
   "mpdBindingProbe": {
     "diffLimit": "20000",
     "autoCheck": "true",
@@ -391,5 +368,5 @@
     "mpdControlsBound": true
   },
   "ok": true,
-  "visibleText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nmalformed-board\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n0 running · 0 ready · 6 blocked\n2/8 complete · 0 running / 0 ready\nProgress 25%\nnative executor\nMEMBERS (5)\nlead\nLead\n1/1\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n1/2\ndeepseek-official/deepseek-flash\ncurrent T7\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T5\ntui-model-i18n\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T3\nui-reviewer\nReviewer\n0/1\ndeepseek-official/deepseek-v4-pro\ncurrent T8\nTASKS (8)\nCYCLE T7, T8\n✓\nT1\nREQ\nRequirement: freeze the interfaces\n✓\nT2\nWRK\nWork: the first independent piece\n○\nT3\nWRK\nWork: blocked by a task absent from this board\n○\nT8\nWRK\nWork: the other half of the cycle\n○\nT4\nREV\nReview: depends on the absent-blocker task\n○\nT7\nWRK\nWork: half of a dependency cycle\n○\nT5\nFIX\nRepair: opened from the failed review\n○\nT6\nINT\nIntegration: waits on everything\nRepair: opened from the failed review\nclose\nT5 · FIX · ○ blocked\nowner\nweb-settings-card\nblocked by\nT4\ndependents\nT6\nNo frozen acceptance contract was served for this task.\ncycle T7,T8"
+  "visibleText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nwebui-tui-i18n\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n1 running · 1 ready · 1 blocked · 1 released by a failed blocker\n2/6 complete · 1 running / 1 ready\nProgress 33%\nnative executor\nMEMBERS (5)\nlead\nLead\n0/0\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n1/2\ndeepseek-official/deepseek-flash\ncurrent T5\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T2\ntui-model-i18n\nSenior Engineer\n1/1\ndeepseek-official/deepseek-flash\nui-reviewer\nReviewer\n0/1\ndeepseek-official/deepseek-v4-pro\ncurrent T4\nTASKS (6)\n✓\nT1\nREQ\nWeb: rebuild the team panel body on the payload projection\n◐\nT2\nWRK\nWeb: restyle the settings card on the official design tokens\n✓\nT3\nWRK\nTUI: /mpd-model pick-list over the live catalog\n✗\nT4\nREV\nReview the integrated diff against the frozen contracts\n○\nT5\nFIX\nRepair the findings the review raised\n○\nT6\nINT\nIntegrate: thread the translator, rebuild dists, capture evidence\nIntegrate: thread the translator, rebuild dists, capture evidence\nclose\nT6 · INT · ○ blocked\nblocked by\nT5\ndependents\n—\nNo frozen acceptance contract was served for this task."
 }

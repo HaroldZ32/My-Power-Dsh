@@ -64,7 +64,7 @@
     "log: [mpd] settings section: form updated status=ready value=present",
     "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
     "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
-    "info: [mpd] team sidebar session: session-14bd223e-33c1-4b75-99e0-4fa5d53683df"
+    "info: [mpd] team sidebar session: session-77ff9774-1f6d-4026-85e7-11adebf84b1a"
   ],
   "firstRunText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nAdd an API key to get started\nConfigure the official DeepSeek provider to start building.\nAPI key\nConfigure later\nSave and continue",
   "gatesDismissedOnHome": 1,
@@ -260,9 +260,9 @@
   "browserLocale": "",
   "sessionCreate": {
     "status": 200,
-    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791259302195\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-ff479fdf-89d4-4090-8863-9f3ec3d7c86d\",\"agentPreset\":\"mpd\"}}}"
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791267362055\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-cd0dba1e-7bbf-418d-9b79-5af86a800715\",\"agentPreset\":\"mpd\"}}}"
   },
-  "sessionId": "session-ff479fdf-89d4-4090-8863-9f3ec3d7c86d",
+  "sessionId": "session-cd0dba1e-7bbf-418d-9b79-5af86a800715",
   "sidebarButton": 1,
   "teamTabClick": "clicked",
   "teamPanelText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nwebui-tui-i18n\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n1 running · 1 ready · 1 blocked · 1 released by a failed blocker\n2/6 complete · 1 running / 1 ready\nProgress 33%\nnative executor\nMEMBERS (5)\nlead\nLead\n0/0\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n1/2\ndeepseek-official/deepseek-flash\ncurrent T5\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T2\ntui-model-i18n\nSenior Engineer\n1/1\ndeepseek-official/deepseek-flash\nui-reviewer\nReviewer\n0/1\ndeepseek-official/deepseek-v4-pro\ncurrent T4\nTASKS (6)\n✓\nT1\nREQ\nWeb: rebuild the team panel body on the payload projection\n◐\nT2\nWRK\nWeb: restyle the settings card on the official design tokens\n✓\nT3\nWRK\nTUI: /mpd-model pick-list over the live catalog\n✗\nT4\nREV\nReview the integrated diff against the frozen contracts\n○\nT5\nFIX\nRepair the findings the review raised\n○\nT6\nINT\nIntegrate: thread the translator, rebuild dists, capture evidence",

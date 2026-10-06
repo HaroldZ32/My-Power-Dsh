@@ -64,7 +64,7 @@
     "log: [mpd] settings section: form updated status=ready value=present",
     "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
     "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
-    "info: [mpd] team sidebar session: session-7de751cb-3db3-4ba6-94a8-dba3c0c26ebc"
+    "info: [mpd] team sidebar session: session-5434dba0-3ed7-468e-85c0-1e32ef258d9c"
   ],
   "firstRunText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nAdd an API key to get started\nConfigure the official DeepSeek provider to start building.\nAPI key\nConfigure later\nSave and continue",
   "gatesDismissedOnHome": 1,
@@ -260,9 +260,9 @@
   "browserLocale": "",
   "sessionCreate": {
     "status": 200,
-    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791259473137\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-4412a70c-4f43-4096-ad09-0f2f5af337fc\",\"agentPreset\":\"mpd\"}}}"
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791267306075\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-88b30fee-58d0-480c-bf6e-f78acddb1da3\",\"agentPreset\":\"mpd\"}}}"
   },
-  "sessionId": "session-4412a70c-4f43-4096-ad09-0f2f5af337fc",
+  "sessionId": "session-88b30fee-58d0-480c-bf6e-f78acddb1da3",
   "sidebarButton": 1,
   "teamTabClick": "clicked",
   "teamPanelText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nmalformed-board\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n0 running · 0 ready · 6 blocked\n2/8 complete · 0 running / 0 ready\nProgress 25%\nnative executor\nMEMBERS (5)\nlead\nLead\n1/1\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n1/2\ndeepseek-official/deepseek-flash\ncurrent T7\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T5\ntui-model-i18n\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T3\nui-reviewer\nReviewer\n0/1\ndeepseek-official/deepseek-v4-pro\ncurrent T8\nTASKS (8)\nCYCLE T7, T8\n✓\nT1\nREQ\nRequirement: freeze the interfaces\n✓\nT2\nWRK\nWork: the first independent piece\n○\nT3\nWRK\nWork: blocked by a task absent from this board\n○\nT8\nWRK\nWork: the other half of the cycle\n○\nT4\nREV\nReview: depends on the absent-blocker task\n○\nT7\nWRK\nWork: half of a dependency cycle\n○\nT5\nFIX\nRepair: opened from the failed review\n○\nT6\nINT\nIntegration: waits on everything\ncycle T7,T8",

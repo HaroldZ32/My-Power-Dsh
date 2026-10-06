@@ -280,18 +280,39 @@
     "kind.int": "INT",
   }
 
-  /** The width of one rank column, in pixels — the whole "measuring pass" is this constant. */
-  const COLUMN_W = 168
-  /** How far a node's box sits inside its column, per side. */
-  const NODE_INSET = 4
-  /** One node box's height. */
-  const NODE_H = 42
-  /** The vertical gap between two nodes of one column. */
-  const NODE_GAP = 10
-  /** The vertical padding at the top and bottom of every column. */
-  const COLUMN_PAD = 4
-  /** How far an edge's lead-in and lead-out reach into the gap between two columns. */
-  const EDGE_LEAD = 24
+  /**
+   * THE GRAPH'S ONE GEOMETRY SOURCE — the boxes and the edges both read it.
+   *
+   * WHY IT EXISTS (reported from a screenshot 2026-10-06): the node's own place and its edge's endpoint
+   * were computed from SEPARATE literals — the box from `COLUMN_PAD + row * (NODE_H + NODE_GAP)` and the
+   * edge from its own `rank * COLUMN_W ± …` arithmetic. Two expressions that must agree, in two places,
+   * is how a line ends up meeting a box at the wrong spot, and it is ALSO why any change to a size
+   * detaches every edge: the endpoint stops tracking the box the moment one of the literals moves.
+   *
+   * Every position below is DERIVED from the four sizes, so an endpoint is the box's own border and
+   * cannot drift from it. A size change (a different node height, a wider column, a text-scale factor)
+   * therefore moves the boxes AND the edges together.
+   */
+  const GEO = {
+    /** One rank column's width. */
+    column: 168,
+    /** How far a node's box sits inside its column, per side — the box is `column - 2 * inset` wide. */
+    inset: 4,
+    /** One node box's height. */
+    nodeHeight: 42,
+    /** The vertical gap between two nodes of one column. */
+    nodeGap: 10,
+    /** The vertical padding at the top and bottom of every column. */
+    pad: 4,
+  }
+  /** The x of the LEFT border of a node in one column — the box's own border, not the column's edge. */
+  const borderLeft = (rank: number): number => rank * GEO.column + GEO.inset
+  /** The x of the RIGHT border of a node in one column. */
+  const borderRight = (rank: number): number => rank * GEO.column + GEO.column - GEO.inset
+  /** The y of a box's top, from its row inside the column — the SAME expression the node renders with. */
+  const boxTop = (row: number): number => GEO.pad + row * (GEO.nodeHeight + GEO.nodeGap)
+  /** The y of a box's vertical MIDDLE, which is where an edge attaches. */
+  const boxMiddle = (row: number): number => boxTop(row) + GEO.nodeHeight / 2
   /** How far a member's current task is truncated before it is drawn. */
   /**
    * Read the session id off the host's own sidebar DOM marker, as a LAST resort.
@@ -542,15 +563,15 @@
         const nodes: GraphNode[] = []
         for (let rank = 0; rank < columns.length; rank += 1) {
           for (let row = 0; row < columns[rank].length; row += 1) {
-            nodes.push({ task: columns[rank][row], rank, row, top: COLUMN_PAD + row * (NODE_H + NODE_GAP) })
+            nodes.push({ task: columns[rank][row], rank, row, top: boxTop(row) })
           }
         }
         return {
           columns,
           rankCount,
-          width: rankCount * COLUMN_W,
-          height: Math.max(tallest * (NODE_H + NODE_GAP) - NODE_GAP + COLUMN_PAD * 2, NODE_H + COLUMN_PAD * 2),
-          gridTemplateColumns: "repeat(" + rankCount + ", " + COLUMN_W + "px)",
+          width: rankCount * GEO.column,
+          height: Math.max(tallest * (GEO.nodeHeight + GEO.nodeGap) - GEO.nodeGap + GEO.pad * 2, GEO.nodeHeight + GEO.pad * 2),
+          gridTemplateColumns: "repeat(" + rankCount + ", " + GEO.column + "px)",
           nodes,
         }
       }
@@ -641,34 +662,76 @@
        * @param tinted - whether this edge is inside the hover focus chain.
        * @returns the edge element and its three segments.
        */
-      const edgeOf = (parent: GraphNode, child: GraphNode, tinted: boolean | undefined): unknown => {
-        // The riser sits in the gap between the two columns, so it never crosses a node in either.
+      const edgeOf = (parent: GraphNode, child: GraphNode, tinted: boolean | undefined, lane: number): unknown => {
+        // ── MERMAID-STYLE ORTHOGONAL ROUTING ──────────────────────────────────────────────────────
+        // WHAT WAS WRONG (reported from a screenshot 2026-10-06): the ends were snapped to COLUMN
+        // geometry (`rank * COLUMN_W ± (COLUMN_W - NODE_INSET - EDGE_LEAD)`) instead of to the boxes, so
+        // an edge met its node a fixed distance inside the border rather than at the border's middle;
+        // and the ARRIVAL segment was as long as the lead-out, so it ran from the riser all the way
+        // under any sibling that happened to stand between the arriving point and its own box.
         //
-        // MEASURED 2026-10-06, and this is why the two ends are computed rather than assumed: an edge
-        // normally runs parent → child (the blocker in an EARLIER rank), but a dependency CYCLE produces
-        // a back-edge whose parent sits in a LATER rank. The first shape fixed each horizontal stub at
-        // `EDGE_LEAD` px from its own node, so on a back-edge neither stub reached the riser and the edge
-        // drew as two disconnected dashes — non-negative and therefore contract-conformant, but not a
-        // line a reader can follow. Both stubs now END AT the riser, so the path connects in either
-        // direction without changing any width from what the contract already required.
-        const riserX = child.rank * COLUMN_W - EDGE_LEAD
-        /** The lead-out's left edge: the blocker column's right inset, where its node box ends. */
-        const outLeft = parent.rank * COLUMN_W + COLUMN_W - NODE_INSET - EDGE_LEAD
-        /** Which column's boundary the edge leaves from; the child's gap on a back-edge. */
-        const leadOutLeft = outLeft < riserX ? outLeft : riserX + 1
-        /** Where the arriving stub starts, measured back from the node it reaches. */
-        const leadInLeft = riserX
-        /** The blocker's vertical centre, where the edge leaves it. */
-        const outY = parent.top + NODE_H / 2
-        /** The dependant's vertical centre, where the edge arrives. */
-        const inY = child.top + NODE_H / 2
-        /** The riser's own box: between the two horizontal centres, however they are ordered. */
-        const riserTop = Math.min(outY, inY)
+        // Both are fixed by describing the edge the way a diagram does:
+        //   * every end attaches at the MIDPOINT of the border it meets — a node is `COLUMN_PAD` inside
+        //     its column on each side, so its left border sits at `col + COLUMN_PAD` and its right at
+        //     `col + COLUMN_W - COLUMN_PAD`;
+        //   * the two horizontal ends cover ONLY the gap between the two boxes, and the vertical riser
+        //     joins them inside that gap — so nothing the edge draws overlaps a box, its own or a
+        //     sibling's;
+        //   * each edge gets its OWN LANE inside the gap (deterministically from which row it leaves),
+        //     which is what keeps two edges out of the same column from landing on one vertical line.
+        //
+        // A BACK-EDGE (a dependency cycle, where the blocker stands in a LATER rank) mirrors the whole
+        // shape: it leaves the parent's LEFT border and arrives at the child's RIGHT border, with the
+        // riser in the gap on that side — the lane offset is measured from that side too, so the picture
+        // is the same shape read right-to-left.
+        // NOT ONE OF THESE IS A LITERAL: `borderLeft`/`borderRight`/`boxMiddle` are the accessors the
+        // LAYOUT renders the boxes with, so an endpoint cannot drift from the box it names — change a
+        // size and both move together (see GEO).
+        /** The blocker's left border. */
+        const parentLeft = borderLeft(parent.rank)
+        /** The blocker's right border. */
+        const parentRight = borderRight(parent.rank)
+        /** The dependant's left border. */
+        const childLeft = borderLeft(child.rank)
+        /** The dependant's right border. */
+        const childRight = borderRight(child.rank)
+        /** Whether this edge runs left-to-right (the ordinary case) or right-to-left (a back-edge). */
+        const forward = parent.rank <= child.rank
+        /** The border x each end attaches to, at that border's vertical MIDDLE. */
+        /** The parent's attachment point: the middle of the border it leaves. */
+        const fromX = forward ? parentRight : parentLeft
+        /** The child's attachment point: the middle of the border the edge meets. */
+        const toX = forward ? childLeft : childRight
+        // THE BAND IS BOUNDED BY THE TWO BOX BORDERS, NOT BY THE COLUMN EDGES — and getting that wrong
+        // is what made the first version of this fix place every riser 1px off (MEASURED 2026-10-06:
+        // both column edges are the SAME x for adjacent ranks, so a band taken from them is zero-width
+        // and the clamp collapsed to the column boundary instead of the middle of the gap).
+        /** The band the riser lives in: the space between the two boxes the edge connects. */
+        const gapLeft = forward ? parentRight : childRight
+        /** The other end of that band. */
+        const gapRight = forward ? childLeft : parentLeft
+        /** The band's own centre — the natural lane position, symmetric between the two boxes. */
+        const bandCentre = (gapLeft + gapRight) / 2
+        /** The left bound a lane may occupy, kept a pixel clear of the near box's border. */
+        const laneLeft = Math.min(gapLeft, gapRight) + 1
+        /** The right bound a lane may occupy, kept a pixel clear of the far box's border. */
+        const laneRight = Math.max(gapLeft, gapRight) - 1
+        // ROUNDED, because a half-pixel lane makes every horizontal stub a fractional width: the riser
+        // is inside the band either way, and an integer keeps the segments crisp (and the assertions
+        // arithmetic rather than tolerance-matching).
+        /** One lane per edge, clamped to the band so a crowded column cannot push an edge into a box. */
+        const riserX = Math.round(Math.max(laneLeft, Math.min(laneRight, bandCentre + lane)))
+        /** The blocker's vertical MIDDLE, where the edge leaves its border. */
+        const outY = boxMiddle(parent.row)
+        /** The dependant's vertical middle, where the edge meets its border. */
+        const inY = boxMiddle(child.row)
         /** The colour every segment of this edge draws in; a focused edge reads brighter. */
         const base = tinted === true ? FOCUS_EDGE : CSS.edge.background
         /** One segment's style: the shared edge box, this edge's colour, then its own geometry. */
         const segment = (left: number, top: number, width: number, height: number): Record<string, string> =>
           ({ ...CSS.edge, background: base, left: left + "px", top: top + "px", width: width + "px", height: height + "px" })
+        /** The riser's own box: the vertical run between the two rows, one pixel wide at minimum. */
+        const riserTop = Math.min(outY, inY)
         return react.createElement("div", {
           key: "edge:" + parent.task.id + ">" + child.task.id,
           // THE WITNESSABLE MARK: `capture.mts` (docker/ui) reads `data-mpd-edge` and counts `data-mpd-graph`'s
@@ -676,9 +739,11 @@
           "data-mpd-edge": child.task.id + "<-" + parent.task.id,
           style: CSS.edgeLayer,
         },
-          react.createElement("div", { key: "out", style: segment(leadOutLeft, outY, Math.max(riserX - leadOutLeft + 1, 1), 1) }),
+          // The lead-out covers the gap only: from the parent's border to the riser's lane.
+          react.createElement("div", { key: "out", style: segment(Math.min(fromX, riserX), outY, Math.max(Math.abs(riserX - fromX), 1), 1) }),
           react.createElement("div", { key: "riser", style: segment(riserX, riserTop, 1, Math.max(Math.abs(inY - outY), 1)) }),
-          react.createElement("div", { key: "in", style: segment(leadInLeft, inY, EDGE_LEAD, 1) }),
+          // The lead-in likewise: from the riser's lane to the child's border.
+          react.createElement("div", { key: "in", style: segment(Math.min(riserX, toX), inY, Math.abs(toX - riserX) + 1, 1) }),
         )
       }
 
@@ -804,12 +869,23 @@
         // data — and an edge into a node that is not there would be a picture of a dependency that the
         // record does not have.
         const edges: unknown[] = []
+        /** How many edges have already been given a lane in each source column. */
+        const laneCount: Record<string, number> = {}
         for (const node of graph.nodes) {
           for (const blockerId of node.task.blockedBy) {
             /** The blocker's own box; a blocker the board does not carry draws no edge. */
             const parent = nodeOf[blockerId]
             if (parent === undefined) continue
-            edges.push(edgeOf(parent, node, focus[parent.task.id] === true && focus[node.task.id] === true))
+            // ONE LANE PER EDGE, deterministic from the order the board lists them, so two blockers of
+            // the same task never draw their vertical runs on top of each other — the "lines are all
+            // over the place" half of the report. The lanes are alternating around the gap's centre,
+            // which keeps the FIRST edge (usually the primary one) nearest it.
+            /** This source column's running edge count. */
+            const used = laneCount[parent.task.id] ?? 0
+            laneCount[parent.task.id] = used + 1
+            /** Alternating offsets: 0, +3, -3, +6, -6 … */
+            const lane = used === 0 ? 0 : (used % 2 === 1 ? 1 : -1) * Math.ceil(used / 2) * 3
+            edges.push(edgeOf(parent, node, focus[parent.task.id] === true && focus[node.task.id] === true, lane))
           }
         }
         /** The pinned task's own record, or undefined when the pinned id left the board. */
@@ -887,12 +963,12 @@
           },
             // The grid WRAPS the canvas: the wrapper carries the vertical breathing room as padding, so
             // the origin an edge's absolute coordinates are measured from stays the grid itself.
-            react.createElement("div", { style: { position: "relative", width: graph.width + "px", padding: COLUMN_PAD + "px 0" } },
+            react.createElement("div", { style: { position: "relative", width: graph.width + "px", padding: GEO.pad + "px 0" } },
               react.createElement("div", { style: { ...CSS.grid, width: graph.width + "px", height: graph.height + "px", gridTemplateColumns: graph.gridTemplateColumns } },
                 graph.columns.map((column, rank) => react.createElement("div", {
                   key: "col-" + rank,
                   "data-mpd-rank": String(rank),
-                  style: { ...CSS.column, width: COLUMN_W + "px", height: graph.height + "px" },
+                  style: { ...CSS.column, width: GEO.column + "px", height: graph.height + "px" },
                 },
                 column.map((task, row) => react.createElement("div", {
                   key: "node-" + task.id,
@@ -903,7 +979,7 @@
                   title: task.subject + (task.attempt === undefined ? "" : " · " + t("task.attempt") + " " + task.attempt),
                   style: {
                     ...CSS.node,
-                    top: (COLUMN_PAD + row * (NODE_H + NODE_GAP)) + "px",
+                    top: boxTop(row) + "px",
                     borderColor: focusing && focus[task.id] !== true ? CSS.edge.background : toneOf(task.visual),
                     opacity: focusing && focus[task.id] !== true ? "0.4" : "1",
                     borderWidth: pinned === task.id ? "1px" : "0.5px",

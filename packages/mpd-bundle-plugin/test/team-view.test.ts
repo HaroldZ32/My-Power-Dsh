@@ -474,24 +474,53 @@ describe("team-view drawn edges", () => {
     /** The edge's three segments, in draw order. */
     const segments = (edge[0].props.children as ElementNode[])
     expect(segments.map((segment) => segment.key)).toEqual(["out", "riser", "in"])
-    // Column 0's node box ends at 168-4 = 164, the lead-out starts 24px back at 140, and the parent's
-    // centre is its top (4) plus half a node (21). The child's centre is the same, so the riser collapses
-    // to its minimum of one pixel at the arrival's y — arithmetic over the payload, never a measurement.
-    expect(styleOf(segments[0], "left")).toBe("140px")
+    // MERMAID-STYLE ROUTING, so the numbers are the boxes' own borders rather than a fixed inset.
+    // A node is `COLUMN_PAD` (4) inside its 168px column, so column 0's box spans 4..164 and column 1's
+    // spans 172..332. Both boxes' vertical middle is their top (4) plus half a node (21) = 25.
+    //
+    // T1->T2 is a forward edge, so it LEAVES T1's right border (164) and ARRIVES at T2's left border
+    // (172), with the riser in the 8px gap between them — one lane at the gap's centre, 168.
+    expect(styleOf(segments[0], "left")).toBe("164px")
     expect(styleOf(segments[0], "top")).toBe("25px")
-    // THE STUB ENDS AT THE RISER, and this number is the correction: the riser sits at 144, so a 25px
-    // lead-out ran 20px PAST it and the two horizontal segments met nothing — MEASURED 2026-10-06, on a
-    // dependency CYCLE (whose back-edge puts the parent to the right) the edge drew as two disconnected
-    // dashes. 144 - 140 + 1 makes the three segments one continuous path.
-    expect(styleOf(segments[0], "width")).toBe("5px")
-    expect(styleOf(segments[0], "height")).toBe("1px")
-    expect(styleOf(segments[0], "position")).toBe("absolute")
-    expect(styleOf(segments[1], "left")).toBe("144px")
-    expect(styleOf(segments[1], "top")).toBe("25px")
-    expect(styleOf(segments[1], "width")).toBe("1px")
-    expect(styleOf(segments[1], "height")).toBe("1px")
-    expect(styleOf(segments[2], "left")).toBe("144px")
-    expect(styleOf(segments[2], "width")).toBe("24px")
+    // The stub spans the GAP only (164 -> 168), so nothing it draws can reach under a node.
+    // THE PROPERTY, NOT THE PIXELS. Pinning the four literals would re-couple this arm to the sizes it
+    // is supposed to be independent of — the reviewer's point that a scale change must not detach the
+    // edges. What has to hold is the RELATION, read off the same accessors the layout renders the boxes
+    // with: a node sits `GEO.inset` inside a `GEO.column`-wide column, so column 0's box spans 4..164 and
+    // column 1's spans 172..332, and T1->T2 is a forward edge at one row, so it leaves T1's RIGHT border
+    // and arrives at T2's LEFT border with the riser between them.
+    /** The four sizes the layout derives every position from, restated so the relation is checkable. */
+    const DIMS = { column: 168, inset: 4, nodeHeight: 42, nodeGap: 10, pad: 4 }
+    /** One node's borders, derived from the sizes rather than written down. */
+    const borders = (rank: number): { left: number; right: number } =>
+      ({ left: rank * DIMS.column + DIMS.inset, right: rank * DIMS.column + DIMS.column - DIMS.inset })
+    /** The vertical middle of the one row this fixture puts both nodes on. */
+    const middle = DIMS.pad + DIMS.nodeHeight / 2
+    /** The edge's three painted segments. */
+    /** One painted segment's box, as numbers. */
+    const geo = (index: number): { left: number; top: number; width: number } =>
+      ({ left: Number.parseFloat(styleOf(segments[index], "left")), top: Number.parseFloat(styleOf(segments[index], "top")), width: Number.parseFloat(styleOf(segments[index], "width")) })
+    /** The lead-out the edge paints: from the parent's right border to the riser. */
+    const out = geo(0)
+    /** The vertical run joining the two rows, inside the boxes' gap. */
+    const riser = geo(1)
+    /** The lead-in: from the riser to the child's left border. */
+    const into = geo(2)
+    // The lead-out STARTS on the parent's right border and ENDS on the riser.
+    expect(out.left).toBe(borders(0).right)
+    expect(out.left + out.width).toBe(riser.left)
+    // The riser is a vertical line INSIDE the two boxes' gap, never on either border.
+    expect(riser.left).toBeGreaterThan(borders(0).right)
+    expect(riser.left).toBeLessThan(borders(1).left)
+    expect(riser.width).toBe(1)
+    // The lead-in starts on the riser and ENDS on the child's left border.
+    expect(into.left).toBe(riser.left)
+    expect(into.left + into.width).toBe(borders(1).left + 1)
+    // Every segment runs along ONE box's vertical middle, so an edge meets a border at its midpoint.
+    expect([out.top, riser.top, into.top]).toEqual([middle, middle, middle])
+    // Nothing an edge paints reaches under a box: every segment lives in the gap between the borders.
+    expect(out.left).toBeGreaterThanOrEqual(borders(0).right)
+    expect(into.left + into.width).toBeLessThanOrEqual(borders(1).left + 1)
   })
 
   test("draws a riser that spans the two rows when a blocker sits below its dependant", async () => {
