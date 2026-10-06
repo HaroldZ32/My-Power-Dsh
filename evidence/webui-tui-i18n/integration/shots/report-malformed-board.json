@@ -64,7 +64,7 @@
     "log: [mpd] settings section: form updated status=ready value=present",
     "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
     "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
-    "info: [mpd] team sidebar session: session-c3fec451-bdcf-4b4a-a129-0142a14bd221"
+    "info: [mpd] team sidebar session: session-7de751cb-3db3-4ba6-94a8-dba3c0c26ebc"
   ],
   "firstRunText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nAdd an API key to get started\nConfigure the official DeepSeek provider to start building.\nAPI key\nConfigure later\nSave and continue",
   "gatesDismissedOnHome": 1,
@@ -257,11 +257,12 @@
   ],
   "presetsClick": "clicked",
   "agentPresetsText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nSettings\nGeneral\nModels\nBuilt-in plugins\nAgent presets\nMPD\nOpen configuration file\nClose\nAgent presets\nChoose the agent’s tools and how it works. Use Standard mode for everyday tasks, or Creator mode to add capabilities to DSH.\nBUILT-IN\nStandard mode\nNew task default\nstandard\nWork with code, files, and information. Suitable for most tasks, with search, editing, terminal commands, and other tools available as needed.\nMode details\nHow to use\nPTC mode\nBuilt-in\nptc\nIncludes all Standard mode capabilities. Better suited to tasks that call tools in batches and then filter, organize, deduplicate, count, or summarize the results.\nMode details\nHow to use\nMinimal mode\nBuilt-in\nminimal\nThe agent works using only a terminal tool. Useful for testing and comparing its basic performance.\nMode details\nHow to use\nCreator mode\nBuilt-in\ncordis\nCustomize DSH through conversation. Let the agent write plugins that add features or UI, or combine tools and prompts to create your own mode.\nMode details\nHow to use\nCUSTOM\nMPD (Main Working Agent)\nCustom\nmpd\nThe my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, one-shot-consults the specialists (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin.\nLet the agent help me create a preset",
+  "browserLocale": "",
   "sessionCreate": {
     "status": 200,
-    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791255277241\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-bd0138f0-23cc-42a8-9995-b9d85d8c10e3\",\"agentPreset\":\"mpd\"}}}"
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791259473137\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-4412a70c-4f43-4096-ad09-0f2f5af337fc\",\"agentPreset\":\"mpd\"}}}"
   },
-  "sessionId": "session-bd0138f0-23cc-42a8-9995-b9d85d8c10e3",
+  "sessionId": "session-4412a70c-4f43-4096-ad09-0f2f5af337fc",
   "sidebarButton": 1,
   "teamTabClick": "clicked",
   "teamPanelText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nmalformed-board\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n0 running · 0 ready · 6 blocked\n2/8 complete · 0 running / 0 ready\nProgress 25%\nnative executor\nMEMBERS (5)\nlead\nLead\n1/1\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n1/2\ndeepseek-official/deepseek-flash\ncurrent T7\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T5\ntui-model-i18n\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T3\nui-reviewer\nReviewer\n0/1\ndeepseek-official/deepseek-v4-pro\ncurrent T8\nTASKS (8)\nCYCLE T7, T8\n✓\nT1\nREQ\nRequirement: freeze the interfaces\n✓\nT2\nWRK\nWork: the first independent piece\n○\nT3\nWRK\nWork: blocked by a task absent from this board\n○\nT8\nWRK\nWork: the other half of the cycle\n○\nT4\nREV\nReview: depends on the absent-blocker task\n○\nT7\nWRK\nWork: half of a dependency cycle\n○\nT5\nFIX\nRepair: opened from the failed review\n○\nT6\nINT\nIntegration: waits on everything\ncycle T7,T8",

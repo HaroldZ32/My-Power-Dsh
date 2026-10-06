@@ -474,12 +474,16 @@ describe("team-view drawn edges", () => {
     /** The edge's three segments, in draw order. */
     const segments = (edge[0].props.children as ElementNode[])
     expect(segments.map((segment) => segment.key)).toEqual(["out", "riser", "in"])
-    // Column 0's node box ends at 168-4 = 164, the lead-out reaches back 24px, and the parent's centre
-    // is its top (4) plus half a node (21). The child's centre is the same, so the riser collapses to
-    // its minimum of one pixel at the arrival's y — arithmetic over the payload, never a measurement.
+    // Column 0's node box ends at 168-4 = 164, the lead-out starts 24px back at 140, and the parent's
+    // centre is its top (4) plus half a node (21). The child's centre is the same, so the riser collapses
+    // to its minimum of one pixel at the arrival's y — arithmetic over the payload, never a measurement.
     expect(styleOf(segments[0], "left")).toBe("140px")
     expect(styleOf(segments[0], "top")).toBe("25px")
-    expect(styleOf(segments[0], "width")).toBe("25px")
+    // THE STUB ENDS AT THE RISER, and this number is the correction: the riser sits at 144, so a 25px
+    // lead-out ran 20px PAST it and the two horizontal segments met nothing — MEASURED 2026-10-06, on a
+    // dependency CYCLE (whose back-edge puts the parent to the right) the edge drew as two disconnected
+    // dashes. 144 - 140 + 1 makes the three segments one continuous path.
+    expect(styleOf(segments[0], "width")).toBe("5px")
     expect(styleOf(segments[0], "height")).toBe("1px")
     expect(styleOf(segments[0], "position")).toBe("absolute")
     expect(styleOf(segments[1], "left")).toBe("144px")

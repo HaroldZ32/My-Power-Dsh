@@ -643,9 +643,21 @@
        */
       const edgeOf = (parent: GraphNode, child: GraphNode, tinted: boolean | undefined): unknown => {
         // The riser sits in the gap between the two columns, so it never crosses a node in either.
+        //
+        // MEASURED 2026-10-06, and this is why the two ends are computed rather than assumed: an edge
+        // normally runs parent → child (the blocker in an EARLIER rank), but a dependency CYCLE produces
+        // a back-edge whose parent sits in a LATER rank. The first shape fixed each horizontal stub at
+        // `EDGE_LEAD` px from its own node, so on a back-edge neither stub reached the riser and the edge
+        // drew as two disconnected dashes — non-negative and therefore contract-conformant, but not a
+        // line a reader can follow. Both stubs now END AT the riser, so the path connects in either
+        // direction without changing any width from what the contract already required.
         const riserX = child.rank * COLUMN_W - EDGE_LEAD
         /** The lead-out's left edge: the blocker column's right inset, where its node box ends. */
         const outLeft = parent.rank * COLUMN_W + COLUMN_W - NODE_INSET - EDGE_LEAD
+        /** Which column's boundary the edge leaves from; the child's gap on a back-edge. */
+        const leadOutLeft = outLeft < riserX ? outLeft : riserX + 1
+        /** Where the arriving stub starts, measured back from the node it reaches. */
+        const leadInLeft = riserX
         /** The blocker's vertical centre, where the edge leaves it. */
         const outY = parent.top + NODE_H / 2
         /** The dependant's vertical centre, where the edge arrives. */
@@ -664,9 +676,9 @@
           "data-mpd-edge": child.task.id + "<-" + parent.task.id,
           style: CSS.edgeLayer,
         },
-          react.createElement("div", { key: "out", style: segment(outLeft, outY, EDGE_LEAD + 1, 1) }),
+          react.createElement("div", { key: "out", style: segment(leadOutLeft, outY, Math.max(riserX - leadOutLeft + 1, 1), 1) }),
           react.createElement("div", { key: "riser", style: segment(riserX, riserTop, 1, Math.max(Math.abs(inY - outY), 1)) }),
-          react.createElement("div", { key: "in", style: segment(riserX, inY, EDGE_LEAD, 1) }),
+          react.createElement("div", { key: "in", style: segment(leadInLeft, inY, EDGE_LEAD, 1) }),
         )
       }
 
