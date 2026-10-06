@@ -59,9 +59,12 @@ cd /data
 # `/plugins/mpd-team/plan?sessionId=<id>` for a session that had never been seeded, while the seeded id
 # sat unused on disk). Binding EVERY session in the store removes the guess entirely: whatever the app
 # decides to show, its team is there. The fixture is idempotent (one team id, rewritten in place).
+# MPD_UI_BOARD picks the shape (`normal` | `malformed`); the driver seeds the same one inside the run,
+# so this pre-pass and the graded pass cannot disagree about which board is on screen.
+BOARD_KIND="${MPD_UI_BOARD:-normal}"
 for sid in $(ls -1 /data/dsh-web/sessions/--data-ws-- 2>/dev/null); do
-  node /tmp/mpd-fixture/team-fixture.mts "$sid" /data/ws normal >/dev/null 2>&1 || true
+  node /tmp/mpd-fixture/team-fixture.mts "$sid" /data/ws "$BOARD_KIND" >/dev/null 2>&1 || true
 done
 echo "[capture] bound the board to $(ls -1 /data/dsh-web/sessions/--data-ws-- | wc -l) session(s)"
 
-node /data/capture.mts --base http://127.0.0.1:3080 --token "$TOKEN" --out /data-out/shots --workspace /data/ws
+node /data/capture.mts --base http://127.0.0.1:3080 --token "$TOKEN" --out /data-out/shots --workspace /data/ws --board "$BOARD_KIND"

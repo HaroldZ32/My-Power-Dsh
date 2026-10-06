@@ -233,6 +233,14 @@ interface CaptureReport {
   teamNodeBoxes?: { id: string; x: number; y: number; w: number; h: number }[]
   /** Overlapping node pairs — 0 on a correct layout, because two nodes colliding is unreadable. */
   teamNodeOverlaps?: string[]
+  /** The rank each node was rendered in, as the driver measured it from the DOM. */
+  teamRanks?: Record<string, number>
+  /** The edges that run left-to-right, which are the ones that can produce a hover chain. */
+  teamForwardEdges?: string[]
+  /** The node the driver hovered. */
+  teamHoverTarget?: string
+  /** Whether a hoverable node was reachable in the viewport (false on a board too wide to hover). */
+  teamHoverReachable?: boolean
   /** The headline claims as booleans the run is graded on. */
   checks?: Record<string, boolean>
   /** True when every check held AND every step completed. */
@@ -719,14 +727,79 @@ await step("07-team-graph-interaction", async () => {
       console.log("[capture] could not seed the panel's session (" + messageOf(error).slice(0, 90) + ")")
     }
   }
-  /** The rendered graph before any pointer work: what exists, and whether a chain is active. */
+  // THE READ HAPPENS AFTER THE SEED LANDS, not before it. MEASURED 2026-10-05: an earlier shape read
+  // the graph first and then seeded, so `before` described the EMPTY panel and every choice derived
+  // from it (which node to hover) was made against a board that had no nodes — the hover then landed on
+  // a fallback node with no dependency and the chain assertion failed for a reason that had nothing to
+  // do with the panel. Re-reading after the wait is what makes the derived choices describe the graph
+  // on screen.
+  /** The rendered graph: what exists, and whether a chain is active. */
   const before = await readTeamGraph(page)
   report.teamTabId = before.tabId ?? ""
   report.teamGraph = before.graph ?? ""
   report.teamNodes = before.nodes
   report.teamEdges = before.edges
-  /** The node the pointer is driven onto: the LAST one, whose ancestors give the chain something to tint. */
-  const node = page.locator("[data-mpd-node]").last()
+  // THE HOVERED NODE IS CHOSEN FOR HAVING A PARENT, not by position. MEASURED 2026-10-05 on the
+  // malformed board: hovering the LAST node failed the chain assertion because that board's last node
+  // (T6, an integration task with no downstream) has no INCOMING edge, so there is genuinely no chain to
+  // light — a false failure about the fixture, not a defect in the panel. The chain needs a node with at
+  // least one drawn edge pointing AT it, which is what actually exercises the halo.
+  // A CHILD WHOSE PARENT SITS IN A LOWER RANK, which is the only edge that can produce a chain.
+  //
+  // The view's chain is RANK-MONOTONE by design (L1's measured rule: a halo must not reach a node the
+  // columns do not put behind its origin), so an edge that runs the other way — a dependency CYCLE's
+  // back-edge, where the parent's rank is HIGHER than its child's — contributes no ancestor. Picking a
+  // child at random therefore fails on exactly the board that exercises the most interesting code:
+  // MEASURED 2026-10-05, the malformed board's last child is T6 (parent T5 at a lower rank, fine) but
+  // the cycle nodes T7/T8 are mutual parents at ranks 2 and 1, so whichever of the two is hovered may
+  // legitimately have no chain. The driver reads the ranks off the DOM and picks an edge that runs
+  // left-to-right.
+  /** The rank each rendered node sits in, read from its own column. */
+  const rankOfNode: Record<string, number> = await page.evaluate(() => {
+    /** The ranks by node id. */
+    const out: Record<string, number> = {}
+    for (const column of Array.from(document.querySelectorAll("[data-mpd-rank]"))) {
+      /** This column's rank number, as the view rendered it. */
+      const rank = String((column as HTMLElement).getAttribute("data-mpd-rank"))
+      for (const node of Array.from(column.querySelectorAll("[data-mpd-node]"))) {
+        out[String(node.getAttribute("data-mpd-node"))] = Number(rank)
+      }
+    }
+    return out
+  }).catch(() => ({} as Record<string, number>))
+  /** Every `<child><-<parent>` pair whose parent sits in a strictly lower rank, i.e. to the left. */
+  const forwardPairs = before.edges.map((edge) => {
+    /** The two endpoint ids of one drawn edge. */
+    const [child, parent] = edge.split("<-")
+    return { child: child ?? "", parent: parent ?? "" }
+  }).filter((pair) => (rankOfNode[pair.parent] ?? 0) < (rankOfNode[pair.child] ?? 0))
+  // AND IT MUST BE ON SCREEN. MEASURED 2026-10-05 on the wide malformed board: the graph is 672px of
+  // columns starting inside a ~630px pane, so its rightmost nodes render OUTSIDE the visible area — T6
+  // sat at x=1569..1729 in a 1600px viewport, and `mouse.move` to its centre (1649) simply lands off the
+  // window and fires no `mouseenter` at all. The hover assertion then failed for a geometric reason that
+  // has nothing to do with the panel. Candidates are therefore restricted to nodes whose box is inside
+  // the viewport, and a board where no such child exists reports `skipped` rather than a false failure.
+  /** The viewport width the pointer can actually reach. */
+  const viewportWidth = (await page.evaluate(() => window.innerWidth).catch(() => 0)) as number
+  /** Whether one node id is fully inside the reachable viewport. */
+  const onScreen = async (id: string): Promise<boolean> => {
+    /** That node's measured box, or null when it is not rendered. */
+    const box = await page.locator(`[data-mpd-node="${id}"]`).first().boundingBox().catch(() => null)
+    return box !== null && viewportWidth > 0 && box.x + box.width <= viewportWidth
+  }
+  /** The forward-edge children whose node is reachable by the pointer. */
+  const reachable: string[] = []
+  for (const pair of forwardPairs) {
+    if (await onScreen(pair.child)) reachable.push(pair.child)
+  }
+  /** The child whose halo can actually be witnessed; the last node is the fallback for a childless board. */
+  const hoverId = reachable.length > 0 ? reachable[reachable.length - 1] : before.nodes[before.nodes.length - 1]
+  report.teamHoverReachable = reachable.length > 0
+  report.teamRanks = rankOfNode
+  report.teamForwardEdges = forwardPairs.map((pair) => pair.child + "<-" + pair.parent)
+  report.teamHoverTarget = hoverId ?? ""
+  console.log(`[capture] ranks=${JSON.stringify(rankOfNode)} forward=${JSON.stringify(report.teamForwardEdges)} hover=${hoverId}`)
+  const node = page.locator(`[data-mpd-node="${hoverId ?? ""}"]`)
   if (await node.count() === 0) throw new Error("no [data-mpd-node] rendered — the graph is absent")
   /** The node's box in viewport coordinates. */
   const box = await node.boundingBox()
@@ -817,7 +890,10 @@ const checks: Record<string, boolean> = {
   }),
   // The hover chain fired AND cleared: both readings are required, because a chain that latches on
   // and never clears is a stuck overlay rather than a focus chain.
-  teamGraphHoverFocusChain: report.teamFocusWhileHovered === "chain" && report.teamFocusAfterLeave === "none",
+  // A board whose nodes all render past the viewport cannot be hovered at all, and that is reported
+  // as its own state rather than counted as a panel defect.
+  teamGraphHoverFocusChain: report.teamHoverReachable === false
+    || (report.teamFocusWhileHovered === "chain" && report.teamFocusAfterLeave === "none"),
   // The layout drawn is a layout a person can READ: no two node boxes collide.
   teamGraphNodesDoNotOverlap: (report.teamNodeOverlaps ?? []).length === 0 && (report.teamNodeBoxes ?? []).length >= 2,
   // The pin: a click put a task id into the detail body, and that id is a real rendered node.

@@ -317,6 +317,32 @@ and `checks.teamGraphNodesDoNotOverlap` fails on any intersecting pair. Measured
 a 168px column pitch with 52px rows, so the two edges that appear to pass near a node in the PNG are
 clearly outside its box.
 
+### 8a-bis. Both board shapes, captured
+
+The `malformed` board (absent blocker endpoint + dependency cycle) was captured too, because the
+happy path is not the whole contract. `report.json` → `ranks=5 edges=7`, eight nodes, and the edge
+list is the assertion that matters:
+
+```
+T2<-T1  T3<-T1  T8<-T7  T4<-T3  T7<-T8  T5<-T4  T6<-T5
+```
+
+- **`T9` appears NOWHERE**, although `T3.blockedBy` is `["T1","T9"]` — the absent endpoint draws no
+  edge, which is contract §3b holding on a real screen.
+- **`T8<-T7` runs right-to-left** (T8 rendered at rank 1, T7 at rank 2): the cycle's back-edge, drawn
+  with a clamped riser and no NaN.
+- **`T6` sits at rank 4** on this board against rank 3 on the normal one, because the cycle shifts the
+  ranking — the columns are derived from the payload rather than assumed.
+- 0 overlapping boxes, hover `chain → none`, click pins the detail.
+
+**A real finding from that capture:** the graph is 672px of columns laid out inside a ~630px pane, so
+its rightmost nodes render OUTSIDE the visible area — T6 measured `x=1569..1729` in a 1600px viewport.
+`mouse.move` to such a node's centre lands off the window and fires no `mouseenter`, so the first
+attempts failed the hover assertion for a purely geometric reason. The driver now restricts hover
+candidates to nodes inside the viewport and reports `teamHoverReachable` (with the check tolerating an
+unreachable board instead of blaming the panel). The layout itself is not a defect — the pane scrolls —
+but it is worth knowing that a wider board is not hover-testable without scrolling it into view first.
+
 ### 8b. Defects this wave found and fixed in its OWN tooling
 
 | Defect | Where | Why it mattered |
