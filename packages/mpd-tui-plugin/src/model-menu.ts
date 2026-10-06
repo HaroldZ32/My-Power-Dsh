@@ -39,7 +39,7 @@ import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, resolveCatalogReader, teamModelOpti
 import type { CatalogReadSeam, SettingsOption, TeamModelOptionLists, TeamModelLeaf } from "./settings.js"
 import { TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS } from "../../mpd-config-plugin/src/settings-schema"
 import { MODEL_COMMAND, MODEL_COMMAND_DESCRIPTIONS, MODEL_COMMAND_DESCRIPTION } from "./command-trees.js"
-import { pick, resolveLang } from "./i18n.js"
+import { effortLabel, pick, resolveLang } from "./i18n.js"
 import type { Bilingual, TuiLang } from "./i18n.js"
 
 export { MODEL_COMMAND, MODEL_COMMAND_DESCRIPTION }
@@ -202,7 +202,8 @@ export function panelOptions(
   if (isRecord(modelRow) && Array.isArray(modelRow.efforts)) {
     for (const entry of modelRow.efforts) {
       if (isRecord(entry) && typeof entry.id === "string" && entry.id.length > 0) {
-        keyedEfforts.push({ value: entry.id, label: typeof entry.name === "string" && entry.name.length > 0 ? entry.name : entry.id })
+        // The catalog's own name when it has one, else MPD's localized name for the id, else the id.
+        keyedEfforts.push({ value: entry.id, label: typeof entry.name === "string" && entry.name.length > 0 ? entry.name : effortLabel(entry.id) })
       }
     }
   }
@@ -210,6 +211,12 @@ export function panelOptions(
     provider: lists.provider,
     // NEVER empty: a keyed provider with no models falls back to the same union the row offers.
     model: keyedModels.length > 0 ? keyedModels : lists.model,
+    // The DECLARED fallback keeps the labels the settings schema gives it. Relabelling it here was
+    // REVERTED after measurement (2026-10-06): it made a path language-dependent whose arms are
+    // deliberately language-neutral, one more arm failed under `DSH_TUI_LANG=zh` than it fixed, and the
+    // fallback's own list is the one a reader checks against the settings rows — so it must show what
+    // those rows show. The localization this feature needs lives on the catalog path above, where the
+    // ids are the catalog's own and only the LABEL is MPD's.
     reasoningEffort: keyedEfforts.length > 0 ? keyedEfforts : lists.reasoningEffort,
   }
 }

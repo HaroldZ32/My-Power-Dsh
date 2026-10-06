@@ -243,6 +243,45 @@ export type TuiTextParams = Readonly<Record<string, string | number>>
  * @param inputs - the resolution inputs; process state when omitted.
  * @returns the text in the active language.
  */
+/**
+ * The DISPLAY names of the reasoning-effort ids a catalog reports.
+ *
+ * WHY A SEPARATE MAP, and why it is honest: the panel's option list carries the catalog's own labels,
+ * and a catalog that reports an effort merely as `off`/`low`/`high`/`max` has no localized name to
+ * show — so a Chinese screen displayed `Off` above a Chinese description, which reads half-translated
+ * (the reviewer flagged it as F5). The map changes ONLY the label; the VALUE written to the settings
+ * document is always the raw id, because that is what the model route accepts.
+ *
+ * An effort id this map does not know keeps its raw id as its label — the map ADDS names, it never
+ * guesses one.
+ */
+export const EFFORT_LABELS: Record<string, Bilingual> = {
+  off: { zh: "关闭", en: "off" },
+  low: { zh: "低", en: "low" },
+  medium: { zh: "中", en: "medium" },
+  high: { zh: "高", en: "high" },
+  max: { zh: "最高", en: "max" },
+}
+
+/**
+ * The label one reasoning-effort option shows.
+ * @param id - the raw effort id the catalog reported (also the value that gets written).
+ * @param inputs - the resolution inputs; process state when omitted.
+ * @returns the localized name when one is known, else the raw id.
+ */
+export function effortLabel(id: string, inputs: LangInputs = {}): string {
+  /** The known name for this id, when there is one. */
+  const known = EFFORT_LABELS[id]
+  return known === undefined ? id : pick(known, resolveLang(inputs))
+}
+
+/**
+ * Localize one dictionary entry at use and substitute its placeholders.
+ * @param key - the entry id.
+ * @param params - the placeholder values, when the entry has any.
+ * @param inputs - the resolution inputs; process state when omitted.
+ * @returns the text in the active language.
+ */
 export function t(key: TuiTextKey, params?: TuiTextParams, inputs: LangInputs = {}): string {
   return substitute(pick(TUI_TEXT[key], resolveLang(inputs)), params)
 }

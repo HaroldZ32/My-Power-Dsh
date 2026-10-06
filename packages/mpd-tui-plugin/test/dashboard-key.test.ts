@@ -1,5 +1,6 @@
-// The language pin for this process: see `test/__dshtui-lang.ts` for WHY it is required.
-import "./__dshtui-lang"
+// This file's copy assertions are LANGUAGE-INDEPENDENT (they read `t(...)`), so no process-wide
+// language pin is needed any more: the suite passes under no variable, `en` and `zh` alike.
+
 // The Ctrl+A takeover's contract, driven WITHOUT a terminal, a renderer or a live host.
 //
 // The three things these arms pin:

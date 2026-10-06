@@ -1216,6 +1216,17 @@ var TUI_TEXT = {
   "watchdog.later": { zh: "稍后", en: "Later" },
   "watchdog.laterHint": { zh: "保持未读，下次启动再显示", en: "keep them unread; they will be shown again on the next start" }
 };
+var EFFORT_LABELS = {
+  off: { zh: "关闭", en: "off" },
+  low: { zh: "低", en: "low" },
+  medium: { zh: "中", en: "medium" },
+  high: { zh: "高", en: "high" },
+  max: { zh: "最高", en: "max" }
+};
+function effortLabel(id, inputs = {}) {
+  const known = EFFORT_LABELS[id];
+  return known === undefined ? id : pick(known, resolveLang(inputs));
+}
 function t(key, params, inputs = {}) {
   return substitute(pick(TUI_TEXT[key], resolveLang(inputs)), params);
 }
@@ -6975,7 +6986,7 @@ function panelOptions(lists, provider, model, catalog) {
   if (isRecord2(modelRow) && Array.isArray(modelRow.efforts)) {
     for (const entry of modelRow.efforts) {
       if (isRecord2(entry) && typeof entry.id === "string" && entry.id.length > 0) {
-        keyedEfforts.push({ value: entry.id, label: typeof entry.name === "string" && entry.name.length > 0 ? entry.name : entry.id });
+        keyedEfforts.push({ value: entry.id, label: typeof entry.name === "string" && entry.name.length > 0 ? entry.name : effortLabel(entry.id) });
       }
     }
   }

@@ -1,5 +1,11 @@
-// The language pin for this process: see `test/__dshtui-lang.ts` for WHY it is required.
-import "./__dshtui-lang"
+// This file's copy assertions are LANGUAGE-INDEPENDENT (they read `t(...)`), so no process-wide
+// language pin is needed any more: the suite passes under no variable, `en` and `zh` alike.
+
+// The arms below assert COPY, which is localized at use now — so the expectation comes from the same
+// dictionary the product reads rather than from a hard-coded English string. Without this the suite
+// only passes under one language and hides every other render (measured: 10 arms went red under
+// `DSH_TUI_LANG=zh`).
+import { t } from "../src/i18n"
 // Unit tests for the data + rendering helpers: the state projection the status
 // line and the board read, the untrusted-input sanitizer, the transcript
 // renderer table, and the log-only event-type registration.
@@ -179,7 +185,7 @@ describe("state projection", () => {
     expect(state.plans.count).toBe(0)
     expect(state.workmates.count).toBe(0)
     expect(statusLine(state)).toContain("mpd:")
-    expect(boardLines(state).join("\n")).toContain("(no work ledger)")
+    expect(boardLines(state).join("\n")).toContain(t("board.noBoulder"))
   })
 
   test("a team READOUT that throws is reported as a note, not as a crash", () => {
@@ -205,10 +211,10 @@ describe("state projection", () => {
     const line = statusLine(readBoardState(workspace, home, FIXTURE_VIEWS.get(workspace) ?? []))
     // 0.1.7: the team has no NAME on the official plane — the readout names the Lead pseudo-row
     // `lead`, and the counts are the board's own (7 tasks, 1 completed).
-    expect(line.startsWith("mpd: team lead 2·1/7")).toBe(true)
-    expect(line).toContain("boulder 1/2")
-    expect(line).toContain("plans 2")
-    expect(line).toContain("workmates 2")
+    expect(line.startsWith("mpd: " + t("status.teamRow", { name: "lead", members: 2, done: 1, total: 7 }))).toBe(true)
+    expect(line).toContain(t("status.boulder", { active: 1, works: 2 }))
+    expect(line).toContain(t("status.plans", { n: 2 }))
+    expect(line).toContain(t("status.workmates", { n: 2 }))
     expect(line.includes("\n")).toBe(false)
   })
 })

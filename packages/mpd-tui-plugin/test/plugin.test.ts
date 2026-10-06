@@ -1,5 +1,7 @@
-// The language pin for this process: see `test/__dshtui-lang.ts` for WHY it is required.
-import "./__dshtui-lang"
+// This file's copy assertions are LANGUAGE-INDEPENDENT (they read `t(...)`), so no process-wide
+// language pin is needed any more: the suite passes under no variable, `en` and `zh` alike.
+
+import { t } from "../src/i18n"
 // Plugin-contract, seam-activation and honesty tests for packages/mpd-tui-plugin.
 //
 // The fakes MODEL THE HOST instead of being permissive:
@@ -1090,7 +1092,7 @@ describe("/mpd command grammar (bare = picker, value = direct, status = print)",
     /** The handler's answer for an action outside the grammar. */
     const unknown = await handler({ rawInput: "nope" })
     expect(unknown.kind).toBe("error")
-    expect(unknown.text).toContain("unknown action")
+    expect(unknown.text).toContain(t("command.unknownAction", { action: "nope", usage: "/mpd [board|team|plan|subagents|workmates|status]" }).split("{")[0].trim())
   })
 })
 
