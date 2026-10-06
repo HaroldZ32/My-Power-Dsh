@@ -301,8 +301,17 @@ function discoverSessionStore(sessionDir: string): string | undefined {
   /** The store files present, newest container version first so a v4 beats a leftover v3 beside it. */
   let stores: string[] = []
   try { stores = readdirSync(sessionDir) } catch { return undefined }
-  /** The store file names this reader recognises, newest version first. */
-  const candidates = stores.filter((name) => /^session\.v\d+\.jsonl\.zstd$/.test(name)).sort().reverse()
+  /** The store file names this reader recognises, NEWEST CONTAINER VERSION first. */
+  const candidates = stores
+    .filter((name) => /^session\.v\d+\.jsonl\.zstd$/.test(name))
+    // The version is compared NUMERICALLY, never lexicographically: a plain `.sort()` would rank a
+    // future `session.v10…` BELOW a `session.v4…` and silently read the older store (a risk the wave's
+    // reviewer named). The file name breaks ties, so the order stays total.
+    .sort((left, right) => {
+      /** The container version parsed out of one store file name (`0` when it has none). */
+      const versionOf = (name: string): number => Number(/^session\.v(\d+)\./.exec(name)?.[1] ?? 0)
+      return versionOf(right) - versionOf(left) || right.localeCompare(left)
+    })
   if (candidates.length === 0) return undefined
   /** The chosen store file, which the existence check below turns into `undefined` if it raced away. */
   const file = join(sessionDir, candidates[0])
