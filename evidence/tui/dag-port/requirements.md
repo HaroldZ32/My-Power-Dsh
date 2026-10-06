@@ -351,7 +351,12 @@ against the host's `stringWidth`, on one glyph on one row. Not a defect.
 
 ## Non-goals
 
-- Web-plane changes: the WEB DAG itself is the REFERENCE and must not be modified.
+- ~~Web-plane changes: the WEB DAG itself is the REFERENCE and must not be modified.~~
+  **SUPERSEDED (2026-10-06) by the `dag-edges-scroll` wave**, whose captain-amended contract is
+  `evidence/dag/dag-edges-scroll/requirements.md`. The user explicitly instructed a change to the WEB
+  DAG's own edge rendering (*"优化WEB界面的依赖DAG的连线渲染…可以用曲线"*), so the WEB DAG stops being a
+  frozen reference for that wave. This non-goal bounded THIS wave (`tui-dag-port`) and still describes
+  what this wave did; it no longer binds anything that comes after it.
 - Porting browser-only behaviours: hover, pixel hairlines, CSS ellipsis, `overflow:auto`, native
   tooltips, DOM reads, `fetch` polling.
 - Any change to the retired vendored `mpd-agent-teams-plugin` body.
