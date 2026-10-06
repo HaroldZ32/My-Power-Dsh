@@ -308,6 +308,42 @@ screenshots. A capture that predates the change it claims to verify is a stale-e
    §11 makes the pack a release step and the closure gate reports it as its own
    `CONTENT-DRIFT-EXPECTED` class (exit 0).
 
+### 8-i18n-gap. R4's boundary: the preset's name and description are the HARNESS's to localize
+
+Reported from the Chinese UI: MPD's preset description is still English. **Confirmed, and it is a
+harness boundary rather than a string this bundle forgot.** Three measurements, each from the
+INSTALLED harness:
+
+1. **The copy is authored by this bundle as plain text.** `presets/mpd.patch.yml` carries
+   `name: "MPD (Main Working Agent)"` and the long `description:` sentence, and the preset row's
+   schema accepts exactly `z.object({ id, name: z.string(), description: z.string(), order, plugins })`
+   (`dsh-agent-preset`) — there is no `descriptions`/locale field to fill in.
+2. **The server serves that string verbatim and the client renders it verbatim.**
+   `dsh-client-ui-agent-preset` renders `preset.description` and `preset.name ?? preset.id` directly;
+   it never routes a description through `t()`.
+3. **The localization the harness DOES have covers only its own presets.**
+   `BUILT_IN_PRESET_KEYS = { standard: {name: "presetStandardName", description:
+   "presetStandardDescription"}, ptc: …, minimal: …, cordis: … }` — a FIXED table keyed by the four
+   built-in preset ids, whose values are keys in the host client's own dictionary
+   (`presetStandardDescription: "包含标准模式的所有能力，…"`). A third-party preset (`mpd`) is not in
+   that table and has no key of its own, so the host falls back to the server's text.
+
+**So there is no supported extension point**: the bundle cannot add a key to `BUILT_IN_PRESET_KEYS`
+(host-owned client code, and §6 forbids patching it), the row schema cannot carry a second language,
+and the client exposes no per-preset description slot. The harness's own four presets are the only
+ones with localized names/descriptions.
+
+**What is left to choose** (a product-copy decision, so it is the user's, not the captain's):
+
+- leave it as English and record the boundary (this section);
+- reword the description to be language-neutral, which loses the specific wording;
+- put the localized explanation on a surface this bundle DOES own — the MPD settings section is
+  already bilingual and is the natural home for "what is this preset", with the preset row keeping a
+  short technical string.
+
+This is also why R4 stays a claim about the surfaces this bundle renders: it does not render the
+preset picker, the composer, or the harness's own settings chrome, and it cannot localize them.
+
 ## 8. Status (updated as the wave lands)
 
 ### 8-zero. The release sweep, run at the end (each failure diagnosed, not assumed)

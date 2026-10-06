@@ -157,6 +157,8 @@ interface CaptureReport {
   base: string
   /** The browser locale the run presented ("" = the host decided). */
   browserLocale?: string
+  /** How many graph nodes the panel had drawn once the board was seeded. */
+  teamPanelNodesAfterSeed?: number
   /** The workspace directory handed to the created session. */
   workspace: string
   /** The `[width, height]` viewport the capture used. */
@@ -741,34 +743,54 @@ await step("06-team-panel", async () => {
 // WHY A REAL MOUSE MOVE: the chain is driven by the node's own `onMouseEnter`, so a synthetic
 // `dispatchEvent` would prove nothing about what a person's pointer does. The box is read first and
 // the pointer is moved to its centre, which is the same path a human takes.
-await step("07-team-graph-interaction", async () => {
-  // ── CLOSE THE SEEDING RACE, THEN WITNESS THE GRAPH ─────────────────────────────────────────────
-  // NOTE THE ORDER, because it is the whole fix: the panel is opened FIRST (step 06), so the route it
-  // asks about is OBSERVED (`report.teamPanelSession`) rather than guessed, and only then is that
-  // session seeded. The view re-reads every 2s, so the very next poll renders the board — no reload,
-  // and no dependence on which session the app decided to display.
+// THE PANEL IS OPENED FIRST, THEN THE BOARD IS SEEDED FOR THE SESSION IT OBSERVED, THEN the graph is
+// read — and the ORDER is the whole fix. MEASURED 2026-10-06, twice: seeding from
+// `report.teamPanelSession` inside step 07 cannot work, because that value is only OBSERVED at the end
+// of step 06 while the seed has to happen BEFORE the read; and seeding the session the DRIVER created
+// cannot work either, because the app renders one of its own choosing. Binding the board to the session
+// the PANEL asks about is the only version that is true by construction, and it needs the panel to have
+// polled once so that question exists.
+await step("06b-team-board-seed", async () => {
+  // TWO ROUTES TO THE SAME GUARANTEE, and the ORDER between them is the point.
   //
-  // An earlier shape of this step seeded a session the DRIVER created and then reloaded the page; it
-  // could never work, because the app still chose a different session after the reload.
-  if (report.teamPanelSession !== undefined && report.teamPanelSession !== "") {
+  // MEASURED 2026-10-06: the panel's own request does NOT always name a session (`teamPanelRoutes` came
+  // back null while the graph rendered perfectly, because the poll had not answered yet at the instant
+  // step 06 sampled it). So this step does not DEPEND on that observation. Step 06's preamble already
+  // seeds the board for EVERY session the store lists, which covers whichever one the app chose to
+  // render; when the panel's own route IS known it is seeded directly as well, which closes the race for
+  // a session created after that preamble ran.
+  //
+  // What this step actually asserts is the thing that matters: THE GRAPH IS ON SCREEN. A seed that did
+  // not reach the rendered session leaves the empty state, and that is a failure here rather than a
+  // silently empty screenshot three steps later.
+  report.teamPanelSession = sessionIdOfRoutes(requestedTeamRoutes)
+  if (report.teamPanelSession !== "") {
     try {
       /** The board module, present when the tooling directory was shipped into the container. */
       const fixture = await import("/tmp/mpd-fixture/team-fixture.mts") as { seedBoard?: (board: "normal" | "malformed", sessionId: string, workspace: string) => unknown }
       if (typeof fixture.seedBoard === "function") {
         fixture.seedBoard(SEED_BOARD, report.teamPanelSession, WORKSPACE)
-        console.log(`[capture] seeded the ${SEED_BOARD} board for the panel's own session ${report.teamPanelSession}`)
-        // The poll interval is 2000ms; two intervals plus a margin is the deterministic wait, and it
-        // is a WAIT FOR A CONDITION rather than a fixed sleep dressed up as one — the loop stops as
-        // soon as a node appears.
-        for (let attempt = 0; attempt < 12; attempt++) {
-          await page.waitForTimeout(700)
-          if ((await page.locator("[data-mpd-node]").count()) > 0) break
-        }
+        console.log(`[capture] re-seeded the ${SEED_BOARD} board for the panel's own session ${report.teamPanelSession}`)
       }
     } catch (error) {
-      console.log("[capture] could not seed the panel's session (" + messageOf(error).slice(0, 90) + ")")
+      throw new Error("could not seed the panel's session: " + messageOf(error).slice(0, 120))
     }
+  } else {
+    console.log("[capture] the panel has not named a session yet; relying on the preamble's per-session seed")
   }
+  // The poll interval is 2000ms; this WAITS FOR THE CONDITION rather than sleeping past it.
+  for (let attempt = 0; attempt < 14; attempt++) {
+    await page.waitForTimeout(700)
+    if ((await page.locator("[data-mpd-node]").count()) > 0) break
+  }
+  /** How many graph nodes the panel drew; zero means the board never reached the rendered session. */
+  const drawn = await page.locator("[data-mpd-node]").count()
+  report.teamPanelNodesAfterSeed = drawn
+  if (drawn === 0) throw new Error("the board never reached the rendered session — the panel is still on its empty state")
+  return shot("06b-team-board")
+})
+
+await step("07-team-graph-interaction", async () => {
   // THE READ HAPPENS AFTER THE SEED LANDS, not before it. MEASURED 2026-10-05: an earlier shape read
   // the graph first and then seeded, so `before` described the EMPTY panel and every choice derived
   // from it (which node to hover) was made against a board that had no nodes — the hover then landed on

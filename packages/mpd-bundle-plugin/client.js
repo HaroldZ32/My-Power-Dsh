@@ -5946,6 +5946,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         { style: SKIN.form },
         createElement("h3", { style: SKIN.title }, t("title")),
         createElement("p", { style: SKIN.description }, t("intro")),
+        // The preset explanation sits beside the intro: same hint treatment, one extra sentence.
+        createElement("p", { style: SKIN.helpText, "data-mpd-preset-about": "1" }, t("presetAbout")),
         disabled
           ? createElement("p", { style: SKIN.note }, t("readOnly"))
           : null,
@@ -5999,6 +6001,17 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       nav: "MPD",
       title: "MPD bundle",
       intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
+      // WHAT THIS BUNDLE'S PRESET IS — carried HERE because the preset picker cannot localize it.
+      //
+      // MEASURED on the installed harness (2026-10-06): a preset's `name`/`description` are plain
+      // strings rendered verbatim by `dsh-client-ui-agent-preset`; only the harness's OWN four presets
+      // are localized, through a FIXED id table (`BUILT_IN_PRESET_KEYS = { standard, ptc, minimal,
+      // cordis }`) whose values are keys in the host client's own dictionary. A third-party preset has
+      // no key and no slot, and §6 forbids patching the host's client code — so the MPD preset's own
+      // English sentence stays English in every language. This row is the localized explanation on a
+      // surface this bundle DOES own.
+      presetAbout:
+        "The \"MPD (Main Working Agent)\" preset is this bundle's main agent: it reads the project's AGENT.md/AGENTS.md/CLAUDE.md, works natively, consults the 11 specialists through mpd_role_spawn, and runs teams on the official Agent Teams plugin. Its description in the preset picker is supplied by the harness as plain text and is not localizable.",
       save: "Save",
       discard: "Discard",
       reset: "Reset to the file value",
@@ -6012,6 +6025,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       nav: "MPD",
       title: "MPD 插件包",
       intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
+      // 这个 bundles 的 preset 是什么 —— 放在这里，是因为 preset 选择器无法本地化它。
+      presetAbout:
+        "「MPD (Main Working Agent)」是本插件包的主工作 agent：读取项目的 AGENT.md/AGENTS.md/CLAUDE.md，原生工作，通过 mpd_role_spawn 一次性咨询 11 位专家，并用官方 Agent Teams 插件跑团队。它在 preset 选择器里的说明由宿主以纯文本提供，无法本地化。",
       save: "保存",
       discard: "放弃",
       reset: "重置为文件值",
@@ -9163,6 +9179,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         { style: SKIN.form },
         createElement("h3", { style: SKIN.title }, t("title")),
         createElement("p", { style: SKIN.description }, t("intro")),
+        // The preset explanation sits beside the intro: same hint treatment, one extra sentence.
+        createElement("p", { style: SKIN.helpText, "data-mpd-preset-about": "1" }, t("presetAbout")),
         disabled
           ? createElement("p", { style: SKIN.note }, t("readOnly"))
           : null,
@@ -9216,6 +9234,17 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       nav: "MPD",
       title: "MPD bundle",
       intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
+      // WHAT THIS BUNDLE'S PRESET IS — carried HERE because the preset picker cannot localize it.
+      //
+      // MEASURED on the installed harness (2026-10-06): a preset's `name`/`description` are plain
+      // strings rendered verbatim by `dsh-client-ui-agent-preset`; only the harness's OWN four presets
+      // are localized, through a FIXED id table (`BUILT_IN_PRESET_KEYS = { standard, ptc, minimal,
+      // cordis }`) whose values are keys in the host client's own dictionary. A third-party preset has
+      // no key and no slot, and §6 forbids patching the host's client code — so the MPD preset's own
+      // English sentence stays English in every language. This row is the localized explanation on a
+      // surface this bundle DOES own.
+      presetAbout:
+        "The \"MPD (Main Working Agent)\" preset is this bundle's main agent: it reads the project's AGENT.md/AGENTS.md/CLAUDE.md, works natively, consults the 11 specialists through mpd_role_spawn, and runs teams on the official Agent Teams plugin. Its description in the preset picker is supplied by the harness as plain text and is not localizable.",
       save: "Save",
       discard: "Discard",
       reset: "Reset to the file value",
@@ -9229,6 +9258,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       nav: "MPD",
       title: "MPD 插件包",
       intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
+      // 这个 bundles 的 preset 是什么 —— 放在这里，是因为 preset 选择器无法本地化它。
+      presetAbout:
+        "「MPD (Main Working Agent)」是本插件包的主工作 agent：读取项目的 AGENT.md/AGENTS.md/CLAUDE.md，原生工作，通过 mpd_role_spawn 一次性咨询 11 位专家，并用官方 Agent Teams 插件跑团队。它在 preset 选择器里的说明由宿主以纯文本提供，无法本地化。",
       save: "保存",
       discard: "放弃",
       reset: "重置为文件值",
