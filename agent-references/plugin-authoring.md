@@ -37,9 +37,10 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   { label })`, binder = ONE deferred `ctx.inject([id], …)` PER SEAM, probe = `ctx.get(id, false)`, and a
   seam that never binds degrades to `absent` rather than failing the boot. The plane's log sink and the
   R5 "never fd 1 or fd 2" rule live there too. Two gates pin it: `no-direct-tui-access` (a NEW direct
-  touch) and `no-terminal-writes` (a NEW terminal write). Full contract, the fourteen seams and the
+  touch) and `no-terminal-writes` (a NEW terminal write). Full contract, the fifteen seams and the
   declared WEB-plane residual: `agent-references/seam-adapters.md`.
-- **ONE DSH-TUI contact is NOT a seam, is COUNTED, and lives in that same adapter (2026-10-05).** The
+- **ONE DSH-TUI contact is NOT a seam, is COUNTED, and lives in that same adapter (2026-10-05) — and
+  since 0.13.0 it is VERSION-GATED: it arms only on a host that has no sidebar panel seam.** The
   host's built-in `dashboard` action owns `Ctrl+A` and no contribution kind can reach it, so the
   adapter resolves the INSTALLED host root and dynamic-imports `<root>/lib/types/ui.js` **by file URL**
   (a package specifier is refused: the host's `exports` map has no `./lib/*` subpath) to obtain the
@@ -54,6 +55,12 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   patched, vendored or written; every failure (no candidate, import error, a `ui.js` without
   `useStdin`) degrades to `hostInput() === undefined` + ONE line with the take-over simply absent.
   Route any future host-internals need through this same adapter — never a second contact site.
+  **The gate (0.13.0)**: the arbiter is `TuiAdapter.panelSeamBound()`, read at apply AND per press
+  (`takeoverArmed()` in `packages/mpd-tui-plugin/src/panel.ts`), because the adapter binds the panel
+  seam through a DEFERRED inject and a late binding must still disarm the contact. With the seam bound
+  the contact registers nothing (one `skipped` outcome names the reason), `Ctrl+A` keeps the host's own
+  dashboard meaning, and `alt+a` / `/mpd panel` route through `tuiPanels.open()` with the full-screen
+  merged scene as the fallback on any refusal.
 - **A patch row NEVER id-targets a host-owned row — binding** (`node scripts/verify-no-host-override.ts`,
   §4). The deployment default preset is the USER's to choose, not the bundle's: `docs/preset-default.md`
   and `node scripts/set-default-preset.ts`.

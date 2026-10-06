@@ -57,7 +57,7 @@ PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
 # `dsh plugin --profile dsh-tui add` against a 0.2.0-rc.2 harness is then REFUSED on peer ranges: the
 # same failure mode measured 2026-09-29 on the 0.11.1/0.2.0-rc.1 pair, which aborted this lane
 # (evidence/docker/client-install/2026-09-29T07-07-01Z).
-TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.12.0}"
+TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.13.0}"
 export TUI_VERSION
 PORT="${MPD_E2E_PORT:-3197}"
 BOOT_BUDGET="${MPD_E2E_BOOT_BUDGET:-300}"

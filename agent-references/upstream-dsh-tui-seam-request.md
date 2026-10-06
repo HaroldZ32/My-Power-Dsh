@@ -4,6 +4,28 @@ Status: DRAFT, prepared 2026-10-02 by the `@mpd-dsh/mpd` bundle wave "mpd-seam-c
 Audience: `ccch1mneyyy/dsh-TUI` (and the `dsh-tui-ecosystem` admission discussion).
 Agent-facing, English-only by the bundle's language policy.
 
+## STATUS UPDATE — 2026-10-06, wave `dsh-tui-013-adaptation` (PARTLY GRANTED)
+
+dsh-tui **0.13.0** ships `ctx.tuiPanels` (host row `dsh-tui-panels`, export
+`@deepseek-harness-tui/dsh-tui/panels`, `tui-profile/` replacing the old
+`dsh-ecosystem-spec/` directory). This bundle has ADOPTED it as its fifteenth `tui*` seam: one
+right-sidebar panel (`id` slug `team`) carries the same merged view the full-screen scene draws — the
+host's curated `subagent` snapshot rows first, then the MPD dependency DAG — opened by MPD's own key
+(`alt+a`) and the new `/mpd panel` command. Measured on the real 0.13.0 host
+(`evidence/tui/lanes/2026-10-06T10-27-53.571Z/`): the registration is confirmed through the host's own
+`list()` read-back (id `act1:team`) and `open()` is accepted; the panel's BODY is not observable in a
+tmux pane capture, which is stated as a bound rather than claimed as a render.
+
+Because the panel seam exists, this bundle's `Ctrl+A` host-input contact is now VERSION-GATED OFF on
+0.13.0 — which was the point of the ask.
+
+**STILL OPEN (unchanged by 0.13.0):** a `tuiPanels` entry is a RIGHT-SIDEBAR panel and still cannot
+enter or extend the host's own subagent dashboard, so the request below (a panel/section contribution
+kind, a `TuiSceneDescriptor.slot`, or an exported dashboard row hook) remains open. The two further
+gaps measured while adopting the seam: `compact` is validated and stored by 0.13.0 but its render slot
+is not mounted (so a plugin cannot honestly claim a compact row), and `open()` returning `true` reaches
+a live consumer without being observable in the rendered pane.
+
 ## What we measured (dsh-tui 0.12.0, installed)
 
 - `TuiSceneDescriptor` is exactly `{ id: string; title?: string; component: React.ComponentType<TuiSceneProps> }`

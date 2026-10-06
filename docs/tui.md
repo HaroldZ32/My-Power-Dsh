@@ -4,13 +4,22 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.12.0** and its built-in admission
-profile. 0.12.0 is the dsh-tui release whose peer ranges cover the whole band this bundle's pinned
-harness sits in — its lists run through `0.1.7-rc.2`, `0.2.0-rc.1` and `0.2.0-rc.2`, where 0.11.2
-stopped at `0.2.0-rc.1` (0.10.1 and 0.10.2 stop at `0.1.5-rc.1`), so it is the only pin that can boot
-against the harness this bundle targets; the compatibility work below was measured on 0.10.1 and is
-re-verified in the Docker end-to-end test (`docker/tui-lane.sh`), which is the only place the TUI
-profile can be exercised end to end.
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.13.0** and its built-in admission
+profile. 0.13.0 is the release that **adds the sidebar panel seam** — host row `dsh-tui-panels`,
+export `@deepseek-harness-tui/dsh-tui/panels` — and that renames the host's own `dsh-ecosystem-spec/`
+directory to `tui-profile/`; this edition adopted the new seam as its **fifteenth** `tui*` seam
+(§3, §3.3). **The pin before it was 0.12.0, and that statement stays readable as history**: 0.12.0 is
+the dsh-tui release whose peer ranges cover the whole band this bundle's pinned harness sits in — its
+lists run through `0.1.7-rc.2`, `0.2.0-rc.1` and `0.2.0-rc.2`, where 0.11.2 stopped at `0.2.0-rc.1`
+(0.10.1 and 0.10.2 stop at `0.1.5-rc.1`), so it was the first pin that could boot against the harness
+this bundle targets; 0.13.0's own `peerDependencies` still end at `0.2.0-rc.2` (read from the
+installed package). **The move touched every carrier in one wave**: the global package and the
+`dsh-tui` profile, the distribution descriptor's `host-tui` ref (`dsh-distribution.json` now carries
+`pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0`), and the QA host spec (`docker/tui-lane.sh`,
+`docker/entrypoint.sh`, `skills/dsh-qa/scripts/tui-mount.ts`'s `TUI_HOST_SPEC` and
+`skills/dsh-qa/scripts/install-dependencies.ts`'s remedy all default to `0.13.0`). The compatibility
+work below was measured on 0.10.1 and is re-verified in the Docker end-to-end test
+(`docker/tui-lane.sh`), which is the only place the TUI profile can be exercised end to end.
 
 > **Read this first.** This repository has **not** published a conformance claim. The claim
 > artifact of that ecosystem (`schemas/conformance-claim.schema.json`, `claimVersion` `"0.15"`,
@@ -23,7 +32,7 @@ profile can be exercised end to end.
 
 | Artifact | Path | What it is |
 |---|---|---|
-| TUI surface package | `packages/mpd-tui-plugin/` | The TUI-native surfaces: status line, `/settings` section, full-screen board scene, `/mpd` command tree, keyboard shortcuts, mediated dialogs, a transcript-renderer **registration the host does not project** (NOT-CLAIMED #10), and the decision-event seam built ready-but-not-activated. |
+| TUI surface package | `packages/mpd-tui-plugin/` | The TUI-native surfaces: the **sidebar team panel** (`src/panel.ts` — the primary entry point for the merged view on 0.13.0, §3.3), status line, `/settings` section, full-screen board scene, `/mpd` command tree, keyboard shortcuts, mediated dialogs, a transcript-renderer **registration the host does not project** (NOT-CLAIMED #10), and the decision-event seam built ready-but-not-activated. |
 | Admission manifest | `dsh-plugin.json` (repo root) | ONE bundle-level Community v0.15 manifest for the whole bundle — a deliberate deviation (see §7). |
 | Environment descriptor | `dsh-distribution.json` (repo root) | A `DistributionDescriptor` for the dsh-distribution meta-protocol (Draft). |
 | TUI composition | `cordis.patch.yml` | Adds the `mpd-tui` row and the `dsh-tui` roster default so a TUI session starts on the **mpd** preset. |
@@ -64,7 +73,7 @@ The bundle's former web-only faces have TUI **equivalents**, not parity:
 
 | Web surface | TUI equivalent | Backed at |
 |---|---|---|
-| Agent Teams panel (conversation header) | `tuiScenes` full-screen board + `tuiStatus` keyed status line | Rendered in the live lane — `evidence/tui/live/20260915T063140Z/result.json` (t8; 6 of 7 surfaces) |
+| Agent Teams panel (conversation header) | the **`tuiPanels` sidebar panel** — the primary entry point on 0.13.0 (§3.3) — with the `tuiScenes` full-screen board as its FALLBACK, plus the `tuiStatus` keyed status line | registration + a host-ACCEPTED open measured on 0.13.0 — `evidence/tui/lanes/2026-10-06T10-27-53.571Z/` and `…/2026-10-06T10-28-57.807Z/`, where the id discovered from the host's own read-back is `act1:team`; the full-screen scene rendered in the 0.10.1-era live lane `evidence/tui/live/20260915T063140Z/result.json` (t8; 6 of 7 surfaces) |
 | Workmate library tab | `tuiCommandTrees` (`/mpd …`) + `tuiDialogs` | same lane evidence |
 | — | `tuiStatus` status line; the `tuiRenderers` transcript row is **not projected by the host** | status line rendered; renderer row **does not render** — see NOT-CLAIMED #10 |
 | — | `tuiSettingsSections` (`/settings` section for the mpd.jsonc knobs) | rendered — same lane evidence; the section states the **bridge** to `<workspace>/.mpd/mpd.jsonc`, its restart caveat and the never-lost clause (§6.2), and the lane asserts that disclosure text (`allPatterns`) |
@@ -79,6 +88,14 @@ asset, system-prompt section, profile composition); **one (`tuiPrompt`) is host-
 not claimed at all**; and **one (`tuiRenderers`) registers while the host projects no transcript
 row, so its transcript line is not claimed either** — the same explicit treatment as `tuiPrompt`,
 recorded as NOT-CLAIMED #10.
+
+**The seam inventory is FIFTEEN `tui*` seams since 0.13.0, and `tuiPanels` is the one that is new.**
+The adapter's single-source table (`TUI_SEAMS` in `packages/mpd-tui-adapter-plugin/src/index.ts`) now
+carries the fourteen seams dsh-tui has exposed since 0.12.0 plus the sidebar panel registry 0.13.0
+added — the count moved 14 → 15 in this wave — each bound, probed and degraded by the same discipline:
+ONE deferred `ctx.inject([id], …)` per seam, `ctx.get(id, false)` as the probe, and a seam that never
+binds reported `absent` instead of failing the boot. The "thirteen" paragraph above is the record of
+the first wave's scope and stays as written.
 
 ### 3.1 The Web GUI settings UI (Settings → MPD)
 
@@ -117,9 +134,9 @@ refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the 
 
 ### 3.2 The team-workflow and plan surfaces (wave `tui-team-surface`)
 
-The TUI command tree exposes `/mpd team` and `/mpd plan`
+The TUI command tree exposes `/mpd team`, `/mpd plan` and — since the 0.13.0 adaptation — `/mpd panel`
 (`packages/mpd-tui-plugin/src/command-trees.ts` is the action list: `board`, `team`, `plan`,
-`workmates`, `status`), alongside the keyed status line and the board scene.
+`subagents`, `panel`, `workmates`, `status`), alongside the keyed status line and the board scene.
 
 **The approval gate is BACK on the mpd plan plane, and this section states it plainly.** The first
 implementation called the now-RETIRED vendored `agent-teams` tools (`agent_teams_approve`,
@@ -181,6 +198,36 @@ official service: the file-backed actions of `agent_teams_plan` / `agent_teams_t
 own live readout, wait-for-change and teammate messaging — fails with the adapter naming the service it
 could not resolve. A TUI session cannot spawn a teammate today through the official plane — that is the
 limit, not a configuration mistake.
+
+### 3.3 The sidebar panel seam — the primary entry point on 0.13.0, and its honest bound
+
+`packages/mpd-tui-plugin/src/panel.ts` registers **ONE** right-sidebar panel through the new
+`ctx.tuiPanels` seam, whose body is the **merged** view: the host's own curated subagent snapshot rows
+first, then the MPD dependency DAG for the current workspace's team, drawn by the same projections the
+full-screen merged scene uses. The descriptor is frozen: slug `team`, title `MPD`, `minColumns` 32,
+`order` 10, and **no `compact`** — 0.13.0 validates and stores a descriptor's `compact` slot but does
+not mount its render slot, so declaring one would claim a surface that cannot render. The final panel
+id is **discovered from the host's own `list()` read-back**, never composed — measured `act1:team`,
+the slug prefixed by the host with this activation's plugin id.
+
+`alt+a` and the new **`/mpd panel`** subcommand both route through `tuiPanels.open()` while the seam is
+bound. On **any** refusal — the one-open-per-plugin-per-5000 ms rate limit, an id the host no longer
+owns, or no live panel consumer — they **fall back to the existing full-screen merged scene**
+(`mpd-tui-subagents`) and the printed line names the surface actually reached; nothing on that path is
+a silent no-op.
+
+**Backed at `Observed`:** the registration, the id discovered from the host's read-back and the
+host-ACCEPTED open, recorded by the 0.13.0 real-PTY lanes
+(`evidence/tui/lanes/2026-10-06T10-27-53.571Z/` and `…/2026-10-06T10-28-57.807Z/`), each with its own
+negative control red as required.
+
+**BOUND — the panel BODY is not observable in a tmux pane capture on this host.** Measured: after
+`/mpd panel` reported a host-ACCEPTED open, the 320×50 capture was **byte-identical** to the capture
+taken immediately before it, and `alt+a` changed nothing at all. The lane therefore proves
+**registration + `open()` + the discovered id, NOT a render** — the panel bar and the body are not
+claimed — and the merge itself is asserted by the unit suites (`panel.test.ts` 16/0,
+`subagent-scene.test.ts` 23/0 and `graph.test.ts` 25/0 on this revision), never by a capture. Every run
+records this as `panelBodyBound`.
 
 ## 4. Admission and distribution artifacts
 
@@ -289,7 +336,10 @@ DECISION-EVENT input, rewind, session-switch or compact interception is claimed 
 `dashboard` action owns `Ctrl+A`, so `packages/mpd-tui-adapter-plugin` obtains the host's own
 `useStdin` by file URL and a zero-row status view pre-empts that key on the host's input bus — see §7's
 "Host input bus" row. It is a key re-point, not a decision-event subscription, and it fires only while
-the workspace's team projection holds a team with at least one task.) The manifest declares the seam as an
+the workspace's team projection holds a team with at least one task. **Since 0.13.0 that contact is
+VERSION-GATED**: on a host that offers the sidebar panel seam it stays INERT — `Ctrl+A` keeps the
+host's own dashboard meaning and the merged view opens through `alt+a` / `/mpd panel` (§3.3) — and only
+a host WITHOUT the seam keeps the pre-0.13.0 arming behaviour.) The manifest declares the seam as an
 optional requirement with a fallback, and the upstream fix that would make admission reachable is
 documented in the research record (`.mpd/recon/UPSTREAM-RESEARCH.md`).
 
@@ -425,7 +475,7 @@ converges.* This is the one place where the two doors can legitimately disagree 
 | Package name | `@mpd-dsh/mpd-tui` | Keeps this bundle's namespace; the ecosystem uses its own naming. |
 | Licence | SUL-1.0 (`LICENSE.md`) | Unchanged by this edition; no artifact claims a licence change. |
 | Manifests | **ONE** bundle-level `dsh-plugin.json`, never 25 per-package manifests | The bundle installs as one unit; the manifest's host facet points at the one TUI plugin module. |
-| Host input bus | ONE counted contact outside the seams: the adapter resolves the INSTALLED host root and dynamic-imports `<hostRoot>/lib/types/ui.js` **by file URL** to obtain the host's own `useStdin` | `Ctrl+A` is a host built-in action that no contribution kind can reach, so the alternative was dropping the requirement. The contact is confined to `mpd-tui-adapter-plugin`, patches no host file, and depends on module identity by URL. Measured on 0.12.0, that import is a FOREIGN instance whose `useStdin()` answers nothing, so the adapter also stores the live kit a SCENE render receives and prefers it — which is why the take-over arms after the session has rendered any MPD panel or scene, and stays inert before that. Two further host rules are obeyed inside the adapter: a status registration's identity must be the CALLING ACTIVATION (the injected scope), and no DSH-TUI file is written. The real-PTY lane `tui-deps-ctrla` is the falsifier. |
+| Host input bus | ONE counted contact outside the seams, and since 0.13.0 a **VERSION-GATED** one: the adapter resolves the INSTALLED host root and dynamic-imports `<hostRoot>/lib/types/ui.js` **by file URL** to obtain the host's own `useStdin` — but only while the `tuiPanels` seam is **ABSENT** | `Ctrl+A` is a host built-in action that no contribution kind can reach, so on a pre-0.13.0 host the alternative was dropping the requirement. **The gate:** on a host that OFFERS the panel seam (0.13.0+) the contact stays **INERT** — `Ctrl+A` keeps the host's own dashboard meaning and the merged view opens through `alt+a` / `/mpd panel` (§3.3), which the 0.13.0 real-PTY lane measured (`evidence/tui/lanes/2026-10-06T10-28-57.807Z/`: the host's own dashboard opened, and `/mpd panel` proved the sidebar registration + accepted open); on a host WITHOUT the seam (0.12.0) the old behaviour is unchanged — the contact arms when `tui.dashboardKey` is on and the workspace's team projection holds a team with at least one task. `tui.dashboardKey` therefore stays in the config schema and the `/settings` row, documented as meaningful on OLD hosts only. The per-press rule lives in ONE function, `takeoverArmed` in `packages/mpd-tui-plugin/src/panel.ts` (the seam WINS over every config layer; only without the seam does the saved value, else the row config's floor, decide), and the adapter's `panelSeamBound()` is read PER PRESS, not only at apply time. **History (measured on 0.12.0, kept as the record it is):** that import is a FOREIGN instance whose `useStdin()` answers nothing, so the adapter also stores the live kit a SCENE render receives and prefers it — which is why the take-over arms after the session has rendered any MPD panel or scene, and stays inert before that. Two further host rules are obeyed inside the adapter: a status registration's identity must be the CALLING ACTIVATION (the injected scope), and no DSH-TUI file is written. **Bound:** no 0.12.0 PTY arm was obtained in this wave (§11.3), so the old-host arming path rests on unit arms rather than on a pane capture. |
 
 ## 8. Per-package compatibility ledger
 
@@ -555,7 +605,11 @@ Nothing in this section is a working feature.
    single-boot cross-run reproduced that a *fresh* event type renders while this already-known one
    does not (`CORRECTION-renderer-causation.md` in the same evidence directory), which narrows the
    cause to the host's deny-list capture order instead of "no renderer row can be produced"; the
-   disposition is unchanged.
+   disposition is unchanged. **Re-measured on 0.13.0 (2026-10-06): still MISSING** — the surfaces lane
+   renders the other seven of its eight surfaces and reads `tuiRenderers=MISSING`
+   (`evidence/tui/lanes/2026-10-06T10-27-53.571Z/`), so the gap is unchanged by the 0.13.0 adaptation
+   and remains the pre-existing structural gap already declared in `evidence/tui/EVIDENCE-INDEX.md`;
+   the lane exits 1 on that required surface rather than weakening it to keep a green exit.
 11. **A teammate CAN now be spawned in a TUI session — this item used to say it could not.** The
    official Agent Teams service still cannot activate under the dsh-tui host: the host refuses the
    root-fiber effect the plugin's own `ctx.root.sessionProjections.register(...)` creates, so
@@ -632,3 +686,47 @@ and re-measures what they touched:
 | §11 revision binding, entry digest | `packages/mpd-tui-plugin/dist/index.js` sha256 `cf4b3813…`, 105305 bytes | re-pinned by digest in `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/REVISION.json` — the delivered entry plus every source file this wave touched |
 | §11 R3 row | `bun run test:qa` PASSES | **PASSES again** — the captain re-pinned `VENDOR_LOCK.json` `assets.skills` (319 files / treeSha `303e1631…`) together with the corpus change in one commit, and the verification task was retried green. Both the re-pin value and the sweep are in `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/`; `docs/tui-parity.md` §7 repeats them |
 | The parity question itself | the surface set was described per lane | answered row by row for every Web-edition surface in `docs/tui-parity.md` (+ zh-CN): status, reason, and the evidence level of each row |
+
+### 11.3 Amendment after the DSH-TUI 0.13.0 adaptation wave (2026-10-06)
+
+The rows above stay as written for the revision and the host they measured. This wave moved the target
+host one release on and adopted the seam that release added, so the following supersedes them:
+
+| Superseded statement | Was | Is (measured 2026-10-06) |
+|---|---|---|
+| This page's target host (§ preamble) | `@deepseek-harness-tui/dsh-tui` **0.12.0** and its built-in admission profile | **0.13.0** — the release that adds the sidebar panel seam (host row `dsh-tui-panels`, export `./panels`) and renames the host's `dsh-ecosystem-spec/` to `tui-profile/`. The 0.12.0 sentence stays above as history; the same wave moved the distribution pin (`dsh-distribution.json`'s `host-tui` ref) and the QA host spec (`docker/tui-lane.sh`, `docker/entrypoint.sh`, `skills/dsh-qa/scripts/tui-mount.ts`, `skills/dsh-qa/scripts/install-dependencies.ts`) |
+| §3 seam inventory | fourteen `tui*` seams, i.e. the set dsh-tui has exposed since 0.12.0 | **fifteen** — `TUI_SEAMS.panels` (`tuiPanels`) is the addition, bound/probed/degraded like every other seam (§3) |
+| §3 Agent Teams panel row | `tuiScenes` full-screen board + `tuiStatus` keyed status line | the **`tuiPanels` sidebar panel is the primary entry point** and the full-screen scene is its fallback, for both `alt+a` and the new `/mpd panel` (§3.3); the command action list is now `board`, `team`, `plan`, `subagents`, `panel`, `workmates`, `status` |
+| §7 "Host input bus" row | the `Ctrl+A` host-input contact armed from 2026-10-05 whenever the workspace team had ≥1 task | **version-gated**: INERT on a host that offers the panel seam (0.13.0+), unchanged on a host without it (0.12.0); `tui.dashboardKey` is schema/`/settings`-retained and meaningful on old hosts only |
+| §10 item #10 (`tuiRenderers`) | MISSING on the 0.10.1-era live lane (6 of 7 surfaces) | **still MISSING on 0.13.0** — the surfaces lane renders 7 of its 8 surfaces and exits 1 on this required one (`evidence/tui/lanes/2026-10-06T10-27-53.571Z/`); unchanged by this wave |
+
+**The evidence of this wave, and its bounds — the bounds are part of the claim, not a footnote.**
+
+- **Mount lane PASS** — `evidence/tui/lanes/2026-10-06T10-27-42.389Z/`: an `mpd` preset session on the
+  0.13.0 host with our keyed status line, the counters, zero apply-crash signatures and
+  `isolationOffenders=0`.
+- **Surfaces lane** — `evidence/tui/lanes/2026-10-06T10-27-53.571Z/`: 7 of 8 surfaces rendered (status
+  line, `/mpd` completion, the `/mpd workmates` command, the sidebar panel registration + open, the
+  board scene, the `/settings` section with its disclosure, the managed dialog), with the negative
+  control red as required — and exit **1** on the required `tuiRenderers` surface, which is the
+  pre-existing gap above, not a regression of this wave.
+- **`Ctrl+A` lane PASS** — `evidence/tui/lanes/2026-10-06T10-28-57.807Z/`: the host's own `Ctrl+A`
+  dashboard opened (the legacy contact stayed INERT, as the version gate requires) and `/mpd panel`
+  proved the sidebar registration + a host-ACCEPTED open. The full lane report, including the raw
+  command lines and both negative controls, is
+  `evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`.
+- **BOUND (a) — the panel BODY is not pane-capturable on this host.** After a host-ACCEPTED open the
+  320×50 capture was byte-identical to the one taken immediately before it, so this wave proves
+  registration + `open()` + the id discovered from the host's `list()` read-back (`act1:team`) — **NOT
+  a render**; §3.3 states it, and every run records it as `panelBodyBound`.
+- **BOUND (b) — `tuiRenderers` is still MISSING** (a pre-existing structural gap already declared in
+  `evidence/tui/EVIDENCE-INDEX.md`, not caused by this wave).
+- **BOUND (c) — no 0.12.0 PTY arm was obtained.** A clean 0.12.0 sandbox needs `dsh plugin add`, which
+  is blocked here by the read-only pnpm store lock (the fixture that exists is a MIXED-version
+  composition and never reaches a chat screen), so the old-host arming path rests on unit arms:
+  `takeoverArmed` in `packages/mpd-tui-plugin/test/panel.test.ts` (16 pass / 0 fail on this revision,
+  including "the SEAM WINS: a bound panel seam forbids interception whatever the config layers say")
+  and the legacy-host arm in `packages/mpd-tui-plugin/test/plugin.test.ts` — which **could not be
+  loaded at all** here (`TypeError: require() async module … cosmokit/lib/index.ts is unsupported`, a
+  pre-existing module-resolution error in the retired adopted plugin's vendored `_deps`), so that arm
+  is **not** claimed as evidence.

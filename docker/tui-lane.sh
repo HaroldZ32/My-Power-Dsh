@@ -55,7 +55,7 @@ WORK_DIR="${WORK_DIR:?}"
 # Same default as docker/entrypoint.sh, and for the same reason: 0.12.0 is the dsh-tui release whose
 # peer ranges cover the whole band this lane runs (up to and including 0.2.0-rc.2), while 0.11.2 stopped
 # at 0.2.0-rc.1 and is REFUSED against a 0.2.0-rc.2 harness. Keep the two in step.
-TUI_VERSION="${TUI_VERSION:-0.12.0}"
+TUI_VERSION="${TUI_VERSION:-0.13.0}"
 # The apparatus library (docker/lib/live-verdict.ts) and the caller's live-arm switch. Both are handed
 # over by docker/entrypoint.sh, which also owns the credential staging — the TUI cannot run a real
 # turn without them, and a missing LIB_DIR then reddens live.tui.* instead of passing silently.

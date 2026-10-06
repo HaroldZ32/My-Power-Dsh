@@ -3,10 +3,18 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.12.0** 及其内置的准入
-（admission）配置文件。0.12.0 是 peer 范围覆盖本 bundle 所钉 harness 整段区间的 dsh-tui 版本 ——
-其列表一路列到 `0.1.7-rc.2`、`0.2.0-rc.1` 与 `0.2.0-rc.2`，而 `0.11.2` 只到 `0.2.0-rc.1`（0.10.1 与
-0.10.2 只到 `0.1.5-rc.1`），因此只有它能与本 bundle 所针对的 harness 一起启动；下文的兼容性
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.13.0** 及其内置的准入
+（admission）配置文件。0.13.0 是**新增侧栏面板接缝**的那个版本——宿主 row 为 `dsh-tui-panels`，
+导出为 `@deepseek-harness-tui/dsh-tui/panels`——它同时把宿主自己的 `dsh-ecosystem-spec/` 目录更名为
+`tui-profile/`；本版本把这条新接缝采纳为**第十五条** `tui*` 接缝（§3、§3.3）。**此前的钉定版本是
+0.12.0，那段表述作为历史保持可读**：0.12.0 是 peer 范围覆盖本 bundle 所钉 harness 整段区间的 dsh-tui
+版本 —— 其列表一路列到 `0.1.7-rc.2`、`0.2.0-rc.1` 与 `0.2.0-rc.2`，而 `0.11.2` 只到 `0.2.0-rc.1`
+（0.10.1 与 0.10.2 只到 `0.1.5-rc.1`），因此它是第一个能与本 bundle 所针对的 harness 一起启动的版本；
+0.13.0 自身 `peerDependencies` 的末端同样是 `0.2.0-rc.2`（读自已安装的包）。**这次移动在同一个波次里
+改动了每一个载体**：全局包与 `dsh-tui` profile、分发描述符的 `host-tui` 引用（`dsh-distribution.json`
+现为 `pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0`），以及 QA 宿主规格（`docker/tui-lane.sh`、
+`docker/entrypoint.sh`、`skills/dsh-qa/scripts/tui-mount.ts` 的 `TUI_HOST_SPEC` 与
+`skills/dsh-qa/scripts/install-dependencies.ts` 的修复命令，默认值现均为 `0.13.0`）。下文的兼容性
 测量是在 0.10.1 上做的，并已在 Docker 端到端测试（`docker/tui-lane.sh`）中重新验证 —— 那也是
 唯一能端到端跑通 TUI profile 的地方。
 
@@ -20,7 +28,7 @@
 
 | 产物 | 路径 | 说明 |
 |---|---|---|
-| TUI 界面包 | `packages/mpd-tui-plugin/` | TUI 原生界面：状态行、`/settings` 区块、全屏面板场景、`/mpd` 命令树、快捷键、受中介的对话框、**宿主未投影**的转写渲染器注册（明确不声明第 10 条），以及"就绪但未激活"的决策事件接缝。 |
+| TUI 界面包 | `packages/mpd-tui-plugin/` | TUI 原生界面：**侧栏团队面板**（`src/panel.ts`——0.13.0 上合并视图的主入口，§3.3）、状态行、`/settings` 区块、全屏面板场景、`/mpd` 命令树、快捷键、受中介的对话框、**宿主未投影**的转写渲染器注册（明确不声明第 10 条），以及"就绪但未激活"的决策事件接缝。 |
 | 准入清单 | `dsh-plugin.json`（仓库根目录） | 整个 bundle 的**唯一**一份 Community v0.15 清单——这是刻意的偏离（见 §7）。 |
 | 环境描述符 | `dsh-distribution.json`（仓库根目录） | 面向 dsh-distribution 元协议（Draft）的 `DistributionDescriptor`。 |
 | TUI 组合 | `cordis.patch.yml` | 新增 `mpd-tui` 行与 `dsh-tui` 花名册默认值，使 TUI 会话默认使用 **mpd** 预设。 |
@@ -60,7 +68,7 @@ TUI 会话默认使用 **mpd** 预设，由 id 定向的 `agent-preset-registry`
 
 | Web 界面 | TUI 等价物 | 证据级别 |
 |---|---|---|
-| Agent Teams 面板（会话头部） | `tuiScenes` 全屏面板 + `tuiStatus` 状态行 | 已在实机通道中渲染——`evidence/tui/live/20260915T063140Z/result.json`（t8；7 个界面中 6 个） |
+| Agent Teams 面板（会话头部） | **`tuiPanels` 侧栏面板**——0.13.0 上的主入口（§3.3）——并以 `tuiScenes` 全屏面板作为其**回退**，外加 `tuiStatus` 状态行 | 0.13.0 上实测到注册 + 宿主**接受**的打开——`evidence/tui/lanes/2026-10-06T10-27-53.571Z/` 与 `…/2026-10-06T10-28-57.807Z/`，从宿主自身回读中发现的 id 为 `act1:team`；全屏场景已在 0.10.1 时期的实机通道 `evidence/tui/live/20260915T063140Z/result.json` 中渲染（t8；7 个界面中 6 个） |
 | Workmate 库标签页 | `tuiCommandTrees`（`/mpd …`）+ `tuiDialogs` | 同上（同一实机通道证据） |
 | — | `tuiStatus` 状态行；`tuiRenderers` 转写行**宿主未投影** | 状态行已渲染；渲染器行**未渲染**——见明确不声明第 10 条 |
 | — | `tuiSettingsSections`（mpd.jsonc 可调项的 `/settings` 区块） | 已渲染——同上；该区块写明与 `<workspace>/.mpd/mpd.jsonc` 的**打通**、重启提示与"绝不丢失"条款（§6.2），通道以 `allPatterns` 断言这段披露文本 |
@@ -73,6 +81,13 @@ TUI 会话默认使用 **mpd** 预设，由 id 定向的 `agent-preset-registry`
 profile 组合）；**1 个（`tuiPrompt`）宿主不提供，完全不声明**；**另 1 个（`tuiRenderers`）虽已注册，
 但宿主不投影任何转写行，因此其转写行同样不声明**——与 `tuiPrompt` 采用同一种明确处理，记为明确不
 声明第 10 条。
+
+**自 0.13.0 起，接缝清单是十五条 `tui*` 接缝，其中新增的那条是 `tuiPanels`。**
+适配器的单一事实表（`packages/mpd-tui-adapter-plugin/src/index.ts` 中的 `TUI_SEAMS`）如今承载
+dsh-tui 自 0.12.0 起就暴露的十四条接缝，加上 0.13.0 新增的侧栏面板注册表——本波次把计数从 14 移到
+15——每一条都按同一套纪律绑定、探测与降级：每条接缝一次延迟 `ctx.inject([id], …)`，以
+`ctx.get(id, false)` 作探针，永不绑定的接缝报 `absent`，而不是让启动失败。上面那段"13 个接缝"是首个
+波次范围的记录，保持原样。
 
 ### 3.1 Web 界面的设置界面（设置 → MPD）
 
@@ -103,9 +118,9 @@ revision 驱动 scope 写入、拒绝非法草稿、带原因渲染为只读—�
 
 ### 3.2 团队工作流与计划界面（波次 `tui-team-surface`）
 
-TUI 命令树暴露 `/mpd team` 与 `/mpd plan`
+TUI 命令树暴露 `/mpd team`、`/mpd plan`，以及自 0.13.0 适配起新增的 `/mpd panel`
 （`packages/mpd-tui-plugin/src/command-trees.ts` 就是动作清单：`board`、`team`、`plan`、
-`workmates`、`status`），以及带 key 的状态行与看板场景。
+`subagents`、`panel`、`workmates`、`status`），以及带 key 的状态行与看板场景。
 
 **批准闸门已经回到 mpd 的 plan 平面，本节如实写明。** 最初的实现调用的是已退役的内置
 `agent-teams` 工具（`agent_teams_approve`、`agent_teams_delete`），并依赖持久的
@@ -154,6 +169,30 @@ TUI 会话仍然拥有的东西：`/mpd team` 场景、`/mpd plan` 场景与状�
 走的是 mpd 记录自己的 **native 执行器**（基于 `ctx.subagents`），并不依赖官方服务。仍由官方服务承担的部分
 —— 它自己的实时读数、等待变更与队友消息 —— 会由适配器报出它无法解析的服务名而失败。今天的 TUI 会话无法
 通过官方平面创建队友 —— 这是能力边界，不是配置失误。
+
+### 3.3 侧栏面板接缝——0.13.0 上的主入口，以及它诚实的边界
+
+`packages/mpd-tui-plugin/src/panel.ts` 通过新的 `ctx.tuiPanels` 接缝注册**唯一一个**右侧栏面板，
+其主体就是那份**合并视图**：先是宿主自己整理的子代理快照行，随后是当前工作区团队的 MPD 依赖 DAG，
+用的是与全屏合并场景相同的投影。描述符是冻结的：slug 为 `team`，标题为 `MPD`，`minColumns` 为 32，
+`order` 为 10，并且**不带 `compact`**——0.13.0 会校验并保存描述符的 `compact` 槽位，但**不挂载**
+它的渲染槽，声明它就等于声明一个无法渲染的界面。最终面板 id 是**从宿主自身的 `list()` 回读中发现
+的**，绝不自行拼接——实测为 `act1:team`，即宿主给 slug 加上本次激活的插件 id 前缀。
+
+`alt+a` 与新增的 **`/mpd panel`** 子命令在接缝已绑定时都经 `tuiPanels.open()` 打开。**任何**拒绝
+情形——每插件每 5000 ms 只允许一次打开、宿主已不再持有的 id、或没有存活的 panel 消费者——都会
+**回退到既有的全屏合并场景**（`mpd-tui-subagents`），并且打印出的那一行会说明实际到达的界面；
+这条路径上没有任何静默的空操作。
+
+**证据级别为 `Observed`：** 注册、从宿主回读中发现的 id、以及宿主**接受**的打开，均由 0.13.0 的真机
+PTY 通道记录（`evidence/tui/lanes/2026-10-06T10-27-53.571Z/` 与 `…/2026-10-06T10-28-57.807Z/`），
+两者的负向对照都按要求为红。
+
+**边界——在本宿主上，面板主体无法在 tmux pane 抓取中观察到。**实测：`/mpd panel` 报告宿主
+**接受**了打开之后，320×50 的抓取与紧接其前的那次抓取**逐字节相同**，而 `alt+a` 完全没有任何变化。
+因此该通道证明的是**注册 + `open()` + 发现的 id，而不是渲染**——面板栏与面板主体均不声明——合并
+本身由单元测试套件断言（本修订上 `panel.test.ts` 16/0、`subagent-scene.test.ts` 23/0、
+`graph.test.ts` 25/0），绝不靠抓取。每一次运行都以 `panelBodyBound` 记录这一点。
 
 ## 4. 准入与分发产物
 
@@ -246,7 +285,10 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 决策事件式的输入、回退、会话切换或压缩拦截。**（自 2026-10-05 起确实有一个按键被接管，但走的是完全不同的
 机制：宿主的**内建** `dashboard` 动作占有 `Ctrl+A`，因此 `packages/mpd-tui-adapter-plugin` 按文件 URL
 取得宿主自己的 `useStdin`，再由一个零行状态视图在宿主输入总线上抢先处理该键——见 §7 的"宿主输入总线"一行。
-那是**按键改指**，不是决策事件订阅，且只在工作区的团队投影含有一个至少带一项任务的团队时生效。）清单将该
+那是**按键改指**，不是决策事件订阅，且只在工作区的团队投影含有一个至少带一项任务的团队时生效。
+**自 0.13.0 起该接触面是版本门控的**：在提供侧栏面板接缝的宿主上它保持**惰性**——`Ctrl+A` 保留宿主
+自己的 dashboard 语义，合并视图改经 `alt+a` / `/mpd panel` 打开（§3.3）——只有在**没有**该接缝的宿主上
+才沿用 0.13.0 之前的就绪行为。）清单将该
 接缝声明为带降级说明的可选要求；使其可用的上游修复记录在研究文档（`.mpd/recon/UPSTREAM-RESEARCH.md`）中。
 
 相关：`trusted-in-process` 是**兼容性/审计标签，不是安全边界**。SHA-256 摘要只能证明字节一致，
@@ -363,7 +405,7 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 | 包名 | `@mpd-dsh/mpd-tui` | 保持本 bundle 的命名空间；生态使用自己的命名。 |
 | 许可证 | SUL-1.0（`LICENSE.md`） | 本版本未改动；任何产物都不得声明许可证变更。 |
 | 清单 | **唯一**一份 bundle 级 `dsh-plugin.json`，而非 25 份逐包清单 | 本 bundle 作为一个整体安装；清单的 host facet 指向唯一的 TUI 插件模块。 |
-| 宿主输入总线 | 接缝之外**唯一**被计数的接触面：适配器解析**已安装**宿主的根目录，按**文件 URL** 动态 import `<hostRoot>/lib/types/ui.js`，取得宿主自己的 `useStdin` | `Ctrl+A` 是宿主的内建动作，任何贡献类型都够不到它，否则就只能放弃这条需求。接触面只存在于 `mpd-tui-adapter-plugin`，不补丁任何宿主文件，且依赖**按 URL 的模块同一性**。在 0.12.0 上实测：这份 import 得到的是**另一份**模块实例，其 `useStdin()` 什么也不返回，因此适配器还会保存**场景渲染**收到的那份活 kit 并优先使用它——这正是接管会在"本次会话渲染过任一 MPD 面板或场景"之后就绪、在那之前保持惰性的原因。适配器内部还遵守另外两条宿主规则：状态类注册的 identity 必须是**正在调用它的激活**（注入 scope），并且不写入任何 DSH-TUI 文件。真机 PTY 用例 `tui-deps-ctrla` 就是它的反证器。 |
+| 宿主输入总线 | 接缝之外**唯一**被计数的接触面，且自 0.13.0 起是一个**版本门控**的接触面：适配器解析**已安装**宿主的根目录，按**文件 URL** 动态 import `<hostRoot>/lib/types/ui.js`，取得宿主自己的 `useStdin`——但仅在 `tuiPanels` 接缝**缺席**时如此 | `Ctrl+A` 是宿主的内建动作，任何贡献类型都够不到它，所以在 0.13.0 之前的宿主上，另一条路只能是放弃这条需求。**门控规则：** 在**提供**面板接缝的宿主（0.13.0+）上该接触面保持**惰性**——`Ctrl+A` 保留宿主自己的 dashboard 语义，合并视图改经 `alt+a` / `/mpd panel` 打开（§3.3），这一点由 0.13.0 真机 PTY 通道实测（`evidence/tui/lanes/2026-10-06T10-28-57.807Z/`：宿主自己的 dashboard 被打开，且 `/mpd panel` 证明了侧栏注册 + 被接受的打开）；在**没有**该接缝的宿主（0.12.0）上旧行为不变——当 `tui.dashboardKey` 打开且工作区团队投影含有至少一项任务时接触面就绪。因此 `tui.dashboardKey` 仍留在配置 schema 与 `/settings` 行里，但文档写明它**只在旧宿主**上有意义。逐次按键的规则只存在于一个函数里——`packages/mpd-tui-plugin/src/panel.ts` 的 `takeoverArmed`（**接缝优先**于任何配置层；只有没有接缝时才由已保存值、否则由行配置的下限决定），而适配器的 `panelSeamBound()` 是**每次按键**读取的，不只是应用期读一次。**历史（在 0.12.0 上实测，按记录原样保留）：** 那份 import 得到的是**另一份**模块实例，其 `useStdin()` 什么也不返回，因此适配器还会保存**场景渲染**收到的那份活 kit 并优先使用它——这正是接管会在"本次会话渲染过任一 MPD 面板或场景"之后就绪、在那之前保持惰性的原因。适配器内部还遵守另外两条宿主规则：状态类注册的 identity 必须是**正在调用它的激活**（注入 scope），并且不写入任何 DSH-TUI 文件。**边界：** 本波次没有取得 0.12.0 的 PTY 证据（§11.3），因此旧宿主的就绪路径靠单元测试而非 pane 抓取支撑。 |
 
 ## 8. 逐包兼容性台账
 
@@ -471,7 +513,11 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
    证实**，两种解释都在宿主侧。`register()` 返回函数并不能证明任何事，因为被拒绝时返回的是同一个空操作
    disposer；正因如此，本包对该接缝只报 `requested`，从不报 `confirmed`。之后的一次单进程交叉运行复现
    了"全新事件类型会渲染、这个已知类型不会"（同目录 `CORRECTION-renderer-causation.md`），这把原因
-   收窄到宿主的拒绝名单捕获顺序，而不是"任何渲染行都无法产生"；处置结论不变。
+   收窄到宿主的拒绝名单捕获顺序，而不是"任何渲染行都无法产生"；处置结论不变。**在 0.13.0 上重新
+   测量（2026-10-06）：仍然 MISSING**——界面通道渲染了它八个界面中的另外七个，读出
+   `tuiRenderers=MISSING`（`evidence/tui/lanes/2026-10-06T10-27-53.571Z/`），因此该缺口并未因
+   0.13.0 适配而改变，仍是 `evidence/tui/EVIDENCE-INDEX.md` 中已声明的既有结构性缺口；通道在该必需
+   界面上退出码为 1，而不是把它弱化以换取一个绿色退出码。
 11. **TUI 会话现在可以创建队友了 —— 本条目过去写的是"不能"。** 官方 Agent Teams 服务在 dsh-tui 宿主下
     依然无法激活：宿主拒绝该插件自己发起的 `ctx.root.sessionProjections.register(...)` 所创建的根
     fiber 副作用，于是 `TeamService` 的构造函数在服务存在之前就抛错（机制与测量见 §3.2）。
@@ -538,3 +584,42 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 | §11 版本绑定中的入口摘要 | `packages/mpd-tui-plugin/dist/index.js` sha256 `cf4b3813…`，105305 字节 | 已在 `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/REVISION.json` 中按摘要重新钉定——交付的入口文件加上本波次触及的每一个源文件 |
 | §11 的 R3 行 | `bun run test:qa` 通过 | **再次通过**——captain 把 `VENDOR_LOCK.json` 的 `assets.skills`（319 个文件 / treeSha `303e1631…`）与语料库变更放进同一次提交完成重新固定，验证任务也重试转绿。重新固定的值与扫描都在 `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/`；`docs/tui-parity.md` §7 复述它们 |
 | 一致性这个问题本身 | 界面集是按通道分别描述的 | 针对 Web 版的每一个界面逐行回答，见 `docs/tui-parity.md`（+ zh-CN）：状态、原因，以及每一行的证据层级 |
+
+### 11.3 DSH-TUI 0.13.0 适配波次之后的修订（2026-10-06）
+
+上表是它们当时测量的修订版与宿主的记录，保持原样。本波次把目标宿主推进一个版本，并采纳了该版本
+新增的接缝，因此以下内容取代它们：
+
+| 被取代的表述 | 原为 | 现为（2026-10-06 实测） |
+|---|---|---|
+| 本页的目标宿主（开头段落） | `@deepseek-harness-tui/dsh-tui` **0.12.0** 及其内置准入配置 | **0.13.0**——新增侧栏面板接缝（宿主 row `dsh-tui-panels`，导出 `./panels`）并把宿主的 `dsh-ecosystem-spec/` 更名为 `tui-profile/` 的那个版本。0.12.0 的那段话作为历史保留在上方；同一次移动还改了分发钉定（`dsh-distribution.json` 的 `host-tui` 引用）与 QA 宿主规格（`docker/tui-lane.sh`、`docker/entrypoint.sh`、`skills/dsh-qa/scripts/tui-mount.ts`、`skills/dsh-qa/scripts/install-dependencies.ts`） |
+| §3 接缝清单 | 十四条 `tui*` 接缝，即 dsh-tui 自 0.12.0 起暴露的那一套 | **十五条**——新增的是 `TUI_SEAMS.panels`（`tuiPanels`），按与其他接缝相同的纪律绑定/探测/降级（§3） |
+| §3 的 Agent Teams 面板行 | `tuiScenes` 全屏面板 + `tuiStatus` 状态行 | **`tuiPanels` 侧栏面板成为主入口**，全屏场景为其回退，`alt+a` 与新增的 `/mpd panel` 都如此（§3.3）；动作清单现为 `board`、`team`、`plan`、`subagents`、`panel`、`workmates`、`status` |
+| §7 的"宿主输入总线"行 | `Ctrl+A` 宿主输入接触面自 2026-10-05 起、只要工作区团队有 ≥1 项任务就绪 | **版本门控**：在提供面板接缝的宿主（0.13.0+）上惰性；在没有该接缝的宿主（0.12.0）上不变；`tui.dashboardKey` 保留在 schema 与 `/settings` 中，只对旧宿主有意义 |
+| §10 第 10 条（`tuiRenderers`） | 在 0.10.1 时期的实机通道上 MISSING（7 个界面中 6 个） | **在 0.13.0 上仍为 MISSING**——界面通道渲染了八个界面中的七个，并在这一个必需界面上退出 1（`evidence/tui/lanes/2026-10-06T10-27-53.571Z/`）；本波次未改变该缺口 |
+
+**本波次的证据与边界——边界是主张的一部分，不是脚注。**
+
+- **挂载通道 PASS** —— `evidence/tui/lanes/2026-10-06T10-27-42.389Z/`：0.13.0 宿主上的 `mpd` 预设
+  会话，带 key 的状态行、计数器、零应用期崩溃特征，且 `isolationOffenders=0`。
+- **界面通道** —— `evidence/tui/lanes/2026-10-06T10-27-53.571Z/`：八个界面中 7 个已渲染（状态行、
+  `/mpd` 补全、`/mpd workmates` 命令、侧栏面板的注册 + 打开、看板场景、带披露文本的 `/settings`
+  区块、受中介对话框），其负向对照按要求为红——并在必需的 `tuiRenderers` 界面上退出码为 **1**，那
+  是上面的既有缺口，不是本波次的回归。
+- **`Ctrl+A` 通道 PASS** —— `evidence/tui/lanes/2026-10-06T10-28-57.807Z/`：宿主自己的 `Ctrl+A`
+  dashboard 被打开（旧接触面按版本门控要求保持**惰性**），且 `/mpd panel` 证明了侧栏注册 + 宿主
+  **接受**的打开。完整通道报告（含原始命令行与两个负向对照）见
+  `evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`。
+- **边界 (a) —— 在本宿主上面板主体无法被抓取。** 宿主**接受**打开之后，320×50 的抓取与紧接其前
+  的那次逐字节相同，因此本波次证明的是注册 + `open()` + 从宿主 `list()` 回读中发现的 id
+  （`act1:team`）——**不是渲染**；§3.3 写明这一点，每次运行都以 `panelBodyBound` 记录。
+- **边界 (b) —— `tuiRenderers` 仍为 MISSING**（既有结构性缺口，已在
+  `evidence/tui/EVIDENCE-INDEX.md` 中声明，不是本波次造成的）。
+- **边界 (c) —— 没有取得 0.12.0 的 PTY 证据。** 干净的 0.12.0 沙箱需要 `dsh plugin add`，而它在这里
+  被只读的 pnpm store 锁阻断（现存的那个 fixture 是**混合版本**组合，从未到达聊天界面），因此旧宿主
+  的就绪路径靠单元测试支撑：`packages/mpd-tui-plugin/test/panel.test.ts` 中的 `takeoverArmed`
+  （本修订上 16 pass / 0 fail，含 "the SEAM WINS: a bound panel seam forbids interception whatever
+  the config layers say"），以及 `packages/mpd-tui-plugin/test/plugin.test.ts` 中的旧宿主分支——
+  后者在这里**根本无法加载**（`TypeError: require() async module … cosmokit/lib/index.ts is
+  unsupported`，已退役的采纳插件 vendored `_deps` 中的既有模块解析错误），因此该分支**不**作为
+  证据主张。
