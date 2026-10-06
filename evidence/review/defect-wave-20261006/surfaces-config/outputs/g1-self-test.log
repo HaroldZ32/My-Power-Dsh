@@ -1,0 +1,3 @@
+### node skills/dsh-qa/scripts/bundle-lifecycle.ts --self-test
+[bundle-lifecycle self-test] ok: repo root IS the bundle + array dsh.bundle.patch (2 patch files) + preset-selection contract (NO host-owned agent-preset-registry id-target, no retired preset-ROOT row, preset-mpd row with config.id: mpd; 3 negative controls redden) + provider wiring + probe + pnpm
+exit=0

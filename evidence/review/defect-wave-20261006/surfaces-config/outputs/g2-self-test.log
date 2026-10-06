@@ -1,0 +1,8 @@
+### node skills/dsh-qa/scripts/extension-lifecycle.ts --self-test
+  mutant pre-fix inject -> the built row must declare the seams it registers through (inject must include tools and skills; got [])
+  mutant muted row log -> an unavailable seam must be reported LOUDLY in the row's own log (/tmp/mpd-ext-seam-root-qMNRXW/.mpd/logs/mpd-ext.log), not only through ctx.logger.warn — R5 sends every MPD diagnostic to <workspace>/.mpd/logs/, never to the terminal
+  mutant terminal write added -> R5: an MPD row must write NOTHING to the terminal, but this row wrote ["console.log: [mpd-ext] FATAL: the harness seams are unavailable"]
+  mutant forced success branch -> the success summary must never be logged when the four tools did not register
+[self-test] live packer route = flag (recorded, not asserted)
+[extension-lifecycle self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD in the row's OWN log, terminal SILENT, no false success; four mutants redden) + packed predicate falsifiable (closed vs. three broken fixture trees) + T-85 scratch-pack patcher (two anchors rewritten, a drifted packer REFUSED) + fixtures verified
+exit=0
