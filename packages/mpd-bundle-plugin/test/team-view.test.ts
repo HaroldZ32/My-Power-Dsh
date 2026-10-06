@@ -414,6 +414,106 @@ describe("team-view panels", () => {
     expect(collect(empty.tree, "data-mpd-graph").length).toBe(0)
   })
 
+  test("a session with no team renders the WORKSPACE's teams, not the dead empty state (D2)", async () => {
+    // THE USER-REPORTED STATE, as a render contract: a session that approved nothing of its own used
+    // to get one sentence claiming the workspace was empty, while the workspace held teams another
+    // session had built. The listing is what the panel shows instead.
+    /** The workspace's teams, in the shape the route serves them. */
+    const teams = [
+      { id: "team-20261002150828", name: "mpd-seam-wave1", description: "seam audit", phase: "active", tasks: { total: 6, completed: 6, failed: 0 }, members: 4, active: false },
+      { id: "team-20261005072738", name: "mpd-tui-dep-view", description: "arrows and legend", phase: "idle", tasks: { total: 5, completed: 3, failed: 1 }, members: 3, active: false },
+    ]
+    /** The settled render of a session with no team of its own, one of them BOUND to this session. */
+    const rendered = await renderView({
+      state: {
+        ok: true,
+        workspace: WORKSPACE,
+        workspaceTeams: { records: [{ ...teams[0], active: true }, teams[1]], activeId: "team-20261002150828" },
+        team: null,
+        counts: { total: 0, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, releasedByFailure: 0 },
+        members: [],
+        tasks: [],
+        cycles: [],
+        executor: { kind: "native", reason: "x" },
+        problems: [],
+      },
+    })
+    // The root still carries the tab marker, and it now also states how many teams it listed — the
+    // marker a driver can assert on without parsing the panel's words.
+    expect(rendered.tree.props["data-mpd-team-tab"]).toBe("")
+    expect(rendered.tree.props["data-mpd-workspace-teams"]).toBe("2")
+    // ONE ROW PER TEAM, by id: this is what proves the listing was rendered rather than summarised.
+    expect(collect(rendered.tree, "data-mpd-workspace-team").map((row) => row.props["data-mpd-workspace-team"]))
+      .toEqual(["team-20261002150828", "team-20261005072738"])
+    /** The panel's whole text. */
+    const text = flatText(rendered.tree)
+    expect(text).toContain("mpd-seam-wave1")
+    expect(text).toContain("mpd-tui-dep-view")
+    expect(text).toContain("team-20261005072738")
+    expect(text).toContain("6/6")
+    expect(text).toContain("3/5")
+    // THE DEAD END IS GONE: the sentence that claimed the workspace was empty must not render beside
+    // a listing that proves otherwise.
+    expect(text).not.toContain("No team in this workspace yet")
+    // The phase is the record's own word, and the panel still says how to get a team of its own.
+    expect(text).toContain("active")
+    expect(text).toContain("Stage one with agent_teams_plan")
+    // THE ACTIVE MARKER: the row the index binds to this session is marked, and the OTHER one is not —
+    // so a captain can tell which team its own approvals would drive.
+    expect(collect(rendered.tree, "data-mpd-workspace-active").map((row) => row.props["data-mpd-workspace-active"]))
+      .toEqual(["team-20261002150828"])
+  })
+
+  test("the listing renders in Chinese through the SAME keys, so the two tables cannot drift", async () => {
+    // The host dictionary is the Chinese half (`mpdTeamSidebar` in web-client.ts); this arm drives the
+    // view with a translator that prefixes the key, which is how every other localization arm here
+    // proves a string was routed THROUGH the table rather than hard-coded.
+    /** The settled render of a session with no team, translated. */
+    const rendered = await renderView({
+      t: (key: string) => ZH + key,
+      state: {
+        ok: true,
+        workspace: WORKSPACE,
+        workspaceTeams: { records: [{ id: "team-x", name: "波次", description: "d", phase: "ended", tasks: { total: 2, completed: 2, failed: 0 }, members: 1, active: true }], activeId: "team-x" },
+        team: null,
+        counts: { total: 0, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, releasedByFailure: 0 },
+        members: [],
+        tasks: [],
+        cycles: [],
+        executor: { kind: "native", reason: "x" },
+        problems: [],
+      },
+    })
+    /** The panel's translated text. */
+    const text = flatText(rendered.tree)
+    for (const key of ["workspace.title", "workspace.hint", "workspace.active", "workspace.members", "workspace.stage", "phase.ended"]) {
+      expect(text).toContain(ZH + key)
+    }
+  })
+
+  test("a workspace with genuinely NO teams keeps the honest empty state", async () => {
+    // The other direction, so the fix cannot over-reach: with an empty listing the sentence is still
+    // the answer, and no workspace section is drawn around it.
+    /** The settled render of a workspace that never held a team. */
+    const rendered = await renderView({
+      state: {
+        ok: true,
+        workspace: WORKSPACE,
+        workspaceTeams: { records: [] },
+        team: null,
+        counts: { total: 0, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, releasedByFailure: 0 },
+        members: [],
+        tasks: [],
+        cycles: [],
+        executor: { kind: "native", reason: "x" },
+        problems: [],
+      },
+    })
+    expect(flatText(rendered.tree)).toContain("No team in this workspace yet")
+    expect(collect(rendered.tree, "data-mpd-workspace-team").length).toBe(0)
+    expect(rendered.tree.props["data-mpd-workspace-teams"]).toBeUndefined()
+  })
+
   test("says so when a team raised no member at all", async () => {
     // A team can exist with an empty roster (the pre-dispatch window), and an empty MEMBERS list would
     // otherwise be a heading with nothing under it.

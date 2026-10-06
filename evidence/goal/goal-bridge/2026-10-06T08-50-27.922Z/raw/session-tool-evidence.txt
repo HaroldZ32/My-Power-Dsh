@@ -1,0 +1,7 @@
+# store=/tmp/mpd-goal-yXJxyN/sessions/--tmp-mpd-goal-yXJxyN-ws--/session-41ea0c1f-529f-44ea-b15c-a7d21de0e08a/session.v4.jsonl.zstd sessions=1 frames=18 records=38
+TOOL/CALL {"type":"tool/call","seq":19,"time":1791276635302,"data":{"turn":1,"step":1,"callId":"call_00_U6M2xLPHR8kPBF1amNO26163","name":"mpd_goal_anchor","arguments":"{\"objective\": \"ship the goal bridge\", \"maxRounds\": 5}"}}
+TOOL/CALL {"type":"tool/call","seq":26,"time":1791276636268,"data":{"turn":1,"step":2,"callId":"call_00_3hif1V4FgHis1q2yD0dy0040","name":"mpd_goal_status","arguments":"{}"}}
+VERDICT mpd_goal_anchor called=true succeeded=true reason=""
+VERDICT mpd_goal_status called=true succeeded=true reason=""
+VERDICT mpd_goal_finish called=false succeeded=false reason="the harness recorded no tool/call for mpd_goal_finish (answer-only narration is not tool evidence)"
+OFFERED mpd_goal_* = ["mpd_goal_anchor","mpd_goal_finish","mpd_goal_status"]

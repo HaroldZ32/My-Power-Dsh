@@ -45,14 +45,14 @@
 
 ## Team mode
 
-多成员 team work 并非在此构建：它由**官方 Agent Teams 插件**承担（`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载）；其 Lead 用 `spawn_teammate` 创建 teammate，用 `team_task_create` 为其开卡。本行贡献该路径的**名册一侧** —— 每一次调用都经由 `mpd-dsh-adapter`：
+多成员 team work 并非在此构建：**staging** 走 mpd 的 plan 平面（`agent_teams_plan`，由 `mpd-team-core-plugin` 拥有），而成员本身由**官方 Agent Teams 插件**承载（`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载）；其 Lead 用 `spawn_teammate` 创建 teammate，用 `team_task_create` 为其开卡。本行贡献该路径的**名册一侧** —— 每一次调用都经由 `mpd-dsh-adapter`：
 
 | 契约 | 本行的实现方式 |
 |---|---|
 | 名册送达到 Lead | 一个 **AGENT 作用域**的 `mpd:roster` 系统提示段落（顺序 `605`，紧跟 Harness 的 `TEAM_POLICY`（600）之后），只对顶层 `mpd` session 注册 —— 绝不在 host 平面（那会把名册注入本进程服务的每一个 session），也绝不进入 teammate 或其它 preset 的 session |
 | teammate 的 persona | 该段落点名 `spawn_teammate` 与 `mpd_role_persona`：Lead 把成员的 persona 文本作为 prompt 传入 |
 | 只读 teammate 的纪律 | 一道 TOOL GUARD（见下），经适配器注册 |
-| session 启动复杂度闸门 | 一个**仅建议**的 `agent/pre-step` 监听器（见下） |
+| session 启动复杂度闸门 | 一个 `agent/pre-step` 监听器，默认会 **stage** 一个可批准的 plan shell（见下） |
 
 **模型路由只保留在一次性路径上。** `TeamService` 只把 `{prompt, parent}` 转发给 `ctx.subagents.startContinuable`（`docs/plan-0.1.7-adaptation.md` §3），因此 teammate 继承 Lead 的路由，无法为其附加 provider/persona/tool filter。`teamModels.slot*` 路由因此只作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点，而不是承诺 Harness 无法兑现的路由。
 
@@ -65,7 +65,7 @@
 
 这修掉了已退役、由 profile 携带 `toolDeny` 的实测缺陷：以 "Explorer" 身份 stage 却未带过滤器的 teammate 会保留 `write`/`edit`/`bash`。
 
-### session 启动复杂度闸门（仅建议）
+### session 启动复杂度闸门（默认机械执行）
 
 在 session 的第一个 pre-step，本行求值冻结谓词
 
@@ -73,6 +73,12 @@
 trigger = explicit flag OR (matchedSignals >= 1)
 ```
 
-信号为 **A**（`team:` 前缀或 `!team`；标记会从目标文本中被**消费**）、**B**（≥ 4 个不同的交付动词）、**C**（**一个**信号，由其三路子信号中的 ≥ 2 路触发：≥ 3 条枚举行、≥ 3 个不同动作动词、≥ 3 个动作小句）与 **D**（session 工作区存在 `.mpd/plans/*.md` 产物）。触发时注入**一条** user 角色通知，携带标记 `[AgentTeams] Session-start team rule`，点名触发的信号、声明**未 stage 任何团队**，并告诉 captain 在工作确实需要时用 `spawn_teammate` + `team_task_create` 自行 stage。
+信号为 **A**（`team:` 前缀或 `!team`；标记会从目标文本中被**消费**）、**B**（≥ 4 个不同的交付动词）、**C**（**一个**信号，由其三路子信号中的 ≥ 2 路触发：≥ 3 条枚举行、≥ 3 个不同动作动词、≥ 3 个动作小句）与 **D**（session 工作区存在**正在进行**的 boulder 工作：`.mpd/boulder.json` 中 `status: "active"` —— 仅有 plan **文件**并不构成信号；2026-10-07 修复，因为旧的文件探测在本工作区的每个 session 都会触发）。每一条通知都携带标记 `[AgentTeams] Session-start team rule`。
 
-**它绝不 stage 团队** —— 对显式的 `team:` / `!team` 请求也一样，那只是更充分的建议理由。它只作用于顶层 `mpd` session（子 session —— subagent、teammate、workflow worker —— 以及其它 preset 的 session 都不会收到），每个 session 只结算一次，且其内部失败不会影响该 step。
+触发后**做什么**由 `mpd.jsonc` 的 `team.gate` 按调用决定：`mechanical`（默认）| `advisory` | `off`。
+
+- **mechanical** —— 闸门通过 `agent_teams_plan` 工具 **stage** 一个**可批准的 plan shell**（0 成员、0 任务：第一个 pre-step 时还不存在任何分解），并注入**一条** user 角色通知，点名该调用**返回**的 plan id。此时**没有 spawn 任何东西**：该 plan 在 captain 用 `add_member` / `create_task` 扩展并用 `agent_teams_plan {action:"approve"}` 批准之前一直是**惰性**的，批准才是 spawn 成员、发布任务的时刻。当本 session 已有 staged 的 plan 时，闸门只报告这一事实、不再重复 stage —— 第二次 stage 会归档进行中的 plan。
+- **advisory** —— 未挂载 `agent_teams_plan` 工具，或 `team.gate: "advisory"` 时，那**一条**通知声明 `NO team was staged`，并告诉 captain 在工作确实需要时自行 stage。
+- **off** —— 监听器直接返回。
+
+显式的 `team:` / `!team` 请求属于信号 **A**，走**同一条**路径：在 `mechanical` 下同样会 stage 该 shell，且标记会从目标文本中被**消费**。它只作用于顶层 `mpd` session（子 session —— subagent、teammate、workflow worker —— 以及其它 preset 的 session 都不会收到），每个 session 只结算一次，且其内部失败不会影响该 step。

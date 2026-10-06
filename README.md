@@ -403,7 +403,7 @@ Slash commands are typed into the session prompt.
 |---|---|
 | `/ulw <objective>` | Starts an ultrawork run: the objective is triaged, planned when the work warrants it, executed in rounds, and pushed through the verification and quality gates before it reports done. `/ultrawork <objective>` is the same command |
 | `/mpd-codegraph` | Initializes (or re-runs) the CodeGraph index for the session workspace — `.codegraph/codegraph.db`. Errors if the codegraph binary is unavailable: install it or set `MPD_DSH_CODEGRAPH_BIN` |
-| `team:` / `!team` in a message | An explicit team request. The session-start complexity gate only ever **advises** — it stages nothing; the agent stages the team itself with `spawn_teammate` + `team_task_create` |
+| `team:` / `!team` in a message | An explicit team request — signal **A** of the session-start complexity gate, and the marker is **consumed** from the message. With the default `team.gate: "mechanical"` the gate STAGES an approvable plan shell (0 members, 0 tasks) and injects ONE notice naming the returned plan id; NOTHING is spawned, and the shell is INERT until the captain extends it (`add_member` / `create_task`) and approves it with `agent_teams_plan {action:"approve"}` |
 | `/mpd` (TUI) | The terminal command tree: a bare `/mpd` opens the picker; the actions are `board`, `team`, `plan`, `workmates` and `status` (`/mpd status` prints the summary, the others open their TUI scene) |
 | `/goal <objective>` | Creates a persisted session goal (the host's goal row, enabled by the `mpd` preset): one long-running objective that continues across turns |
 | `/settings` (TUI) | Edits the `mpd.jsonc` knobs listed under *Configuration* below |
@@ -668,9 +668,9 @@ How to use them well:
 
 ## Team mode
 
-![Team-mode lifecycle: the session-start gate advises only, the Lead decides the roster and task graph, teammates are spawned and tasks posted, members claim and complete work, the wave is compacted and the next wave starts in a new session. A guardrails band lists the read-only tool denial, the durable mailbox, the compare-and-set board and advisory write scopes.](./docs/assets/images/team-lifecycle.svg)
+![Team-mode lifecycle: a triggered session-start gate stages an approvable, inert plan shell (0 members, 0 tasks), the Lead extends and approves it and decides the roster and task graph, teammates are spawned and tasks posted, members claim and complete work, the wave is compacted and the next wave starts in a new session. A guardrails band lists the read-only tool denial, the durable mailbox, the compare-and-set board and advisory write scopes.](./docs/assets/images/team-lifecycle.svg)
 
-*One team wave, end to end. The session-start complexity gate only advises; the Lead stages the team itself, and the wave is compacted and ended when it lands.*
+*One team wave, end to end. The session-start complexity gate STAGES an approvable plan shell (0 members, 0 tasks — nothing spawned, inert until approved); the Lead extends and approves it, and the wave is compacted and ended when it lands.*
 
 The session agent is the **Lead** (the captain). It decides a roster and a task DAG, spawns each
 member as a named teammate, opens every task on the shared board, and integrates the results itself.
@@ -682,9 +682,13 @@ the team before answering.
 
 ### Start a team
 
-A team is not a precondition of a session, and nothing is staged for you. The session-start complexity
-gate only **advises** that a team may be warranted; the agent stages one itself, when the work
-warrants it, with two calls:
+A team is not a precondition of a session. When the session-start complexity gate triggers, it STAGES an
+approvable plan **shell** through `agent_teams_plan` — 0 members, 0 tasks, and INERT: nothing is spawned,
+and no teammate exists until the captain extends it (`add_member` / `create_task`, each member's prompt
+taken from `mpd_role_persona`) and approves it with `agent_teams_plan {action:"approve"}`, which is what
+spawns the members and posts their tasks. Under `team.gate: "advisory"` — or with that tool unmounted —
+the ONE notice is advisory instead and says `NO team was staged`; the captain then stages the team itself,
+when the work warrants it. The official tools stay the interface for the members and the board:
 
 ```jsonc
 spawn_teammate {
@@ -707,9 +711,9 @@ into the prompt — nothing injects it for you.
 
 ### The shared task board
 
-Any member can create a task; the Lead assigns, and any member claims and completes. The board is the
-plan: there is no separate "staged plan" to approve, and **no approval mode** — the work starts when a
-teammate is spawned and a task is claimed.
+Any member can create a task; the Lead assigns, and any member claims and completes. The board carries
+the work once it exists: a staged plan shell is INERT until it is extended and approved, and only an
+**approved** plan spawns members and posts tasks — the work starts then, not when the shell is staged.
 
 - **`team_task_create`** adds a task with a title, details, optional `blocked_by` dependencies and
   optional `write_scopes`. A task is claimable only when everything it depends on is complete.

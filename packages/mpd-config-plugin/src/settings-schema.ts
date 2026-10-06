@@ -70,7 +70,23 @@ export const SettingsSchema = z.object({
   ulw: z.object({ maxRounds: z.number().default(6) }),
   memory: z.object({ vcs: z.union([z.const("git"), z.const("svn")]).default("git") }),
   team: z.object({ stateDir: z.string().default(".mpd/team") }),
-  boulder: z.object({ dir: z.string().default(".mpd") }),
+  // NO DEFAULT — and that absence is the contract, not an oversight. The two consumers of this knob
+  // (`readBoulderGate`, and the boulder row's own state root) treat the value as the directory whose
+  // `.mpd/boulder.json` they read, and BOTH fall back to the calling session's workspace when it is
+  // unset. A `.default(".mpd")` here therefore did NOT mean "the conventional state dir": the loader
+  // materialises it into the ROW CONFIG, `rowKnobLayer` copies row knobs LAST, and the value then
+  // WON over `.mpd/mpd.jsonc` — so the resolved root became `<ws>/.mpd` and both consumers joined
+  // `.mpd/boulder.json` onto it, reading `<ws>/.mpd/.mpd/boulder.json` (MEASURED 2026-10-06: the
+  // ledger at the contract path `<ws>/.mpd/boulder.json` read `active:false`, the same bytes at the
+  // doubled path fired the gate, and `{"boulder":{"dir":"."}}` in the project file could not win).
+  // Left optional, an unset knob resolves to `undefined` and the consumers' own workspace fallback
+  // produces the contract path — while an explicitly set value still overrides both.
+  // `required(false)` IS THE "UNSET" SPELLING of the vendored schemastery: a bare `z.string()` and
+  // this form both leave the leaf ABSENT from the resolved row config (`{}`), which is what the two
+  // consumers need to fall back to the session workspace; the explicit form is kept because this
+  // leaf's whole point is that it has NO default, and `.default('')` would have materialised an
+  // empty string that the consumers' guards would then read as a REAL root.
+  boulder: z.object({ dir: z.string().required(false) }),
   // The four team-model slots (§3.1 of the plan of record): each is the DEFAULT route of one
   // member class — slot1 Architect/Planner/Reviewer/Lead/Senior Engineer, slot2 the analysts
   // Researcher/Explorer/Plan Reviewer, slot3 the executors Deep Worker/Junior Engineer, slot4 the

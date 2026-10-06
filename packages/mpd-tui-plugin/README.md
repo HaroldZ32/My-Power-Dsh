@@ -23,7 +23,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 | Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13 plus the twelve `teamModels` slot leaves (25 in all), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
 | Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
-| Plan scene (READ-ONLY, 0.1.7) | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`. It renders the live board and states that no approval flow exists on the official Agent Teams plane; the retired type-the-phrase / `Ctrl+X` approval and the `Ctrl+D` discard are gone with the tools that served them (`agent_teams_approve`, `agent_teams_delete` are registered by no row) |
+| Plan scene (approval, W6) | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`. It renders the live board and carries the approval gate: type the EXACT phrase the pane shows (`approve plan-…`, served by the SAME projection the Web panel renders) and press `Ctrl+X`; `Ctrl+D` twice within 10 s discards the staged plan, `Ctrl+R` re-reads, `esc` goes back. The action is an `agent_teams_plan {action:"approve"\|"delete"}` call carrying the LIVE agent resolved from the adapter's own registry — a caller it cannot resolve is refused loudly, never fabricated (below) |
 | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd workmates` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
 | Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks slot → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
@@ -101,10 +101,25 @@ Every path is resolved per call under the **calling session's workspace**
 never the dsh process cwd.
 
 The read-only rule is not a policy statement here, it is a property of the built
-bytes: the package contains no write primitive. 0.1.7 made it STRONGER: the two plan
-actions used to be tool calls through the adapter (`agent_teams_approve`,
-`agent_teams_delete`), and both tools are RETIRED with no official replacement, so the
-plan scene can no longer mutate anything at all — every refusal says exactly that.
+bytes: the package contains no write primitive — every team mutation is a TOOL call the
+scene makes through the adapter. 0.1.7 RETIRED the two tools the first implementation
+called (`agent_teams_approve`, `agent_teams_delete`), which for a while left the pane
+with nothing to call; since W6 it calls THIS bundle's own `agent_teams_plan`
+(`approve` / `delete`), so the gate acts again. Every failure is a loud refusal, never a
+fabricated success.
+
+**The caller is resolved, never invented.** `agent_teams_plan` needs a caller
+(`exec.agent`), and the harness authenticates it BY IDENTITY against its own live store —
+a hand-built `{ session: { id } }` was measured being refused there. The scene therefore
+resolves it from the adapter's own registry: `liveAgent(sessionId)`, else a live entry
+whose own `session.id` matches, else — only when the scene carries no id at all — the ONE
+live agent. When none of those names a caller the pane REFUSES before calling anything:
+`session "<id>" is not live in this process — no live agent to speak as, so nothing was
+called` (with no id on the surface: `no live agent to speak as and no session id on this
+surface — nothing was called`). A composition without the `agent_teams_plan` tool refuses
+the same way. **NOT claimed:** that every host and every session resolves — this page
+promises the resolution ORDER and the refusal text, not universal success on a host the
+wave has not exercised.
 
 **Where each Web-edition surface stands against its TUI counterpart** is answered
 row by row in `docs/tui-parity.md` (+ `docs/tui-parity.zh-CN.md`): status, reason

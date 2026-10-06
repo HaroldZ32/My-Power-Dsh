@@ -1414,22 +1414,30 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
-  function toolReachable(name) {
+  function hostToolDefinition(name) {
     try {
       const hostView = service("tools");
-      if (typeof hostView?.get === "function" && hostView.get(name) !== undefined)
-        return true;
-    } catch {}
-    return liveAgents().some((candidate) => {
-      const scoped = scopedToolRegistry(candidate);
-      if (scoped === undefined)
-        return false;
-      try {
-        return scoped.get(name) !== undefined;
-      } catch {
-        return false;
-      }
-    });
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name);
+    try {
+      return scoped.get(name, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name) {
+    if (hostToolDefinition(name) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined);
   }
   function projectToolResult(raw) {
     const record = raw;
@@ -1731,20 +1739,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },
@@ -2186,6 +2186,17 @@ function resolveDshAdapter(ctx) {
   return mounted ?? createDshAdapter(ctx);
 }
 
+// packages/mpd-roles-plugin/src/complexity-gate.ts
+var WORKSPACE_ROOT_SPELLINGS = [".", "./", ".mpd", ".mpd/", "./.mpd", "./.mpd/"];
+function resolveBoulderDir(value) {
+  if (typeof value !== "string")
+    return;
+  const trimmed = value.trim();
+  if (trimmed === "" || WORKSPACE_ROOT_SPELLINGS.includes(trimmed))
+    return;
+  return trimmed;
+}
+
 // packages/mpd-boulder-plugin/src/index.ts
 var name = "mpd-boulder";
 var inject = dshSeamInject(DSH_SEAM_TOOLS);
@@ -2193,11 +2204,11 @@ function mergedConfig(ctx, config) {
   const svc = ctx.get?.("mpdConfig");
   if (!svc?.get)
     return config;
-  const v = svc.get("boulder.dir");
-  return typeof v === "string" ? { ...config, boulderDir: v } : config;
+  const v = resolveBoulderDir(svc.get("boulder.dir"));
+  return v === undefined ? config : { ...config, boulderDir: v };
 }
 function boulderRoot(config, dsh, exec) {
-  return config.boulderDir ? config.boulderDir : dsh.workspaceRoot(exec);
+  return resolveBoulderDir(config.boulderDir) ?? dsh.workspaceRoot(exec);
 }
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);

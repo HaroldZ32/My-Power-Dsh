@@ -22,7 +22,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 | 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个加上十二个 `teamModels` 槽位叶子（共 25 个），其中槽位叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**已与 `<workspace>/.mpd/mpd.jsonc` 打通**（保存会写入文件；插件行为需重启后生效）；每个字段的提示在界面上直接写明（见"明确不声明"第 2 条） |
 | 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库；已路由团队在面板上多两行：`team-plan …`（仅 staged 时）与 `team-hold held (…)`（仅看门狗 hold 持续期间） |
 | 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
-| 计划场景（0.1.7 起**只读**） | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开。它渲染实时任务板，并说明官方 Agent Teams 平面上不存在批准流程；原先“逐字输入短语 + `Ctrl+X` 批准 / `Ctrl+D` 丢弃”的交互已随其工具（`agent_teams_approve`、`agent_teams_delete`，现已无任何行注册）一同移除 |
+| 计划场景（批准流程，W6） | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开。它渲染实时任务板，并承载批准闸门：逐字输入该面板显示的**确切**短语（`approve plan-…`，由 Web 面板渲染的**同一份**投影提供），再按 `Ctrl+X`；10 秒内按两次 `Ctrl+D` 丢弃已 stage 的 plan，`Ctrl+R` 重新读取，`esc` 返回。该动作是一次 `agent_teams_plan {action:"approve"\|"delete"}` 调用，携带从适配器**自身注册表**解析出的**实时** agent —— 解析不出调用方时一律**响亮拒绝**，绝不伪造（见下） |
 | 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd workmates` 补全，以及 `/mpd-model` 根；两个根与每个子项都在 `descriptions` 中同时提供中英双语，由宿主按其当前 `/lang` 解析 |
 | 模型菜单（R3） | `ctx.tuiDialogs` + 共享的目录/设置接缝 | **`/mpd-model`** —— 一个真正的选择式菜单，依次选择 槽位 → 提供商 → 模型 → 推理强度，并把所选路由写入 `/settings` 区块所编辑的 `mpd-config` 条目。选项来自该区块**自己**的投影（`teamModelOptionLists`）与同一份实时模型目录，因此菜单与设置行不可能互相矛盾；输出结果携带与区块完全相同的披露语句。任一档取消即不写入任何内容 |
 | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+a` 子代理 + 团队面板 · `alt+t` 团队工作流 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
@@ -89,10 +89,22 @@ TUI 原生等价物。它**只读**状态：
 `packages/mpd-dsh-adapter-plugin` 的 `workspaceRoot` / `workspaceRootsAll`），
 绝不使用 dsh 进程的 cwd。
 
-这里的只读规则不是一句政策声明，而是构建产物自身的属性：包内不含任何写原语。
-0.1.7 让这条规则**更强**了：原先两个计划动作是经适配器发起的工具调用
-（`agent_teams_approve`、`agent_teams_delete`），而这两个工具已随所属插件退役、官方平面没有替代品，
-因此计划场景如今完全无法产生变更——每一次拒绝都会如实说明这一点。
+这里的只读规则不是一句政策声明，而是构建产物自身的属性：包内不含任何写原语 —— 每一次团队变更都是场景经适配器发起的**工具调用**。
+0.1.7 退役了最初实现所调用的两个工具
+（`agent_teams_approve`、`agent_teams_delete`），面板因此一度无工具可调；
+自 W6 起它调用**本 bundle 自己**的 `agent_teams_plan`（`approve` / `delete`），
+闸门重新可用。每一次失败都是**响亮的拒绝**，绝不伪造成功。
+
+**调用方是解析出来的，绝不凭空捏造。** `agent_teams_plan` 需要调用方
+（`exec.agent`），而 Harness 会拿它在自己的实时存储中**按身份**校验 ——
+手工构造的 `{ session: { id } }` 已被实测在此处被拒。因此场景从适配器**自身注册表**
+解析调用方：`liveAgent(sessionId)`，否则取 `session.id` 与之相符的实时条目，
+只有在场景完全没有 id 时才取**唯一**的实时 agent。以上都点不出调用方时，
+面板在**调用之前**就拒绝：
+`session "<id>" is not live in this process — no live agent to speak as, so nothing was called`
+（界面上没有 id 时为 `no live agent to speak as and no session id on this surface — nothing was called`）。
+组合中没有 `agent_teams_plan` 工具时同样拒绝。**明确不声明：** 每一个宿主、每一个 session 都能解析成功 ——
+本页承诺的是解析**顺序**与拒绝文案，而不是在本轮尚未实测的宿主上普遍成功。
 
 **Web 版每一个界面与 TUI 对应物的关系**，在 `docs/tui-parity.md`
 （+ `docs/tui-parity.zh-CN.md`）中逐行回答：每个界面的状态、原因与证据层级，

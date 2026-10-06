@@ -16,7 +16,7 @@ through `mpd-dsh-adapter`. This plugin keeps only what the official service has 
 
 | Tool | `action` values | What it does |
 |---|---|---|
-| `agent_teams_plan` | `create`, `add_member`, `create_task`, `edit`, `approve`, `delete`, `status` | stage a team as a PLAN; `approve` EXECUTES it (spawn + post + resolve `blocked_by`/`owner`); `delete` archives; `status` shows the sidecar beside the official roster and board |
+| `agent_teams_plan` | `create`, `add_member`, `create_task`, `edit`, `approve`, `delete`, `status` | stage a team as a PLAN; `approve` EXECUTES it through the TEAM EXECUTOR — the native backend over `ctx.subagents.startContinuable` is the DEFAULT and the official `dsh.team*` calls are the FALLBACK, so the official plugin need not be mounted — resolves `blocked_by`/`owner` against the mpd record, and REFUSES a plan with 0 members and 0 tasks; `delete` archives; `status` shows the record beside the official readout when that backend is active |
 | `agent_teams_task` | `claim`, `contract`, `release` | claim on the official board AND freeze the task's contract with a monotonic `attempt`; read it back; free a dispatched task |
 | `agent_teams_dispatch` | `run`, `release` | pair ready tasks with idle members, tell each member its task, and RECORD the pairing |
 | `agent_teams_mail` | `send`, `unread`, `read`, `summary` | the team mailbox: durable, with a read state the official one cannot provide |

@@ -1,0 +1,43 @@
+{
+  "notice": {
+    "any": 0,
+    "advisory": 0,
+    "mechanical": 0,
+    "signalsNamed": 0,
+    "shellShaped": 0,
+    "inert": 0,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "mechanicalTool": 0,
+    "retiredVocabulary": 0,
+    "signals": [],
+    "planIds": []
+  },
+  "teams": {
+    "staged": 0,
+    "planIds": [],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 0,
+    "recordIds": []
+  },
+  "goal": "Reply with exactly: boulder-ok",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "firedLine": "",
+  "gateInstalled": true,
+  "ownKeyWritten": true,
+  "problems": [
+    "a triggered prompt must record EXACTLY ONE notice, got 0",
+    "the notice must name the fired complexity signals, got 0",
+    "the notice must name signal D (this side is built to prove it), got []",
+    "the MECHANICAL notice must state \"a team PLAN was STAGED\", got 0",
+    "the notice must state \"NOTHING has been spawned; the plan is INERT until approved\", got 0",
+    "the notice must state the SHELL shape \"0 members, 0 tasks\", got 0",
+    "the notice must name the staging tool `agent_teams_plan`, got 0",
+    "a triggered mechanical side must stage EXACTLY ONE plan slot, got 0",
+    "the notice must name EXACTLY ONE plan id, got []",
+    "the row's own fire line must report staged=1, got \"\"",
+    "the row log names \"(no plan)\" while the injected notice names \"(no plan)\" — the row log and the notice must agree",
+    "the row's fire line must name signals=D, got \"\""
+  ]
+}

@@ -107,16 +107,24 @@ TUI 命令树暴露 `/mpd team` 与 `/mpd plan`
 （`packages/mpd-tui-plugin/src/command-trees.ts` 就是动作清单：`board`、`team`、`plan`、
 `workmates`、`status`），以及带 key 的状态行与看板场景。
 
-**本节过去记录的"暂存计划批准"工作流已退役，本页对它不作任何主张。** 它属于内置的
-`agent-teams` 插件 —— 它的批准/删除工具调用、逐字输入的批准短语、`Ctrl+X` / `Ctrl+D` 手势，
-以及它们所依赖的持久 `.mpd/team/team.json` 记录。本 bundle 现在挂载的官方 Agent Teams 插件
-**没有暂存计划，也没有批准步骤**：Lead 用 `spawn_teammate` 创建队友、用 `team_task_create` 开
-通道，共享任务板就是计划（见 `docs/user-guide.zh-CN.md` §6 与
-`docs/plan-0.1.7-adaptation.md` §3）。团队状态保存在 Lead 的会话日志里，因此没有可供 TUI 界面
-批准的团队记录。现在也不再有任何 TUI 按键序列会批准计划。
+**批准闸门已经回到 mpd 的 plan 平面，本节如实写明。** 最初的实现调用的是已退役的内置
+`agent-teams` 工具（`agent_teams_approve`、`agent_teams_delete`），并依赖持久的
+`.mpd/team/team.json`；而本 bundle 现在挂载的官方 Agent Teams 插件**没有暂存计划，也没有批准步骤** ——
+Lead 用 `spawn_teammate` 创建队友、用 `team_task_create` 开通道，共享任务板就是计划（见
+`docs/user-guide.zh-CN.md` §6 与 `docs/plan-0.1.7-adaptation.md` §3）。但**暂存计划本身并未消失**：
+它由**本 bundle 自己**拥有（`mpd-team-core` 的 `agent_teams_plan`，保存在 `<workspace>/.mpd/team/` 下），
+且自 W6 起 TUI 计划场景重新承载了批准闸门。用 `/mpd plan` 打开，逐字输入面板提供的**确切**短语
+（`approve plan-…`，与 Web 面板来自同一份投影），按 `Ctrl+X`；10 秒内按两次 `Ctrl+D` 丢弃该暂存计划，
+`Ctrl+R` 重新读取，`esc` 返回。该动作是一次 `agent_teams_plan {action:"approve"|"delete"}` 调用，
+因此批准会落地 mpd 记录、并通过 **native 执行器**唤醒其成员 —— 不需要官方服务。调用方以**身份**
+随调用传递，从适配器**自身**的实时注册表解析（`liveAgent(sessionId)`，否则取 `session.id` 相符的实时条目，
+只有场景完全没有 id 时才取**唯一**的实时 agent）；以上都点不出调用方时，面板**拒绝**且不调用任何东西：
+`session "<id>" is not live in this process — no live agent to speak as, so nothing was called`。
+**本页不声明：** 每个宿主、每个 session 都能解析成功 —— 真实 TUI 宿主上的这一跳尚未被本波次证伪。
 
-这一块对 TUI 包仍然成立的事实：它对团队与工作区状态是**只读**的 —— 包内不含任何写原语，任何团队
-变更都是模型经由适配器发起的工具调用。`/mpd team` 是团队场景的保底入口，`alt+t` 是通往它的尽力
+这一块对 TUI 包仍然成立的事实：包内**不含任何写原语** —— 每一次团队变更都是它经适配器发起的工具调用，
+而 `/mpd plan` 是唯一提供此类调用的界面，且背后有五重屏障（独立界面、逐字输入的确切短语、初始为空的回显、
+仅用快捷键触发变更、带重新读取的单飞执行）。`/mpd team` 是团队场景的保底入口，`alt+t` 是通往它的尽力
 而为快捷键。`tui-team-surface` 波次记录的限制（依赖残留限制与一个无法定位的契约行标签）仍在
 `docs/tui-parity.zh-CN.md` §4–§5 中保持**未修复** —— 引用本页的状态之前请先读那一页。
 
@@ -140,11 +148,12 @@ harness 0.2.0-rc.1 + `dsh-tui` 0.11.2；见本页 §10 第 11 条）。**
 所以那里的团队平面与原先完全一致）。
 
 TUI 会话仍然拥有的东西：`/mpd team` 场景、`/mpd plan` 场景与状态行会依据它们能读到的团队状态渲染
-—— 没有 Team 服务时看板为空、状态行显示 `team -`。mpd 的团队**工作流**行是刻意保留挂载的，因为它们
+—— 没有 Team 服务时**官方**读数为空、状态行显示 `team -`。mpd 的团队**工作流**行是刻意保留挂载的，因为它们
 不是官方服务本身：`agent_teams_plan` / `agent_teams_task` / `agent_teams_mail` / `agent_teams_control`
-中基于文件（`<workspace>/.mpd/team/`）的动作照常可用，而需要服务本身的动作（approve、dispatch、
-队友消息、压缩）会由适配器报出它无法解析的服务名而失败。今天的 TUI 会话无法创建队友 —— 这是能力
-边界，不是配置失误。
+中基于文件（`<workspace>/.mpd/team/`）的动作照常可用，而 `agent_teams_plan` 自身的 `approve` / `delete`
+走的是 mpd 记录自己的 **native 执行器**（基于 `ctx.subagents`），并不依赖官方服务。仍由官方服务承担的部分
+—— 它自己的实时读数、等待变更与队友消息 —— 会由适配器报出它无法解析的服务名而失败。今天的 TUI 会话无法
+通过官方平面创建队友 —— 这是能力边界，不是配置失误。
 
 ## 4. 准入与分发产物
 

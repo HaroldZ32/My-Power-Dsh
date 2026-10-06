@@ -256,6 +256,8 @@ export interface HarnessCalls {
   localeDictionaries?: Array<{ namespace: string; dictionaries: Record<string, Record<string, string>> }>
   /** Dependency lists of every injection callback that fired. */
   injected?: string[][]
+  /** Every effect DISPOSER the client registered, keyed by its label. */
+  ctxDisposers?: Map<string, Function>
   /** Set when the ADOPTED client half's own apply ran, which must never happen. */
   agentTeamsApplied?: boolean
 }
@@ -551,6 +553,10 @@ export interface MpdClientExports {
   SIDEBAR_TAB_ID: string
   /** The registrar the sidebar mounts the page through. */
   registerTeamSidebarTab: Function
+  /** Read or set the settled-sidebar bound (`ms` omitted reads it); the offline seam a timed arm needs. */
+  settleTimeoutMs: (ms?: number) => number
+  /** What the last mount settled on: whether it reported, which host won, and the two tallies. */
+  sidebarDiagnostics: () => { reported: boolean; host: string; registered: number; preferred: boolean }
   /** Any other export the artifact carries. */
   [field: string]: unknown
 }
@@ -1048,7 +1054,18 @@ export function createHarness(options: HarnessOptions = {}): Harness {
       calls.effects.push(label ?? "effect");
       /** Whatever the effect returned, when it returned a disposer. */
       const disposer = fn();
-      return typeof disposer === "function" ? disposer : () => {};
+      // THE DISPOSER IS KEPT, keyed by its label. In cordis an effect's returned function runs when
+      // the fiber is disposed — teardown of a client entry, or a page unload — and a client surface
+      // that reports on the way out can only be driven offline if the double hands that disposer
+      // back. The label is the key because that is the identifier the caller passes and an arm can
+      // name (`mpd: harness sidebar report`); a repeated label keeps the LAST registration, which is
+      // also what the live framework would dispose last.
+      if (typeof disposer === "function") {
+        calls.ctxDisposers = calls.ctxDisposers ?? new Map<string, Function>();
+        calls.ctxDisposers.set(label ?? "effect", disposer);
+        return disposer;
+      }
+      return () => {};
     },
     on: () => () => {},
     provide: (name, value) => { registry.set(name, value); runInjections(); return () => registry.delete(name); },

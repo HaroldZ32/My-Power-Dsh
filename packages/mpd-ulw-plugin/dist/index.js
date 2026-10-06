@@ -1,6 +1,6 @@
 // packages/mpd-ulw-plugin/src/index.ts
 import { mkdirSync as mkdirSync2, writeFileSync, appendFileSync } from "node:fs";
-import { join as join2 } from "node:path";
+import { join as join3 } from "node:path";
 import { randomUUID as randomUUID2 } from "node:crypto";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
@@ -757,22 +757,30 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
-  function toolReachable(name) {
+  function hostToolDefinition(name) {
     try {
       const hostView = service("tools");
-      if (typeof hostView?.get === "function" && hostView.get(name) !== undefined)
-        return true;
-    } catch {}
-    return liveAgents().some((candidate) => {
-      const scoped = scopedToolRegistry(candidate);
-      if (scoped === undefined)
-        return false;
-      try {
-        return scoped.get(name) !== undefined;
-      } catch {
-        return false;
-      }
-    });
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name);
+    try {
+      return scoped.get(name, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name) {
+    if (hostToolDefinition(name) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined);
   }
   function projectToolResult(raw) {
     const record = raw;
@@ -1074,20 +1082,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },
@@ -1529,6 +1529,141 @@ function resolveDshAdapter(ctx) {
   return mounted ?? createDshAdapter(ctx);
 }
 
+// packages/mpd-roles-plugin/src/complexity-gate.ts
+import { readFile as readFileFs } from "node:fs/promises";
+import { join as join2 } from "node:path";
+var GATE_MODE_MECHANICAL = "mechanical";
+var GATE_MODE_ADVISORY = "advisory";
+var GATE_MODE_OFF = "off";
+var GATE_CONFIG_KEY = "team.gate";
+var BOULDER_DIR_CONFIG_KEY = "boulder.dir";
+var WORKSPACE_ROOT_SPELLINGS = [".", "./", ".mpd", ".mpd/", "./.mpd", "./.mpd/"];
+function resolveBoulderDir(value) {
+  if (typeof value !== "string")
+    return;
+  const trimmed = value.trim();
+  if (trimmed === "" || WORKSPACE_ROOT_SPELLINGS.includes(trimmed))
+    return;
+  return trimmed;
+}
+var STAGING_TOOL_NAME = "agent_teams_plan";
+var PLAN_EXTEND_ACTIONS = ["add_member", "create_task"];
+var STAGED_PLAN_PHRASE = "a team PLAN was STAGED";
+var ALREADY_STAGED_PLAN_PHRASE = "a team PLAN is ALREADY STAGED";
+var INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until approved";
+var NO_TEAM_STAGED_PHRASE = "NO team was staged";
+var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
+var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu;
+var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
+var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u;
+var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
+var DELIVERABLE_VERB_MIN = 4;
+var ENUMERATED_LINE_MIN = 3;
+var ACTION_VERB_MIN = 3;
+var C_SUBSIGNAL_MIN = 2;
+var GATE_PLAN_NAME_MAX = 60;
+var GATE_PLAN_EXCERPT_MAX = 500;
+var GATE_PLAN_NAME_FALLBACK = "session-start complexity gate team";
+function distinctMatches(text, pattern) {
+  const seen = new Set;
+  for (const match of text.matchAll(pattern))
+    seen.add(match[0].toLowerCase());
+  return seen.size;
+}
+function enumeratedLineCount(text) {
+  let count = 0;
+  for (const line of text.split(`
+`))
+    if (ENUMERATED_LINE_PATTERN.test(line))
+      count += 1;
+  return count;
+}
+function clauseStepCount(text) {
+  let count = 0;
+  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN))
+    if (CLAUSE_ACTION_PATTERN.test(clause))
+      count += 1;
+  return count;
+}
+function consumeExplicitFlag(text) {
+  const source = String(text ?? "");
+  const trimmed = source.trimStart();
+  const prefix = /^team:\s*/iu.exec(trimmed);
+  if (prefix !== null)
+    return { flagged: true, text: trimmed.slice(prefix[0].length) };
+  const marker = /(^|\s)!team\b/iu.exec(source);
+  if (marker !== null)
+    return { flagged: true, text: source.replace(/(^|\s)!team\b\s*/iu, "$1") };
+  return { flagged: false, text: source };
+}
+function evaluateComplexityGate(text, input = {}) {
+  const source = String(text ?? "");
+  const signals = [];
+  if (input.explicitFlag === true)
+    signals.push("A");
+  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
+    signals.push("B");
+  const cSubSignals = [
+    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
+    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
+    clauseStepCount(source) >= ENUMERATED_LINE_MIN
+  ].filter(Boolean).length;
+  if (cSubSignals >= C_SUBSIGNAL_MIN)
+    signals.push("C");
+  if (input.activeBoulder === true)
+    signals.push("D");
+  return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
+}
+async function readBoulderGate(workspace, opts = {}) {
+  try {
+    const read = opts.readFile ?? ((path) => readFileFs(path, "utf8"));
+    const root = resolveBoulderDir(opts.boulderDir) ?? String(workspace ?? "");
+    const raw = await read(join2(root, ".mpd", "boulder.json"));
+    const state = JSON.parse(raw);
+    if (state === null || typeof state !== "object" || Array.isArray(state))
+      return { active: false };
+    const record = state;
+    const works = record.works !== null && typeof record.works === "object" && !Array.isArray(record.works) ? record.works : {};
+    const activeId = String(record.active_work_id ?? "");
+    const pointed = activeId === "" ? undefined : works[activeId];
+    const work = pointed !== null && typeof pointed === "object" && !Array.isArray(pointed) ? pointed : record;
+    const status = typeof work.status === "string" ? work.status : undefined;
+    const planPath = typeof work.active_plan === "string" && work.active_plan !== "" ? work.active_plan : undefined;
+    return {
+      active: status === "active",
+      ...status === undefined ? {} : { status },
+      ...planPath === undefined ? {} : { planPath }
+    };
+  } catch {
+    return { active: false };
+  }
+}
+function resolveGateMode(value) {
+  if (value === GATE_MODE_ADVISORY)
+    return GATE_MODE_ADVISORY;
+  if (value === GATE_MODE_OFF || value === false)
+    return GATE_MODE_OFF;
+  return GATE_MODE_MECHANICAL;
+}
+function collapseWhitespace(text) {
+  return String(text ?? "").replace(/\s+/gu, " ").trim();
+}
+function gatePlanShell(input) {
+  const goal = String(input.goal ?? "");
+  const firstLine = collapseWhitespace(goal.split(/\r?\n/u)[0] ?? "");
+  const excerpt = collapseWhitespace(goal).slice(0, GATE_PLAN_EXCERPT_MAX);
+  const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
+  return {
+    name: firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX),
+    description: "Staged mechanically by the mpd session-start complexity gate on " + matched + "." + `
+This is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet.` + `
+Goal excerpt: ` + (excerpt === "" ? "(empty)" : excerpt) + "\nExtend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`,' + " then approve it with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members.' + `
+` + INERT_PLAN_PHRASE + "." + (input.planPath === undefined ? "" : `
+Active plan artifact (signal D): ` + input.planPath),
+    approval: "required"
+  };
+}
+
 // packages/mpd-ulw-plugin/src/index.ts
 var name = "mpd-ulw";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS);
@@ -1588,20 +1723,21 @@ var DIRECTIVE = [
 var ULW_ACTIVATION_DIRECTIVE = [
   "ULTRAWORK ACTIVATION (user-invoked; execute autonomously and ask the user nothing)",
   "1. TRIAGE FIRST: when the objective is unclear, or the task is investigate-first-then-execute, run one normal-MPD investigation round BEFORE the gate, a team or the loop; never open a team on a guess.",
-  "2. GATE: then evaluate the SAME complexity predicate the session-start gate uses — an explicit `team:`/`!team` flag OR any matched signal A-D (A explicit flag; B deliverable verbs; C enumerated steps; D an existing .mpd/plans artifact). Never invent a second predicate.",
-  "3. TEAM WHEN WARRANTED: when the gate fires, or the work is complex, stage the team YOURSELF with the OFFICIAL team tools — spawn_teammate({name, description, prompt}) for each roster member, then team_task_create({subject, description, blocked_by?, write_scopes?}) for the DAG — and run it: no user confirmation and no plan review. The retired `agent_teams_*` tools do not exist on this harness; the team's state is the Lead session's own.",
+  "2. GATE: ALREADY EVALUATED MECHANICALLY — the SAME complexity predicate the session-start gate uses (an explicit `team:`/`!team` flag OR any matched signal A-D: A explicit flag, B deliverable verbs, C enumerated steps, D an active boulder work) was run by the plugin BEFORE this directive was injected, and its verdict is the TEAM GATE block below this objective. Never invent a second predicate.",
+  '3. TEAM WHEN WARRANTED: the TEAM GATE block below carries the verdict, and when the gate staged a plan that plan is YOURS — extend it with `agent_teams_plan {action:"add_member"}` and `agent_teams_plan {action:"create_task"}`, then approve it YOURSELF with `agent_teams_plan {action:"approve"}`: no user confirmation and no plan review. A staged plan is INERT until approval. EXACTLY five `agent_teams_*` tools exist on this harness — `agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`, `agent_teams_control` — and every OTHER `agent_teams_*` name is retired and GONE (e.g. `agent_teams_create`, `agent_teams_add_member`, `agent_teams_create_task`, `agent_teams_approve`, `agent_teams_status`): never call a retired one, and never read the shared `agent_teams_` prefix as a reason to skip `agent_teams_plan`.',
   "4. LOOP TO COMPLETION: never stop early to ask the user; keep rounds until every success criterion is clean.",
   "5. FIX ON SIGHT: a defect the run finds is fixed in the same turn — never report-and-wait and never ask the user for approval.",
   "6. CLOSE OUT ON PROOF: report done only after the verification gate and the quality-gate ledger both approve; otherwise keep working, or report the concrete blocker."
 ].join(String.fromCharCode(10));
-function activationDirective(objective) {
-  return ULW_ACTIVATION_DIRECTIVE + String.fromCharCode(10, 10) + "OBJECTIVE: " + String(objective ?? "").trim();
+function activationDirective(objective, gate) {
+  const base = ULW_ACTIVATION_DIRECTIVE + String.fromCharCode(10, 10) + "OBJECTIVE: " + String(objective ?? "").trim();
+  return gate === undefined ? base : base + String.fromCharCode(10, 10) + gateTrailerText(gate);
 }
 function planRoot(cfg, dsh, exec) {
-  return cfg.planDir ?? join2(dsh.workspaceRoot(exec), ".mpd", "plans");
+  return cfg.planDir ?? join3(dsh.workspaceRoot(exec), ".mpd", "plans");
 }
 function stateRoot(cfg, dsh, exec) {
-  return cfg.stateDir ?? join2(dsh.workspaceRoot(exec), ".mpd", "ulw");
+  return cfg.stateDir ?? join3(dsh.workspaceRoot(exec), ".mpd", "ulw");
 }
 function writeJson(p, v) {
   writeFileSync(p, JSON.stringify(v, null, 2));
@@ -1634,6 +1770,164 @@ function rewriteMessageText(message, text) {
   if (at < 0)
     return message;
   return { ...message, content: content.map((block, index) => index === at ? { ...block, text } : block) };
+}
+var CONFIG_SERVICE = "mpdConfig";
+var TEAMS_SERVICE = "mpdTeams";
+var ULW_STAGING_TIMEOUT_MS = 5000;
+function gateConfigValue(ctx, config, key) {
+  try {
+    const live = ctx.get?.(CONFIG_SERVICE, false);
+    const value = live?.get?.(key);
+    if (value !== undefined)
+      return value;
+  } catch {}
+  if (key === GATE_CONFIG_KEY)
+    return config.team?.gate;
+  if (key === BOULDER_DIR_CONFIG_KEY)
+    return config.boulder?.dir;
+  return;
+}
+function sessionIdOf(agent) {
+  const handle = agent;
+  const candidates = [handle?.session?.id, handle?.sessionId, handle?.id];
+  for (const candidate of candidates)
+    if (typeof candidate === "string" && candidate !== "")
+      return candidate;
+  return "";
+}
+function planIdOf(value) {
+  const direct = value?.planId;
+  if (typeof direct === "string" && direct !== "")
+    return direct;
+  const plan = value?.plan;
+  return typeof plan?.planId === "string" ? plan.planId : "";
+}
+function errorText(error) {
+  const message = error?.message;
+  return message === undefined ? String(error) : String(message);
+}
+function ulwWorkspace(dsh, agent) {
+  try {
+    return typeof dsh.workspaceRoot === "function" ? dsh.workspaceRoot({ agent }) : "";
+  } catch {
+    return "";
+  }
+}
+function stagedPlanOf(ctx, workspace, sessionId) {
+  try {
+    const teams = ctx.get?.(TEAMS_SERVICE, false);
+    return teams?.planFor?.(workspace, sessionId)?.plan;
+  } catch {
+    return;
+  }
+}
+function hasStagingTool(dsh, agent) {
+  if (typeof dsh.hasTool !== "function")
+    return false;
+  try {
+    return agent === undefined || agent === null ? dsh.hasTool(STAGING_TOOL_NAME) === true : dsh.hasTool(STAGING_TOOL_NAME, agent) === true;
+  } catch {
+    return false;
+  }
+}
+async function stageUlwPlan(dsh, ctx, input) {
+  const existing = stagedPlanOf(ctx, input.workspace, input.sessionId);
+  if (existing !== undefined && existing !== null)
+    return { staged: true, planId: planIdOf(existing), alreadyStaged: true };
+  if (!hasStagingTool(dsh, input.agent))
+    return { staged: false, planId: "", alreadyStaged: false, error: "tool " + STAGING_TOOL_NAME + " is not registered" };
+  try {
+    const shell = gatePlanShell({
+      signals: input.signals,
+      goal: input.objective,
+      ...input.planPath === undefined ? {} : { planPath: input.planPath }
+    });
+    const result = await dsh.executeTool({
+      name: STAGING_TOOL_NAME,
+      arguments: { action: "create", name: shell.name, description: shell.description, approval: "automatic" },
+      agent: input.agent,
+      timeoutMs: ULW_STAGING_TIMEOUT_MS
+    });
+    if (result?.ok !== true || result.isError === true) {
+      return { staged: false, planId: "", alreadyStaged: false, error: result?.error === undefined ? "the staging call did not report ok" : String(result.error) };
+    }
+    return { staged: true, planId: planIdOf(result.value), alreadyStaged: false };
+  } catch (error) {
+    return { staged: false, planId: "", alreadyStaged: false, error: errorText(error) };
+  }
+}
+async function evaluateUlwGate(dsh, ctx, config, input) {
+  const consumed = consumeExplicitFlag(input.objective);
+  const objective = consumed.text.trim();
+  const mode = resolveGateMode(gateConfigValue(ctx, config, GATE_CONFIG_KEY));
+  if (mode === GATE_MODE_OFF) {
+    return { objective, report: { mode, trigger: false, signals: [], explicit: consumed.flagged, staged: false, planId: "", alreadyStaged: false } };
+  }
+  try {
+    const workspace = ulwWorkspace(dsh, input.agent);
+    const boulderDir = gateConfigValue(ctx, config, BOULDER_DIR_CONFIG_KEY);
+    const boulder = await readBoulderGate(workspace, typeof boulderDir === "string" && boulderDir !== "" ? { boulderDir } : {});
+    const verdict = evaluateComplexityGate(objective, { explicitFlag: consumed.flagged, activeBoulder: boulder.active });
+    const base = { mode, trigger: verdict.trigger === true, signals: verdict.signals, explicit: consumed.flagged, staged: false, planId: "", alreadyStaged: false };
+    if (verdict.trigger !== true || mode !== GATE_MODE_MECHANICAL)
+      return { objective, report: base };
+    if (input.agent === undefined || input.agent === null) {
+      dsh.rowLog?.("mpd-ulw", "team gate: the predicate fired (" + verdict.signals.join("/") + ") but this step carries no live agent to stage for");
+      return { objective, report: { ...base, error: "the step carries no live agent to stage the plan for" } };
+    }
+    const outcome = await stageUlwPlan(dsh, ctx, {
+      agent: input.agent,
+      workspace,
+      sessionId: sessionIdOf(input.agent),
+      objective,
+      signals: verdict.signals,
+      ...boulder.planPath === undefined ? {} : { planPath: boulder.planPath }
+    });
+    if (!outcome.staged)
+      dsh.rowLog?.("mpd-ulw", 'team gate: staging degraded for "' + objective.slice(0, 60) + '" (' + String(outcome.error) + ") — the directive reports it");
+    else
+      dsh.rowLog?.("mpd-ulw", "team gate: plan staged signals=" + verdict.signals.join("/") + " plan=" + (outcome.planId === "" ? "(id not reported)" : outcome.planId));
+    return { objective, report: { ...base, staged: outcome.staged, planId: outcome.planId, alreadyStaged: outcome.alreadyStaged, ...outcome.error === undefined ? {} : { error: outcome.error } } };
+  } catch (error) {
+    dsh.rowLog?.("mpd-ulw", "team gate failed (" + errorText(error) + ") — the directive reports an unevaluated gate");
+    return { objective, report: { mode, trigger: false, signals: [], explicit: consumed.flagged, staged: false, planId: "", alreadyStaged: false, error: errorText(error) } };
+  }
+}
+function gateTrailerText(report) {
+  const matched = report.signals.length === 0 ? "complexity signals" : "complexity signals " + report.signals.join("/");
+  const id = report.planId === "" ? "(plan id not reported by the call)" : report.planId;
+  const extend = "`" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`) and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`';
+  const approve = "approve it YOURSELF with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — no user confirmation';
+  const create = "stage the plan with `" + STAGING_TOOL_NAME + ' {action:"create"}`, extend it with ' + extend + ", then " + approve;
+  if (report.mode === GATE_MODE_OFF) {
+    return "TEAM GATE: OFF (" + GATE_CONFIG_KEY + "=off) — the predicate was not evaluated and " + NO_TEAM_STAGED_PHRASE + ".";
+  }
+  if (report.staged && report.alreadyStaged) {
+    return "TEAM GATE: MECHANICAL — this objective shows " + matched + ", and " + ALREADY_STAGED_PLAN_PHRASE + ": " + id + " (0 members, 0 tasks: a SHELL, not a team)." + `
+- The gate did NOT stage again: a second staging would ARCHIVE the in-progress plan.` + `
+- Extend it with ` + extend + ", then " + approve + "; approval is what spawns the members and posts the tasks." + `
+- ` + INERT_PLAN_PHRASE + " — never tell the user a team was created.";
+  }
+  if (report.staged) {
+    return "TEAM GATE: MECHANICAL — this objective shows " + matched + ", and " + STAGED_PLAN_PHRASE + ": " + id + " (0 members, 0 tasks: a SHELL, not a team)." + `
+- Extend it with ` + extend + ", then " + approve + "; approval is what spawns the members and posts the tasks." + `
+- ` + INERT_PLAN_PHRASE + " — never tell the user a team was created.";
+  }
+  if (report.trigger && report.mode === GATE_MODE_MECHANICAL) {
+    return "TEAM GATE: MECHANICAL — this objective shows " + matched + ", so the gate FIRED, but staging did NOT happen (" + String(report.error ?? "unknown reason") + "): " + NO_TEAM_STAGED_PHRASE + " and no plan exists for this run." + `
+- Continue the run; if the work warrants a team, ` + create + ".";
+  }
+  if (report.trigger) {
+    return "TEAM GATE: ADVISORY (" + GATE_CONFIG_KEY + "=advisory) — this objective shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + ": the gate is ADVISORY and stages nothing." + `
+- Continue solo; if the work genuinely warrants a team, ` + create + ".";
+  }
+  if (report.error !== undefined) {
+    return "TEAM GATE: UNEVALUATED — the gate could not run (" + report.error + "), so " + NO_TEAM_STAGED_PHRASE + "; do not assume one and do not invent a second predicate.";
+  }
+  if (report.mode === GATE_MODE_MECHANICAL) {
+    return "TEAM GATE: MECHANICAL — no complexity signal fired for this objective, and " + NO_TEAM_STAGED_PHRASE + ". Do not invent a second predicate.";
+  }
+  return "TEAM GATE: ADVISORY (" + GATE_CONFIG_KEY + "=advisory) — no complexity signal fired for this objective, and " + NO_TEAM_STAGED_PHRASE + ".";
 }
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
@@ -1737,11 +2031,11 @@ function apply(ctx, config = {}) {
       const strictReview = args?.strictReview === true;
       const rounds = Math.min(Math.max(Number(args?.maxRounds ?? maxRounds) || 1, 1), 8);
       const id = "ulw-" + randomUUID2().slice(0, 8);
-      const dir = join2(stateDir, id);
+      const dir = join3(stateDir, id);
       mkdirSync2(dir, { recursive: true });
       mkdirSync2(planDir, { recursive: true });
-      const stateFile = join2(dir, "state.json");
-      const ledgerFile = join2(dir, "ledger.jsonl");
+      const stateFile = join3(dir, "state.json");
+      const ledgerFile = join3(dir, "ledger.jsonl");
       function stamp(lane, verdict2, detail) {
         appendFileSync(ledgerFile, JSON.stringify({ lane, verdict: verdict2, detail, at: new Date().toISOString() }) + String.fromCharCode(10));
       }
@@ -1774,7 +2068,7 @@ function apply(ctx, config = {}) {
       let planReviewOk = false;
       if (plan) {
         const slug = objective.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "plan";
-        const planPath = join2(planDir, slug + "-" + id.slice(-4) + ".md");
+        const planPath = join3(planDir, slug + "-" + id.slice(-4) + ".md");
         const planner = await spawnChild({
           label: id + "-planner",
           persona: PERSONAS.prometheus,
@@ -1915,7 +2209,7 @@ function apply(ctx, config = {}) {
     parameters: { type: "object", properties: { objective: { type: "string" }, maxRounds: { type: "integer", description: "1..8" } }, required: ["objective"] },
     output: { schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] }, render: (_a, v) => textBlock("mpd_ulw status=" + v.status + " rounds=" + v.rounds + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile) },
     execute: async (args, exec) => {
-      const tool = dsh.hasTool("mpd_ultrawork") ? dsh.toolRuntime().get("mpd_ultrawork") : undefined;
+      const tool = dsh.hasTool("mpd_ultrawork", exec?.agent) ? dsh.toolRuntime().get("mpd_ultrawork", exec?.agent) : undefined;
       if (!tool?.execute)
         throw new Error("mpd_ulw: engine not available");
       const inner = { objective: String(args?.objective), tier: "light", plan: false, hyperplan: false, strictReview: false, maxRounds: Number(args?.maxRounds ?? cfg.maxRounds ?? 3) };
@@ -1925,14 +2219,15 @@ function apply(ctx, config = {}) {
   });
   const ULW_USAGE = "usage: /ulw <objective> (alias: /ultrawork <objective>) — starts an autonomous ULW run for that objective";
   const ULW_COMMAND_DESCRIPTION = (alias) => "Run the ULW discipline for an objective, fully autonomously (identical alias: " + alias + ")";
-  const runUlwCommand = (invocation) => {
+  const runUlwCommand = async (invocation) => {
     const objective = String(invocation?.rawInput ?? "").trim();
     if (objective === "")
       return { kind: "error", text: ULW_USAGE };
-    const submitted = invocation.submit?.(dsh.userMessage({ text: activationDirective(objective), source: { kind: "mpd-ulw", reason: "activation-directive" } })) === true;
+    const gate = await evaluateUlwGate(dsh, ctx, config, { objective, agent: invocation?.agent });
+    const submitted = invocation.submit?.(dsh.userMessage({ text: activationDirective(gate.objective, gate.report), source: { kind: "mpd-ulw", reason: "activation-directive" } })) === true;
     if (!submitted)
-      return { kind: "error", text: "ULW could not start: no live agent turn surface to submit the activation directive for " + JSON.stringify(objective) };
-    return { kind: "success", text: "ULW activated: " + objective };
+      return { kind: "error", text: "ULW could not start: no live agent turn surface to submit the activation directive for " + JSON.stringify(gate.objective) };
+    return { kind: "success", text: "ULW activated: " + gate.objective };
   };
   const commandDisposers = ["ulw", "ultrawork"].map((name2) => dsh.registerCommand({ name: name2, description: ULW_COMMAND_DESCRIPTION(name2 === "ulw" ? "/ultrawork" : "/ulw"), input: { hint: "objective" }, handler: runUlwCommand }));
   const gestureDispose = dsh.onEvent("agent/pre-step", async (payload, next) => {
@@ -1949,7 +2244,8 @@ function apply(ctx, config = {}) {
       const objective = claimed.text.trim().slice(claimed.match[0].length).trim();
       if (objective === "")
         return decision;
-      return { ...decision, messages: messages.map((message) => message === claimed.message ? rewriteMessageText(message, activationDirective(objective)) : message) };
+      const gate = await evaluateUlwGate(dsh, ctx, config, { objective, agent: payload?.agent ?? decision?.agent });
+      return { ...decision, messages: messages.map((message) => message === claimed.message ? rewriteMessageText(message, activationDirective(gate.objective, gate.report)) : message) };
     } catch {
       return decision;
     }
@@ -1965,6 +2261,7 @@ export {
   ULW_ACTIVATION_DIRECTIVE,
   activationDirective,
   apply,
+  gateTrailerText,
   inject,
   name
 };

@@ -785,22 +785,30 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
-  function toolReachable(name2) {
+  function hostToolDefinition(name2) {
     try {
       const hostView = service("tools");
-      if (typeof hostView?.get === "function" && hostView.get(name2) !== undefined)
-        return true;
-    } catch {}
-    return liveAgents().some((candidate) => {
-      const scoped = scopedToolRegistry(candidate);
-      if (scoped === undefined)
-        return false;
-      try {
-        return scoped.get(name2) !== undefined;
-      } catch {
-        return false;
-      }
-    });
+      return typeof hostView?.get === "function" ? hostView.get(name2) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name2, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name2);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name2);
+    try {
+      return scoped.get(name2, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name2) {
+    if (hostToolDefinition(name2) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name2, candidate) !== undefined);
   }
   function projectToolResult(raw) {
     const record = raw;
@@ -1102,20 +1110,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },

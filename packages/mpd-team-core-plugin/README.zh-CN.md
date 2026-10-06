@@ -13,7 +13,7 @@
 
 | 工具 | `action` 取值 | 作用 |
 |---|---|---|
-| `agent_teams_plan` | `create`、`add_member`、`create_task`、`edit`、`approve`、`delete`、`status` | 把团队暂存成**计划**；`approve` **执行**它（spawn + 投任务 + 解析 `blocked_by`/`owner`）；`delete` 归档；`status` 把 sidecar 与官方名册/看板并排给出 |
+| `agent_teams_plan` | `create`、`add_member`、`create_task`、`edit`、`approve`、`delete`、`status` | 把团队暂存成**计划**；`approve` 通过**团队执行器**执行它（原生后端 `ctx.subagents.startContinuable` 是**默认**，官方 `dsh.team*` 调用是**回退**），并按 mpd 记录解析 `blocked_by`/`owner`；0 成员且 0 任务的计划会被**拒绝**；`delete` 归档；`status` 在该后端生效时把记录与官方读数并排给出 |
 | `agent_teams_task` | `claim`、`contract`、`release` | 在官方看板认领**并**冻结契约（单调 `attempt`）；读回契约；释放已派发任务 |
 | `agent_teams_dispatch` | `run`、`release` | 把就绪任务与空闲成员配对、通知成员、并**记录配对** |
 | `agent_teams_mail` | `send`、`unread`、`read`、`summary` | 团队信箱：durable，且带官方**给不了**的已读状态 |

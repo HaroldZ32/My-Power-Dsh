@@ -131,9 +131,12 @@ Manifest invariants (why they exist):
   package-name row would self-disable on an unresolvable module (the E4 defect, see
   `docs/plan-e.md`). That body is main code plus its own vendored closure
   (`packages/mpd-agent-teams-plugin/_deps/`), and since 0.1.7-rc.2 no row mounts it at all.
-- **Four `dependencies` entries: `dsh-better-sidebar` and the three official Agent Teams
-  packages** (`@deepseek-ai/dsh-experimental-agent-team`, `-tool-agent-team`,
-  `-client-ui-agent-team`). Declaring a dependency mounts nothing on its own, and a row
+- **THREE `dependencies` entries — the three official Agent Teams packages**
+  (`@deepseek-ai/dsh-experimental-agent-team`, `-tool-agent-team`,
+  `-client-ui-agent-team`). `dsh-better-sidebar` is deliberately NOT one of them: it is an OPTIONAL
+  PEER (+ a `devDependency`), a COMPATIBILITY host the bundle never installs, because its `node-pty`
+  postinstall would break the build-script-free dependency closure (§8); its absence is a normal,
+  intended composition, not a broken install. Declaring a dependency mounts nothing on its own, and a row
   alone would be boot-fatal when the module cannot be resolved, so BOTH halves are
   required: the packages are resolvable because
   `@deepseek-ai/dsh-app-boot#healProfileModuleFallback`
@@ -522,16 +525,19 @@ fires the callback. `packages/mpd-bundle-plugin/test/client-harness.ts` models t
 default (the sidebar service is published AFTER `apply()`), so the suite fails loudly if a
 probe ever comes back.
 
-**Both mpd surfaces are sidebar-hosted; the team panel is the official plugin's.** `WorkmateLibraryView`
+**Both mpd surfaces are sidebar-hosted, and BOTH sidebar hosts can carry them.** `WorkmateLibraryView`
 is contributed
 by `registerSidebarTab` as a **DSH-better-sidebar** tab
-(`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`, `single: true`, order 90). Without
-DSH-better-sidebar it logs exactly one
-warning (`… has no host (no floating fallback by design)`) and registers nothing, so no
-surface exists outside the sidebar. The host itself is not an optional third-party extra:
-`dsh-better-sidebar` is a declared runtime dependency and the guarded `mpd-better-sidebar` row
-mounts it (§4), so that warning path is what a missing or broken dependency produces, not
-something a normal install sees. The **Agent Teams panel** is separate and does not depend on that
+(`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`, `single: true`, order 90). That host is a
+COMPATIBILITY option, not a requirement: `dsh-better-sidebar` is an optional peer the bundle never
+installs, so its absence is normal and intended (above). While it IS mounted the harness-side
+registrations back off with one `console.info` line, so the same panel never appears twice. WITHOUT
+it — which is what a checkout install resolves — the SAME two bodies register into the HARNESS's own
+right sidebar (`ctx.inject(["sidebarRightTabs", "sidebarRight"], …)`): the Team tab (which lists the
+WORKSPACE's own teams for a session that has none) and the Workmate library both stay reachable, and
+THAT is the surface that must work without the community sidebar. A seam missing there is reported
+ONCE by name (`no sidebar host took the mpd panels: …`) instead of leaving an empty GUI with no
+reason. The **Agent Teams panel** is separate and does not depend on that
 sidebar at all: it is the official `@deepseek-ai/dsh-experimental-client-ui-agent-team` client
 plugin, mounted by the bundle's own `mpd-ui-agent-team` row, and it registers a
 conversation-header action that renders the Lead session's `agentTeam` projection (roster + task

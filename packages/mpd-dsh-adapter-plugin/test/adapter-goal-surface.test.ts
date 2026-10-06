@@ -10,7 +10,7 @@
 //     never as a throw and never as a fabricated success;
 //   * the two EMPTY reads: `null` means "no goal", `undefined` means "cannot tell".
 import { test, expect } from "bun:test"
-import { createDshAdapter } from "../src/index.ts"
+import { GOAL_TOOL_NAMES, createDshAdapter } from "../src/index.ts"
 
 /** One recorded tool call: the name and the arguments the seam sent. */
 type Call = { name: string; arguments: Record<string, unknown>; agent?: unknown }
@@ -224,4 +224,108 @@ test("the agent's OWN scoped registry answers first — that is where the goal t
   expect(failed.ok).toBe(false)
   expect(String(failed.error)).toContain("scope exploded")
   expect(calls).toHaveLength(0)
+})
+
+/** One live-Agent double as the scoped half of {@link scopedGoalHarness}. */
+interface ScopedGoalAgent {
+  /** The registry id the live-session service answers. */
+  id: string
+  /** The agent's OWN scope: the all-or-nothing members the adapter probes for, plus the registry. */
+  ctx: {
+    on: () => () => void
+    effect: () => () => void
+    tools: {
+      restrict: () => () => void
+      execute: () => Promise<unknown>
+      get: (name: string, scope?: unknown) => unknown
+    }
+  }
+}
+
+/** What {@link scopedGoalHarness} hands back to a test. */
+interface ScopedGoalHarness {
+  /** The adapter under test, over a host plane that knows NO goal tool. */
+  adapter: ReturnType<typeof createDshAdapter>
+  /** Every viewing scope the agent-scoped registry was read with, in call order. */
+  scopes: unknown[]
+  /** The one live Agent handle. */
+  agent: ScopedGoalAgent
+}
+
+/**
+ * A harness double in which the goal trio is reachable ONLY through a live agent's scope.
+ *
+ * This models the INSTALLED registry contract the probe depends on and nothing more:
+ * `get(name, scope)` resolves a tool along that scope's chain, so an OMITTED scope reads the
+ * GLOBAL layer alone. The goal trio is a PRESET row in an mpd session, so it is registered in a
+ * scope that is the agent's ANCESTOR — an unscoped read answers `undefined` for all three even
+ * though the model can call them. The double therefore answers a goal tool only when the caller
+ * named the agent that owns it, and records every viewing scope so an arm can assert the argument
+ * was passed at all (the regression this pair exists for).
+ *
+ * @param carrier - whether the live agent's scope actually carries the goal trio.
+ * @returns the adapter over that harness, the recorded viewing scopes, and the live agent.
+ */
+function scopedGoalHarness(carrier: boolean): ScopedGoalHarness {
+  /** Every viewing scope the scoped registry was asked with, in call order. */
+  const scopes: unknown[] = []
+  /** The live Agent: its own ctx carries the preset-plane registry shape the adapter probes for. */
+  const agent: ScopedGoalAgent = {
+    id: "agent-1",
+    ctx: {
+      on: () => () => {},
+      effect: () => () => {},
+      tools: {
+        restrict: () => () => {},
+        execute: async () => ({ isError: false, value: { goal: goalView() } }),
+        /** The registry's real resolution rule: a name resolves only for the scope that owns it. */
+        get: (name: string, scope?: unknown) => {
+          scopes.push(scope)
+          return carrier && scope === agent && GOAL_TOOL_NAMES.includes(name) ? { name } : undefined
+        },
+      },
+    },
+  }
+  /** The ctx: a host-plane registry that knows no goal tool, plus the live-agent registry. */
+  const ctx = {
+    get: (serviceName: string) => (serviceName === "tools"
+      ? { register: () => () => {}, get: () => undefined, execute: async () => ({ isError: true, error: { message: "unknown tool" } }) }
+      : serviceName === "agents" ? { list: () => [agent] } : undefined),
+    on: () => () => {},
+    provide: () => {},
+  }
+  return { adapter: createDshAdapter(ctx), scopes, agent }
+}
+
+test("capabilities().goalTools is TRUE through a live agent's scope and FALSE without the row", () => {
+  // POSITIVE: the host plane cannot see the trio; the live agent's scope can, and the probe must
+  // read it there. Naming the agent as the VIEWING SCOPE is what makes a preset row visible.
+  /** A harness whose goal trio is mounted on the agent plane, as the `mpd` preset mounts it. */
+  const mounted = scopedGoalHarness(true)
+  expect(mounted.adapter.capabilities().goalTools).toBe(true)
+  // One read per goal tool name, and EVERY one carried the live agent as its viewing scope: with the
+  // argument dropped the registry answers the global layer, so this fails before the flag does.
+  expect(mounted.scopes).toHaveLength(GOAL_TOOL_NAMES.length)
+  expect(mounted.scopes.every((scope) => scope === mounted.agent)).toBe(true)
+
+  // NEGATIVE CONTROL: the SAME composition with no goal row mounted stays false. The probe asks a
+  // question about reachability; it is never a constant.
+  /** The same live agent, whose scope carries no goal tool. */
+  const bare = scopedGoalHarness(false)
+  expect(bare.adapter.capabilities().goalTools).toBe(false)
+  expect(bare.scopes.every((scope) => scope === bare.agent)).toBe(true)
+
+  // The other two directions a false must still cover: a host-plane registry that carries every
+  // goal name keeps the flag true with no live agent at all (the disjunction is an OR), while a
+  // composition with neither plane reports false.
+  /** A host-plane-only composition: the trio resolves globally, no session is live. */
+  const hostOnly = createDshAdapter({
+    get: (name: string) => (name === "tools"
+      ? { get: (toolName: string) => (GOAL_TOOL_NAMES.includes(toolName) ? { name: toolName } : undefined) }
+      : undefined),
+    on: () => () => {},
+    provide: () => {},
+  })
+  expect(hostOnly.capabilities().goalTools).toBe(true)
+  expect(createDshAdapter({ get: () => undefined }).capabilities().goalTools).toBe(false)
 })

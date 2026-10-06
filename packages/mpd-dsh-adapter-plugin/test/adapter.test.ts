@@ -706,6 +706,81 @@ describe("tool plane", () => {
     expect(executed[0].callId).toMatch(/^mpd-/)
   })
 
+  test("hasTool/toolRuntime().get resolve a PRESET-plane tool through the agent's OWN view, and keep the plane rule otherwise", () => {
+    /** The preset-plane definition the live agent's scope answers; identity is asserted below. */
+    const planDefinition = { name: "agent_teams_plan", description: "staged plan tool" }
+    /** The name the HOST plane carries — a repository row, for the no-regression direction. */
+    const HOST_NAME = "mcp__wave_mcp__prepare_session"
+    /** The preset-plane name the host plane cannot see. */
+    const PRESET_NAME = planDefinition.name
+    /** Every viewing scope the agent-scoped registry was asked with, in call order. */
+    const scopes: unknown[] = []
+    /** The live Agent: its own view carries the preset row, and it RESTRICTED the host row away. */
+    const agent = {
+      id: "lead-1",
+      ctx: {
+        on: () => () => {},
+        effect: () => () => {},
+        tools: {
+          restrict: () => () => {},
+          execute: async () => ({}),
+          /**
+           * The installed registry's rule, modelled: a name resolves along the VIEWING SCOPE's
+           * chain and nowhere else, and a global this scope restricted away reads as ABSENT.
+           * @param name - the tool name asked for.
+           * @param scope - the viewing scope, absent for the global view.
+           * @returns the definition, or undefined for any other view.
+           */
+          get: (name: string, scope?: unknown) => {
+            scopes.push(scope)
+            if (scope !== agent) return undefined
+            return name === PRESET_NAME ? planDefinition : undefined
+          },
+        },
+      },
+    }
+    /** The ctx: a host-plane registry carrying ONLY the host row, plus the live-agent registry. */
+    const ctx = {
+      get: (serviceName: string) => (serviceName === "agents"
+        ? { list: () => [agent] }
+        : serviceName === "tools" ? { get: (name: string) => (name === HOST_NAME ? { name } : undefined) } : undefined),
+      on: () => () => {},
+      provide: () => {},
+    }
+    /** The adapter under test. */
+    const adapter = createDshAdapter(ctx)
+
+    // WITH the agent: the preset-plane row resolves — the arm that goes red if the argument is dropped.
+    expect(adapter.hasTool(PRESET_NAME, agent)).toBe(true)
+    // The definition comes from the SAME view the probe answered from, by identity.
+    expect(adapter.toolRuntime().get(PRESET_NAME, agent)).toBe(planDefinition)
+    expect(scopes.length).toBeGreaterThan(0)
+    expect(scopes.every((scope) => scope === agent)).toBe(true)
+    // WITHOUT the agent the read is the host-plane GLOBAL view, where the preset row does not exist.
+    expect(adapter.hasTool(PRESET_NAME)).toBe(false)
+    expect(adapter.toolRuntime().get(PRESET_NAME)).toBeUndefined()
+    // A HOST-plane row is visible to that agent too (its view contains the globals): no regression.
+    expect(adapter.hasTool(HOST_NAME)).toBe(true)
+    // ... unless that scope RESTRICTED it away. The agent view is AUTHORITATIVE: a restricted global
+    // reads as absent rather than being resurrected by a host-plane fallback.
+    expect(adapter.hasTool(HOST_NAME, agent)).toBe(false)
+    // NEGATIVE CONTROL: a name that agent's own view misses stays false in both directions.
+    expect(adapter.hasTool("nope", agent)).toBe(false)
+    expect(adapter.toolRuntime().get("nope", agent)).toBeUndefined()
+    // An object carrying NO scope at all is "no agent view available": the global read is the one
+    // left to ask, so the host row still answers and the preset row still does not.
+    expect(adapter.hasTool(HOST_NAME, { id: "bare-agent" })).toBe(true)
+    expect(adapter.hasTool(PRESET_NAME, { id: "bare-agent" })).toBe(false)
+    // A scope whose read THROWS is that answer — never a silent host-plane retry.
+    /** An agent whose own view cannot answer at all. */
+    const brokenAgent = {
+      id: "broken-agent",
+      ctx: { on: () => () => {}, effect: () => () => {}, tools: { restrict: () => () => {}, execute: async () => ({}), get: () => { throw new Error("scope exploded") } } },
+    }
+    expect(adapter.hasTool(HOST_NAME, brokenAgent)).toBe(false)
+    expect(adapter.toolRuntime().get(HOST_NAME, brokenAgent)).toBeUndefined()
+  })
+
   test("executeTool normalizes success, tool error, thrown error and a missing runtime", async () => {
     /** The full fixture's ctx. */
     const { ctx } = fakeHarness()

@@ -1,0 +1,32 @@
+{
+  "notice": {
+    "any": 1,
+    "advisory": 1,
+    "mechanical": 0,
+    "signalsNamed": 1,
+    "shellShaped": 0,
+    "inert": 0,
+    "retiredProvisioned": 0,
+    "officialTools": 1,
+    "mechanicalTool": 0,
+    "retiredVocabulary": 0,
+    "signals": [
+      "C"
+    ],
+    "planIds": []
+  },
+  "teams": {
+    "staged": 0,
+    "planIds": [],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 0,
+    "recordIds": []
+  },
+  "goal": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory",
+  "firedLine": "[mpd-roles] session gate fired for agent \"session-71f865f0-cffa-4ea4-bf36-0d351a6b0436\" signals=C mode=advisory staged=0",
+  "gateInstalled": true,
+  "ownKeyWritten": true,
+  "problems": []
+}

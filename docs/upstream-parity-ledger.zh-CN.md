@@ -14,10 +14,15 @@
 > （`sessionTeamPolicy.mode`、`sessionTeamPolicy.autoRoute`）、它的团队
 > 工具与它的 staged 团队流程都不再存在于随包会话中。迁移中**存活下来**、也是读者应当带走的东西，是**门禁
 > 语义**：同一个冻结谓词 `trigger = explicit flag OR (matchedSignals >= 1)` 仍在会话第一个
-> pre-step 求值，其通知仍带标记 `[AgentTeams] Session-start team rule`，而且它依然**只咨询 ——
-> 不预建任何团队**；变的只是实现位置（迁入 `mpd-roles-plugin`，架在官方插件的接缝上），captain
-> 现在用 `spawn_teammate` + `team_task_create` 建队。见 `docs/plan-0.1.7-adaptation.md` 与
-> AGENTS.md §1。下文其余内容是该波次的冻结记录，按历史来读。
+> pre-step 求值，其通知仍带标记 `[AgentTeams] Session-start team rule`。门现在是**默认机械执行**
+> （实现已迁入 `mpd-roles-plugin`，架在官方插件的接缝上）：一旦触发，它会 **stage** 一个可批准的
+> plan shell —— 0 成员、0 任务，经本 bundle **自己**的 `agent_teams_plan` 工具 —— 并注入**一条**
+> 通知，点名该调用返回的 plan id；此时**没有 spawn 任何东西**，该 shell 在 captain 用
+> `add_member` / `create_task` 扩展并用 `agent_teams_plan {action:"approve"}` 批准之前保持**惰性**。
+> `mpd.jsonc` 的 `team.gate` 选择 `mechanical`（默认）| `advisory` | `off`；在 `advisory` 下（或该工具
+> 未挂载时），那**一条**通知改为建议式并声明 `NO team was staged`。见 `docs/plan-0.1.7-adaptation.md` 与
+> AGENTS.md §1。下文其余内容是该波次的冻结记录，按历史来读 —— 包括 `D_AUTOROUTE_ADVISORY` 决策与
+> `D_planArtifact` 信号行，二者均已于 2026-10-07 被取代（见信号表下方的日期注记）。
 
 冻结取值的唯一真源：`evidence/omo-align/requirements/frozen-contract.json`（由队长维护）。
 研究输入：`evidence/omo-align/research/team-vs-mass-ulw/gap.json`（t2）与
@@ -63,6 +68,15 @@
 | `C_enumeratedSteps` | 软 | **三取二**即命中：`C1` 编号/项目符号行（`^\s*(\d+[.)]\|[-*])\s`）≥ 3 行；`C2` 去重动作动词 ≥ 3 个；`C3` 动作子句（动词带宾语，编号与否皆可）≥ 3 个 |
 | `D_planArtifact` | 软 | 首个 pre-step 时，会话工作区存在 `.mpd/plans/*.md` |
 
+> **已于 2026-10-07 被取代 —— 信号 `D`，以及随之而来的"仅咨询"决策。** 上表 `D_planArtifact` 行是本
+> 波次的冻结记录，**原样保留**作为历史；实际发布的谓词不再探测 plan 文件。**`D` 是该工作区存在正在进行
+> 的 boulder 工作** —— `.mpd/boulder.json` 中的 `status: "active"` —— 因为按文件探测在本工作区的**每个**
+> 会话都会触发：一个 plan 文件会比产生它的工作活得更久。仅有 plan **文件**不再构成信号。
+> 同一天也取代了 `D_AUTOROUTE_ADVISORY`（见上）：触发不再只是建议 —— 默认模式会通过
+> `agent_teams_plan` **stage** 一个可批准且惰性的 plan shell，由 captain 批准；而那**一条**建议式通知
+> 及其 `NO team was staged` 文案，作为 `team.gate: "advisory"` 的降级路径保留下来。权威来源：AGENTS.md §1、
+> `presets/mpd.patch.yml` 与 `packages/mpd-roles-plugin/README.md`。
+
 **动词表已和谐化（行为变更，R3）。** `C2` 与 `C3` 现共用**同一**动词集：英文 14 个 —— `add, align,
 audit, build, change, check, consolidate, implement, migrate, overhaul, port, refactor, rewrite,
 verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 重构, 迁移, 审计, 移植, 梳理, 全量`。两者只差
@@ -76,6 +90,9 @@ verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 
 代价：** 形如「Check the test, build the package, verify the output.」的多子句请求会满足 C（C2+C3）
 从而**确实**进入建队路径；仅凭 C 上的任何规则都无法把它与冻结的 complex #1 区分开。详见 §7 `O1`
 与 §8 的误触发实测。
+
+*冻结波次记录。已于 2026-10-07 被取代 —— 默认模式现在会通过 `agent_teams_plan` **stage** 一个可批准的
+plan shell，由 captain 批准；见信号表下方的日期注记。*
 
 命中后门现在只**咨询**（`D_AUTOROUTE_ADVISORY`）：不建任何团队，只注入一条咨询通知
 （标记 `[AgentTeams] Session-start team rule`），点名命中的信号并明确说明**没有团队被

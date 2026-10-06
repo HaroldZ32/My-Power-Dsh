@@ -95,12 +95,39 @@
     depth: number
   }
 
+  /**
+   * One of the WORKSPACE's teams, as `/plugins/mpd-team/state` lists it beside the session's own.
+   *
+   * Read for the session-less branch: a session that approved nothing still has a workspace, and the
+   * teams in it are what the panel shows instead of the bare empty sentence.
+   */
+  interface WorkspaceTeam {
+    /** The mpd team id (`<team-…>`). */
+    id: string
+    /** The team name the user reads. */
+    name: string
+    /** What the team is for. */
+    description: string
+    /** `staged` | `active` | `idle` | `ended`, as the store derives it. */
+    phase: string
+    /** ISO instant the plan was approved, when it was. */
+    approvedAt?: string
+    /** The task tally, so a finished wave reads differently from a running one. */
+    tasks: { total: number; completed: number; failed: number }
+    /** The roster size. */
+    members: number
+    /** Whether the workspace index binds this team to the session that asked. */
+    active: boolean
+  }
+
   /** The payload the route serves. */
   interface TeamState {
     /** The route's own success marker. */
     ok?: boolean
     /** The workspace the record was read from. */
     workspace?: string
+    /** The workspace's teams, newest first — absent on a payload from a route that did not read them. */
+    workspaceTeams?: { records: WorkspaceTeam[]; activeId?: string }
     /** The team head, or null when the session has none. */
     team: { id: string; name: string; description: string; phase: string; approvedAt?: string; links: number } | null
     /** The tally, in the record's own vocabulary. */
@@ -239,6 +266,9 @@
   /** The key each kind abbreviation resolves through, so the abbreviation is bilingual too. */
   const KIND_KEY: Record<string, string> = { requirement: "kind.req", work: "kind.wrk", review: "kind.rev", repair: "kind.fix", integration: "kind.int" }
 
+  /** The key each lifecycle phase resolves through, so a phase label is localized like every other word. */
+  const PHASE_KEY: Record<string, string> = { staged: "phase.staged", active: "phase.active", idle: "phase.idle", ended: "phase.ended" }
+
   /** The English a key falls back to when no translator is threaded in — the view's own words. */
   const EN: Record<string, string> = {
     "header.approved": "approved",
@@ -269,6 +299,19 @@
     "state.reading": "Reading the team…",
     "state.unavailable": "No team state is being served. The mpd team row may not be mounted in this profile.",
     "state.none": "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.",
+    // ── D2: the session-less workspace listing ────────────────────────────────
+    // A session that approved nothing of its own still has a workspace, and a panel that answered it
+    // with the sentence above claimed the WORKSPACE was empty about a workspace holding four teams.
+    // These keys render the truth instead: what is here, and which of them this session drives.
+    "workspace.title": "WORKSPACE TEAMS",
+    "workspace.hint": "No team is bound to this session. The workspace's own teams are listed here — a session drives the one it approved itself.",
+    "workspace.active": "this session",
+    "workspace.members": "members",
+    "workspace.stage": "Stage one with agent_teams_plan, then approve it.",
+    "phase.staged": "staged",
+    "phase.active": "active",
+    "phase.idle": "idle",
+    "phase.ended": "ended",
     "executor.label": "executor",
     "plan.members": "Wants {n} member(s)",
     "plan.tasks": "Wants {n} task(s)",
@@ -790,6 +833,58 @@
       }
 
       /**
+       * One language-independent word per lifecycle phase.
+       *
+       * The phase is the RECORD's own word (`staged`/`active`/`idle`/`ended`), and it stays
+       * distinguishable from the other three even in a Chinese render, which is why it is translated
+       * through a key table rather than echoed raw into a localized panel.
+       * @param phase - the phase as the payload serves it.
+       * @returns the localized label.
+       */
+      const phaseLabel = (phase: string): string => t(PHASE_KEY[phase] ?? phase)
+
+      /**
+       * The workspace's teams, listed for a session that has none of its own.
+       *
+       * THE DEAD END THIS REMOVES (D2): the record is session-scoped, so a panel in a session that
+       * did not approve the workspace's team rendered "no team in this workspace yet" while the team
+       * sat on disk — the exact state the user reported as "built but not used". Every row carries
+       * `data-mpd-workspace-team=<id>`, so a driver can prove which teams were rendered rather than
+       * trusting a screenshot.
+       * @param records - the workspace's teams, newest first.
+       * @param activeId - the team bound to THIS session, when the index binds one.
+       * @returns the section element.
+       */
+      const workspaceSection = (records: WorkspaceTeam[], activeId: string | undefined): unknown => {
+        /** The section's rows, in render order. */
+        const rows: unknown[] = [
+          react.createElement("div", { key: "w-title", style: CSS.subHead }, t("workspace.title")),
+          react.createElement("div", { key: "w-hint", style: CSS.dim }, t("workspace.hint")),
+        ]
+        for (const team of records) {
+          rows.push(react.createElement("div", {
+            key: "w-" + team.id,
+            "data-mpd-workspace-team": team.id,
+            style: CSS.card,
+            title: team.description,
+          },
+          react.createElement("div", { key: "w-top", style: CSS.row },
+            react.createElement("span", { key: "w-name", style: { flex: "1 1 auto", fontWeight: 600 } }, team.name),
+            // ACTIVE IS BOTH A WORD AND A MARKER: the chip says which session drives this team, and the
+            // attribute makes it assertable without parsing the panel's text.
+            team.active || team.id === activeId
+              ? react.createElement("span", { key: "w-active", "data-mpd-workspace-active": team.id, style: CSS.chip }, t("workspace.active"))
+              : null),
+          react.createElement("div", { key: "w-meta", style: CSS.meta },
+            team.id + " · " + phaseLabel(team.phase) + " · " + team.tasks.completed + "/" + team.tasks.total + " " + t("task.title").toLowerCase()
+            + (team.tasks.failed === 0 ? "" : " · " + team.tasks.failed + " ✗")
+            + " · " + team.members + " " + t("workspace.members"))))
+        }
+        rows.push(react.createElement("div", { key: "w-stage", style: { ...CSS.dim, marginTop: "6px" } }, t("workspace.stage")))
+        return react.createElement("div", { "data-mpd-team-tab": "", "data-mpd-workspace-teams": String(records.length), style: CSS.panel }, rows)
+      }
+
+      /**
        * The team panel.
        *
        * The session id comes from the host's own props when it offers one (both hosts do, in their own
@@ -832,6 +927,14 @@
           // everything to show in the plan. Returning the empty sentence would have hidden the very
           // thing the captain came to approve.
           if (current.plan !== null && current.plan.plan !== null) return planSection(current.plan.plan)
+          // ── THE WORKSPACE'S OWN TEAMS (D2) ─────────────────────────────────────
+          // The team record is SESSION-scoped, so a session that approved nothing rendered the empty
+          // sentence even while the workspace held teams another session had built — which is exactly
+          // what the user read as "建了但没用上". When the route served a non-empty listing, THAT is the
+          // answer; the sentence below stays for the workspace that genuinely has no team yet.
+          /** The workspace listing this payload carries, when the route read one. */
+          const listed = state.workspaceTeams?.records ?? []
+          if (listed.length > 0) return workspaceSection(listed, state.workspaceTeams?.activeId)
           return react.createElement("div", { "data-mpd-team-tab": "", style: { ...CSS.panel, ...CSS.dim } }, t("state.none"))
         }
         /** The team head; non-null past the guard above. */

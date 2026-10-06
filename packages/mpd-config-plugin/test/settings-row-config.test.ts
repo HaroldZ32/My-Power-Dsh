@@ -53,6 +53,7 @@ describe("the row config is an EFFECTIVE layer", () => {
     mkdirSync(join(box, ".mpd"), { recursive: true })
     writeFileSync(join(box, ".mpd", "mpd.jsonc"), JSON.stringify({ ulw: { maxRounds: 4 }, watchdog: { enabled: false, warnStreakToEscalate: 9 } }))
     // The ambient DSH_HOME this case overrides, restored in the finally block below.
+    /** The ambient DSH_HOME this case overrides, restored in the finally block below. */
     const previous = process.env.DSH_HOME
     process.env.DSH_HOME = join(box, "home")
     try {
@@ -83,6 +84,7 @@ describe("the row config is an EFFECTIVE layer", () => {
     const box = mkdtempSync(join(tmpdir(), "mpd-row-routing-"))
     mkdirSync(join(box, ".mpd"), { recursive: true })
     // The ambient DSH_HOME this case overrides, restored in the finally block below.
+    /** The ambient DSH_HOME this case overrides, restored in the finally block below. */
     const previous = process.env.DSH_HOME
     process.env.DSH_HOME = join(box, "home")
     try {
@@ -96,5 +98,102 @@ describe("the row config is an EFFECTIVE layer", () => {
       if (previous === undefined) delete process.env.DSH_HOME
       else process.env.DSH_HOME = previous
     }
+  })
+})
+
+describe("boulder.dir — the L4 escape that defeated it", () => {
+  /**
+   * Resolve `boulder.dir` EXACTLY as a boot does, and report the value `mpdConfig.get` would answer.
+   *
+   * The chain is the real one, in the real order: the loader applies the row schema (materialising
+   * schema defaults into the row options) → `loadConfig` merges the file layers and then the row knobs
+   * LAST → `mpdConfig.get(key)` walks the dot path. An arm that called `loadConfig` directly would
+   * miss the schema's own defaults, which is precisely the layer that caused the defect.
+   * @param rowOptions - the row options a boot would pass (usually `{}`, i.e. nothing configured).
+   * @param box - the workspace whose `.mpd/mpd.jsonc` is the project layer.
+   * @param settingsSection - the legacy L3 section to apply, when the arm is about a stored form value.
+   * @returns the resolved value, or undefined when the key is absent from the resolved config.
+   */
+  async function resolvedBoulderDir(rowOptions: Record<string, unknown>, box: string, settingsSection?: unknown): Promise<unknown> {
+    // The modules are imported INSIDE the arm: `loadConfig` reads DSH_HOME at call time, and
+    // `Config` must be the same schema instance the loader would apply.
+    const { loadConfig } = await import("../src/index")
+    /** The row schema applied to the raw options, which is what the loader hands the plugin. */
+    const { Config } = await import("../src/index")
+    /** The row options a real boot resolves: schema defaults materialised, nothing user-set. */
+    const rowConfig = (Config as unknown as (raw: unknown) => Record<string, unknown>)(rowOptions)
+    /** The merged config the service resolves a key against. */
+    const state = loadConfig(rowConfig as never, box, settingsSection)
+    // The dot-path walk `mpdConfig.get(key)` performs.
+    return "boulder" in state.config ? (state.config.boulder as { dir?: unknown }).dir : undefined
+  }
+
+  test("UNSET resolves to undefined — not the retired `.mpd` default (the escape is closed)", async () => {
+    // MEASURED BEFORE THE FIX: this answered `".mpd"` in every real boot, which both consumers then
+    // treated as a state ROOT — producing `<ws>/.mpd/.mpd/boulder.json`.
+    /** Sandbox filesystem helpers, imported locally so this case owns its own temp tree. */
+    const { mkdtempSync, mkdirSync } = await import("node:fs")
+    /** Temp-root helper for this case's sandbox box. */
+    const { tmpdir } = await import("node:os")
+    /** Path join for the box's `.mpd` directory. */
+    const { join } = await import("node:path")
+    /** The sandbox workspace whose config is being resolved. */
+    const box = mkdtempSync(join(tmpdir(), "mpd-boulder-dir-"))
+    mkdirSync(join(box, ".mpd"), { recursive: true })
+    /** The ambient DSH_HOME this case overrides, restored in the finally block below. */
+    const previous = process.env.DSH_HOME
+    process.env.DSH_HOME = join(box, "home")
+    try {
+      // The schema must not materialise a value: `{}` is the honest answer for "unset".
+      expect(await resolvedBoulderDir({}, box)).toBeUndefined()
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = previous
+    }
+  })
+
+  test("a PROJECT file value WINS for the first time — the L4 escape is gone", async () => {
+    // MEASURED BEFORE THE FIX: `{"boulder":{"dir":"."}}` in `.mpd/mpd.jsonc` STILL resolved to `.mpd`,
+    // because the schema default rode the row-knob layer, which is applied LAST. The row layer now
+    // carries the knob only when a user really set it, so the file is the authority it claims to be.
+    /** Sandbox filesystem helpers, imported locally so this case owns its own temp tree. */
+    const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs")
+    /** Temp-root helper for this case's sandbox box. */
+    const { tmpdir } = await import("node:os")
+    /** Path join for the box's `.mpd` directory. */
+    const { join } = await import("node:path")
+    /** The sandbox workspace holding the project file. */
+    const box = mkdtempSync(join(tmpdir(), "mpd-boulder-dir-file-"))
+    mkdirSync(join(box, ".mpd"), { recursive: true })
+    writeFileSync(join(box, ".mpd", "mpd.jsonc"), JSON.stringify({ boulder: { dir: "/srv/boulder-state" } }))
+    /** The ambient DSH_HOME this case overrides, restored in the finally block below. */
+    const previous = process.env.DSH_HOME
+    process.env.DSH_HOME = join(box, "home")
+    try {
+      expect(await resolvedBoulderDir({}, box)).toBe("/srv/boulder-state")
+      // And an explicit ROW value still outranks the file, which is the layer's whole purpose.
+      expect(await resolvedBoulderDir({ boulder: { dir: "/row/wins" } }, box)).toBe("/row/wins")
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = previous
+    }
+  })
+
+  test("the schema still DECLARES the knob, so both settings front doors keep rendering it", async () => {
+    // The absence of a DEFAULT must not become the absence of the FIELD: a leaf dropped from the
+    // schema would silently remove the row from both settings surfaces (the harness lists an entry by
+    // its volatile schema node, and the local knob list is derived from the same dict).
+    const { Config } = await import("../src/index")
+    /** The `boulder` node as the settings form reads it. */
+    const node = (Config as any).dict?.boulder
+    expect(node).toBeDefined()
+    expect(node?.meta?.volatile).toBe(true)
+    expect(Object.keys(node?.dict ?? {})).toEqual(["dir"])
+    // The descriptor carries NO default, and the assertion reads the WHOLE serialized node rather
+    // than a pinned `uid`: a future `.default("…")` on this leaf would reintroduce the defect
+    // invisibly, while a schema-uid change is not a defect at all.
+    /** The leaf's serialized descriptor, searched for any default rather than a fixed ref index. */
+    const serialized = JSON.stringify(node?.dict?.dir?.toJSON?.() ?? {})
+    expect(serialized).not.toContain('"default"')
   })
 })

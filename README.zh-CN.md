@@ -377,7 +377,7 @@ harness 自己的包（`@deepseek-ai/*`）属于 DSH 的依赖，而不是本 bu
 |---|---|
 | `/ulw <目标>` | 启动一次 ultrawork 运行：先对目标做分诊，在需要计划时先立计划，然后按轮次执行，并在报告完成前通过验证关卡与质量关卡。`/ultrawork <目标>` 是同一条命令 |
 | `/mpd-codegraph` | 为当前会话工作区初始化（或重跑）CodeGraph 索引 —— `.codegraph/codegraph.db`。codegraph 二进制不可用时报错：装上它，或设置 `MPD_DSH_CODEGRAPH_BIN` |
-| 消息里的 `team:` / `!team` | 一次显式的组队请求。会话起点的复杂度门只会**建议**，不会替你组建任何团队；智能体自己用 `spawn_teammate` + `team_task_create` 组队 |
+| 消息里的 `team:` / `!team` | 一次显式的组队请求 —— 会话起点复杂度门的信号 **A**，标记会从消息中被**消费**。默认 `team.gate: "mechanical"` 时，门会 **stage** 一个可批准的 plan shell（0 成员、0 任务）并注入**一条**通知，点名调用返回的 plan id；此时**没有 spawn 任何东西**，该 shell 在 captain 用 `add_member` / `create_task` 扩展、并用 `agent_teams_plan {action:"approve"}` 批准之前一直是**惰性**的 |
 | `/mpd`（TUI） | 终端命令树：只敲 `/mpd` 打开选择器；动作有 `board`、`team`、`plan`、`workmates`、`status`（`/mpd status` 打印摘要，其余打开各自的 TUI 界面） |
 | `/goal <目标>` | 创建一个持久的会话目标（宿主的目标行，由 `mpd` preset 启用）：一个会跨轮次持续推进的长期目标 |
 | `/settings`（TUI） | 编辑下面 *配置* 一节列出的 `mpd.jsonc` 旋钮 |
@@ -623,9 +623,9 @@ bun scripts/mpd-ext.ts list                                  # 本宿主发现�
 
 ## 团队模式
 
-![团队模式生命周期：会话起点的复杂度门只给建议，Lead 决定名册与任务图，创建队友并开任务，成员认领并完成工作，整波压缩收尾，下一波在新会话里开始。下方护栏栏列出只读工具禁用、持久邮箱、compare-and-set 任务板与提示性写入范围。](./docs/assets/images/team-lifecycle.svg)
+![团队模式生命周期：会话起点的门被触发后会 stage 一个可批准且惰性的 plan shell（0 成员、0 任务），Lead 扩展并批准它、决定名册与任务图，创建队友并开任务，成员认领并完成工作，整波压缩收尾，下一波在新会话里开始。下方护栏栏列出只读工具禁用、持久邮箱、compare-and-set 任务板与提示性写入范围。](./docs/assets/images/team-lifecycle.svg)
 
-*一波团队工作的完整路径。会话起点的复杂度门只负责建议；真正组队由 Lead 自己完成，而这一波落地时会被压缩并结束。*
+*一波团队工作的完整路径。会话起点的复杂度门会 **stage** 一个可批准的 plan shell（0 成员、0 任务 —— 尚未 spawn 任何东西，批准前保持惰性）；由 Lead 扩展并批准，而这一波落地时会被压缩并结束。*
 
 会话智能体就是 **Lead**（captain）。它决定名册与任务 DAG，把每位成员创建成具名队友，把每个任务开在
 共享任务板上，并亲自整合结果。成员就是上面的专家；只读纪律成员的只读性依然成立；可以把某个 workmate
@@ -635,8 +635,11 @@ bun scripts/mpd-ext.ts list                                  # 本宿主发现�
 
 ### 启动一个团队
 
-团队不是会话的前提，也没有任何东西会被替你暂存。会话起点的复杂度门只会**建议**当前工作可能值得组队；
-真正组队由智能体自己在工作确实需要时用两个调用完成：
+团队不是会话的前提。会话起点的复杂度门一旦触发，就会通过 `agent_teams_plan` **stage** 一个可批准的 plan
+**shell** —— 0 成员、0 任务，且**惰性**：没有 spawn 任何东西，直到 captain 用 `add_member` / `create_task`
+扩展它（每个成员的 prompt 取自 `mpd_role_persona`）并用 `agent_teams_plan {action:"approve"}` 批准 ——
+批准才是 spawn 成员、发布任务的时刻。若 `team.gate: "advisory"`（或该工具未挂载），那**一条**通知改为建议式的
+`NO team was staged`；此时由 captain 在工作确实需要时自行组队。官方工具仍是成员与任务板的接口：
 
 ```jsonc
 spawn_teammate {
@@ -658,8 +661,9 @@ captain 用 `mpd_role_persona` 取来名册成员的人设文本，自己粘进�
 
 ### 共享任务板
 
-任何成员都能建任务；Lead 指派，任何成员认领并完成。任务板**就是**计划：不再有单独的"暂存计划"需要
-审批，也**没有审批模式** —— 队友一旦被创建、任务一旦被认领，工作就开始。
+任何成员都能建任务；Lead 指派，任何成员认领并完成。任务板承载的是已经存在的工作：已 stage 的 plan shell 在
+扩展并批准之前是**惰性**的，只有**已批准**的计划才会 spawn 成员并发布任务 —— 工作从那时开始，而不是从 shell
+刚被 stage 时开始。
 
 - **`team_task_create`** 新建任务，带标题、详情、可选的 `blocked_by` 前置依赖与可选的
   `write_scopes`。只有当它依赖的任务全部完成时，该任务才可认领。

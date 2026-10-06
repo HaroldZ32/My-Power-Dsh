@@ -123,8 +123,9 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   actually starts; empty input returns usage, and a plain-text `/ulw …` gesture gets the same
   directive on surfaces without command adjudication (headless). An activated ULW run asks the user
   nothing: it triages an unclear or investigate-first objective first, evaluates the same complexity
-  predicate as any MPD request, stages a team itself with `spawn_teammate` + `team_task_create` (the
-  official tools, through the adapter) when the work warrants one, loops to
+  predicate as any MPD request, stages its team on the mpd plan plane when the work warrants one
+  (`agent_teams_plan` create → `add_member` / `create_task` → approve, which is what spawns the
+  members), loops to
   completion, fixes defects on sight, and closes out through the verification and quality gates
   before reporting done.
 - **The persisted GOAL is the basis of continuous execution (C8).** The harness ships the goal domain
@@ -138,14 +139,20 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   for create/edit/pause/resume; the consecutive-round count for `blocked`); ownership is recorded per
   session in `<workspace>/.mpd/goal/anchors.json`. Evidence:
   `evidence/goal/goal-bridge/<ts>/` and the `goal-bridge` QA case.
-- **The session-start complexity gate ADVISES — it never pre-stages a team.** The frozen predicate
-  `trigger = explicit flag OR (matchedSignals >= 1)` is still evaluated at the session's first
-  pre-step, and its notice keeps the marker `[AgentTeams] Session-start team rule`, but a triggered
-  auto-route only injects ONE advisory notice naming the fired signals and stating that **no team was
-  staged**; the captain stages a team with `spawn_teammate` + `team_task_create`
-  at the moment the work actually warrants one, or continues solo and says so. An explicit `team:` /
-  `!team` request is likewise only ADVISED — the captain is told to stage, nothing is pre-staged for
-  it. The gate is implemented by `mpd-roles-plugin` on the official plugin's seams (the retired
+- **The session-start complexity gate is MECHANICAL — it stages an APPROVABLE PLAN SHELL, never a
+  team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` is evaluated at the
+  session's first pre-step and the notice keeps the marker `[AgentTeams] Session-start team rule`, but
+  on a trigger the gate STAGES a 0-member, 0-task plan shell through the `agent_teams_plan` tool and
+  injects ONE notice naming the returned plan id — NOTHING is spawned, and the shell is INERT until the
+  captain extends it (`add_member` / `create_task`) and approves it with
+  `agent_teams_plan {action:"approve"}`. An explicit `team:` / `!team` request ALSO stages the shell
+  (signal A) and has its marker CONSUMED from the goal text. `team.gate` in `mpd.jsonc` selects
+  `mechanical` (the default) | `advisory` | `off`; without the `agent_teams_plan` tool mounted, or under
+  `advisory`, the ONE notice is advisory and says `NO team was staged`, and the captain stages a team
+  itself at the moment the work warrants one — or continues solo and says so. Signal D is an ACTIVE
+  boulder work for this workspace (`status: "active"` in `.mpd/boulder.json`) — a plan FILE alone is NOT
+  a signal, repaired 2026-10-07 because the retired plan-file probe fired in every session of this
+  workspace. The gate is implemented by `mpd-roles-plugin` on the official plugin's seams (the retired
   `sessionTeamPolicy.mode: "auto"` unconditional-provisioning path is gone with the plugin that owned
   it).
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the

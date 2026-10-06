@@ -26,6 +26,7 @@ import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { readSessionEvents } from "./lib/session-evidence.ts"
 import type { SessionRecord, SessionStore } from "./lib/session-evidence.ts"
 import { sandboxWorkspace } from "./lib/workspace-isolation.ts"
@@ -91,7 +92,7 @@ interface ClauseProbe {
 export const CLAUSE_PROBES: readonly ClauseProbe[] = [
   { id: "triage", label: "C3.1 triage first (before gate/team/loop)", re: /TRIAGE FIRST/ },
   { id: "gate", label: "C3.2 the SAME complexity predicate (flag OR any signal A-D)", re: /GATE:[\s\S]{0,120}complexity predicate[\s\S]{0,160}signal A-D/ },
-  { id: "team", label: "C3.3 auto-approved team when warranted (OFFICIAL team tools)", re: /TEAM WHEN WARRANTED[\s\S]{0,400}spawn_teammate[\s\S]{0,400}team_task_create/ },
+  { id: "team", label: "C3.3 gate-staged team plan, extended and self-approved on OUR plane", re: /TEAM WHEN WARRANTED[\s\S]{0,400}agent_teams_plan[\s\S]{0,400}(add_member|create_task)/ },
   { id: "loop", label: "C3.4 loop to completion without asking", re: /LOOP TO COMPLETION[\s\S]{0,120}never stop early to ask the user/ },
   { id: "fixOnSight", label: "C3.4b fix on sight", re: /FIX ON SIGHT/ },
   { id: "closeOut", label: "C3.5 close out on proof", re: /CLOSE OUT ON PROOF/ },
@@ -1256,7 +1257,16 @@ function selfTest(): void {
   console.log("[" + SLUG + " self-test] ok: registry listing + usage + activation + directive order/objective + command lifecycle predicates, each with a negative control; shipped directive literal and SKILL.md row verified")
 }
 
-/** The CLI arguments after the script path: `--self-test` selects the offline arm. */
+// Guarded on being the ENTRY module (the SAME guard `session-start-team.ts` carries): this file
+// exports predicates and clause fixtures, and an IMPORT must be inert. MEASURED this wave: without the
+// guard, importing the module for its exported `CLAUSE_PROBES` executed the whole case body and started
+// a full sandboxed live run, which wrote an untracked evidence directory as a side effect of what
+// looked like a read-only lookup.
+// The CLI arguments after the script path: `--self-test` selects the offline arm.
 const argv = process.argv.slice(2)
-if (argv.includes("--self-test")) selfTest()
-else await runReal()
+/** Whether this module is the process entry point, which alone may run the case. */
+const isEntry = process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1]
+if (isEntry) {
+  if (argv.includes("--self-test")) selfTest()
+  else await runReal()
+}

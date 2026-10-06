@@ -12,7 +12,7 @@
 //   * a route never throws into a response — an unreadable record is a payload, not a 500 storm.
 import { describe, expect, test } from "bun:test"
 
-import { TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, planForSession, registerTeamRoutes } from "../src/team-web"
+import { TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, buildWorkspaceTeams, planForSession, registerTeamRoutes } from "../src/team-web"
 import { appendRecord } from "../src/mailbox-store"
 import { addMember, addTask, stagePlan, writePlan } from "../src/plan-store"
 import { addTeamMember, addTeamTask, createTeam, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
@@ -131,6 +131,49 @@ describe("the payload is computed from the RECORD", () => {
     expect(state.executor.kind).toBe("native")
   })
 
+  test("a session with NO team of its own still gets the WORKSPACE's teams (D2)", () => {
+    // THE "建了但没用上" CASE, as a route contract: the record is SESSION-scoped, and a session that
+    // approved nothing used to be served an empty payload while the workspace's team sat on disk. The
+    // listing is what the panel renders instead of the dead empty state.
+    /** The workspace of a record this session did NOT build. */
+    const team = record()
+    /** ANOTHER session's payload, asked for by a session that owns nothing here. */
+    const state = buildTeamState(undefined, workspaceOf(team), "sess-elsewhere", EXECUTOR, buildWorkspaceTeams([team], undefined))
+    expect(state.team).toBeNull()
+    // The workspace listing is served, with the record's own identity and DERIVED phase.
+    expect(state.workspaceTeams.records.length).toBe(1)
+    expect(state.workspaceTeams.records[0].id).toBe(team.teamId)
+    expect(state.workspaceTeams.records[0].name).toBe("wave-3")
+    expect(state.workspaceTeams.records[0].phase).toBe("active")
+    expect(state.workspaceTeams.records[0].tasks).toEqual({ total: 3, completed: 1, failed: 1 })
+    expect(state.workspaceTeams.records[0].members).toBe(2)
+    // NOT active for this session: the index binds nothing to it, and a panel that claimed otherwise
+    // would point the captain at a team it cannot drive.
+    expect(state.workspaceTeams.records[0].active).toBe(false)
+    expect(state.workspaceTeams.activeId).toBeUndefined()
+    // THE SESSION-SCOPED HALF IS UNTOUCHED: the same listing rides on a payload that HAS a team, so a
+    // reader of `state.team` sees exactly what it saw before this field existed.
+    /** The payload of the session that DOES own the team. */
+    const owned = buildTeamState(team, workspaceOf(team), "sess-1", EXECUTOR, buildWorkspaceTeams([team], team.teamId))
+    expect(owned.team?.id).toBe(team.teamId)
+    expect(owned.workspaceTeams.activeId).toBe(team.teamId)
+    expect(owned.workspaceTeams.records[0].active).toBe(true)
+  })
+
+  test("a workspace with NO teams is served an EMPTY listing, not a fabricated one", () => {
+    // The honest empty state has to stay reachable: the panel renders "no team in this workspace yet"
+    // from exactly this payload, and a listing invented from nothing would make that sentence
+    // unreachable — the opposite failure to the dead end D2 removes.
+    /** A workspace that never held a team. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-team-web-empty-"))
+    sandboxes.push(workspace)
+    /** The payload the route would serve there. */
+    const state = buildTeamState(undefined, workspace, "sess-1", EXECUTOR, buildWorkspaceTeams([], undefined))
+    expect(state.team).toBeNull()
+    expect(state.workspaceTeams.records).toEqual([])
+    expect(state.workspaceTeams.activeId).toBeUndefined()
+  })
+
   test("a cycle is REPORTED in the payload rather than drawn as a sound board", () => {
     /** The workspace holding the cyclic record. */
     const workspace = mkdtempSync(join(tmpdir(), "mpd-team-web-cyc-"))
@@ -193,6 +236,18 @@ describe("the route", () => {
     // A request with NO query at all is answered rather than throwing.
     ;(routes.find((route) => route.path === TEAM_STATE_PATH) as { handler: (req: unknown, res: unknown) => unknown }).handler({}, res)
     expect(captured.status).toBe(200)
+    // ── THE WORKSPACE LISTING IS READ BY THE ROUTE ITSELF (D2) ────────────────
+    // The projection takes the listing as an argument, so this is the arm that proves the ROUTE reads
+    // the workspace directory and threads it in. The other session's request is the one that matters:
+    // it owns no team, yet the record on disk is served to it as the workspace's.
+    ;(routes.find((route) => route.path === TEAM_STATE_PATH) as { handler: (req: unknown, res: unknown) => unknown })
+      .handler({ url: `${TEAM_STATE_PATH}?sessionId=sess-other` }, res)
+    /** That answer's listing half. */
+    const listed = (captured.body as { workspaceTeams: { records: Array<{ id: string; phase: string }>; activeId?: string } }).workspaceTeams
+    expect(listed.records.map((entry) => entry.id)).toEqual([team.teamId])
+    expect(listed.records[0].phase).toBe("active")
+    // The index binds the record to `sess-1`, so the OTHER session's listing marks nothing active.
+    expect(listed.activeId).toBeUndefined()
   })
 
   test("a THROWING read becomes a 500 payload, never an uncaught throw in a request", () => {

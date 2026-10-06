@@ -384,7 +384,7 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
     description:
-      "The team PLAN. `create` stages a plan (nothing is spawned); `add_member`/`create_task` append to it; `edit` reads or replaces it; `approve` EXECUTES it (spawns members through spawn_teammate, posts tasks to the official board, resolves blocked_by and owner); `delete` archives it; `status` shows the plan, the halt, and the official roster and board side by side.",
+      "The team PLAN. `create` stages a plan and spawns nothing; `add_member`/`create_task` append to it; `edit` reads or replaces it; `approve` EXECUTES it through the TEAM EXECUTOR — the NATIVE continuable-subagent backend is the DEFAULT, and the official `dsh.team*` calls are the FALLBACK — REFUSING a plan with 0 members and 0 tasks; `delete` archives; `status` shows plan, halt, roster and board.",
     parameters: {
       type: "object",
       properties: {
@@ -393,14 +393,14 @@ export function apply(ctx: any): void {
         description: { type: "string", description: "create/edit: what the team is for." },
         approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for `approve`." },
         replace: { type: "boolean", description: "create: required to replace an ALREADY APPROVED plan." },
-        member: { type: "object", description: "add_member: {name, prompt, description?, role?}. `prompt` is what spawn_teammate receives." },
+        member: { type: "object", description: "add_member: {name, prompt, description?, role?}; `prompt` is the teammate's instantiation prompt." },
         // The canonical shape stays in the description because the context budget below is binding:
         // only the TWO keys a caller really put somewhere else are declared as their own properties.
-        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?}; `owner`/`blocked_by` may also sit beside `task`." },
+        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?}; `owner`/`blocked_by` may also sit beside it." },
         owner: { type: "string", description: "create_task: alias of `task.owner`." },
         blocked_by: { type: "array", items: { type: "string" }, description: "create_task: alias of `task.blocked_by`." },
-        members: { type: "array", items: { type: "object" }, description: "edit: replacement member list." },
-        tasks: { type: "array", items: { type: "object" }, description: "edit: replacement task list." },
+        members: { type: "array", items: { type: "object" }, description: "edit: replacement members." },
+        tasks: { type: "array", items: { type: "object" }, description: "edit: replacement tasks." },
         dry_run: { type: "boolean", description: "approve: report what would be created, and create nothing." },
       },
       required: ["action"],
@@ -564,6 +564,21 @@ export function apply(ctx: any): void {
         const plan = readPlan(workspace, sessionId)
         if (plan === undefined) throw new Error("no team is staged in this session — use action:\"create\" first")
         if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved`)
+        // ── AN EMPTY SHELL IS NOT A TEAM (D4a) ────────────────────────────────
+        // A plan can be staged mechanically — the session-start gate (D5) does exactly that, with
+        // `approval:"required"` and nothing in it — and approving one used to MINT A TEAM RECORD with
+        // no member and no task: a name in `.mpd/team/teams/`, a row in every panel, and no work
+        // behind it. The refusal is a sentence that says what to do instead, so the caller is not left
+        // guessing which of the two lists it must fill.
+        // THE CHECK SITS ABOVE `dry_run` DELIBERATELY: a preview of an empty plan would report "0
+        // members, 0 tasks" for a CALL THAT CANNOT SUCCEED, which reads as a successful dry run and
+        // invites the very approval this refuses. Both spellings answer with the same actionable
+        // sentence instead, which is also what the /agent-teams command's own usage line promises.
+        /** How many members and tasks the plan actually carries (zero on either side is fine). */
+        const staged = plan.members.length + plan.tasks.length
+        if (staged === 0) {
+          throw new Error(`plan ${plan.planId} is EMPTY — it has 0 members and 0 tasks, and approving it would create a team with nothing in it; add a member with agent_teams_plan {action:"add_member", member:{name, prompt}} and/or a task with {action:"create_task", task:{subject, description}} first`)
+        }
         if (args?.dry_run === true) {
           return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } }
         }

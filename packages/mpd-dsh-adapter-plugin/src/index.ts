@@ -1468,8 +1468,20 @@ export interface DshAdapter {
     agent: unknown,
     listener: (payload: DshAgentPreStep, decision: DshPreStepDecision) => DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined>,
   ): () => void
-  /** Whether a tool of this name is registered right now. */
-  hasTool(name: string): boolean
+  /**
+   * Whether a tool of this name is registered right now.
+   *
+   * WITH `agent` the answer is that agent's OWN view — the view that would execute the call: it
+   * contains the host-plane globals, the preset plane mounted as the agent scope's PARENT, and
+   * the agent's own registrations, while a global this scope RESTRICTED away reads as absent.
+   * WITHOUT one the read is the host-plane GLOBAL view, and that is deliberate rather than a
+   * shortcut: an agentless caller (a TUI panel, a web route, the MCP name-clash check) acts on
+   * the host plane, so answering from some other session's scope would promise a call that site
+   * cannot make. A caller holding the live object the registry returned should pass it.
+   * @param name - the registered tool name to look for.
+   * @param agent - the calling agent, when the call site has one.
+   */
+  hasTool(name: string, agent?: unknown): boolean
   /**
    * Structural view of the tool runtime for internal tool calls.
    *
@@ -1478,8 +1490,12 @@ export interface DshAdapter {
    * `exec.agent` and `:3190-3192` resolves the tool against it). It stays OPTIONAL
    * so every existing caller keeps its exact meaning: absent = no agent (the
    * pre-existing behaviour).
+   *
+   * `get` takes the same optional `agent` and resolves through the SAME two views `hasTool`
+   * documents, so a caller that probed with an agent never fetches a definition from a different
+   * plane than the one that answered it.
    */
-  toolRuntime(): { get(name: string): unknown; execute(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; agent?: unknown }): Promise<unknown> }
+  toolRuntime(): { get(name: string, agent?: unknown): unknown; execute(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; agent?: unknown }): Promise<unknown> }
   /**
    * Call one registered tool in-process and normalize the result.
    *
@@ -2717,6 +2733,11 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * The agent's scope is the view that resolves PRESET-plane rows (the goal trio lives
    * there in an mpd session); the host-plane registry is a different view and may not
    * carry them at all. All-or-nothing, contained: a throwing getter is a miss.
+   *
+   * A CALLER reading visibility through the returned handle must name this agent as the
+   * viewing scope (`get(name, agent)`), since the registry resolves a preset row only
+   * along that agent's scope chain; `execute()` needs no such argument because it reads
+   * the CALLING agent off its own input (see {@link executeToolForAgent}).
    * @param agent - the live Agent, or anything that arrived.
    * @returns the registry, or undefined when this agent exposes none.
    */
@@ -2734,26 +2755,73 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   }
 
   /**
+   * The tool definition the HOST plane resolves for one name — the registry's GLOBAL view.
+   *
+   * This is the view an unscoped `get(name)` answers in the installed registry, and the only
+   * view a composition with no live session has; a preset-plane row is invisible here by design.
+   * Contained: a missing registry and a throwing `get` both read as "not carried".
+   * @param name - the registered tool name to look for.
+   * @returns the definition, or undefined when the global layer does not carry it.
+   */
+  function hostToolDefinition(name: string): unknown {
+    try {
+      /** The host-plane registry's own view of this name, probed for the read it is called through. */
+      const hostView = service("tools") as { get?: (toolName: string) => unknown } | undefined
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined
+    } catch { return undefined }
+  }
+
+  /**
+   * Resolve one tool definition for a member that takes an OPTIONAL agent.
+   *
+   * WITH an agent the agent's own view is the answer — it is the view that would execute the
+   * call: the registry walks that agent's scope chain (the preset plane mounted as its parent)
+   * plus the agent's own layer and the globals, so a preset-mounted tool resolves and a scoped
+   * registration shadows a global one, while a global this scope RESTRICTED away reads as
+   * absent. A THROWING scoped read is NOT retried at the host plane. WITHOUT an agent the read
+   * falls back to the host-plane global view, which is what an agentless caller (a TUI panel, a
+   * web route, the MCP name-clash check) actually acts on; see {@link DshAdapter.hasTool}.
+   * @param name - the registered tool name to look for.
+   * @param agent - the calling agent, when the call site has one.
+   * @returns the definition, or undefined when that view does not carry it.
+   */
+  function toolDefinitionFor(name: string, agent?: unknown): unknown {
+    if (agent === undefined) return hostToolDefinition(name)
+    /** The agent's own scoped registry, when it exposes one. */
+    const scoped = scopedToolRegistry(agent)
+    // A bare or foreign object that carries no scope still gets the ONE view left to ask; a real
+    // agent whose scope simply misses the name reads as absent, never as a global resurrection.
+    if (scoped === undefined) return hostToolDefinition(name)
+    try {
+      return scoped.get(name, agent)
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
    * Whether one tool name resolves at the HOST plane or inside any live agent's scope.
+   *
+   * The per-agent arm MUST pass the agent as the registry's VIEWING SCOPE, because a
+   * PRESET-plane row is invisible to an unscoped read: the installed registry's signature
+   * is `get(name, scope)` and an omitted scope means the GLOBAL view only (`dsh-tools`
+   * `get…view()`: "the viewing scope (the agent); omitted = the global view"). The goal
+   * trio and every other model-facing row the `mpd` preset mounts registers through the
+   * agent's ctx, and the preset's own scope is that scope's PARENT
+   * (`dsh-agent-preset-registry.join()` → `bindScopeParent(agentScope, presetScope)`), so
+   * only `view(agent)` — the ancestor chain plus the agent's own layer — carries them.
+   * The scope key IS the live Agent object itself (`dsh-agent-loop`:
+   * `this.scope = createScope(loopCtx, this)`; the harness's own execution path resolves
+   * with `this.get(name, exec.agent)`), which is why the registry's `list()` entries are
+   * the right argument verbatim.
    * @param name - the registered tool name to look for.
    * @returns true when some reachable registry answers with a definition.
    */
   function toolReachable(name: string): boolean {
-    try {
-      /** The host-plane registry's own view of this name. */
-      const hostView = service("tools") as { get?: (toolName: string) => unknown } | undefined
-      if (typeof hostView?.get === "function" && hostView.get(name) !== undefined) return true
-    } catch { /* fall through to the per-agent scopes */ }
-    return liveAgents().some((candidate) => {
-      /** That agent's own scoped registry, when it exposes one. */
-      const scoped = scopedToolRegistry(candidate)
-      if (scoped === undefined) return false
-      try {
-        return scoped.get(name) !== undefined
-      } catch {
-        return false
-      }
-    })
+    if (hostToolDefinition(name) !== undefined) return true
+    // A scope-less live agent answers the host read again, already known to be empty here, so
+    // this stays exactly the "host plane OR some agent's own plane" question it has always been.
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined)
   }
 
   /**
@@ -3259,21 +3327,21 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       return typeof off === "function" ? off : () => {}
     },
 
-    /** Whether a tool of this name is registered; false when the registry cannot answer. */
-    hasTool(toolName: string): boolean {
-      /** The tools registry, or undefined when this composition has none. */
-      const tools = service("tools")
-      if (typeof tools?.get !== "function") return false
-      try { return tools.get(toolName) !== undefined } catch { return false }
+    /**
+     * Whether a tool of this name is registered; the calling agent's view when one is given,
+     * the host-plane global view otherwise. Never throws: a registry that cannot answer reads
+     * as absent, which is the same false a genuine miss produces.
+     */
+    hasTool(toolName: string, agent?: unknown): boolean {
+      return toolDefinitionFor(toolName, agent) !== undefined
     },
 
-    /** Structural view of the tool runtime for internal tool calls. */
     /** Structural view of the tool runtime; the interface member's declared return type is reused. */
     toolRuntime(): ReturnType<DshAdapter["toolRuntime"]> {
-      /** The tools registry, or undefined when this composition has none. */
-      const tools = service("tools")
       return {
-        get: (toolName: string) => (typeof tools?.get === "function" ? tools.get(toolName) : undefined),
+        // The SAME resolution `hasTool` uses, so a probe and the definition it promised can never
+        // come from different planes (see {@link toolDefinitionFor}).
+        get: (toolName: string, agent?: unknown) => toolDefinitionFor(toolName, agent),
         execute: (input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; agent?: unknown }) =>
           adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw),
       }

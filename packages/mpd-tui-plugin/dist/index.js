@@ -1994,22 +1994,30 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
-  function toolReachable(name) {
+  function hostToolDefinition(name) {
     try {
       const hostView = service("tools");
-      if (typeof hostView?.get === "function" && hostView.get(name) !== undefined)
-        return true;
-    } catch {}
-    return liveAgents().some((candidate) => {
-      const scoped = scopedToolRegistry(candidate);
-      if (scoped === undefined)
-        return false;
-      try {
-        return scoped.get(name) !== undefined;
-      } catch {
-        return false;
-      }
-    });
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name);
+    try {
+      return scoped.get(name, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name) {
+    if (hostToolDefinition(name) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined);
   }
   function projectToolResult(raw) {
     const record = raw;
@@ -2311,20 +2319,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },
@@ -4091,7 +4091,7 @@ var SettingsSchema = import_schemastery.default.object({
   ulw: import_schemastery.default.object({ maxRounds: import_schemastery.default.number().default(6) }),
   memory: import_schemastery.default.object({ vcs: import_schemastery.default.union([import_schemastery.default.const("git"), import_schemastery.default.const("svn")]).default("git") }),
   team: import_schemastery.default.object({ stateDir: import_schemastery.default.string().default(".mpd/team") }),
-  boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().default(".mpd") }),
+  boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().required(false) }),
   teamModels: import_schemastery.default.object({
     slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
     slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
@@ -7182,10 +7182,36 @@ function workspaceResolver(ctx, adapter) {
 }
 function createPlanActions(adapter, log) {
   const PLAN_TOOL = "agent_teams_plan";
-  const call = async (args, sessionId) => {
+  const sessionIdOfAgent = (agent) => {
+    const session = agent?.session;
+    return typeof session?.id === "string" ? session.id : undefined;
+  };
+  const liveAgentFor = (sessionId) => {
+    if (typeof adapter.liveAgent !== "function" || typeof adapter.liveAgents !== "function")
+      return;
+    const wanted = typeof sessionId === "string" ? sessionId : "";
     try {
-      const agent = sessionId === undefined || sessionId === "" ? undefined : { session: { id: sessionId } };
-      const result = await adapter.executeTool({ name: PLAN_TOOL, arguments: args, ...agent === undefined ? {} : { agent } });
+      if (wanted !== "") {
+        const byId = adapter.liveAgent(wanted);
+        if (byId !== undefined)
+          return byId;
+        return adapter.liveAgents().find((candidate) => sessionIdOfAgent(candidate) === wanted);
+      }
+      const live = adapter.liveAgents();
+      return live.length === 1 ? live[0] : undefined;
+    } catch {
+      return;
+    }
+  };
+  const call = async (args, sessionId) => {
+    const agent = liveAgentFor(sessionId);
+    if (agent === undefined) {
+      const error = typeof sessionId === "string" && sessionId !== "" ? `session "${scalarText(sessionId, 80) ?? sessionId}" is not live in this process — no live agent to speak as, so nothing was called` : "no live agent to speak as and no session id on this surface — nothing was called";
+      log.warn(`plan ${String(args.action)} refused: ${scalarText(error, 200) ?? error}`);
+      return { ok: false, error };
+    }
+    try {
+      const result = await adapter.executeTool({ name: PLAN_TOOL, arguments: args, agent });
       if (result.ok && !result.isError)
         return { ok: true, ...result.value === undefined ? {} : { value: result.value } };
       return { ok: false, error: typeof result.error === "string" ? result.error : JSON.stringify(result.error ?? result.raw ?? "the call failed") };
