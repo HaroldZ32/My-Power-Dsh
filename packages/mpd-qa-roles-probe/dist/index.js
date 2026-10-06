@@ -483,16 +483,18 @@ function createDshAdapter(ctx, config = {}) {
     }
     return liveAgents().find((candidate) => candidate.id === id);
   }
-  const engineCache = new Map;
+  const engineCache = new WeakMap;
   function compactionEngineForAgent(agentId) {
     const id = String(agentId ?? "");
     if (id === "")
       return;
-    const cached = engineCache.get(id);
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    const cached = engineCache.get(agent);
     if (cached !== undefined)
       return cached;
-    const agent = liveAgent(id);
-    const scoped = agent?.ctx;
+    const scoped = agent.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -503,7 +505,7 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(id, engine);
+    engineCache.set(agent, engine);
     return engine;
   }
   function onEvent(event, handler) {
@@ -1523,10 +1525,31 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 var SERVICE_NAME = "mpdDsh";
-function resolveDshAdapter(ctx) {
-  const get = typeof ctx?.get === "function" ? ctx.get : undefined;
-  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME);
-  return mounted ?? createDshAdapter(ctx);
+function resolveDshAdapter(ctx, options = {}) {
+  const mounted = probeMpdDsh(ctx, true);
+  if (mounted.value !== undefined)
+    return mounted.value;
+  const warn = options.warn ?? ((line) => rowLogLine("mpd-dsh-adapter", line));
+  warn(probeMpdDsh(ctx, false).missing ? adapterFallbackWarning() : adapterPendingWarning());
+  return createDshAdapter(ctx);
+}
+var ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter";
+function adapterPendingWarning() {
+  return "ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber" + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE" + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted" + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).";
+}
+function adapterFallbackWarning() {
+  return "ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided" + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter" + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)" + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working," + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the" + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).";
+}
+function probeMpdDsh(ctx, strict) {
+  const get = ctx?.get;
+  if (typeof get !== "function")
+    return { missing: true };
+  try {
+    const value = get.call(ctx, SERVICE_NAME, strict);
+    return value === undefined || value === null ? { missing: true } : { value, missing: false };
+  } catch {
+    return { missing: true };
+  }
 }
 
 // packages/mpd-qa-roles-probe/src/index.ts

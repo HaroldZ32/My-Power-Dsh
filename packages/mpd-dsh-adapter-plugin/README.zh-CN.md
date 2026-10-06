@@ -149,7 +149,7 @@ export function apply(ctx) {
 }
 ```
 
-`resolveDshAdapter(ctx)` 在 `mpd-dsh-adapter` 行（由 bundle patch 插在所有 mpd 行之前）已提供实例时返回该实例，否则用 `createDshAdapter(ctx)` 构造等价实例——因此插件在单元测试与部分安装场景下都能独立工作，而且这条规则每个行只写一次。若某行还必须扛住**瞬时**未命中（服务已注册但其 fiber 尚未 ACTIVE），则调用 `createLazyDshAdapter(ctx, { label })`：它每次使用都重新探测。
+`resolveDshAdapter(ctx)` 在 `mpd-dsh-adapter` 行（由 bundle patch 插在所有 mpd 行之前）已提供实例时返回该实例，否则用 `createDshAdapter(ctx)` 构造等价实例——因此插件在单元测试与部分安装场景下都能独立工作，而且这条规则每个行只写一次。该兜底路径**会出声**：每次解析都会写一行诊断，说明属于哪种未命中（服务已注册但 fiber 尚未 ACTIVE，或该组合根本没有适配器）并报出 `adapterIdentity`，因为挂载实例之外的第二份实例会绕过"唯一接触面"规则。若某行还必须扛住**瞬时**未命中（服务已注册但其 fiber 尚未 ACTIVE），则调用 `createLazyDshAdapter(ctx, { label })`：它每次使用都重新探测。
 
 ### 共享工具
 

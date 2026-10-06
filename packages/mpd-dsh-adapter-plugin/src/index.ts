@@ -2358,22 +2358,24 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * Dispatching through this one memoized helper makes that mistake impossible to make
    * per-call-site.
    *
-   * The cache is keyed by agent id AND dropped when the agent leaves the live registry,
-   * so a recycled id can never inherit a previous incarnation's engine.
+   * The cache is keyed by the LIVE AGENT OBJECT, not by its id (S2): a `WeakMap` entry disappears
+   * as soon as the registry stops holding that Agent, so a finished session can never hand out its
+   * realm's engine and an id the host RECYCLES can never inherit a previous incarnation's engine.
    */
-  const engineCache = new Map<string, unknown>()
-  /** The member-scoped engine lookup described above: memoized, and re-read from the live registry. */
+  const engineCache = new WeakMap<DshLiveAgent, unknown>()
+  /** The member-scoped engine lookup described above: memoized per live Agent, re-read from the registry. */
   function compactionEngineForAgent(agentId: string): unknown {
-    /** The requested agent id, normalized into a cache key. */
+    /** The requested agent id, normalized before the registry is asked. */
     const id = String(agentId ?? "")
     if (id === "") return undefined
-    /** The memoized engine, returned only while its agent is still live. */
-    const cached = engineCache.get(id)
-    if (cached !== undefined) return cached
-    /** The live Agent whose own scope owns the engine. */
+    /** The live Agent whose own scope owns the engine; absent once its session ends. */
     const agent = liveAgent(id)
+    if (agent === undefined || agent === null) return undefined
+    /** The memoized engine, returned only while THIS Agent object is still the live one. */
+    const cached = engineCache.get(agent)
+    if (cached !== undefined) return cached
     /** The Agent's own scoped context, the only realm whose engine is correct. */
-    const scoped = agent?.ctx
+    const scoped = agent.ctx
     if (scoped === undefined || scoped === null) return undefined
     /** The engine resolved from the agent's own scope, before it is memoized. */
     let engine: unknown
@@ -2383,7 +2385,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       return undefined
     }
     if (engine === undefined || engine === null) return undefined
-    engineCache.set(id, engine)
+    engineCache.set(agent, engine)
     return engine
   }
 
@@ -4031,13 +4033,34 @@ export const SERVICE_NAME = "mpdDsh"
  * needs the T-50 behaviour — re-probe on every use, so a transient "provider not ACTIVE
  * yet" miss is not locked in for the session — calls {@link createLazyDshAdapter}
  * instead.
+ *
+ * The fallback is LOUD (S3): a strict miss is followed by a NON-STRICT probe, and the one
+ * diagnostic line names which miss it was (registered-but-not-ACTIVE, or no adapter in this
+ * composition) before the row-private instance is built. Silently serving a second contact
+ * surface beside the mounted one is exactly what this line exists to prevent; the fallback
+ * itself is unchanged, because a composition without the service must still work.
  */
-export function resolveDshAdapter(ctx: any): DshAdapter {
-  /** The ctx's own `get`, captured so it is called with the ctx as its receiver. */
-  const get = typeof ctx?.get === "function" ? ctx.get : undefined
+export function resolveDshAdapter(ctx: any, options: EagerAdapterOptions = {}): DshAdapter {
   /** The mounted adapter when one is provided and ACTIVE, else undefined. */
-  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME)
-  return (mounted as DshAdapter | undefined) ?? createDshAdapter(ctx)
+  const mounted = probeMpdDsh(ctx, true)
+  if (mounted.value !== undefined) return mounted.value as DshAdapter
+  /** The one diagnostic sink: the caller's, or this row's own file log (never a terminal, R5). */
+  const warn = options.warn ?? ((line: string): void => rowLogLine("mpd-dsh-adapter", line))
+  // A FALLBACK IS NEVER SILENT (S3). The non-strict probe names WHICH miss this is — a provider
+  // that is registered but not ACTIVE yet, or a composition that carries no adapter at all — and
+  // both still fall back (the standalone-unit-test contract), but the second one builds a SECOND
+  // contact surface beside the mounted adapter, so it says so exactly like the lazy twin does.
+  warn(probeMpdDsh(ctx, false).missing ? adapterFallbackWarning() : adapterPendingWarning())
+  return createDshAdapter(ctx)
+}
+
+/** Options for {@link resolveDshAdapter}: where its one fallback diagnostic goes. */
+export interface EagerAdapterOptions {
+  /**
+   * Warning sink; defaults to this row's own file log (`rowLogLine`), because AGENTS.md §6's R5 rule
+   * forbids an MPD diagnostic on a terminal. A test injects a capture sink here.
+   */
+  warn?: (line: string) => void
 }
 
 /** The row is using the REAL mounted adapter (an ACTIVE strict read). */
@@ -4053,6 +4076,36 @@ export const ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter"
 
 /** Which of the three adapter resolutions a call is using; see the three constants above. */
 export type AdapterIdentity = typeof ADAPTER_IDENTITY_MOUNTED | typeof ADAPTER_IDENTITY_PENDING | typeof ADAPTER_IDENTITY_FALLBACK
+
+/**
+ * The ONE wording of the "provider registered but not ACTIVE yet" diagnostic.
+ *
+ * Shared by BOTH resolutions (eager {@link resolveDshAdapter} and {@link createLazyDshAdapter}) so
+ * the two cannot drift: a boot that resolves the adapter twice must not describe the same miss two
+ * different ways.
+ */
+function adapterPendingWarning(): string {
+  return "ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber"
+    + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE"
+    + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted"
+    + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50)."
+}
+
+/**
+ * The ONE wording of the "no adapter in this composition" diagnostic (S3).
+ *
+ * A row that reaches this branch builds its OWN adapter beside the tree's, which is exactly what the
+ * one-contact-surface rule (AGENTS.md §6) exists to prevent — so both resolutions emit THIS line
+ * rather than one of them falling back in silence.
+ */
+function adapterFallbackWarning(): string {
+  return "ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided"
+    + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter"
+    + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)"
+    + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working,"
+    + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the"
+    + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter)."
+}
 
 /** Options for {@link createLazyDshAdapter}: the row label and an optional warning sink. */
 export interface LazyAdapterOptions {
@@ -4147,21 +4200,13 @@ export function createLazyDshAdapter(ctx: unknown, options: LazyAdapterOptions):
     if (!probeMpdDsh(ctx, false).missing) {
       if (!warnedPending) {
         warnedPending = true
-        warning("ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber"
-          + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE"
-          + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted"
-          + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).")
+        warning(adapterPendingWarning())
       }
       return temporary
     }
     if (!warnedMissing) {
       warnedMissing = true
-      warning("ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided"
-        + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter"
-        + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)"
-        + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working,"
-        + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the"
-        + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).")
+      warning(adapterFallbackWarning())
     }
     return temporary
   }
