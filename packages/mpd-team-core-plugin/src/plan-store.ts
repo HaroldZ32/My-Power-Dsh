@@ -13,6 +13,7 @@
 // without a ctx, a harness or a model.
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { sanitizeId } from "./team-store"
 
 /** One member the plan wants. The prompt is what the team executor hands the teammate on approval. */
 export interface StagedMember {
@@ -97,14 +98,47 @@ export function teamRoot(workspace: string): string {
   return join(workspace, ".mpd", "team")
 }
 
+/**
+ * The file id for ONE sidecar under `.mpd/team`, reduced and then REFUSED if it is unsafe.
+ *
+ * The two sibling stores already reduce their ids (`team-store.ts#sanitizeId`, the watchdog's
+ * `safeSegment`), so this reuses the SAME reducer rather than inventing a third one. A
+ * separator-carrying id is REFUSED OUTRIGHT instead of being silently rewritten: `sessionId`
+ * reaches `stagingPath` straight from the web route's query string
+ * (`team-web.ts#sessionOf` → `planForSession` → `readPlan` → `stagingPath`), so
+ * `sessionId=../../escape` used to read and write `<workspace>/escape.json` — and folding it to
+ * `..-..-escape` would have answered a DIFFERENT file than the caller asked for, which is its own
+ * silent-wrong-answer defect.
+ *
+ * @param value - the candidate id (a session id or a task id).
+ * @param what - what the id names, for a sentence a caller can act on.
+ * @returns the reduced id, safe as one path segment.
+ * @throws when the id carries a path separator, before or after the reduction.
+ */
+function planFileId(value: string, what: string): string {
+  // The id as text, exactly as the caller supplied it.
+  const raw = String(value)
+  if (raw.includes("/") || raw.includes("\\")) {
+    throw new Error(`${what} "${raw}" carries a path separator and is refused: ids name ONE file under .mpd/team`)
+  }
+  /** The reduced id, produced by the store family's own reducer. */
+  const id = sanitizeId(raw)
+  // The POST-CONDITION on the reused reducer: if a separator ever survived it, the join below would
+  // escape the root, so the guard is re-asserted on the value that actually lands in the path.
+  if (id.includes("/") || id.includes("\\")) {
+    throw new Error(`${what} "${raw}" reduced to "${id}", which still carries a path separator and is refused`)
+  }
+  return id
+}
+
 /** `<root>/staging`: one JSON file per session that has a staged plan. */
 const stagingDir = (workspace: string): string => join(teamRoot(workspace), "staging")
 /** The staging slot of ONE session — the file a new stage replaces and approval clears. */
-const stagingPath = (workspace: string, sessionId: string): string => join(stagingDir(workspace), sessionId + ".json")
+const stagingPath = (workspace: string, sessionId: string): string => join(stagingDir(workspace), planFileId(sessionId, "staging session id") + ".json")
 /** `<root>/contracts`: one frozen task contract per file. */
 const contractsDir = (workspace: string): string => join(teamRoot(workspace), "contracts")
 /** The contract file of ONE task, keyed by its board id. */
-const contractPath = (workspace: string, taskId: string): string => join(contractsDir(workspace), taskId + ".json")
+const contractPath = (workspace: string, taskId: string): string => join(contractsDir(workspace), planFileId(taskId, "contract task id") + ".json")
 /** The single hold record; its presence IS the halted state. */
 const holdPath = (workspace: string): string => join(teamRoot(workspace), "hold.json")
 /** `<root>/archive`: archived plans, so a replaced or discarded plan is never truly lost. */
@@ -193,8 +227,11 @@ export function addTask(plan: StagedPlan, task: StagedTask): StagedPlan {
 
 /** Archive one plan under `.mpd/team/archive/<planId>/` and clear its staging slot. */
 export function archivePlan(workspace: string, plan: StagedPlan): string {
-  /** `<archive>/<planId>/`, created before the plan is written into it. */
-  const target = join(archiveDir(workspace), plan.planId)
+  // `<archive>/<planId>/`, created before the plan is written into it. The path comes from
+  // `archivePathFor`, so the id is reduced and refused in ONE place — `plan.planId` is read back
+  // from a staging FILE on the `stagePlan` path, and joining it verbatim here is the same T5 class.
+  /** The archive directory this plan lands in. */
+  const target = archivePathFor(workspace, plan.planId)
   mkdirSync(target, { recursive: true })
   writeJson(join(target, "plan.json"), plan)
   /** The session's staging slot, removed so the plan is no longer staged. */
@@ -300,7 +337,11 @@ export function clearHold(workspace: string): boolean {
 
 /** Move a staged plan into the archive and return where it landed (used by {@link archivePlan}). */
 export function archivePathFor(workspace: string, planId: string): string {
-  return join(archiveDir(workspace), planId)
+  // T5, the SAME class as `stagingPath`: `planId` is read back from a staging FILE
+  // (`stagePlan` → `readPlan` → `archivePlan`), so a planted plan whose `planId` carries `..`
+  // segments used to make this `join()` write `<workspace>/../../…/plan.json` — OUTSIDE the
+  // workspace. It is reduced and refused exactly like the other two ids.
+  return join(archiveDir(workspace), planFileId(planId, "archived plan id"))
 }
 
 /** Rename helper kept here so the archive layout is described in ONE place. */

@@ -22,7 +22,7 @@
 // this bundle's captains, skills and docs already use, and a plan/task contract is the same
 // concept under either implementation — the alternative (inventing new names for old ideas) is
 // what makes a migration unreadable.
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { rowLogLine, createDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import {
@@ -67,6 +67,7 @@ import {
   addTeamMember,
   addTeamTask,
   blockingDependencies,
+  casClaimTask,
   createTeam,
   idleMembers,
   readyTasks,
@@ -170,10 +171,22 @@ function readLedger(workspace: string): DispatchLedger {
   }
 }
 
-/** Persist the ledger. */
+/**
+ * Persist the ledger. Throws only on a real write failure.
+ *
+ * ATOMIC (T7): the bytes land in a sibling temp file that is then renamed over the target — the same
+ * shape `team-store.ts#writeJson` uses — so a reader sees either the whole old ledger or the whole new
+ * one. Before this the plain `writeFileSync` could be observed half-written, and a reader who caught it
+ * mid-write got a `JSON.parse` throw and the `catch` above answering `{}` — i.e. it silently read a
+ * ledger that had LOST every existing pairing. The temp file lives in the SAME directory, so the
+ * rename stays on one filesystem.
+ */
 function writeLedger(workspace: string, ledger: DispatchLedger): void {
   mkdirSync(join(workspace, ".mpd", "team"), { recursive: true })
-  writeFileSync(dispatchPath(workspace), JSON.stringify(ledger, null, 2) + "\n")
+  /** The sibling temp file this write lands in before the rename. */
+  const temp = dispatchPath(workspace) + ".tmp-" + process.pid
+  writeFileSync(temp, JSON.stringify(ledger, null, 2) + "\n")
+  renameSync(temp, dispatchPath(workspace))
 }
 
 /** The rendered one-line summary of a staged plan. */
@@ -835,7 +848,10 @@ export function apply(ctx: any): void {
         if (pruned.forgotten.length > 0) writeLedger(workspace, pruned.ledger)
         return { ...plan, forgotten: pruned.forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }) }
       }
-      /** The ledger as it will be written: pruned first, then extended by each accepted pairing. */
+      // The pass's OWN view of the ledger: the pre-await prune, extended by each accepted pairing.
+      // It is deliberately NOT what gets written — the merge before the write (T7) re-reads the file
+      // and takes ONLY this pass's `sent` entries from here, so a concurrent release survives.
+      /** The ledger this pass carries: the pre-await prune plus its own accepted pairings. */
       let ledger = pruned.ledger
       /** The pairs the transport actually accepted, which are the ones recorded. */
       const sent: typeof plan.pairs = []
@@ -848,10 +864,36 @@ export function apply(ctx: any): void {
           // DELIVERED THROUGH THE EXECUTOR, which on the native backend cold-resumes a child that
           // is not currently live — the behaviour a dispatch pass depends on.
           await executor().send(exec.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String((task as any).description ?? "")), exec.signal)
-          // The pairing is recorded in the RECORD as well as the ledger: the assignment is what
-          // makes the member non-idle on the NEXT pass, and a ledger alone would leave the record
-          // claiming the task is unowned.
-          record = updateTeamTask(record, pair.taskId, { owner: pair.memberName, status: "in_progress" }, now())
+          // COMPARE-AND-SET (T2), AFTER the await and never before it. `opened` was read before the
+          // loop, and another caller — a member's own `agent_teams_task {action:"claim"}` — may have
+          // written the record while this pass was suspended. Re-reading here and applying the patch
+          // to the FRESH record is what keeps that write: a blind `writeTeam(record)` rewrote the
+          // whole file from the stale snapshot and silently reverted it. The pairing is still
+          // recorded in the RECORD as well as the ledger — the assignment is what makes the member
+          // non-idle on the NEXT pass, and a ledger alone would leave the record claiming the task
+          // is unowned.
+          /** The record as it stands on disk right now. */
+          const onDisk = readTeam(workspace, opened.teamId)
+          if (onDisk === undefined) {
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: "the team record disappeared while the pass was in flight" })
+            continue
+          }
+          /** The revision this pass's decision was based on, from the record it has been carrying. */
+          const expected = record.tasks.find((candidate) => candidate.id === pair.taskId)?.revision
+          if (expected === undefined) {
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `task ${pair.taskId} is no longer on the pass's board` })
+            continue
+          }
+          /** The compare-and-set outcome for this pairing. */
+          const claimed = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, now())
+          if (!claimed.applied) {
+            // REPORTED, not silently dropped: the message was delivered, but the board's own record
+            // refused the claim, so the caller must see why the task is not marked in flight.
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` })
+            continue
+          }
+          // The FRESH record, carrying this one pairing and everything a concurrent writer added.
+          record = claimed.record
           writeTeam(workspace, record)
           ledger = assign(ledger, pair, now())
           sent.push(pair)
@@ -859,7 +901,22 @@ export function apply(ctx: any): void {
           skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String((error as Error)?.message ?? error)}` })
         }
       }
-      writeLedger(workspace, ledger)
+      // MERGE (T7), never a blind overwrite. `pruned` was read BEFORE the first `await`, and the
+      // ledger has a SECOND writer that runs across this pass's suspension — `agent_teams_task
+      // {action:"release"}` reads the same file and writes it back with one entry removed. Writing
+      // this pass's whole pre-await map back erased that release: the member stayed recorded as busy
+      // and the freed task could never be dispatched again. So the map is re-read, re-pruned against
+      // the SAME board this pass decided on, and only this pass's OWN accepted operations are applied.
+      /** The ledger as it stands on disk right now, pruned by the rule `pruned` was built with. */
+      const fresh = reconcile(readLedger(workspace), tasks)
+      /** The merged ledger: everything a concurrent writer left, plus this pass's own pairings. */
+      const merged: DispatchLedger = { ...fresh.ledger }
+      // DELIBERATE CONFLICT RULE: when the fresh read shows that a task THIS PASS ASSIGNED was
+      // meanwhile released, the pass's assignment still wins — the send really went out, so recording
+      // it is the honest outcome, and dropping it would leave a delivered task unowned on the board.
+      // Only `sent` is re-applied; an entry this pass merely inherited is never resurrected.
+      for (const pair of sent) merged[pair.taskId] = ledger[pair.taskId]
+      writeLedger(workspace, merged)
       return { pairs: sent, skipped, forgotten: pruned.forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }) }
     },
   }))
