@@ -18,6 +18,9 @@ import {
   generateUnifiedDiff,
   computeLineHash,
   normalizeHashlineEdits,
+  canonicalizeFileText,
+  restoreFileText,
+  type FileTextEnvelope,
   type HashlineEdit,
 } from "./vendor/index.ts"
 import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
@@ -88,20 +91,51 @@ function registered(config: Config, dsh: DshAdapter, fp: string, exec?: any): bo
   return list.some((x) => sessionPath(x, dsh, exec) === target)
 }
 
+/**
+ * Source-line count of a file body, or of the hashline view derived from one: a final newline
+ * TERMINATES the last line rather than adding an empty one, so the trailing "" that `split("\n")`
+ * yields must not be counted. The ONE count read, format and edit all report, so they cannot drift.
+ *
+ * @param text - the plain file body, or the `LINE#HASH|content` view built from it.
+ * @returns the number of source lines; an empty body reports 0.
+ */
+function sourceLineCount(text: string): number {
+  /** The text with its single terminating newline removed, when it carries one. */
+  const body = text.endsWith("\n") ? text.slice(0, -1) : text
+  return body === "" ? 0 : body.split("\n").length
+}
+
+/**
+ * Read a file through the vendor's canonicalization: BOM stripped, line endings folded to LF, plus
+ * the two facts that write it back in the file's own envelope.
+ *
+ * The anchor hashes are CR-insensitive, so this text publishes exactly the anchors the raw file
+ * would; canonicalizing the READ as well as the write is what keeps an edit's anchors valid for a
+ * CRLF or BOM-carrying file instead of silently rewriting its envelope away.
+ *
+ * @param fp - absolute path of the file to read.
+ * @returns the canonical text with its BOM flag and dominant line ending.
+ */
+function readEnvelope(fp: string): FileTextEnvelope {
+  return canonicalizeFileText(readFileSync(fp, "utf8"))
+}
+
 /** Apply validated edits, write the plain result back, and report counts plus a capped diff. */
 function editFile(fp: string, edits: HashlineEdit[], maxDiffChars: number): any {
+  // The file's canonical text plus the envelope its write-back must restore.
+  const envelope = readEnvelope(fp)
   // Content before the edit: the diff's left side and the no-change test.
-  const raw = readFileSync(fp, "utf8")
+  const before = envelope.content
   // Vendored applier's outcome: plain content plus the noop and deduplicated edit counts.
-  const report = applyHashlineEditsWithReport(raw, edits)
-  writeFileSync(fp, report.content)
+  const report = applyHashlineEditsWithReport(before, edits)
+  // Written back in the file's OWN shape — its line ending first, then its BOM — so an anchored edit
+  // never strips a CRLF or BOM envelope the file carried (restoreFileText, not a plain write).
+  writeFileSync(fp, restoreFileText(report.content, envelope))
   // Empty when nothing changed, otherwise the unified diff truncated to the configured cap.
-  const diff = report.content === raw ? "" : generateUnifiedDiff(raw, report.content, fp).slice(0, maxDiffChars)
-  // Trailing-newline-insensitive body, so a file ending in a newline reports its real line count.
-  const contentForCount = report.content.endsWith("\n") ? report.content.slice(0, -1) : report.content
+  const diff = report.content === before ? "" : generateUnifiedDiff(before, report.content, fp).slice(0, maxDiffChars)
   return {
     path: fp,
-    lines: contentForCount === "" ? 0 : contentForCount.split("\n").length,
+    lines: sourceLineCount(report.content),
     noopEdits: report.noopEdits,
     deduplicatedEdits: report.deduplicatedEdits,
     diff
@@ -130,11 +164,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // Absolute path of the file to view, resolved against the calling session's workspace.
       const fp = sessionPath(String(args?.path), dsh, exec)
       if (!existsSync(fp)) throw new Error("mpd-hashline: file not found: " + fp)
-      // Plain file content; the anchor view is derived from it and never written back.
-      const raw = readFileSync(fp, "utf8")
+      // The canonical text is what the anchors are computed over; the file itself is untouched here.
+      const raw = readEnvelope(fp).content
       // The LINE#HASH|content view whose anchors the caller passes back to mpd_hashline_edit.
       const out = toHashlineContent(raw)
-      return { path: fp, lines: out === "" ? 0 : out.split("\n").length, view: out }
+      return { path: fp, lines: sourceLineCount(out), view: out }
     }
   })
 
@@ -181,11 +215,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // Registry location for THIS session: an explicit registryFile override wins over the workspace root.
       const rp = registryPath(cfg, dsh, exec)
       writeRegistry(rp, [...readRegistry(rp), fp])
-      // Plain content of the registered file, read only to build the returned anchor view.
-      const raw = readFileSync(fp, "utf8")
+      // Plain content of the registered file, read only to build the returned anchor view; the same
+      // canonical shape the read tool publishes, so both views carry identical anchors.
+      const raw = readEnvelope(fp).content
       // Anchor view returned to the caller; registration itself never changes the file.
       const out = toHashlineContent(raw)
-      return { path: fp, lines: out === "" ? 0 : out.split("\n").length, view: out }
+      return { path: fp, lines: sourceLineCount(out), view: out }
     }
   })
 

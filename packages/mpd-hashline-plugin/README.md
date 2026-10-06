@@ -16,6 +16,14 @@ minimal unified-diff generator instead of the npm `diff` dependency.
 | `mpd_hashline_format` | Register a file for the discipline (idempotent; no disk change). |
 | `mpd_hashline_restore` | Unregister the discipline. |
 
+## Line count, diff header and file envelope
+
+`lines` is ONE source-line count shared by read/format/edit: a final newline TERMINATES the last
+line, so a 2-line file reports 2 (not 3). A unified-diff hunk header names the hunk's own first
+line, including a hunk that starts at line 1. `mpd_hashline_edit` reads and writes through the
+vendored canonicalization (`canonicalizeFileText` / `restoreFileText`), so an anchored edit
+preserves a CRLF- or BOM-carrying file's envelope while the anchors stay CR-insensitive.
+
 ## Guard
 
 `config.guardEditTools` (default true) warns through `tools/post-execute` when a
