@@ -2928,8 +2928,11 @@ function readWatermarks(workspace, stateDir) {
 }
 function ackIncidents(workspace, stateDir, reader, upTo) {
   const current = readWatermarks(workspace, stateDir);
-  const next = Math.max(current[reader] ?? 0, upTo);
   const path = watermarkPath(workspace, stateDir);
+  if (typeof upTo !== "number" || !Number.isFinite(upTo)) {
+    return { ok: false, watermark: current[reader] ?? 0, path, error: `the watermark to acknowledge must be a finite number, got ${String(upTo)}` };
+  }
+  const next = Math.max(current[reader] ?? 0, upTo);
   const written = writeFileAtomic(path, JSON.stringify({ ...current, [reader]: next }, null, 2) + `
 `);
   if (written.error !== undefined)
@@ -2997,7 +3000,55 @@ function projectTeamView(view) {
     raw: view
   };
 }
-function readTeams(dsh) {
+function isWatchedMpdRecord(record) {
+  const members = Array.isArray(record.members) ? record.members : [];
+  if (members.length > 0)
+    return true;
+  return Array.isArray(record.tasks) && record.tasks.length > 0;
+}
+function epochOf(iso) {
+  const parsed = typeof iso === "string" ? Date.parse(iso) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+function projectMpdTeam(record) {
+  const members = (Array.isArray(record.members) ? record.members : []).map((member) => ({
+    id: typeof member.executorRef === "string" ? member.executorRef : "",
+    name: String(member.name ?? ""),
+    ...typeof member.status === "string" ? { status: member.status } : {}
+  }));
+  const tasks = (Array.isArray(record.tasks) ? record.tasks : []).map((task) => {
+    const revision = typeof task.revision === "number" && Number.isFinite(task.revision) ? task.revision : undefined;
+    const owner = typeof task.owner === "string" && task.owner !== "" ? task.owner : undefined;
+    return {
+      id: String(task.id ?? ""),
+      status: String(task.status ?? ""),
+      ...owner === undefined ? {} : { assignee: owner, dispatched: true },
+      ...revision === undefined ? {} : { attempt: revision, attemptId: String(revision) },
+      ...Array.isArray(task.blockedBy) ? { dependencies: task.blockedBy.filter((id) => typeof id === "string") } : {}
+    };
+  });
+  return {
+    id: String(record.teamId ?? ""),
+    name: String(record.name ?? ""),
+    ...typeof record.phase === "string" ? { phase: record.phase } : {},
+    ...typeof record.leadSessionId === "string" && record.leadSessionId !== "" ? { captainSessionId: record.leadSessionId } : {},
+    members,
+    tasks,
+    activityAt: null,
+    createdAt: epochOf(record.createdAt),
+    approvedAt: epochOf(record.approvedAt),
+    raw: record
+  };
+}
+function readTeams(dsh, workspace, mpdTeams) {
+  if (mpdTeams !== undefined) {
+    try {
+      const records = mpdTeams.list(workspace);
+      if (Array.isArray(records) && records.length > 0) {
+        return records.filter(isWatchedMpdRecord).map(projectMpdTeam);
+      }
+    } catch {}
+  }
   let views;
   try {
     views = dsh.teamLiveTeams() ?? [];
@@ -3006,12 +3057,12 @@ function readTeams(dsh) {
   }
   return views.filter(isWatchedTeam).map(projectTeamView);
 }
-function readTeam(dsh, teamId) {
+function readTeam(dsh, workspace, teamId, mpdTeams) {
   const wanted = String(teamId);
-  return readTeams(dsh).find((team) => team.id === wanted);
+  return readTeams(dsh, workspace, mpdTeams).find((team) => team.id === wanted);
 }
-function listTeamIds(dsh) {
-  return readTeams(dsh).map((team) => team.id).sort();
+function listTeamIds(dsh, workspace, mpdTeams) {
+  return readTeams(dsh, workspace, mpdTeams).map((team) => team.id).sort();
 }
 function liveTasks(team) {
   return team.tasks.filter((task) => !TERMINAL_STATUSES.includes(task.status));
@@ -3229,7 +3280,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
   });
   dsh.registerTool({
     name: STATUS_TOOL,
-    description: "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and the ONE pause state per team: the watchdog's preserving hold, which is the only pause mechanism this bundle has (the official Agent Teams service exposes no halt). Team rows come from the live OFFICIAL readout (`dsh.teamLiveTeams()`), so a team appears here exactly while one of its sessions is live. Use it to inspect what a lane or a restarting process would read from disk.",
+    description: "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and the ONE pause state per team: the watchdog's preserving hold, which is the only pause mechanism this bundle has (the official Agent Teams service exposes no halt). Team rows come from the MPD TEAM RECORD first (`mpdTeams.list(workspace)`, the authoritative plane, so a team appears as soon as it is created and its id is the one dispatch asks about), with the live OFFICIAL readout (`dsh.teamLiveTeams()`) as the fallback for a composition that runs the official executor. Use it to inspect what a lane or a restarting process would read from disk.",
     parameters: {
       type: "object",
       properties: { team_id: { type: "string", description: "Limit to one team." } },
@@ -3268,7 +3319,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
     },
     execute: (args, exec) => {
       const workspace = dsh.workspaceRoot(exec);
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id];
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh, workspace, surfaces.mpdTeams?.()) : [args.team_id];
       return losslessJson({
         workspace,
         predicate: predicateSource?.() ?? { source: "unknown", reason: "the engine did not publish a predicate source", enrichment: false, events: 0, sessions: 0, states: {}, announced: false },
@@ -3281,7 +3332,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
         },
         teams: ids.map((teamId) => {
           const hold = readHold(workspace, stateDir, teamId);
-          const team = readTeam(dsh, teamId);
+          const team = readTeam(dsh, workspace, teamId, surfaces.mpdTeams?.());
           const held = hold !== undefined;
           const pause = {
             paused: held,
@@ -4514,9 +4565,22 @@ class WatchdogEngine {
     const cached = this.teamCache.get(key);
     if (this.config.teamCacheMs > 0 && cached !== undefined && now - cached.at < this.config.teamCacheMs)
       return cached.teams;
-    const teams = readTeams(this.dsh);
+    const teams = readTeams(this.dsh, workspace, this.mpdTeams());
     this.teamCache.set(key, { at: now, teams });
     return teams;
+  }
+  mpdTeams() {
+    try {
+      const get = this.ctx.get;
+      if (typeof get !== "function")
+        return;
+      const service = get.call(this.ctx, "mpdTeams", false);
+      if (service === null || typeof service !== "object")
+        return;
+      return typeof service.list === "function" ? service : undefined;
+    } catch {
+      return;
+    }
   }
   workspaceOf(agent) {
     return this.dsh.workspaceRoot(agent === undefined ? undefined : { agent });
@@ -5127,6 +5191,19 @@ function resolveConfig(config = {}) {
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog"
   };
 }
+function mpdTeamsOf(ctx) {
+  try {
+    const get = ctx?.get;
+    if (typeof get !== "function")
+      return;
+    const service = get.call(ctx, "mpdTeams", false);
+    if (service === null || typeof service !== "object")
+      return;
+    return typeof service.list === "function" ? service : undefined;
+  } catch {
+    return;
+  }
+}
 function warn(prefix, text) {
   try {
     rowLogLine("mpd-team-watchdog", "[" + prefix + "] " + text);
@@ -5192,7 +5269,8 @@ function apply(ctx, config = {}) {
     registerWatchdogActions(dsh, resolved.stateDir, registry, {
       predicate: () => engine.predicateStatus(),
       knobs: () => engine.knobDivergence(),
-      holdTtlMs: () => engine.getKnobs().holdTtlMs
+      holdTtlMs: () => engine.getKnobs().holdTtlMs,
+      mpdTeams: () => mpdTeamsOf(context)
     });
     disposers = engine.install();
   } catch (error) {

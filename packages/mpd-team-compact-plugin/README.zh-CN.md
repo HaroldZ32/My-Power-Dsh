@@ -15,19 +15,20 @@
 
 ## 语义
 
-- **触发条件** —— 团队中 **每个** 任务都已终结，且 **所有** 成员都空闲。0.1.7：旧的
-  `.mpd/team/<teamId>/team.json` 已消失，而官方 Agent Teams 服务同样不提供“团队已结束”判定，因此触发条件
-  改为由其实时读数的**两半**推导——每个任务都已终结（`teamListTasks`）**且**没有成员在活动
-  （`teamListMembers`）。终结状态词表镜像在 `src/index.ts`（`TERMINAL_TASK_STATUSES`，官方
-  `TeamTaskStatus = pending | in_progress | completed | deleted`），因为本仓库无法用裸模块名解析官方包
-  （实测 `MODULE_NOT_FOUND`）。
+- **触发条件** —— 团队中 **每个** 任务都已终结，且 **所有** 成员都空闲。团队优先从 **MPD 团队记录**
+  读取（`mpdTeams.list(workspace)`，即 `.mpd/team/teams/<id>.json`——**权威**平面，也是运行**默认**原生
+  执行器的组合唯一拥有的平面），并以**官方** Agent Teams 实时读数（`dsh.teamLiveTeams()`）兜底。两个平面
+  都不提供“团队已结束”判定，因此触发条件由**两半**推导——每个任务都已终结 **且** 没有成员在活动
+  （官方平面上的 `teamListTasks` / `teamListMembers`）。终结状态词表镜像在 `src/index.ts`
+  （`TERMINAL_TASK_STATUSES`，官方 `TeamTaskStatus = pending | in_progress | completed | deleted`），
+  因为本仓库无法用裸模块名解析官方包（实测 `MODULE_NOT_FOUND`）。
 - **对象** —— 只处理成员。captain 永远不会被压缩（那是用户的 `/compact`）。
 - **屏障** —— 等待所有成员空闲，然后一起压缩。
 - **方式** —— 无条件的显式 `compactNow`。返回 null 表示"没有可安全压缩的区间"，这会作为一条事实
   记录，而不是错误。
 - **审计** —— `<工作区>/.mpd/team-compact/<teamId>/`，持续累积、绝不覆盖。它绝不会写到
-  `.mpd/team`：那里已不再有任何宿主的团队文件——任务板归宿主所有、存放在 Lead 会话日志中，本插件只通过
-  adapter **读**它。
+  `.mpd/team`：本插件对团队只**读**不写——记录经 `mpdTeams` 服务读取，官方平面经 adapter 读取——除自己的
+  审计之外不写任何文件。
 - **静默** —— 只写审计。成员不会被通知；通知会把上下文又推回去。
 - **触发器有两个，而只有一个能真正够到成员**：(1) `agent/status`（宿主自己的状态边沿）会重新检查每个已结束团队，但它触发时被释放的成员早已不在；(2) 成员**自己回合的边界**（`agent/turn-stopping`，也就是团队看门狗打 `turn-end` 用的那条边沿），这是可续子代理唯一还驻留的时刻——它的 Activation 是进程内的，结算时即被释放。2026-09-16 实测：235 次状态边沿的尝试产生了 2260 条 `skipped-not-live`，成功为 0，这就是 (2) 存在的原因。已经被释放的成员记为 `skipped-not-live`：够到它就意味着把它重新实体化，而那会把上下文又推回去。
 

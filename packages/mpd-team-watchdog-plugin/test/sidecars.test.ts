@@ -140,6 +140,44 @@ describe("incidents and the read watermark", () => {
       box.cleanup()
     }
   })
+
+  test("a NON-FINITE upTo is REFUSED, never persisted as null", () => {
+    // THE DEFECT THIS PINS (T6): `Math.max(current[reader] ?? 0, NaN)` is NaN, and
+    // `JSON.stringify` renders NaN as `null`. The next read coalesces `null` back to 0, so the
+    // reader silently replayed from zero — a no-op that looks exactly like a successful ack.
+    // An Infinity is refused for the same reason: it is not a watermark any incident can carry.
+    /** An isolated workspace for this case. */
+    const box = sandbox()
+    try {
+      appendIncident(box.workspace, box.stateDir, {
+        id: "i1", at: 100, teamId: "team-a", kind: "warn",
+        cause: { kind: "silence", ms: 90_001 }, taskId: "t1", attemptId: "att-1",
+        scene: null, hold: "not-requested", acknowledgedBy: [],
+      })
+      /** The refusal for a NaN watermark. */
+      const nan = ackIncidents(box.workspace, box.stateDir, "web", Number.NaN)
+      expect(nan.ok).toBe(false)
+      expect(String(nan.error)).toContain("finite")
+      // NOTHING was written: the document must not carry the `null` a NaN would serialize to.
+      expect(readWatermarks(box.workspace, box.stateDir)).toEqual({})
+      /** The watermark document as it stands on disk, or "" when the refusal wrote no file at all. */
+      const doc = existsSync(join(box.workspace, box.stateDir, "watchdog", "read-watermark.json"))
+        ? readFileSync(join(box.workspace, box.stateDir, "watchdog", "read-watermark.json"), "utf8")
+        : ""
+      expect(doc).not.toContain("null")
+      // The replay is unchanged: a refused ack never silently rewinds a reader.
+      expect(unacknowledged(box.workspace, box.stateDir, "web").length).toBe(1)
+      /** The refusal for an infinite watermark. */
+      const infinite = ackIncidents(box.workspace, box.stateDir, "web", Number.POSITIVE_INFINITY)
+      expect(infinite.ok).toBe(false)
+      expect(readWatermarks(box.workspace, box.stateDir)).toEqual({})
+      // The falsifier: a FINITE ack still lands, so the guard is not a blanket refusal.
+      expect(ackIncidents(box.workspace, box.stateDir, "web", 100).ok).toBe(true)
+      expect(readWatermarks(box.workspace, box.stateDir)).toEqual({ web: 100 })
+    } finally {
+      box.cleanup()
+    }
+  })
 })
 
 describe("the plugin's own actions", () => {

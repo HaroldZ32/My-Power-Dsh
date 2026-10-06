@@ -39,6 +39,7 @@ import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
 import { rowLogLine, createDshAdapter, dshSeamInject, DSH_SEAM_AGENTS, DSH_SEAM_TOOLS, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerWatchdogActions } from "./actions.js"
 import { WatchdogEngine, type EngineConfig, type EngineContext, type EngineStats } from "./engine.js"
+import type { MpdTeamsRead } from "./team.js"
 import { HOLD_GATE_CALL, HOLD_SERVICE, HoldRegistry } from "./holds.js"
 import { readKnobs, WATCHDOG_DEFAULTS, type ResolvedKnobs } from "./machine.js"
 import { DEFAULT_STATE_DIR } from "./paths.js"
@@ -165,6 +166,31 @@ export function resolveConfig(config: Config = {}): EngineConfig {
   }
 }
 
+/**
+ * Resolve the `mpdTeams` service face for ONE call.
+ *
+ * Resolved here, at the point of use, and never captured at apply — the service is provided by
+ * another row, which may mount after this one, and a composition without it must read exactly as it
+ * did before. The soft probe (`ctx.get(id, false)`) is what keeps an unmounted service from
+ * throwing inside a tool call or a tick.
+ *
+ * @param ctx - the row's cordis context.
+ * @returns the service face, or undefined when it is absent or of the wrong shape.
+ */
+function mpdTeamsOf(ctx: unknown): MpdTeamsRead | undefined {
+  try {
+    // The context's soft service probe; a minimal test context may not carry one.
+    const get = (ctx as { get?: (id: string, strict?: boolean) => unknown })?.get
+    if (typeof get !== "function") return undefined
+    /** The service as the composition answers it, or undefined when it is not mounted. */
+    const service = get.call(ctx, "mpdTeams", false)
+    if (service === null || typeof service !== "object") return undefined
+    return typeof (service as MpdTeamsRead).list === "function" ? (service as MpdTeamsRead) : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** One line on stderr, never a throw. */
 function warn(prefix: string, text: string): void {
   try {
@@ -272,6 +298,8 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
       knobs: () => engine.knobDivergence(),
       // T-17: a hold created without an explicit `ttl_ms` inherits the resolved `holdTtlMs`.
       holdTtlMs: () => engine.getKnobs().holdTtlMs,
+      // The status view names the AUTHORITATIVE plane's teams, read per call (T3).
+      mpdTeams: () => mpdTeamsOf(context),
     })
     disposers = engine.install()
   } catch (error) {

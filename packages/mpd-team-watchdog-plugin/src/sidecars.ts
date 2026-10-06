@@ -220,6 +220,17 @@ export function readWatermarks(workspace: string, stateDir: string): Record<stri
  *
  * The watermark only ever moves FORWARD and only by an explicit acknowledgement
  * (design §5.3): without one, the replay is permanent re-display by design.
+ *
+ * A NON-FINITE `upTo` is REFUSED before anything is written. `Math.max(current[reader] ?? 0, NaN)`
+ * is `NaN` and `JSON.stringify` renders that as `null`, which the next read coalesces back to 0 —
+ * so a NaN acknowledgement used to look like a success while silently rewinding the reader to the
+ * whole incident log. An `Infinity` is refused for the same reason: no incident can carry it.
+ *
+ * @param workspace - the workspace whose watermark document is written.
+ * @param stateDir - the state directory, relative to the workspace.
+ * @param reader - the reader key whose watermark advances.
+ * @param upTo - the incident timestamp to acknowledge; must be finite.
+ * @returns the outcome, the resulting watermark and the path; `ok: false` with `error` when refused.
  */
 export function ackIncidents(
   workspace: string,
@@ -229,10 +240,14 @@ export function ackIncidents(
 ): { ok: boolean; watermark: number; path: string; error?: string } {
   // The whole watermark map as it stands before this acknowledgement.
   const current = readWatermarks(workspace, stateDir)
-  // The new watermark: monotonic, so an ack can only move a reader forward.
-  const next = Math.max(current[reader] ?? 0, upTo)
   // Absolute path of the watermark document shared by all readers.
   const path = watermarkPath(workspace, stateDir)
+  // THE REFUSAL COMES FIRST: a non-finite bound would serialize to `null` and be read back as 0.
+  if (typeof upTo !== "number" || !Number.isFinite(upTo)) {
+    return { ok: false, watermark: current[reader] ?? 0, path, error: `the watermark to acknowledge must be a finite number, got ${String(upTo)}` }
+  }
+  // The new watermark: monotonic, so an ack can only move a reader forward.
+  const next = Math.max(current[reader] ?? 0, upTo)
   // The atomic-write outcome for the merged watermark document.
   const written = writeFileAtomic(path, JSON.stringify({ ...current, [reader]: next }, null, 2) + "\n")
   if (written.error !== undefined) return { ok: false, watermark: current[reader] ?? 0, path, error: written.error }

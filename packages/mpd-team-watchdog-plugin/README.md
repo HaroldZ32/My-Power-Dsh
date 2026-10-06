@@ -35,10 +35,12 @@ per-agent heartbeat is the only witness that survives that shape.
 
 Everything is under the **calling session's workspace** (resolved per call through the
 adapter — never cached, never `process.cwd()` by assumption). 0.1.7 retired the vendored
-`agent-teams` plugin and its `<stateDir>/<teamId>/team.json`, so there is NO team file on this
-path any more: the roster and the board are read LIVE through the adapter
-(`dsh.teamLiveTeams()`, the OFFICIAL Agent Teams readout), and every file below belongs to this
-package alone.
+`agent-teams` plugin and its `<stateDir>/<teamId>/team.json`, so there is NO team file of that
+shape on this path any more: the roster and the board are read LIVE, from the **MPD TEAM RECORD**
+first (`mpdTeams.list(workspace)`, `.mpd/team/teams/<teamId>.json` — the AUTHORITATIVE plane, whose
+`team-<stamp>` ids are the ones `agent_teams_dispatch` asks about) and from the OFFICIAL Agent Teams
+readout (`dsh.teamLiveTeams()`) as the fallback for a composition that runs the official executor.
+Every file below belongs to this package alone.
 
 ```
 <workspace>/<stateDir>/watchdog/heartbeat/<memberKey>.jsonl        one stamp per line
@@ -439,9 +441,9 @@ unreachable).
   clock and a stub adapter; the fault-injection and live-wedge lanes are other tasks.
 * `parkedAttempts` is the projection described above, and `unread` is `null` by construction
   (the official mailbox is not observable through the adapter).
-* **No team mutation, by construction.** The watch list is the harness's own live readout
-  (`dsh.teamLiveTeams()`), which this plugin only READS; every file it writes lives under
-  `<stateDir>/watchdog/`.
+* **No team mutation, by construction.** The watch list is the MPD team record (read through the
+  `mpdTeams` service) with the harness's own live readout (`dsh.teamLiveTeams()`) as the fallback —
+  both are only READ; every file it writes lives under `<stateDir>/watchdog/`.
 
 ## Verify
 
@@ -462,7 +464,7 @@ node skills/dsh-qa/scripts/preset-conformance.ts
 | `src/machine.ts` | the knobs, the WARN→ESCALATE arithmetic and the §7.2 knob readings |
 | `src/channel.ts` | the §1 four-state channel fold (`session/event`) |
 | `src/store.ts` | the heartbeat files, their rotation and atomic writes |
-| `src/team.ts` | the READ-ONLY projection of the official live readout (`dsh.teamLiveTeams()`) |
+| `src/team.ts` | the READ-ONLY projection of the team plane: the MPD record (`mpdTeams`) first, the official live readout (`dsh.teamLiveTeams()`) as the fallback |
 | `src/scene.ts` | the scene document, its atomic write, and the honest `unread: null` |
 | `src/sidecars.ts` | the hold, the incident log and the read watermark |
 | `src/actions.ts` | the three tool actions |
