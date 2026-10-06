@@ -465,7 +465,7 @@ describe("the `/mpd panel` status sentence is bilingual", () => {
     // The wave's rule: every user-visible string has an `en` and a `zh` entry in `i18n.ts`, which is
     // also the ONLY place they may live. The three sentences cover the three outcomes a routed open
     // can produce; each placeholder must survive both languages.
-    for (const key of ["panel.opened", "panel.fallback", "panel.unavailable"] as const) {
+    for (const key of ["panel.opened", "panel.fallback", "panel.refused", "panel.unavailable"] as const) {
       /** The bilingual pair, read off the dictionary the resolver uses. */
       const pair = TUI_TEXT[key]
       expect(pair.en.length).toBeGreaterThan(0)
@@ -480,8 +480,9 @@ describe("the `/mpd panel` status sentence is bilingual", () => {
       const inputs = { env: { DSH_TUI_LANG: lang }, home: "/nonexistent-mpd-panel-home", readFile: () => "{}" }
       expect(t("panel.opened", { id: "act0:team" }, inputs)).toContain("act0:team")
       expect(t("panel.fallback", { id: "act0:team" }, inputs)).toContain("act0:team")
-      // The unavailable sentence has no placeholder and must not carry a stray `{id}`.
+      // The two placeholder-free sentences must not carry a stray `{id}`.
       expect(t("panel.unavailable", undefined, inputs)).not.toContain("{")
+      expect(t("panel.refused", undefined, inputs)).not.toContain("{")
       expect(pick(TUI_TEXT["panel.opened"], lang)).toBe(TUI_TEXT["panel.opened"][lang])
     }
     // The resolved sentence (process state) is always one of the two declared halves, with the id
@@ -498,6 +499,47 @@ describe("the `/mpd panel` status sentence is bilingual", () => {
 })
 
 // ── the routing: panel, scene, and the refusal fallback ─────────────────────
+// S7: a host that BINDS the seam and REFUSES the descriptor is not "a host with no panel seam".
+describe("the routed open on a REFUSING host (S7)", () => {
+  test("a bound seam that refused the descriptor reports `refused`, and the line says refused", () => {
+    /** A host that composes the panel seam but accepts nothing: `register` returns no new id. */
+    const host = hostDouble({ registry: { register: () => () => {}, list: () => [] } })
+    /** The real adapter over that host. */
+    const tui = createTuiAdapter(host.ctx as never)
+    /** The scene tracker, so the arm can prove the scene still opens as the surface. */
+    const tracker = panelDeps()
+    /** The registered surface, whose registration the host turned down. */
+    const surface = registerPanelSurface(tui as never, tracker.deps)
+    // The SEAM IS BOUND — this is not a pre-0.13.0 host — and the handle reports the refusal.
+    expect(tui.panelSeamBound()).toBe(true)
+    expect(surface.outcome().state).toBe("refused")
+    expect(surface.id()).toBeUndefined()
+    /** How the routed open ended. */
+    const routed = surface.openOrScene()
+    // THE PIN: the refusal is its own outcome, never folded into "this host exposes no panel seam".
+    expect(routed.outcome).toBe("refused")
+    expect(routed.sceneOpened).toBe(true)
+    expect(tracker.opened).toBe(1)
+    /** The `/mpd panel` sentence, in the active language. */
+    const line = panelStatusLine(routed.outcome, surface.id())
+    expect(line).toBe(t("panel.refused"))
+    expect(line).not.toBe(t("panel.unavailable"))
+    expect(line).not.toContain("{")
+  })
+
+  test("NEGATIVE CONTROL: a genuinely absent seam still reads `unavailable`", () => {
+    /** A pre-0.13.0 host: the panel service is not composed at all. */
+    const host = hostDouble({ panels: false })
+    /** The real adapter over that host. */
+    const tui = createTuiAdapter(host.ctx as never)
+    /** The registered surface, whose seam never binds. */
+    const surface = registerPanelSurface(tui as never, panelDeps().deps)
+    expect(tui.panelSeamBound()).toBe(false)
+    expect(surface.openOrScene().outcome).toBe("unavailable")
+    expect(panelStatusLine("unavailable", undefined)).toBe(t("panel.unavailable"))
+  })
+})
+
 describe("the merged-view routing (panel vs full-screen scene)", () => {
   test("with the seam bound and an id discovered, the PANEL opens and the scene does not", () => {
     /** A host that composes the panel seam and accepts the open. */

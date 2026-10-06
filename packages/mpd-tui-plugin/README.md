@@ -66,8 +66,9 @@ discovered, otherwise the full-screen `mpd-tui-subagents` scene. A host REFUSAL 
 `opened() === false` (not this activation's panel, the one-open-per-5000 ms rate limit, or no live panel
 consumer) opens the scene as the fallback and logs why. A QUEUED request (`opened() === undefined`) is
 NOT read as a refusal. `/mpd subagents` keeps its pre-panel boolean contract; `/mpd panel` prints the
-routed outcome in the active language (`panel.opened` / `panel.fallback` / `panel.unavailable`), so a
-fallback can never be read as "the panel opened".
+routed outcome in the active language (`panel.opened` / `panel.fallback` / `panel.refused` /
+`panel.unavailable`), so a fallback can never be read as "the panel opened", and a host that BOUND the
+seam yet REFUSED the registration says refused — never "this host exposes no panel seam".
 
 **`Ctrl+A` is VERSION-GATED.** On a host that offers the panel seam the legacy host-input contact is
 skipped outright — `takeoverArmed(seamBound, savedKnob, floor)` returns `false` whatever the config

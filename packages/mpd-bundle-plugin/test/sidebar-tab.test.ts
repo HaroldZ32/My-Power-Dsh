@@ -990,6 +990,37 @@ describe("the harness right sidebar is the assuredly-working fallback (D1)", () 
     restore(client)
   })
 
+  test("S9: a better-sidebar seat that arrives AFTER apply is PUBLISHED on the preference branch", () => {
+    // The case the in-callback preference branch exists for: `betterSidebar` is published by its own
+    // plugin fiber, so a bare probe at apply time answers undefined, and the callback is the FIRST
+    // moment the preference is knowable. The snapshot must not keep its apply-time values there.
+    /** The client whose better-sidebar seat arrives later (the default race fixture). */
+    const client = loadMpdClient({})
+    // The console.info the branch emits is CAPTURED, so this arm can prove the branch really ran
+    // even while the diagnostics assertion below is red for the wrong reason.
+    /** The lines the branch's own `console.info` emitted. */
+    const infoLines: string[] = []
+    /** The real console method, restored in the finally block below. */
+    const originalInfo = console.info
+    console.info = (message?: unknown) => { infoLines.push(String(message)) }
+    try {
+      client.exports.apply(client.ctx)
+      // Apply-time truth: the bare probe saw nothing, so the snapshot says "no host yet".
+      expect(client.exports.sidebarDiagnostics()).toMatchObject({ reported: false, host: "", preferred: false })
+      // The preferred host's fiber activates, and the harness seat's injection fires INSIDE that window.
+      client.provideService("betterSidebar", client.sidebarService)
+      client.provideService("sidebarRightTabs", { register: () => () => {} })
+      client.provideService("sidebarRight", { openTab: () => () => {} })
+      // The branch RAN — its own line is the proof that the state below is the branch's doing.
+      expect(infoLines.some((line) => line.includes("better-sidebar is mounted"))).toBe(true)
+      // THE PIN: the branch returned after taking the preference, and the snapshot says so.
+      expect(client.exports.sidebarDiagnostics()).toMatchObject({ reported: false, host: "dsh-better-sidebar", registered: 0, preferred: true })
+    } finally {
+      console.info = originalInfo
+    }
+    restore(client)
+  })
+
   test("when the harness seat DOES arrive, both panels register and NOTHING is reported", () => {
     /** The client without the third-party sidebar, in a profile whose harness sidebar exists. */
     const client = loadMpdClient({ withoutSidebar: true })

@@ -63,11 +63,32 @@ function toolchainCodegraphPath(): string | null {
   return existsSync(p) ? p : null
 }
 
+/**
+ * The first variable of `names` whose value is NON-BLANK, trimmed; undefined when every one is
+ * unset or blank.
+ *
+ * `??` is not enough for a documented alias pair (S8): an exported-but-empty
+ * `MPD_CODEGRAPH_BIN=""` IS a present value, so `a ?? b` answered the blank, the caller then
+ * filtered it out, and the alias was ignored with no miss reported. The MCP launchers already read
+ * a blank as unset (`(process.env.MPD_CODEGRAPH_BIN ?? "").trim().length === 0`), so this is that
+ * same rule, shared by every reading site here.
+ */
+function firstNonBlankEnv(names: readonly string[]): string | undefined {
+  for (const name of names) {
+    /** The variable's value, trimmed; a blank or whitespace-only value counts as unset. */
+    const value = (process.env[name] ?? "").trim()
+    if (value.length > 0) return value
+  }
+  return undefined
+}
+
 /** Resolve the codegraph executable: config override, env override, package bin, toolchain shim, then PATH. */
 function resolveBinary(config?: Config): string | null {
+  /** The env override, primary alias first, read first-NON-BLANK so a blank one cannot hide the other. */
+  const envOverride = firstNonBlankEnv(["MPD_CODEGRAPH_BIN", "MPD_DSH_CODEGRAPH_BIN"])
   /** The explicit overrides, highest priority first; blanks are dropped so an empty env var is not a candidate. */
   const candidates = [
-    config?.binary, process.env.MPD_CODEGRAPH_BIN ?? process.env.MPD_DSH_CODEGRAPH_BIN
+    config?.binary, envOverride
   ].filter((s): s is string => !!s && s.length > 0)
   for (const c of candidates) if (existsSync(c)) return c
   /** The executable the optional npm package ships, when that package is installed here. */
@@ -99,9 +120,9 @@ function resolveBinary(config?: Config): string | null {
 //      is what makes an exec-less consumer session-correct;
 //   3. `process.cwd()` — the adapter's own last tier (boot, unit tests).
 function resolveProjectRoot(dsh: WorkspacePlane, exec?: CommandInvocation): string {
-  /** The explicit project-cwd override, trimmed; an empty string means no override was configured. */
-  const override = (process.env.MPD_CODEGRAPH_PROJECT_CWD ?? process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD ?? "").trim()
-  if (override.length > 0) return resolve(override)
+  /** The explicit project-cwd override, first-NON-BLANK across the alias pair (S8), trimmed. */
+  const override = firstNonBlankEnv(["MPD_CODEGRAPH_PROJECT_CWD", "MPD_DSH_CODEGRAPH_PROJECT_CWD"])
+  if (override !== undefined) return resolve(override)
   return resolve(dsh.workspaceRoot(exec))
 }
 

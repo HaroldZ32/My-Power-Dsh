@@ -1677,6 +1677,11 @@
         try { primary = ctx.get("betterSidebar"); } catch { primary = undefined; }
         if (primary !== undefined && primary !== null) {
           preferred = true;
+          // PUBLISHED ON THIS BRANCH TOO (S9). A seat that is invisible to the bare probe at apply time
+          // and visible here is the case this callback exists for, so returning without publishing left
+          // the module snapshot on its apply-time values — `sidebarDiagnostics()` reported
+          // `{host: "", preferred: false}` about a profile whose panels better-sidebar owns.
+          publishSettle(preferred, registered);
           console.info("[mpd] better-sidebar is mounted: the team view registers THERE, and the official right sidebar is left to its own tabs");
           return;
         }
