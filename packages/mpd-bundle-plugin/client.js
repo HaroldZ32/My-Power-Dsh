@@ -5624,6 +5624,195 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     }
   }
 
+  // ── R2: the section renders on the harness's OWN settings-form tokens ───────────
+  // WHAT THIS IS: the card's entire visual contract, read off the INSTALLED primitives —
+  // `@deepseek-ai/dsh-client-ui-primitives/lib/settings-form/fields.module.css` (`.field`, `.field +
+  // .field`, `.label`, `.hint`, `.input`, `.reset`) and `SettingsForm.module.css` (`.form`,
+  // `.footer`, `.save`, `.readOnly`), with the alias VALUES and the focus ring taken from the theme
+  // bundle (`dsh-client-ui-theme`: `body{…}` is the light theme, `body[data-ds-dark-theme]{…}` the
+  // dark one, and its `focus.css` holds `:root{--dsw-focus-ring-width:2px}` plus the global
+  // `:focus-visible` rule), and the section title/description from the settings plane's own
+  // `dsh-client-ui-settings-models` (`.title` 16px/500/24px, `.description` 14px/24px). R2 is a
+  // RESTYLE: nothing in this block reads, writes or re-keys a value — every key, attribute and
+  // behaviour path below the styles is the one that shipped.
+  //
+  // FALLBACK DISCIPLINE (BINDING): an inline style gets no stylesheet default, and a bare
+  // `var(--dsw-…)` that resolves to nothing paints an invisible control — so every token below is
+  // read WITH a literal. A token this bundle ALREADY pairs keeps that exact literal
+  // (`--dsw-alias-label-primary, #1c1c1e`, `-secondary, #5b6472`, `-tertiary, #8a94a6`,
+  // `--dsw-alias-state-business-primary, #4d6bfe` — the vocabulary `team-view.ts` renders the team
+  // panel with, so the two panels degrade identically); a token it does not pair yet carries the
+  // token's own LIGHT-theme value from the theme bundle, which is what the token resolves to by
+  // default. `--dsw-focus-ring-color` is DEFINED by that theme (as `transparent`, for pointer
+  // modality), so its fallback is the host's own nested one rather than a literal.
+  //
+  // THE FOCUS RING IS NOT PAINTED HERE, deliberately: the host's global `:focus-visible` rule
+  // already gives every focusable element `outline-width: var(--dsw-focus-ring-width)` in
+  // `outline-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary))` — the
+  // exact pair the contract names — and a pseudo-class cannot be expressed as an inline style. Only
+  // the CONTROL opts out, exactly as the host's `.input:focus-visible` does (border accent, no
+  // outline), through the two listeners below.
+  /** The radius the harness's `.field` / `.input` / `.button` all share (`--dsw-radius-md:12px`). */
+  const RADIUS_MD = "var(--dsw-radius-md, 12px)"
+  /** The control stroke (`.input`): 0.5px, light-theme literal. */
+  const STROKE_CONTROL = "0.5px solid var(--dsw-alias-border-l4, #00000029)"
+  /** The FIELD separator (`.field + .field`): 0.5px, light-theme literal. */
+  const STROKE_FIELD = "0.5px solid var(--dsw-alias-border-l2, #0000001a)"
+  /** The outlined action's stroke (`.button.outline`): 0.5px, light-theme literal. */
+  const STROKE_BUTTON = "0.5px solid var(--dsw-alias-border-l3, #0000001f)"
+  /** The label alias the host's `.label` colours with (the bundle's existing literal). */
+  const LABEL_PRIMARY = "var(--dsw-alias-label-primary, #1c1c1e)"
+  /** The muted alias (`.reset`, `.description`; the bundle's existing literal). */
+  const LABEL_SECONDARY = "var(--dsw-alias-label-secondary, #5b6472)"
+  /** The dimmest alias (`.hint`, `.readOnly`, `.failed`; the bundle's existing literal). */
+  const LABEL_TERTIARY = "var(--dsw-alias-label-tertiary, #8a94a6)"
+  /** The control fill (`.input` `--dsw-alias-bg-layer-3`, light-theme literal `#fff`). */
+  const FILL_CONTROL = "var(--dsw-alias-bg-layer-3, #fff)"
+  /** The focus/active accent (`.input:focus-visible`; the bundle's existing literal). */
+  const ACCENT = "var(--dsw-alias-state-business-primary, #4d6bfe)"
+  /** The pointer-hover wash (`.button.outline:hover`), light-theme literal. */
+  const HOVER_WASH = "var(--dsw-alias-interactive-bg-hover, #2631480f)"
+  /**
+   * Every inline style bag the card renders with. The keys are the ROLES the harness names
+   * (`.field`, `.label`, `.hint`, `.input`, `.help`, `.footer`, `.save`, `.reset`, `.readOnly`), so a
+   * reviewer can diff one against its stylesheet rule directly.
+   */
+  const SKIN                                                  = {
+    /** The host's `.form`: a plain column — the host's own sections have no panel chrome. */
+    form: { display: "flex", flexDirection: "column" },
+    /** `.field`: flex column, gap 6px, padding 12px 0. The separator is added per field below. */
+    field: { display: "flex", flexDirection: "column", gap: 6, padding: "12px 0" },
+    /** The settings section title (`.title`: 16px/500/24px, label-primary). */
+    title: { margin: 0, fontSize: 16, fontWeight: 500, lineHeight: "24px", color: LABEL_PRIMARY },
+    /** The section description (`.description`: 14px/24px, label-secondary). */
+    description: { margin: "0 0 12px", fontSize: 14, lineHeight: "24px", color: LABEL_SECONDARY },
+    /** `.readOnly` / `.unavailable`: the state notes, 12px/1.5 tertiary. */
+    note: { margin: "0 0 12px", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** `.help`: the disclosure block — 12px/1.6 stack, 8px between paragraphs. */
+    help: { margin: "0 0 12px", display: "flex", flexDirection: "column", gap: 8, paddingTop: 10 },
+    /** One `.help > p`: 12px/1.6, the hint colour (the captain's R2 note: no wall of body text). */
+    helpText: { margin: 0, fontSize: 12, lineHeight: 1.6, color: LABEL_TERTIARY },
+    /** `.label`: 13px/500/1.5, label-primary. */
+    label: { display: "block", fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
+    /** `.hint`: the row's human sentence — 12px/1.5 tertiary (the contract's hint row). */
+    hint: { display: "block", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** The block that stacks the sentence over its key, with the 2px the row always had. */
+    hintBlock: { display: "block", marginBottom: 2 },
+    /** The dotted key BENEATH a sentence: one step down (11px, dimmer) so it never competes. */
+    key: { display: "block", fontSize: 11, lineHeight: 1.5, opacity: 0.6, color: LABEL_TERTIARY },
+    /** The dotted key as a row's ONLY hint (a knob with no sentence): the hint size, still dim. */
+    keyOnly: { display: "block", marginBottom: 2, fontSize: 12, lineHeight: 1.5, opacity: 0.6, color: LABEL_TERTIARY },
+    /** `.input`: 34px, 0 12px padding, the control stroke, radius-md, layer-3 fill, 13px. */
+    control: {
+      boxSizing: "border-box",
+      width: "100%",
+      height: 34,
+      padding: "0 12px",
+      border: STROKE_CONTROL,
+      borderRadius: RADIUS_MD,
+      background: FILL_CONTROL,
+      fontSize: 13,
+      lineHeight: 1.5,
+      color: LABEL_PRIMARY,
+    },
+    /** `.input:disabled`: a control the page refuses writes on greys its text and drops the cursor. */
+    controlOff: { color: LABEL_TERTIARY, cursor: "default" },
+    /** A slot's group heading: the label treatment, with the field rhythm's top padding. */
+    groupHeading: { marginTop: 12, fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
+    /** A slot's one-line impact: the hint treatment. */
+    groupImpact: { margin: "2px 0 0", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** The row's marker line (overridden / invalid) that carries the reset link. */
+    resetNote: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** `.reset`: a link-shaped button — no chrome, 12px/1.5, label-secondary. */
+    reset: {
+      border: "none",
+      background: "none",
+      padding: 0,
+      fontFamily: "inherit",
+      fontSize: 12,
+      lineHeight: 1.5,
+      color: LABEL_SECONDARY,
+      cursor: "pointer",
+    },
+    /** `.footer`: one row, gap 8px, 16px above. */
+    footer: { display: "flex", alignItems: "center", gap: 8, paddingTop: 16 },
+    /** `.save`: radius-md pill, 5px 14px, 13px, label-primary fill with the layer-3 text colour. */
+    save: {
+      appearance: "none",
+      border: "1px solid transparent",
+      borderRadius: RADIUS_MD,
+      padding: "5px 14px",
+      fontFamily: "inherit",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer",
+      background: LABEL_PRIMARY,
+      color: FILL_CONTROL,
+    },
+    /** `.button.outline`: the secondary action beside the save. */
+    discard: {
+      appearance: "none",
+      border: STROKE_BUTTON,
+      borderRadius: RADIUS_MD,
+      padding: "5px 14px",
+      fontFamily: "inherit",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer",
+      background: "transparent",
+      color: LABEL_PRIMARY,
+    },
+    /** `.failed`: the save's own status line, 12px/1.5 tertiary, stretched like the host's. */
+    status: { flex: 1, minWidth: 0, margin: 0, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+  }
+
+  /** The field bag of the field at `index`: the separator lands on every field but the FIRST. */
+  const fieldStyle = (index        )                                  => (index === 0 ? SKIN.field : { ...SKIN.field, borderTop: STROKE_FIELD })
+
+  /** The control bag of one row: a control the page refuses writes on takes `.input:disabled`. */
+  const controlStyle = (off         )                                  => (off ? { ...SKIN.control, ...SKIN.controlOff } : SKIN.control)
+
+  /** The mutable inline-style bag a focus or hover listener writes to (a DOM element's `style`). */
+                        
+                                                             
+                              
+   
+
+  /** The event shape those listeners read: the element the event was dispatched on. */
+                        
+                                                                                   
+                                        
+   
+
+  /** Write one declaration set onto the element an event came from, so inline styles can react. */
+  const paint = (event            , declarations                        )       => {
+    for (const [property, value] of Object.entries(declarations)) event.currentTarget.style[property] = value
+  }
+
+  /** The control's focus pair: the host's `.input:focus-visible` on, and the token pair back off. */
+  const CONTROL_FOCUS = {
+    /** On focus: the business-primary border, with the ring opted out (the host's own rule). */
+    onFocus: (event            )       => paint(event, { borderColor: ACCENT, outline: "none" }),
+    /** On blur: clear both, so the inline `border` shorthand and the global ring apply again. */
+    onBlur: (event            )       => paint(event, { borderColor: "", outline: "" }),
+  }
+
+  /** The reset link's hover pair (`.reset:hover` → label-primary), for a button that reads as a link. */
+  const LINK_HOVER = {
+    /** Enter: the link darkens to label-primary. */
+    onMouseEnter: (event            )       => paint(event, { color: LABEL_PRIMARY }),
+    /** Leave: back to label-secondary. */
+    onMouseLeave: (event            )       => paint(event, { color: LABEL_SECONDARY }),
+  }
+
+  /** The outlined action's hover pair (`.button.outline:hover` → the interactive wash). */
+  const BUTTON_HOVER = {
+    /** Enter: the wash replaces the transparent fill. */
+    onMouseEnter: (event            )       => paint(event, { background: HOVER_WASH }),
+    /** Leave: back to transparent. */
+    onMouseLeave: (event            )       => paint(event, { background: "transparent" }),
+  }
+
   /** The card component: self-contained markup, no private host components. */
   function createCardComponent(react              , fields                    = FIELDS, readGroups                = () => [])                                         {
     /** The element factory, destructured once per component construction. */
@@ -5648,8 +5837,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       } catch {
         /* a broken catalog probe degrades the OPTIONS, never the section */
       }
-      /** One rendered row per knob, in declaration order. */
-      const rows = fields.map((field) => {
+      /** One rendered row per knob, in declaration order (`index` picks the separator). */
+      const rows = fields.map((field, index) => {
         /** The row's dotted knob key. */
         const key = fieldKey(field)
         /** The row's control (a knob with no projected control renders an empty input). */
@@ -5672,12 +5861,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         const pointer = keyAt < 0 ? hint : hint.slice(keyAt).replace(/\)\s*$/, "").trim()
         /** The hint markup: sentence plus key, or the key alone for a knob with no sentence. */
         const hintNode = human.length === 0
-          ? createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 }, "data-mpd-row-key": key }, pointer)
+          ? createElement("span", { style: SKIN.keyOnly, "data-mpd-row-key": key }, pointer)
           : createElement(
               "span",
-              { style: { display: "block", marginBottom: 2 } },
-              createElement("span", { style: { display: "block", fontSize: 12, opacity: 0.95 }, "data-mpd-row-human": key }, human),
-              createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.6 }, "data-mpd-row-key": key }, pointer),
+              { style: SKIN.hintBlock },
+              createElement("span", { style: SKIN.hint, "data-mpd-row-human": key }, human),
+              createElement("span", { style: SKIN.key, "data-mpd-row-key": key }, pointer),
             )
         /** The row's options (select knobs only). */
         const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
@@ -5685,7 +5874,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         const input = field.kind === "select" && options.length > 0
           ? createElement(
               "select",
-              { value: control.text, disabled, onChange: (event             ) => props.edit(key, event.target.value), style: { width: "100%" } },
+              { value: control.text, disabled, onChange: (event             ) => props.edit(key, event.target.value), style: { ...controlStyle(disabled), cursor: disabled ? "default" : "pointer" }, ...CONTROL_FOCUS },
               createElement("option", { value: "" }, "—"),
               ...optionElements(createElement, options),
             )
@@ -5693,19 +5882,20 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
               value: control.text,
               disabled,
               onChange: (event             ) => props.edit(key, event.target.value),
-              style: { width: "100%" },
+              style: controlStyle(disabled),
+              ...CONTROL_FOCUS,
             })
         return createElement(
           "label",
-          { key, style: { display: "block", margin: "8px 0" } },
-          createElement("span", { style: { display: "block", fontSize: 13, fontWeight: 600 } }, label),
+          { key, style: fieldStyle(index) },
+          createElement("span", { style: SKIN.label }, label),
           hintNode,
           input,
           createElement(
             "span",
-            { style: { fontSize: 11, opacity: 0.7 } },
+            { style: SKIN.resetNote },
             (control.overridden ? "overridden · " : "") + (control.invalid ? "not a valid value · " : ""),
-            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key) }, t("reset")),
+            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key), style: SKIN.reset, ...LINK_HOVER }, t("reset")),
           ),
         )
       })
@@ -5722,7 +5912,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       /** The catalog line rendered immediately above the first slot row. */
       const slotLine = createElement(
         "p",
-        { style: { margin: "12px 0 4px", fontSize: 12, opacity: 0.75 }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
+        { style: { ...SKIN.note, margin: "12px 0 4px" }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
         catalogNotice(catalog),
       )
       // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
@@ -5738,57 +5928,65 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         if (slot !== previous) {
           slotChildren.push(createElement(
             "div",
-            { key: "group." + slot, style: { marginTop: 10, fontSize: 13, fontWeight: 700 }, "data-mpd-slot-group": slot },
+            { key: "group." + slot, style: SKIN.groupHeading, "data-mpd-slot-group": slot },
             t("teamModels." + slot + ".heading"),
           ))
           slotChildren.push(createElement(
             "p",
-            { key: "impact." + slot, style: { margin: "2px 0 0", fontSize: 11, opacity: 0.75 }, "data-mpd-slot-impact": slot },
+            { key: "impact." + slot, style: SKIN.groupImpact, "data-mpd-slot-impact": slot },
             t("teamModels." + slot + ".impact"),
           ))
         }
         slotChildren.push(slotRows[index])
       }
+      /** Whether the save is blocked (a read-only page, no staged edit, or an invalid draft). */
+      const saveBlocked = disabled || !state.dirty || state.invalid
       return createElement(
         "div",
-        { style: { border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: 12 } },
-        createElement("h3", { style: { margin: "0 0 4px" } }, t("title")),
-        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("intro")),
+        { style: SKIN.form },
+        createElement("h3", { style: SKIN.title }, t("title")),
+        createElement("p", { style: SKIN.description }, t("intro")),
         disabled
-          ? createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("readOnly"))
+          ? createElement("p", { style: SKIN.note }, t("readOnly"))
           : null,
         createElement(
           "p",
           {
-            style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 },
+            style: SKIN.note,
             [CATALOG_ATTR]: catalog.mode,
             "data-mpd-catalog-providers": String(catalog.providers ?? 0),
             "data-mpd-catalog-models": String(catalog.models ?? 0),
           },
           catalogNotice(catalog),
         ),
-        // THE DISCLOSURE, ONCE. Every row used to carry it, which is what buried the rows.
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "bridge" },
-          state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "restart" },
-          state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
-        // The not-lost clause belongs to the same statement; it used to ride every row's hint.
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "not-lost" },
-          NOT_LOST),
-        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "workspace" },
-          state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
+        // THE DISCLOSURE, ONCE, in its own `.help` block: the same four sentences as before, at the
+        // hint size and colour with the host's 8px between paragraphs, so they read as ONE note
+        // instead of a second wall of body copy beside the fields.
+        createElement(
+          "div",
+          { style: SKIN.help },
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "bridge" },
+            state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "restart" },
+            state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
+          // The not-lost clause belongs to the same statement; it used to ride every row's hint.
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "not-lost" },
+            NOT_LOST),
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
+            state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
+        ),
         ...scalarRows,
         slotLine,
         ...slotChildren,
         createElement(
           "div",
-          { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 10 } },
-          createElement("button", { type: "button", disabled: disabled || !state.dirty || state.invalid, onClick: () => props.save() }, t("save")),
-          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard() }, t("discard")),
-          createElement("span", { style: { fontSize: 12, opacity: 0.75 } }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
+          { style: SKIN.footer },
+          createElement("button", { type: "button", disabled: saveBlocked, onClick: () => props.save(), style: { ...SKIN.save, opacity: saveBlocked ? 0.4 : 1 } }, t("save")),
+          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard(), style: SKIN.discard, ...BUTTON_HOVER }, t("discard")),
+          createElement("span", { style: SKIN.status }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
         ),
         state.mode === "memory"
-          ? createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, t("memoryMode"))
+          ? createElement("p", { style: SKIN.note }, t("memoryMode"))
           : null,
       )
     }
@@ -6413,6 +6611,144 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    */
   const TEAM_PLAN_PATH = "/plugins/mpd-team/plan"
 
+  /**
+   * The route serving the session's FROZEN ACCEPTANCE CONTRACTS and the workspace hold.
+   *
+   * Passed to the view so a pinned task can quote the contract it was claimed under. Without it the
+   * detail body correctly renders its "no contract was served" sentence — which is indistinguishable
+   * on screen from a task that genuinely has none, so the route is threaded rather than left out.
+   */
+  const TEAM_TASK_PATH = "/plugins/mpd-team/task"
+
+  /**
+   * The team view's own copy, in English — the fallback AND the key list.
+   *
+   * A view built by `teamViewOf()` runs in a render path with no `ctx`, so it can neither bind nor
+   * register a locale namespace itself; it takes a translator as a dependency instead. This table is
+   * what the translator answers with when the host's locale registry is absent or answers nothing,
+   * which is why the view can never render a bare key. The same key set is registered below, so `zh`
+   * resolves for a Chinese host and this table carries the English.
+   */
+  const TEAM_COPY_EN                         = {
+    "header.approved": "approved",
+    "header.workspace": "workspace",
+    "header.complete": "complete",
+    "progress.label": "Progress",
+    "members.title": "MEMBERS",
+    "members.empty": "No member was raised for this team.",
+    "members.current": "current",
+    "task.title": "TASKS",
+    "task.empty": "No shared task yet — the captain posts them with team_task_create.",
+    "task.cycle": "CYCLE",
+    "task.blockedBy": "blocked by",
+    "task.dependents": "dependents",
+    "task.attempt": "attempt",
+    "task.round": "round",
+    "task.verdict": "verdict",
+    "task.owner": "owner",
+    "task.contract": "acceptance contract",
+    "task.contract.none": "No frozen acceptance contract was served for this task.",
+    "task.close": "close",
+    "tally.running": "running",
+    "tally.ready": "ready",
+    "tally.blocked": "blocked",
+    "tally.released": "released by a failed blocker",
+    "state.reading": "Reading the team…",
+    "state.unavailable": "No team state is being served. The mpd team row may not be mounted in this profile.",
+    "state.none": "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.",
+    "executor.label": "executor",
+    "plan.members": "Wants {n} member(s)",
+    "plan.tasks": "Wants {n} task(s)",
+    "plan.gate": "To approve, type:",
+    "kind.req": "REQ",
+    "kind.wrk": "WRK",
+    "kind.rev": "REV",
+    "kind.fix": "FIX",
+    "kind.int": "INT",
+  }
+
+  /**
+   * The team view's copy in Simplified Chinese, keyed identically to {@link TEAM_COPY_EN}.
+   *
+   * `zh` is the meaning-authoritative half of the pair; the English file is its translation. The two
+   * labels the capture driver asserts on (`members.title` / `task.title`) are deliberately kept as the
+   * host's own convention shows them — an uppercase SECTION label — so a screenshot reads the same
+   * structure in either language while the words behind it are local.
+   */
+  const TEAM_COPY_ZH                         = {
+    "header.approved": "已批准",
+    "header.workspace": "工作区",
+    "header.complete": "已完成",
+    "progress.label": "进度",
+    "members.title": "成员",
+    "members.empty": "该团队尚未拉起成员。",
+    "members.current": "当前",
+    "task.title": "任务",
+    "task.empty": "暂无共享任务 — 队长用 team_task_create 发布任务。",
+    "task.cycle": "依赖环",
+    "task.blockedBy": "前置",
+    "task.dependents": "后继",
+    "task.attempt": "认领次数",
+    "task.round": "评审轮次",
+    "task.verdict": "评审结论",
+    "task.owner": "负责人",
+    "task.contract": "验收契约",
+    "task.contract.none": "该任务没有已冻结的验收契约。",
+    "task.close": "关闭",
+    "tally.running": "进行中",
+    "tally.ready": "可领取",
+    "tally.blocked": "受阻",
+    "tally.released": "因前置失败而释放",
+    "state.reading": "正在读取团队…",
+    "state.unavailable": "未提供团队状态。该配置可能没有挂载 mpd 团队行。",
+    "state.none": "本工作区还没有团队。用 agent_teams_plan 拟定一个团队，然后批准它。",
+    "executor.label": "执行器",
+    "plan.members": "需要 {n} 名成员",
+    "plan.tasks": "需要 {n} 个任务",
+    "plan.gate": "批准请键入：",
+    "kind.req": "需求",
+    "kind.wrk": "工作",
+    "kind.rev": "评审",
+    "kind.fix": "修复",
+    "kind.int": "集成",
+  }
+
+  /**
+   * The translator the shared team view renders with.
+   *
+   * COMMITTED BY THE TAB'S OWN MOUNT, because that is the only place a bound translator exists: the
+   * view is constructed inside a render path that has no `ctx`. Until that mount the fallback answers,
+   * so the view is never left without one — and once committed, the bound translator is followed for
+   * the rest of the session, which is what makes a host language switch take effect on the next render.
+   */
+  let teamTranslator                                       
+
+  /**
+   * Resolve one team-view key, preferring the tab's bound translator and falling back to English.
+   *
+   * TOTAL by construction: an unbound translator, a throw inside the host's, or a host that answers
+   * the key itself all end at {@link TEAM_COPY_EN}, so a missing translation degrades to readable
+   * English rather than to a raw key on screen.
+   * @param key - the dictionary key the view asked for.
+   * @returns the localized string, the English fallback, or the key when even that is absent.
+   */
+  function teamSay(key        )         {
+    if (teamTranslator !== undefined) {
+      try {
+        /** What the host's translator answered for this key. */
+        const answered = teamTranslator(key)
+        // A host that echoes the key back has no entry for it; the English table is the better answer.
+        if (typeof answered === "string" && answered.length > 0 && answered !== key) return answered
+      } catch {
+        // A throwing host translator costs the translation, never the panel.
+      }
+    }
+    return TEAM_COPY_EN[key] ?? key
+  }
+
+  /** The session the team sidebar last announced, so the line is logged once per session, not per render. */
+  let announcedSidebarSession                    
+
   /** The shared team view, built once per client entry; undefined when the splice is absent. */
   let teamView                                                        
 
@@ -6437,7 +6773,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     if (react === undefined) return undefined
     if (typeof MPD_TEAM_VIEW !== "object" || MPD_TEAM_VIEW === null) return undefined
     try {
-      teamView = MPD_TEAM_VIEW.createTeamView({ react, statePath: TEAM_STATE_PATH, planPath: TEAM_PLAN_PATH })
+      teamView = MPD_TEAM_VIEW.createTeamView({
+        react,
+        statePath: TEAM_STATE_PATH,
+        planPath: TEAM_PLAN_PATH,
+        // The task route is what lets a pinned node quote its frozen contract; the translator is the
+        // view's only language source (it runs in a render path with no `ctx` of its own).
+        taskPath: TEAM_TASK_PATH,
+        t: teamSay,
+      })
       return teamView
     } catch (error) {
       console.warn("[mpd] the team view could not be built: " + String(error))
@@ -8471,6 +8815,195 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     }
   }
 
+  // ── R2: the section renders on the harness's OWN settings-form tokens ───────────
+  // WHAT THIS IS: the card's entire visual contract, read off the INSTALLED primitives —
+  // `@deepseek-ai/dsh-client-ui-primitives/lib/settings-form/fields.module.css` (`.field`, `.field +
+  // .field`, `.label`, `.hint`, `.input`, `.reset`) and `SettingsForm.module.css` (`.form`,
+  // `.footer`, `.save`, `.readOnly`), with the alias VALUES and the focus ring taken from the theme
+  // bundle (`dsh-client-ui-theme`: `body{…}` is the light theme, `body[data-ds-dark-theme]{…}` the
+  // dark one, and its `focus.css` holds `:root{--dsw-focus-ring-width:2px}` plus the global
+  // `:focus-visible` rule), and the section title/description from the settings plane's own
+  // `dsh-client-ui-settings-models` (`.title` 16px/500/24px, `.description` 14px/24px). R2 is a
+  // RESTYLE: nothing in this block reads, writes or re-keys a value — every key, attribute and
+  // behaviour path below the styles is the one that shipped.
+  //
+  // FALLBACK DISCIPLINE (BINDING): an inline style gets no stylesheet default, and a bare
+  // `var(--dsw-…)` that resolves to nothing paints an invisible control — so every token below is
+  // read WITH a literal. A token this bundle ALREADY pairs keeps that exact literal
+  // (`--dsw-alias-label-primary, #1c1c1e`, `-secondary, #5b6472`, `-tertiary, #8a94a6`,
+  // `--dsw-alias-state-business-primary, #4d6bfe` — the vocabulary `team-view.ts` renders the team
+  // panel with, so the two panels degrade identically); a token it does not pair yet carries the
+  // token's own LIGHT-theme value from the theme bundle, which is what the token resolves to by
+  // default. `--dsw-focus-ring-color` is DEFINED by that theme (as `transparent`, for pointer
+  // modality), so its fallback is the host's own nested one rather than a literal.
+  //
+  // THE FOCUS RING IS NOT PAINTED HERE, deliberately: the host's global `:focus-visible` rule
+  // already gives every focusable element `outline-width: var(--dsw-focus-ring-width)` in
+  // `outline-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary))` — the
+  // exact pair the contract names — and a pseudo-class cannot be expressed as an inline style. Only
+  // the CONTROL opts out, exactly as the host's `.input:focus-visible` does (border accent, no
+  // outline), through the two listeners below.
+  /** The radius the harness's `.field` / `.input` / `.button` all share (`--dsw-radius-md:12px`). */
+  const RADIUS_MD = "var(--dsw-radius-md, 12px)"
+  /** The control stroke (`.input`): 0.5px, light-theme literal. */
+  const STROKE_CONTROL = "0.5px solid var(--dsw-alias-border-l4, #00000029)"
+  /** The FIELD separator (`.field + .field`): 0.5px, light-theme literal. */
+  const STROKE_FIELD = "0.5px solid var(--dsw-alias-border-l2, #0000001a)"
+  /** The outlined action's stroke (`.button.outline`): 0.5px, light-theme literal. */
+  const STROKE_BUTTON = "0.5px solid var(--dsw-alias-border-l3, #0000001f)"
+  /** The label alias the host's `.label` colours with (the bundle's existing literal). */
+  const LABEL_PRIMARY = "var(--dsw-alias-label-primary, #1c1c1e)"
+  /** The muted alias (`.reset`, `.description`; the bundle's existing literal). */
+  const LABEL_SECONDARY = "var(--dsw-alias-label-secondary, #5b6472)"
+  /** The dimmest alias (`.hint`, `.readOnly`, `.failed`; the bundle's existing literal). */
+  const LABEL_TERTIARY = "var(--dsw-alias-label-tertiary, #8a94a6)"
+  /** The control fill (`.input` `--dsw-alias-bg-layer-3`, light-theme literal `#fff`). */
+  const FILL_CONTROL = "var(--dsw-alias-bg-layer-3, #fff)"
+  /** The focus/active accent (`.input:focus-visible`; the bundle's existing literal). */
+  const ACCENT = "var(--dsw-alias-state-business-primary, #4d6bfe)"
+  /** The pointer-hover wash (`.button.outline:hover`), light-theme literal. */
+  const HOVER_WASH = "var(--dsw-alias-interactive-bg-hover, #2631480f)"
+  /**
+   * Every inline style bag the card renders with. The keys are the ROLES the harness names
+   * (`.field`, `.label`, `.hint`, `.input`, `.help`, `.footer`, `.save`, `.reset`, `.readOnly`), so a
+   * reviewer can diff one against its stylesheet rule directly.
+   */
+  const SKIN                                                  = {
+    /** The host's `.form`: a plain column — the host's own sections have no panel chrome. */
+    form: { display: "flex", flexDirection: "column" },
+    /** `.field`: flex column, gap 6px, padding 12px 0. The separator is added per field below. */
+    field: { display: "flex", flexDirection: "column", gap: 6, padding: "12px 0" },
+    /** The settings section title (`.title`: 16px/500/24px, label-primary). */
+    title: { margin: 0, fontSize: 16, fontWeight: 500, lineHeight: "24px", color: LABEL_PRIMARY },
+    /** The section description (`.description`: 14px/24px, label-secondary). */
+    description: { margin: "0 0 12px", fontSize: 14, lineHeight: "24px", color: LABEL_SECONDARY },
+    /** `.readOnly` / `.unavailable`: the state notes, 12px/1.5 tertiary. */
+    note: { margin: "0 0 12px", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** `.help`: the disclosure block — 12px/1.6 stack, 8px between paragraphs. */
+    help: { margin: "0 0 12px", display: "flex", flexDirection: "column", gap: 8, paddingTop: 10 },
+    /** One `.help > p`: 12px/1.6, the hint colour (the captain's R2 note: no wall of body text). */
+    helpText: { margin: 0, fontSize: 12, lineHeight: 1.6, color: LABEL_TERTIARY },
+    /** `.label`: 13px/500/1.5, label-primary. */
+    label: { display: "block", fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
+    /** `.hint`: the row's human sentence — 12px/1.5 tertiary (the contract's hint row). */
+    hint: { display: "block", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** The block that stacks the sentence over its key, with the 2px the row always had. */
+    hintBlock: { display: "block", marginBottom: 2 },
+    /** The dotted key BENEATH a sentence: one step down (11px, dimmer) so it never competes. */
+    key: { display: "block", fontSize: 11, lineHeight: 1.5, opacity: 0.6, color: LABEL_TERTIARY },
+    /** The dotted key as a row's ONLY hint (a knob with no sentence): the hint size, still dim. */
+    keyOnly: { display: "block", marginBottom: 2, fontSize: 12, lineHeight: 1.5, opacity: 0.6, color: LABEL_TERTIARY },
+    /** `.input`: 34px, 0 12px padding, the control stroke, radius-md, layer-3 fill, 13px. */
+    control: {
+      boxSizing: "border-box",
+      width: "100%",
+      height: 34,
+      padding: "0 12px",
+      border: STROKE_CONTROL,
+      borderRadius: RADIUS_MD,
+      background: FILL_CONTROL,
+      fontSize: 13,
+      lineHeight: 1.5,
+      color: LABEL_PRIMARY,
+    },
+    /** `.input:disabled`: a control the page refuses writes on greys its text and drops the cursor. */
+    controlOff: { color: LABEL_TERTIARY, cursor: "default" },
+    /** A slot's group heading: the label treatment, with the field rhythm's top padding. */
+    groupHeading: { marginTop: 12, fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
+    /** A slot's one-line impact: the hint treatment. */
+    groupImpact: { margin: "2px 0 0", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** The row's marker line (overridden / invalid) that carries the reset link. */
+    resetNote: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** `.reset`: a link-shaped button — no chrome, 12px/1.5, label-secondary. */
+    reset: {
+      border: "none",
+      background: "none",
+      padding: 0,
+      fontFamily: "inherit",
+      fontSize: 12,
+      lineHeight: 1.5,
+      color: LABEL_SECONDARY,
+      cursor: "pointer",
+    },
+    /** `.footer`: one row, gap 8px, 16px above. */
+    footer: { display: "flex", alignItems: "center", gap: 8, paddingTop: 16 },
+    /** `.save`: radius-md pill, 5px 14px, 13px, label-primary fill with the layer-3 text colour. */
+    save: {
+      appearance: "none",
+      border: "1px solid transparent",
+      borderRadius: RADIUS_MD,
+      padding: "5px 14px",
+      fontFamily: "inherit",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer",
+      background: LABEL_PRIMARY,
+      color: FILL_CONTROL,
+    },
+    /** `.button.outline`: the secondary action beside the save. */
+    discard: {
+      appearance: "none",
+      border: STROKE_BUTTON,
+      borderRadius: RADIUS_MD,
+      padding: "5px 14px",
+      fontFamily: "inherit",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer",
+      background: "transparent",
+      color: LABEL_PRIMARY,
+    },
+    /** `.failed`: the save's own status line, 12px/1.5 tertiary, stretched like the host's. */
+    status: { flex: 1, minWidth: 0, margin: 0, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+  }
+
+  /** The field bag of the field at `index`: the separator lands on every field but the FIRST. */
+  const fieldStyle = (index        )                                  => (index === 0 ? SKIN.field : { ...SKIN.field, borderTop: STROKE_FIELD })
+
+  /** The control bag of one row: a control the page refuses writes on takes `.input:disabled`. */
+  const controlStyle = (off         )                                  => (off ? { ...SKIN.control, ...SKIN.controlOff } : SKIN.control)
+
+  /** The mutable inline-style bag a focus or hover listener writes to (a DOM element's `style`). */
+                        
+                                                             
+                              
+   
+
+  /** The event shape those listeners read: the element the event was dispatched on. */
+                        
+                                                                                   
+                                        
+   
+
+  /** Write one declaration set onto the element an event came from, so inline styles can react. */
+  const paint = (event            , declarations                        )       => {
+    for (const [property, value] of Object.entries(declarations)) event.currentTarget.style[property] = value
+  }
+
+  /** The control's focus pair: the host's `.input:focus-visible` on, and the token pair back off. */
+  const CONTROL_FOCUS = {
+    /** On focus: the business-primary border, with the ring opted out (the host's own rule). */
+    onFocus: (event            )       => paint(event, { borderColor: ACCENT, outline: "none" }),
+    /** On blur: clear both, so the inline `border` shorthand and the global ring apply again. */
+    onBlur: (event            )       => paint(event, { borderColor: "", outline: "" }),
+  }
+
+  /** The reset link's hover pair (`.reset:hover` → label-primary), for a button that reads as a link. */
+  const LINK_HOVER = {
+    /** Enter: the link darkens to label-primary. */
+    onMouseEnter: (event            )       => paint(event, { color: LABEL_PRIMARY }),
+    /** Leave: back to label-secondary. */
+    onMouseLeave: (event            )       => paint(event, { color: LABEL_SECONDARY }),
+  }
+
+  /** The outlined action's hover pair (`.button.outline:hover` → the interactive wash). */
+  const BUTTON_HOVER = {
+    /** Enter: the wash replaces the transparent fill. */
+    onMouseEnter: (event            )       => paint(event, { background: HOVER_WASH }),
+    /** Leave: back to transparent. */
+    onMouseLeave: (event            )       => paint(event, { background: "transparent" }),
+  }
+
   /** The card component: self-contained markup, no private host components. */
   function createCardComponent(react              , fields                    = FIELDS, readGroups                = () => [])                                         {
     /** The element factory, destructured once per component construction. */
@@ -8495,8 +9028,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       } catch {
         /* a broken catalog probe degrades the OPTIONS, never the section */
       }
-      /** One rendered row per knob, in declaration order. */
-      const rows = fields.map((field) => {
+      /** One rendered row per knob, in declaration order (`index` picks the separator). */
+      const rows = fields.map((field, index) => {
         /** The row's dotted knob key. */
         const key = fieldKey(field)
         /** The row's control (a knob with no projected control renders an empty input). */
@@ -8519,12 +9052,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const pointer = keyAt < 0 ? hint : hint.slice(keyAt).replace(/\)\s*$/, "").trim()
         /** The hint markup: sentence plus key, or the key alone for a knob with no sentence. */
         const hintNode = human.length === 0
-          ? createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 }, "data-mpd-row-key": key }, pointer)
+          ? createElement("span", { style: SKIN.keyOnly, "data-mpd-row-key": key }, pointer)
           : createElement(
               "span",
-              { style: { display: "block", marginBottom: 2 } },
-              createElement("span", { style: { display: "block", fontSize: 12, opacity: 0.95 }, "data-mpd-row-human": key }, human),
-              createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.6 }, "data-mpd-row-key": key }, pointer),
+              { style: SKIN.hintBlock },
+              createElement("span", { style: SKIN.hint, "data-mpd-row-human": key }, human),
+              createElement("span", { style: SKIN.key, "data-mpd-row-key": key }, pointer),
             )
         /** The row's options (select knobs only). */
         const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
@@ -8532,7 +9065,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const input = field.kind === "select" && options.length > 0
           ? createElement(
               "select",
-              { value: control.text, disabled, onChange: (event             ) => props.edit(key, event.target.value), style: { width: "100%" } },
+              { value: control.text, disabled, onChange: (event             ) => props.edit(key, event.target.value), style: { ...controlStyle(disabled), cursor: disabled ? "default" : "pointer" }, ...CONTROL_FOCUS },
               createElement("option", { value: "" }, "—"),
               ...optionElements(createElement, options),
             )
@@ -8540,19 +9073,20 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
               value: control.text,
               disabled,
               onChange: (event             ) => props.edit(key, event.target.value),
-              style: { width: "100%" },
+              style: controlStyle(disabled),
+              ...CONTROL_FOCUS,
             })
         return createElement(
           "label",
-          { key, style: { display: "block", margin: "8px 0" } },
-          createElement("span", { style: { display: "block", fontSize: 13, fontWeight: 600 } }, label),
+          { key, style: fieldStyle(index) },
+          createElement("span", { style: SKIN.label }, label),
           hintNode,
           input,
           createElement(
             "span",
-            { style: { fontSize: 11, opacity: 0.7 } },
+            { style: SKIN.resetNote },
             (control.overridden ? "overridden · " : "") + (control.invalid ? "not a valid value · " : ""),
-            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key) }, t("reset")),
+            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key), style: SKIN.reset, ...LINK_HOVER }, t("reset")),
           ),
         )
       })
@@ -8569,7 +9103,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       /** The catalog line rendered immediately above the first slot row. */
       const slotLine = createElement(
         "p",
-        { style: { margin: "12px 0 4px", fontSize: 12, opacity: 0.75 }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
+        { style: { ...SKIN.note, margin: "12px 0 4px" }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
         catalogNotice(catalog),
       )
       // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
@@ -8585,57 +9119,65 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         if (slot !== previous) {
           slotChildren.push(createElement(
             "div",
-            { key: "group." + slot, style: { marginTop: 10, fontSize: 13, fontWeight: 700 }, "data-mpd-slot-group": slot },
+            { key: "group." + slot, style: SKIN.groupHeading, "data-mpd-slot-group": slot },
             t("teamModels." + slot + ".heading"),
           ))
           slotChildren.push(createElement(
             "p",
-            { key: "impact." + slot, style: { margin: "2px 0 0", fontSize: 11, opacity: 0.75 }, "data-mpd-slot-impact": slot },
+            { key: "impact." + slot, style: SKIN.groupImpact, "data-mpd-slot-impact": slot },
             t("teamModels." + slot + ".impact"),
           ))
         }
         slotChildren.push(slotRows[index])
       }
+      /** Whether the save is blocked (a read-only page, no staged edit, or an invalid draft). */
+      const saveBlocked = disabled || !state.dirty || state.invalid
       return createElement(
         "div",
-        { style: { border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: 12 } },
-        createElement("h3", { style: { margin: "0 0 4px" } }, t("title")),
-        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("intro")),
+        { style: SKIN.form },
+        createElement("h3", { style: SKIN.title }, t("title")),
+        createElement("p", { style: SKIN.description }, t("intro")),
         disabled
-          ? createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("readOnly"))
+          ? createElement("p", { style: SKIN.note }, t("readOnly"))
           : null,
         createElement(
           "p",
           {
-            style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 },
+            style: SKIN.note,
             [CATALOG_ATTR]: catalog.mode,
             "data-mpd-catalog-providers": String(catalog.providers ?? 0),
             "data-mpd-catalog-models": String(catalog.models ?? 0),
           },
           catalogNotice(catalog),
         ),
-        // THE DISCLOSURE, ONCE. Every row used to carry it, which is what buried the rows.
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "bridge" },
-          state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "restart" },
-          state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
-        // The not-lost clause belongs to the same statement; it used to ride every row's hint.
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "not-lost" },
-          NOT_LOST),
-        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "workspace" },
-          state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
+        // THE DISCLOSURE, ONCE, in its own `.help` block: the same four sentences as before, at the
+        // hint size and colour with the host's 8px between paragraphs, so they read as ONE note
+        // instead of a second wall of body copy beside the fields.
+        createElement(
+          "div",
+          { style: SKIN.help },
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "bridge" },
+            state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "restart" },
+            state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
+          // The not-lost clause belongs to the same statement; it used to ride every row's hint.
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "not-lost" },
+            NOT_LOST),
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
+            state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
+        ),
         ...scalarRows,
         slotLine,
         ...slotChildren,
         createElement(
           "div",
-          { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 10 } },
-          createElement("button", { type: "button", disabled: disabled || !state.dirty || state.invalid, onClick: () => props.save() }, t("save")),
-          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard() }, t("discard")),
-          createElement("span", { style: { fontSize: 12, opacity: 0.75 } }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
+          { style: SKIN.footer },
+          createElement("button", { type: "button", disabled: saveBlocked, onClick: () => props.save(), style: { ...SKIN.save, opacity: saveBlocked ? 0.4 : 1 } }, t("save")),
+          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard(), style: SKIN.discard, ...BUTTON_HOVER }, t("discard")),
+          createElement("span", { style: SKIN.status }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
         ),
         state.mode === "memory"
-          ? createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, t("memoryMode"))
+          ? createElement("p", { style: SKIN.note }, t("memoryMode"))
           : null,
       )
     }
@@ -8844,6 +9386,18 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                       
    
 
+  /**
+   * The translator the host binds to its own locale namespace.
+   *
+   * OPTIONAL by contract: `web-client.ts` owns the `ctx.locale.bind("mpdTeamSidebar")` call and threads
+   * the bound function in, so this file stays renderable — and testable — with no locale seam at all,
+   * in which case a missing translator reads the English source literal instead.
+   */
+                        
+                                                                                                  
+                         
+   
+
   /** One member row, as the route serves it. */
                         
                              
@@ -8914,6 +9468,18 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                       
    
 
+  /**
+   * The route's per-task record, as `/plugins/mpd-team/task` serves it: the FROZEN acceptance
+   * contracts, one per claimed task. Read for the pinned task's detail body, so the sidebar quotes the
+   * text a reviewer holds the work to rather than a summary of it.
+   */
+                               
+                                          
+                
+                                                                 
+                                                                                                                                                          
+   
+
   /** The staged plan, as `/plugins/mpd-team/plan` serves it — the SHARED projection's half. */
                       
                                           
@@ -8949,28 +9515,71 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                            
                                                                                                
                          
+                                                                               
+                                                                                                             
                                                                                         
                    
    
 
+  /** One node's box inside its column, in pixels — the geometry the drawn edges are computed from. */
+                       
+                                    
+                  
+                                                                       
+                
+                                      
+               
+                                                 
+               
+   
+
+  /**
+   * The whole DAG geometry, computed ONCE from the payload and never measured.
+   *
+   * A measuring pass would be a second source of truth (it can disagree with the data); fixed boxes
+   * cannot, so every edge below is arithmetic over ranks and rows.
+   */
+                           
+                                                                                              
+                         
+                                                
+                     
+                                                                     
+                 
+                                                                           
+                  
+                                                                                           
+                               
+                                                     
+                      
+   
+
   /** The style bag this view uses; the host supplies the tokens, the literals are fallbacks. */
   const CSS = {
-    panel: { padding: "10px 12px 14px", fontSize: "12px", lineHeight: 1.45, overflowY: "auto", height: "100%" },
+    panel: { padding: "10px 12px 14px", fontSize: "12px", lineHeight: 1.45, overflowY: "auto", height: "100%", width: "100%", boxSizing: "border-box" },
     dim: { color: "var(--dsw-alias-label-tertiary, #8a94a6)" },
-    head: { fontSize: "13px", fontWeight: 600 },
-    chip: { display: "inline-block", padding: "0 6px", borderRadius: "999px", fontSize: "11px", border: "1px solid var(--dsw-alias-line-normal, #d8dde5)" },
+    head: { fontSize: "13px", fontWeight: 600, color: "var(--dsw-alias-label-primary, #1f2937)" },
+    subHead: { marginTop: "10px", fontWeight: 600, color: "var(--dsw-alias-label-primary, #1f2937)" },
+    chip: { display: "inline-block", padding: "0 6px", borderRadius: "var(--dsw-radius-sm, 4px)", fontSize: "11px", border: "0.5px solid var(--dsw-alias-border-l2, #d8dde5)", color: "var(--dsw-alias-label-secondary, #5b6472)" },
     row: { display: "flex", gap: "6px", alignItems: "baseline", padding: "2px 0" },
-    node: { border: "1px solid var(--dsw-alias-line-normal, #d8dde5)", borderRadius: "6px", padding: "4px 6px", marginBottom: "4px", fontFamily: "var(--dsw-font-mono, ui-monospace, monospace)", fontSize: "11px" },
-    bar: { height: "6px", borderRadius: "3px", background: "var(--dsw-alias-bg-fill-neutral, #e6e8eb)", overflow: "hidden", marginTop: "6px" },
-    barFill: { height: "100%", background: "var(--dsw-alias-state-success, #12a150)" },
+    card: { border: "0.5px solid var(--dsw-alias-border-l2, #d8dde5)", borderRadius: "var(--dsw-radius-md, 8px)", padding: "6px 8px", marginBottom: "6px", background: "var(--dsw-alias-bg-layer-3, transparent)" },
+    meta: { fontFamily: "var(--dsw-font-mono, ui-monospace, monospace)", fontSize: "10px", color: "var(--dsw-alias-label-tertiary, #8a94a6)" },
+    bar: { height: "6px", borderRadius: "var(--dsw-radius-sm, 4px)", background: "var(--dsw-alias-bg-layer-4, #e6e8eb)", overflow: "hidden", marginTop: "6px" },
+    barFill: { height: "100%", background: "var(--dsw-alias-state-success-primary, #12a150)" },
+    scroll: { position: "relative", overflow: "auto", marginTop: "6px" },    grid: { position: "relative", display: "grid" },
+    column: { position: "relative" },
+    edgeLayer: { position: "absolute", left: 0, top: 0, pointerEvents: "none" },
+    edge: { position: "absolute", background: "var(--dsw-alias-border-l2, #d8dde5)" },
+    node: { position: "absolute", left: "4px", right: "4px", boxSizing: "border-box", height: "42px", overflow: "hidden", cursor: "pointer", border: "0.5px solid var(--dsw-alias-border-l2, #d8dde5)", borderRadius: "var(--dsw-radius-sm, 4px)", padding: "3px 5px", background: "var(--dsw-alias-bg-layer-1, transparent)", fontFamily: "var(--dsw-font-mono, ui-monospace, monospace)", fontSize: "10px", lineHeight: 1.3 },
+    nodeTop: { display: "flex", gap: "4px", alignItems: "baseline", whiteSpace: "nowrap", overflow: "hidden" },
   }
 
   /** The colour token each rendered state draws in — a MEANING mapped to a host token, never a literal. */
   const TONE                         = {
     completed: "var(--dsw-alias-state-success, #12a150)",
     running: "var(--dsw-alias-state-business-primary, #4d6bfe)",
-    failed: "var(--dsw-alias-state-danger, #e5484d)",
-    blocked: "var(--dsw-alias-state-warning, #e08700)",
+    failed: "var(--dsw-alias-state-error-primary, #e5484d)",
+    blocked: "var(--dsw-alias-state-warn-primary, #e08700)",
     cancelled: "var(--dsw-alias-label-tertiary, #8a94a6)",
     open: "var(--dsw-alias-label-secondary, #5b6472)",
   }
@@ -8978,33 +9587,102 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   /** The glyph each rendered state draws with, so the panel reads without colour. */
   const GLYPH                         = { completed: "✓", running: "◐", failed: "✗", blocked: "○", cancelled: "⊘", open: "○" }
 
-  /** The three-letter kind abbreviation, so a node stays narrow. */
-  const KIND                         = { requirement: "REQ", work: "WRK", review: "REV", repair: "FIX", integration: "INT" }
+  /** The key each kind abbreviation resolves through, so the abbreviation is bilingual too. */
+  const KIND_KEY                         = { requirement: "kind.req", work: "kind.wrk", review: "kind.rev", repair: "kind.fix", integration: "kind.int" }
+
+  /** The English a key falls back to when no translator is threaded in — the view's own words. */
+  const EN                         = {
+    "header.approved": "approved",
+    "header.workspace": "workspace",
+    "header.complete": "complete",
+    "progress.label": "Progress",
+    // The two panel headings stay UPPERCASE in English: the host's own capture asserts on those
+    // literals (`checks.teamPanelShowsRoster`), and a green capture is worth more than a case change.
+    "members.title": "MEMBERS",
+    "members.empty": "No member was raised for this team.",
+    "members.current": "current",
+    "task.title": "TASKS",
+    "task.empty": "No shared task yet — the captain posts them with team_task_create.",
+    "task.cycle": "CYCLE",
+    "task.blockedBy": "blocked by",
+    "task.dependents": "dependents",
+    "task.attempt": "attempt",
+    "task.round": "round",
+    "task.verdict": "verdict",
+    "task.owner": "owner",
+    "task.contract": "acceptance contract",
+    "task.contract.none": "No frozen acceptance contract was served for this task.",
+    "task.close": "close",
+    "tally.running": "running",
+    "tally.ready": "ready",
+    "tally.blocked": "blocked",
+    "tally.released": "released by a failed blocker",
+    "state.reading": "Reading the team…",
+    "state.unavailable": "No team state is being served. The mpd team row may not be mounted in this profile.",
+    "state.none": "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.",
+    "executor.label": "executor",
+    "plan.members": "Wants {n} member(s)",
+    "plan.tasks": "Wants {n} task(s)",
+    "plan.gate": "To approve, type:",
+    "kind.req": "REQ",
+    "kind.wrk": "WRK",
+    "kind.rev": "REV",
+    "kind.fix": "FIX",
+    "kind.int": "INT",
+  }
+
+  /** The width of one rank column, in pixels — the whole "measuring pass" is this constant. */
+  const COLUMN_W = 168
+  /** How far a node's box sits inside its column, per side. */
+  const NODE_INSET = 4
+  /** One node box's height. */
+  const NODE_H = 42
+  /** The vertical gap between two nodes of one column. */
+  const NODE_GAP = 10
+  /** The vertical padding at the top and bottom of every column. */
+  const COLUMN_PAD = 4
+  /** How far an edge's lead-in and lead-out reach into the gap between two columns. */
+  const EDGE_LEAD = 24
+  /** How far a member's current task is truncated before it is drawn. */
+  const SUBJECT_MAX = 30
+  /** The colour a focused edge draws in — a token with its literal fallback, like every other value here. */
+  const FOCUS_EDGE = "var(--dsw-alias-label-secondary, #5b6472)"
 
   return {
     /**
      * Build the team view ONCE, so both sidebar hosts render the same component with the same
      * polling behaviour rather than two lookalikes that can drift.
-     * @param deps - the React surface and the route path.
-     * @returns the view component and its poller.
+     * @param deps - the React surface, the routes, the poll interval and the host's translator.
+     * @returns the view component, its poller and the DAG layout the panel draws with.
      */
-    createTeamView(deps                                                                                )   
+    createTeamView(deps                                                                                                                   )   
                                                                                                         
                                             
                                                                                     
                                                                                   
-                                                                        
+                                                                          
                                                      
+                                                                                                
+                                                  
       {
-      /** The two dependencies this closure reads on every call. */
-      /** The two dependencies this closure reads on every call. */
-      /** The two dependencies this closure reads on every call, plus the plan route when given. */
-      const { react, statePath, planPath } = deps
+      /** The dependencies this closure reads on every call, plus the plan and task routes when given. */
+      const { react, statePath, planPath, taskPath } = deps
       /** How often the panel re-reads; the route is cheap and this is a status surface. */
       const pollMs = typeof deps.pollMs === "number" && deps.pollMs > 0 ? deps.pollMs : 2000
+      /** The host's translator; absent in a bare mount, in which case the English literals below win. */
+      const hostT = deps.t
+      // BOTH SETTERS ARE DECLARED AT FACTORY SCOPE, not inside the component. The detail body and the
+      // edge drawing are FUNCTION DECLARATIONS of this factory, so a name that only existed inside
+      // `TeamView` would be a `ReferenceError` the moment a handler fired — measured: the detail
+      // body's close button threw exactly that. The hook still owns the state; these two only carry
+      // the setters the last render produced, and every reader below runs after a render.
+      /** The pinned-task setter the last render produced; null until the first render runs. */
+      let setPinned                                         = null
+      /** The hover setter the last render produced; null until the first render runs. */
+      let setHover                                         = null
 
-      /** Read the route once. Never rejects: a failure is a VALUE the panel renders. */
-      /** The session suffix both routes take, so the two cannot address different sessions. */
+      /** Read the routes, never rejecting: a failure is a VALUE the panel renders. */
+      /** The session suffix every route takes, so they cannot address different sessions. */
       const queryOf = (sessionId        )         => (sessionId === "" ? "" : "?sessionId=" + encodeURIComponent(sessionId))
       /** Read ONE route, never rejecting; a failure is a VALUE the panel renders. */
       const readOne = async     (path        , sessionId        )                                                => {
@@ -9022,16 +9700,28 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           return { value: null, error }
         }
       }
-      /** Read BOTH routes, never rejecting. */
+      /** Read every route, never rejecting. One pass, so the halves cannot disagree. */
       const read = async (sessionId        )                     => {
-        // BOTH ROUTES IN ONE PASS. They are two halves of one answer — the team as it exists after an
-        // approval, and the plan that awaits one — and a panel that polled them separately could show a
-        // staged plan beside a team that approval had already replaced.
-        const [state, plan] = await Promise.all([
+        // ALL THREE ROUTES IN ONE PASS. They are three halves of one answer — the team as it exists
+        // after an approval, the plan that awaits one, and the frozen contracts the pinned detail body
+        // quotes — and a panel that polled them separately could show a staged plan beside a team that
+        // approval had already replaced.
+        const [state, plan, contracts] = await Promise.all([
           readOne           (statePath, sessionId),
           planPath === undefined ? Promise.resolve({ value: null                    }) : readOne          (planPath, sessionId),
+          taskPath === undefined ? Promise.resolve({ value: null                             }) : readOne                   (taskPath, sessionId),
         ])
-        return { state: state.value, plan: plan.value === null ? null : plan.value.plan === null ? null : plan.value, error: state.error }
+        /** The frozen contracts, keyed by task id, so the detail body is a lookup and not a scan. */
+        const byTask                                                                                                 = {}
+        for (const contract of contracts.value?.contracts ?? []) {
+          byTask[contract.taskId] = { description: contract.description, claimedBy: contract.claimedBy, claimedAt: contract.claimedAt, attempt: contract.attempt }
+        }
+        return {
+          state: state.value,
+          plan: plan.value === null ? null : plan.value.plan === null ? null : plan.value,
+          contracts: byTask,
+          error: state.error,
+        }
       }
 
       /** Poll until stopped; the interval is owned by the CALLER's effect. */
@@ -9055,6 +9745,59 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       }
 
       /**
+       * Resolve one key through the host's translator, or answer the English literal when there is no
+       * translator or the translator has no entry (the host answers the KEY itself on a miss, which is
+       * never what a reader should see, so a key that comes back unchanged falls back too).
+       * @param key - the dictionary key.
+       * @returns the string this render draws.
+       */
+      const t = (key        )         => {
+        if (typeof hostT !== "function") return EN[key] ?? key
+        try {
+          /** What the host answered for this key. */
+          const answer = hostT(key)
+          if (typeof answer === "string" && answer !== "" && answer !== key) return answer
+        } catch {
+          // A translator that throws is a broken locale, never a broken panel: the literal below is the
+          // same fallback an absent translator gets.
+        }
+        return EN[key] ?? key
+      }
+      /** Resolve a key whose English carries one `{n}` placeholder. */
+      const tn = (key        , n        )         => t(key).replace("{n}", String(n))
+      /** Truncate one label for a fixed-width box (the CSS ellipsizes anything this misses). */
+      const short = (text        , max        )         => (text.length <= max ? text : text.slice(0, max - 1) + "…")
+      /** The last path segment of a workspace path, which is what the header names. */
+      const baseName = (path        )         => {
+        /** The path's segments, with its trailing separators removed first. */
+        const parts = path.replace(/[\\/]+$/, "").split(/[\\/]/)
+        return parts[parts.length - 1] === "" ? path : parts[parts.length - 1]
+      }
+      /** The status tone of one rendered state, falling back to the neutral label colour. */
+      const toneOf = (visual        )         => TONE[visual] ?? TONE.open
+      /** The glyph of one rendered state; `?` is honest about a state this view has never seen. */
+      const glyphOf = (visual        )         => GLYPH[visual] ?? "?"
+      /** The bilingual kind abbreviation of one task; empty when the task carries no kind. */
+      const kindOf = (kind                    )         => {
+        if (kind === undefined || kind === "") return ""
+        /** The dictionary key this kind resolves through, when it is one of the five. */
+        const key = KIND_KEY[kind]
+        return key === undefined ? kind : t(key)
+      }
+      /** The style of one member's status dot: a CSS circle, never a raster avatar or a mascot. */
+      const memberDot = (status        )                         => ({
+        width: "7px",
+        height: "7px",
+        borderRadius: "999px",
+        background: status === "running" ? TONE.running : status === "idle" ? TONE.open : toneOf(status),
+        flex: "0 0 auto",
+      })
+      /** One label/value row of the task detail body. */
+      const detailRow = (key        , labelKey        , value        )          => react.createElement("div", { key, style: { ...CSS.row, ...CSS.meta } },
+        react.createElement("span", { style: { minWidth: "72px", color: FOCUS_EDGE } }, t(labelKey)),
+        react.createElement("span", { style: { flex: "1 1 auto", wordBreak: "break-word" } }, value))
+
+      /**
        * The STAGED PLAN, drawn from the shared projection.
        *
        * Every string here comes from the payload — including the approval phrase, which is SERVED
@@ -9066,38 +9809,236 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         /** The plan's rows, in render order. */
         const rows            = [
           react.createElement("div", { key: "p-head", style: CSS.head }, plan.name),
-          react.createElement("div", { key: "p-id", style: CSS.dim }, plan.planId + " · staged · " + plan.approval + " approval"),
+          react.createElement("div", { key: "p-sub", style: CSS.dim }, plan.planId + " · " + plan.approval),
           react.createElement("div", { key: "p-desc", style: { marginTop: "4px" } }, plan.description),
-          react.createElement("div", { key: "p-members-head", style: { marginTop: "8px", fontWeight: 600 } }, "Wants " + plan.members.length + " member(s)"),
+          react.createElement("div", { key: "p-members-head", style: CSS.subHead }, tn("plan.members", plan.members.length)),
         ]
         for (const member of plan.members) {
           rows.push(react.createElement("div", { key: "pm-" + member.name, style: CSS.row },
             react.createElement("span", { style: { flex: "1 1 auto" } }, member.name),
             react.createElement("span", { style: CSS.dim }, member.role ?? "")))
         }
-        rows.push(react.createElement("div", { key: "p-tasks-head", style: { marginTop: "8px", fontWeight: 600 } }, "Wants " + plan.tasks.length + " task(s)"))
+        rows.push(react.createElement("div", { key: "p-tasks-head", style: CSS.subHead }, tn("plan.tasks", plan.tasks.length)))
         for (const task of plan.tasks) {
           rows.push(react.createElement("div", {
             key: "pt-" + task.subject,
-            style: { ...CSS.node, borderColor: undefined },
+            style: { ...CSS.card, borderColor: undefined },
             title: task.description,
           },
           task.subject + (task.owner === undefined ? "" : " @" + task.owner),
-          task.blockedBy.length === 0 ? null : react.createElement("div", { style: { ...CSS.dim, fontSize: "10px" } }, "⇠ " + task.blockedBy.join(","))))
+          task.blockedBy.length === 0 ? null : react.createElement("div", { style: CSS.meta }, "⇠ " + task.blockedBy.join(", "))))
         }
         // THE GATE, stated where the plan is read. The phrase is the PRE-approval identity, so it is
         // knowable the whole time the plan is staged — which a teamId would not be.
-        rows.push(react.createElement("div", { key: "p-gate", style: { marginTop: "10px", fontWeight: 600 } }, "To approve, type:"))
-        rows.push(react.createElement("div", { key: "p-phrase", style: { ...CSS.node, marginTop: "2px", fontWeight: 700 } }, plan.phrase))
+        rows.push(react.createElement("div", { key: "p-gate", style: CSS.subHead }, t("plan.gate")))
+        rows.push(react.createElement("div", { key: "p-phrase", style: { ...CSS.card, marginTop: "2px", fontWeight: 700 } }, plan.phrase))
         return react.createElement("div", { style: CSS.panel }, rows)
+      }
+
+      /**
+       * Compute the whole DAG geometry from the board alone: rank columns, node boxes, and the numbers
+       * the drawn edges are placed with.
+       *
+       * `depth` is already the longest dependency path, so the columns are correct without re-deriving
+       * a layout; a negative or non-finite depth falls back to rank 0 rather than dropping the task.
+       * Every box is fixed, which is what lets an edge be arithmetic instead of a measurement.
+       * @param tasks - the board, in the order the route served it.
+       * @returns the columns, the canvas size and every node's box.
+       */
+      const layout = (tasks            )                => {
+        /** The board bucketed by rank, which is the graph's column axis. */
+        const columns               = []
+        for (const task of tasks) {
+          /** The rank this task draws in; a negative or unknown depth falls back to the first. */
+          const at = Number.isFinite(task.depth) && task.depth >= 0 ? task.depth : 0
+          while (columns.length <= at) columns.push([])
+          columns[at].push(task)
+        }
+        /** The grid's width in columns: one per rank, never zero. */
+        const rankCount = Math.max(columns.length, 1)
+        /** The tallest column, which is how tall the grid must be. */
+        let tallest = 0
+        for (const column of columns) tallest = Math.max(tallest, column.length)
+        /** Every node's box, in column-major order. */
+        const nodes              = []
+        for (let rank = 0; rank < columns.length; rank += 1) {
+          for (let row = 0; row < columns[rank].length; row += 1) {
+            nodes.push({ task: columns[rank][row], rank, row, top: COLUMN_PAD + row * (NODE_H + NODE_GAP) })
+          }
+        }
+        return {
+          columns,
+          rankCount,
+          width: rankCount * COLUMN_W,
+          height: Math.max(tallest * (NODE_H + NODE_GAP) - NODE_GAP + COLUMN_PAD * 2, NODE_H + COLUMN_PAD * 2),
+          gridTemplateColumns: "repeat(" + rankCount + ", " + COLUMN_W + "px)",
+          nodes,
+        }
+      }
+
+      /**
+       * The transitive halo of one task: the hovered node, its ANCESTORS (what it rests on) and its
+       * DESCENDANTS (what rests on it), along the drawn dependency edges.
+       *
+       * A chain is a RANK-MONOTONE path over the drawn edges: every hop to the left climbs to a strictly
+       * lower `depth`, every hop to the right descends to a strictly higher one. That is the relation the
+       * columns draw, and it is the only one that survives a diamond. Measured: walking the edges alone
+       * lit `T1 → T2 → T3 → T4` up entirely when T2 was hovered, because T3 (a legitimate descendant) then
+       * handed the walk its own dependent T4 — and a walk that let the two directions feed each other did
+       * the same the other way round. The origin is the ONE exception, because a cycle resolves a
+       * revisited node to rank 0, so a back-edge genuinely runs between two nodes of the same rank.
+       *
+       * Each frontier is worked as a QUEUE rather than a recursion, and `inHalo` holds it to one visit
+       * per node, so a dependency cycle in the payload — which the route reports rather than repairs —
+       * cannot spin this into a stack overflow.
+       * @param tasks - the board.
+       * @param from - the hovered task's id.
+       * @returns the ids to tint; every other node is dimmed while a focus is held.
+       */
+      const focusChain = (tasks            , from        )                          => {
+        /** The task each id names, for the dependency lookups below. */
+        const byId                           = {}
+        for (const task of tasks) byId[task.id] = task
+        /** The ids in the halo so far. */
+        const focus                          = {}
+        if (byId[from] === undefined) return focus
+        /** What rests on each task, which is `blockedBy` read backwards. */
+        const dependentsOf                           = {}
+        for (const task of tasks) {
+          for (const blockerId of task.blockedBy) {
+            if (dependentsOf[blockerId] === undefined) dependentsOf[blockerId] = []
+            dependentsOf[blockerId].push(task.id)
+          }
+        }
+        focus[from] = true
+        /** The ancestor frontier, seeded with the hovered node only; it keeps its OWN visited set. */
+        const up           = [from]
+        /** Every id the ancestor chain has already visited. */
+        const seenUp                          = { [from]: true }
+        /** The descendant frontier, seeded with the hovered node only. */
+        const down           = [from]
+        /** Every id the descendant chain has already visited. */
+        const seenDown                          = { [from]: true }
+        while (up.length > 0) {
+          /** The id this pass expands. */
+          const id = up.shift()          
+          /** The origin, whose own rank row the guard below is relaxed for (see the cycle note above). */
+          const atOrigin = id === from
+          for (const blockerId of byId[id].blockedBy) {
+            if (seenUp[blockerId] === true) continue
+            /** The blocker's own row; one the board does not carry draws no edge and tints nothing. */
+            const parent = byId[blockerId]
+            if (parent === undefined) continue
+            // Strictly to the left — never a step back to the right, which is what keeps a cousin out.
+            if (parent.depth >= byId[id].depth && !atOrigin && blockerId !== from) continue
+            seenUp[blockerId] = true
+            focus[blockerId] = true
+            up.push(blockerId)
+          }
+        }
+        while (down.length > 0) {
+          /** The id this pass expands. */
+          const id = down.shift()          
+          /** The origin, whose own rank row the guard below is relaxed for. */
+          const atOrigin = id === from
+          for (const childId of dependentsOf[id] ?? []) {
+            /** The dependent's own row, which must lie strictly to the right of the node expanded. */
+            const child = byId[childId]
+            if (child === undefined || seenDown[childId] === true) continue
+            if (child.depth <= byId[id].depth && !atOrigin && childId !== from) continue
+            seenDown[childId] = true
+            focus[childId] = true
+            down.push(childId)
+          }
+        }
+        return focus
+      }
+
+      /**
+       * The one drawn edge of a `blockedBy` entry: a horizontal lead-out, a vertical riser, a horizontal
+       * lead-in. Three plain absolutely-positioned divs — no SVG, no measuring pass.
+       * @param parent - the blocker's node box.
+       * @param child - the dependant's node box.
+       * @param tinted - whether this edge is inside the hover focus chain.
+       * @returns the edge element and its three segments.
+       */
+      const edgeOf = (parent           , child           , tinted                     )          => {
+        // The riser sits in the gap between the two columns, so it never crosses a node in either.
+        const riserX = child.rank * COLUMN_W - EDGE_LEAD
+        /** The lead-out's left edge: the blocker column's right inset, where its node box ends. */
+        const outLeft = parent.rank * COLUMN_W + COLUMN_W - NODE_INSET - EDGE_LEAD
+        /** The blocker's vertical centre, where the edge leaves it. */
+        const outY = parent.top + NODE_H / 2
+        /** The dependant's vertical centre, where the edge arrives. */
+        const inY = child.top + NODE_H / 2
+        /** The riser's own box: between the two horizontal centres, however they are ordered. */
+        const riserTop = Math.min(outY, inY)
+        /** The colour every segment of this edge draws in; a focused edge reads brighter. */
+        const base = tinted === true ? FOCUS_EDGE : CSS.edge.background
+        /** One segment's style: the shared edge box, this edge's colour, then its own geometry. */
+        const segment = (left        , top        , width        , height        )                         =>
+          ({ ...CSS.edge, background: base, left: left + "px", top: top + "px", width: width + "px", height: height + "px" })
+        return react.createElement("div", {
+          key: "edge:" + parent.task.id + ">" + child.task.id,
+          // THE WITNESSABLE MARK: `capture.mts` (docker/ui) reads `data-mpd-edge` and counts `data-mpd-graph`'s
+          // `edges=` against exactly these, so one edge per DRAWN dependency is what must appear here.
+          "data-mpd-edge": child.task.id + "<-" + parent.task.id,
+          style: CSS.edgeLayer,
+        },
+          react.createElement("div", { key: "out", style: segment(outLeft, outY, EDGE_LEAD + 1, 1) }),
+          react.createElement("div", { key: "riser", style: segment(riserX, riserTop, 1, Math.max(Math.abs(inY - outY), 1)) }),
+          react.createElement("div", { key: "in", style: segment(riserX, inY, EDGE_LEAD, 1) }),
+        )
+      }
+
+      /**
+       * The TASK DETAIL body of the pinned node: the record's own fields, its blockers and its
+       * dependents, and — when the task route served one — the FROZEN acceptance contract, quoted
+       * rather than summarized because that text is what a reviewer holds the work to.
+       * @param task - the pinned task.
+       * @param tasks - the whole board, for the dependents lookup.
+       * @param contract - the frozen contract of this task, when the route served one.
+       * @returns the detail element.
+       */
+      const detailSection = (task          , tasks            , contract                                                                                            )          => {
+        /** The tasks resting on this one, which is the reverse of `blockedBy`. */
+        const dependents           = []
+        for (const other of tasks) if (other.blockedBy.indexOf(task.id) >= 0) dependents.push(other.id)
+        /** The detail's rows, in render order. */
+        const rows            = [
+          react.createElement("div", { key: "d-top", style: CSS.row },
+            react.createElement("span", { key: "d-subject", style: { flex: "1 1 auto", fontWeight: 600 } }, task.subject),
+            react.createElement("span", {
+              key: "d-close",
+              "data-detail-close": task.id,
+              style: { ...CSS.chip, cursor: "pointer" },
+              onClick: () => { if (setPinned !== null) setPinned(null) },
+            }, t("task.close"))),
+          react.createElement("div", { key: "d-id", style: { ...CSS.meta, marginTop: "2px" } },
+            task.id + " · " + kindOf(task.kind) + " · " + glyphOf(task.visual) + " " + task.visual
+            + (task.failedBy.length === 0 ? "" : " · " + t("task.verdict") + " ✗ " + task.failedBy.join(", "))),
+        ]
+        if (task.owner !== undefined) rows.push(detailRow("d-owner", "task.owner", task.owner))
+        if (task.attempt !== undefined) rows.push(detailRow("d-attempt", "task.attempt", String(task.attempt)))
+        if (task.round !== undefined) rows.push(detailRow("d-round", "task.round", String(task.round)))
+        if (task.verdict !== undefined) rows.push(detailRow("d-verdict", "task.verdict", task.verdict))
+        rows.push(detailRow("d-blocked", "task.blockedBy", task.blockedBy.length === 0 ? "—" : task.blockedBy.join(", ")))
+        rows.push(detailRow("d-dependents", "task.dependents", dependents.length === 0 ? "—" : dependents.join(", ")))
+        if (contract === undefined) {
+          rows.push(react.createElement("div", { key: "d-contract-none", style: { ...CSS.dim, marginTop: "4px" } }, t("task.contract.none")))
+        } else {
+          rows.push(react.createElement("div", { key: "d-contract-head", style: CSS.subHead }, t("task.contract")))
+          rows.push(react.createElement("div", { key: "d-contract", style: { ...CSS.card, marginTop: "2px", whiteSpace: "pre-wrap", wordBreak: "break-word" } }, contract.description))
+        }
+        return react.createElement("div", { key: "task-detail", "data-mpd-detail": task.id, style: { marginTop: "10px" } }, rows)
       }
 
       /**
        * The team panel.
        *
-       * The session id comes from the host's own props when it offers one (both hosts do, in their
-       * own spelling); without one the route answers the workspace's principal team, which is what a
-       * panel opened outside a session should show.
+       * The session id comes from the host's own props when it offers one (both hosts do, in their own
+       * spelling); without one the route answers the workspace's principal team, which is what a panel
+       * opened outside a session should show.
        */
       const TeamView = (props          )          => {
         /** The host's props, read leniently: both hosts spell the session differently. */
@@ -9105,18 +10046,29 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         /** The session this panel addresses; empty asks the route for the workspace principal. */
         const sessionId = String(seat.sessionId ?? seat.scope?.sessionId ?? "")
         /** The polled store and its setter. */
-        const [store, setStore] = react.useState({ state: null, plan: null, error: undefined }             )
+        const [store, setStore] = react.useState({ state: null, plan: null, contracts: {}, error: undefined }             )
         // One poller per session: the effect re-runs when the host hands this panel a different one.
         react.useEffect(() => start(sessionId, setStore), [sessionId])
+        // HOVER AND PIN ARE DECLARED BEFORE EVERY EARLY RETURN on purpose: a hook's slot order must be
+        // identical on every render path, or React's own state would shift the moment a team appears.
+        /** The hovered task's id, which drives the focus chain; null when nothing is hovered. */
+        const [hover, setHoverState] = react.useState(null                 )
+        /** The pinned task's id, which drives the detail body; null when nothing is pinned. */
+        const [pinned, setPinnedState] = react.useState(null                 )
+        // The handlers below are closures of THIS render, so they always write through this render's
+        // setters; the factory-scope names are what the detail body and the edges reach.
+        setPinned = setPinnedState                                 
+        setHover = setHoverState                                 
         /** The store, narrowed out of the tuple above. */
         const current = store             
         /** The last readable payload, or null while there is none. */
         const state = current.state
         if (state === null) {
-          return react.createElement("div", { style: { ...CSS.panel, ...CSS.dim } },
-            current.error === undefined
-              ? "Reading the team…"
-              : "No team state is being served. The mpd team row may not be mounted in this profile.")
+          // THE ROOT CARRIES THE TEAM ID, and `""` while there is none: the host asserts on a stable
+          // marker for the tab, so every path out of this view writes it — including the two that have
+          // no team yet.
+          return react.createElement("div", { "data-mpd-team-tab": "", style: { ...CSS.panel, ...CSS.dim } },
+            current.error === undefined ? t("state.reading") : t("state.unavailable"))
         }
         if (state.team === null) {
           // A STAGED PLAN WITH NO TEAM IS THE NORMAL PRE-APPROVAL STATE, not an empty one: the team
@@ -9124,82 +10076,177 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           // everything to show in the plan. Returning the empty sentence would have hidden the very
           // thing the captain came to approve.
           if (current.plan !== null && current.plan.plan !== null) return planSection(current.plan.plan)
-          return react.createElement("div", { style: { ...CSS.panel, ...CSS.dim } },
-            "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.")
+          return react.createElement("div", { "data-mpd-team-tab": "", style: { ...CSS.panel, ...CSS.dim } }, t("state.none"))
         }
         /** The team head; non-null past the guard above. */
         const team = state.team
         /** The tally, in the record's own vocabulary. */
         const counts = state.counts
+        /** The board, which the figures, the graph and the detail body all read. */
+        const tasks = state.tasks
         /** The completion percentage, 0 while the board has no tasks. */
         const percent = counts.total === 0 ? 0 : Math.round((counts.completed / counts.total) * 100)
+        /** The DAG geometry of this poll's board. */
+        const graph = layout(tasks)
+        /** The node each task id draws in, so an edge is placed from the board alone. */
+        const nodeOf                            = {}
+        for (const node of graph.nodes) nodeOf[node.task.id] = node
         // THE TALLY SAYS WHAT A CAPTAIN ACTS ON, not just how far along the board is: how many tasks
         // a member could pick up RIGHT NOW, and how many of those are only ready because a
         // prerequisite FAILED (OPT-1 releases them, and that must not hide inside "ready").
         /** The line a captain reads: what is moving, what is pickable, what is held. */
-        const tally = counts.running + " running · " + counts.ready + " ready · " + counts.blocked + " blocked"
-          + (counts.releasedByFailure === 0 ? "" : " · " + counts.releasedByFailure + " released by a failed blocker")
-        // THE DAG, in the form a 380px column can carry: rank columns left to right, one chip per
-        // task, and each chip naming the blockers it rests on. The reference GUI draws this as an
-        // SVG of Bezier edges; at this width that is unreadable, and the honest sidebar form is the
-        // staged columns below.
-        /** The board bucketed by rank, which is the graph's column axis. */
-        const stages               = []
-        for (const task of state.tasks) {
-          /** The rank this task draws in; a negative or unknown depth falls back to the first. */
-          const at = Number.isFinite(task.depth) && task.depth >= 0 ? task.depth : 0
-          while (stages.length <= at) stages.push([])
-          stages[at].push(task)
+        const tally = counts.running + " " + t("tally.running") + " · " + counts.ready + " " + t("tally.ready")
+          + " · " + counts.blocked + " " + t("tally.blocked")
+          + (counts.releasedByFailure === 0 ? "" : " · " + counts.releasedByFailure + " " + t("tally.released"))
+        /** The focus halo of the hovered node — empty while nothing is hovered, so every node is full. */
+        const focus                          = hover === null ? {} : focusChain(tasks, hover          )
+        /** Whether a hover is dimming the rest of the board. */
+        const focusing = Object.keys(focus).length > 0
+        // A CHAIN IS ACTIVE ONLY WITH A RELATED NODE: a hover whose halo holds nothing beyond the
+        // hovered task itself relates to nothing, and a reader that counted that as a chain would be
+        // reading a highlight that tinted one node and dimmed no other.
+        /** Whether the hovered node's halo reaches at least one other node. */
+        const chainActive = focusing && Object.keys(focus).length > 1
+        /** The drawn edges, one per `blockedBy` entry naming a task ON THIS BOARD. */
+        // A `blockedBy` id the board does not carry draws NOTHING: the payload serves the list raw,
+        // while the rank projection drops unknown ids, so an entry naming a ghost is reachable in real
+        // data — and an edge into a node that is not there would be a picture of a dependency that the
+        // record does not have.
+        const edges            = []
+        for (const node of graph.nodes) {
+          for (const blockerId of node.task.blockedBy) {
+            /** The blocker's own box; a blocker the board does not carry draws no edge. */
+            const parent = nodeOf[blockerId]
+            if (parent === undefined) continue
+            edges.push(edgeOf(parent, node, focus[parent.task.id] === true && focus[node.task.id] === true))
+          }
         }
+        /** The pinned task's own record, or undefined when the pinned id left the board. */
+        const pinnedTask = pinned === null ? undefined : tasks.find((candidate) => candidate.id === pinned)
         /** The panel's elements, in render order. */
         const children            = [
           react.createElement("div", { key: "head", style: CSS.head }, team.name),
-          react.createElement("div", { key: "sub", style: CSS.dim }, team.id + " · " + team.phase),
+          react.createElement("div", { key: "sub", style: CSS.row },
+            react.createElement("span", { key: "phase", style: CSS.chip }, team.phase),
+            react.createElement("span", { key: "id", style: CSS.dim }, team.id),
+            team.approvedAt === undefined ? null : react.createElement("span", { key: "approved", style: CSS.dim }, t("header.approved") + " " + team.approvedAt),
+            state.workspace === undefined ? null : react.createElement("span", { key: "ws", style: CSS.dim }, t("header.workspace") + " " + baseName(state.workspace))),
           react.createElement("div", { key: "tally", style: { ...CSS.dim, marginTop: "2px" } }, tally),
+          react.createElement("div", { key: "figures", style: { ...CSS.dim, marginTop: "2px" } },
+            counts.completed + "/" + counts.total + " " + t("header.complete")
+            + " · " + counts.running + " " + t("tally.running") + " / " + counts.ready + " " + t("tally.ready")),
           react.createElement("div", { key: "bar", style: CSS.bar },
-            react.createElement("div", { style: { ...CSS.barFill, width: percent + "%" } })),
+            react.createElement("div", { "data-progress": String(percent), style: { ...CSS.barFill, width: percent + "%" } })),
+          react.createElement("div", { key: "progress", style: { ...CSS.meta, marginTop: "2px" } }, t("progress.label") + " " + percent + "%"),
           // THE EXECUTOR IS SHOWN, because which backend raises a member is exactly the fact that
           // explains a team behaving differently than expected — served by the same route.
           react.createElement("div", { key: "exec", style: { ...CSS.dim, marginTop: "4px" } },
-            react.createElement("span", { style: CSS.chip }, state.executor.kind), " executor"),
-          react.createElement("div", { key: "members-head", style: { marginTop: "10px", fontWeight: 600 } }, "Members (" + state.members.length + ")"),
+            react.createElement("span", { style: CSS.chip }, state.executor.kind), " " + t("executor.label")),
+          react.createElement("div", { key: "members-head", style: CSS.subHead }, t("members.title") + " (" + state.members.length + ")"),
         ]
+        if (state.members.length === 0) {
+          children.push(react.createElement("div", { key: "members-empty", style: { ...CSS.dim, marginTop: "2px" } }, t("members.empty")))
+        }
         for (const member of state.members) {
-          children.push(react.createElement("div", { key: "m-" + member.id, style: CSS.row },
-            react.createElement("span", { style: { ...CSS.dim, width: "10px" } }, member.status === "running" ? "◐" : "○"),
-            react.createElement("span", { style: { flex: "1 1 auto" } }, member.name),
-            react.createElement("span", { style: CSS.dim }, member.done + "/" + member.total + (member.current === undefined ? "" : " · " + member.current)),
-          ))
-        }
-        children.push(react.createElement("div", { key: "dag-head", style: { marginTop: "10px", fontWeight: 600 } },
-          "Dependency map" + (state.cycles.length === 0 ? "" : " · CYCLE " + state.cycles.join(","))))
-        for (let rank = 0; rank < stages.length; rank += 1) {
-          /** This rank's chips, headed by its number. */
-          const chips            = [react.createElement("div", { key: "r" + rank, style: { ...CSS.dim, marginTop: "4px" } }, "rank " + rank)]
-          for (const task of stages[rank]) {
-            /** One node chip: marker, id, kind, subject, blockers, owner. */
-            chips.push(react.createElement("div", {
-              key: "t-" + task.id,
-              style: { ...CSS.node, borderColor: task.visual === "open" ? undefined : TONE[task.visual] },
-              title: task.subject + (task.attempt === undefined ? "" : " · attempt " + task.attempt),
-            },
-            react.createElement("span", { style: { color: TONE[task.visual], fontWeight: 700 } }, GLYPH[task.visual] ?? "?"),
-            " " + task.id + " " + (KIND[task.kind ?? ""] ?? ""),
-            react.createElement("div", { style: { ...CSS.dim, fontSize: "10px" } }, task.subject),
-            task.blockedBy.length === 0 ? null : react.createElement("div", { style: { ...CSS.dim, fontSize: "10px" } },
-              "⇠ " + task.blockedBy.join(",") + (task.failedBy.length === 0 ? "" : " · FAILED " + task.failedBy.join(","))),
-            task.owner === undefined ? null : react.createElement("div", { style: { ...CSS.dim, fontSize: "10px" } }, "@" + task.owner),
-            ))
+          // ONE PLAIN CARD PER MEMBER (the user's ruling: 成员卡的 UI 不必那么花哨): a CSS status dot,
+          // the name, the role chip, the route in tertiary text, the current task truncated, and the
+          // fraction right-aligned. No avatar, no mascot, no state art.
+          /** The card's rows, in render order. */
+          const card            = [
+            react.createElement("div", { key: "c-top", style: CSS.row },
+              react.createElement("span", { key: "dot", style: memberDot(member.status), title: member.status }),
+              react.createElement("span", { key: "name", style: { flex: "1 1 auto", fontWeight: 600 } }, member.name),
+              member.role === undefined || member.role === "" ? null : react.createElement("span", { key: "role", style: CSS.chip }, member.role),
+              react.createElement("span", { key: "frac", style: CSS.dim }, member.done + "/" + member.total)),
+          ]
+          if (member.route !== undefined && member.route !== "") {
+            card.push(react.createElement("div", { key: "c-route", style: { ...CSS.meta, marginTop: "1px" } }, member.route))
           }
-          children.push(react.createElement("div", { key: "stage-" + rank }, chips))
+          if (member.current !== undefined && member.current !== "") {
+            card.push(react.createElement("div", { key: "c-current", style: { ...CSS.meta, marginTop: "1px" }, title: member.current },
+              t("members.current") + " " + short(member.current, SUBJECT_MAX)))
+          }
+          children.push(react.createElement("div", { key: "m-" + member.id, "data-member": member.id, style: CSS.card }, card))
         }
+        // THE DAG, in the form a 380px column can carry: one rank column per `depth`, one node per task,
+        // and one DRAWN edge (three absolutely-positioned divs) per `blockedBy` entry that names a task
+        // on this board. The reference GUI draws SVG curves; at this width the arithmetic form is both
+        // readable and impossible to disagree with the data.
+        children.push(react.createElement("div", { key: "tasks-head", style: CSS.subHead }, t("task.title") + " (" + tasks.length + ")"))
+        if (tasks.length === 0) {
+          // The empty state NAMES THE CALL that fills it, so a captain reading an empty board knows
+          // what to post rather than only that nothing is there.
+          children.push(react.createElement("div", { key: "tasks-empty", style: { ...CSS.dim, marginTop: "2px" } }, t("task.empty")))
+        }
+        if (state.cycles.length > 0) {
+          // A CYCLE IS REPORTED, NEVER HIDDEN: an unrenderable board still has to say what is wrong with
+          // it, and the payload already carries the ids.
+          children.push(react.createElement("div", { key: "cycles", style: { marginTop: "2px", color: TONE.blocked } },
+            t("task.cycle") + " " + state.cycles.join(", ")))
+        }
+        if (tasks.length > 0) {
+          children.push(react.createElement("div", {
+            key: "graph",
+            // THE WITNESSABLE MARK: the counts are of what is RENDERED below, so a screenshot's
+            // `ranks=`/`edges=` cannot drift from the picture the panel actually drew.
+            "data-mpd-graph": "ranks=" + graph.rankCount + " edges=" + edges.length,
+            // A chain is active only when the halo holds a RELATED node, not merely the hovered one.
+            "data-mpd-focus": chainActive ? "chain" : "none",
+            style: { ...CSS.scroll, width: "100%", height: Math.min(graph.height, 260) + "px" },
+          },
+            // The grid WRAPS the canvas: the wrapper carries the vertical breathing room as padding, so
+            // the origin an edge's absolute coordinates are measured from stays the grid itself.
+            react.createElement("div", { style: { position: "relative", width: graph.width + "px", padding: COLUMN_PAD + "px 0" } },
+              react.createElement("div", { style: { ...CSS.grid, width: graph.width + "px", height: graph.height + "px", gridTemplateColumns: graph.gridTemplateColumns } },
+                graph.columns.map((column, rank) => react.createElement("div", {
+                  key: "col-" + rank,
+                  "data-mpd-rank": String(rank),
+                  style: { ...CSS.column, width: COLUMN_W + "px", height: graph.height + "px" },
+                },
+                column.map((task, row) => react.createElement("div", {
+                  key: "node-" + task.id,
+                  "data-mpd-node": task.id,
+                  role: "button",
+                  tabIndex: 0,
+                  "aria-pressed": pinned === task.id,
+                  title: task.subject + (task.attempt === undefined ? "" : " · " + t("task.attempt") + " " + task.attempt),
+                  style: {
+                    ...CSS.node,
+                    top: (COLUMN_PAD + row * (NODE_H + NODE_GAP)) + "px",
+                    borderColor: focusing && focus[task.id] !== true ? CSS.edge.background : toneOf(task.visual),
+                    opacity: focusing && focus[task.id] !== true ? "0.4" : "1",
+                    borderWidth: pinned === task.id ? "1px" : "0.5px",
+                  },
+                  // THE HOVER CHAIN LIVES ON THE NODE ITSELF: the host drives it with a real mouse move,
+                  // so `onMouseEnter`/`onMouseLeave` here are the only writers — no document listener,
+                  // no layout effect, and therefore nothing that can outlive this element.
+                  onMouseEnter: () => { if (setHover !== null) setHover(task.id) },
+                  onMouseLeave: () => { if (setHover !== null) setHover(null) },
+                  onClick: () => { if (setPinned !== null) setPinned(pinned === task.id ? null : task.id) },
+                  onKeyDown: (event                  ) => {
+                    if (event?.key !== "Enter" && event?.key !== " ") return
+                    if (setPinned !== null) setPinned(pinned === task.id ? null : task.id)
+                  },
+                },
+                react.createElement("div", { key: "node-top", style: CSS.nodeTop },
+                  react.createElement("span", { key: "glyph", style: { color: toneOf(task.visual), fontWeight: 700 } }, glyphOf(task.visual)),
+                  react.createElement("span", { key: "id", style: { fontWeight: 700 } }, task.id),
+                  react.createElement("span", { key: "kind", style: CSS.dim }, kindOf(task.kind))),
+                react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, task.subject),
+                ))),
+              ),
+              // THE EDGES LAYER IS THE GRAPH'S OWN SECOND CHILD, and the closers below it end the
+              // column, the node, the grid, the wrapper and the graph in that order.
+              react.createElement("div", { key: "edges", "data-edges": "1", style: { ...CSS.edgeLayer, width: graph.width + "px", height: graph.height + "px" } }, edges)))))
+        }
+        if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id]))
         for (const problem of state.problems) {
           children.push(react.createElement("div", { key: "p-" + problem, style: { ...CSS.dim, marginTop: "6px" } }, problem))
         }
-        return react.createElement("div", { style: CSS.panel }, children)
+        return react.createElement("div", { "data-mpd-team-tab": team.id, style: CSS.panel }, children)
       }
 
-      return { TeamView, start, read }
+      return { TeamView, start, read, layout }
     },
   }
   })();
@@ -9299,9 +10346,40 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       return h("div", { style: { padding: "12px", fontSize: "12px", ...dim } },
         "The team view is unavailable in this client build.");
     }
-    // The seat's own props are forwarded VERBATIM: the view reads the session id from whichever
-    // spelling its host used, so nothing here needs to know which host this is.
+    // ANNOUNCE THE SESSION THIS SEAT RENDERS, ONCE. The value is the only place the panel's own view
+    // of "which session am I" is observable from outside, and a verification run needs exactly that:
+    // MEASURED 2026-10-05, a capture that seeded a session IT created kept reading an empty panel,
+    // because the app renders a session of its own choosing. One `[mpd…]` line lets the driver seed
+    // the RIGHT session (the console collector already keeps every such line for the report).
+    /** The session this seat's props name, whichever spelling the host used. */
+    const seatSession = sessionIdOfSeat(props)
+    if (seatSession !== "" && announcedSidebarSession !== seatSession) {
+      announcedSidebarSession = seatSession
+      console.info("[mpd] team sidebar session: " + seatSession)
+    }
+    // The seat's own props are forwarded VERBATIM, which is what makes the two hosts work with one
+    // body: the harness right sidebar passes `sessionId` directly (verified in the DOM 2026-10-05 —
+    // the prop bag carried `useSessions,useSessionStatus,useSessionRetainInfo,sessionId,useSession,…`
+    // and the view fetched all three routes with that id), while the better-sidebar host spells the
+    // same fact differently. Nothing here needs to know which host this is.
     return view.TeamView(props);
+  }
+
+  /**
+   * Read the session id off a seat's props, whichever spelling the host used.
+   *
+   * The two sidebar hosts pass the same FACT in different shapes — the harness's right sidebar puts
+   * `sessionId` on the props directly, while a nested `scope.sessionId` is the other spelling this
+   * bundle has seen — so the reader tolerates both and answers "" when neither is present.
+   * @param props - the seat props as the host supplied them.
+   * @returns the session id, or an empty string when the props carry none.
+   */
+  function sessionIdOfSeat(props         )         {
+    /** The props as a bag, so an unknown host shape can be read without a cast at each use. */
+    const bag = (props ?? {})                                                            
+    /** The direct spelling first, then the nested one. */
+    const value = bag.sessionId ?? bag.scope?.sessionId
+    return typeof value === "string" ? value : ""
   }
 
   /** The harness-sidebar Team tab, contributed by the bundle's ONE applied client module. */
@@ -9317,16 +10395,28 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     if (typeof ctx.inject !== "function" || typeof ctx.locale?.bind !== "function") return
     /** The translator bound to this tab's own locale namespace. */
     const t = ctx.locale.bind("mpdTeamSidebar");
+    // COMMIT IT for the shared view, which is constructed by `teamViewOf()` in a render path that has
+    // no `ctx` and therefore cannot bind a namespace itself. Wrapped so the view gets the full English
+    // table for any key the host does not resolve, and so a throwing host translator cannot take the
+    // panel down: the view receives `teamSay`, never the host's function directly.
+    teamTranslator = (key        )         => {
+      try { return String(t(key)) } catch { return TEAM_COPY_EN[key] ?? key }
+    };
     ctx.effect(() => ctx.locale.register("mpdTeamSidebar", {
       en: {
         "type.label": "Team",
         "guide.title": "Team",
         "guide.description": "Roster and shared task progress for this session",
+        // The shared view's own copy. Registered from the SAME table the fallback reads, so the two
+        // cannot drift: a key added to the view and forgotten here still renders English instead of
+        // a raw key, which is the failure mode this pairing exists to make impossible.
+        ...TEAM_COPY_EN,
       },
       zh: {
         "type.label": "团队",
         "guide.title": "团队",
         "guide.description": "本会话的名册与共享任务进度",
+        ...TEAM_COPY_ZH,
       },
     }), "mpd-team-sidebar:copy");
     // The guide entry names a COMMAND, not a callback: that command is a client shortcut.
@@ -9491,7 +10581,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 /** The spliced team-view global's shape: the ONE factory both sidebar hosts build their body from. */
                              
                                                                                              
-                                                                                                                        
+                                                                                                                                                                        
  
 
 /** The built team view. */

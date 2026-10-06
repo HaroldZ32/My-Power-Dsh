@@ -425,6 +425,144 @@
    */
   const TEAM_PLAN_PATH = "/plugins/mpd-team/plan"
 
+  /**
+   * The route serving the session's FROZEN ACCEPTANCE CONTRACTS and the workspace hold.
+   *
+   * Passed to the view so a pinned task can quote the contract it was claimed under. Without it the
+   * detail body correctly renders its "no contract was served" sentence — which is indistinguishable
+   * on screen from a task that genuinely has none, so the route is threaded rather than left out.
+   */
+  const TEAM_TASK_PATH = "/plugins/mpd-team/task"
+
+  /**
+   * The team view's own copy, in English — the fallback AND the key list.
+   *
+   * A view built by `teamViewOf()` runs in a render path with no `ctx`, so it can neither bind nor
+   * register a locale namespace itself; it takes a translator as a dependency instead. This table is
+   * what the translator answers with when the host's locale registry is absent or answers nothing,
+   * which is why the view can never render a bare key. The same key set is registered below, so `zh`
+   * resolves for a Chinese host and this table carries the English.
+   */
+  const TEAM_COPY_EN: Record<string, string> = {
+    "header.approved": "approved",
+    "header.workspace": "workspace",
+    "header.complete": "complete",
+    "progress.label": "Progress",
+    "members.title": "MEMBERS",
+    "members.empty": "No member was raised for this team.",
+    "members.current": "current",
+    "task.title": "TASKS",
+    "task.empty": "No shared task yet — the captain posts them with team_task_create.",
+    "task.cycle": "CYCLE",
+    "task.blockedBy": "blocked by",
+    "task.dependents": "dependents",
+    "task.attempt": "attempt",
+    "task.round": "round",
+    "task.verdict": "verdict",
+    "task.owner": "owner",
+    "task.contract": "acceptance contract",
+    "task.contract.none": "No frozen acceptance contract was served for this task.",
+    "task.close": "close",
+    "tally.running": "running",
+    "tally.ready": "ready",
+    "tally.blocked": "blocked",
+    "tally.released": "released by a failed blocker",
+    "state.reading": "Reading the team…",
+    "state.unavailable": "No team state is being served. The mpd team row may not be mounted in this profile.",
+    "state.none": "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.",
+    "executor.label": "executor",
+    "plan.members": "Wants {n} member(s)",
+    "plan.tasks": "Wants {n} task(s)",
+    "plan.gate": "To approve, type:",
+    "kind.req": "REQ",
+    "kind.wrk": "WRK",
+    "kind.rev": "REV",
+    "kind.fix": "FIX",
+    "kind.int": "INT",
+  }
+
+  /**
+   * The team view's copy in Simplified Chinese, keyed identically to {@link TEAM_COPY_EN}.
+   *
+   * `zh` is the meaning-authoritative half of the pair; the English file is its translation. The two
+   * labels the capture driver asserts on (`members.title` / `task.title`) are deliberately kept as the
+   * host's own convention shows them — an uppercase SECTION label — so a screenshot reads the same
+   * structure in either language while the words behind it are local.
+   */
+  const TEAM_COPY_ZH: Record<string, string> = {
+    "header.approved": "已批准",
+    "header.workspace": "工作区",
+    "header.complete": "已完成",
+    "progress.label": "进度",
+    "members.title": "成员",
+    "members.empty": "该团队尚未拉起成员。",
+    "members.current": "当前",
+    "task.title": "任务",
+    "task.empty": "暂无共享任务 — 队长用 team_task_create 发布任务。",
+    "task.cycle": "依赖环",
+    "task.blockedBy": "前置",
+    "task.dependents": "后继",
+    "task.attempt": "认领次数",
+    "task.round": "评审轮次",
+    "task.verdict": "评审结论",
+    "task.owner": "负责人",
+    "task.contract": "验收契约",
+    "task.contract.none": "该任务没有已冻结的验收契约。",
+    "task.close": "关闭",
+    "tally.running": "进行中",
+    "tally.ready": "可领取",
+    "tally.blocked": "受阻",
+    "tally.released": "因前置失败而释放",
+    "state.reading": "正在读取团队…",
+    "state.unavailable": "未提供团队状态。该配置可能没有挂载 mpd 团队行。",
+    "state.none": "本工作区还没有团队。用 agent_teams_plan 拟定一个团队，然后批准它。",
+    "executor.label": "执行器",
+    "plan.members": "需要 {n} 名成员",
+    "plan.tasks": "需要 {n} 个任务",
+    "plan.gate": "批准请键入：",
+    "kind.req": "需求",
+    "kind.wrk": "工作",
+    "kind.rev": "评审",
+    "kind.fix": "修复",
+    "kind.int": "集成",
+  }
+
+  /**
+   * The translator the shared team view renders with.
+   *
+   * COMMITTED BY THE TAB'S OWN MOUNT, because that is the only place a bound translator exists: the
+   * view is constructed inside a render path that has no `ctx`. Until that mount the fallback answers,
+   * so the view is never left without one — and once committed, the bound translator is followed for
+   * the rest of the session, which is what makes a host language switch take effect on the next render.
+   */
+  let teamTranslator: ((key: string) => string) | undefined
+
+  /**
+   * Resolve one team-view key, preferring the tab's bound translator and falling back to English.
+   *
+   * TOTAL by construction: an unbound translator, a throw inside the host's, or a host that answers
+   * the key itself all end at {@link TEAM_COPY_EN}, so a missing translation degrades to readable
+   * English rather than to a raw key on screen.
+   * @param key - the dictionary key the view asked for.
+   * @returns the localized string, the English fallback, or the key when even that is absent.
+   */
+  function teamSay(key: string): string {
+    if (teamTranslator !== undefined) {
+      try {
+        /** What the host's translator answered for this key. */
+        const answered = teamTranslator(key)
+        // A host that echoes the key back has no entry for it; the English table is the better answer.
+        if (typeof answered === "string" && answered.length > 0 && answered !== key) return answered
+      } catch {
+        // A throwing host translator costs the translation, never the panel.
+      }
+    }
+    return TEAM_COPY_EN[key] ?? key
+  }
+
+  /** The session the team sidebar last announced, so the line is logged once per session, not per render. */
+  let announcedSidebarSession: string | undefined
+
   /** The shared team view, built once per client entry; undefined when the splice is absent. */
   let teamView: { TeamView: (props?: unknown) => unknown } | undefined
 
@@ -449,7 +587,15 @@
     if (react === undefined) return undefined
     if (typeof MPD_TEAM_VIEW !== "object" || MPD_TEAM_VIEW === null) return undefined
     try {
-      teamView = MPD_TEAM_VIEW.createTeamView({ react, statePath: TEAM_STATE_PATH, planPath: TEAM_PLAN_PATH })
+      teamView = MPD_TEAM_VIEW.createTeamView({
+        react,
+        statePath: TEAM_STATE_PATH,
+        planPath: TEAM_PLAN_PATH,
+        // The task route is what lets a pinned node quote its frozen contract; the translator is the
+        // view's only language source (it runs in a render path with no `ctx` of its own).
+        taskPath: TEAM_TASK_PATH,
+        t: teamSay,
+      })
       return teamView
     } catch (error) {
       console.warn("[mpd] the team view could not be built: " + String(error))
@@ -1258,9 +1404,40 @@
       return h("div", { style: { padding: "12px", fontSize: "12px", ...dim } },
         "The team view is unavailable in this client build.");
     }
-    // The seat's own props are forwarded VERBATIM: the view reads the session id from whichever
-    // spelling its host used, so nothing here needs to know which host this is.
+    // ANNOUNCE THE SESSION THIS SEAT RENDERS, ONCE. The value is the only place the panel's own view
+    // of "which session am I" is observable from outside, and a verification run needs exactly that:
+    // MEASURED 2026-10-05, a capture that seeded a session IT created kept reading an empty panel,
+    // because the app renders a session of its own choosing. One `[mpd…]` line lets the driver seed
+    // the RIGHT session (the console collector already keeps every such line for the report).
+    /** The session this seat's props name, whichever spelling the host used. */
+    const seatSession = sessionIdOfSeat(props)
+    if (seatSession !== "" && announcedSidebarSession !== seatSession) {
+      announcedSidebarSession = seatSession
+      console.info("[mpd] team sidebar session: " + seatSession)
+    }
+    // The seat's own props are forwarded VERBATIM, which is what makes the two hosts work with one
+    // body: the harness right sidebar passes `sessionId` directly (verified in the DOM 2026-10-05 —
+    // the prop bag carried `useSessions,useSessionStatus,useSessionRetainInfo,sessionId,useSession,…`
+    // and the view fetched all three routes with that id), while the better-sidebar host spells the
+    // same fact differently. Nothing here needs to know which host this is.
     return view.TeamView(props);
+  }
+
+  /**
+   * Read the session id off a seat's props, whichever spelling the host used.
+   *
+   * The two sidebar hosts pass the same FACT in different shapes — the harness's right sidebar puts
+   * `sessionId` on the props directly, while a nested `scope.sessionId` is the other spelling this
+   * bundle has seen — so the reader tolerates both and answers "" when neither is present.
+   * @param props - the seat props as the host supplied them.
+   * @returns the session id, or an empty string when the props carry none.
+   */
+  function sessionIdOfSeat(props: unknown): string {
+    /** The props as a bag, so an unknown host shape can be read without a cast at each use. */
+    const bag = (props ?? {}) as { sessionId?: unknown; scope?: { sessionId?: unknown } }
+    /** The direct spelling first, then the nested one. */
+    const value = bag.sessionId ?? bag.scope?.sessionId
+    return typeof value === "string" ? value : ""
   }
 
   /** The harness-sidebar Team tab, contributed by the bundle's ONE applied client module. */
@@ -1276,16 +1453,28 @@
     if (typeof ctx.inject !== "function" || typeof ctx.locale?.bind !== "function") return
     /** The translator bound to this tab's own locale namespace. */
     const t = ctx.locale.bind("mpdTeamSidebar");
+    // COMMIT IT for the shared view, which is constructed by `teamViewOf()` in a render path that has
+    // no `ctx` and therefore cannot bind a namespace itself. Wrapped so the view gets the full English
+    // table for any key the host does not resolve, and so a throwing host translator cannot take the
+    // panel down: the view receives `teamSay`, never the host's function directly.
+    teamTranslator = (key: string): string => {
+      try { return String(t(key)) } catch { return TEAM_COPY_EN[key] ?? key }
+    };
     ctx.effect(() => ctx.locale.register("mpdTeamSidebar", {
       en: {
         "type.label": "Team",
         "guide.title": "Team",
         "guide.description": "Roster and shared task progress for this session",
+        // The shared view's own copy. Registered from the SAME table the fallback reads, so the two
+        // cannot drift: a key added to the view and forgotten here still renders English instead of
+        // a raw key, which is the failure mode this pairing exists to make impossible.
+        ...TEAM_COPY_EN,
       },
       zh: {
         "type.label": "团队",
         "guide.title": "团队",
         "guide.description": "本会话的名册与共享任务进度",
+        ...TEAM_COPY_ZH,
       },
     }), "mpd-team-sidebar:copy");
     // The guide entry names a COMMAND, not a callback: that command is a client shortcut.
@@ -1450,7 +1639,7 @@ declare const MPD_SETTINGS_CARD: MpdSettingsCardGlobal | undefined
 /** The spliced team-view global's shape: the ONE factory both sidebar hosts build their body from. */
 interface MpdTeamViewGlobal {
   /** Build the shared team view once, so both hosts render one component with one poller. */
-  createTeamView: (deps: { react: unknown; statePath: string; planPath?: string; pollMs?: number }) => MpdTeamViewModule
+  createTeamView: (deps: { react: unknown; statePath: string; planPath?: string; taskPath?: string; pollMs?: number; t?: (key: string) => string }) => MpdTeamViewModule
 }
 
 /** The built team view. */
