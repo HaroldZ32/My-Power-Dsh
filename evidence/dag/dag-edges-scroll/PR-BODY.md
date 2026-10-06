@@ -179,6 +179,16 @@ overshot the band and scrolled the focused task out of view.
    That is design-freeze risk #3 ("C1 is asserted over the wrong scope") arriving in the instrument rather
    than in the product. It split the region on the pin marker into DRAWING and DETAIL halves, scans C1 on
    the drawing only and reads C3 from the detail, and its 13 self-test arms still pass.
+10. **A third instrument false-negative, corrected by the CAPTAIN from the verifier's own panes.** The
+   verifier reported `hGut=false` at every width and declined to score it. **The horizontal rail IS drawn**:
+   the row directly beneath the drawing reads `││░█████████░░░░░░░░░░░░░░░░░░│` at width 100 and
+   `││░░████████████████████░░░░░░░░░░░░░░░░░░░│` at width 140, and **the thumb MOVES between the unpanned
+   and the panned frame at both widths** — clause T4's "one offset" property in its visual form. The
+   verifier's own reason (that both gutters come from `gutterCells()`, which returns empty when the content
+   fits) is true of the VERTICAL axis only; `gutterCellsX` is gated on the HORIZONTAL band independently,
+   which is what R8 requires. So the horizontal half of the user's 双向滚轴 IS delivered and visible, and
+   `vGut=false` is the contract working (the content fits vertically). Full record with the raw rows:
+   `evidence/dag/dag-edges-scroll/captain/20261006T152037Z/horizontal-rail-finding.md`.
 
 ## 简体中文
 

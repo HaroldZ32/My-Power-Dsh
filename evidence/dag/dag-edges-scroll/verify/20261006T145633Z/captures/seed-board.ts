@@ -49,14 +49,22 @@ export const FIXTURE_TASKS: readonly FixtureTask[] = Object.freeze([
   },
   {
     id: "T2",
-    subject: "W1 natural width and bidirectional panning engine for the DAG panel",
-    expectedLabel: "W1 natural width and bidirectional panning engine for the DAG panel",
+    // SHORTENED TWICE on 2026-10-06, and the reason is measured rather than stylistic. FIRST: the original
+    // subject composed to a 67-CELL label while the natural layout's declared cap is
+    // `NATURAL_MAX_NODE_WIDTH = 64`, so `label + 3` clamped to 64, `labelOverflow` was true, and the panel
+    // correctly refused a box and fell back to the rail — clause T9's safety net doing its job, not a defect.
+    // SECOND: `widestLabelCells` measures the COMPOSED label (`<glyph> <id> <KIND> <text>`), so a 59-cell
+    // TEXT still composed to ~68 and still tripped the net. The budget the text really has is roughly
+    // `64 − 12`, and that is now the fixture's target. The drawing is still wider than a 44-cell panel,
+    // which is exactly the state T1/T2 are about.
+    subject: "W1 natural width and panning",
+    expectedLabel: "W1 natural width and panning",
     blockedBy: ["T1"],
   },
   {
     id: "T3",
-    subject: "W2 — termaid rounded node boxes with rounded edge corners",
-    expectedLabel: "W2 termaid rounded node boxes with rounded edge corners",
+    subject: "W2 termaid rounded boxes",
+    expectedLabel: "W2 termaid rounded boxes",
     blockedBy: ["T1"],
   },
   {

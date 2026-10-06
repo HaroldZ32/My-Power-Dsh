@@ -3,41 +3,37 @@
   "task": "VERIFY · real gate sweep + real-PTY and real-browser captures + evidence records",
   "wave": "dag-edges-scroll",
   "branch": "feature/dag-edges-scroll",
-  "revision_at_head": "52cd964fd8f1398709b268273221033852892e3b",
+  "revision_at_head": "833e21b02b7e17e631f2ee9a1979eb2bd62a61bf",
   "note": "IN PROGRESS at write time; the TUI half (step 3 dist-freshness, step 4 PTY capture at three widths) is HELD on the captain's 'TUI landed + dist rebuilt' message, because packages/mpd-tui-plugin/dist is stale while five src files are newer. Every row below was MEASURED; none is inferred.",
   "steps": [
     {
       "step": 1,
       "command": "bun run typecheck",
-      "status": "PASS (current tree)",
+      "status": "PASS",
       "exit_code": 0,
-      "observed": "$ tsgo --noEmit -> no diagnostics. BASELINE at the pre-wave revision was also exit 0. A MID-WAVE reading taken at 15:49:54Z was RED (exit 1) with `packages/mpd-tui-plugin/src/panel-dag.ts(570,81): error TS2551: Property 'viewportCols' does not exist on type 'PanelViewport'`; that error was fixed by the TUI lane at 23:50:55 local and the re-read is green. Both readings are kept: logs/mid-typecheck.log (RED) and logs/baseline-typecheck.log.",
+      "observed": "bun run typecheck -> $ tsgo --noEmit, exit 0, no diagnostics. (BASELINE at the pre-wave revision was also exit 0; a MID-WAVE sample at 15:49:54Z was RED with `packages/mpd-tui-plugin/src/panel-dag.ts(570,81): error TS2551: Property 'viewportCols' does not exist on type 'PanelViewport'` and was fixed by the lane at 23:50:55.)",
       "logs": [
         "logs/baseline-typecheck.log",
-        "logs/mid-typecheck.log"
+        "logs/mid-typecheck.log",
+        "logs/final2-typecheck.log"
       ]
     },
     {
       "step": 2,
       "command": "bun test packages/mpd-tui-plugin/test",
-      "status": "RED — 9 arms, reported RED, not smoothed over",
-      "exit_code": 1,
-      "observed": "370 pass / 9 fail / Ran 379 tests across 18 files (baseline at the pre-wave revision: 332 pass / 2 fail / 334 across 17 files).",
-      "failing_arms": [
-        "test/panel-dag.test.ts · the scrollbar and the self-windowed viewport > the offset clamps to [0, max(0, content - viewport)] and never renders a blank page  [PRE-EXISTING at baseline]",
-        "test/panel-dag.test.ts · the scrollbar and the self-windowed viewport > FOCUS AUTO-SCROLL: the focused task is inside the rendered window at both ends of an overflowing board  [PRE-EXISTING at baseline]",
-        "test/graph.test.ts:179 · the arrowheads > an edge ENDS in a ▼ on the dependent's centre, in the cell above its box",
-        "test/graph.test.ts:197 · the arrowheads > a FAN-IN of three blockers still shows exactly ONE ▼",
-        "test/graph-rank.test.ts:278 · the invariants the geometry keeps, on a board that exercises every path > an edge leaves the BLOCKER's border and arrives above the BLOCKED task, one arrowhead per task",
-        "test/scene-visuals.test.ts:651 · a CJK fixture does not shear the layout > a wide-glyph label survives the clamps the scene applies",
-        "test/team-surface.test.ts:1207 · the team scene's focus > the wheel scrolls the graph",
-        "test/team-surface.test.ts:1252 · the team scene's focus > a NARROW terminal falls back to the rail rather than clipping the boxes",
-        "test/dag-fidelity.test.ts:1033 · W6 · radius = 0 reproduces the straight orthogonal path > the published polyline is CONTINUOUS and never degenerate at the declared radius"
-      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "observed": "382 pass / 0 fail / Ran 382 tests across 18 files. BASELINE was 332 pass / 2 fail / 334 across 17 files.",
+      "failing_arms": [],
       "reading": "Seven of the nine are the design-freeze's own 'arms that break on (e)' class (3-row-box row offsets, the ▼ row, the box width bound, corner/row literals), i.e. re-pointing not yet done rather than new defects.",
       "logs": [
         "logs/baseline-bun-test-mpd-tui-plugin.log",
-        "logs/mid-bun-test-tui-plugin.log"
+        "logs/mid-bun-test-mpd-tui-plugin.log",
+        "logs/final2-bun-test-mpd-tui-plugin.log"
+      ],
+      "the_two_pre_existing_arms": [
+        "(pass) the scrollbar and the self-windowed viewport > the offset clamps to [0, max(0, content - viewport)] and never renders a blank page",
+        "(pass) the scrollbar and the self-windowed viewport > FOCUS AUTO-SCROLL: the focused task is inside the rendered window at both ends of an overflowing board"
       ]
     },
     {
@@ -45,18 +41,21 @@
       "command": "bun test packages/mpd-bundle-plugin/test",
       "status": "PASS",
       "exit_code": 0,
-      "observed": "159 pass / 0 fail / Ran 159 tests across 7 files (baseline: 154 pass / 0 fail / 154 across 7).",
+      "observed": "159 pass / 0 fail / Ran 159 tests across 7 files (baseline 154 / 0 / 154 across 7).",
       "logs": [
         "logs/baseline-bun-test-mpd-bundle-plugin.log",
-        "logs/mid-bun-test-bundle-plugin.log"
+        "logs/final2-bun-test-mpd-bundle-plugin.log"
       ]
     },
     {
       "step": 3,
       "command": "node scripts/verify-dist-fresh.ts",
-      "status": "HELD — to be run on the captain's 'dist rebuilt' message",
-      "exit_code": null,
-      "observed": "Not run. MEASURED reason: packages/mpd-tui-plugin/dist/index.js mtime 22:20:24 while five src/*.ts are newer, so the gate would report the wave's own in-flight state rather than a verdict."
+      "status": "PASS",
+      "exit_code": 0,
+      "observed": "ok: 29/29 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed (the vendored MCP bundles + BUILD.lock metadata). Build toolchain: bun 1.4.0 from the repository toolchain (.toolchain/node_modules/.bin/bun).",
+      "logs": [
+        "logs/final2-dist-fresh.log"
+      ]
     },
     {
       "step": 4,
@@ -120,9 +119,9 @@
     {
       "step": 6,
       "command": "CJK scan of every capture (drawing vs detail)",
-      "status": "WEB DONE / TUI BASELINE ONLY",
-      "exit_code": null,
-      "observed": "WEB: the drawing's whole text is CJK-free while the pinned detail body keeps the original subject — clause C1 and C3 both measured, with the board's own Chinese subjects ('登','录','页','冻') as the negative control proving the scan could fail. TUI: the BASELINE scan found CJK in the drawing at 4/2/3 rows across the three widths; the post-wave scan runs with step 4."
+      "status": "PASS on both surfaces",
+      "exit_code": 0,
+      "observed": "TUI: cjkInDrawing=0 with cjkInDetail>=1 at all three widths (C1 satisfied on the drawing, C3 satisfied in the detail). WEB: dagDrawingHasNoCjk PASS with the board's own Chinese subjects as the negative control, and dagDetailPins keeping BOTH the ideograph subject (T1 `fix 登录页 styles`) and the punctuation-only one (T6 `！？。`)."
     },
     {
       "step": "vendor",
@@ -134,14 +133,88 @@
         "logs/vendor-asset-half.log",
         "logs/vendor-identity-half.log"
       ]
+    },
+    {
+      "step": 4,
+      "command": "bun evidence/.../captures/pty-dag-capture.ts --sandbox-root .mpd/recon/qa/tui-lanes/dag-verify --widths 100,140,220",
+      "status": "PASS — REAL PTY, three widths, on the post-fix dist 00e82b38",
+      "exit_code": 0,
+      "observed": "captured 3/3 widths; isolation=true; cjkClean=TRUE. FOUR PART STRUCTURE, identical verdicts at w100/w140/w220: rail=false boxRows=5 round=true head=true panMoved=true panStatic=true dagPanelLocated=true cjkInDrawing=0, cjkInDetail=1/4/3.",
+      "why_three_captures": [
+        "pty=BASELINE (pre-wave): rail=true, round=false, cjkInDrawing=4/2/3 — clause C1 VIOLATED, which a BEFORE capture must show.",
+        "pty-post (post-wave MAX_NODE_WIDTH still 34): rail=true, cjkInDrawing=0, cjkInDetail=4 — C1 green, C3 reachable, boxes NOT shown because the fixture's composed label was 67 cells against a 64-cell cap.",
+        "pty-fixed3 (post-fix, fixture labels inside the cap): rail=false boxRows=5 round=true head=true panMoved=true panStatic=true cjkInDrawing=0 cjkInDetail>=1."
+      ],
+      "artifacts": [
+        "captures/pty-fixed3/ (42 panes)",
+        "captures/pty-post/",
+        "captures/pty/",
+        "logs/classify-all.log"
+      ],
+      "driver": {
+        "path": "captures/pty-dag-capture.ts",
+        "sha256": "49c38de2c9e437fa4ed008b52181ddd6b28eb939cec44863ab4fce944e8918bf",
+        "self_test": "13 arms PASS, with negative controls (a CJK character inside a node box MUST redden; an unmoved drawing MUST NOT report a pan)",
+        "scope_split": "C1 is scanned over the DAG DRAWING only and C3 over the pinned DETAIL body, split on DAG_CHROME.pinMarker (◆) — see instrument_finding below"
+      },
+      "boxed_drawing_w220_pan3": [
+        "│──────────────────────────────╮                                    │",
+        "│K REQ DAG TUI                 │                                    │",
+        "│──────────┬───────────────────╯                                    │",
+        "│          ├──────────────────────────────────────────╮             │",
+        "│          ▼                                          ▼             │",
+        "│──────────┴───────────────────╮   ╭──────────────────┴─────────────│",
+        "│K W1 natural width and panning│   │ ○ T3 WRK W2 termaid rounded box│",
+        "│──────────┬───────────────────╯   ╰──────────────────┬─────────────│"
+      ],
+      "boxed_drawing_note": "Read off `captures/pty-fixed3/w220/pan3.pane.txt`: rounded corners (╭ ╮ ╰ ╯), the 5-row roomy box with its padding rows, `▼` heads with `┬`/`┴` in the border cell beneath them, and the LEFT EDGE CUT MID-BOX (`K REQ DAG TUI`) because the horizontal pan really moved the drawing.",
+      "gutters": {
+        "verticalGutterSeen": false,
+        "horizontalGutterSeen": false,
+        "reading": "No gutter pair was painted at any of the three widths. Clause T4 draws the horizontal gutter WHEREVER a vertical one is drawn, and both come from `gutterCells()`, which returns an EMPTY list when the content FITS the viewport. The vertical axis does not overflow here, so the pair is absent by the contract's own semantics; the horizontal overflow alone does not create one. Reported as observed, not scored as a pass or a fail."
+      },
+      "instrument_finding": {
+        "what": "The first post-fix reading reported cjkInDrawing=3 on rows like `│subject REQ · 冻结验收契约：│`. Those are the PINNED DETAIL BODY's rows: the detail is rendered INSIDE the panel's own frame, so its rows carry the frame's `│` and a box-rule test swept them into the C1 scan.",
+        "verdict": "A FALSE RED in MY instrument, not a product defect — and it is design-freeze risk #3 verbatim ('C1 is asserted over the wrong scope').",
+        "fix": "The DAG region is split on DAG_CHROME.pinMarker (◆) into a DRAWING half and a DETAIL half: C1 scans the drawing half only, C3 reads the detail half. A second anchor on the `subject `/`description ` lead-in was added after w140 showed the ◆ row can SCROLL OUT of the window while the detail's continuation rows stay visible. 13 self-test arms remain green.",
+        "second_instrument_finding": "`boxShape`/`tallestBox` counted the panel's own square FRAME as a node box until the region was anchored on the FRAME BORDER row (title text AND both top corners) rather than on the tab strip, which also spells `‹ MPD DAG ›`."
+      },
+      "logs": [
+        "logs/classify-all.log",
+        "/tmp not used: redirect targets are LITERAL paths"
+      ]
     }
   ],
   "honest_bounds": [
-    "The TUI half of steps 3, 4 and 6 is NOT DONE. It is held because packages/mpd-tui-plugin/dist is stale; a pane captured now would photograph the pre-wave drawing at the panel level.",
-    "The TUI suite is RED at 9 arms as of the last measurement and that RED is reported as RED. It is not a claim about the lane's final state: the lane was still writing when it was measured, and it will be re-measured on the captain's go.",
-    "The WEB baseline used in the BEFORE half is the previous wave's capture read off disk, not one produced by this lane at that revision; this lane's own browser capture is the AFTER half only.",
-    "No capture in this record was produced without a real terminal or a real browser: the PTY panes come from tmux `capture-pane -p -J` in a sandbox, and the PNG comes from headless Chromium driving the running Web app."
+    "The BOXED form was demonstrated only after TWO fixture shortenings, both declared at the point of change in `captures/seed-board.ts`. The FIRST post-fix capture (`pty-fixed`) still read `view rail`, and the reason is measured: `widestLabelCells` measures the COMPOSED label (`<glyph> <id> <KIND> <text>`), so the text budget is roughly `64 - 12` and the fixture's 67-cell and 59-cell labels both tripped `labelOverflow`. Clause T9's safety net is working; the capture simply could not see past it.",
+    "`pty-fixed` and `pty-fixed2` are KEPT beside `pty-fixed3` rather than deleted, because the sequence is the evidence that the safety net fires on a real board and that `NATURAL_MAX_NODE_WIDTH = 64` is a taste boundary rather than a bug.",
+    "No gutter pair was observed (see the `gutters` row) — reported as observed, with the contract's own reason, and NOT scored.",
+    "The panel-visibility two-reading plan was NOT taken: the first post-fix capture already painted `‹ MPD DAG ›` with our page in the sidebar at all three widths, so reading 1 was green and the documented user remedy was never applied. Nothing was written under `~/.dsh` or outside the sandbox.",
+    "The WEB baseline used in the BEFORE half is the previous wave's capture read off disk; this lane's own browser capture is the AFTER half only.",
+    "Every capture came from a real surface: tmux `capture-pane -p -J` on a real PTY in a sandbox for the TUI, headless Chromium driving the running Web app for the WEB."
   ],
   "artifacts_root": "evidence/dag/dag-edges-scroll/verify/20261006T145633Z",
-  "utc": "2026-10-06T16:03:39Z"
+  "utc": "2026-10-06T17:06:47Z",
+  "status": "COMPLETE — every step measured, nothing inferred",
+  "final_revision_pins": {
+    "packages/mpd-tui-plugin/dist/index.js": {
+      "sha256": "00e82b38fc37d13d9b1aa99dbd239a970333264a7bbeb268d65a663fa6f9ed23",
+      "mtime": "2026-10-07 00:43:53 +0800",
+      "bytes": 386256,
+      "grep_keepPanelEnable": 3,
+      "dist_carries": "MAX_NODE_WIDTH = 64"
+    },
+    "packages/mpd-bundle-plugin/client.js": "3dc0fa303cf5c30bfd24abc9ce97c709eb477e71a3f03161d5e0cc70d23b7dbd",
+    "packages/mpd-bundle-plugin/dist/index.js": "f8d222874b75b45c4de3e4b91220675e862516571e9abdc84d88271c1786ed62",
+    "packages/mpd-tui-adapter-plugin/dist/index.js": "ca40ecefa0282a7795d23724a759ebb3757eb458832ae245316c9450eae60d2c",
+    "note": "dist fresh: node scripts/verify-dist-fresh.ts -> ok 29/29 targets fresh, build toolchain bun 1.4.0 from .toolchain/node_modules/.bin/bun"
+  },
+  "artifacts_index": {
+    "result.json": "this file",
+    "output.log": "every gate log, both classify passes and the driver self-test",
+    "baseline-result.json": "the pre-wave reading, kept separately",
+    "captures/pty*/": "the three PTY capture generations",
+    "captures/web/ + captures/web-rerun/": "the WEB capture, before and after the CHECK was fixed",
+    "logs/": "raw per-command logs"
+  }
 }

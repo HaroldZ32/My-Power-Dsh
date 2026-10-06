@@ -81,6 +81,14 @@ const ROUND_CORNER: RegExp = /[\u256d\u256e\u2570\u256f]/
  */
 const DAG_TITLE: RegExp = /MPD[\s\u2500-\u257f]*DAG/i
 
+/**
+ * The mark that OPENS the pinned detail body inside the panel: `DAG_CHROME.pinMarker` (`◆`) in column 1.
+ *
+ * It is the boundary between clause C1's scope and clause C3's, and it is read off the pane rather than
+ * assumed from a row count because the detail's own length depends on the pinned task.
+ */
+const DETAIL_MARK: RegExp = /[\u2502\s]\u25c6\s|^\s*\u25c6\s|[\u2502\s](?:subject|description)\s/
+
 /** The `▼` head clause T7 requires, whose tip must touch the dependent's top border. */
 const HEAD_DOWN = "\u25bc"
 
@@ -126,6 +134,8 @@ export interface WidthVerdict {
   readonly panMoved: boolean
   /** Every box/edge row that carried a CJK character — clause C1 requires this to be EMPTY. */
   readonly cjkInDrawing: readonly string[]
+  /** The pinned detail body's rows that carry CJK — clause C3's own evidence, kept apart from C1. */
+  readonly cjkInDetail: readonly string[]
   /** Every OTHER sidebar row carrying CJK, reported so the reader can see what the clause exempts. */
   readonly cjkOutsideDrawing: readonly string[]
   /** The Chinese fixture subjects found verbatim in a NON-box/edge row — clause C3's positive half. */
@@ -312,13 +322,19 @@ export function classifyWidth(
   for (const panel of panels) {
     if (panel.divider >= 0 && panel.bar.length > 0 && !panelBars.includes(panel.bar)) panelBars.push(panel.bar)
   }
-  /** Each frame's DAG region: its sidebar's rows from the DAG panel's own title row downward. */
-  const regions = panels.map((panel) => ({ name: panel.name, rows: dagRegion(panel.rows) }))
+  /** Each frame's DAG region split into THE DRAWING and THE PINNED DETAIL BODY. */
+  const regions = panels.map((panel) => {
+    /** This frame's region rows. */
+    const rows = dagRegion(panel.rows)
+    /** The row the pinned detail body opens on, or `-1` when nothing is pinned in this frame. */
+    const at = rows.findIndex((row) => DETAIL_MARK.test(row))
+    return { name: panel.name, rows, drawing: at < 0 ? rows : rows.slice(0, at), detail: at < 0 ? [] : rows.slice(at) }
+  })
   /** True when at least one frame carried the DAG panel's title, i.e. the scan had a subject at all. */
   const dagPanelLocated = regions.some((region) => region.rows.length > 0)
   /** The DAG region that drew the most box/edge rows; the geometry claims are read off it. */
   const richestRows = regions.reduce((best, region) =>
-    drawingRows(region.rows).length > drawingRows(best).length ? region.rows : best, [] as readonly string[])
+    drawingRows(region.drawing).length > drawingRows(best).length ? region.drawing : best, [] as readonly string[])
   /** The rows of that region that belong to the DRAWING. */
   const drawing = drawingRows(richestRows)
   /**
@@ -339,9 +355,9 @@ export function classifyWidth(
    * A pan can only be measured where the drawing was on screen; a frame showing the host's own panel says
    * nothing about panning and is excluded rather than averaged in.
    */
-  const panRegions = regions.filter((region) => region.name.startsWith("pan") && region.rows.some((row) => BOX_RULE.test(row)))
+  const panRegions = regions.filter((region) => region.name.startsWith("pan") && region.drawing.some((row) => BOX_RULE.test(row)))
   /** One signature per such frame, so the pan's own movement reads left-to-right. */
-  const panSignatures = panRegions.map((region) => ({ step: region.name, signature: panSignature(region.rows) }))
+  const panSignatures = panRegions.map((region) => ({ step: region.name, signature: panSignature(region.drawing) }))
   /** The rows R8 pins in place: everything the drawing region holds that is NOT a box/edge row. */
   const staticRows = richestRows.filter((row) => !BOX_RULE.test(row) && row.trim().length > 0)
   /** Every non-box/edge row of one DAG region, which is what R8's comparison is made over. */
@@ -354,9 +370,9 @@ export function classifyWidth(
    * frames: the claim under test is "while the DAG moved sideways, the rows AROUND it did not", so both
    * measurements have to come from frames where the DAG was on screen with the same panel around it.
    */
-  const staticAtStart = staticOf(panRegions[0]?.rows)
+  const staticAtStart = staticOf(panRegions[0]?.drawing)
   /** The same rows on the LAST DAG-bearing pan frame. */
-  const staticAtEnd = staticOf(panRegions[panRegions.length - 1]?.rows)
+  const staticAtEnd = staticOf(panRegions[panRegions.length - 1]?.drawing)
   /**
    * The clause C3 lookup: for one subject, is it present in some frame's sidebar, and is the row carrying
    * it a box/edge row of the DAG? The two answers are kept apart on purpose — presence is C3's positive
@@ -374,21 +390,18 @@ export function classifyWidth(
     /** Set once the subject was seen on a row of the DAG region that is part of the BOX/EDGE drawing. */
     let inBox = false
     for (const region of regions) {
-      /** The last row of this region that is part of the box/edge drawing. */
-      let lastDrawn = -1
-      for (let i = 0; i < region.rows.length; i += 1) if (BOX_RULE.test(region.rows[i] ?? "")) lastDrawn = i
-      for (let i = 0; i < region.rows.length; i += 1) {
-        /** The row under inspection. */
-        const row = region.rows[i] ?? ""
-        if (!row.includes(subject)) continue
-        if (BOX_RULE.test(row)) inBox = true
-        else if (i > lastDrawn) found = true
-      }
+      for (const row of region.detail) if (row.includes(subject)) found = true
+      for (const row of region.drawing) if (row.includes(subject) && BOX_RULE.test(row)) inBox = true
     }
     return { found, inBox }
   }
   /** Every box/edge row of a DAG region that carries CJK — clause C1 requires this to be EMPTY. */
-  const cjkInDrawing = unique(regions.flatMap((region) => region.rows.filter((row) => BOX_RULE.test(row) && CJK.test(row))))
+  // CLAUSE C1 IS SCANNED OVER THE DRAWING ALONE, and the split is not cosmetic: the pinned detail body is
+  // rendered INSIDE the panel's own frame, so its rows carry the frame's `│` and a scan that treated every
+  // box-rule row as drawing text reported the DETAIL's own Chinese as a drawing violation. Clause C1 names
+  // the drawing as "node box text, node row text, edge glyphs, legend lines"; clause C3 REQUIRES the detail
+  // body to keep the original subject, so the two halves must be measured apart or they red each other.
+  const cjkInDrawing = unique(regions.flatMap((region) => region.drawing.filter((row) => BOX_RULE.test(row) && CJK.test(row))))
   /** Every OTHER sidebar row carrying CJK: the legend, the pinned detail body and the panel's own chrome. */
   const cjkOutsideDrawing = unique(panels.flatMap((panel) =>
     panel.rows.filter((row) => !BOX_RULE.test(row) && row.trim().length > 0 && CJK.test(row))))
@@ -417,6 +430,7 @@ export function classifyWidth(
     staticRows,
     panStatic: panRegions.length >= 2 && staticAtStart.length > 0 && staticAtStart.join("\n") === staticAtEnd.join("\n"),
     cjkInDrawing,
+    cjkInDetail: unique(regions.flatMap((region) => region.detail.filter((row) => CJK.test(row)))),
     cjkOutsideDrawing,
     chineseSubjectsInDetail: chineseInDetail,
     chineseSubjectsInBox: chineseInBox,
@@ -551,7 +565,7 @@ export function selfTest(): void {
   if (bad.cjkInDrawing.length === 0) throw new Error("self-test: a Chinese character inside a node box was NOT caught")
   if (bad.chineseSubjectsInBox.length === 0) throw new Error("self-test: a Chinese subject inside a box row was not reported as a C1 violation")
   /** Clause C3: the same Chinese, outside the drawing, must be REPORTED rather than silently accepted. */
-  const detail = good.split("\n").concat([row("", 30) + "detail " + CHINESE_SUBJECTS[0]]).join("\n")
+  const detail = good.split("\n").concat([row("", 30) + "│ ◆ T2", row("", 30) + "│ subject " + CHINESE_SUBJECTS[0]]).join("\n")
   const withDetail = classifyWidth(96, "mpd: team fixture", [{ name: "pin", text: detail }], [])
   if (withDetail.chineseSubjectsInDetail.length === 0) throw new Error("self-test: the pinned Chinese detail was not found outside the drawing")
   if (withDetail.chineseSubjectsInBox.length !== 0) throw new Error("self-test: a detail row outside the box/edge drawing was misreported as inside it")
@@ -692,6 +706,7 @@ function main(argv: readonly string[]): number {
         + " dagPanelLocated=" + verdict.dagPanelLocated
         + " cjkInDrawing=" + verdict.cjkInDrawing.length + " detailKept=" + verdict.chineseSubjectsInDetail.length)
       for (const row of verdict.staticRows) console.log("    STATIC(R8):     " + JSON.stringify(row))
+      console.log("    cjkInDetail=" + verdict.cjkInDetail.length + " (clause C3; EXPECTED > 0 when a Chinese task is pinned)")
       for (const row of verdict.cjkInDrawing) console.log("    CJK-IN-DRAWING: " + JSON.stringify(row))
       for (const row of verdict.cjkOutsideDrawing) console.log("    CJK-OUTSIDE:    " + JSON.stringify(row))
     }

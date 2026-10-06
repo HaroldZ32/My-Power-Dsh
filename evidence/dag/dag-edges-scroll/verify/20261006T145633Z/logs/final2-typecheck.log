@@ -1,0 +1,6 @@
+# command: bun run typecheck
+# revision: 98aa4bb523babe5a878bd0e409f380813f574fda
+# measured: 2026-10-06T16:52:23Z
+
+$ tsgo --noEmit
+[exit=0]

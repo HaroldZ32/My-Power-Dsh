@@ -1,18 +1,10 @@
 {
-  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/dag-verify",
+  "root": "evidence/dag/dag-edges-scroll/verify/20261006T145633Z/captures/pty",
   "widths": [
     100,
     140,
     220
   ],
-  "board": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/dag-verify/ws/.mpd/team/teams/team-dag-verify.json",
-  "isolation": {
-    "ok": true,
-    "checked": 1,
-    "keys": [
-      "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-dag-verify-ws--"
-    ]
-  },
   "verdicts": [
     {
       "cols": 100,
@@ -21,9 +13,9 @@
       "dagPanelLocated": true,
       "dagCommandOpened": false,
       "panelBars": [
-        "‹ 待办 › ▸ ◆ M ◈ ◆",
         "≡ ▸ ◆ M ‹ MPD DAG › ◆",
-        "≡ ▸ ‹ 代理 › M ◈ ◆         ⤢"
+        "≡ ▸ ‹ 代理 › M ◈ ◆         ⤢",
+        "‹ 待办 › ▸ ◆ M ◈ ◆"
       ],
       "graphHeaderSeen": true,
       "roundedBoxSeen": false,
@@ -36,11 +28,11 @@
       "railRendered": true,
       "panSignatures": [
         {
-          "step": "pan3",
+          "step": "panback",
           "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
         },
         {
-          "step": "panback",
+          "step": "pan3",
           "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
         }
       ],
@@ -50,21 +42,24 @@
       ],
       "panStatic": true,
       "cjkInDrawing": [
-        "│✓ T1 WRK REQ · 冻结   verify│  ",
-        "││  └─▸ ○ T4 WRK REV — 独立验│  ",
+        "│▶ T1 WRK REQ · 冻结   verify│  ",
         "││     └─▸ ○ T5 WRK 完全中文 │  ",
-        "│▶ T1 WRK REQ · 冻结   verify│  "
+        "│✓ T1 WRK REQ · 冻结   verify│  ",
+        "││  └─▸ ○ T4 WRK REV — 独立验│  "
+      ],
+      "cjkInDetail": [
+        " Esc 聊天 · ←/→ 切换 · z 缩…    "
       ],
       "cjkOutsideDrawing": [
-        " ‹ 待办 › ▸ ◆ M ◈ ◆             ",
-        " Ctrl+B 聚焦侧栏                ",
         " Esc 聊天 · ←/→ 切换 · z 缩…    ",
         " ≡ ▸ ‹ 代理 › M ◈ ◆         ⤢   ",
         " 0 运行中   0 已完成            ",
         "前会话暂无子代理        ",
         "    让主代理发起 Task           ",
         " ↑/↓ 选择 · Enter 查看详情 ·    ",
-        " Esc 回到聊天                   "
+        " Esc 回到聊天                   ",
+        " ‹ 待办 › ▸ ◆ M ◈ ◆             ",
+        " Ctrl+B 聚焦侧栏                "
       ],
       "chineseSubjectsInDetail": [],
       "chineseSubjectsInBox": [],
@@ -106,13 +101,14 @@
         "│✓ T1 WRK REQ · 冻结验收契约：DAG   verify│  ",
         "││     └─▸ ○ T5 WRK 完全中文的  unassigned│  "
       ],
+      "cjkInDetail": [],
       "cjkOutsideDrawing": [
         " ‹ 待办 › ▸ ◆ M ◈ ◆                          ",
-        " Ctrl+B 聚焦侧栏                             ",
         " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     ",
         " ≡ ‹ 任务 › ◆ M ◈ ◆                      ⤢   ",
         " 0 运行中 0 已完成                           ",
-        "           当前会话暂无后台任务              "
+        "           当前会话暂无后台任务              ",
+        " Ctrl+B 聚焦侧栏                             "
       ],
       "chineseSubjectsInDetail": [],
       "chineseSubjectsInBox": [],
@@ -126,11 +122,11 @@
       "dagPanelLocated": true,
       "dagCommandOpened": false,
       "panelBars": [
-        "‹ 待办 › ▸ ◆ M ◈ ◆",
+        "≡ ▸ ◆ M ◈ ‹ MPD workmate ›",
         "≡ ▸ ◆ M ‹ MPD DAG › ◆",
-        "≡ ‹ 任务 › ◆ M ◈ ◆                                                ⤢",
         "≡ ▸ ◆ ‹ MPD › ◈ ◆",
-        "≡ ▸ ◆ M ◈ ‹ MPD workmate ›"
+        "‹ 待办 › ▸ ◆ M ◈ ◆",
+        "≡ ‹ 任务 › ◆ M ◈ ◆                                                ⤢"
       ],
       "graphHeaderSeen": true,
       "roundedBoxSeen": false,
@@ -152,10 +148,11 @@
         "││  └─▸ ○ T4 WRK REV — 独立验证：真实 PTY 与真   unassigned  ⇠ T2+T3│  ",
         "││     └─▸ ○ T5 WRK 完全中文的任务标题：圆角盒与拐角渲染  unassigned│  "
       ],
+      "cjkInDetail": [],
       "cjkOutsideDrawing": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               ",
         " ‹ 待办 › ▸ ◆ M ◈ ◆                                                    ",
         " Ctrl+B 聚焦侧栏                                                       ",
-        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               ",
         " ≡ ‹ 任务 › ◆ M ◈ ◆                                                ⤢   ",
         " 0 运行中 0 已完成                                                     ",
         "                        当前会话暂无后台任务                           "
