@@ -293,6 +293,36 @@
   /** How far an edge's lead-in and lead-out reach into the gap between two columns. */
   const EDGE_LEAD = 24
   /** How far a member's current task is truncated before it is drawn. */
+  /**
+   * Read the session id off the host's own sidebar DOM marker, as a LAST resort.
+   *
+   * WHY THIS EXISTS (MEASURED 2026-10-05, on the installed harness): the right sidebar renders a tab
+   * body with an EMPTY props object — `renderSlot(seat, {}, …)` — so neither `props.sessionId` nor
+   * `props.scope.sessionId` carries anything, and the panel addressed the workspace principal instead
+   * of the session on screen. The host does publish the session, on
+   * `[data-sidebar-right-session]` elements that are SIBLINGS of the pane rather than ancestors of the
+   * body, so walking up cannot find it either. This is the host's own marker (its pane reports it and
+   * the client uses it for hit-testing), and reading it is the only route from a tab body to its own
+   * session without a prop the host does not pass.
+   *
+   * TOTAL and side-effect free: no `document` (a non-browser render, or a test) answers "", a marker
+   * without the attribute answers "", and the first marker wins because a document holds one right
+   * sidebar per session and the visible pane's is the one the browser reports first.
+   * @returns the DOM-advertised session id, or "" when the page does not advertise one.
+   */
+  function sessionIdFromPane(): string {
+    /** The page's document, or undefined outside a browser. */
+    const doc = typeof document === "undefined" ? undefined : document
+    if (doc === undefined || typeof doc.querySelector !== "function") return ""
+    /** The first element carrying the host's session marker. */
+    const marked = doc.querySelector("[data-sidebar-right-session]")
+    if (marked === null) return ""
+    /** The marker's value, when it is a non-empty string. */
+    const value = marked.getAttribute("data-sidebar-right-session")
+    return typeof value === "string" ? value : ""
+  }
+
+  /** How much of a task subject a node or a member card shows before it ellipsizes. */
   const SUBJECT_MAX = 30
   /** The colour a focused edge draws in — a token with its literal fallback, like every other value here. */
   const FOCUS_EDGE = "var(--dsw-alias-label-secondary, #5b6472)"
@@ -693,7 +723,7 @@
         /** The host's props, read leniently: both hosts spell the session differently. */
         const seat = (props ?? {}) as { sessionId?: unknown; scope?: { sessionId?: unknown } }
         /** The session this panel addresses; empty asks the route for the workspace principal. */
-        const sessionId = String(seat.sessionId ?? seat.scope?.sessionId ?? "")
+        const sessionId = String(seat.sessionId ?? seat.scope?.sessionId ?? "") || sessionIdFromPane()
         /** The polled store and its setter. */
         const [store, setStore] = react.useState({ state: null, plan: null, contracts: {}, error: undefined } as TeamStore)
         // One poller per session: the effect re-runs when the host hands this panel a different one.

@@ -25,7 +25,7 @@
 // The DOM lib above is referenced PER FILE on purpose: the `page.evaluate(...)` callbacks below run
 // in the BROWSER, so they need `document`/`Element` types, while every other script in this lane is
 // Node-only and must not silently gain browser globals.
-import { mkdirSync, writeFileSync } from "node:fs"
+import { mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 /** Subset of playwright's `ConsoleMessage` that this script reads. */
@@ -201,6 +201,8 @@ interface CaptureReport {
   sessionCreate?: SessionCreateResult
   /** The session the driver REUSED, when the caller named one instead of creating a session. */
   sessionReused?: string
+  /** The session the TEAM PANEL asked the route about — observed from its own request. */
+  teamPanelSession?: string
   /** The session id the driver created or reused (the one a panel SHOULD render). */
   sessionId?: string
   /** The session the team panel rendered, when it reported one. */
@@ -227,6 +229,10 @@ interface CaptureReport {
   teamFocusAfterLeave?: string
   /** The task id pinned into the detail body (`data-mpd-detail`), absent while nothing is pinned. */
   teamDetailAfterClick?: string
+  /** Every node's measured box, so the LAYOUT is checkable and not only eyeballed. */
+  teamNodeBoxes?: { id: string; x: number; y: number; w: number; h: number }[]
+  /** Overlapping node pairs — 0 on a correct layout, because two nodes colliding is unreadable. */
+  teamNodeOverlaps?: string[]
   /** The headline claims as booleans the run is graded on. */
   checks?: Record<string, boolean>
   /** True when every check held AND every step completed. */
@@ -285,6 +291,8 @@ const OUT: string = arg("out", "/data-out/shots")
 const WORKSPACE: string = arg("workspace", "/data/ws")
 /** A session to REUSE instead of creating one, so a pre-seeded team is the one rendered. */
 const SESSION: string = arg("session", "")
+/** Which board the capture seeds: `normal` (the chain) or `malformed` (absent blocker + cycle). */
+const SEED_BOARD: "normal" | "malformed" = arg("board", "normal") === "malformed" ? "malformed" : "normal"
 /** Viewport width in CSS pixels; wide enough to show the composer and the sidebar together. */
 const WIDTH: number = Number(arg("width", "1600"))
 /** Viewport height in CSS pixels. */
@@ -452,6 +460,60 @@ function sessionIdOf(body: string): string {
   return matched === null ? "" : matched[1] ?? ""
 }
 
+/**
+ * Pull the session id out of the team routes the page has requested.
+ *
+ * THE PANEL'S OWN ANSWER to "which session am I showing", and the only source that is right by
+ * construction: it is the id the view itself put on the wire. The last matching request wins, because
+ * the panel re-polls and a session switch changes the id mid-run.
+ * @param routes - every `/plugins/mpd-team/*` URL the page requested, in request order.
+ * @returns the most recently requested session id, or an empty string when none named one.
+ */
+function sessionIdOfRoutes(routes: readonly string[]): string {
+  /** The id of the newest route that named one. */
+  let found = ""
+  for (const url of routes) {
+    /** The `sessionId` query value, when this route carries one. */
+    const matched = /[?&]sessionId=([^&]+)/.exec(url)
+    if (matched !== null && matched[1] !== undefined && matched[1] !== "") found = decodeURIComponent(matched[1])
+  }
+  return found
+}
+
+/**
+ * Every session id the app's own store holds for the workspace under inspection.
+ *
+ * The store keys a workspace directory by its path with separators folded into dashes
+ * (`/data/ws` -> `--data-ws--`) and holds one directory per session beneath it. Reading it is how the
+ * driver learns the ids the APP can display, which is the set that has to carry a board — the id a
+ * driver creates through the RPC is only one of them and, measured 2026-10-05, frequently not the one
+ * on screen. Best-effort by design: an unreadable store answers `[]` and the caller still seeds the id
+ * it created.
+ * @returns the session ids found, or an empty list when the store cannot be read.
+ */
+function listSessions(): string[] {
+  /** The session store the Web sandbox uses. */
+  const root = "/data/dsh-web/sessions"
+  /** The ids collected across every workspace directory. */
+  const found: string[] = []
+  try {
+    for (const project of readdirSync(root)) {
+      /** One workspace directory, skipped when it is not enumerable. */
+      const projectPath = join(root, project)
+      try {
+        for (const session of readdirSync(projectPath)) {
+          if (session !== "" && !session.startsWith(".")) found.push(session)
+        }
+      } catch {
+        // A file where a directory was expected is not a session store; skip it.
+      }
+    }
+  } catch {
+    // No store yet (a first run): the caller still seeds the session it created itself.
+  }
+  return found
+}
+
 // clickText — reach a surface the way a person does (the app is a SPA: /settings is a 404).
 const clickText = async (re: RegExp, opts: ClickOptions = {}): Promise<string> => {
   // The first element whose visible text matches.
@@ -578,8 +640,15 @@ await step("06-team-panel", async () => {
       /** The board module, present when the tooling directory was shipped into the container. */
       const fixture = await import("/tmp/mpd-fixture/team-fixture.mts") as { seedBoard?: (board: "normal" | "malformed", sessionId: string, workspace: string) => unknown }
       if (typeof fixture.seedBoard === "function") {
-        fixture.seedBoard("normal", usedSession, WORKSPACE)
-        console.log("[capture] seeded the normal board for " + usedSession)
+        // EVERY SESSION, not just this one. The session created just above is NOT necessarily the one
+        // the app will display — measured 2026-10-05, it renders a session of its own choosing — and
+        // enumerating the store costs nothing while removing the guess completely. `listSessions()`
+        // reads the on-disk store the app itself reads.
+        /** Every session the store holds, plus the one just created. */
+        const sessions = [...new Set([...listSessions(), usedSession])]
+        for (const id of sessions) fixture.seedBoard(SEED_BOARD, id, WORKSPACE)
+        console.log(`[capture] seeded the ${SEED_BOARD} board for ${sessions.length} session(s), including ${usedSession}`)
+        writeFileSync(join(OUT, "seeded-sessions.txt"), sessions.join("\n") + "\n")
       } else {
         console.log("[capture] the fixture module exposes no seedBoard — the panel will render whatever is on disk")
       }
@@ -604,11 +673,13 @@ await step("06-team-panel", async () => {
   // BETWEEN the two labels the checks below match, so a short cap could hide `TASKS (n)` and turn a
   // working panel into a false failure. Measured shape: header + progress + N member cards + the graph.
   report.teamPanelText = await bodyText(6000)
-  // RECORD WHICH SESSION THE PANEL ACTUALLY RENDERED, from the root's own attribute plus the URLs the
-  // page asked for. Without this the report says "no team" without saying FOR WHOM, which is the one
-  // fact needed to tell "the fixture missed the session" from "the view cannot see the route".
-  report.teamRenderedSession = report.sessionId
-  report.teamRouteRequests = requestedTeamRoutes.slice(-4)
+  // RECORD WHICH SESSION THE PANEL ACTUALLY ASKED ABOUT. This is the honest answer to "no team", and
+  // it is the ONLY reliable way to learn it: MEASURED 2026-10-05, the Web app does not render the
+  // session a driver creates through the RPC — it renders one of its own choosing, so a board seeded
+  // for the created id never reaches the panel that is on screen. The panel's own request carries the
+  // id it wants, so the driver reads it from there and seeds THAT one (step 07).
+  report.teamRouteRequests = [...requestedTeamRoutes]
+  report.teamPanelSession = sessionIdOfRoutes(requestedTeamRoutes)
   return shot("06-team-panel")
 })
 
@@ -621,6 +692,33 @@ await step("06-team-panel", async () => {
 // `dispatchEvent` would prove nothing about what a person's pointer does. The box is read first and
 // the pointer is moved to its centre, which is the same path a human takes.
 await step("07-team-graph-interaction", async () => {
+  // ── CLOSE THE SEEDING RACE, THEN WITNESS THE GRAPH ─────────────────────────────────────────────
+  // NOTE THE ORDER, because it is the whole fix: the panel is opened FIRST (step 06), so the route it
+  // asks about is OBSERVED (`report.teamPanelSession`) rather than guessed, and only then is that
+  // session seeded. The view re-reads every 2s, so the very next poll renders the board — no reload,
+  // and no dependence on which session the app decided to display.
+  //
+  // An earlier shape of this step seeded a session the DRIVER created and then reloaded the page; it
+  // could never work, because the app still chose a different session after the reload.
+  if (report.teamPanelSession !== undefined && report.teamPanelSession !== "") {
+    try {
+      /** The board module, present when the tooling directory was shipped into the container. */
+      const fixture = await import("/tmp/mpd-fixture/team-fixture.mts") as { seedBoard?: (board: "normal" | "malformed", sessionId: string, workspace: string) => unknown }
+      if (typeof fixture.seedBoard === "function") {
+        fixture.seedBoard(SEED_BOARD, report.teamPanelSession, WORKSPACE)
+        console.log(`[capture] seeded the ${SEED_BOARD} board for the panel's own session ${report.teamPanelSession}`)
+        // The poll interval is 2000ms; two intervals plus a margin is the deterministic wait, and it
+        // is a WAIT FOR A CONDITION rather than a fixed sleep dressed up as one — the loop stops as
+        // soon as a node appears.
+        for (let attempt = 0; attempt < 12; attempt++) {
+          await page.waitForTimeout(700)
+          if ((await page.locator("[data-mpd-node]").count()) > 0) break
+        }
+      }
+    } catch (error) {
+      console.log("[capture] could not seed the panel's session (" + messageOf(error).slice(0, 90) + ")")
+    }
+  }
   /** The rendered graph before any pointer work: what exists, and whether a chain is active. */
   const before = await readTeamGraph(page)
   report.teamTabId = before.tabId ?? ""
@@ -640,6 +738,33 @@ await step("07-team-graph-interaction", async () => {
   await page.mouse.move(4, 4, { steps: 8 })
   await page.waitForTimeout(900)
   report.teamFocusAfterLeave = (await readTeamGraph(page)).focus ?? ""
+  // ── THE LAYOUT ITSELF, MEASURED ────────────────────────────────────────────────────────────────
+  // A screenshot shows that something is drawn; it cannot show whether two nodes COLLIDE, and a graph
+  // whose boxes overlap is unreadable however green its attributes are. Every node's box is read from
+  // the DOM and each pair is tested for intersection, so "the geometry is right" is an assertion rather
+  // than an impression — the reviewer's own finding that the visual claim had no artifact behind it.
+  report.teamNodeBoxes = await page.locator("[data-mpd-node]").evaluateAll((els: Element[]) =>
+    els.map((el) => {
+      /** The node's box in viewport coordinates. */
+      const rect = el.getBoundingClientRect()
+      return { id: String(el.getAttribute("data-mpd-node")), x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) }
+    }))
+  /** Every pair of node boxes that intersect, named by both ids. */
+  report.teamNodeOverlaps = []
+  const boxes = report.teamNodeBoxes
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      /** One candidate pair. */
+      const a = boxes[i]
+      /** The other candidate pair. */
+      const b = boxes[j]
+      if (a === undefined || b === undefined) continue
+      // A 1px tolerance: a sub-pixel rounding difference is not a collision a person can see.
+      if (a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1) {
+        report.teamNodeOverlaps.push(a.id + "~" + b.id)
+      }
+    }
+  }
   // The pin: a real click on the same node must reveal the detail body for THAT id.
   await node.click({ timeout: 6000, force: true }).catch(() => {})
   await page.waitForTimeout(1200)
@@ -693,6 +818,8 @@ const checks: Record<string, boolean> = {
   // The hover chain fired AND cleared: both readings are required, because a chain that latches on
   // and never clears is a stuck overlay rather than a focus chain.
   teamGraphHoverFocusChain: report.teamFocusWhileHovered === "chain" && report.teamFocusAfterLeave === "none",
+  // The layout drawn is a layout a person can READ: no two node boxes collide.
+  teamGraphNodesDoNotOverlap: (report.teamNodeOverlaps ?? []).length === 0 && (report.teamNodeBoxes ?? []).length >= 2,
   // The pin: a click put a task id into the detail body, and that id is a real rendered node.
   teamGraphClickPinsDetail: (report.teamDetailAfterClick ?? "").length > 0 && (report.teamNodes ?? []).includes(report.teamDetailAfterClick ?? ""),
   // ── R2, decided from the CONTROL VALUES, not from the text dump ─────────────────────────────────

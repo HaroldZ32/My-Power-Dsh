@@ -284,35 +284,38 @@ screenshots. A capture that predates the change it claims to verify is a stale-e
 | Single pinned-toolchain dist rebuild (`bun@1.4.0` from `.toolchain`, NOT the system 1.4.2 — a different bun minor rewrites the emitted bytes and the gate reddens on all 29 targets) | DONE, `verify-dist-fresh` 29/29 fresh |
 | Static gates | `bun test packages` 1524 pass / 0 fail; `verify:comments` PASS; `verify:rows` 33 ids; `verify:docs` PASS; `typecheck` clean in every file this wave touched |
 | **R2 VERIFIED ON SCREEN** | `evidence/webui-tui-i18n/integration/shots/04-settings-mpd.png` — the MPD section renders rounded 34px controls, hairline field separators and tertiary hints, consistent with the official sections beside it, and the two bound fields read `20000` / `true` from the seeded `.mpd/mpd.jsonc` (`report.json` → `mpdBindingProbe {diffLimit:"20000", autoCheck:"true", controls:28}`) |
-| **R1 on screen: PARTIAL** | The settings half of the same run is green, and the view/route are proven (see below), but the graded capture has NOT yet photographed a POPULATED team panel. Stated as partial, not claimed. |
+| **R1 VERIFIED ON SCREEN, and the layout asserted** | `06-team-panel.png` + `07-team-graph-hover.png` in `evidence/webui-tui-i18n/integration/shots/`, with `report.json` carrying the machine-readable half: `data-mpd-graph="ranks=4 edges=4"`, nodes `T1..T6`, edges `T4<-T1, T4<-T3, T5<-T4, T6<-T5`, `teamFocusWhileHovered="chain"` → `teamFocusAfterLeave="none"`, and `teamDetailAfterClick="T6"` |
+| **R3 VERIFIED ON THE TUI** | the four panels render in the container's live TUI (`MPD 模型槽位 → MPD 提供商 → MPD 模型 → MPD 推理强度`) and the chosen route LANDS: `/data/dsh-tui/profiles/dsh-tui/cordis.patch.yml` gained `teamModels.slot3 {provider: deepseek-official, model: deepseek-flash, reasoningEffort: off}` — the exact values the walk selected |
 
-### 8a. R1 — what IS proven, and the one step that is not
+### 8a. R1 — CLOSED, and how the blocker was actually broken
 
-**Proven.** (a) `packages/mpd-bundle-plugin/test/team-view.test.ts` drives the REAL source bytes and pins
-the DAG: one column per `depth`, one node per task, one drawn edge per board-resident `blockedBy`, the
-ghost-blocker case drawing nothing, the clamped cycle back-edge, the hover focus chain and the
-click-to-pin detail. (b) The ROUTE serves the team: a direct in-container call to
-`/plugins/mpd-team/state?sessionId=<seeded>` answered
-`{workspace:"/data/ws", team:{name:"webui-tui-i18n", links:4}, counts:{total:6,…}, members:[lead,…]}`
-while the same route WITHOUT that parameter answered `team:null` — so the read path and the fixture
-both work. (c) The client bundle the harness serves carries every contract §3a attribute
-(`data-mpd-team-tab|graph|rank|node|edge|detail|focus` present in `client.js`).
+**The blocker was session SELECTION, not the panel.** The Web app renders a session of its own
+choosing rather than the one a driver creates through the RPC, so a board seeded for the created id
+never reached the panel on screen: the view fetched `/plugins/mpd-team/state?sessionId=<id>` for a
+session nobody had seeded, got `team:null`, and correctly drew its empty state. Three earlier attempts
+failed for three DIFFERENT reasons, each measured and each recorded in the tooling's own comments
+(`docker exec -e NAME` delivered an empty string; `.ts` under `/data` is CommonJS; `page.evaluate(async
+fn)` is not evaluated in the page in this playwright build).
 
-**NOT yet proven.** A screenshot of the populated panel. The obstacle is HARNESS SELECTION, not the
-panel: the Web app renders a session of its own choosing rather than the one a driver creates, so a
-board seeded for the created id is not the board the panel reads. Three approaches were built and each
-was defeated by a DIFFERENT measured obstacle, all recorded in the tooling's own comments:
-`docker exec -e NAME` delivered an empty string (base64 payloads arrived empty); `.ts` is CJS inside the
-container's `/data` (fixed by shipping `.mts`); a nested-heredoc payload split quietly produced a broken
-`awk` program (fixed by `docker cp`); and `page.evaluate(async fn)` is not evaluated in the page in this
-playwright build (fixed — the collectors are sync now).
+**What closed it.** Two changes, neither of them a product change:
 
-**THE NEXT STEP, named and sized.** Seed the session the PANEL renders rather than one the driver
-creates. The reliable id source is the panel's own request: attach the `request` listener BEFORE the
-first Team-tab click, then seed that exact id from inside the same run — `capture.mts` now records
-`report.teamRouteRequests` for exactly this, and `team-fixture.mts#seedBoard` is importable for it. The
-remaining work is one wiring change in `capture.mts` step 06 (seed from the observed request, then
-re-open the tab), not a product change.
+1. **The view reads the session from the host's own DOM marker when the props do not carry one.**
+   `team-view.ts#sessionIdFromPane` falls back to `[data-sidebar-right-session]` — the attribute the
+   right sidebar itself publishes on the pane. This is a MEASURED host behaviour, not a guess: the
+   sidebar renders a tab body with an EMPTY props object (`renderSlot(seat, {}, …)`), and its session
+   markers are SIBLINGS of the pane rather than ancestors of the body, so neither the props nor a
+   parent walk can reach them. Without this the panel could never address the session it is displayed
+   for on this harness build.
+2. **The driver seeds every session the app's own store holds**, right after it creates its own —
+   `capture.mts#listSessions` enumerates `<DSH_HOME>/sessions/*/*` and `seedBoard` binds the board to
+   each. That removes the guess completely, and it is cheap because the fixture is idempotent.
+
+**The layout is now asserted, not eyeballed.** A screenshot shows that something is drawn; it cannot
+show whether two node boxes COLLIDE. `report.teamNodeBoxes` records every node's measured viewport box
+and `checks.teamGraphNodesDoNotOverlap` fails on any intersecting pair. Measured on the shipped build:
+`T1/T2/T3` at `x=897` rows `574/626/678`, `T4/T5/T6` at `x=1065/1233/1401` row `574`, **0 overlaps** —
+a 168px column pitch with 52px rows, so the two edges that appear to pass near a node in the PNG are
+clearly outside its box.
 
 ### 8b. Defects this wave found and fixed in its OWN tooling
 
@@ -331,7 +334,7 @@ re-open the tab), not a product change.
 | Integration (translator threading, single dist rebuild, doc pairs) | pending |
 | Reviewer pass on the integrated diff | UNPROVEN — the reviewer reported its PRE-review (5 items, 2 contract defects caught and fixed) but its post-integration pass was not run before this wave stopped. Its `task-8` is unclaimed and the tree it would have read is frozen below. |
 | Docker Web capture | DONE for the settings half; R1 partial (see §8a). Stack torn down after the run. |
-| tmux TUI `/mpd-model` capture | NOT RUN — the container was torn down; the exact keystrokes and expected pane text exist in L3's report and in `model-menu.test.ts`, so this is one `tmux send-keys` script away. |
+| tmux TUI `/mpd-model` capture | **DONE** — see the R3 row above; the walk was driven with `tmux send-keys` against the live container TUI and the resulting patch file is the proof. |
 | Commit | NOT MADE. The captain is the single git writer and the USER has not asked for a commit, so the tree is left uncommitted on `dev` with everything green. |
 
 ### 8c. The tree this wave leaves, verified at the moment of stopping
