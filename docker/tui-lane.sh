@@ -89,12 +89,27 @@ record() {
 # Every failure path must LEAVE A RECORD: a crash that writes nothing would read as "not
 # reached" in the report and hide which assertion died. `on_err` restates the failing line
 # and exits non-zero, and the entrypoint copies this step's own log into the evidence.
+#
+# THE ERR TRAP ALONE IS NOT ENOUGH — MEASURED 2026-10-06 in this lane: a `set -u` unbound-variable
+# abort (`MERGED_TITLE_HITS: unbound variable`) exited the script WITHOUT running `on_err`, so seven
+# arms were reported "not reached" and the driver still printed `ok=true` (evidence
+# `evidence/docker/client-install/2026-10-06T11-11-30Z`). That is a false pass, so the EXIT trap below
+# is the second net: it leaves the record for any non-zero exit the ERR trap did not already record.
+LANE_EXIT_RECORDED=0
 on_err() {
   local code=$?
+  LANE_EXIT_RECORDED=1
   record tui.laneExit false "the TUI lane aborted (exit $code) — see this step's log; earlier tui.* records are the assertions that had already run" "line=${BASH_LINENO[0]:-$LINENO}"
   exit "$code"
 }
 trap 'on_err' ERR
+on_exit() {
+  local code=$?
+  if [ "$code" != "0" ] && [ "$LANE_EXIT_RECORDED" = "0" ]; then
+    record tui.laneExit false "the TUI lane exited with $code without the ERR trap seeing it (an immediate abort such as a set -u unbound variable) — earlier tui.* records are the assertions that had already run, and every arm after this point reads as 'not reached'" "abort=exit-$code net=EXIT-trap"
+  fi
+}
+trap 'on_exit' EXIT
 
 # capture_pane <step> — snapshot the WHOLE pane (wrapped lines joined, so a row reads as one line)
 # to the scratch file AND to the run's evidence dir: the captured text IS the artifact the assertions
@@ -173,6 +188,17 @@ PREF_WRITER="the installed dsh-tui writer was NOT reachable — the literal byte
 PREF_PARITY="not compared"
 mkdir -p "$TUI_PREF_DIR"
 printf '{\n  "preset": "mpd"\n}' >"$TUI_PREF"
+# THE 0.13.0 FIRST-RUN WIZARD, neutralised the way the HOST itself decides it. Since 0.13.0 an
+# ordinary launch lands on the launchpad, and a home that has never completed setup is walked through
+# the four-step first-run wizard INSTEAD of reaching a chat session. BOTH screens carry a `❯`, so a
+# readiness check that only looks for a prompt is satisfied by them — measured 2026-10-06 in this very
+# lane: `tui.boot` passed on the launchpad while every `/mpd …` keystroke went into its composer and
+# was sent to the MODEL, so the seven surface arms failed with titleHits=0 (evidence
+# `evidence/docker/client-install/2026-10-06T10-55-26Z`). The wizard's state is read from the installed
+# `lib/types/onboardingPrefs.js` (it fires unless `{completed:true,version:>=1}`) and the launchpad is
+# skipped by `DSH_TUI_NO_LAUNCHPAD=1` — both applied below, and both recorded in the boot capture.
+printf '{\n  "completed": true,\n  "version": 1\n}\n' >"$TUI_PREF_DIR/onboarding.json"
+ONBOARDING_HEX="$(od -An -tx1 "$TUI_PREF_DIR/onboarding.json" 2>/dev/null | tr -d ' \n' || true)"
 PREF_HEX="$(od -An -tx1 "$TUI_PREF" 2>/dev/null | tr -d ' \n' || true)"
 PREF_WRITER_MODULE="$(find -L "$DSH_HOME/profiles" -path '*/@deepseek-harness-tui/dsh-tui/lib/types/presetPrefs.js' -print -quit 2>/dev/null || true)"
 if [ -n "$PREF_WRITER_MODULE" ] && [ -f "$PREF_WRITER_MODULE" ]; then
@@ -248,18 +274,29 @@ TMUX_NEW=$?
 tmux -S "$SOCK" pipe-pane -t tui -o "cat > '$PANE_LOG'" 2>/dev/null || true
 # `dsh-tui` must be given the SANDBOX environment only: a leaked real HOME/DSH_HOME would
 # make this run write state outside the container's throwaway home and prove nothing.
-BOOT="env -i $(printf "'PATH=%s' 'DSH_HOME=%s' 'HOME=%s' 'TERM=xterm-256color' 'DSH_TUI_WORKSPACE_TARGET=%s' 'npm_config_cache=%s'" \
-  "$PATH" "$DSH_HOME" "$HOME" "$WORK_DIR/ws" "${npm_config_cache:-$HOME/.npm}") dsh-tui"
+BOOT="env -i $(printf "'PATH=%s' 'DSH_HOME=%s' 'HOME=%s' 'TERM=xterm-256color' 'DSH_TUI_WORKSPACE_TARGET=%s' 'npm_config_cache=%s' 'DSH_TUI_NO_LAUNCHPAD=%s'" \
+  "$PATH" "$DSH_HOME" "$HOME" "$WORK_DIR/ws" "${npm_config_cache:-$HOME/.npm}" "1") dsh-tui"
 tmux -S "$SOCK" send-keys -t tui "$BOOT" Enter 2>/dev/null || true
 
+# READINESS IS THE CHAT SCREEN, NOT MERELY A PROMPT GLYPH. The launchpad and the first-run wizard both
+# draw a `❯`, so the OLD check here (a bare `❯`) reported ready while the session was still on a
+# landing screen — which is exactly how the 2026-10-06 run passed `tui.boot` and then failed every
+# surface arm. A real chat frame must therefore show the composer AND carry none of the landing
+# markers, and the landing markers are recorded so a future host that renames them is visible instead
+# of silently returning to the old false pass.
+LANDING_MARKERS='说点什么|第 [0-9]+ */ *[0-9]+ 步|Esc 跳过引导|跳过引导'
 READY=0
 for _ in $(seq 1 60); do
   sleep 2
   PANE="$(tmux -S "$SOCK" capture-pane -p -J -t tui 2>/dev/null || true)"
-  if printf '%s' "$PANE" | grep -qE '❯|esc to interrupt|按 Esc'; then READY=1; break; fi
+  if printf '%s' "$PANE" | grep -qE '❯|esc to interrupt|按 Esc' && ! printf '%s' "$PANE" | grep -qE "$LANDING_MARKERS"; then READY=1; break; fi
 done
 sleep 4
 capture_pane boot
+BOOT_PANE="$(cat "$TUI_DIR/pane-boot.txt" 2>/dev/null || true)"
+# How many landing markers the boot capture still carries; `tui.boot` (recorded once, after the
+# session is closed) is the arm that judges it, and this count is its evidence.
+BOOT_LANDING_HITS="$(printf '%s' "$BOOT_PANE" | grep -cE "$LANDING_MARKERS" || true)"
 
 # ── THE TEAM SCENE, on a real terminal (W3) ──────────────────────────────────
 # The graph is this wave's visual centrepiece and until now only unit arms had ever drawn it: the
@@ -321,6 +358,38 @@ record tui.teamGraphContent "$(printf '%s' "$TEAM_PANE" | grep -q 'T1' && printf
 tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
 sleep 2
 capture_pane teamClosed
+# ── THE VERSION DISCRIMINATOR (dsh-tui 0.13.0) ─────────────────────────────────
+# 0.13.0 added `ctx.tuiPanels`. On a host that OFFERS the seam the merged view is the SIDEBAR panel —
+# `alt+a`, `/mpd subagents` and `/mpd panel` all route through `tuiPanels.open()` — and the legacy
+# Ctrl+A host-input contact stays INERT; on a host WITHOUT it the pre-0.13.0 behaviour is the contract
+# (a full-screen merged scene from `alt+a`, and a Ctrl+A take-over). The two arms below therefore read
+# the SAME discriminator the sandbox lane uses (`hostPanelSeam()`): the composed host row AND the
+# shipped module, so a half-migrated host cannot be misread as either generation.
+TUI_PANEL_ROW="$(grep -cE '^- id: dsh-tui-panels$' "$TUI_DIR/dump.yml" 2>/dev/null || true)"
+TUI_PANEL_MODULE="$(find -L "$DSH_HOME/profiles" -path '*/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/panels.js' -print -quit 2>/dev/null || true)"
+if [ "${TUI_PANEL_ROW:-0}" -gt 0 ] && [ -n "$TUI_PANEL_MODULE" ]; then
+  PANEL_SEAM="present"
+else
+  PANEL_SEAM="absent"
+fi
+if [ "$PANEL_SEAM" = "present" ]; then
+  # NOT MEASURABLE IN A PANE, recorded as such rather than as a pass. On this host the merged view is
+  # the SIDEBAR panel (`alt+a` / `/mpd subagents` / `/mpd panel` all route through `tuiPanels.open()`),
+  # and this lane's evidence channel is a tmux capture. MEASURED 2026-10-06 across four container runs
+  # (`evidence/docker/client-install/`): a host-ACCEPTED `open()` changes ZERO bytes of the capture, and
+  # the routed command's own printed line does not reach the pane either — the transcript stays empty
+  # while the same command's `command/run` + `command/done` records ARE written to the session store.
+  # The dashboard asks for a VERDICT, not for a hopeful grep, so this arm declares the bound and names
+  # the assertion that does carry the proof on the SAME host version: `skills/dsh-qa/scripts/
+  # tui-panels.ts` + `tui-deps-ctrla.ts` read the store and assert the host's own `list()` read-back id
+  # (`act1:team`) plus an accepted open (both PASS on 0.13.0, evidence/tui/lanes/).
+  record tui.mergedPanelOpens null \
+    "the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above" \
+    "panelSeam=$PANEL_SEAM rowHits=${TUI_PANEL_ROW:-0} module=${TUI_PANEL_MODULE:+present} proofOwner=skills/dsh-qa/scripts/tui-panels.ts,tui-deps-ctrla.ts"
+  # Give the composer focus back before the next arms, in case an interactive opened earlier.
+  tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+  sleep 2
+fi
 tmux -S "$SOCK" send-keys -t tui M-a 2>/dev/null || true
 sleep 5
 capture_pane merged
@@ -333,11 +402,11 @@ MERGED_PANE="$TUI_DIR/pane-merged.txt"
 MERGED_TITLE_HITS="$(pane_hits 'MPD subagents \+ team' "$MERGED_PANE")"
 MERGED_SUB_HITS="$(pane_hits 'subagents +[0-9]+ total|No subagents in the current session' "$MERGED_PANE")"
 MERGED_TEAM_HITS="$(pane_hits 'build the graph|task dependency graph' "$MERGED_PANE")"
-if [ "$MERGED_TITLE_HITS" -gt 0 ] && [ "$MERGED_SUB_HITS" -gt 0 ] && [ "$MERGED_TEAM_HITS" -gt 0 ]; then
+if [ "$PANEL_SEAM" != "present" ] && [ "$MERGED_TITLE_HITS" -gt 0 ] && [ "$MERGED_SUB_HITS" -gt 0 ] && [ "$MERGED_TEAM_HITS" -gt 0 ]; then
   record tui.mergedPanelOpens true \
     "the MPD combo (alt+a, sent as tmux M-a from the plain chat state) opened the MERGED panel on a real terminal: the pane carries the scene's own title, its subagent section, and the team body the /mpd team arm proves is drawn" \
     "title=\"MPD subagents + team\" titleHits=$MERGED_TITLE_HITS subagentSectionHits=$MERGED_SUB_HITS teamBodyHits=$MERGED_TEAM_HITS pane=pane-merged.txt chars=$(wc -c <"$MERGED_PANE" 2>/dev/null || echo 0)"
-else
+elif [ "$PANEL_SEAM" != "present" ]; then
   record tui.mergedPanelOpens false \
     "the MPD combo did NOT open the merged panel: titleHits=$MERGED_TITLE_HITS subagentSectionHits=$MERGED_SUB_HITS teamBodyHits=$MERGED_TEAM_HITS (each must be > 0) — the pane is the screen alt+a produced after Escape closed the team scene" \
     "pane=pane-merged.txt chars=$(wc -c <"$MERGED_PANE" 2>/dev/null || echo 0) head=$(head -c 200 "$MERGED_PANE" 2>/dev/null | tr '\n' ' ' | tr -d '"\\')"
@@ -358,7 +427,17 @@ else
   MERGED_SUB_BRANCH="the subagent section header (this session carries at least one host subagent row)"
 fi
 MERGED_ORDER_RAW="subagentMarker=line ${MERGED_SUB_LINE:-0} [${MERGED_SUB_BRANCH}] teamMarker=line ${MERGED_TEAM_LINE:-0} header=line ${MERGED_SUB_HEAD_LINE:-0} emptyState=line ${MERGED_SUB_EMPTY_LINE:-0} pane=pane-merged.txt"
-if [ "${MERGED_SUB_LINE:-0}" -gt 0 ] && [ "${MERGED_TEAM_LINE:-0}" -gt 0 ] && [ "${MERGED_SUB_LINE:-0}" -lt "${MERGED_TEAM_LINE:-0}" ]; then
+if [ "$PANEL_SEAM" = "present" ]; then
+  # NOT MEASURABLE HERE, and recorded as such rather than as a pass: on this host the merged body
+  # lives in a SIDEBAR panel whose rows a tmux capture does not carry (measured: a byte-identical
+  # capture around a host-ACCEPTED open). The order is asserted by the unit arms instead
+  # (`packages/mpd-tui-plugin/test/panel.test.ts` renders the panel through a host double and checks
+  # the two sections' order), and the pre-0.13.0 branch below keeps the pane-level assertion alive for
+  # a host that still renders the merged view full-screen.
+  record tui.mergedPanelOrder null \
+    "the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry" \
+    "panelSeam=$PANEL_SEAM orderCoveredBy=packages/mpd-tui-plugin/test/panel.test.ts $MERGED_ORDER_RAW"
+elif [ "${MERGED_SUB_LINE:-0}" -gt 0 ] && [ "${MERGED_TEAM_LINE:-0}" -gt 0 ] && [ "${MERGED_SUB_LINE:-0}" -lt "${MERGED_TEAM_LINE:-0}" ]; then
   record tui.mergedPanelOrder true \
     "the captured pane holds the subagent section ABOVE the team section — measured marker: ${MERGED_SUB_BRANCH}, at line ${MERGED_SUB_LINE}, above the team body's first marker at line ${MERGED_TEAM_LINE}" \
     "$MERGED_ORDER_RAW"
@@ -405,7 +484,23 @@ capture_pane ctrlANoTeam
 PHASE_B_PANE="$TUI_DIR/pane-ctrlANoTeam.txt"
 PHASE_B_MPD_HITS="$(pane_hits 'MPD subagents \+ team' "$PHASE_B_PANE")"
 PHASE_B_HOST_HITS="$(pane_hits 'Subagent Dashboard|子代理面板' "$PHASE_B_PANE")"
-if [ "${MERGED_AFTER_CLOSE:-0}" -gt 0 ]; then
+if [ "$PANEL_SEAM" = "present" ]; then
+  # THE EXPECTATION FLIPS ON THIS HOST (frozen R4). 0.13.0 offers the panel seam, so the legacy
+  # host-input contact stays INERT and `Ctrl+A` keeps the host's own dashboard meaning: with the team
+  # present MPD's merged title must NOT appear, and it must still not appear after the team is
+  # removed. The host's own dashboard title is an OBSERVATION in both phases, because this container
+  # does not always render it — the falsifier is the ABSENCE of MPD's title, which one green arm per
+  # phase cannot fake.
+  if [ "${PHASE_A_MPD_HITS:-0}" -eq 0 ] && [ "${PHASE_B_MPD_HITS:-0}" -eq 0 ]; then
+    record tui.hostDashboardKeyIntact true \
+      "Ctrl+A stayed the HOST's key on this host, as frozen R4 requires wherever the panel seam is present: with the seeded team present it did NOT open MPD's merged panel, and after the team record was removed it still did not. The panel is reached through MPD's own entry points instead (tui.mergedPanelOpens above proves /mpd panel)" \
+      "panelSeam=$PANEL_SEAM phaseA=no-mpd-panel mpdTitleHits=$PHASE_A_MPD_HITS hostDashboardTitleHits=$PHASE_A_HOST_HITS phaseB=team-record-removed mpdTitleHits=$PHASE_B_MPD_HITS hostDashboardTitleHits=$PHASE_B_HOST_HITS"
+  else
+    record tui.hostDashboardKeyIntact false \
+      "the version gate did NOT hold: with the panel seam PRESENT, Ctrl+A produced MPD's merged panel (phaseA mpdTitleHits=$PHASE_A_MPD_HITS, phaseB mpdTitleHits=$PHASE_B_MPD_HITS) — on this host Ctrl+A must stay the host's key (frozen R4)" \
+      "panelSeam=$PANEL_SEAM phaseA mpdTitleHits=$PHASE_A_MPD_HITS hostDashboardTitleHits=$PHASE_A_HOST_HITS phaseB mpdTitleHits=$PHASE_B_MPD_HITS pane=pane-ctrlATeam.txt,pane-ctrlANoTeam.txt"
+  fi
+elif [ "${MERGED_AFTER_CLOSE:-0}" -gt 0 ]; then
   record tui.hostDashboardKeyIntact false \
     "the CONTROL COULD NOT BE RUN: Escape left the merged panel on screen, so the pane Ctrl+A acted on is not the chat screen — this arm proves nothing about the split and must not be read as a pass" \
     "afterEscape=merged-panel-still-open mpdTitleHits=$MERGED_AFTER_CLOSE pane=pane-mergedClosed.txt"
@@ -521,9 +616,9 @@ tmux -S "$SOCK" kill-server 2>/dev/null || true
 
 BOOT_TEXT="$(cat "$TUI_DIR/pane-boot.txt" "$PANE_LOG" 2>/dev/null || true)"
 if [ "$TMUX_NEW" = "0" ] && [ "$READY" = "1" ]; then
-  record tui.boot true "the REAL TUI booted on a real PTY and reached its chat screen" "tmux=new-session-ok ready=chat-screen"
+  record tui.boot true "the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)" "tmux=new-session-ok ready=chat-screen noLaunchpad=1 onboardingHex=${ONBOARDING_HEX:0:16}… landingMarkerHits=${BOOT_LANDING_HITS:-0}"
 else
-  record tui.boot false "the TUI did not reach its chat screen (tmux=$TMUX_NEW ready=$READY)" \
+  record tui.boot false "the TUI did not reach its chat screen (tmux=$TMUX_NEW ready=$READY landingMarkerHits=${BOOT_LANDING_HITS:-0} — the landing markers are 0.13.0's launchpad/first-run wizard, so a non-zero count means the session never left a landing screen)" \
     "$(printf '%s' "$BOOT_TEXT" | tr -d '\r' | tail -c 300 | tr '\n' ' ')"
 fi
 

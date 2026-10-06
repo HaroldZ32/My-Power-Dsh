@@ -1,0 +1,33 @@
+{
+  "startedAt": "2026-10-03T17:00:00.412Z",
+  "finishedAt": "2026-10-03T17:05:11.072Z",
+  "docker": "Docker version 29.8.2, build 7fc2dff",
+  "compose": "Docker Compose version v5.5.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 416,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-X47bht",
+  "liveRequested": true,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "live.",
+    "boot.llmTurn",
+    "ui."
+  ],
+  "unmeasured": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 -e MPD_E2E_BROWSER=1 mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=true passed=88 failed=4 null=0 FAILED=[ui.composerPresent,ui.promptSent,ui.replyRendered,ui.teamPanel]",
+  "exitCode": 1
+}

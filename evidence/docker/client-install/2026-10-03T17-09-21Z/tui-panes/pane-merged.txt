@@ -1,0 +1,50 @@
+
+   MPD subagents + team · 216x48              
+   subagents  0 total · 0 running · 0 completed · 0 failed                   
+   ⚪ No subagents in the current session                                                          
+     Subagents appear here once the main agent starts Task delegations                            
+   team       Scene Smoke (tui-scene)                                                           
+   phase      active                                                                              
+   captain    scene-smoke                                                                          
+   roster                                 
+     Senior Engineer · implements · running · 1/2 · T2                                            
+     Reviewer · judges · inactive · 0/1                                                       
+   tasks                                                                                          
+   T1 [requirement] freeze the contract · completed @Senior Engineer attempt 1                    
+     T2 [work] build the graph · in_progress @Senior Engineer attempt 1 deps=T1                   
+       T3 [review] review the graph · pending @Reviewer attempt 1 deps=T2 BLOCKED
+   tasks      3 total · 1 completed · 1 in progress · 1 pending · 0 claimed · 0 failed
+   mail       (not observable on the official team plane)                                                      
+   task dependency graph             
+   ┌────────────────────────────────┐
+   │ ✓ T1 REQ freeze the contract   │
+   └────────────────┬───────────────┘                                                              
+                    │                                                                       
+                    │
+                    │
+   ┌────────────────┴───────────────┐
+   │ ◐ T2 WRK build the graph       │
+   └────────────────┬───────────────┘
+                    │
+                    │
+                    │
+   ┌────────────────┴───────────────┐
+   │ ○ T3 REV review the graph      │
+   └────────────────────────────────┘
+   esc/q close · ↑↓ select · i interrupt the selected run · r refresh · alt+a this panel · alt+t team · alt+m board
+
+
+
+
+
+
+
+
+
+
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                            
+
+
