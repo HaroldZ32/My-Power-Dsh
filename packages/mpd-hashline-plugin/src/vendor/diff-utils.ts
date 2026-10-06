@@ -92,21 +92,23 @@ export function generateUnifiedDiff(oldContent: string, newContent: string, file
     let end = idx + context
     while (end < ops.length && ops[end].t === "eq") end++
     end = Math.min(ops.length, end + context)
-    // Running hunk counters and 0-based first-line markers for each side.
-    let aStart = 0, aCount = 0, bStart = 0, bCount = 0
+    // Running hunk counters and 0-based first-line markers for each side; the markers start at -1
+    // because line index 0 is LEGAL, so 0 cannot double as the "unset" sentinel (a hunk whose first
+    // op sits at the head of the file would otherwise be re-anchored by the next op).
+    let aStart = -1, aCount = 0, bStart = -1, bCount = 0
     // Hunk body lines in diff order, each prefixed with ` `, `-` or `+`.
     const body: string[] = []
     for (const op of ops.slice(start, end)) {
       if (op.t === "eq") {
-        aStart === 0 && (aStart = op.a); bStart === 0 && (bStart = op.b)
+        aStart === -1 && (aStart = op.a); bStart === -1 && (bStart = op.b)
         aCount++; bCount++
         body.push(" " + op.lines[0])
       } else if (op.t === "del") {
-        aStart === 0 && (aStart = op.a); bStart === 0 && (bStart = op.b)
+        aStart === -1 && (aStart = op.a); bStart === -1 && (bStart = op.b)
         aCount++
         body.push("-" + op.lines[0])
       } else {
-        aStart === 0 && (aStart = op.a); bStart === 0 && (bStart = op.b)
+        aStart === -1 && (aStart = op.a); bStart === -1 && (bStart = op.b)
         bCount++
         body.push("+" + op.lines[0])
       }

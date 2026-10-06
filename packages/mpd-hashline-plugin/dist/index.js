@@ -736,6 +736,54 @@ function applyHashlineEditsWithReport(content, edits) {
     deduplicatedEdits: dedupeResult.deduplicatedEdits
   };
 }
+// packages/mpd-hashline-plugin/src/vendor/file-text-canonicalization.ts
+function detectLineEnding(content) {
+  const crlfIndex = content.indexOf(`\r
+`);
+  const lfIndex = content.indexOf(`
+`);
+  if (lfIndex === -1)
+    return `
+`;
+  if (crlfIndex === -1)
+    return `
+`;
+  return crlfIndex < lfIndex ? `\r
+` : `
+`;
+}
+function stripBom(content) {
+  if (!content.startsWith("\uFEFF")) {
+    return { content, hadBom: false };
+  }
+  return { content: content.slice(1), hadBom: true };
+}
+function normalizeToLf(content) {
+  return content.replace(/\r\n/g, `
+`).replace(/\r/g, `
+`);
+}
+function restoreLineEndings(content, lineEnding) {
+  if (lineEnding === `
+`)
+    return content;
+  return content.replace(/\n/g, `\r
+`);
+}
+function canonicalizeFileText(content) {
+  const stripped = stripBom(content);
+  return {
+    content: normalizeToLf(stripped.content),
+    hadBom: stripped.hadBom,
+    lineEnding: detectLineEnding(stripped.content)
+  };
+}
+function restoreFileText(content, envelope) {
+  const withLineEnding = restoreLineEndings(content, envelope.lineEnding);
+  if (!envelope.hadBom)
+    return withLineEnding;
+  return `\uFEFF${withLineEnding}`;
+}
 // packages/mpd-hashline-plugin/src/vendor/normalize-edits.ts
 function normalizeAnchor(value) {
   if (typeof value !== "string")
@@ -888,23 +936,23 @@ function generateUnifiedDiff(oldContent, newContent, filePath) {
     while (end < ops.length && ops[end].t === "eq")
       end++;
     end = Math.min(ops.length, end + context);
-    let aStart = 0, aCount = 0, bStart = 0, bCount = 0;
+    let aStart = -1, aCount = 0, bStart = -1, bCount = 0;
     const body = [];
     for (const op of ops.slice(start, end)) {
       if (op.t === "eq") {
-        aStart === 0 && (aStart = op.a);
-        bStart === 0 && (bStart = op.b);
+        aStart === -1 && (aStart = op.a);
+        bStart === -1 && (bStart = op.b);
         aCount++;
         bCount++;
         body.push(" " + op.lines[0]);
       } else if (op.t === "del") {
-        aStart === 0 && (aStart = op.a);
-        bStart === 0 && (bStart = op.b);
+        aStart === -1 && (aStart = op.a);
+        bStart === -1 && (bStart = op.b);
         aCount++;
         body.push("-" + op.lines[0]);
       } else {
-        aStart === 0 && (aStart = op.a);
-        bStart === 0 && (bStart = op.b);
+        aStart === -1 && (aStart = op.a);
+        bStart === -1 && (bStart = op.b);
         bCount++;
         body.push("+" + op.lines[0]);
       }
@@ -2505,17 +2553,24 @@ function registered(config, dsh, fp, exec) {
   const target = sessionPath(fp, dsh, exec);
   return list.some((x) => sessionPath(x, dsh, exec) === target);
 }
+function sourceLineCount(text) {
+  const body = text.endsWith(`
+`) ? text.slice(0, -1) : text;
+  return body === "" ? 0 : body.split(`
+`).length;
+}
+function readEnvelope(fp) {
+  return canonicalizeFileText(readFileSync(fp, "utf8"));
+}
 function editFile(fp, edits, maxDiffChars) {
-  const raw = readFileSync(fp, "utf8");
-  const report = applyHashlineEditsWithReport(raw, edits);
-  writeFileSync(fp, report.content);
-  const diff = report.content === raw ? "" : generateUnifiedDiff(raw, report.content, fp).slice(0, maxDiffChars);
-  const contentForCount = report.content.endsWith(`
-`) ? report.content.slice(0, -1) : report.content;
+  const envelope = readEnvelope(fp);
+  const before = envelope.content;
+  const report = applyHashlineEditsWithReport(before, edits);
+  writeFileSync(fp, restoreFileText(report.content, envelope));
+  const diff = report.content === before ? "" : generateUnifiedDiff(before, report.content, fp).slice(0, maxDiffChars);
   return {
     path: fp,
-    lines: contentForCount === "" ? 0 : contentForCount.split(`
-`).length,
+    lines: sourceLineCount(report.content),
     noopEdits: report.noopEdits,
     deduplicatedEdits: report.deduplicatedEdits,
     diff
@@ -2534,10 +2589,9 @@ function apply(ctx, config = {}) {
       const fp = sessionPath(String(args?.path), dsh, exec);
       if (!existsSync(fp))
         throw new Error("mpd-hashline: file not found: " + fp);
-      const raw = readFileSync(fp, "utf8");
+      const raw = readEnvelope(fp).content;
       const out = toHashlineContent(raw);
-      return { path: fp, lines: out === "" ? 0 : out.split(`
-`).length, view: out };
+      return { path: fp, lines: sourceLineCount(out), view: out };
     }
   });
   dsh.registerTool({
@@ -2580,10 +2634,9 @@ function apply(ctx, config = {}) {
         throw new Error("mpd-hashline: file not found: " + fp);
       const rp = registryPath(cfg, dsh, exec);
       writeRegistry(rp, [...readRegistry(rp), fp]);
-      const raw = readFileSync(fp, "utf8");
+      const raw = readEnvelope(fp).content;
       const out = toHashlineContent(raw);
-      return { path: fp, lines: out === "" ? 0 : out.split(`
-`).length, view: out };
+      return { path: fp, lines: sourceLineCount(out), view: out };
     }
   });
   dsh.registerTool({

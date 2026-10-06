@@ -1791,6 +1791,10 @@ REFLECTION DUE` : "")) },
     output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a, v) => textBlock("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
     execute: async (args, exec) => {
       const d = ensureDirs(cfg, dsh, exec);
+      const s = readReflection(d);
+      if (s.triggered !== true && s.reservation?.status !== "pending") {
+        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered === true) + ", reservation=" + String(s.reservation?.status ?? "none") + ", steps_since_last_successful_reflection=" + String(s.steps_since_last_successful_reflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.");
+      }
       ensureVcs(cfg, d);
       const name2 = "reflection-" + Date.now().toString(36);
       const file = safeMemoryPath(d.memoryDir, name2 + ".md");
@@ -1801,7 +1805,6 @@ REFLECTION DUE` : "")) },
 ` + String(args?.content) + `
 `);
       commitAll(cfg, d, "memory: reflection " + name2);
-      const s = readReflection(d);
       s.reflected_completed_steps = (s.reflected_completed_steps ?? 0) + 1;
       s.steps_since_last_successful_reflection = 0;
       s.triggered = false;

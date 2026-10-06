@@ -17,7 +17,8 @@ import {
   startTaskTimer,
   endTaskTimer,
 } from "./vendor/index.ts"
-import { join } from "node:path"
+import { join, isAbsolute, resolve } from "node:path"
+import { existsSync } from "node:fs"
 import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 // THE ONE READING OF `boulder.dir`. Its normalization rule is shared with the session gate's signal D
 // (`mpd-roles-plugin`'s `resolveBoulderDir`), deliberately: this knob is a STATE ROOT whose ledger is
@@ -74,6 +75,21 @@ function mergedConfig(ctx: Ctx, config: Config): Config {
 // however the value arrived (row option, project file, or a legacy materialized default).
 function boulderRoot(config: Config, dsh: DshAdapter, exec?: any): string {
   return resolveBoulderDir(config.boulderDir) ?? dsh.workspaceRoot(exec)
+}
+
+/**
+ * A caller-named plan path as an absolute path: a RELATIVE one resolves against this call's state
+ * root — the same base the vendor's `resolveBoulderPlanPathForWork` uses for a recorded work — and
+ * never against the dsh process cwd, which for a session launched elsewhere resolves to a path that
+ * does not exist. The vendor's progress reader answers silent ZEROES for such a path, so resolution
+ * has to happen here, where the caller can still be told.
+ *
+ * @param dir - the session-resolved state root for this call (`boulderRoot`).
+ * @param planPath - the plan path exactly as the caller spelled it.
+ * @returns the absolute plan path to read.
+ */
+function planPathFor(dir: string, planPath: string): string {
+  return isAbsolute(planPath) ? resolve(planPath) : resolve(dir, planPath)
 }
 
 /** Register every boulder tool on the adapter; `config` is the row config, which `mpd.jsonc` may override per key. */
@@ -162,7 +178,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // Filled only when the caller names a plan; the schema types it `object` and does not require it.
       let planProgress: any = null
       if (args?.planPath) {
-        try { planProgress = getPlanProgress(String(args.planPath)) } catch (e: any) { planProgress = { error: String(e?.message ?? e) } }
+        // Same session resolution as the dedicated progress tool: a RELATIVE path belongs to this
+        // session's workspace, so it is no longer probed against the process cwd (which answered the
+        // same silent zeroes the progress tool used to).
+        try { planProgress = getPlanProgress(planPathFor(dir, String(args.planPath))) } catch (e: any) { planProgress = { error: String(e?.message ?? e) } }
       }
       // Response envelope: the ledger path is always reported, so a caller sees where state lives.
       const result: any = { stateFile: join(dir, ".mpd", "boulder.json"), activeWorks, resumeOptions }
@@ -266,13 +285,19 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: { planPath: { type: "string" } }, required: ["planPath"] },
     output: { schema: { type: "object", properties: { planPath: { type: "string" }, progress: { type: "object" } }, required: ["planPath", "progress"] }, render: (_a: unknown, v: any) => textBlock("plan progress " + v.planPath + ": " + JSON.stringify(v.progress, null, 1)) },
     execute: async (args: any, exec: any) => {
-      // Resolved for parity with the other tools; this one reads only the plan file the caller named.
+      // State root for this call; it is the base a RELATIVE plan path resolves against below.
       const dir = root(exec)
       // Plan file to parse; the tool schema makes it required.
       const planPath = String(args?.planPath)
-      // Checklist counts parsed from disk; a missing or checkbox-less plan yields zeroes, not an error.
-      const progress = getPlanProgress(planPath)
-      return { planPath, progress }
+      // The plan path this call actually reads: session-relative input resolved against `dir`.
+      const resolved = planPathFor(dir, planPath)
+      // REPORT an unresolvable plan rather than answering `{total: 0, completed: 0}`: zeroes are
+      // indistinguishable from a plan with no checkboxes, which is the silent-wrong-answer class this
+      // tool shared with the guard rows.
+      if (!existsSync(resolved)) throw new Error("mpd-boulder: plan not found: " + resolved + " (relative paths resolve against the state root " + dir + ")")
+      // Checklist counts parsed from disk.
+      const progress = getPlanProgress(resolved)
+      return { planPath: resolved, progress }
     }
   })
 

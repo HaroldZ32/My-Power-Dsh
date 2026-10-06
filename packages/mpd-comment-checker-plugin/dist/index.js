@@ -2,7 +2,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { dirname as dirname2, join as join2, resolve as resolve3 } from "node:path";
+import { dirname as dirname2, isAbsolute, join as join2, resolve as resolve3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -1666,6 +1666,14 @@ function apply(ctx, config = {}) {
     }
   });
   if (cfg.autoCheck === true) {
+    const appendNote = (out, result, note) => {
+      const c = out.content ?? result?.content;
+      const text = typeof c === "string" ? c : Array.isArray(c) ? c.map((b) => b && b.type === "text" ? b.text : "").join(`
+`) : "";
+      return { ...out, content: [{ type: "text", text: (text ? text + `
+
+` : "") + note }] };
+    };
     dsh.onPostToolExecute(async (exec, result, out) => {
       if (out.kind !== "accept")
         return out;
@@ -1675,28 +1683,27 @@ function apply(ctx, config = {}) {
       const fp = exec.arguments?.file_path ?? exec.arguments?.path;
       if (typeof fp !== "string")
         return out;
+      const target = isAbsolute(fp) ? resolve3(fp) : resolve3(dsh.workspaceRoot(exec), fp);
       const binary = resolveBinary(cfg);
       if (!binary)
         return out;
       let content = "";
+      let readError = "";
       try {
-        content = readFileSync(fp, "utf8");
-      } catch {
-        return out;
+        content = readFileSync(target, "utf8");
+      } catch (e) {
+        readError = String(e?.message ?? e);
       }
+      if (readError)
+        return appendNote(out, result, "[mpd-comment-checker] auto-check skipped " + target + ": " + readError);
       if (!content)
         return out;
-      const res = runCheck(binary, hookInputFor(fp, content, dsh.workspaceRoot(exec)), timeoutMs);
+      const res = runCheck(binary, hookInputFor(target, content, dsh.workspaceRoot(exec)), timeoutMs);
       if (!res.hasComments)
         return out;
-      const hint = "[mpd-comment-checker] comments/docstrings detected in " + fp + `:
+      const hint = "[mpd-comment-checker] comments/docstrings detected in " + target + `:
 ` + res.message.slice(0, maxMessageChars);
-      const c = out.content ?? result?.content;
-      const text = typeof c === "string" ? c : Array.isArray(c) ? c.map((b) => b && b.type === "text" ? b.text : "").join(`
-`) : "";
-      return { ...out, content: [{ type: "text", text: (text ? text + `
-
-` : "") + hint }] };
+      return appendNote(out, result, hint);
     });
   }
 }

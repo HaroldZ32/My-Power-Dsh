@@ -1,7 +1,8 @@
 import { test, expect } from "bun:test"
 import { mkdtempSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { join, relative } from "node:path"
 import { tmpdir } from "node:os"
+import { fileURLToPath } from "node:url"
 import { apply } from "../src/index.ts"
 import type { DshPostDecision, DshPostResult, DshTextBlock, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 
@@ -99,6 +100,31 @@ test("write-guard allows idempotent rewrite of a >1MB file (full-file compare)",
   expect(guard({ name: "write", arguments: { file_path: fp, content: big + "diff" } })).toContain("use the edit tool")
 })
 
+// The write guard must resolve a RELATIVE file_path against the CALLING SESSION's workspace, never
+// against the dsh process cwd — the same class the hashline guard was repaired for. Both failure
+// directions are silent: a clobber the guard exists to prevent goes through (cwd has no such file),
+// and an honest CREATE of <ws>/X is denied (cwd happens to hold an X with different content).
+test("write-guard resolves a RELATIVE file_path against the session workspace, not process.cwd()", () => {
+  /** The session workspace the guard must resolve against; unrelated to the process cwd. */
+  const ws = mkdtempSync(join(tmpdir(), "mpd-tools-ws-"))
+  /** The file already in that workspace: rewriting it with different content is the clobber. */
+  writeFileSync(join(ws, "notes.md"), "old")
+  /** One exec carrying the session whose header cwd IS that workspace. */
+  const sessionExec: DshToolExec = { name: "write", arguments: { file_path: "notes.md", content: "new" }, agent: { session: { header: { cwd: ws } } } }
+  /** The guard under test, as the plugin registered it. */
+  const guard = makeGuard()
+  // 1) The clobber: pre-fix the guard probed `<cwd>/notes.md`, found nothing and returned undefined.
+  expect(guard(sessionExec) ?? "").toContain("use the edit tool")
+  // 2) The mirror: a relative path that EXISTS from the process cwd but is absent from the session
+  //    workspace must not be denied — pre-fix this honest CREATE was refused for a file the session
+  //    never had. This test file's own cwd-relative path is that path by construction.
+  /** This test file as a path relative to the process cwd, which resolves back to an existing file. */
+  const relativeToCwd = relative(process.cwd(), fileURLToPath(import.meta.url))
+  /** The same relative path read as the session would: a file that workspace does not contain. */
+  const strayExec: DshToolExec = { name: "write", arguments: { file_path: relativeToCwd, content: "new" }, agent: { session: { header: { cwd: ws } } } }
+  expect(guard(strayExec)).toBeUndefined()
+})
+
 /** The downstream accept decision every truncation arm starts from: one 100,000-character text block. */
 const ACCEPT = { kind: "accept", content: [{ type: "text", text: "x".repeat(100_000) }] } as const
 
@@ -124,6 +150,18 @@ test("truncation output (incl. banner) never exceeds truncateMaxBytes", async ()
     const text = await runTruncation(maxBytes)
     expect(text.length).toBeLessThanOrEqual(maxBytes)
     expect(text).toContain("[mpd-tools truncated 100000 chars")
+  }
+})
+
+// THE BOUNDARY the sampled budgets above never crossed: `budget = maxBytes - banner.length` is 1..3
+// exactly when `Math.floor(budget * 0.3)` is 0, and `-0 === 0` made `slice(-0)` the WHOLE text — so
+// the "truncated" output grew by 100,000 characters. The banner is 74 chars for these budgets.
+test("truncation near the banner-length boundary never inflates the output", async () => {
+  for (const maxBytes of [74, 75, 76, 77, 78, 79, 80]) {
+    /** The truncated text produced at this boundary budget. */
+    const text = await runTruncation(maxBytes)
+    expect(text.length, "maxBytes=" + maxBytes).toBeLessThanOrEqual(maxBytes)
+    expect(text, "maxBytes=" + maxBytes).toContain("[mpd-tools truncated 100000 chars")
   }
 })
 

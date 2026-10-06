@@ -62,3 +62,16 @@ test("unified diff shape", () => {
   expect(d).toContain("-b")
   expect(d).toContain("+X")
 })
+
+// The hunk header must name the hunk's FIRST line. `0` served as the "unset" sentinel although line
+// index 0 is a legal start, so a hunk whose first op sits at the head of the file had its start
+// overwritten by the NEXT op's index: a change to line 1 printed `@@ -2,4 +2,4 @@`, and a prepend
+// printed `@@ -1,4 +2,4 @@`. Both sides of the header were shifted.
+test("unified diff hunk header names line 1 when the hunk starts at the head of the file", () => {
+  // A 3-line file (the trailing newline is a fourth split element) with its FIRST line changed.
+  const replaced = generateUnifiedDiff("a\nb\nc\n", "A\nb\nc\n", "f.txt")
+  expect(replaced).toContain("@@ -1,4 +1,4 @@")
+  // A pure PREPEND: every old line survives (3 old lines, 4 new), so both sides must start at 1.
+  const prepended = generateUnifiedDiff("b\nc\n", "a\nb\nc\n", "f.txt")
+  expect(prepended).toContain("@@ -1,3 +1,4 @@")
+})

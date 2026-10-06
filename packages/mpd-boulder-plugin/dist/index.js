@@ -659,7 +659,8 @@ function endTaskTimer(directory, workId, taskKey, endedAt) {
   return writeBoulderState(directory, state) ? state : null;
 }
 // packages/mpd-boulder-plugin/src/index.ts
-import { join as join5 } from "node:path";
+import { join as join5, isAbsolute as isAbsolute2, resolve as resolve4 } from "node:path";
+import { existsSync as existsSync5 } from "node:fs";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -2233,6 +2234,9 @@ function mergedConfig(ctx, config) {
 function boulderRoot(config, dsh, exec) {
   return resolveBoulderDir(config.boulderDir) ?? dsh.workspaceRoot(exec);
 }
+function planPathFor(dir, planPath) {
+  return isAbsolute2(planPath) ? resolve4(planPath) : resolve4(dir, planPath);
+}
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   const merged = mergedConfig(ctx, config);
@@ -2285,7 +2289,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
       let planProgress = null;
       if (args?.planPath) {
         try {
-          planProgress = getPlanProgress(String(args.planPath));
+          planProgress = getPlanProgress(planPathFor(dir, String(args.planPath)));
         } catch (e) {
           planProgress = { error: String(e?.message ?? e) };
         }
@@ -2370,8 +2374,11 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     execute: async (args, exec) => {
       const dir = root(exec);
       const planPath = String(args?.planPath);
-      const progress = getPlanProgress(planPath);
-      return { planPath, progress };
+      const resolved = planPathFor(dir, planPath);
+      if (!existsSync5(resolved))
+        throw new Error("mpd-boulder: plan not found: " + resolved + " (relative paths resolve against the state root " + dir + ")");
+      const progress = getPlanProgress(resolved);
+      return { planPath: resolved, progress };
     }
   });
   dsh.registerTool({

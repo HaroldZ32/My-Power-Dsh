@@ -96,6 +96,40 @@ test("mpd_boulder_status omits planProgress when null (lossless JSON contract)",
   }
 })
 
+// ── E7: a caller-named plan path resolves against THIS session's root ────────────────────────────
+// `mpd_boulder_plan_progress` handed the caller's path verbatim to the vendor's progress reader,
+// which answers silent ZEROES for a path it cannot resolve (`plan-progress.ts#getPlanProgress`).
+// A RELATIVE path — the spelling `mpd_boulder_start` records and every caller uses — therefore
+// reported `total: 0` while the plan sat in the session workspace, and an absent plan was
+// indistinguishable from an empty one.
+test("mpd_boulder_plan_progress resolves a relative plan path and REPORTS an unresolvable one", async () => {
+  // Saved so the sandbox workspace root is restored after the test, whatever it asserted.
+  const prev = process.env.DSH_WORKSPACE_ROOT
+  /** The session workspace this arm's tools resolve through the adapter. */
+  const ws = mkdtempSync(join(tmpdir(), "mpd-bl-progress-"))
+  process.env.DSH_WORKSPACE_ROOT = ws
+  try {
+    /** The plan path as a caller spells it: relative to the session workspace. */
+    const rel = join(".mpd", "plans", "e7-progress-fixture.md")
+    mkdirSync(join(ws, ".mpd", "plans"), { recursive: true })
+    writeFileSync(join(ws, rel), "# P\n\n## TODOs\n- [ ] 1. A\n- [x] 2. B\n\n## Final Verification Wave\n- [ ] F1. C\n")
+    /** Capture array standing in for the harness tool registry. */
+    const tools: any[] = []
+    apply({ tools: { register: (t: any) => tools.push(t) } } as any, {})
+    // The progress tool under test.
+    const progress = tools.find((t: any) => t.name === "mpd_boulder_plan_progress")
+    /** The progress of the RELATIVE path: pre-fix the reader probed it against the process cwd. */
+    const resolved = await progress.execute({ planPath: rel })
+    expect(resolved.progress).toEqual({ total: 3, completed: 1, isComplete: false })
+    // A plan that cannot be resolved at all must be REPORTED; zeroes would read as an empty plan.
+    /** The refusal text, or null when the tool answered zeroes instead of refusing. */
+    const missing = await progress.execute({ planPath: join(".mpd", "plans", "ghost.md") }).then(() => null, (e: unknown) => String(e))
+    expect(missing ?? "ANSWERED ZEROES: no error was raised").toContain(join(ws, ".mpd", "plans", "ghost.md"))
+  } finally {
+    if (prev === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = prev
+  }
+})
+
 // ── THE STATE ROOT (D4 defect, measured live 2026-10-06) ─────────────────────
 // `mpd_boulder_*` reads and writes `<root>/.mpd/boulder.json`, where `root` is the session workspace
 // unless `boulder.dir` overrides it. The knob's retired schema default resolved to `.mpd` in every
