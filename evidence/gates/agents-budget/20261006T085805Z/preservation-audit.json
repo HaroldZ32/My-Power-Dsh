@@ -1,0 +1,187 @@
+{
+  "manual_before_bytes": 71811,
+  "manual_after_bytes": 59551,
+  "delta_bytes": -12260,
+  "headings_before": [
+    {
+      "heading": "## Reference Index (on-demand)",
+      "bytes": 1970
+    },
+    {
+      "heading": "## 1. Overview & Provenance",
+      "bytes": 8979
+    },
+    {
+      "heading": "## 2. Principles",
+      "bytes": 1077
+    },
+    {
+      "heading": "## 3. Repository Layout",
+      "bytes": 5701
+    },
+    {
+      "heading": "## 4. Gates (binding)",
+      "bytes": 7946
+    },
+    {
+      "heading": "## 5. Git Model (dev/release/defect separation)",
+      "bytes": 3550
+    },
+    {
+      "heading": "## 6. Plugin Authoring Guide",
+      "bytes": 14400
+    },
+    {
+      "heading": "## 7. QA Discipline (mirrors upstream, adapted)",
+      "bytes": 6713
+    },
+    {
+      "heading": "## 8. Installer & Profiles",
+      "bytes": 5682
+    },
+    {
+      "heading": "## 9. Vendor & Baseline",
+      "bytes": 1041
+    },
+    {
+      "heading": "## 10. Security & Privacy",
+      "bytes": 303
+    },
+    {
+      "heading": "## 11. Release Process",
+      "bytes": 1649
+    },
+    {
+      "heading": "## 12. Troubleshooting (known)",
+      "bytes": 2839
+    },
+    {
+      "heading": "## 13. Glossary",
+      "bytes": 6389
+    }
+  ],
+  "headings_after": [
+    {
+      "heading": "## Reference Index (on-demand)",
+      "bytes": 3603
+    },
+    {
+      "heading": "## 1. Overview & Provenance",
+      "bytes": 5459
+    },
+    {
+      "heading": "## 2. Principles",
+      "bytes": 1077
+    },
+    {
+      "heading": "## 3. Repository Layout",
+      "bytes": 5701
+    },
+    {
+      "heading": "## 4. Gates (binding)",
+      "bytes": 7341
+    },
+    {
+      "heading": "## 5. Git Model (dev/release/defect separation)",
+      "bytes": 4363
+    },
+    {
+      "heading": "## 6. Plugin Authoring Guide",
+      "bytes": 8265
+    },
+    {
+      "heading": "## 7. QA Discipline (mirrors upstream, adapted)",
+      "bytes": 4957
+    },
+    {
+      "heading": "## 8. Installer & Profiles",
+      "bytes": 4919
+    },
+    {
+      "heading": "## 9. Vendor & Baseline",
+      "bytes": 1041
+    },
+    {
+      "heading": "## 10. Security & Privacy",
+      "bytes": 303
+    },
+    {
+      "heading": "## 11. Release Process",
+      "bytes": 1649
+    },
+    {
+      "heading": "## 12. Troubleshooting (known)",
+      "bytes": 2839
+    },
+    {
+      "heading": "## 13. Glossary",
+      "bytes": 4309
+    }
+  ],
+  "moved": [
+    {
+      "section": "§1",
+      "source_lines": "61-161",
+      "moved_bytes": 8974,
+      "moved_lines": 101,
+      "sha256": "a26a1fbb45f0ef60c885fa6c87a3798cc4dd8467dc07a3b477fcd255bebfa236",
+      "destination": "agent-references/overview-and-provenance.md",
+      "verbatim_in_destination": true
+    },
+    {
+      "section": "§4",
+      "source_lines": "246-289",
+      "moved_bytes": 7941,
+      "moved_lines": 44,
+      "sha256": "1748e7a4cd6702cdc09661d506273d05e5eb805c16a1dc61af165b5829599e81",
+      "destination": "agent-references/verification-flow.md",
+      "verbatim_in_destination": true
+    },
+    {
+      "section": "§6",
+      "source_lines": "337-491",
+      "moved_bytes": 14395,
+      "moved_lines": 155,
+      "sha256": "ed9f13a9f7d72cf0d84da80c77aa4215d23db37897328d05b1dd1d1ece0d2fb6",
+      "destination": "agent-references/plugin-authoring.md",
+      "verbatim_in_destination": true
+    },
+    {
+      "section": "§7",
+      "source_lines": "494-565",
+      "moved_bytes": 6708,
+      "moved_lines": 72,
+      "sha256": "74e747b1e616436ff037a4137b2e49e6c25c1884071931a3d31d339e577d54fa",
+      "destination": "agent-references/qa-discipline.md",
+      "verbatim_in_destination": true
+    },
+    {
+      "section": "§8",
+      "source_lines": "568-640",
+      "moved_bytes": 5677,
+      "moved_lines": 73,
+      "sha256": "d1456ef59578ee11de0291375668bcd6efffe5759f2e9f10135754f4869fd630",
+      "destination": "agent-references/installer-and-profiles.md",
+      "verbatim_in_destination": true
+    },
+    {
+      "section": "§13",
+      "source_lines": "729-798",
+      "moved_bytes": 6389,
+      "moved_lines": 70,
+      "sha256": "c15f64a505013129c70c8303bd72c857bf56f6b90e353b2a554a389b0cb048f3",
+      "destination": "agent-references/glossary.md",
+      "verbatim_in_destination": true
+    }
+  ],
+  "moved_total_bytes": 50084,
+  "derived_value_sites": {
+    "AGENTS.md": [
+      "A1–D42"
+    ],
+    "agent-references/index.md": [
+      "A1–D42"
+    ]
+  },
+  "verdict": "PASS"
+}

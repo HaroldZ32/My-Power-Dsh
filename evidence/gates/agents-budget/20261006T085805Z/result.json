@@ -1,0 +1,348 @@
+{
+  "task": "t67 — the branch+PR policy (user-set 2026-10-06) lands in §5, and AGENTS.md is slimmed under the harness instruction budget by moving ELABORATION into agent-references/",
+  "generated_at": "2026-10-06T09:14:10Z",
+  "verdict": "PASS",
+  "measured": {
+    "agents_md_before": {
+      "bytes": 71811,
+      "lines": 798
+    },
+    "agents_md_after": {
+      "bytes": 59551,
+      "lines": 659
+    },
+    "delta_bytes": -12260,
+    "target_max_bytes": 60000,
+    "loader_cap_bytes": 65536,
+    "headroom_under_target_bytes": 449,
+    "headroom_under_cap_bytes": 5985,
+    "moved_total_bytes": 50084,
+    "wc_c_before": "71811 evidence/gates/agents-budget/20261006T085805Z/AGENTS.md.before",
+    "wc_c_after": "59551 AGENTS.md"
+  },
+  "heading_census": {
+    "rule": "every `## N. <Title>` heading is still present, in order, with its number unchanged",
+    "headings_after": [
+      {
+        "heading": "## Reference Index (on-demand)",
+        "bytes": 3603
+      },
+      {
+        "heading": "## 1. Overview & Provenance",
+        "bytes": 5459
+      },
+      {
+        "heading": "## 2. Principles",
+        "bytes": 1077
+      },
+      {
+        "heading": "## 3. Repository Layout",
+        "bytes": 5701
+      },
+      {
+        "heading": "## 4. Gates (binding)",
+        "bytes": 7341
+      },
+      {
+        "heading": "## 5. Git Model (dev/release/defect separation)",
+        "bytes": 4363
+      },
+      {
+        "heading": "## 6. Plugin Authoring Guide",
+        "bytes": 8265
+      },
+      {
+        "heading": "## 7. QA Discipline (mirrors upstream, adapted)",
+        "bytes": 4957
+      },
+      {
+        "heading": "## 8. Installer & Profiles",
+        "bytes": 4919
+      },
+      {
+        "heading": "## 9. Vendor & Baseline",
+        "bytes": 1041
+      },
+      {
+        "heading": "## 10. Security & Privacy",
+        "bytes": 303
+      },
+      {
+        "heading": "## 11. Release Process",
+        "bytes": 1649
+      },
+      {
+        "heading": "## 12. Troubleshooting (known)",
+        "bytes": 2839
+      },
+      {
+        "heading": "## 13. Glossary",
+        "bytes": 4309
+      }
+    ],
+    "headings_before": [
+      {
+        "heading": "## Reference Index (on-demand)",
+        "bytes": 1970
+      },
+      {
+        "heading": "## 1. Overview & Provenance",
+        "bytes": 8979
+      },
+      {
+        "heading": "## 2. Principles",
+        "bytes": 1077
+      },
+      {
+        "heading": "## 3. Repository Layout",
+        "bytes": 5701
+      },
+      {
+        "heading": "## 4. Gates (binding)",
+        "bytes": 7946
+      },
+      {
+        "heading": "## 5. Git Model (dev/release/defect separation)",
+        "bytes": 3550
+      },
+      {
+        "heading": "## 6. Plugin Authoring Guide",
+        "bytes": 14400
+      },
+      {
+        "heading": "## 7. QA Discipline (mirrors upstream, adapted)",
+        "bytes": 6713
+      },
+      {
+        "heading": "## 8. Installer & Profiles",
+        "bytes": 5682
+      },
+      {
+        "heading": "## 9. Vendor & Baseline",
+        "bytes": 1041
+      },
+      {
+        "heading": "## 10. Security & Privacy",
+        "bytes": 303
+      },
+      {
+        "heading": "## 11. Release Process",
+        "bytes": 1649
+      },
+      {
+        "heading": "## 12. Troubleshooting (known)",
+        "bytes": 2839
+      },
+      {
+        "heading": "## 13. Glossary",
+        "bytes": 6389
+      }
+    ]
+  },
+  "files_created": [
+    {
+      "path": "agent-references/overview-and-provenance.md",
+      "section": "§1",
+      "kind": "created"
+    },
+    {
+      "path": "agent-references/verification-flow.md",
+      "section": "§4",
+      "kind": "appended"
+    },
+    {
+      "path": "agent-references/plugin-authoring.md",
+      "section": "§6",
+      "kind": "created"
+    },
+    {
+      "path": "agent-references/qa-discipline.md",
+      "section": "§7",
+      "kind": "created"
+    },
+    {
+      "path": "agent-references/installer-and-profiles.md",
+      "section": "§8",
+      "kind": "created"
+    },
+    {
+      "path": "agent-references/glossary.md",
+      "section": "§13",
+      "kind": "created"
+    }
+  ],
+  "moved_blocks": [
+    {
+      "section": "§1",
+      "source_lines": "61-161",
+      "moved_bytes": 8974,
+      "moved_lines": 101,
+      "sha256": "a26a1fbb45f0ef60c885fa6c87a3798cc4dd8467dc07a3b477fcd255bebfa236",
+      "destination": "agent-references/overview-and-provenance.md",
+      "verbatim_in_destination": true
+    },
+    {
+      "section": "§4",
+      "source_lines": "246-289",
+      "moved_bytes": 7941,
+      "moved_lines": 44,
+      "sha256": "1748e7a4cd6702cdc09661d506273d05e5eb805c16a1dc61af165b5829599e81",
+      "destination": "agent-references/verification-flow.md",
+      "verbatim_in_destination": true
+    },
+    {
+      "section": "§6",
+      "source_lines": "337-491",
+      "moved_bytes": 14395,
+      "moved_lines": 155,
+      "sha256": "ed9f13a9f7d72cf0d84da80c77aa4215d23db37897328d05b1dd1d1ece0d2fb6",
+      "destination": "agent-references/plugin-authoring.md",
+      "verbatim_in_destination": true
+    },
+    {
+      "section": "§7",
+      "source_lines": "494-565",
+      "moved_bytes": 6708,
+      "moved_lines": 72,
+      "sha256": "74e747b1e616436ff037a4137b2e49e6c25c1884071931a3d31d339e577d54fa",
+      "destination": "agent-references/qa-discipline.md",
+      "verbatim_in_destination": true
+    },
+    {
+      "section": "§8",
+      "source_lines": "568-640",
+      "moved_bytes": 5677,
+      "moved_lines": 73,
+      "sha256": "d1456ef59578ee11de0291375668bcd6efffe5759f2e9f10135754f4869fd630",
+      "destination": "agent-references/installer-and-profiles.md",
+      "verbatim_in_destination": true
+    },
+    {
+      "section": "§13",
+      "source_lines": "729-798",
+      "moved_bytes": 6389,
+      "moved_lines": 70,
+      "sha256": "c15f64a505013129c70c8303bd72c857bf56f6b90e353b2a554a389b0cb048f3",
+      "destination": "agent-references/glossary.md",
+      "verbatim_in_destination": true
+    }
+  ],
+  "citation_checks": {
+    "required_facts_checked": 87,
+    "missing_facts": [],
+    "anchor_facts_all_present": true,
+    "greps_run": [
+      "grep -rn \"§[0-9]\" --include=*.ts --include=*.md . > citations-core.txt (10314 lines; excludes node_modules, .mpd/ci-rehearsal, tests/golden/out, dist/)",
+      "grep -E \"^\\\\./(scripts|packages/[^/]+/src|skills/dsh-qa/scripts)/\" citations-core.txt > citations-code.txt (the CODE citations whose one-sentence fact must stay)",
+      "grep \"AGENTS.md\" citations-code.txt-like set > citations-agentsmd.txt (237 lines that NAME this manual explicitly)"
+    ],
+    "citation_files": [
+      "citations-core.txt",
+      "citations-code.txt",
+      "citations-agentsmd.txt"
+    ]
+  },
+  "manual_paths_coverage_transfer": {
+    "rule": "node scripts/verify-manual-paths.ts audits path-shaped code spans in AGENTS.md ONLY",
+    "audited_subjects_before": 142,
+    "audited_subjects_after": 142,
+    "audited_subjects_moved_off_the_surface": 0,
+    "measured_how": "`node scripts/verify-manual-paths.ts` exit 0 with resolved=142 in BOTH the pre-split and the post-split run (logs: gate-manual-paths-before.log / -after.log). The first draft of this split DID lose one subject (`skills/dsh-qa/scripts/lib/workspace-isolation.ts`, dropped from §7 by the compaction); it was restored AT THE ANCHOR rather than reported as a loss, which is why the post-split count is back to 142.",
+    "proxy_note": "The token-set difference below is a PROXY (a superset of the gate's audited class: it also counts globs, placeholders and bare directories the gate files under over-report/under-report). It lists the code-span tokens that left the manual with the moved bodies; by design those bodies are audited by NOTHING (T-28 keeps agent-references/ out of the docs gate), so their tokens are covered in the reference files only.",
+    "root_anchored_code_spans_that_left_the_manual_proxy": [
+      "docker/",
+      "docs/plan-0.1.7-adaptation.md",
+      "evidence/goal/goal-bridge/<ts>/",
+      "extensions/",
+      "packages/*/{src,test,self-fix-tests}",
+      "packages/mpd-bundle-plugin/client.js",
+      "packages/mpd-codegraph-plugin/README.md",
+      "packages/mpd-ext-plugin/src/skill-frontmatter.ts",
+      "packages/mpd-roster-provider-plugin/README.md",
+      "scripts/",
+      "skills/*/scripts/",
+      "templates/",
+      "templates/**/README*.md",
+      "tests/",
+      "tests/golden"
+    ]
+  },
+  "derived_value_sites": {
+    "AGENTS.md": [
+      "A1–D42"
+    ],
+    "agent-references/index.md": [
+      "A1–D42"
+    ]
+  },
+  "settled_hashes": {
+    "sha256_read_1": "1dc3fce8723825cf4d850b16eee5f82d3631a701d7e4035b6ac865fdefa7a42e",
+    "at_1": "2026-10-06T09:13:13Z",
+    "sha256_read_2": "1dc3fce8723825cf4d850b16eee5f82d3631a701d7e4035b6ac865fdefa7a42e",
+    "at_2": "2026-10-06T09:14:03Z",
+    "settled": true
+  },
+  "artifacts": {
+    "AGENTS.md.after": "the post-split manual, copied for a reviewer who must not trust the working tree",
+    "AGENTS.md.before": "the pre-split manual, copied from the working tree before the run (identical to `git show HEAD:AGENTS.md` at the start of this task)",
+    "restructure-final.py": "the script that performs the split (verbatim extraction by line range + the compact anchor text), idempotent by construction: it refuses to overwrite an existing destination file",
+    "preservation-audit.py": "re-extracts every moved block and asserts its sha256 is present in the destination",
+    "budget-check.ts": "the installed harness's own renderer, with a RED negative control",
+    "census.sh / headings-before.txt / headings-after.txt": "the per-heading byte census",
+    "citations-core.txt / citations-code.txt / citations-agentsmd.txt": "the citation greps",
+    "gate-manual-paths-*.log / gate-docs-*.log / wc-*.txt": "raw gate output"
+  },
+  "budget_check": {
+    "maxBytes": 65536,
+    "renderer": "/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js",
+    "results": [
+      {
+        "label": "post",
+        "path": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/AGENTS.md",
+        "eolAsRead": "lf",
+        "sourceBytes": 59551,
+        "renderedBytes": 59855,
+        "truncated": false,
+        "truncatedRecords": [],
+        "verdict": "GREEN (full content injected)"
+      },
+      {
+        "label": "control",
+        "path": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/gates/agents-budget/20261006T085805Z/AGENTS.md.before",
+        "eolAsRead": "lf",
+        "sourceBytes": 71811,
+        "renderedBytes": 65536,
+        "truncated": true,
+        "truncatedRecords": [
+          {
+            "displayPath": "AGENTS.md",
+            "originalBytes": 71811,
+            "includedBytes": 65143
+          }
+        ],
+        "verdict": "RED (truncated)"
+      }
+    ],
+    "checks": {
+      "post_renders_full_content": true,
+      "post_under_budget": true,
+      "post_eol_is_lf": true,
+      "negative_control_is_red": true
+    },
+    "verdict": "PASS",
+    "failedChecks": []
+  },
+  "gates": {
+    "node scripts/verify-manual-paths.ts": "[verify-manual-paths] PASS resolved=142 over-report=79 under-report=81 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)",
+    "bun run verify:docs": "\n[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=45 failed=0 violations=0 exempt=23 derived=3 links=439 dead=0 — PASS",
+    "node budget-check.ts (installed renderer)": "verdict=PASS checks={'post_renders_full_content': True, 'post_under_budget': True, 'post_eol_is_lf': True, 'negative_control_is_red': True}",
+    "census (headings + bytes)": "preservation-audit.py — see heading_census below",
+    "wc -c AGENTS.md": "before=71811 after=59551"
+  },
+  "honest_bounds": [
+    "The moved bodies are VERBATIM in their destinations (sha256 per block in moved_blocks), so nothing was deleted: 50084 B of elaboration moved out of the injected manual.",
+    "The manual now holds the BINDING rule per anchor plus a pointer; the long forms live in agent-references/ (each file carries a provenance header naming the former §N body).",
+    "Trims that are NOT pure moves (the §4 table cells were shortened in place, and the §6/§7/§13 compact rewrites re-state rules rather than quoting them): the per-row prose that left the §4 table cells is preserved in the appended former-§4 body in verification-flow.md, and the compacted bullets' full text is preserved in their sections' reference file. Where a compact bullet DROPS a parenthetical detail, that detail is in the reference file — e.g. §4's comments-row source-set list, §4's `--self-test` arm counts, §6's adapter API signatures and the `dsh.registerTool` shape, §7's `agent.session.header.cwd ?? process.cwd()` quote and the zstd frame-count artifact, §8's 100.9/7.6 MB allowlist measurement, §13's archive path spelling and the `str_replace_editor` justification.",
+    "Two §-citations from code could not keep their FULL sentence, only its rule (both stated rather than hidden): (1) `docs/development.md` cites §7 for 'QA hard rules' — the three isolation rules stay, the measured SKILLS=24/BUNDLED=18 detail stays, but the decode trap's worked example moved; (2) `packages/mpd-team-watchdog-plugin/src/paths.ts` cites §6 'State' for per-call resolution — that rule stays word-for-word, while the `dsh.workspaceRootsAll()` gloss and the exception list detail moved to the reference."
+  ]
+}

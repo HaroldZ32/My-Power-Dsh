@@ -1,71 +1,61 @@
-# AGENTS.md — my-power-dsh Repository Manual
+#!/usr/bin/env python3
+"""Instruction-budget restructure of AGENTS.md (2026-10-06).
 
-This document is the binding operating manual for this repository. It is read by both humans and
-agents. Where this document and habit disagree, this document wins. Agent-facing content in this
-repository is English-only (see Language Policy).
+METHOD (so the move is auditable, not asserted):
+  * every moved body is extracted VERBATIM from AGENTS.md by line range and appended to its
+    `agent-references/<topic>.md` destination under a provenance header;
+  * the destination file is then asserted to CONTAIN the moved block byte-for-byte (sha256 recorded),
+    so "no text was deleted" is a measurement, not a claim;
+  * AGENTS.md keeps every `## N. <Title>` heading, in order and with unchanged numbers, and each
+    anchor keeps the binding rules its `§N` citations lean on (the compact text below). The compact
+    text is deliberately TERSE: it names the rule and points at the reference file for the detail.
 
-**Language policy (binding):**
-- Agent-facing content (this manual, code comments, QA scripts/logs) stays **English-only**.
-- **Human-facing documentation is BILINGUAL**: every doc a person reads — `README.md`, `docs/*.md`,
-  and every `packages/*/README.md` — ships BOTH an English file and a **简体中文** (`*.zh-CN.md`)
-  translation, and every bilingual doc carries its language switch link directly under the title
-  (`[中文](./<name>.zh-CN.md)` from the English file, `[English](./<name>.md)` from the Chinese one).
-  A change to one updates BOTH in the same commit.
-- **The PULL REQUEST description is human-facing**: it follows the same bilingual rule (EN + 简体中文 in
-  ONE description, English first). See §5.
-- The policy is executable: `bun run verify:docs` (`scripts/verify-docs-parity.ts`, which ships
-  `--self-test` with a negative control) enforces the pair, the switch link, the heading tree, real
-  CJK content and the RESOLUTION of relative link targets across the band it discovers — every `*.md`
-  under `docs/` at any depth, `extensions/**/README.md`, `templates/**/README.md`,
-  `packages/*/README.md` and the root README. A `./`- or `../`-spelled target resolves from the
-  LINKING file's own directory, a ROOT-relative `/`-spelled one against the REPO ROOT (`/docs/index.md`
-  means `docs/index.md` in this tree, never the filesystem root), a `#fragment` is stripped first, and
-  a directory counts (external URLs, in-page anchors and code spans are ignored); a zh-CN doc with no
-  EN twin, a non-exempt package with no README and an unresolved target are violations. Classification
-  is DECLARED, not directory-sensitive: a `*.md`
-  carrying `<!-- docs-parity: doc -->` is a doc wherever it lives, so a misplaced doc reddens instead
-  of escaping. A file kept VERBATIM as provenance is exempt from the link check too (its dead targets
-  are reported as EXEMPT, never as passes), and in a packed copy with no root `AGENTS.md` an
-  unresolved target is a NOTE rather than a failure (T-75).
-- **The agent-facing band is deliberately OUT of that discovery.** `agent-references/**` is
-  agent-facing content, so it is English-only and ships no `*.zh-CN.md` twin; the docs gate does not
-  discover that tree (T-28). Read this as a POLICY SENTENCE, not an omission: an English-only agent
-  document belongs OUTSIDE `docs/` — never inside a band whose every `*.md` is policed.
-- **A lone file exempts ITSELF, not by a hand-maintained list.** The gate derives the process-record
-  exemptions from the file: a doc carrying `<!-- docs-parity: exempt <reason> -->` is reported with
-  that reason, and the same doc without the marker is a normal policed file (T-30). The policy classes
-  named BY GLOB (`docs/plan-*.md`) stay a declared pattern, and the two ANTICIPATORY paths
-  (`docs/adder4.md`, `docs/cnt8.md`) are kept by design and printed as their own class, so an
-  exemption for a file that does not exist can never rot silently.
-- Process records exempt from the bilingual requirement (see §3): internal QA/golden reference docs;
-  plan files (`docs/decisions.md`); prior-phase reports (`docs/bline-report.md`,
-  `docs/omo-parity-gap.md`, `docs/review-p0-p3.md`, `docs/track-a-report.md`,
-  `docs/ulw-deepseek-optimization.md`, `docs/tui-edition-report.md`); and adopted third-party docs
-  kept verbatim as provenance (the upstream `mpd-agent-teams-plugin/README.md` and `README_ZH.md`).
+Run from the repo root:  python3 evidence/gates/agents-budget/<ts>/restructure.py
+"""
+from __future__ import annotations
 
-## Reference Index (on-demand)
+import hashlib
+import pathlib
+import sys
 
-The manual's bulk reference material lives in `agent-references/` — **agent-facing, English-only**
-files (`verify:docs` does not discover this tree). They are deliberately NOT named
-`AGENT.md`/`AGENTS.md`/`CLAUDE.md`, so the loader never injects them: **open them on demand** when a
-pointer here or in a section sends you there. `§1`–`§13` stay in place, so every `§N` citation from
-code, scripts and docs still resolves. The register is `agent-references/index.md`.
+ROOT = pathlib.Path("/home/haroldzhao/MyProj/DshProj/My-Power-Dsh")
+MANUAL = ROOT / "AGENTS.md"
+TS = "20261006T085805Z"
+EVID_REL = f"evidence/gates/agents-budget/{TS}"
 
-| File | Holds | Open it when |
-|---|---|---|
-| `agent-references/troubleshooting.md` | the full symptom → cause/fix table (the former body of §12, moved verbatim 2026-09-17 by the T-22 instruction-budget split) | a boot, gate, tool or team behaviour is wrong — look the symptom up before inventing a fix |
-| `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the authoritative A1–D42 adaptation table, the registry mechanics (context-pair addressing, `--write-registry`), the live region count and the two unpatched wave-2 driver scripts | you touch `packages/mpd-agent-teams-plugin/**`, `scripts/patch-agent-teams-fixes.ts`, `scripts/vendor-agent-teams.ts`, or an `mpd-delta` region |
-| `agent-references/verification-flow.md` | the ordered verification flow behind §4/§11 — AND the former §4 body verbatim (the full gate table with every per-row measurement): what each gate is worth, why the Docker lane is the LAST step, and the measured rootless / skip / `--require-docker` policy | you run a verification pass, or a Docker step skipped and you need to know why |
-| `agent-references/seam-adapters.md` | the TWO contact surfaces in detail (§6): the harness adapter and the DSH-TUI adapter, the fourteen `tui*` seams with their binder/probe/degrade discipline, the R5 "no terminal writes" rule and its gates, the declared WEB-plane residual, and the upstream panel-seam ask | you touch a `ctx.tui*` seam, an MPD log sink, an MCP launcher's stdio, or you are about to add a THIRD contact surface |
-| `agent-references/overview-and-provenance.md` | the full §1 body: what the bundle carries from upstream, the adopted-then-retired agent-teams body, the declared-dependency mount mechanism, the ULW/GOAL detail and the session-start gate's softer signals | you need the provenance or the composition history behind §1 before restating it |
-| `agent-references/plugin-authoring.md` | the full §6 body: the two adapter surfaces in detail, the counted host-setup bypass and the R1–R5 residuals, the delta-registry mechanics, the tool/guard/waterfall/subagent API signatures and the state-resolution rules | you author or debug a plugin row, touch a seam, or need an exact adapter signature |
-| `agent-references/qa-discipline.md` | the full §7 body: the triple-isolation rationale, the live-case session-log decode trap, the durable-anchor (T-90) calibration bound and the preset/row conformance failure modes | you set up a QA lane, read a session store, or a conformance case reddens without a cause |
-| `agent-references/installer-and-profiles.md` | the full §8 body: the one-command install in detail, the build-script-free dependency closure, the packed-artifact layout and the legacy `install-profile.ts` flow | you change `files`/`dsh.*`, a patch row or an install path |
-| `agent-references/glossary.md` | the full §13 body: every glossary term (DSH, bundle, patch layer, preset and the 0.1.7 preset-form change, mpd, golden) plus the long forms of the roster/workmate/slot definitions | a term's long form or history is needed |
+PROVENANCE = (
+    "Provenance: moved from `AGENTS.md` {title} on 2026-10-06 by the instruction-budget split (the\n"
+    "manual must stay under the harness's 65,536-byte workspace-instruction budget, and it was already\n"
+    "over at the previous HEAD). The block below is reproduced VERBATIM — its byte count and sha256 are\n"
+    "recorded in `" + EVID_REL + "/result.json`. `AGENTS.md` {short} carries the BINDING rules and points\n"
+    "here for the full body; where the two differ, the manual wins.\n"
+)
 
----
+HEADER = """# {title}
 
-## 1. Overview & Provenance
+Agent-facing reference (English-only by the bundle's language policy; `bun run verify:docs` does not
+discover this tree). **On demand — never auto-injected**: this file is deliberately not named
+`AGENT.md`/`AGENTS.md`/`CLAUDE.md`, so the workspace instruction loader never reads it. `§N` citations
+below refer to `AGENTS.md` sections, whose numbering is stable.
+
+{provenance}
+## The former {short} body (verbatim)
+
+"""
+
+
+def sha256(text: str) -> str:
+    """Hex sha256 of one UTF-8 string, so a moved block can be compared across files."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def block(lines: list[str], start: int, end: int) -> str:
+    """Extract an inclusive 1-based line range as text, asserting the range is inside the file."""
+    assert 1 <= start <= end <= len(lines), f"bad range {start}-{end} for {len(lines)} lines"
+    return "".join(lines[start - 1:end])
+
+
+S1_NEW = """## 1. Overview & Provenance
 
 **my-power-dsh** is a DeepSeek Harness (DSH) plugin bundle. **From upstream**: the roster, the
 model-chain vocabulary and the roster's stable ids, plus a pinned capability baseline —
@@ -127,91 +117,9 @@ provenance narrative is in `agent-references/overview-and-provenance.md`.
   project-instruction convention: every session MUST attempt to read `AGENT.md` (falling back to
   `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
 
----
+"""
 
-## 2. Principles
-
-1. **The agent is the worker.** Everything here optimizes for an agent that reads the repo cold and
-   behaves correctly: explicit conventions, executable gates, evidence on disk.
-2. **Plugin form.** Every delivered capability is a DSH cordis plugin (self-written) or an official
-   plugin instance configured in the bundle patch. No logic in profiles, scripts, or the user home.
-   **Mounting is by `cordis.patch.yml` + the profile mechanism and NOTHING else — binding** (full
-   statement in §8): this repository is an independent PACKAGE the profile references; it never
-   injects rows into the harness, never edits DSH sources, and never writes the home by hand.
-3. **Evidence without evidence is incomplete.** A change without QA evidence is not done.
-4. **Isolation.** QA never touches the real `~/.dsh`. Everything boots in a temp DSH_HOME.
-5. **Baseline discipline.** Upstream assets are pinned and verified; we don't chase upstream.
-6. **Minimal diffs.** Prefer the smallest change that satisfies the requirement; no speculative refactors.
-
----
-
-## 3. Repository Layout
-
-```
-mpd-dsh/
-├── AGENTS.md                     # this manual
-├── README.md / README.zh-CN.md   # public overview, bilingual pair (inheritance declared in README)
-├── PLAN.md                       # port plan (Track A/B)
-├── LICENSE.md / LICENSE-NOTICES.md
-├── VENDOR_LOCK.json              # upstream commit/version/stats + vendored asset fingerprints
-├── package.json                  # THE BUNDLE MANIFEST (name @mpd-dsh/mpd): dsh.bundle.patch
-│                                 #   (an ARRAY of the bundle patch + the preset patch) + dsh.client
-│                                 #   + exports -> `dsh plugin add .` is the whole install
-├── cordis.patch.yml              # THE host-plane patch layer, at the package ROOT (standard layout)
-├── tsconfig.json                 # root tsgo config (covers packages/*/src/**/*.ts)
-├── presets/                      # mpd.patch.yml: the `preset-mpd` row (@deepseek-ai/dsh-agent-preset,
-│                                 #   inline plugin list). The retired directory form is gone.
-├── scripts/                      # gates, packer, installer, extension CLI, vendor + delta appliers
-│                                 #   + lib/repo.ts: the shared primitives every script imports
-├── packages/                     # one dir per plugin package (src/ + dist/ + README.md each);
-│   ├── mpd-dsh-adapter-plugin/   # THE single contact surface with harness seams (§6)
-│   ├── mpd-roles-plugin/         # the specialist roster + mpd_roles_* + the mpdRoles service
-│   ├── mpd-agent-teams-plugin/   # RETIRED vendored dsh-agent-teams body — kept, NOT mounted (§1)
-│   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate)
-│   ├── mpd-ulw-plugin/           # C2 ultrawork v2 engine: mpd_ultrawork + /ulw, /ultrawork
-│   ├── mpd-mcp-astgrep / mpd-mcp-codegraph / mpd-mcp-gitbash / mpd-mcp-lsp / mpd-mcp-shared /
-│   │                             # the MCP servers: AST search, code graph, git-bash, LSP, shared libs
-│   ├── mpd-tools-plugin/         # B1: write guard, output truncation, edit-error recovery
-│   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendored hashline-core)
-│   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendored boulder-state); anchors a goal
-│   ├── mpd-goal-plugin/          # C8: the persisted-GOAL bridge — mpd_goal_* + the `mpdGoal` service
-│   │                             #   ULW/boulder auto-anchor from (`goal.*`, the anchors sidecar)
-│   ├── mpd-config-plugin/        # C7: the mpd.jsonc runtime config layer (read by the plugins above)
-│   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + the reflection state machine
-│   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
-│   ├── mpd-modelchain-plugin/    # B4: mpd_modelchain_resolve + mpd_memory_save/recall
-│   ├── mpd-codegraph-plugin/     # binary resolve + project init + the mpd-codegraph command
-│   ├── mpd-bootstrap-plugin/     # serves <bundle>/skills by reference; cleans legacy (<=0.2.6) copies
-│   ├── mpd-team-watchdog-plugin/ # stall detection: the member record-stream fold, heartbeat store,
-│   │                             #   WARN->ESCALATE ladder, preserving hold (NEW DISPATCH only)
-│   ├── mpd-team-compact-plugin/  # compacts FINISHED teams (never the captain); ledger in .mpd/team-compact
-│   ├── mpd-team-core-plugin/     # THE TEAM RECORD + WORKFLOW + the `mpdTeams` service (W1)
-│   ├── mpd-roster-provider-plugin/ # per-member model routing for OFFICIAL teammates: registers
-│   │                             #   the `mpd-roster` subagent provider the team tool row points at
-│   ├── mpd-ext-plugin/           # the extension interface (row `mpd-ext`, service `mpdExtensions`)
-│   ├── mpd-tui-adapter-plugin/   # THE MPD<->DSH-TUI contact surface (`mpdTui`): the ONE file that may
-│   │                             #   name a `ctx.tui*` seam, plus the R5 file log sink
-│   ├── mpd-tui-plugin/           # the DSH-TUI edition's surface package (never names a `ctx.tui*` seam)
-│   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client
-│   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster
-├── extensions/                   # <bundle>/extensions/*/mpd-ext.json + the DISABLED mpd-ext-example
-├── skills/                       # dsh-qa + our own cordis-dev + 16 ported upstream skills + svn-master
-│                                 #   (SERVED by reference; cordis-dev adapts the harness's 创造模式 skills)
-├── templates/                    # plugin/extension scaffolds shipped by the packer
-├── tests/                        # overlays/ (keep empty when rows live in the bundle) + golden/
-├── docs/                         # human-facing docs (BILINGUAL EN + zh-CN); hub is docs/index.md
-│                                 #   plan records + internal QA/golden docs are EXEMPT from the
-│                                 #   bilingual rule (the §3 policy the gate cites)
-├── agent-references/             # ON-DEMAND agent-facing reference (never auto-injected)
-└── evidence/                     # QA evidence: <domain>/<slug>/<timestamp>/ (records, language as produced)
-```
-
-Each `packages/<pkg>/README.md` holds that plugin's own contract — this tree is a map, not a
-specification.
-
----
-
-## 4. Gates (binding)
+S4_NEW = """## 4. Gates (binding)
 
 | Gate | Command | When |
 |---|---|---|
@@ -256,62 +164,9 @@ doc pairs, preset conformance) — one command for a patch/preset edit and the r
 expects a CLEAN tree: a dirty `skills/**` corpus reddens the vendor gate until the wave's single re-pin
 lands (§9/§11).
 
----
+"""
 
-## 5. Git Model (dev/release/defect separation)
-
-| Branch | Purpose | Rules |
-|---|---|---|
-| `master` | release line | only release merges; never direct commits or pushes |
-| `dev` | integration | feature/fix branches merge here; full gates must pass |
-| `feature/<slug>` | capabilities | from dev, kebab-case, atomic commits + evidence |
-| `fix/<slug>` | defects | from dev; one branch per defect; reproduction evidence + QA PASS before merge |
-| `release/vX.Y.Z` | release prep | from dev; version/docs-only; merged to master with annotated tag |
-
-- Commit format: `<type>(<scope>): <summary>` (feat/fix/docs/test/chore/release).
-- Fixes cite the defect. Every defect branch is merged only after its evidence lands.
-- Never rebase published branches; merge with `--no-ff` and a descriptive message.
-- **ONE git writer per working tree — binding.** Teammates share the captain's checkout, so two writers
-  race on the single `.git/HEAD`. Measured (2026-09-14): a member switched branches mid-command and its
-  `reset HEAD~1` landed on `dev`, moving the tip back one commit — nothing lost (the reflog held every
-  step), but recovery cost a full forensics pass. Rules: a teammate NEVER runs
-  `commit`/`add`/`checkout`/`switch`/`reset`/`stash`/`merge`/`branch`/`rebase`/`tag`; it edits files, runs
-  gates and writes evidence, and the **captain alone** commits and branches — or the captain serializes
-  ONE delegated writer and freezes everyone else first. Read-only `status`/`log`/`diff`/`show`/`grep`
-  stay open to all. Tag `backup/<branch>-<sha>` before any history-writing step.
-- **Every change lands through a BRANCH + a PULL REQUEST — binding (user-set, 2026-10-06).** Nothing is
-  committed straight to `dev` or `master`: cut a `feature/<slug>` or `fix/<slug>` branch, commit the wave
-  there, push it, and open a PR against `dev`. **A PR DESCRIPTION IS BILINGUAL**: it carries BOTH an
-  English body and a 简体中文 body, English first, as two sections of ONE description (`## English` then
-  `## 简体中文`) — the same pair discipline the human-facing docs follow, applied to the review surface.
-  A single-language PR description is not ready for review. Every PR body states, in both languages:
-  what changed, the measured evidence (paths under `evidence/`), the gates run WITH their observed
-  results, and the honest bounds — never a claim the evidence does not carry.
-- **Attribution cannot come from the author field.** A shared checkout writes every commit under
-  ONE configured identity, so attribute by task ownership + content + reflog ORDER, never by `%an`.
-- **The captain's standing rules (user-set, 2026-09-16)** — instructions, not suggestions:
-  1. **Archive the team as soon as its wave is merged** (`agent_teams_delete`). One team that keeps
-     accumulating is what inflates the session's context and erases the wave boundary: the measured
-     case reached **86 tasks across four waves**, after which one wave's seven fixes read as
-     unrelated chores. Keep ONE team per wave, and end it when the wave lands.
-  2. **Dispatch by WORKLOAD SIZE — size picks the EXECUTOR, it never decides "do it myself".**
-     Team mode is NOT a precondition for using specialists: outside a team the MPD-native path is
-     always available — `mpd_role_spawn` for a one-shot specialist and the workmate library
-     (`mpd_workmate_*`) for an instance that accumulates across sessions. Size chooses WHICH
-     executor: a small mechanical change goes to a Junior Engineer, a bounded independent piece to
-     a Senior Engineer or Deep Worker, an evidence question to a Researcher or Explorer, a verdict
-     to a Reviewer. The captain executes only what must not be delegated by rule — the single git
-     writer, contract amendments and plan/roster shaping, releasing a watchdog hold, and the final
-     integration — and does so without framing it as "working solo".
-  3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement
-     task (the frozen acceptance contract), a work task and a review task rather than one lumped
-     implementation task; finding-driven work uses `kind=repair` + `sourceTaskId`/
-     `sourceFindingIds`, and `coverageOf` names the user clause a task serves — that is what turns
-     the Web plan from a flat list into a requirement chain.
-
----
-
-## 6. Plugin Authoring Guide
+S6_NEW = """## 6. Plugin Authoring Guide
 
 Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `packages/<pkg>/dist/index.js`
 (bun build), `README.md`, optional `package.json` with `@mpd-dsh/<name>` naming. **The full former §6 body
@@ -401,9 +256,9 @@ and every adapter API signature — is in `agent-references/plugin-authoring.md`
   (`devPatch()` in `skills/dsh-qa/scripts/preset-register.ts`).
 - **Docstrings/comments**: English only.
 
----
+"""
 
-## 7. QA Discipline (mirrors upstream, adapted)
+S7_NEW = """## 7. QA Discipline (mirrors upstream, adapted)
 
 **The full former §7 body — the isolation rationale, the session-log decode trap, the T-90 calibration
 bound and the conformance failure modes — is in `agent-references/qa-discipline.md`.**
@@ -458,9 +313,9 @@ bound and the conformance failure modes — is in `agent-references/qa-disciplin
 - Shell caveat: long-lived MCP children hold inherited fds — run dsh with stdio to FILES (`spawnSync`
   with `stdio: ['ignore', fd, fd]`) or background + log-file redirection, never pipes.
 
----
+"""
 
-## 8. Installer & Profiles
+S8_NEW = """## 8. Installer & Profiles
 
 **The full former §8 body — the one-command install in detail, the build-script-free dependency closure,
 the packed-artifact layout and the legacy flow's measurements — is in
@@ -522,95 +377,9 @@ user's own `~/.mpd/workmate`. A capability that arrives by any other route is a 
   presets → `$DSH_HOME/.agent-presets/`. Superseded by the packed bundle for user installs.
 - Never run the installer against the real home from a QA context; that is what `--dsh-home` is for.
 
----
+"""
 
-## 9. Vendor & Baseline
-
-- `VENDOR_LOCK.json`: upstream commit/version/stats; per-asset `fileCount` + `sha256` (single file)
-  or `treeSha` (dir, sorted relpath + per-file sha256). Item counts and fingerprints are blocking.
-- Update policy: never chase upstream; a baseline change requires a deliberate branch + evidence.
-- Vendored skill corpus: refresh as whole-dir replacements from upstream, keep provenance links.
-- **`skills/**` has ONE writer per wave (single-skills-writer rule).** Every `skills/**` edit
-  invalidates the corpus `treeSha` in `VENDOR_LOCK.json`, and the re-pin must land in the SAME
-  commit as the change that invalidated it (§11). Two writers therefore force two coupled
-  commits, a mid-wave re-pin, and a `verify-vendor` failure on anyone who commits in between.
-  Serialize all `skills/**` edits of a wave through a single writer and re-pin exactly once;
-  exactly ONE re-pin per wave — landing in the same commit as the change that invalidated that
-  `treeSha` — is the invariant a reviewer checks.
-
----
-
-## 10. Security & Privacy
-
-- Credentials: only ever copied into an ephemeral QA sandbox; never committed, logged, or echoed.
-- Evidence logs must not contain secret material (api key values, tokens).
-- License: SUL-1.0 (LICENSE.md): internal/personal use; distribution free & non-commercial only.
-
----
-
-## 11. Release Process
-
-1. From dev: `git checkout -b release/vX.Y.Z`; bump the version in ALL THREE carriers — `package.json`, `dsh-plugin.json`, `dsh-distribution.json` (`verify:manifest` reddens on any mismatch) — plus the changelog note.
-2. Full gate sweep, each command named exactly: `bun run verify:vendor` (after the wave's single
-   `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when
-   `skills/**` changed), `bun test`,
-   `bun run typecheck`, `bun run test:qa`, `bun run verify:docs`, `bun run verify:rows`,
-   `node skills/dsh-qa/scripts/preset-conformance.ts --self-test`,
-   `node scripts/verify-dist-fresh.ts`, `node scripts/verify-pack-closure.ts` (freshness read from
-   the `expected-after-pack` list at the re-pack, never from its exit code — §4's bound), plus the
-   real smoke cases (`dual-track-smoke`, `mcp-call`).
-   - **LAST: the Docker real-machine lane, with `--require-docker` so it cannot skip silently** —
-     `node scripts/docker-e2e.ts --mode source --require-docker` then `--mode oneclick
-     --require-docker`. Run it AFTER the last write, and cite the stamps it writes.
-   - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME
-     commit as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer
-     rule (§9) that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and
-     that no `skills/**` change is committed without it.
-3. Merge `--no-ff` to master with `release: vX.Y.Z …`; annotated tag `vX.Y.Z`.
-4. Push master + tag; announce with evidence links.
-
----
-
-## 12. Troubleshooting (known)
-
-The full symptom → cause/fix table lives in **`agent-references/troubleshooting.md`** (on demand, not
-injected; see the Reference Index). It is the former body of this section, moved verbatim 2026-09-17 by
-the T-22 instruction-budget split and hash-verified under `evidence/gates/agents-budget/`. It covers the
-ESM-restart trap, the fresh-`/tmp` and `nohup` rules, the single-`skills/**`-writer re-pin rule, the
-`update_task` `status`/`attempt_id` contract, `--dump-config` vs a mounting boot, schema-union boot
-failures, credential/sandbox traps, the codegraph daemon policy, the preset-plane row-drift class,
-agent-teams dispatch defects, the failed-dependency pinning trap, the `inScope overlaps` validator and
-profile-row loss after an unrelated install.
-
-**Harness-owned frictions — CLOSED by a rule plus a helper** (user decision 2026-09-17). Each is DSH
-behaviour or deliberate design that we do not fight; each is now "known, with a one-command fallback",
-and the detail lives in `agent-references/troubleshooting.md`:
-
-- **T-21 — no plugin-module hot reload.** ESM caches a module at session start, so an edit is invisible
-  until `dsh` restarts. Ask instead of guessing: `node scripts/mpd-bg.ts reload-check <module-path>`
-  → `RESTART-REQUIRED` / `FRESH` / `NO-LIVE-SESSION`.
-- **T-23 — fresh `/tmp` per bash call + `bwrap --die-with-parent`.** Long work MUST be a managed
-  background job (the bash tool's `run_in_background`), never `nohup`; start it through
-  `node scripts/mpd-bg.ts run --log <workspace-path> -- <cmd>` so the output lands in a file.
-- **T-24 — MCP children inherit fds.** Never pipe a long-lived `dsh`: `mpd-bg run` always hands the
-  child a FILE as stdout+stderr, and `node scripts/mpd-bg.ts probe <pidfile>` is a kernel-only
-  liveness check that cannot self-match a pattern.
-- **T-26 — the file sandbox is workspace-write.** `node scripts/mpd-bg.ts check-write <path>` answers
-  before a write is attempted; cross-area work needs a declared extra-write root.
-- **T-43 — the workmate library lives under `HOME`.** QA/verification MUST boot with `HOME=<sandbox>`;
-  the plugin refuses a mutation that would write the REAL `~/.mpd/workmate` (`403 real-home-refused`)
-  unless `MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1` is set deliberately. A normal session is unaffected.
-- **T-54 — a sandboxed profile copy must sit at the SAME directory depth** as the installed profile
-  (the bundle dependency is a RELATIVE symlink of `..` segments); copy siblings at that depth.
-- **T-55 — cite code by SYMBOL, never by line number** (a line pointer rots: one drifted from off-by-3
-  to off-by-15 before a review caught it).
-
-All seven are verified by `node scripts/mpd-bg.ts --self-test` (13 arms) plus the two sandbox cases in
-`evidence/platform/harness-close/`.
-
----
-
-## 13. Glossary
+S13_NEW = """## 13. Glossary
 
 **The full glossary — every term with its long form, plus the 0.1.7 preset-form change — is in
 `agent-references/glossary.md`.** The three definitions this section is CITED for (roster, team-model
@@ -657,3 +426,135 @@ slot, workmate) stay here.
   workmate is in use, and names are ASCII-only `[a-z0-9_-]`. A base is addressed by its functional NAME
   only, an auto-generated name derives from it (`Deep Worker` → `deep-worker-1`), and `baseId` is
   internal provenance in `meta.json` that no tool output, web route or GUI ever exposes.
+"""
+
+
+def main() -> int:
+    """Apply every move + every in-place edit, then print the measurement summary."""
+    original = MANUAL.read_text(encoding="utf-8")
+    lines = original.splitlines(keepends=True)
+    before_bytes = len(original.encode("utf-8"))
+
+    # (destination, title, anchor-label, provenance-title, (start,end) of the moved block, replacement)
+    sections: list[tuple[str, str, str, str, tuple[int, int], str]] = [
+        ("agent-references/overview-and-provenance.md",
+         "Overview & provenance (the full former §1 body)",
+         "§1", '§1 ("Overview & Provenance")', (61, 161), S1_NEW),
+        ("APPEND:agent-references/verification-flow.md",
+         "The former §4 body (verbatim): the full gate table with every per-row measurement",
+         "§4", '§4 ("Gates (binding)")', (246, 289), S4_NEW),
+        ("agent-references/plugin-authoring.md",
+         "Plugin authoring (the full former §6 body)",
+         "§6", '§6 ("Plugin Authoring Guide")', (337, 491), S6_NEW),
+        ("agent-references/qa-discipline.md",
+         "QA discipline (the full former §7 body)",
+         "§7", '§7 ("QA Discipline (mirrors upstream, adapted)")', (494, 565), S7_NEW),
+        ("agent-references/installer-and-profiles.md",
+         "Installer & profiles (the full former §8 body)",
+         "§8", '§8 ("Installer & Profiles")', (568, 640), S8_NEW),
+        ("agent-references/glossary.md",
+         "Glossary (the full former §13 body)",
+         "§13", '§13 ("Glossary")', (729, 798), S13_NEW),
+    ]
+
+    written: list[dict[str, object]] = []
+    for dest_rel, title, short, prov_title, (start, end), _ in sections:
+        moved = block(lines, start, end)
+        append = dest_rel.startswith("APPEND:")
+        target = dest_rel.split(":", 1)[1] if append else dest_rel
+        header = (
+            f"\n---\n\n## {title}\n\n"
+            + PROVENANCE.format(title=prov_title, short=short)
+            + "\n"
+            if append
+            else HEADER.format(
+                title=title,
+                short=short,
+                provenance=PROVENANCE.format(title=prov_title, short=short),
+            )
+        )
+        dest = ROOT / target
+        if not append and dest.exists():
+            raise SystemExit(f"refusing to overwrite existing reference file: {target}")
+        prior = dest.read_text(encoding="utf-8") if append else ""
+        dest.write_text(prior + header + moved, encoding="utf-8")
+        confirmed = dest.read_text(encoding="utf-8")
+        assert moved in confirmed, f"verbatim preservation FAILED for {target}"
+        written.append({
+            "path": target,
+            "mode": "appended" if append else "created",
+            "file_bytes_after": len(confirmed.encode("utf-8")),
+            "moved_source_lines": f"{start}-{end}",
+            "moved_bytes": len(moved.encode("utf-8")),
+            "moved_lines": moved.count("\n"),
+            "moved_sha256": sha256(moved),
+            "moved_verbatim_in_destination": True,
+        })
+
+    # Rebuild AGENTS.md from the END so earlier line numbers stay valid.
+    out = original
+    for _, _, _, _, (start, end), replacement in sorted(sections, key=lambda s: s[4][0], reverse=True):
+        moved = block(lines, start, end)
+        assert out.count(moved) == 1, f"block {start}-{end} is not unique in AGENTS.md"
+        out = out.replace(moved, replacement)
+
+    # ── TASK 1: the branch + PR policy (EXACT text supplied by the Lead) ────────────────────────
+    pr_bullet = (
+        "- **Every change lands through a BRANCH + a PULL REQUEST — binding (user-set, 2026-10-06).** Nothing is\n"
+        "  committed straight to `dev` or `master`: cut a `feature/<slug>` or `fix/<slug>` branch, commit the wave\n"
+        "  there, push it, and open a PR against `dev`. **A PR DESCRIPTION IS BILINGUAL**: it carries BOTH an\n"
+        "  English body and a 简体中文 body, English first, as two sections of ONE description (`## English` then\n"
+        "  `## 简体中文`) — the same pair discipline the human-facing docs follow, applied to the review surface.\n"
+        "  A single-language PR description is not ready for review. Every PR body states, in both languages:\n"
+        "  what changed, the measured evidence (paths under `evidence/`), the gates run WITH their observed\n"
+        "  results, and the honest bounds — never a claim the evidence does not carry.\n"
+    )
+    lang_bullet = (
+        "- **The PULL REQUEST description is human-facing**: it follows the same bilingual rule (EN + 简体中文 in\n"
+        "  ONE description, English first). See §5.\n"
+    )
+    anchors = (
+        ("§5 one-git-writer bullet",
+         "  stay open to all. Tag `backup/<branch>-<sha>` before any history-writing step.\n", pr_bullet),
+        ("Language policy bilingual-docs bullet",
+         "  A change to one updates BOTH in the same commit.\n", lang_bullet),
+    )
+    for name, anchor, insert in anchors:
+        assert out.count(anchor) == 1, f"anchor not unique: {name}"
+        out = out.replace(anchor, anchor + insert)
+
+    # ── Reference Index rows for the new files ──────────────────────────────────────────────────
+    index_rows = (
+        "| `agent-references/overview-and-provenance.md` | the full §1 body: what the bundle carries from upstream, the adopted-then-retired agent-teams body, the declared-dependency mount mechanism, the ULW/GOAL detail and the session-start gate's softer signals | you need the provenance or the composition history behind §1 before restating it |\n"
+        "| `agent-references/plugin-authoring.md` | the full §6 body: the two adapter surfaces in detail, the counted host-setup bypass and the R1–R5 residuals, the delta-registry mechanics, the tool/guard/waterfall/subagent API signatures and the state-resolution rules | you author or debug a plugin row, touch a seam, or need an exact adapter signature |\n"
+        "| `agent-references/qa-discipline.md` | the full §7 body: the triple-isolation rationale, the live-case session-log decode trap, the durable-anchor (T-90) calibration bound and the preset/row conformance failure modes | you set up a QA lane, read a session store, or a conformance case reddens without a cause |\n"
+        "| `agent-references/installer-and-profiles.md` | the full §8 body: the one-command install in detail, the build-script-free dependency closure, the packed-artifact layout and the legacy `install-profile.ts` flow | you change `files`/`dsh.*`, a patch row or an install path |\n"
+        "| `agent-references/glossary.md` | the full §13 body: every glossary term (DSH, bundle, patch layer, preset and the 0.1.7 preset-form change, mpd, golden) plus the long forms of the roster/workmate/slot definitions | a term's long form or history is needed |\n"
+    )
+    anchor_row = "| `agent-references/seam-adapters.md`"
+    row_end = out.index("\n", out.index("|\n", out.index(anchor_row))) + 1
+    out = out[:row_end] + index_rows + out[row_end:]
+
+    # The existing verification-flow row now also carries the former §4 body.
+    old_flow_row = ("| `agent-references/verification-flow.md` | the ordered verification flow behind §4/§11: "
+                    "what each gate is worth, why the Docker lane is the LAST step, and the measured rootless "
+                    "/ skip / `--require-docker` policy |")
+    new_flow_row = ("| `agent-references/verification-flow.md` | the ordered verification flow behind §4/§11 — "
+                    "AND the former §4 body verbatim (the full gate table with every per-row measurement): what "
+                    "each gate is worth, why the Docker lane is the LAST step, and the measured rootless / skip "
+                    "/ `--require-docker` policy |")
+    assert out.count(old_flow_row) == 1, "verification-flow index row not found"
+    out = out.replace(old_flow_row, new_flow_row)
+
+    MANUAL.write_text(out, encoding="utf-8")
+    after_bytes = len(out.encode("utf-8"))
+
+    print(f"before_bytes={before_bytes} after_bytes={after_bytes} delta={after_bytes - before_bytes}")
+    for row in written:
+        print(f"  {row['path']} [{row['mode']}]: moved {row['moved_bytes']} B "
+              f"(lines {row['moved_source_lines']}) -> file now {row['file_bytes_after']} B")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
