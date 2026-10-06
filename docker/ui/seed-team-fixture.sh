@@ -15,6 +15,7 @@
 # USAGE (from the host, with the stack up):
 #   docker/ui/seed-team-fixture.sh                      # the normal board
 #   docker/ui/seed-team-fixture.sh --board=malformed    # absent blocker endpoint + dependency cycle
+#   docker/ui/seed-team-fixture.sh --board=cjk          # pure-CJK subjects (the CJK drawing clause)
 #   docker/ui/seed-team-fixture.sh --clear              # remove the seeded record
 set -uo pipefail
 
@@ -39,8 +40,8 @@ if [ "$BOARD" = "clear" ]; then
 fi
 
 case "$BOARD" in
-  normal|malformed) ;;
-  *) echo "unknown board '$BOARD' (expected normal|malformed|--clear)" >&2; exit 2 ;;
+  normal|malformed|cjk) ;;
+  *) echo "unknown board '$BOARD' (expected normal|malformed|cjk|--clear)" >&2; exit 2 ;;
 esac
 
 for source in "$HERE/team-fixture.mts" "$HERE/team-fixture-records.mts"; do

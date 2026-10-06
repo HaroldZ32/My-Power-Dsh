@@ -35,8 +35,8 @@ import { boardLines, readBoardState, statusLine, type BoardState } from "./state
 import { cellWidth, clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines, type MpdPlanView } from "./team-state.js"
-import { hitTest, layoutGraph, legendLines, type GraphTask } from "./graph.js"
-import { legendLinesFor, toneColor, visualTone } from "./panel-core.js"
+import { hitTest, layoutGraph, layoutGraphNatural, legendLines, sliceSpans, type GraphTask } from "./graph.js"
+import { gutterCellsX, legendLinesFor, toneColor, visualTone } from "./panel-core.js"
 import { statusMarker } from "./status.js"
 import {
   SUBAGENT_SCENE_ID,
@@ -549,6 +549,16 @@ function createTeamComponent(
     const scroll = scrollState[0] as number
     /** Moves the offset; `r` resets it to 0. */
     const setScroll = scrollState[1] as (next: number) => void
+    // THE SECOND AXIS (frozen clause T5). It is the DAG DRAWING's own window and nothing else (R8): the
+    // scene's other rows — the roster, the legend, the detail pane, the footer — stay at the terminal's
+    // width and never move sideways. The purpose, said once: the pan exists so the WHOLE DAG can be seen,
+    // because a natural-width drawing is allowed to be wider than the terminal it is drawn in.
+    /** The horizontal scroll offset, in cells, over the DRAWING only. */
+    const scrollXState = React.useState(0)
+    /** The horizontal scroll offset, in cells. */
+    const scrollX = scrollXState[0] as number
+    /** Moves the horizontal offset; `r` resets it to 0. */
+    const setScrollX = scrollXState[1] as (next: number) => void
     // The last read's facts, so a key handler answers "is this team staged?" without a second read
     // and without reading state from a stale render closure.
     const latestRef = React.useRef?.(undefined as { staged: boolean; teamId?: string } | undefined)
@@ -616,8 +626,17 @@ function createTeamComponent(
     const measured = measureTerminal(ui)
     /** The graph's own viewport, inside the scene's one-cell padding. */
     const graphWidth = Math.max(20, measured.cols - 4)
-    /** The drawing for this render. */
-    const view = layoutGraph(graphTasks, graphWidth, focus)
+    // THE DRAWING IS LAID OUT AT ITS NATURAL WIDTH (frozen clauses T1/T2), so `view.width` may exceed
+    // `graphWidth`; the rows below are WINDOWED to the viewport instead of the drawing being squeezed to
+    // it. The vertical budget is the scene's own graph window, which is what buys the roomy box form.
+    /** The rows of the graph that fit the window. */
+    const graphWindow = Math.max(3, measured.window - 4)
+    /** The drawing for this render, at its own width. */
+    const view = layoutGraphNatural(graphTasks, focus, { rows: graphWindow })
+    /** The furthest horizontal offset that still fills the viewport; zero when the drawing fits. */
+    const scrollXMax = Math.max(0, view.width - graphWidth)
+    /** The horizontal offset for THIS render, clamped — the one value the rows and the rail both read. */
+    const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax)
     if (viewRef !== undefined && viewRef !== null) viewRef.current = view
     /** The tasks the focus would move through, in DRAWING order, which is what the arrow keys walk. */
     const ordered = view.hits.map((hit) => hit.taskId)
@@ -634,15 +653,26 @@ function createTeamComponent(
     }
 
     if (typeof ui.useInput === "function") {
-      ui.useInput((input: string, key: { escape?: boolean; upArrow?: boolean; downArrow?: boolean; shift?: boolean } | undefined) => {
+      ui.useInput((input: string, key: { escape?: boolean; upArrow?: boolean; downArrow?: boolean; leftArrow?: boolean; rightArrow?: boolean; pageUp?: boolean; pageDown?: boolean; home?: boolean; end?: boolean; shift?: boolean } | undefined) => {
         // `esc` UNPINS rather than closing while something is pinned: the pin is a mode, and a user
         // who clicked a task must be able to leave that mode without leaving the scene.
         if (key?.escape === true && pinned !== undefined) { setPinned(undefined); setHover(undefined); return }
         if (key?.escape === true || input === "q") close()
-        else if (input === "r") { setScroll(0); refresh() }
+        else if (input === "r") { setScroll(0); setScrollX(0); refresh() }
+        // THE ARROWS MOVE THE FOCUS; SHIFT MAKES THEM SCROLL (the user's own decision, clause T5). `←/→`
+        // are NEW: they walk the SAME one-dimensional drawing order `↑/↓` already walk, because a true
+        // two-dimensional neighbour walk would need a geometry contract nobody asked for.
         else if (key?.upArrow === true || input === "k") (key?.shift === true ? setScroll(Math.max(0, scroll - 1)) : moveFocus(-1))
         else if (key?.downArrow === true || input === "j") (key?.shift === true ? setScroll(scroll + 1) : moveFocus(1))
-        else if (input === "g") { setScroll(0) }
+        else if (key?.leftArrow === true || input === "h") (key?.shift === true ? setScrollX(Math.max(0, scrollXAt - 1)) : moveFocus(-1))
+        else if (key?.rightArrow === true || input === "l") (key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + 1)) : moveFocus(1))
+        // PAGING: `PgUp`/`PgDn` page vertically and their SHIFT forms horizontally, and `Home`/`End` are
+        // the vertical ends — the same four keys the `dag` panel answers, so the two surfaces agree.
+        else if (key?.pageUp === true) (key?.shift === true ? setScrollX(Math.max(0, scrollXAt - graphWidth)) : setScroll(Math.max(0, scroll - graphWindow)))
+        else if (key?.pageDown === true) (key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + graphWidth)) : setScroll(scroll + graphWindow))
+        else if (key?.home === true) setScroll(0)
+        else if (key?.end === true) setScroll(Number.MAX_SAFE_INTEGER)
+        else if (input === "g") { setScroll(0); setScrollX(0) }
         else if (input === "p") { nav.planFromTeam = false; openScene(BOARD_SCENE_ID) }
         else if (input === "a") {
           /** Whether the last read saw a staged team, which is what the `a` key needs. */
@@ -724,8 +754,11 @@ function createTeamComponent(
       /** One host element per drawn graph row, each carrying its coloured spans. */
       const graphRows: unknown[] = []
       for (let index = scroll; index < Math.min(view.lines.length, scroll + graphWindow); index += 1) {
-        /** The spans of this row, each drawn in its own theme colour. */
-        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
+        // THE HORIZONTAL WINDOW, through the ONE slicer (clause T3). It is applied HERE and nowhere
+        // else in this scene: this is the DAG's own row list, and every other row the scene draws is
+        // pushed through `surfaceText`/`surfaceBodyRow` at its full width (R8).
+        /** The spans of this row, cut to the viewport and each drawn in its own theme colour. */
+        const spans = sliceSpans(view.lines[index], scrollXAt, graphWidth).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
         graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans))
       }
       children.push(React.createElement(ui.Box, {
@@ -738,7 +771,7 @@ function createTeamComponent(
           const drawn = viewRef?.current
           if (drawn === undefined) return
           /** The task under the pointer, or none. */
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1))
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1) + scrollXAt)
           setHover(under)
         },
         onMouseLeave: () => setHover(undefined),
@@ -747,17 +780,33 @@ function createTeamComponent(
           const drawn = viewRef?.current
           if (drawn === undefined) return
           /** The task that was clicked, or none for blank space. */
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1))
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1) + scrollXAt)
           // Clicking the pinned task again, or blank space, UNPINS — the same gesture that pinned it.
           setPinned(under === undefined || under === pinned ? undefined : under)
           setHover(under)
         },
-        onWheel: (event: { deltaY?: number } | undefined) => {
-          /** The wheel's direction; a positive delta scrolls down, as every terminal reports it. */
-          const delta = Number(event?.deltaY ?? 0)
-          if (delta !== 0) setScroll(Math.max(0, scroll + (delta > 0 ? 1 : -1)))
+        onWheel: (event: { deltaY?: number; deltaX?: number } | undefined) => {
+          // EACH DELTA DRIVES ITS OWN AXIS (clause T5). The vertical one keeps the sign convention every
+          // terminal reports; the horizontal one moves the DRAWING's window, and only when there is
+          // something to pan to — a wheel that scrolled a fitting drawing would be motion with no cause.
+          /** The wheel's vertical direction; a positive delta scrolls down. */
+          const deltaY = Number(event?.deltaY ?? 0)
+          if (deltaY !== 0) setScroll(Math.max(0, scroll + (deltaY > 0 ? 1 : -1)))
+          /** The wheel's horizontal direction; a positive delta scrolls right. */
+          const deltaX = Number(event?.deltaX ?? 0)
+          if (deltaX !== 0) setScrollX(Math.max(0, Math.min(scrollXMax, scrollXAt + (deltaX > 0 ? 1 : -1))))
         },
       }, graphRows))
+      // THE HORIZONTAL RAIL, DIRECTLY BENEATH THE DRAWING (R8) — not beneath the scene, and driven by
+      // the SAME `scrollXAt` the rows above were cut with, so the thumb and the window can never
+      // disagree (clause T4). Drawn only while the drawing is wider than the viewport.
+      if (scrollXMax > 0) {
+        // The rail's cells come out of `panel-core.ts`'s ONE horizontal-gutter function, so the scene and
+        // the `dag` panel draw the same thumb at the same offset from the same arithmetic (clause T4).
+        /** The rail's cells, one per column of the viewport. */
+        const rail = gutterCellsX(scrollXAt, view.width, graphWidth)
+        if (rail !== "") children.push(surfaceText(surface, "hrail", rail, { dim: true }))
+      }
       // THE LEGEND sits directly under the DAG it explains, in the SAME width budget the graph was
       // laid out for (`graphWidth`) — the merged panel draws the same lines under its own DAG, so
       // one legend cannot claim more cells than the drawing above it used. It is COMPOSED, not

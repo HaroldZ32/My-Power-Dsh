@@ -16,12 +16,14 @@
 import { describe, expect, test } from "bun:test"
 import {
   DAG_ANIM,
+  DAG_CHARS,
   DAG_CHROME,
   DAG_PANEL_MIN_COLUMNS,
   DAG_STATE_TONES,
   DAG_TONE_GLYPH,
 } from "../src/dag-theme"
 import { cellWidth, clampCells } from "../src/sanitize"
+import { graphSafeLabel, layoutBoxesNatural, layoutRail, sliceSpans, widestLabelCells } from "../src/graph"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import {
   createDagPanelComponent,
@@ -607,22 +609,30 @@ describe("the DAG page's layout choice", () => {
     const chain = chainTasks()
     /** The fan-in board, whose rail must keep BOTH blockers. */
     const fanIn = fanInTasks()
-    // THE FLOOR (R2/R6). The descriptor asks the host for 28 cells and the host guarantees exactly
-    // that at the split threshold, so 28 is the width the page MUST read at; a box whose interior
-    // cannot hold the label is not drawn at all, and the rail carries the subject whole instead.
+    // THE FLOOR (R2/R6) SURVIVES AND THE MODE NO LONGER MOVES WITH IT (frozen clauses T1/T2). The
+    // descriptor still asks the host for its own 28 cells, and the page still reads at that width — but
+    // the drawing is now sized by its CONTENT, so a narrow panel no longer declines the boxes: it draws
+    // the same picture and WINDOWS it, which is the whole point of the wave. What must hold at the floor
+    // is that every drawn row is the panel's own width, never wider.
     expect(DAG_PANEL_MIN_COLUMNS).toBe(28)
-    expect(dagPanelLayout(chain, 28).mode).toBe("rail")
-    expect(dagPanelLayout(fanIn, 28).mode).toBe("rail")
-    // …and the 32-column width the old descriptor asked for is checked too, because a host may hand the
-    // page more than its floor and the choice must not flip back to a clipping box in between.
-    expect(dagPanelLayout(chain, 32).mode).toBe("rail")
-    expect(dagPanelLayout(fanIn, 32).mode).toBe("rail")
-    // Widening the panel buys the boxes back: the same board, one mode change, no other edit.
+    for (const cols of [DAG_PANEL_MIN_COLUMNS, 32]) {
+      for (const board of [chain, fanIn]) {
+        /** The layout at this panel width. */
+        const narrow = dagPanelLayout(board, cols)
+        expect(narrow.mode).toBe("boxes")
+        // THE DRAWING IS ALLOWED TO BE WIDER THAN THE PANEL — that is `GraphView.width`'s new meaning —
+        // and the WINDOW is what must fit. `sliceSpans` is the one cutter, asserted in its own right.
+        expect(narrow.view.width).toBeGreaterThan(0)
+        for (const row of narrow.view.lines) expect(cellWidth(sliceSpans(row, 0, cols).map((span) => span.text).join(""))).toBe(cols)
+      }
+    }
+    // Widening the panel changes nothing about the MODE — it only ever shows more of the same drawing.
     expect(dagPanelLayout(chain, 80).mode).toBe("boxes")
     expect(dagPanelLayout(fanIn, 80).mode).toBe("boxes")
-    // THE FAN-IN'S RAIL KEEPS BOTH BLOCKERS: the multi-parent fact must survive the mode change.
-    /** The rail's own text at the floor. */
-    const rail = dagPanelLayout(fanIn, DAG_PANEL_MIN_COLUMNS).view
+    // THE FAN-IN'S BLOCKER LIST SURVIVES THE MODE CHANGE: `F1+F2` is drawn by the rail, and the boxes
+    // carry the same fact in their EDGES. Whichever drawing is on screen, no blocker may be lost.
+    /** The rail over the same board, asked for directly — the narrow fallback's own contract. */
+    const rail = layoutRail(fanIn, 60)
     expect(rail.lines.flat().map((span) => span.text).join("\n")).toContain("F1+F2")
   })
 
@@ -649,14 +659,25 @@ describe("the DAG page's layout choice", () => {
   })
 
   test("EVERY drawn row fits the panel, wide glyphs included", () => {
+    // THE ASSERTION MOVED FROM THE LAYOUT'S WIDTH TO THE WINDOW'S (frozen clause T1, captain's ruling R6):
+    // under natural width the drawing is NO LONGER bounded by the panel, so "every row fits" became false
+    // by design — the invariant that replaces it is the one the reader actually sees, which is that the
+    // SLICED window is EXACTLY the panel's measured width, at every offset. Both halves are asserted, so
+    // a drawing that fitted by shrinking would fail the first line rather than pass silently.
     for (const cols of [DAG_PANEL_MIN_COLUMNS, 34, 48, 80]) {
       for (const tasks of [chainTasks(), cjkTasks(), fanInTasks()]) {
-        /** The drawing at this width. */
-        const view = dagPanelLayout(tasks, cols).view
-        for (const row of view.lines) {
-          /** The row's own width as the PLUGIN measures it, wide glyphs counted twice. */
-          const width = row.reduce((sum, span) => sum + cellWidth(span.text), 0)
-          expect(width).toBeLessThanOrEqual(cols)
+        /** The layout at this panel width. */
+        const layout = dagPanelLayout(tasks, cols)
+        /** The drawing's own width, which may exceed the panel. */
+        const width = layout.view.width
+        expect(width).toBeGreaterThan(0)
+        for (const row of layout.view.lines) {
+          // THE DRAWING'S OWN ROWS ARE ITS OWN WIDTH: `clampSpans` already bounded them to the natural
+          // width the layout computed, so a row wider than THAT would be a layout defect, not a window one.
+          expect(row.reduce((sum, span) => sum + cellWidth(span.text), 0)).toBeLessThanOrEqual(width)
+          for (const offset of [0, 1, Math.max(0, width - cols), width + 5]) {
+            expect(cellWidth(sliceSpans(row, offset, cols).map((span) => span.text).join(""))).toBe(cols)
+          }
         }
       }
     }
@@ -670,14 +691,16 @@ describe("the DAG page's layout choice", () => {
     /** The CJK board's box at a width that affords boxes. */
     const boxes = dagPanelLayout(cjkTasks(), 80)
     expect(boxes.mode).toBe("boxes")
-    /** The first box's border rows and its label row. */
+    /** The first box's border rows and its label row, read through the layout's OWN reported facts. */
     const rows = boxes.view.lines.map((row) => row.map((span) => span.text).join(""))
-    /** The rows of the FIRST box: top border, label, bottom border. */
-    const top = rows[0]
-    /** The label the drawing writes inside the FIRST box of the CJK fixture. */
-    const label = rows[1]
+    /** The first box's rectangle, which is where its top border and its row count come from. */
+    const first = boxes.view.hits[0]
+    /** The rows of the FIRST box: top border, its padding rows, its label, its bottom border. */
+    const top = rows[first.row]
+    /** The label the drawing writes inside the FIRST box of the CJK fixture: the content row of the form. */
+    const label = rows[first.row + (boxes.view.boxRows === 5 ? 2 : 1)]
     /** The same box's bottom border row, compared against the label row's width. */
-    const bottom = rows[2]
+    const bottom = rows[first.rowEnd]
     expect(cellWidth(top)).toBe(cellWidth(label))
     expect(cellWidth(label)).toBe(cellWidth(bottom))
     // The right border is the LAST cell of each of those rows... except on the top/bottom borders,
@@ -711,6 +734,161 @@ describe("the DAG page's layout choice", () => {
     /** The boxed drawing's text. */
     const boxed = short.view.lines.map((row) => row.map((span) => span.text).join("")).join("\n")
     for (const task of fanInTasks()) expect(boxed).toContain(task.subject)
+  })
+
+  test("A REAL BOARD STILL DRAWS BOXES: the natural width cap holds a realistic label whole", () => {
+    // THE ARM THE REAL PTY CAPTURE ASKED FOR (verifier's `pty-post` capture, 2026-10-06). At widths 140
+    // and 220 the pane read `view rail · 5 tasks · ranks derived` — the RAIL at every width — because the
+    // natural width cap was 34, so any label past 32 cells set `labelOverflow`, and `pan1`/`pan2` came out
+    // identical to `open1`: a rail has nothing to pan. The feature switched itself off on exactly the
+    // boards it exists for. This arm is the unit-level statement of what the pane showed.
+    /** The capture's own board: real subjects of 48-53 cells, chained. */
+    const real = chainTasks().slice(0, 5).map((task, index) => ({
+      ...task,
+      subject: [
+        "natural width and bidirectional panning for the DAG",
+        "termaid rounded node boxes with rounded corners",
+        "the graph-safe label rule on every drawing surface",
+        "the horizontal window is the drawing's own",
+        "prove the tip touches the border by arithmetic",
+      ][index] ?? task.subject,
+    }))
+    /** The widest label this board would write, which is what the cap has to hold. */
+    const widest = widestLabelCells(real)
+    // THE LABEL IS REALISTIC, so the arm cannot pass on a degenerate fixture: it is the ~50 cells the
+    // capture's pane carried, and it is what a real board's subjects produce.
+    expect(widest).toBeGreaterThanOrEqual(45)
+    expect(widest).toBeLessThanOrEqual(60)
+    // BOXES AT A SIDEBAR WIDTH — the exact assertion the capture's `view rail` falsified. 44 is near the
+    // host's own split-width floor, so this is the narrow case, not a wide one.
+    for (const cols of [44, 80, 140, 220]) {
+      /** The layout at this panel width. */
+      const layout = dagPanelLayout(real, cols, undefined, 24)
+      expect(`cols=${cols} mode=${layout.mode}`).toBe(`cols=${cols} mode=boxes`)
+      // AND NOTHING IS CUT: every task's composed label is present WHOLE in the drawing, which is the
+      // promise the rail fallback existed to keep. A cut label is the defect this arm's sibling measures.
+      /** The drawing's text, joined across its rows. */
+      const drawn = layout.view.lines.map((row) => row.map((span) => span.text).join("")).join("\n")
+      for (let index = 0; index < real.length; index += 1) {
+        /** The label this task would draw, composed by the drawing's own rule. */
+        const label = graphSafeLabel(real[index].subject, index + 1)
+        expect(`cols=${cols} ${real[index].id} whole=${drawn.includes(label)}`).toBe(`cols=${cols} ${real[index].id} whole=true`)
+      }
+      // THE DRAWING IS ALLOWED TO BE WIDER THAN THE PANEL, and the window is what fits — the two facts
+      // together are what make the horizontal pan meaningful at every one of these widths.
+      expect(layout.view.width).toBeGreaterThan(0)
+      for (const row of layout.view.lines) expect(cellWidth(sliceSpans(row, 0, cols).map((span) => span.text).join(""))).toBe(cols)
+    }
+    // THE SAFETY NET SURVIVES (T1): a subject that genuinely cannot fit inside the capped box is STILL
+    // reported and STILL falls back, so raising the cap moved the threshold rather than removing it.
+    /** A pathological subject: 200 ASCII cells, far past any legible box. */
+    const absurd = fanInTasks().map((task) => ({ ...task, subject: "x".repeat(200) }))
+    for (const cols of [44, 200]) {
+      expect(`cols=${cols} mode=${dagPanelLayout(absurd, cols).mode}`).toBe(`cols=${cols} mode=rail`)
+    }
+    // The threshold is the CAP, not a guess: a label one cell over the widest the box can write trips it,
+    // and one cell under does not. Both sides are asserted so the boundary cannot drift silently.
+    /** The natural-path cap and the label budget it implies, read from the drawing's own behaviour. */
+    const cap = layoutBoxesNatural(real)?.width ?? 0
+    expect(cap).toBeGreaterThan(0)
+    // THE BOUNDARY IS DERIVED FROM THE COMPOSER, never guessed: the cap bounds the LABEL, and the label
+    // is the `marker id KIND ` prefix PLUS the subject, so the subject's own budget is the cap minus
+    // whatever prefix this fixture's kind draws. Measuring it here is what keeps the arm from drifting
+    // when the kind abbreviations or the cap change.
+    // The probe subject is ONE character rather than EMPTY, and that is not cosmetic: an empty subject
+    // has no printable ASCII, so the composer answers its `#<ordinal>` fallback and the "prefix" measured
+    // would be the fallback's width instead. One character gives `prefix + 1` exactly.
+    /** The prefix this board's kind draws, in cells: the composer's output for a one-character subject. */
+    const prefixCells = widestLabelCells(fanInTasks().slice(0, 1).map((task) => ({ ...task, subject: "y" }))) - 1
+    // `NATURAL_MAX_NODE_WIDTH - 3` is the widest label a capped box writes whole (`" " + label` inside
+    // `nodeWidth - 2`); the arm states the number it is testing rather than importing the constant.
+    /** The subject length in cells that still fits whole. */
+    const fits = 61 - prefixCells
+    expect(fits).toBeGreaterThan(0)
+    /** A board at exactly the widest label a capped box writes whole. */
+    const atCap = fanInTasks().slice(0, 1).map((task) => ({ ...task, subject: "y".repeat(fits) }))
+    /** …and one cell more, which must trip the net. */
+    const overCap = fanInTasks().slice(0, 1).map((task) => ({ ...task, subject: "y".repeat(fits + 1) }))
+    expect(`atCap=${widestLabelCells(atCap)}/${layoutBoxesNatural(atCap)?.labelOverflow}`).toBe(`atCap=61/false`)
+    expect(`overCap=${widestLabelCells(overCap)}/${layoutBoxesNatural(overCap)?.labelOverflow}`).toBe(`overCap=62/true`)
+  })
+
+  test("A MID-LENGTH LABEL IS NOT CUT, and the overflow flag agrees with the truncation", () => {
+    // THE OFF-BY-ONE THIS ARM LOCKS (measured while landing the cap change). The node width is
+    // `label + 3` — the leading space the drawing writes AND the two borders — and a budget derived any
+    // other way cuts the last character of every label that lands between the two bounds while
+    // `labelOverflow` still answers `false`, so nothing falls back and nothing reports it. Measured:
+    // `requirements contract` drew as `requirements contrac`. The label row is read through the box's
+    // OWN rectangle, so the arm cannot pass on a drawing whose geometry moved.
+    for (const subject of ["requirements contract", "geometry engine", "panel surface"]) {
+      /** The one-task board, so the label is the whole question. */
+      const board = fanInTasks().slice(0, 1).map((task) => ({ ...task, subject }))
+      /** The drawing at its natural width. */
+      const view = layoutBoxesNatural(board)
+      expect(view?.labelOverflow).toBe(false)
+      /** The drawing as text. */
+      const lines = (view?.lines ?? []).map((row) => row.map((span) => span.text).join(""))
+      /** The box's rectangle, which says where its interior is. */
+      const hit = (view?.hits ?? [])[0]
+      /** The label row, the content row of whichever form was drawn. */
+      const row = lines[hit.row + ((view?.boxRows ?? 3) === 5 ? 2 : 1)]
+      /** The interior, between the two border cells. */
+      const interior = row.slice(hit.col + 1, hit.colEnd)
+      // BOTH BORDERS SURVIVE, and the label inside them is the WHOLE composed string — the clause, stated
+      // directly rather than through a rebuilt row: the subject the composer produces must appear
+      // verbatim between the two border cells, and nothing may be missing off its end.
+      expect(`${subject} borders=${row[hit.col]}${row[hit.colEnd]}`).toBe(`${subject} borders=${DAG_CHARS.vertical}${DAG_CHARS.vertical}`)
+      expect(`${subject} whole=${interior.includes(graphSafeLabel(subject, 1))}`).toBe(`${subject} whole=true`)
+      expect(`${subject} trimmed=${interior.trim()}`).toBe(`${subject} trimmed=${interior.trim().replace(/ +$/u, "")}`)
+    }
+  })
+
+  test("C3: THE PINNED DETAIL BODY CARRIES THE ORIGINAL SUBJECT AND DESCRIPTION, CHINESE INCLUDED", () => {
+    // THE CLAUSE THE VERIFIER'S PTY PIN WALK COULD NOT WITNESS. Its walk (Down, Enter) reached the body,
+    // but the body printed ten metadata facts and NEITHER original field — so `detailKept=0` on a panel
+    // whose pin mechanism worked perfectly. An instrument cannot witness a clause the surface does not
+    // render, and this half of the user's requirement ("点击以后的描述上可以有" Chinese) needs the record's
+    // own words on screen.
+    /** A task exactly as a real record serves it: both originals in Chinese. */
+    const task: DagPanelTask = {
+      id: "T1",
+      subject: "冻结验收契约与验收标准",
+      description: "验收说明：必须保持原样，不得改写",
+      kind: "requirement",
+      visual: "completed",
+      dependencies: [],
+      failedDependencies: [],
+      depth: 0,
+    }
+    /** The pinned body's lines at a sidebar width. */
+    const body = pinnedDetailLines(task, [task], 60)
+    /** The body as one string, which is what a reader — and a capture — sees. */
+    const text = body.join("\n")
+    expect(text).toContain(task.subject)
+    expect(text).toContain(task.description ?? "")
+    // IT IS THE WHOLE ORIGINAL, not a prefix: the CJK ban draws the line at the DRAWING (C1), and a
+    // detail that truncated its own subject would fail the clause while looking like it satisfied it.
+    expect(text).toContain("冻结验收契约与验收标准")
+    expect(text).toContain("验收说明：必须保持原样，不得改写")
+    // AND THE DRAWING IS STILL CJK-FREE, in the same breath: the two halves of the contract are asserted
+    // together so neither can be satisfied by breaking the other (C1 x C3).
+    for (const row of dagPanelLayout([task], 60).view.lines) {
+      for (const span of row) {
+        for (const character of span.text) {
+          /** The codepoint, which is what the C1 ranges are stated in. */
+          const code = character.codePointAt(0) ?? 0
+          /** Whether it falls in a range clause C1 bans. */
+          const banned = (code >= 0x2e80 && code <= 0x2fff) || (code >= 0x3000 && code <= 0x303f) || (code >= 0x3040 && code <= 0x9fff)
+          expect(`U+${code.toString(16)} banned=${banned}`).toBe(`U+${code.toString(16)} banned=false`)
+        }
+      }
+    }
+    // A task with NO description omits the line rather than printing an empty `description —`, so the
+    // body's shape stays a fact about the record.
+    /** The same task, with the acceptance text absent. */
+    const bare: DagPanelTask = { id: "T2", subject: "no acceptance text", kind: "work", visual: "open", dependencies: [], failedDependencies: [], depth: 0 }
+    expect(pinnedDetailLines(bare, [bare], 60).some((line) => line.startsWith("description"))).toBe(false)
+    expect(pinnedDetailLines(bare, [bare], 60).some((line) => line.startsWith("subject "))).toBe(true)
   })
 
   test("R18: an unresolved blocker is SURFACED, and the rank source is reported", () => {
@@ -1040,8 +1218,11 @@ describe("the scrollbar and the self-windowed viewport", () => {
     // (the arms above prove `clampScroll` at both ends); the fault is in how `usePanelViewport`
     // accumulates the committed value across renders. The assertion below is therefore the DEFECT'S OWN
     // signature, so this arm stays red until the accumulation is fixed and goes green the moment it is.
-    const BOUNDED_OFFSET_RENDERS_A_FULL_WINDOW = false
-    expect(BOUNDED_OFFSET_RENDERS_A_FULL_WINDOW).toBe(true)
+    // THE ARM IS LIVE AGAIN (the wave's own viewport rewrite fixed the accumulation it recorded, so the
+    // false constant that stood in for the defect is replaced by the measurement it stood for). It is
+    // asserted on the WINDOW — the rows the page actually put in its scrolling column — and NOT on the
+    // offset, because an offset can be any number while the window is what the reader sees.
+    expect(windowedRows(render(page, kit, host))).toBeGreaterThan(0)
     // The page's own footer is the witness: when this defect fires it reads `<N>/<N>` with N far past the
     // row count (measured `769/769` on an 86-row page), and `windowedRows` returns 0. Both are asserted so
     // the arm cannot pass by accident if the footer's format changes.
@@ -1132,19 +1313,8 @@ describe("the scrollbar and the self-windowed viewport", () => {
     // ARM B — THE LAST TASK. Walking the whole board moves the window down with the focus; the last
     // task's own row must be inside the window when the focus reaches it.
     for (let press = 0; press < board.length - 1; press += 1) host.listeners[0]({ input: "j", key: {}, preventDefault: (): void => {} })
-    {
-      /** The state cells the double holds, so the arm can see the offset the page actually stored. */
-      const dump = (render(page, kit, host) as unknown) !== null
-      void dump
-    }
     /** The window after the focus reached the last task. */
     const lastTree = render(page, kit, host)
-    {
-  
-      /** The scrolling window element, which this arm reads a row count off. */
-      const w = elementByKey(lastTree, "scroll")
-      /** TEMP-DEBUG: the window element's own props keys, and the first real row. */
-    }
     /** The window's text after the walk reached the last task. */
     const atLast = visible(lastTree)
     expect(atLast).toContain(board[board.length - 1].subject)

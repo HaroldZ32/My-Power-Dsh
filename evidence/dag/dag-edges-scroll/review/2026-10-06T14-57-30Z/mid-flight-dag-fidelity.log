@@ -1,0 +1,121 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/dag-fidelity.test.ts:
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > the WEB reference still declares all six states on both tables (else every arm below is vacuous) [0.05ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > every glyph the TUI draws equals the WEB glyph for the same state [0.03ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > the six recorded WEB hexes are the WEB view's own hexes (provenance is not asserted, it is read) [0.05ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > R6: blocked and open really do share one glyph on BOTH surfaces, so the legend is the disambiguator [0.02ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > the tone table is total over the tone vocabulary, and the vocabulary is exactly eleven tones [0.03ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > the state vocabulary carries each of the six states once and leaks no drawing tone [0.10ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > R3: the ported kind abbreviations are the WEB view's own words for the same five kinds [0.03ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > R6: the legend's own vocabulary is unambiguous — the chrome markers are pairwise distinct [0.04ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > R4: the ported entry markers are the TUI's pre-existing ones, read out of the drawing itself [0.15ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > a board whose served depth lies produces MORE THAN ONE rank [1.90ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > the same board with a HONEST depth draws the same ranks (the two sources agree when both are sound) [1.89ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > R21: references that name no task are SURFACED, sorted and de-duplicated — never silently dropped [0.26ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > FALLBACK ARM A — a genuinely flat board, served flat, still draws flat (and says it derived) [0.17ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > FALLBACK ARM B — the user's broken board: nothing resolves and the depths do NOT vary, so the SERVED depth is refused and derivation runs [0.20ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > FALLBACK ARM C — nothing resolves but the served depths DO vary, so the fallback fires and reports itself [0.52ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > a dependency cycle terminates, is drawn, and is reported [0.20ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > a self-dependency terminates and is reported as a cycle [0.07ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > shrinking the width never grows any line, and no line ever exceeds the width given [5.01ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > every hit rectangle CONTAINS its own node and never claims a task off the board [3.48ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > a pointer resolves back to the task whose rectangle it landed in [0.52ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > every drawn edge's endpoints belong to a real (blocker, dependent) pair [0.65ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > R13-width: a rank reads top-to-bottom, so every blocker sits strictly above its dependent [0.46ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > R19: within a rank the task order is NUMERIC, so t2 precedes t10 [0.24ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > R19/R6: the legend states the READING DIRECTION and names both drawn markers [0.11ms]
+(pass) R2/R15 · adversarial fixtures > a 500-task board terminates and stays inside its viewport [5.36ms]
+(pass) R2/R15 · adversarial fixtures > an unknown state string, an absent kind and a missing dependency id all survive the drawing [0.21ms]
+(pass) R2/R15 · adversarial fixtures > an empty board draws nothing rather than throwing [0.04ms]
+(pass) R2/R15 · adversarial fixtures > a CJK fixture never shears: every line fits, and a boxed line ends on its own border column [1.37ms]
+(pass) R20 · the WEB view derives rank from blockedBy, never from the served depth > references RESOLVE while every served depth is 0 — the view must still draw more than one column [109.29ms]
+(pass) R20 · the WEB view derives rank from blockedBy, never from the served depth > CONTROL: the same board with honest depths draws the same columns (so the arm cannot be satisfied by ignoring depth) [54.13ms]
+(pass) R20 · the WEB view derives rank from blockedBy, never from the served depth > a genuinely flat board served flat is drawn flat — the view must not invent structure [40.11ms]
+(pass) W5 · every arrival tip touches the border its edge arrives at > the tip is a POINT on the arrival border, by arithmetic, for forward AND back/same-rank edges [68.65ms]
+(pass) W5 · every arrival tip touches the border its edge arrives at > POSITIVE CONTROL: a tip displaced by one pixel fails the same equality, in either direction [32.02ms]
+(pass) W6 · `radius = 0` reproduces the straight orthogonal path > at radius 0 every edge publishes points that ARE the orthogonal waypoints [29.89ms]
+(pass) W6 · `radius = 0` reproduces the straight orthogonal path > a positive radius bends the SAME edges — the knob is the only difference [59.30ms]
+1013 |           const to = edge.curve.points[index]
+1014 |           /** The chord's length in pixels. */
+1015 |           const chord = Math.hypot(to.x - from.x, to.y - from.y)
+1016 |           // CONTINUITY: the polyline is the concatenation of its chords, so a zero-length chord is the
+1017 |           // only way the published points can fail to describe the drawn path end to end.
+1018 |           expect(`${edge.witness} chord ${index} degenerate=${chord === 0}`).toBe(`${edge.witness} chord ${index} degenerate=false`)
+                                                                                    ^
+error: expect(received).toBe(expected)
+
+Expected: "T7<-T2 chord 2 degenerate=false"
+Received: "T7<-T2 chord 2 degenerate=true"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/dag-fidelity.test.ts:1018:78)
+(fail) W6 · `radius = 0` reproduces the straight orthogonal path > the published polyline is CONTINUOUS and never degenerate at the declared radius [30.02ms]
+(pass) T3 · the horizontal slice is exact, cell-aware, and never splits a wide glyph > the frozen postcondition holds for EVERY offset and width, over the REAL drawn rows [5.45ms]
+(pass) T3 · the horizontal slice is exact, cell-aware, and never splits a wide glyph > a WIDE glyph straddling an edge is never half-emitted: a space on the left, a drop on the right [0.36ms]
+(pass) T3 · the horizontal slice is exact, cell-aware, and never splits a wide glyph > POSITIVE CONTROL: the naive code-point slice FAILS the same postcondition on the same input [0.10ms]
+1227 |           /** The span-preserving cut. */
+1228 |           const cut = spans(row, offset, cols)
+1229 |           // ONE CUT, TWO VIEWS: the two frozen functions must agree character for character, or a page
+1230 |           // that slices spans and a page that slices strings would show different windows at the same
+1231 |           // offset — the "second scroller" defect in its smallest form.
+1232 |           expect(`c=${cols} o=${offset}: ${cut.map(span => span.text).join("")}`).toBe(`c=${cols} o=${offset}: ${slice(text, offset, cols)}`)
+                                                                                         ^
+error: expect(received).toBe(expected)
+
+Expected: "c=2 o=3:  ○"
+Received: "c=2 o=3:   "
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/dag-fidelity.test.ts:1232:83)
+(fail) T3 · the horizontal slice is exact, cell-aware, and never splits a wide glyph > `sliceSpans` is the SAME cut, preserving each span's tone [1.02ms]
+(pass) T7 · the termaid glyph obligations, read out of the source rather than restated > every declared glyph is exactly ONE CELL, and none of them is in a C1-banned range [0.16ms]
+(pass) T7 · the termaid glyph obligations, read out of the source rather than restated > the four NODE corners are the rounded set (T7's first sentence) [0.03ms]
+1276 | 
+1277 |   test("`graph.ts` declares NO sharp corner at all: `JUNCTION` is built from the table (R2)", () => {
+1278 |     /** The drawing's own source. */
+1279 |     const graph = readSource(TUI_GRAPH)
+1280 |     for (const sharp of ["┌", "┐", "└", "┘"]) {
+1281 |       expect(`literal ${sharp} in graph.ts: ${graph.includes(sharp)}`).toBe(`literal ${sharp} in graph.ts: false`)
+                                                                              ^
+error: expect(received).toBe(expected)
+
+Expected: "literal └ in graph.ts: false"
+Received: "literal └ in graph.ts: true"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/dag-fidelity.test.ts:1281:72)
+(fail) T7 · the termaid glyph obligations, read out of the source rather than restated > `graph.ts` declares NO sharp corner at all: `JUNCTION` is built from the table (R2) [0.21ms]
+1288 | 
+1289 |   test("every dependency is entered by exactly ONE `▼`, whose tip touches the dependent's TOP border", () => {
+1290 |     /** The drawing under judgement. */
+1291 |     const view = layoutGraph(RESOLVABLE_BOARD, 200)
+1292 |     /** Every arrowhead the drawing wrote, by cell. */
+1293 |     const arrows = markerCells(view, DAG_ARROW_DOWN)
+                                                          ^
+ReferenceError: DAG_ARROW_DOWN is not defined
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/dag-fidelity.test.ts:1293:52)
+(fail) T7 · the termaid glyph obligations, read out of the source rather than restated > every dependency is entered by exactly ONE `▼`, whose tip touches the dependent's TOP border [0.56ms]
+1327 |     /** The ranks the board needs, which is what the box-form rule is stated in. */
+1328 |     const ranks = new Set(layoutGraph(RESOLVABLE_BOARD, 200).hits.map(hit => hit.row)).size
+1329 |     // ROOMY when `rows >= ranks * 8 + 2`; COMPRESSED otherwise. Both arms are run, so a layout that
+1330 |     // always answered 3 — or always 5 — cannot pass by picking one.
+1331 |     expect(natural(RESOLVABLE_BOARD, undefined, { rows: ranks * 8 + 40 }).boxRows).toBe(5)
+1332 |     expect(natural(RESOLVABLE_BOARD, undefined, { rows: 5 }).boxRows).toBe(3)
+                                                                             ^
+error: expect(received).toBe(expected)
+
+Expected: 3
+Received: 5
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/dag-fidelity.test.ts:1332:71)
+(fail) T7 · the termaid glyph obligations, read out of the source rather than restated > the drawing REPORTS which box form it drew (3 or 5 rows), and the roomy budget really buys 5 [1.91ms]
+
+5 tests failed:
+(fail) W6 · `radius = 0` reproduces the straight orthogonal path > the published polyline is CONTINUOUS and never degenerate at the declared radius [30.02ms]
+(fail) T3 · the horizontal slice is exact, cell-aware, and never splits a wide glyph > `sliceSpans` is the SAME cut, preserving each span's tone [1.02ms]
+(fail) T7 · the termaid glyph obligations, read out of the source rather than restated > `graph.ts` declares NO sharp corner at all: `JUNCTION` is built from the table (R2) [0.21ms]
+(fail) T7 · the termaid glyph obligations, read out of the source rather than restated > every dependency is entered by exactly ONE `▼`, whose tip touches the dependent's TOP border [0.56ms]
+(fail) T7 · the termaid glyph obligations, read out of the source rather than restated > the drawing REPORTS which box form it drew (3 or 5 rows), and the roomy budget really buys 5 [1.91ms]
+
+ 40 pass
+ 5 fail
+ 3373 expect() calls
+Ran 45 tests across 1 file. [836.00ms]

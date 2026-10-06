@@ -15,19 +15,26 @@
 // is proven by `scripts/docker-e2e.ts` and the tool path by the QA cases. What it buys is a board the
 // GUI can be graded against instead of an empty state.
 //
-// TWO BOARD SHAPES (plan §3b):
+// THREE BOARD SHAPES (plan §3b plus the CJK clause C1-C5):
 //   normal     a six-task chain with a fan-in and a failed prerequisite: T1,T3 -> T4 -> T5 -> T6
 //   malformed  the two shapes real data can carry and a naive renderer gets wrong:
 //              * T3 is `blockedBy: ["T1","T9"]` and T9 is ABSENT from the board — the edge must NOT
 //                be drawn, while the task still reads blocked (the store's own rule);
 //              * T7 <-> T8 form a CYCLE, whose back-edge runs right-to-left in rank order, so a
 //                riser computed as `child.rank - parent.rank` would go negative.
+//   cjk        the CJK clause's board: MIXED and PURE-Chinese subjects side by side, so one real
+//              frame shows every branch of the label rule — an ASCII fragment kept out of a Chinese
+//              subject, the `#<ordinal>` fallback where nothing printable-ASCII survives, and a
+//              Chinese-plus-emoji subject whose residue is whitespace. The capture grades the RENDERED
+//              DRAWING against the declared CJK ranges and uses this board's own subjects as its
+//              negative control: the same test over the pre-rule input MUST find CJK, or the check
+//              could be green because it is looking at nothing.
 //
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 /** The board shapes this fixture can write. */
-export type FixtureBoard = "normal" | "malformed"
+export type FixtureBoard = "normal" | "malformed" | "cjk"
 
 /** One roster member, in the record's own vocabulary. */
 interface FixtureMember {
@@ -194,6 +201,34 @@ function malformedTasks(): FixtureTask[] {
 }
 
 /**
+ * The CJK board: Chinese subjects the drawing may NOT carry (clause C1), in every shape the rule has.
+ *
+ * SIX tasks in THREE ranks, and the shape is deliberate twice over. The subjects cover the branches of
+ * clause C4's rule: a MIXED subject keeps the ASCII run it carries (`fix 登录页 styles` → `fix styles`),
+ * a PURE-Chinese subject leaves nothing and falls back to `#<ordinal>`, and a Chinese-plus-emoji
+ * subject leaves only whitespace, which the trim removes — the edge case a naive `runs.length === 0`
+ * test gets wrong. The RANKS are deliberate too: two roots share rank 0 and three tasks share rank 1,
+ * so several edges really BEND. A single-row-per-rank board would route every edge as a straight
+ * horizontal line, and a curve check on such a board would pass or fail for a reason that has nothing
+ * to do with the curve.
+ * @returns the six tasks.
+ */
+function cjkTasks(): FixtureTask[] {
+  return [
+    task(1, "fix 登录页 styles", "requirement", "completed", [], { owner: "lead" }),
+    task(2, "冻结验收契约", "work", "completed", [], { owner: "ui-reviewer" }),
+    // A pure-Chinese subject with an ASCII id beside it: the node reads `T3 WRK #3`.
+    task(3, "修复 login 页面的截断", "work", "in_progress", ["T1"], { owner: "web-team-gui" }),
+    // Chinese plus an emoji: every non-ASCII codepoint is dropped, the spaces collapse, and the trim
+    // leaves nothing — so this one falls back too, which is the case a `length === 0` test misses.
+    task(4, "完成 ✅ 收尾", "work", "pending", ["T1", "T2"], { owner: "web-settings-card" }),
+    task(5, "构建头部与进度条", "review", "pending", ["T3", "T4"], { owner: "ui-reviewer" }),
+    // Full-width punctuation only: no ASCII run survives at all.
+    task(6, "！？。", "integration", "pending", ["T3"], {}),
+  ]
+}
+
+/**
  * Assemble the record for one board shape.
  *
  * EXPORTED rather than private so `packages/mpd-team-core-plugin/test/team-fixture-board.test.ts` can
@@ -208,8 +243,8 @@ export function buildRecord(board: FixtureBoard, sessionId: string): FixtureReco
   return {
     version: 1,
     teamId: TEAM_ID,
-    name: board === "malformed" ? "malformed-board" : "webui-tui-i18n",
-    description: board === "malformed" ? "Absent blocker endpoint + dependency cycle" : "Team GUI, rounded settings, TUI model menu, bilingual surfaces",
+    name: board === "malformed" ? "malformed-board" : board === "cjk" ? "cjk-board" : "webui-tui-i18n",
+    description: board === "malformed" ? "Absent blocker endpoint + dependency cycle" : board === "cjk" ? "Mixed and pure-Chinese subjects: the drawing must not carry them" : "Team GUI, rounded settings, TUI model menu, bilingual surfaces",
     leadSessionId: sessionId,
     phase: "active",
     createdAt: INSTANT,
@@ -221,7 +256,7 @@ export function buildRecord(board: FixtureBoard, sessionId: string): FixtureReco
       member("M4", "tui-model-i18n", "Senior Engineer", "deepseek-official/deepseek-flash", "inactive"),
       member("M5", "ui-reviewer", "Reviewer", "deepseek-official/deepseek-v4-pro", "inactive"),
     ],
-    tasks: board === "malformed" ? malformedTasks() : normalTasks(),
+    tasks: board === "malformed" ? malformedTasks() : board === "cjk" ? cjkTasks() : normalTasks(),
     nextMemberNumber: 6,
     nextTaskNumber: 20,
   }

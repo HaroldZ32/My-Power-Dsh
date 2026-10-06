@@ -1,0 +1,98 @@
+{
+  "lane": "T7 VERIFY (dag-verifier, M6)",
+  "wave": "dag-edges-scroll",
+  "kind": "BASELINE — the PRE-wave revision, captured before T4/T5 landed. NOT the wave's verdict.",
+  "revision": "52cd964fd8f1398709b268273221033852892e3b",
+  "utc": "2026-10-06T15:10:10Z",
+  "why_a_baseline_exists": "Steps 4-6 of T7 photograph the TUI and the WEB DAG, and both surfaces are what the wave CHANGES. A capture taken before the lanes land is therefore the honest BEFORE half, and it also validates the harness end-to-end while the lanes are still writing.",
+  "commands": [
+    {
+      "command": "bun run typecheck",
+      "exit_code": 0,
+      "observed": "$ tsgo --noEmit -> exit 0 (no diagnostics)",
+      "log": "logs/baseline-typecheck.log"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin/test",
+      "exit_code": 1,
+      "observed": "332 pass / 2 fail / Ran 334 tests across 17 files",
+      "log": "logs/baseline-bun-test-mpd-tui-plugin.log",
+      "failing_arms": [
+        "the scrollbar and the self-windowed viewport > the offset clamps to [0, max(0, content - viewport)] and never renders a blank page",
+        "the scrollbar and the self-windowed viewport > FOCUS AUTO-SCROLL: the focused task is inside the rendered window at both ends of an overflowing board"
+      ],
+      "note": "PRE-EXISTING at this revision with a clean tree: neither arm is caused by this wave, and both live in the exact suite T5's two-axis rewrite touches."
+    },
+    {
+      "command": "bun test packages/mpd-bundle-plugin/test",
+      "exit_code": 0,
+      "observed": "154 pass / 0 fail / Ran 154 tests across 7 files",
+      "log": "logs/baseline-bun-test-mpd-bundle-plugin.log"
+    },
+    {
+      "command": "node scripts/repin-vendor.ts --check",
+      "exit_code": 0,
+      "observed": "CHECK: GREEN - lock matches the working tree (drift=0, problems=0); skills treeSha f8d30d96... fileCount=335 unchanged; packages/mpd-agent-teams-plugin/_deps treeSha 946d2ac2... fileCount=635 unchanged",
+      "log": "logs/vendor-asset-half.log"
+    },
+    {
+      "command": "node scripts/verify-vendor.ts",
+      "exit_code": 1,
+      "observed": "FAIL - upstream checkout not found at /home/haroldzhao",
+      "log": "logs/vendor-identity-half.log",
+      "policy": "The UPSTREAM-IDENTITY half is OBSOLETE BY USER POLICY (2026-10-06): oh-my-openagent is an early reference and a provenance record, not a live baseline. This is NOT an environment gap and NOT a wave defect. Attribution to code-yeongyu / oh-my-openagent stays intact. This wave adds no file under skills/**, so no VENDOR_LOCK.json corpus re-pin is owed (captain ruling R4)."
+    },
+    {
+      "command": "bun evidence/dag/dag-edges-scroll/verify/20261006T145633Z/captures/pty-dag-capture.ts --sandbox-root .mpd/recon/qa/tui-lanes/dag-verify --widths 100,140,220 --out evidence/dag/dag-edges-scroll/verify/20261006T145633Z/captures/pty",
+      "exit_code": 1,
+      "observed": "captured 3/3 widths; isolation=true; cjkClean=FALSE (the PRE-wave defect, on purpose)",
+      "artifact": "captures/pty/summary.json",
+      "per_width": {
+        "w100": {
+          "rail": true,
+          "boxes": 0,
+          "arrowHead": true,
+          "vGutter": false,
+          "hGutter": false,
+          "panMoved": false,
+          "cjkRowsInDrawing": 4
+        },
+        "w140": {
+          "rail": true,
+          "boxes": 0,
+          "arrowHead": true,
+          "vGutter": false,
+          "hGutter": false,
+          "panMoved": false,
+          "cjkRowsInDrawing": 2
+        },
+        "w220": {
+          "rail": true,
+          "boxes": 0,
+          "arrowHead": true,
+          "vGutter": false,
+          "hGutter": false,
+          "panMoved": false,
+          "cjkRowsInDrawing": 3
+        }
+      },
+      "note": "The exit code 1 is the driver reporting the contract's own C1 clause as VIOLATED at this revision — which is what a BEFORE capture must do. It is not a harness failure."
+    }
+  ],
+  "baseline_reading": {
+    "tui": "The DAG panel draws the RAIL fallback (`view rail · 5 tasks · ranks derived`) at every width, with SHARP `├─▸`/`└─▸` elbows, NO node boxes, NO rounded corners, ONE `▼`/`▸` marker, NO scrollbar gutter on either axis and NO horizontal pan. Every node row writes the subject VERBATIM, so `冻结验收契约`, `独立验证`, `完全中文的任务标题` are painted INTO the drawing at all three widths — clause C1 is red before the wave and this capture is the proof.",
+    "web": "`docker/ui/out/shots-zh-CN/07-team-graph-hover.png` (the previous capture, opened and read) shows the PRE-wave edge layer: absolutely-positioned rectangular segments with the CSS-triangle arrival marker.",
+    "harness": "runTuiSession boots the sandbox profile, reaches the chat screen, opens `/mpd dag` into the host sidebar, and captures `capture-pane -p -J` frames at three pane widths; `assertSessionsSandboxed` PASSES, so no real-workspace session key exists under the sandbox DSH_HOME."
+  },
+  "artifacts": {
+    "driver": "captures/pty-dag-capture.ts",
+    "board_fixture": "captures/seed-board.ts",
+    "panes": "captures/pty/w{100,140,220}/*.pane.txt",
+    "summary": "captures/pty/summary.json"
+  },
+  "honest_bounds": [
+    "The WEB baseline is a PREVIOUS capture read off disk, not one produced by this lane on this revision; this lane's own browser capture is owed once T4/T5 land and dist is rebuilt.",
+    "`dagCommandOpened` reads false at all three widths: the `/mpd dag` answer line is not present in the frames the driver captured (the transcript had scrolled), so the open is proven by the DAG panel's own frame title (`dagPanelLocated`) rather than by the command's echo.",
+    "`detailKept` reads false at baseline because the pinned detail body was not reached in the captured drive; it is a clause C3 measurement and must read true on the settled revision."
+  ]
+}

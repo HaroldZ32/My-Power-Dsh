@@ -1,0 +1,147 @@
+{
+  "lane": "T7 VERIFY (dag-verifier, M6)",
+  "task": "VERIFY · real gate sweep + real-PTY and real-browser captures + evidence records",
+  "wave": "dag-edges-scroll",
+  "branch": "feature/dag-edges-scroll",
+  "revision_at_head": "52cd964fd8f1398709b268273221033852892e3b",
+  "note": "IN PROGRESS at write time; the TUI half (step 3 dist-freshness, step 4 PTY capture at three widths) is HELD on the captain's 'TUI landed + dist rebuilt' message, because packages/mpd-tui-plugin/dist is stale while five src files are newer. Every row below was MEASURED; none is inferred.",
+  "steps": [
+    {
+      "step": 1,
+      "command": "bun run typecheck",
+      "status": "PASS (current tree)",
+      "exit_code": 0,
+      "observed": "$ tsgo --noEmit -> no diagnostics. BASELINE at the pre-wave revision was also exit 0. A MID-WAVE reading taken at 15:49:54Z was RED (exit 1) with `packages/mpd-tui-plugin/src/panel-dag.ts(570,81): error TS2551: Property 'viewportCols' does not exist on type 'PanelViewport'`; that error was fixed by the TUI lane at 23:50:55 local and the re-read is green. Both readings are kept: logs/mid-typecheck.log (RED) and logs/baseline-typecheck.log.",
+      "logs": [
+        "logs/baseline-typecheck.log",
+        "logs/mid-typecheck.log"
+      ]
+    },
+    {
+      "step": 2,
+      "command": "bun test packages/mpd-tui-plugin/test",
+      "status": "RED — 9 arms, reported RED, not smoothed over",
+      "exit_code": 1,
+      "observed": "370 pass / 9 fail / Ran 379 tests across 18 files (baseline at the pre-wave revision: 332 pass / 2 fail / 334 across 17 files).",
+      "failing_arms": [
+        "test/panel-dag.test.ts · the scrollbar and the self-windowed viewport > the offset clamps to [0, max(0, content - viewport)] and never renders a blank page  [PRE-EXISTING at baseline]",
+        "test/panel-dag.test.ts · the scrollbar and the self-windowed viewport > FOCUS AUTO-SCROLL: the focused task is inside the rendered window at both ends of an overflowing board  [PRE-EXISTING at baseline]",
+        "test/graph.test.ts:179 · the arrowheads > an edge ENDS in a ▼ on the dependent's centre, in the cell above its box",
+        "test/graph.test.ts:197 · the arrowheads > a FAN-IN of three blockers still shows exactly ONE ▼",
+        "test/graph-rank.test.ts:278 · the invariants the geometry keeps, on a board that exercises every path > an edge leaves the BLOCKER's border and arrives above the BLOCKED task, one arrowhead per task",
+        "test/scene-visuals.test.ts:651 · a CJK fixture does not shear the layout > a wide-glyph label survives the clamps the scene applies",
+        "test/team-surface.test.ts:1207 · the team scene's focus > the wheel scrolls the graph",
+        "test/team-surface.test.ts:1252 · the team scene's focus > a NARROW terminal falls back to the rail rather than clipping the boxes",
+        "test/dag-fidelity.test.ts:1033 · W6 · radius = 0 reproduces the straight orthogonal path > the published polyline is CONTINUOUS and never degenerate at the declared radius"
+      ],
+      "reading": "Seven of the nine are the design-freeze's own 'arms that break on (e)' class (3-row-box row offsets, the ▼ row, the box width bound, corner/row literals), i.e. re-pointing not yet done rather than new defects.",
+      "logs": [
+        "logs/baseline-bun-test-mpd-tui-plugin.log",
+        "logs/mid-bun-test-tui-plugin.log"
+      ]
+    },
+    {
+      "step": 2,
+      "command": "bun test packages/mpd-bundle-plugin/test",
+      "status": "PASS",
+      "exit_code": 0,
+      "observed": "159 pass / 0 fail / Ran 159 tests across 7 files (baseline: 154 pass / 0 fail / 154 across 7).",
+      "logs": [
+        "logs/baseline-bun-test-mpd-bundle-plugin.log",
+        "logs/mid-bun-test-bundle-plugin.log"
+      ]
+    },
+    {
+      "step": 3,
+      "command": "node scripts/verify-dist-fresh.ts",
+      "status": "HELD — to be run on the captain's 'dist rebuilt' message",
+      "exit_code": null,
+      "observed": "Not run. MEASURED reason: packages/mpd-tui-plugin/dist/index.js mtime 22:20:24 while five src/*.ts are newer, so the gate would report the wave's own in-flight state rather than a verdict."
+    },
+    {
+      "step": 4,
+      "command": "bun evidence/dag/dag-edges-scroll/verify/20261006T145633Z/captures/pty-dag-capture.ts --sandbox-root .mpd/recon/qa/tui-lanes/dag-verify --widths 100,140,220 --out .../captures/pty",
+      "status": "BASELINE ONLY (pre-wave, RED on purpose) — the post-wave run is HELD on the dist rebuild",
+      "exit_code": 1,
+      "observed": "captured 3/3 widths; isolation=true; cjkClean=FALSE. rail=true, boxRows=0, head=true, vGutter=false, hGutter=false, panMoved=false at all three widths; CJK inside the drawing on 4/2/3 rows (e.g. `│✓ T1 WRK REQ · 冻结验收契约：DAG 曲线与 TUI 双向滚动         verify│`). Exit 1 is the driver reporting clause C1 VIOLATED at that revision, which is what a BEFORE capture must do.",
+      "artifacts": [
+        "captures/pty/summary.json",
+        "captures/pty/w100",
+        "captures/pty/w140",
+        "captures/pty/w220"
+      ],
+      "driver": {
+        "path": "captures/pty-dag-capture.ts",
+        "sha256": "e980db7b0f26b6add966049644e1bcf884f9d079d467e1f116a0d50f74c3ad34",
+        "self_test": "13 arms, PASS, including the negative controls: a CJK character inside a node box MUST redden; an unmoved drawing MUST NOT report a pan"
+      },
+      "board_fixture": {
+        "path": "captures/seed-board.ts",
+        "sha256": "73ffbaa88de203c41d56ccfeeaf96f5e6a880f5df4729e4395fb304433dbe216",
+        "tasks": 5,
+        "subjects": [
+          "REQ · 冻结验收契约：DAG 曲线与 TUI 双向滚动",
+          "W1 natural width and bidirectional panning engine for the DAG panel",
+          "W2 — termaid rounded node boxes with rounded edge corners",
+          "REV — 独立验证：真实 PTY 与真实浏览器抓图",
+          "完全中文的任务标题：圆角盒与拐角渲染"
+        ]
+      }
+    },
+    {
+      "step": 5,
+      "command": "docker/ui/seed-team-fixture.sh --board=cjk ; docker exec -e MPD_UI_BOARD=cjk ui-ui-1 bash /data/run-capture.sh",
+      "status": "PASS — real browser capture of the WEB sidebar DAG",
+      "exit_code": 0,
+      "observed": "\"ok\": true; ZERO failed checks; all 9 steps ok=true (01-first-run … 08-dag-curve).",
+      "browser": "headless Chromium (playwright 1.49.1) inside the UI-VIEW container; the canonical driver `docker/ui/capture.mts` incl. its step `08-dag-curve`.",
+      "deployment": "docker cp (copy-in), NOT an image rebuild; host and container driver sha256 both fbbdc409abbcf7b43f96bb19dd708423a2b07d8bdfc1dcc4b28ffd6f3894f457.",
+      "code_under_test": {
+        "container_client_js_sha256": "3dc0fa303cf5c30bfd24abc9ce97c709eb477e71a3f03161d5e0cc70d23b7dbd (byte-identical to the host's)",
+        "image": "mpd-ui-view:latest id 40d2c8984e53"
+      },
+      "wave_checks": {
+        "dagEdgesAreCurves": "PASS — e.g. `M 156 25 L 173 25 Q 179 25 179 31 L 179 77 L 180 77` and `M 324 25 L 324.5 25 Q 325 25 325 25.5 L 325 71 C 325 71 331 77 348 77`",
+        "dagOnePathPerEdge": "PASS — 6 paths for 6 edges",
+        "dagTipIsZeroWidth": "PASS — every tip w=0, every head=1",
+        "dagTipTouchesBorder": "PASS — the tip x equals the dependent's own left/right border in LAYOUT coordinates, all 6 edges",
+        "dagDrawingHasNoCjk": "PASS — drawing text is `✓T1REQfix styles✓T2WRK#2◐T3WRKlogin○T4WRK#4○T5REV#5○T6INT#6`, ZERO CJK",
+        "dagDetailKeepsCjk": "PASS on the re-run. FIRST RUN WAS A FALSE RED from the check's ideograph-only regex meeting the fixture's punctuation-only subject; the WEB lane widened the range set and chose BOTH pins by complementary predicates, and the re-run gives T1 (`fix 登录页 styles`, ideographs TRUE, keeps TRUE) and T6 (`！？。`, ideographs FALSE, keeps TRUE)."
+      },
+      "artifacts": [
+        "captures/web-rerun/08-dag-curve.png (sha256 60519d5a56f7edf61da93cec928fe3273358793332005fc6c59ef9502965cab5)",
+        "captures/web-rerun/07-team-graph-hover.png",
+        "captures/web-rerun/report.json (sha256 f1292c15d87bfad325371d84fde35e54359bff0f10a26cd8d9cacd7a39348227)",
+        "captures/web/08-dag-curve.png (the first run, kept so the CHECK's before/after is visible)",
+        "logs/web-capture.log",
+        "logs/web-capture-rerun.log"
+      ]
+    },
+    {
+      "step": 6,
+      "command": "CJK scan of every capture (drawing vs detail)",
+      "status": "WEB DONE / TUI BASELINE ONLY",
+      "exit_code": null,
+      "observed": "WEB: the drawing's whole text is CJK-free while the pinned detail body keeps the original subject — clause C1 and C3 both measured, with the board's own Chinese subjects ('登','录','页','冻') as the negative control proving the scan could fail. TUI: the BASELINE scan found CJK in the drawing at 4/2/3 rows across the three widths; the post-wave scan runs with step 4."
+    },
+    {
+      "step": "vendor",
+      "command": "node scripts/repin-vendor.ts --check ; node scripts/verify-vendor.ts",
+      "status": "ASSET HALF GREEN / IDENTITY HALF OBSOLETE BY POLICY",
+      "exit_code": null,
+      "observed": "`CHECK: GREEN - lock matches the working tree (drift=0, problems=0)`; skills treeSha f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 fileCount=335 unchanged, packages/mpd-agent-teams-plugin/_deps treeSha 946d2ac2ed8d431bf40b95e2d270911338576a7ff5755dae7ef2f5db6313a11a fileCount=635 unchanged. `verify-vendor` FAILS with `FAIL - upstream checkout not found at /home/haroldzhao`: the upstream-identity half is OBSOLETE BY USER POLICY (2026-10-06) — oh-my-openagent is an early reference and a provenance record, not a live baseline. This is NOT an environment gap and NOT a wave defect; attribution to code-yeongyu / oh-my-openagent is unchanged and intact. Ruling R4 is void-confirmed: this wave adds NO file under `skills/**`, so no VENDOR_LOCK.json corpus re-pin is owed.",
+      "logs": [
+        "logs/vendor-asset-half.log",
+        "logs/vendor-identity-half.log"
+      ]
+    }
+  ],
+  "honest_bounds": [
+    "The TUI half of steps 3, 4 and 6 is NOT DONE. It is held because packages/mpd-tui-plugin/dist is stale; a pane captured now would photograph the pre-wave drawing at the panel level.",
+    "The TUI suite is RED at 9 arms as of the last measurement and that RED is reported as RED. It is not a claim about the lane's final state: the lane was still writing when it was measured, and it will be re-measured on the captain's go.",
+    "The WEB baseline used in the BEFORE half is the previous wave's capture read off disk, not one produced by this lane at that revision; this lane's own browser capture is the AFTER half only.",
+    "No capture in this record was produced without a real terminal or a real browser: the PTY panes come from tmux `capture-pane -p -J` in a sandbox, and the PNG comes from headless Chromium driving the running Web app."
+  ],
+  "artifacts_root": "evidence/dag/dag-edges-scroll/verify/20261006T145633Z",
+  "utc": "2026-10-06T16:03:39Z"
+}

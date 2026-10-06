@@ -1,0 +1,23 @@
+== GRAPH-SAFE LABELS ==
+  T1  subject="冻结验收契约"  label="#1"  hasCjk=false
+  T2  subject="建立头部与进度条"  label="#2"  hasCjk=false
+  T3  subject="fix 登录页 styles"  label="fix styles"  hasCjk=false
+  T4  subject="绘制依赖图的连线"  label="#4"  hasCjk=false
+  T5  subject="完全中文标题"  label="#5"  hasCjk=false
+
+== chinese board (radius 6) ==
+edges=5 ranks=3 inset=12 samples=106
+CURVED EDGES WITH Q/C: 5/5
+INVASIONS (my own segment test): 0
+NON-FINITE NUMBERS IN d: 0
+one edge: M 156 25 L 162 25 C 162 25 174 25 180 25
+
+== chinese board — the W6 control (radius 0) ==
+edges=5 ranks=3 inset=12 samples=18
+CURVED EDGES WITH Q/C: 0/5
+INVASIONS (my own segment test): 0
+NON-FINITE NUMBERS IN d: 0
+one edge: M 156 25 L 168 25 L 180 25
+
+== POSITIVE CONTROL (every polyline shifted +40px) ==
+INVASIONS CAUGHT: 91  (the check CAN fail — good)

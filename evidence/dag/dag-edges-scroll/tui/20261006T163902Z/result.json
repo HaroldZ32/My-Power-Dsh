@@ -1,0 +1,133 @@
+{
+  "task": "T5 reopened · the natural-width cap, the label-cut, and clause C3's witnessable half",
+  "lane": "tui",
+  "branch": "feature/dag-edges-scroll",
+  "head": "52cd964f",
+  "measured_at": "2026-10-06T16:42:36Z",
+  "gates": [
+    {
+      "command": "bun test packages/mpd-tui-plugin",
+      "exit": 0,
+      "observed": [
+        "382 pass",
+        " 0 fail",
+        " 13541 expect() calls",
+        "Ran 382 tests across 18 files. [1479.00ms]"
+      ],
+      "previous": "379 pass / 0 fail"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": [
+        "$ tsgo --noEmit"
+      ]
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": [
+        "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+      ]
+    }
+  ],
+  "the_capture_claim_refuted": {
+    "capture": "view rail · 5 tasks · ranks derived at 140 and 220",
+    "now": [
+      {
+        "columns": 44,
+        "modeLine": "view boxes · 5 tasks · ranks derived",
+        "boxed": true
+      },
+      {
+        "columns": 140,
+        "modeLine": "view boxes · 5 tasks · ranks derived",
+        "boxed": true
+      },
+      {
+        "columns": 220,
+        "modeLine": "view boxes · 5 tasks · ranks derived",
+        "boxed": true
+      }
+    ],
+    "dagPanelLayout_fixture_44": "boxes",
+    "note": "the SAME fixture through the REAL panel component at the capture's own widths now reports `view boxes`; the arm in panel-dag.test.ts pins it at 44/80/140/220"
+  },
+  "the_two_constants": {
+    "MAX_NODE_WIDTH": {
+      "value": 34,
+      "scope": "the FIT-WIDTH path only (layoutBoxes), frozen by clause T1 for callers that never opted in"
+    },
+    "NATURAL_MAX_NODE_WIDTH": {
+      "value": 64,
+      "scope": "the natural path (layoutBoxesNatural), which is what the capture graded"
+    },
+    "why_split": "raising the SHARED constant would have silently widened every fit-width drawing at a wide terminal — a mutation of the path clause T1 freezes. The capture's finding is about the natural path, so the fix is scoped to it."
+  },
+  "the_label_cut": {
+    "before": "labelCells was a GLOBAL budget (MAX_LABEL_CELLS + 2), correct only at nodeWidth 34: at any narrower box it wrote over the right border",
+    "after": "labelCells = nodeWidth - 2, the box's OWN interior; nodeWidth in the natural path is label + 3 (the leading space AND the two borders)",
+    "measured": [
+      {
+        "label": "requirements contract",
+        "mode": "boxes",
+        "nodeWidth": 33,
+        "whole": true,
+        "overflow": false,
+        "borders": "││"
+      },
+      {
+        "label": "W1 natural width and bidirectional panni…(42)",
+        "mode": "boxes",
+        "nodeWidth": 54,
+        "whole": true,
+        "overflow": false,
+        "borders": "││"
+      },
+      {
+        "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…(200)",
+        "mode": "rail",
+        "nodeWidth": 44,
+        "whole": false,
+        "overflow": true,
+        "borders": "(no box)"
+      }
+    ],
+    "note": "`requirements contract` used to draw as `requirements contrac` with labelOverflow=false — silently cut, nothing fell back, nothing reported it"
+  },
+  "the_safety_net_survives": {
+    "case": {
+      "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…(200)",
+      "mode": "rail",
+      "nodeWidth": 44,
+      "whole": false,
+      "overflow": true,
+      "borders": "(no box)"
+    },
+    "note": "a 200-cell subject still reports labelOverflow=true and still falls back to the rail"
+  },
+  "clause_C3_now_witnessable": {
+    "detail_body": [
+      "subject 冻结验收契约与验收标准",
+      "description 验收说明 1：必须保持原样",
+      "id T1"
+    ],
+    "subject_kept": true,
+    "description_kept": true,
+    "pin_walk": [
+      "listeners: 1",
+      "press 1: pinKeys=9 [pin-head,pin-subject 冻结验收契约与验收标准] chineseSubjectsPresent=1 chineseInDetail=true",
+      "press 2: pinKeys=9 [pin-head,pin-subject 建立头部与进度条的双向滚轴] chineseSubjectsPresent=1 chineseInDetail=true",
+      "press 3: pinKeys=9 [pin-head,pin-subject 绘制依赖图的连线与圆角节点盒] chineseSubjectsPresent=1 chineseInDetail=true",
+      "press 4: pinKeys=9 [pin-head,pin-subject 修复被截断的成员路由中文对齐] chineseSubjectsPresent=1 chineseInDetail=true"
+    ],
+    "note": "the pinned detail body printed ten metadata facts and NEITHER original field; `TeamTaskRow` also dropped the record's `description`. Both originals are now carried and rendered; the verifier's Down/Enter walk reaches `pin-subject <Chinese>`"
+  },
+  "clause_C1_still_holds": {
+    "drawingCjkFree": true
+  },
+  "uncertainties": [
+    "Still no REAL PTY capture from this lane: the component-level render is a host-kit double, and the verifier owns the PTY instrument.",
+    "The natural-path cap is 64 by the captain's ruling; I sized the boundary arm from the composer so it follows the constant if it moves again."
+  ]
+}

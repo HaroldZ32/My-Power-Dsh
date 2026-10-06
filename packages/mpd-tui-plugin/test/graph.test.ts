@@ -67,7 +67,10 @@ const tonesOf = (view: { lines: GraphSpan[][] }): Set<string> => new Set(view.li
 function centreOf(view: { hits: GraphHit[] }, id: string): number {
   /** This task's rectangle; a drawn task has exactly one. */
   const hit = view.hits.find((entry) => entry.taskId === id) as GraphHit
-  return hit.col + Math.floor((hit.colEnd - hit.col + 1) / 2)
+  // THE BOX'S MID-LINE, which for an EVEN width is its LEFT-middle cell — the cell the drawing itself
+  // enters from, and the one a `▼` above the border reads as centred. This an odd-width formula that
+  // rounded the other way, and it disagreed with the drawing by one column on every even-width box.
+  return Math.floor((hit.col + hit.colEnd) / 2)
 }
 
 /** The cell column of the first `glyph` in a row, or -1 when the row does not carry it. */

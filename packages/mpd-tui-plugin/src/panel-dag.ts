@@ -33,12 +33,13 @@ import type { PanelRegistrationHandle, SeamOutcome, TuiAdapter } from "./types.j
 import type { Log } from "./log.js"
 import { cellWidth } from "./sanitize.js"
 import { DAG_CHROME, DAG_KIND_ABBREV, DAG_PANEL_MIN_COLUMNS, DAG_PANEL_SLUG, DAG_TONE_GLYPH } from "./dag-theme.js"
-import { layoutBoxes, layoutList, layoutRail, legendLines, type GraphTask, type GraphView } from "./graph.js"
+import { layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
 import type { TeamWorkflow } from "./team-state.js"
 import {
   clampScroll,
   graphRow,
-  panelScrollKey,
+  gutterCellsX,
+  panelScrollGesture,
   panelViewportBody,
   legendLinesFor,
   panelContentWidth,
@@ -60,6 +61,7 @@ import {
   usePanelViewport,
   useRunningPhase,
   type PanelBadge,
+  type PanelKit,
   type PanelPropsLike,
 } from "./panel-core.js"
 
@@ -114,6 +116,13 @@ export const DAG_PANEL_DESCRIPTOR_FROZEN = {
  * them), so this page's own task type carries both halves and projects once.
  */
 export interface DagPanelTask extends GraphTask {
+  /**
+   * The task's acceptance text, when the record carried one — the ORIGINAL, never the graph-safe label.
+   *
+   * Clause C3 draws the line this field lives on: the DRAWING is CJK-free, the DETAIL is not. The pinned
+   * body is text rather than a drawing, so it shows the record's own words.
+   */
+  description?: string
   /** The dependency ids that FAILED, i.e. that no later state can unblock (reported BESIDE the state). */
   failedDependencies: readonly string[]
   /** Review round, when the record carries one. */
@@ -165,6 +174,7 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
     tasks.push({
       id,
       subject: panelField(task.subject, 200) ?? "",
+      ...(task.description === undefined ? {} : { description: panelField(task.description, 400) ?? "" }),
       ...(task.kind === undefined ? {} : { kind: panelField(task.kind, 20) ?? "" }),
       visual: panelField(task.visual, 20) ?? "open",
       ...(task.assignee === undefined ? {} : { assignee: panelField(task.assignee, 60) ?? "" }),
@@ -224,149 +234,41 @@ function viewFacts(view: { ranksDerived?: unknown; unresolved?: unknown }): { ra
 /** The row budget below which a rail stops being readable and the dense list takes over. */
 const LIST_ROWS = 24
 
-/**
- * The FLOOR a boxed node must leave for its own label, in cells.
- *
- * The drawing module's own floor (`MIN_NODE_WIDTH = 16`) is the width below which a box cannot hold
- * `◐ T12 WRK …` at all. This page asks for more, because the sidebar is the surface where the choice
- * actually bites: a panel at the descriptor's own floor gets a narrow box, and while a short fixture
- * label happens to fit, a real subject does not — `◐ T7 Integration task: port the WEB DAG into the
- * TUI` is 55 cells, so the drawing would paint a cut-off prefix while the FULL-WIDTH rail draws it
- * whole on one row. This floor is a LAYOUT floor, deliberately SEPARATE from the descriptor's
- * `minColumns`: the descriptor asks the host for a column it is guaranteed (`dag-theme.ts`, the host's
- * own 28), while this decides what this page can READABLY draw inside the column it actually gets.
- *
- * WHY A FLOOR AND NOT AN ELLIPSIS. The WEB view ends an overflowing subject with `…`, and that is the
- * right answer for a surface that must draw a fixed box. This page has a better option — the SAME
- * drawing module offers a rail whose lines are the full panel width — so instead of decorating a
- * truncated label the page DECLINES the box whenever a label would not fit, and the gate below makes
- * that guarantee exact: boxes are drawn only when the widest label the board would write fits the box
- * interior entirely. A page that never truncates needs no truncation marker.
- */
-const MIN_BOX_LABEL_CELLS = 32
-
-/** The gap between two boxes in one rank; mirrors the drawing's own `NODE_GAP`. */
-const NODE_GAP = 3
-
-/**
- * The longest label any task in the board would draw, in cells.
- *
- * It mirrors the drawing's own label shape (`marker id kind subject`, `subject id subject` without a
- * kind) so the estimate measures what will actually be painted; an over-estimate here costs boxes mode
- * and buys a legible rail, which is the safe direction to be wrong in.
- * @param tasks - the board.
- * @returns the widest label, in cells.
- */
-function widestLabel(tasks: readonly DagPanelTask[]): number {
-  /** The running maximum. */
-  let widest = 0
-  for (const task of tasks) {
-    /** The task's kind abbreviation, absent when the record carries no kind. */
-    const abbrev = DAG_KIND_ABBREV[task.kind ?? ""] ?? ""
-    /** The label the drawing will write inside the box, one leading space included. */
-    const label = ` ${visualGlyphFor(task.visual)} ${task.id}${abbrev === "" ? "" : ` ${abbrev}`} ${task.subject}`
-    widest = Math.max(widest, panelCellWidth(label))
-  }
-  return widest
-}
-
-/**
- * The grid the drawing's boxed mode would produce at this width.
- *
- * The two facts this page needs are both outputs of the SAME formula the drawing module uses, so it is
- * repeated here rather than guessed: the rank count (which decides whether boxes are even offered) and
- * the per-node width (which decides whether a box can hold a label).
- * @param tasks - the board.
- * @param cols - the cells the panel measured.
- * @returns the rank count and the per-node width, or undefined when the board is empty.
- */
-function boxGrid(tasks: readonly DagPanelTask[], cols: number): { ranks: number; nodeWidth: number } | undefined {
-  if (tasks.length === 0) return undefined
-  /** Each task's own rank: one plus its deepest blocker's rank, computed from `dependencies`. */
-  const rankOf = new Map<string, number>()
-  for (const task of tasks) rankOf.set(task.id, 0)
-  /** Whether any rank moved on this pass, which is the loop's termination signal. */
-  for (let pass = 0; pass < tasks.length; pass += 1) {
-    /** Whether this pass changed a rank. */
-    let moved = false
-    for (const task of tasks) {
-      /** The deepest blocker's own rank, plus one; an unresolved blocker contributes nothing. */
-      let deepest = -1
-      for (const blocker of task.dependencies) {
-        /** This blocker's rank, when it is on this board. */
-        const at = rankOf.get(blocker)
-        if (at !== undefined && at > deepest) deepest = at
-      }
-      if (deepest + 1 > (rankOf.get(task.id) ?? 0)) {
-        rankOf.set(task.id, deepest + 1)
-        moved = true
-      }
-    }
-    if (!moved) break
-  }
-  /** How many ranks the drawing would stack, never fewer than one. */
-  const ranks = Math.max(0, ...[...rankOf.values()].map((rank) => rank + 1))
-  if (ranks === 0) return undefined
-  /** The count of tasks in the busiest rank, which sets the box width. */
-  let widestRank = 1
-  /** The tasks per rank, so the busiest one can set the node width. */
-  const perRank = new Map<number, number>()
-  for (const rank of rankOf.values()) perRank.set(rank, (perRank.get(rank) ?? 0) + 1)
-  for (const count of perRank.values()) widestRank = Math.max(widestRank, count)
-  /** The node width the drawing would choose, capped by its own maximum. */
-  const nodeWidth = Math.min(34, Math.floor((cols - NODE_GAP * (widestRank - 1)) / widestRank))
-  return { ranks, nodeWidth }
-}
-
-/**
- * The cells a label occupies, measured with the page's own width rule.
- * @param value - the text to measure.
- * @returns its width in cells.
- */
-function panelCellWidth(value: string): number {
-  return cellWidth(panelText(value))
-}
-
-/**
- * The glyph a task's visual state draws, read from the frozen contract.
- * @param visual - the task's rendered visual state.
- * @returns the glyph, or `?` for a state the contract does not know.
- */
-function visualGlyphFor(visual: string): string {
-  return DAG_TONE_GLYPH[visual] ?? "?"
-}
 
 /**
  * Lay the board out for the measured panel.
  *
- * THE MODE IS A FACT ABOUT THE GEOMETRY, never a guess about the terminal, and there are three gates
- * before a box is drawn:
- *   1. `layoutBoxes` REFUSES rather than squeeze a node under its own floor (it returns undefined);
- *   2. the panel asks for MORE than that floor — {@link MIN_BOX_LABEL_CELLS} — because a box that
- *      cannot hold a whole label draws a cut-off subject while the rail below it would draw the same
- *      subject on one full-width row (this is the defect the visual review measured at 32 columns);
- *   3. `layoutList` — the rank-grouped table with progress bars — takes over a narrow, BUSY board,
- *      which is the case it was written for and, until this page, the case nothing reached.
+ * THE MODE IS A FACT ABOUT THE GEOMETRY, never a guess about the terminal — but the geometry it is a
+ * fact about is now the CONTENT (frozen clause T1). This page used to predict the drawing module's
+ * fit-width formula (`boxGrid`, a second rank derivation) and to gate on a hand-rolled `widestLabel`
+ * that recomposed the label itself. Both are GONE: natural width means the box is sized by the labels
+ * it must carry, so the panel no longer has to guess whether they fit, and a second label composer is
+ * exactly the drift clause C2 forbids.
+ *
+ * THE LADDER, in order:
+ *   1. `layoutBoxesNatural` — the DRAWING at its own width, which may be wider than this panel. The
+ *      page windows it and pans (R8: the horizontal axis belongs to the drawing), so narrowness is no
+ *      longer a reason to refuse a box;
+ *   2. `layoutList` — the rank-grouped table with progress bars — takes over a BUSY board, the case it
+ *      was written for;
+ *   3. `layoutRail` — the forest, for everything else.
+ *
+ * `labelOverflow` is what still refuses a box, and it is the ONLY refusal left: the drawing reports
+ * when the natural width cap held a box below the widest label, and this page then falls back rather
+ * than break its own promise that a boxed label is never cut. It is a REPORTED fact from the layout instead
+ * of a prediction, which is why the fallback cannot disagree with what was drawn.
  * @param tasks - the board to draw.
- * @param cols - the cells the panel measured.
+ * @param cols - the cells the panel measured; the VIEWPORT, never the drawing's width.
  * @param focus - the task to light, with its dependency chain.
+ * @param rows - the rows the panel can show, which buys the roomy box form when there is room.
  * @returns the drawing and the mode that produced it.
  */
-export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, focus?: string): DagPanelLayout {
-  /** The usable width; a nonsense width still has to produce something drawable. */
+export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, focus?: string, rows?: number): DagPanelLayout {
+  /** The usable viewport width; a nonsense width still has to produce something drawable. */
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8))
-  /** The grid the boxed mode would draw at this width, when there is a board at all. */
-  const grid = boxGrid(tasks, width)
-  /** The widest label the board would write, in cells. */
-  const label = widestLabel(tasks)
-  // THE GATE IS EXACT, NOT A HEURISTIC: a box is drawn only when its INTERIOR holds the widest label
-  // the board would write (which is what guarantees no subject is ever cut) AND clears this page's own
-  // floor (which is what keeps a box from being drawn so small that the rail would read better).
-  if (grid !== undefined && grid.nodeWidth - 2 >= label && grid.nodeWidth - 2 >= MIN_BOX_LABEL_CELLS) {
-    /** The boxed DAG, absent when the geometry cannot hold a legible node. */
-    const boxes = layoutBoxes(tasks, width, focus)
-    if (boxes !== undefined) return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) }
-  }
+  /** The boxed DAG at its natural width, absent when the board refuses to be drawn as boxes. */
+  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows })
+  if (boxes !== undefined && boxes.labelOverflow !== true) return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) }
   if (tasks.length > LIST_ROWS) {
     /** The dense table, for a board with more rows than a rail can show legibly. */
     const dense = layoutList(tasks, width, focus)
@@ -430,8 +332,19 @@ export function dagBadge(tasks: readonly DagPanelTask[]): PanelBadge | null {
 export function pinnedDetailLines(task: DagPanelTask, tasks: readonly DagPanelTask[], cols: number): string[] {
   /** The tasks that depend on this one, i.e. what pinning it would unblock. */
   const dependents = tasks.filter((other) => other.dependencies.includes(task.id)).map((other) => other.id)
-  /** The ten facts, in a fixed order so the body does not reshuffle between renders. */
+  /** The facts, in a fixed order so the body does not reshuffle between renders. */
   const facts: Array<[string, string]> = [
+    // THE ORIGINAL TEXT COMES FIRST, AND IT IS THE POINT OF THE BODY (frozen clause C3): the drawing is
+    // CJK-free, this is not, and a reader who pinned a task wants the task's own words before its
+    // bookkeeping. `subject` and `description` are passed through VERBATIM — `panelText` sanitizes
+    // control characters and clamps CELLS, and touches no language.
+    //
+    // WITHOUT THESE TWO LINES THE CLAUSE COULD NOT BE WITNESSED AT ALL: the body used to print ten
+    // metadata facts and neither original field, so a real-PTY pin walk read `detailKept=0` on a board
+    // whose detail body was in fact correct — an evidence failure hiding a satisfied clause, and worse,
+    // hiding an UNSATISFIED half of it, since the description had nowhere to appear.
+    ["subject", task.subject === "" ? "—" : task.subject],
+    ...(task.description === undefined || task.description === "" ? [] : [["description", task.description] as [string, string]]),
     ["id", task.id],
     ["kind", task.kind ?? "—"],
     ["visual", task.visual],
@@ -511,12 +424,21 @@ const DAG_FALLBACK_ROWS = 24
  * @param viewport - this render's viewport (its `scrollTo` clamps).
  * @param row - the row to bring into view.
  */
-function scrollRowIntoView(viewport: { offset: number; viewportRows: number; scrollTo: (next: number) => void }, row: number): void {
+function scrollRowIntoView(viewport: { offset: number; viewportRows: number; max: number; scrollTo: (next: number) => void }, row: number): void {
   if (row < viewport.offset) {
     viewport.scrollTo(row)
     return
   }
-  if (row >= viewport.offset + viewport.viewportRows) viewport.scrollTo(row - viewport.viewportRows + 1)
+  if (row >= viewport.offset + viewport.viewportRows) {
+    // THE PUSH IS CLAMPED TO THE BAND, and that clamp is the whole point: `row - viewportRows + 1` is
+    // the largest offset that still shows the row, but it is only reachable while the content has a
+    // full page below it. On the LAST page of a board it asks for an offset the page cannot honour, and
+    // the reader is left one window short of the very row the walk just focused — measured on this
+    // suite: a 40-task walk focused `B40` at the last row and asked for exactly that offset, which
+    // showed every row EXCEPT `B40`. `max` is the band's own furthest offset, so the correction comes
+    // from the one place that defines it rather than from arithmetic re-derived here.
+    viewport.scrollTo(Math.min(row - viewport.viewportRows + 1, viewport.max))
+  }
 }
 
 /** One rendered fact about the board: the label, the value and how the value is drawn. */
@@ -602,10 +524,39 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
     const cursorId = typeof cursor[0] === "string" ? (cursor[0] as string) : undefined
     /** Moves the keyboard cursor. */
     const setCursor = cursor[1] as (next: unknown) => void
+    // THE CURSOR NEEDS A LIVE AUTHORITY, exactly as the scroll offset does. A state cell alone is read
+    // from the RENDER a handler was born in, so a run of `↓` presses delivered in one event-loop turn
+    // each starts from the same unfocused value: the walk focuses the FIRST task forty times and never
+    // reaches the last one — measured as the frozen suite's own FOCUS AUTO-SCROLL defect, where the
+    // window never moved because the focus it followed never moved. The ref is the authority the next
+    // press reads from; the state cell stays the host's reason to re-render.
+    const cursorLive = kit.React.useRef(undefined)
+    /** The focused task id as the NEXT press must see it: what this turn has already asked for. */
+    const cursorNow = (): string | undefined => (typeof cursorLive?.current === "string" ? (cursorLive.current as string) : cursorId)
+    /** Record the keyboard cursor in BOTH places, in the order the two authorities need. */
+    const moveCursor = (next: string | undefined): void => {
+      if (cursorLive !== null && cursorLive !== undefined) cursorLive.current = next
+      setCursor(next)
+    }
     /** The task the drawing lights: the CLICK PIN outranks the keyboard cursor while it exists. */
-    const focus = pinned ?? cursorId
-    /** The drawing for this render, for the width THIS panel measured. */
-    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus)
+    const focus = pinned ?? cursorNow()
+    /** The window height this panel affords, from the height the host reported. */
+    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS)
+    // THE LAYOUT IS TOLD THE ROWS, so the drawing can choose the roomy five-row box when the panel has
+    // the room for it and the compressed three-row one when it does not — one decision per drawing, made
+    // before any box is placed, which is what keeps two boxes in one rank from having different heights.
+    // THE SIZES OBJECT IS THE PAGE'S ONE LIVE MUTABLE FACT SET, and it must EXIST before the layout
+    // because the layout's decisions (mode, box form, `labelOverflow`) are it. The row counts are filled
+    // in after the rows are built, exactly as before; the DRAWING's column count is known right here.
+    /** The sizes the hook and every later closure read; written by this render, before anything reads it. */
+    const sizes: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } = { contentRows: 1, viewportRows: 1, contentCols: contentCols, viewportCols: contentCols }
+    /** The drawing for this render, at the natural width and for the height THIS panel measured. */
+    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows)
+    // THE DRAWING'S OWN WIDTH, once it has been laid out: what the window may pan across. It is the
+    // DRAWING's width and not the panel's (captain's ruling R8) — the purpose, said once: the pan exists
+    // so the WHOLE DAG can be seen, and it is not a page-level scrolling mode. Every other row of the page
+    // stays at the panel's full width and never moves sideways.
+    sizes.contentCols = layout?.view.width ?? contentCols
     // THE PAGE OWNS A TICK. Nothing else re-renders a sidebar panel, so a page that reads its state per
     // render would otherwise show whatever was true when the user opened it.
     usePanelTick(kit, DAG_PANEL_REFRESH_MS, true)
@@ -633,32 +584,41 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
       // THE VIEWPORT KEYS FIRST. They are the ones with no other meaning in a panel, so they can never
       // steal a key the task focus needs — and a page that scrolled instead of moving focus on `↑` would
       // be a worse bug than no scrolling at all.
-      /** The scroll gesture this press asked for, if any. */
-      const gesture = panelScrollKey(bare)
+      /** The scroll gesture this press asked for, if any, on EITHER axis. */
+      const gesture = panelScrollGesture(bare)
       if (gesture !== undefined) {
         if (bare?.preventDefault !== undefined) bare.preventDefault()
         if (gesture === "top") viewport.scrollTo(0)
         else if (gesture === "bottom") viewport.scrollTo(Number.MAX_SAFE_INTEGER)
-        else viewport.scrollBy((gesture === "pageUp" ? -1 : 1) * viewport.viewportRows)
+        else if (gesture === "pageUp" || gesture === "pageDown") viewport.scrollBy((gesture === "pageUp" ? -1 : 1) * viewport.viewportRows)
+        // THE HORIZONTAL AXIS (clause T5). `⇧←→` and `⇧PgUp/PgDn` move the DRAWING's window; the bare
+        // arrows stay UNCONSUMED on purpose, because `←/→` are the host's own panel navigation and this
+        // page must not steal them (`dagPanelKeyAction` returns `consumed: false` for exactly that reason).
+        else if (gesture === "colLeft" || gesture === "colUp") viewport.scrollColBy(-1)
+        else if (gesture === "colRight" || gesture === "colDown") viewport.scrollColBy(1)
+        else viewport.scrollColBy((gesture === "colPageUp" ? -1 : 1) * contentCols)
         // THE SCROLL POSITION IS PUBLISHED BEFORE THE HANDLER RETURNS, so a run of page-keys in one
         // event-loop turn accumulates against the position the previous press ASKED for. Without this the
         // handler re-reads the same stale render on every press and the page never moves — the measured
         // shape of the defect (a 1000-press walk that left the window where it started).
         return
       }
-      /** What the focus keymap decided. */
-      const action = dagPanelKeyAction(bare, order, cursorId)
+      /** What the focus keymap decided, walked from the position the LAST press left rather than from
+       * this render's — the same one-generation rule the scroll keys above follow. */
+      const action = dagPanelKeyAction(bare, order, cursorNow())
       if (!action.consumed) return
       if (bare?.preventDefault !== undefined) bare.preventDefault()
       if (action.focus !== undefined) {
-        setCursor(action.focus)
+        moveCursor(action.focus)
         // FOCUS MOVEMENT AUTO-SCROLLS (frozen requirement): the invariant is that the focused node can
         // never be outside the rendered window, so the two features cooperate instead of competing.
         /** The row the newly focused task draws on, when this drawing has one. */
         const at = rowIndex.get(action.focus)
         if (at !== undefined) scrollRowIntoView(viewport, at)
       }
-      if (action.pin === true) setPinned(focus)
+      // A PIN OUTRANKS THE CURSOR while it exists, so pinning takes the same live value the walk just
+      // moved to — pinning the RENDERED focus would pin the previous task on a fast walk.
+      if (action.pin === true) setPinned(cursorNow())
       if (action.pin === false) setPinned(undefined)
     })
 
@@ -673,9 +633,6 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
     // hook's getters read them through `read()`, so a gesture arriving from an EARLIER render's closure is
     // clamped against the CURRENT page — one generation, never two.
     /** The sizes the hook and every later closure read; written by this render, before anything reads it. */
-    const sizes = { contentRows: 1, viewportRows: 1 }
-    /** The window height this panel affords, from the height the host reported. */
-    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS)
     /** The page's ONE scroll position: every key, wheel and click drives this handle, never a copy. */
     const viewport = usePanelViewport(kit, () => sizes)
     /** The header facts and the bar this width affords. */
@@ -699,11 +656,14 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
       /** Whether the breath changes the glyph this render (it is static at the orbit's head). */
       const breathing = breathe !== baseGlyph
       for (let index = 0; index < layout.view.lines.length; index += 1) {
-        // The row every task DRAWS ON is recorded as the drawing is walked, which is what makes focus
-        // auto-scroll exact: the page never re-derives a position the drawing already knows.
-        /** The tasks whose hit rectangle covers this row. */
+        // THE ROW IS RECORDED IN THE PAGE'S OWN COLUMN COORDINATES, not in the drawing's: the header and
+        // the other chrome rows were pushed BEFORE this loop, so the drawing's line `index` sits at
+        // `children.length` in the column the viewport windows. Storing the drawing's index instead put
+        // every auto-scroll one row short of the node it was following — measured on the frozen suite as
+        // a walk that focused the last task and then showed every row except it.
+        /** The task this row belongs to, when the pointer could land on one. */
         for (const candidate of layout.view.hits) {
-          if (index >= candidate.row && index <= candidate.rowEnd && !rowIndex.has(candidate.taskId)) rowIndex.set(candidate.taskId, index)
+          if (index >= candidate.row && index <= candidate.rowEnd && !rowIndex.has(candidate.taskId)) rowIndex.set(candidate.taskId, children.length)
         }
         /** This row's spans. */
         const row = layout.view.lines[index]
@@ -714,9 +674,14 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
         // substituted, so the drawing's geometry and its other marks cannot move. With no timer (or
         // outside the orbit's head frame) the row is drawn exactly as `graph.ts` laid it out.
         /** The row's spans, with the running glyph advanced by the phase. */
-        const spans = running && breathing
+        const phased = running && breathing
           ? row.map((span) => (span.text.includes(baseGlyph) ? { text: span.text.replace(baseGlyph, breathe), tone: span.tone } : span))
           : row
+        // THE WINDOW (frozen clause T3): the drawing is at its NATURAL width and may be wider than this
+        // panel, so every DAG row is cut to the columns the page's ONE viewport says are on screen. Only
+        // the DAG's rows — see R8, which is why the legend, the detail body and the footer below are
+        // pushed unwindowed.
+        const spans = sliceSpans(phased, viewport.colOffset, contentCols)
         /** The task this row belongs to, when the pointer could land on one. */
         const hit = layout.view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd)
         children.push(
@@ -730,10 +695,16 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
                   // event): the closure already knows which task this row belongs to, and the layout is
                   // the one that produced the row on screen.
                   setPinned(hit.taskId)
-                  setCursor(hit.taskId)
+                  moveCursor(hit.taskId)
                 },
               }),
         )
+      }
+      // THE HORIZONTAL RAIL, DIRECTLY BENEATH THE DRAWING (R8) and driven by the SAME `colOffset` the
+      // rows above were cut with — one position, one scroller, two views of it (clause T4). It is drawn
+      // only while the drawing is wider than the panel, so a sidebar that fits keeps its rows.
+      if (viewport.colOverflow) {
+        children.push(textRow(kit, gutterCellsX(viewport.colOffset, sizes.contentCols ?? contentCols, contentCols), { key: "hrail", tone: "edge", maxCells: contentCols }))
       }
       // THE MODE LINE: which view was drawn AND WHERE ITS RANKS CAME FROM, said out loud — the view is
       // a fact about the width and the reader is the one who can change the width, while the rank
@@ -791,17 +762,20 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
     /** The same handle, named for what it does here: the window this render draws. */
     const scroller = viewport
     // THE WHEEL IS BOUND TO THE WINDOW, not to each row: the host hit-tests the deepest node under the
-    // pointer, so binding it once around the visible slice keeps ONE handler in the dispatch path. The
-    // slice itself is taken HERE, on the page's own rows — `rowIndex`'s numbers are indices into exactly
-    // this array, which is what makes the focus auto-scroll exact instead of approximate.
-    /** The visible slice, inside the page's own wheel handler. */
-    const scrolled = kit.React.createElement(kit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows))
+    // pointer, so binding it once around the VISIBLE slice keeps ONE handler in the dispatch path. The
+    // slice itself belongs to `panelViewportBody`, which is why the wrapper is passed TO it rather than
+    // built here — wrapping the whole column and handing that back in made this page window TWICE (the
+    // body then cut a one-element array at the row offset) and rendered an EMPTY panel whose footer still
+    // read `6/82`. Measured exactly that way; one slice, one place.
+    /** The wheel binding, applied by the body to the rows it is about to draw. */
+    const wheelBound = (boundKit: PanelKit, rows: readonly unknown[]): unknown =>
+      boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...rows)
     // THE FOOTER KEY HINTS (R6/R11): the keys this page actually handles, and nothing else — a hint row
     // that named a key the page ignores is worse than no hint row.
     /** The pinned footer, carrying the scroll position so the reader can see where they are. */
-    const footer = textRow(kit, `↑↓/jk move · Enter pin · Esc unpin · PgUp/PgDn scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols })
+    const footer = textRow(kit, `↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols })
     /** The visible slice plus its reserved gutter column. */
-    const body = panelViewportBody(kit, [scrolled], scroller)
+    const body = panelViewportBody(kit, children, scroller, true, wheelBound)
     return panelFrame(kit, DAG_PANEL_TITLE, [...body, footer])
   }
 }
