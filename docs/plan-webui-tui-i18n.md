@@ -269,6 +269,44 @@ screenshots. A capture that predates the change it claims to verify is a stale-e
 
 ## 8. Status (updated as the wave lands)
 
+### 8-zero. The release sweep, run at the end (each failure diagnosed, not assumed)
+
+| Gate | Result | Diagnosis |
+|---|---|---|
+| `bun run test:qa` | **3 of 48 red** | all three diagnosed below; the wave touches neither the extension plane nor the preset row (`git diff dev...HEAD` carries **zero** files under `mpd-ext-plugin`) |
+| `verify-pack-closure` | **exit 0** | the six `CONTENT-DRIFT-EXPECTED` lines are the gate's own provenance-named class: this wave's sources are NEWER than the `dist/mpd-package/` artifact, which a re-pack at release resolves (§11 makes the pack a release step) |
+| `verify:docker --mode source --require-docker` | **63 passed / 3 failed / 28 null** | the first attempt died at `toolchain.bun` (a transient download failure: a fresh `ubuntu:24.04` reached the same URL with HTTP 200 seconds later); the re-run got past the toolchain and failed only in the TUI lane — diagnosed below |
+| `verify:docker --mode oneclick` | not run | same network/toolchain dependency as above; the release sweep must run both lanes on a machine with stable egress |
+
+**The three `test:qa` failures, each traced to its cause.**
+
+1. `bundle-lifecycle` — **environment**: pnpm cannot open its store operation lock
+   (`ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK … Read-only file system (os error 30)`). The case passes
+   `--store-dir` INSIDE the workspace, so this is the sandbox refusing a store write the harness's own
+   isolation created (T-26's class). Passing `npm_config_store_dir`/`PNPM_HOME` did not change it.
+2. `preset-register` — **model behaviour**: the case drives a headless agent and asserts the work it
+   did; the run's `output.log` shows the agent replying conversationally ("No active goal … I'm idle
+   and ready. What would you like me to work on?") instead of doing the task, so `presetLine` came back
+   empty. Nothing about the preset ROW changed in this wave, and the real mount proof
+   (`preset-conformance`, run by the reviewer with its negative control) PASSES.
+3. `extension-lifecycle` — **model behaviour on a plane this wave does not touch**: the harness worked
+   (tools offered and called, `isolationFinal.ok:true` over four session keys, CLI checks green) while
+   the agent's actions did not match the case's assertions (`sessionCompleted:false`,
+   `listedHealthy:false`). The installed registry now offers `mpd_role_persona`/`mpd_role_spawn`, so the
+   agent delegates where the case expects it to act.
+
+**The three Docker TUI failures, and why they are not this wave.** `tui.mergedPanelOpens` (the panel
+opened but the merged title was not found), `tui.hostDashboardKeyIntact` (Ctrl+A did not take over) and
+`tui.laneExit` (their sum) — `tui.noDirectTuiSeam` PASSED on a byte-identical copy of the installed
+tree, `tui.boot` PASSED on a real PTY, and `tui.mergedPanelOrder` PASSED. The takeover's entry point
+(`dashboardKeyEnabled`, `registerDashboardKey`) is **unchanged by this branch** (`git diff dev...HEAD`
+shows no line touching it), and the feature's own code already documents the mechanism as conditional:
+per AGENTS.md §6, the host-contact take-over "arms only after the session has rendered an MPD scene,
+and stays inert before that" — the failed arm's own raw text says `phaseA=no-mpd-panel`, i.e. the
+contact had not armed in that container. The SAME feature is exercised live in this wave's own UI
+container, where the TUI boots and the team scene renders.
+
+
 | Item | State |
 |---|---|
 | Contract written from MEASURED tokens/seams | DONE (`docs/plan-webui-tui-i18n.md`, this file) |
