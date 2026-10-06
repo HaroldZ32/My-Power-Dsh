@@ -822,3 +822,123 @@ describe("rich status view registration", () => {
     expect(missing.outcome().detail).toContain("registerView is missing")
   })
 })
+
+// ── the sidebar panel seam (dsh-tui 0.13.0) ─────────────────────────────────────────────────────
+
+describe("the panels seam", () => {
+  /** The descriptor every arm below registers; the host validates it, the double does not care. */
+  const descriptor = { apiVersion: 1 as const, id: "team", title: "MPD", minColumns: 32, order: 10, component: () => null }
+
+  test("a registration the host accepts is CONFIRMED with the id read back from its own list()", () => {
+    /** The ids the host double reports as belonging to the calling activation. */
+    const owned: { id: string; title: string; source: string }[] = []
+    /** A host double whose activation prefix is the measured `act<N>` fallback form. */
+    const panels = {
+      /** Registers under the host-composed id and returns a disposer, as an admission does. */
+      register: (input: { id: string; title: string }) => {
+        owned.push({ id: "act1:" + input.id, title: input.title, source: "plugin" })
+        return () => {}
+      },
+      /** The read-back the adapter discovers the final id from. */
+      list: () => owned,
+      /** Not exercised by this arm. */
+      open: () => true,
+    }
+    /** The registration's handle. */
+    const handle = createTuiAdapter(hostDouble({ tuiPanels: panels }).ctx).registerPanel(descriptor)
+    expect(handle.outcome().state).toBe("confirmed")
+    expect(handle.outcome().detail).toContain("act1:team")
+    expect(handle.id()).toBe("act1:team")
+    // The id is never composed here: the host's own prefix is what makes it `act1:team` rather than
+    // anything this side could have written.
+    expect(handle.id()).not.toBe("team")
+  })
+
+  test("a REFUSED registration is refused, not 'requested' (the host returns undefined and adds no id)", () => {
+    // THE MEASURED REFUSAL SHAPE: the installed host's `register()` returns the disposer only on
+    // success and `undefined` on every refusal path, so a read-back that shows NO new id is the only
+    // proof of a refusal — and reporting it as `requested` would hide a real refusal behind a state
+    // whose meaning is "the host accepted the call".
+    /** The host's read-back, which never grows. */
+    const owned: { id: string; title: string; source: string }[] = []
+    /** A host double that refuses every descriptor. */
+    const panels = {
+      /** The refusal contract: no disposer for this descriptor. */
+      register: () => undefined,
+      /** The read-back that proves nothing was registered. */
+      list: () => owned,
+      /** Not exercised by this arm. */
+      open: () => true,
+    }
+    /** The adapter under test. */
+    const adapter = createTuiAdapter(hostDouble({ tuiPanels: panels }).ctx)
+    /** The registration's handle. */
+    const handle = adapter.registerPanel(descriptor)
+    expect(adapter.panelSeamBound()).toBe(true)
+    expect(handle.outcome().state).toBe("refused")
+    expect(String(handle.outcome().detail)).toContain("refused")
+    expect(handle.id()).toBeUndefined()
+  })
+
+  test("a host with no list() read-back is honestly 'requested' — never claimed as registered", () => {
+    /** A host double whose registry carries `register` but no read-back. */
+    const panels = {
+      /** Accepts the descriptor and returns the disposer the real host returns on success. */
+      register: (): (() => void) => () => {},
+      /** Not exercised by this arm. */
+      open: (): boolean => true,
+    }
+    /** The registration's handle. */
+    const handle = createTuiAdapter(hostDouble({ tuiPanels: panels }).ctx).registerPanel(descriptor)
+    expect(handle.outcome().state).toBe("requested")
+    expect(String(handle.outcome().detail)).toContain("no panel read-back")
+    expect(handle.id()).toBeUndefined()
+  })
+
+  test("a seam-less host degrades: absent, no id, and opening reports absent rather than refused", () => {
+    /** The adapter under test, over a composition with no panel service at all. */
+    const adapter = createTuiAdapter(hostDouble({}).ctx)
+    /** The registration's handle. */
+    const registration = adapter.registerPanel(descriptor)
+    expect(registration.outcome().state).toBe("absent")
+    expect(registration.id()).toBeUndefined()
+    expect(adapter.panelSeamBound()).toBe(false)
+    /** The open request's handle. */
+    const open = adapter.openPanel("act1:team")
+    expect(open.outcome().state).toBe("absent")
+    expect(open.opened()).toBeUndefined()
+  })
+
+  test("a bound seam WITHOUT open() answers false, so the caller can fall back instead of waiting", () => {
+    /** A host double whose registry cannot open a panel at all. */
+    const panels = { /** Records nothing; the read-back below is what matters. */ register: () => () => {}, /** The caller's own panels, empty here. */ list: () => [] as { id: string; title: string; source: string }[] }
+    /** The open request's handle. */
+    const open = createTuiAdapter(hostDouble({ tuiPanels: panels }).ctx).openPanel("act1:team")
+    expect(open.outcome().state).toBe("refused")
+    expect(String(open.outcome().detail)).toContain("open is missing")
+    expect(open.opened()).toBe(false)
+  })
+
+  test("an accepted open is confirmed; a refused one is refused with the rate-limit/no-consumer reason", () => {
+    /** A host double that answers the open request with the given verdict. */
+    const panels = (
+      answer: boolean,
+    ): { register: () => () => void; list: () => { id: string; title: string; source: string }[]; open: () => boolean } => ({
+      /** Not exercised by this arm. */
+      register: () => () => {},
+      /** Not exercised by this arm. */
+      list: () => [],
+      /** The host's own answer to the open request. */
+      open: () => answer,
+    })
+    /** The accepted request's handle. */
+    const accepted = createTuiAdapter(hostDouble({ tuiPanels: panels(true) }).ctx).openPanel("act1:team")
+    expect(accepted.opened()).toBe(true)
+    expect(accepted.outcome().state).toBe("confirmed")
+    /** The refused request's handle. */
+    const refused = createTuiAdapter(hostDouble({ tuiPanels: panels(false) }).ctx).openPanel("act1:team")
+    expect(refused.opened()).toBe(false)
+    expect(refused.outcome().state).toBe("refused")
+    expect(String(refused.outcome().detail)).toContain("5000 ms")
+  })
+})

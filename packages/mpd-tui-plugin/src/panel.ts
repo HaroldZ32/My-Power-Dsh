@@ -416,6 +416,14 @@ export function registerPanelSurface(tui: TuiAdapter, deps: PanelDeps): PanelSea
         // the surface, exactly as it was before this wave.
         return { outcome: "unavailable", sceneOpened: deps.openMergedScene() }
       }
+      if (typeof tui.panels()?.open !== "function") {
+        // A BOUND SEAM WITH NO `open` MEMBER cannot satisfy this request at all — it is not a refusal
+        // by the host and not a queued call, so it must not be reported as either (measured reading of
+        // the 0.13.0 contract: `open` is optional). The scene opens and the line says the build cannot
+        // open panels.
+        deps.log.debug(`the bound panel seam exposes no open() member; using the full-screen merged scene`)
+        return { outcome: "unavailable", sceneOpened: deps.openMergedScene() }
+      }
       /** The host's answer; `opened()` is a boolean only because the seam was bound at call time. */
       const result: PanelOpenResult = tui.openPanel(id)
       if (result.opened() === true) return { outcome: "opened", sceneOpened: false }

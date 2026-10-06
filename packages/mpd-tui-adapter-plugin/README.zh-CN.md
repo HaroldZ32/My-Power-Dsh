@@ -11,7 +11,9 @@ harness settings provider 的 mpd 插件都经由本适配器调用，因此 dsh
 ## 封装的接缝
 
 接缝 id 表就是 `TUI_SEAMS`——全 bundle 中唯一出现 DSH-TUI 服务名的地方。消费方用**键**（`scenes`、
-`status`、`pluginHost` …）寻址接缝，永远不直接写服务 id。
+`status`、`pluginHost` …）寻址接缝，永远不直接写服务 id。该表承载**十五个** `tui*` 服务——dsh-tui 自
+0.12.0 起提供的十四个，加上 0.13.0 新增的 `tuiPanels` 侧栏面板注册表——另有 `tuiPrompt`（每一个实测版本
+都不提供）以及 harness 的 `commands` 注册表与 `settings` 提供者。
 
 | 接缝键 | 服务 | 类型化成员 | 注册 |
 |---|---|---|---|
@@ -29,6 +31,7 @@ harness settings provider 的 mpd 插件都经由本适配器调用，因此 dsh
 | `messageObserver` | `tuiMessageObserver` | `messageObserver()` | 已绑定并上报；只作读面 |
 | `effectLedger` | `tuiEffectLedger` | `effectLedger()` | 实测在插件激活中**不可达**；仍绑定并上报，但绝不据此推断 |
 | `workspaces` | `tuiWorkspaces` | `workspaces()` | 已绑定并上报；只作读面 |
+| `panels` | `tuiPanels` | `panels()` | dsh-tui 0.13.0 **新增**（宿主行 `dsh-tui-panels`，导出 `@deepseek-harness-tui/dsh-tui/panels`）：`registerPanel(descriptor)` → 句柄带 `id()`（从宿主**回读**得到的**最终**宿主 id）/ `dispose()` / `outcome()`；适配器上还有 `openPanel(id)`；`panelSeamBound()` 是本 bundle 两个面板界面之间的**仲裁者**。该接缝的**缺席**正是旧 `Ctrl+A` 宿主输入接触面的启用判据 |
 | `prompt` | `tuiPrompt` | `prompt()` | 每一个实测版本都**不提供**（`docs/tui.md` 接缝 2）：只上报缺失，不作任何声明 |
 | `commands` | `commands` | `commands()` | `registerCommand(definition)` |
 | `settings` | `settings` | `settings()` | `registerSettingsNamespace(ns, schema, options?)` |
@@ -45,6 +48,36 @@ harness settings provider 的 mpd 插件都经由本适配器调用，因此 dsh
 每个注册都返回句柄，其 `outcome()` 为 `{id, state, detail?}`，沿用本 bundle 既有的词汇：`confirmed`
 （宿主回读证明）· `requested`（宿主接受了调用，但无回读）· `available`（请求式接缝，无需注册）·
 `absent`（从未绑定）· `refused`（调用抛错，或缺方法）。**绝不**仅凭 disposer 的类型判断“已注册”。
+
+### `panels` 接缝全貌（dsh-tui 0.13.0 新增）
+
+dsh-tui 0.13.0 用一个官方接缝回答了本 bundle 早先提出的面板诉求，而不再依赖那处被计数的宿主输入接触面：
+宿主行 `dsh-tui-panels` 提供 `ctx.tuiPanels`，其模块导出为 `@deepseek-harness-tui/dsh-tui/panels`，
+插件据此贡献一个右侧栏面板。在 0.13.0 之前的宿主上，该服务**根本不存在**，因此这个接缝什么也不绑定、
+与其它可选接缝一样上报 `absent`——既无特判，也不做版本嗅探。
+
+该接缝为适配器新增四个成员：
+
+- `panels()`——已绑定的注册表（`TuiPanelsLike`）；0.13.0 之前的宿主上为 `undefined`；
+- `registerPanel(descriptor)` → 一个 `PanelRegistrationHandle`，携带 `outcome()`（只有宿主的**回读**证明了
+  注册，其 `state` 才是 `confirmed`）、`bound()`、`record()`、`id()` 与 `dispose()`。该调用在 **apply 时**
+  是安全的：延迟绑定器会把它**入队**，在接缝绑定时执行；宿主没有该接缝时结算为 `absent`。`id()` 是
+  **最终**宿主 id —— `<pluginId>:<slug>`，**从宿主自己的 `list()` 回读中发现**（真机实测：`act1:team`），
+  绝不在这里拼装：插件 id 那一半来自本 bundle 的普通 loader 行**不携带**的 Component 身份。在接缝绑定且
+  回读证明之前，它一直是 `undefined`；
+- `openPanel(id)` → 一个 `PanelOpenResult`。调用时若接缝**已绑定**，`opened()` 就是宿主自己的答复：`true`
+  表示请求送达侧栏面板，`false` 表示被拒（不是本次激活的面板、每个插件每 5000 ms 只允许一次打开、或没有
+  活的消费者）。接缝当时尚未绑定时，请求被**入队**，`opened()` 为 `undefined`——因此需要**同步**路由决策的
+  消费方先读 `panelSeamBound()`，绝不把入队当成被拒；
+- `panelSeamBound()`——侧栏注册表此刻是否已绑定。这**不是**能力上报，而是本 bundle 两个面板界面之间的
+  **仲裁者**：为真走侧栏面板，为假走旧的**全屏场景**。消费方除了在 apply 时读它，**每次按键**也会重读：
+  接缝是经**延迟注入**绑定的，晚于该行 apply 才落地的绑定，必须仍然让旧的 `Ctrl+A` 接触面保持解除武装。
+
+宿主强制的描述符规则（`TuiPanelDescriptorLike`）：`apiVersion` 必须**恰好**为 `1`；`id` 是宿主会加前缀的
+单个小写 slug；`title` 非空（宿主会把它清洗到最多 80 个 cell），`icon` 可选且**显示宽度必须恰好一个
+cell**；`component` 与/或 `compact` 必填；`minColumns` 是宿主自己 12..64 区间内的整数（其默认值为 28）；
+`order` 是可选排序提示；每个插件最多 4 个面板、全局最多 32 个。注册随激活一并释放。**0.13.0 会校验并保存
+`compact`，但不挂载它的渲染槽位**（宿主自己的 `TODO §18.1`），因此本 bundle 只声明 `component`。
 
 ## 绑定纪律
 
@@ -114,6 +147,12 @@ React context 对象（`StdinContext`）。若拿到的是第二份副本，`use
   宿主上 `useStdin()` 什么也不返回。`capabilities().hostInput` 会写明最终是哪一路就绪的，QA 可据此区分。
   由此带来的实际后果是一次 bootstrap：基于本接触面的接管在"本次会话渲染过任一 MPD 场景"之后就绪，在那之前
   保持惰性（宿主原有行为，不做任何声明）。
+
+**自 0.13.0 起按版本设闸（2026-10-06）。** 该接触面只服务于**一代**宿主——没有面板接缝的 dsh-tui，那时宿主
+自带的 `dashboard` 动作是触达合并视图的唯一途径。在**提供** `tuiPanels` 的宿主上，`panelSeamBound()` 为真，
+接触面**保持惰性**（`Ctrl+A` 保留宿主 dashboard 的原义），合并视图改由消费方自己的 `alt+a` / `/mpd panel`
+路由进入侧栏面板。消费方除了在 apply 时，**每次按键**都会重测这道闸，因此晚落地的延迟绑定不会在 0.13.0 宿主
+上把接触面留在启用状态。真机 PTY 用例 `skills/dsh-qa/scripts/tui-deps-ctrla.ts` 对两条路径都做了断言。
 
 ## 诊断文件 sink
 

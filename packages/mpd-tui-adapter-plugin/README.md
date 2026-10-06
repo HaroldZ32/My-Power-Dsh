@@ -13,7 +13,10 @@ Row id: `mpd-tui-adapter`. Service name: `mpdTui` (`ctx.get("mpdTui")`). Package
 ## Wrapped seams
 
 The seam id table is `TUI_SEAMS` — the ONLY place in the bundle a DSH-TUI service name appears.
-Consumers address a seam by its key (`scenes`, `status`, `pluginHost`, …), never by the id.
+Consumers address a seam by its key (`scenes`, `status`, `pluginHost`, …), never by the id. It carries
+the FIFTEEN `tui*` services — the fourteen dsh-tui has exposed since 0.12.0 plus the `tuiPanels`
+sidebar registry 0.13.0 added — beside `tuiPrompt` (host-unavailable on every measured build) and the
+harness `commands` registry and `settings` provider.
 
 | Seam key | Service | Typed member | Registration |
 |---|---|---|---|
@@ -31,6 +34,7 @@ Consumers address a seam by its key (`scenes`, `status`, `pluginHost`, …), nev
 | `messageObserver` | `tuiMessageObserver` | `messageObserver()` | bound and reported; read surface only |
 | `effectLedger` | `tuiEffectLedger` | `effectLedger()` | MEASURED UNREACHABLE from a plugin activation on the probed build; bound and reported, never inferred from |
 | `workspaces` | `tuiWorkspaces` | `workspaces()` | bound and reported; read surface only |
+| `panels` | `tuiPanels` | `panels()` | ADDED BY dsh-tui 0.13.0 (host row `dsh-tui-panels`, export `@deepseek-harness-tui/dsh-tui/panels`): `registerPanel(descriptor)` → handle with `id()` (the FINAL host id, read back from the host) / `dispose()` / `outcome()`; `openPanel(id)` on the adapter; `panelSeamBound()` is the arbiter between the bundle's two panel surfaces. The seam's ABSENCE is the version discriminator the legacy `Ctrl+A` host-input contact arms on |
 | `prompt` | `tuiPrompt` | `prompt()` | HOST-UNAVAILABLE on every measured build (`docs/tui.md` seam 2): the absence is reported, nothing is claimed |
 | `commands` | `commands` | `commands()` | `registerCommand(definition)` |
 | `settings` | `settings` | `settings()` | `registerSettingsNamespace(ns, schema, options?)` |
@@ -51,6 +55,45 @@ vocabulary this bundle already reports: `confirmed` (a host read-back proves it)
 host accepted the call, no read-back) · `available` (a request-based seam, nothing to register) ·
 `absent` (never bound) · `refused` (the call threw, or the method is missing). Nothing is ever
 reported as registered on the strength of a disposer's type.
+
+### The `panels` seam, in full (ADDED BY dsh-tui 0.13.0)
+
+dsh-tui 0.13.0 answers this bundle's upstream panel ask with a sanctioned seam instead of the counted
+host-input contact: the host row `dsh-tui-panels` provides `ctx.tuiPanels`, its module is exported as
+`@deepseek-harness-tui/dsh-tui/panels`, and a plugin contributes a right-hand sidebar panel through it.
+On a host before 0.13.0 the service is simply ABSENT, so this seam binds nothing and reports `absent`
+like every other optional seam — no special-casing, no version sniffing.
+
+The seam adds four members to the adapter:
+
+- `panels()` — the bound registry (`TuiPanelsLike`), `undefined` on any host before 0.13.0;
+- `registerPanel(descriptor)` → a `PanelRegistrationHandle` carrying `outcome()` (whose `state` is
+  `confirmed` only when the host's own read-back proved the registration), `bound()`, `record()`,
+  `id()` and `dispose()`. The call is SAFE AT APPLY TIME in either direction: the deferred binder
+  QUEUES it until the seam binds and settles it as `absent` on a host without the seam. `id()` is the
+  FINAL host id — `<pluginId>:<slug>`, **DISCOVERED from the host's own `list()` read-back** (measured
+  on the real host: `act1:team`) and never composed here, because the plugin-id half comes from a
+  Component identity this plain loader row does not carry; it stays `undefined` until a bind and a
+  read-back prove it;
+- `openPanel(id)` → a `PanelOpenResult`. `opened()` is the host's own answer whenever the seam was
+  BOUND at call time: `true` when the request reached the side panel, `false` on a refusal (not this
+  activation's panel, rate limited to one open per plugin per 5000 ms, or no live panel consumer). It
+  is `undefined` when the request was QUEUED because the seam had not bound yet — so a consumer that
+  needs a synchronous routing decision reads `panelSeamBound()` first and never mistakes a queued
+  request for a refusal;
+- `panelSeamBound()` — whether the sidebar registry is bound right now. This is NOT a capability
+  report but the ARBITER between this bundle's two panel surfaces: the sidebar panel when true, the
+  legacy full-screen scene when false. The consumer re-reads it PER PRESS as well as at apply, because
+  the seam binds through a deferred inject — a binding that lands after its row applied must still keep
+  the legacy `Ctrl+A` contact disarmed.
+
+Descriptor rules the host enforces (`TuiPanelDescriptorLike`): `apiVersion` exactly `1`; `id` a single
+lowercase slug the host prefixes; `title` non-empty (the host sanitises it to at most 80 cells) and
+`icon` optional at exactly one DISPLAY cell; `component` and/or `compact` required; `minColumns` an
+integer in the host's own 12..64 range (its default is 28); `order` an optional ordering hint; at most
+4 panels per plugin and 32 globally. A registration is released with the activation. **0.13.0 validates
+and STORES `compact` but does not mount its render slot** (the host's own `TODO §18.1`), so this bundle
+declares `component` only.
 
 ## The binding discipline
 
@@ -135,6 +178,14 @@ TWO MEASURED HOST CONSTRAINTS this contact obeys (dsh-tui 0.12.0, both establish
   host. `capabilities().hostInput` names which source armed, so QA can tell them apart. The practical
   consequence is one bootstrap: a take-over built on this contact works from the moment the session has
   rendered an MPD scene, and stays inert (host behaviour, nothing claimed) before that.
+
+VERSION-GATED SINCE 0.13.0 (2026-10-06). The contact exists for exactly ONE host generation — a
+dsh-tui WITHOUT the panel seam, where the host's own `dashboard` action is the only way to reach the
+merged view. On a host that OFFERS `tuiPanels`, `panelSeamBound()` is true, the contact stays INERT
+(`Ctrl+A` keeps the host's own dashboard meaning) and the merged view opens through the consumer's own
+`alt+a` / `/mpd panel` route into the sidebar panel. The consumer tests the gate per PRESS as well as
+at apply, so a deferred binding that lands late cannot leave the contact armed on a 0.13.0 host. The
+PTY lane `skills/dsh-qa/scripts/tui-deps-ctrla.ts` asserts both arms.
 
 ## The diagnostic file sink
 

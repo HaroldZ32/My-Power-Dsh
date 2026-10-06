@@ -26,13 +26,66 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 | 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd workmates` 补全，以及 `/mpd-model` 根；两个根与每个子项都在 `descriptions` 中同时提供中英双语，由宿主按其当前 `/lang` 解析 |
 | 模型菜单（R3） | `ctx.tuiDialogs` + 共享的目录/设置接缝 | **`/mpd-model`** —— 一个真正的选择式菜单，依次选择 槽位 → 提供商 → 模型 → 推理强度，并把所选路由写入 `/settings` 区块所编辑的 `mpd-config` 条目。选项来自该区块**自己**的投影（`teamModelOptionLists`）与同一份实时模型目录，因此菜单与设置行不可能互相矛盾；输出结果携带与区块完全相同的披露语句。任一档取消即不写入任何内容 |
 | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+a` 子代理 + 团队面板 · `alt+t` 团队工作流 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
-| 合并面板 | `ctx.tuiScenes` | `mpd-tui-subagents`——宿主自己的子代理行（含其 运行中/已完成/失败 计数）、团队正文，以及每条**已绘制**依赖边都以方向箭头 `▼` 收尾、下方带图例的任务 DAG：`alt+a` 打开，工作区存在团队时也可用 **`Ctrl+A`** 打开（见下方接管说明）。`enter` 打开选中子代理的详情，`i` 中断选中的活跃运行，鼠标点击选中行 |
+| 侧栏面板（dsh-tui 0.13.0） | `ctx.tuiPanels`（经适配器） | **一个**面板 —— slug `team`、标题 `MPD`、`minColumns` 32、`order` 10、无图标、**无 `compact`** —— 其正文就是**同一份**合并视图：先是宿主那份精心裁剪的 `host.snapshot().subagents` 行，然后是 MPD 依赖 DAG。接缝已绑定时，`alt+a` 与新增的 `/mpd panel` 都经 `tuiPanels.open()` 路由；只要被拒就**回退**到全屏 `mpd-tui-subagents` 场景 —— 绝不静默无操作。`/mpd panel` 会打印一行双语状态，点名它实际到达的界面 |
+| 合并面板 | `ctx.tuiScenes` | `mpd-tui-subagents`——宿主自己的子代理行（含其 运行中/已完成/失败 计数）、团队正文，以及每条**已绘制**依赖边都以方向箭头 `▼` 收尾、下方带图例的任务 DAG：它是**回退**界面 —— 宿主没有面板接缝、或拒绝了打开请求时，`alt+a` 与 `/mpd panel` 落到这里；在 0.13.0 之前的宿主上，工作区存在团队时也可用 **`Ctrl+A`** 打开（见下方接管说明）。`enter` 打开选中子代理的详情，`i` 中断选中的活跃运行，鼠标点击选中行 |
 | `Ctrl+A` 接管 | 一个 `ctx.tuiStatus` 视图 + 适配器的宿主输入接触面 | 当团队投影含有一个至少带一项任务的团队时，`Ctrl+A` 打开合并面板而非宿主自带的 dashboard；没有团队时——或宿主输入总线无法被适配器触达时——该键行为与今天完全一致（`tui.dashboardKey`，默认 `true`；见"明确不声明"第 7–9 条） |
 | 对话框 | `ctx.tuiDialogs` | 托管式 workmate 选择器（`select`） |
 | 决策事件 | `tuiPluginHost.subscribeDecision` | 已尝试注册、预期被拒绝、**未激活**（见下） |
 
 支撑面（不属于上述七个接缝）：harness 命令注册表上的 `/mpd` 命令、`mpd` 设置
 命名空间注册、以及 log-only 的 `mpd-tui/board-opened` 会话记录。
+
+### 侧栏面板（dsh-tui 0.13.0）：一个面板，一份合并视图
+
+`src/panel.ts` 只贡献**一个**侧栏面板，并承载它的全部契约。描述符在模块作用域**冻结**
+（`PANEL_DESCRIPTOR_FROZEN`）：`apiVersion` 为 1、slug `team`（宿主会用本次激活的插件 id 加前缀）、
+标题 `MPD`、`minColumns` 32（高于宿主自身默认的 28 这一底线）、`order` 10、**无图标、无 `compact`**
+—— 0.13.0 会校验并保存那个行槽位，却**不挂载**它的渲染槽位，声明它就等于主张一个宿主永远不会绘制的
+界面。
+
+注册在每一个宿主版本上都是安全的：apply 时的 `registerPanel(...)` 被适配器的延迟绑定器**入队**，在
+没有 `tuiPanels` 服务的宿主上结算为 `absent`，且绝不抛错。最终 id 不在这里拼装 —— 它是从宿主自己的
+`list()` 回读中**发现**的，因此在真机 0.13.0 宿主上调试行写作 `sidebar panel id: act1:team`（实测），
+其它地方则是 `(not discovered)`。
+
+面板**正文**就是全屏场景绘制的**同一份**合并视图，且只经**一个**读取器（`readWorkflow`，即各场景自身
+`readDashboardWorkflow` 的无 agent 形态），因此两个界面不可能对同一个团队给出不同描述：先是宿主那份
+精心裁剪的 `host.snapshot().subagents` 行，然后是 MPD 依赖 DAG，两者都复用 `subagent-scene.ts`
+（`subagentSectionRows`、`teamGraphView`）与 `graph.ts`。它**只**通过 props 自带的 kit 渲染 ——
+`props.React` 与 `props.ui` —— 因为宿主是在自己的 reconciler 里渲染这个面板的：在这里 import React
+（或它的任何第二份副本）会挂载一棵外来树，所以本面板从不 import 它，也从不读自己的主题（单 React 规则）。
+
+**入口，以及那一次路由打开。** `alt+a` 与新增的 `/mpd panel` 子命令都落在 `openMergedPanel()` 上，由它
+**逐次调用**决定：接缝是异步绑定的，因此在绑定之前按下的键同样必须找到界面 —— `panelSeamBound()` 为真且
+已发现 id 时走侧栏面板，否则走全屏 `mpd-tui-subagents` 场景。宿主的**拒绝**也不是静默无操作：
+`opened() === false`（不是本次激活的面板、每 5000 ms 只允许一次的打开限流、或没有活的消费者）会以场景
+兜底并记录原因。**入队**的请求（`opened() === undefined`）**不**被当作拒绝。`/mpd subagents` 保持它在
+面板出现之前的布尔契约；`/mpd panel` 用当前语言打印路由结果（`panel.opened` / `panel.fallback` /
+`panel.unavailable`），因此回退永远不会被读成"面板已打开"。
+
+**`Ctrl+A` 按版本设闸。** 在提供面板接缝的宿主上，旧的宿主输入接触面被直接跳过 —— 无论配置层说什么，
+`takeoverArmed(seamBound, savedKnob, floor)` 都返回 `false`，聚合行会点名原因，`Ctrl+A` 保留宿主
+dashboard 的原义。在没有该接缝的宿主上，接触面与以往完全一样地就绪，且在那里已保存的 `tui.dashboardKey`
+高于行配置的底线。这道闸**每次按键**都会重读，而不只在 apply 时 —— 因为适配器是经延迟注入绑定该接缝的；
+因此 `tui.dashboardKey` **只在旧宿主上有意义**，在 0.13.0 宿主上这个键不归 MPD 花。
+
+行配置新增的 `panel` 开关（默认 `true`）同时关掉贡献与路由：不再尝试注册（聚合行上报适配器自己的
+`skipped("panels", …)` 结果并点名该配置），`alt+a` 与 `/mpd panel` 保持面板出现之前的全屏路径，而
+`Ctrl+A` 是否就绪只由接缝决定。
+
+**如实写出的边界。**（1）在当前宿主上，面板**正文**无法用 tmux pane 抓取观测：一次**被宿主接受**的
+`open()` 前后两次抓取**逐字节相同**，因此真机 PTY 用例证明的是注册、被发现的 id 与被接受的打开 ——
+绝不是渲染，也不主张面板栏或正文绘制出来。（2）0.12.0 一侧**没有 PTY 证据**：干净的 0.12.0 沙箱需要
+`dsh plugin add @deepseek-harness-tui/dsh-tui@0.12.0`，本机被只读的 pnpm store 锁拒绝（现有的
+`.mpd/recon/tui-012` 夹具是混版组合，其 loader 在出现聊天界面前就卡在只属 0.13.0 的那一行上），因此旧
+宿主的就绪路径依赖单元断言 —— 判据是 `src/panel.ts` 中的 `takeoverArmed`，由 `test/panel.test.ts`
+覆盖，另有 `test/dashboard-key.test.ts` 的 `Ctrl+A` 决策臂 —— 而**不是**某次 pane 抓取。
+
+证据：`evidence/tui/lanes/2026-10-06T10-27-42.389Z/`（挂载用例 PASS）、
+`evidence/tui/lanes/2026-10-06T10-27-53.571Z/`（8 个界面中 7 个渲染，面板行绿、负对照红）、
+`evidence/tui/lanes/2026-10-06T10-28-57.807Z/`（宿主的 `Ctrl+A` **保持惰性**，而 `/mpd panel` 证明了
+侧栏注册 + 被接受的打开），以及
+`evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`。
 
 ### 依赖图：箭头、图例与 `Ctrl+A` 接管
 
@@ -49,7 +102,9 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 加载宿主自己的 `useStdin`（见 `packages/mpd-tui-adapter-plugin`），再由一个零行状态视图把一个监听器
 prepend 到输入总线最前面，抢先消费该键。没有团队时该监听器什么都不碰；任何失败——宿主模块不可达、版本偏移、
 `tui.dashboardKey` 关闭——都降级为今天的行为。`skills/dsh-qa/scripts/tui-deps-ctrla.ts` 在真机 PTY 上
-证明了两条路径（外加设置界面那条对照）。
+证明了两条路径（外加设置界面那条对照）。**自 dsh-tui 0.13.0 起这条路径按版本设闸**：在提供侧栏面板接缝的
+宿主上，该接触面被直接跳过，`Ctrl+A` 保留宿主 dashboard 的原义 —— 接管只在**没有**该接缝的宿主上就绪（见
+上方侧栏面板一节）。
 
 **一条宿主约束**（它直接影响你看到的现象）：宿主只在**场景渲染**时把活的输入上下文交给插件，因此接管会在你本次
 会话打开任意一个 MPD 面板或场景之后自行就绪（`alt+a`、`alt+t`、`alt+m`、`/mpd board` 等）。在那之前——以及
@@ -156,7 +211,8 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
 | `commandTrees` | `true` | 注册 `/mpd` 补全树 |
 | `commands` | `true` | 注册 `/mpd` 命令（面板的打开入口） |
 | `shortcuts` | `true` | 注册快捷键 |
-| `dashboardKey` | `true` | 启用 `Ctrl+A` 接管：工作区存在团队时 `Ctrl+A` 打开合并面板；无团队（或本项关闭）时该键保持宿主原有含义。与本节其它旋钮不同，它**每次按键**都通过配置层重新读取，因此 `/settings` 保存后**无需重启**即生效。接管本身会在宿主把活的输入 kit 交给本会话之后就绪——即任意一次 MPD 场景/面板渲染之后（见"明确不声明"第 12 条） |
+| `panel` | `true` | 贡献侧栏面板（dsh-tui 0.13.0）并把 `alt+a` / `/mpd panel` 路由到它。关闭 ⇒ 不再尝试注册（聚合行上报适配器自己的 `skipped("panels", …)` 结果并点名该配置），两个入口都保持面板出现之前的路径：全屏合并场景 |
+| `dashboardKey` | `true` | 启用 `Ctrl+A` 接管：工作区存在团队时 `Ctrl+A` 打开合并面板；无团队（或本项关闭）时该键保持宿主原有含义。与本节其它旋钮不同，它**每次按键**都通过配置层重新读取，因此 `/settings` 保存后**无需重启**即生效。接管本身会在宿主把活的输入 kit 交给本会话之后就绪——即任意一次 MPD 场景/面板渲染之后（见"明确不声明"第 12 条）。**在提供侧栏面板接缝的宿主（dsh-tui 0.13.0+）上本旋钮是惰性的** —— 无论它说什么，接触面都保持解除武装，因此它只在旧宿主上有意义 |
 | `dialogs` | `true` | 启用托管对话框门面 |
 | `sessionEvents` | `true` | 追加 log-only 的 `mpd-tui/board-opened` 记录，且仅在事件类型已验证被可达的 `dsh-session` 副本认识之后 |
 | `decisionEvents` | `true` | 尝试托管式决策事件注册（预期被拒绝） |
@@ -240,6 +296,8 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
 13. **`/mpd-model` 写入的是取值，并不保证建队成功。** 菜单只提供实时模型目录列出的内容；某个提供商实际并不提供的路由，仍会让建队**明确失败**（并点名成员与槽位）—— 这个失败就是如实的结果，本命令不做预校验，也不做钳制：每一档提供的都是 id，绝不是显示名。
 14. **`LocalCommand.descriptions` 在本宿主上不可达，因此 `/mpd-model` 不声明它。** `dsh-commands` 的 `normalizeDefinition` 会把每个定义重建为 `{definitionId?, name, description, input?, recordInput?, handler}` 并丢弃未知字段，所以 `descriptions` 映射永远到不了注册表。用户在斜杠菜单里看到的文案来自**命令树节点**，而它确实携带双语；命令自身的 `description` 保持英文基准值，供宿主的 `tOr('cmd-desc-<name>', description)` 回落读取。
 15. **语言解析不是逐帧订阅，且 MPD 不写任何语言偏好。** 它按 `DSH_TUI_LANG` → `~/.dsh-tui/lang.json` → 操作系统 locale（`zh` 前缀 ⇒ 中文；其他任何**已声明**的 locale ⇒ 英文，因此 `C.UTF-8` ⇒ 英文；整条链都为空时才用 `zh`）→ `zh` 的顺序、在**使用时**求值。`~/.dsh-tui` **只读**：`/lang` 始终是唯一开关，`/lang` 切换会在该字符串下一次使用时对其生效 —— 场景 `title`（在注册时固定）则要等重启。语言由 `cordis.yml` 的 `lang` 固定时属于**已知缺口**：该键由宿主自己的 `plugin.apply` 读取，插件看不见。
+16. **侧栏面板的正文在当前宿主上无法用 tmux pane 抓取观测。** 实测：`/mpd panel` 报告一次**被宿主接受**的打开之后，320×50 的抓取与紧邻其前的一次**逐字节相同**（均为 3413 个字符），而 `alt+a` 什么都没改变 —— 因此真机 PTY 用例证明的是注册、被发现的 id（`act1:team`）与被接受的打开，而**不是**渲染。0.13.0 上不存在可用 pane 抓取的 MPD 依赖视图，因此不主张面板栏或面板正文绘制出来；合并本身由 `test/subagent-scene.test.ts` 与 `test/graph.test.ts` 覆盖，绝不靠 pane。
+17. **旧宿主的 `Ctrl+A` 就绪路径没有 PTY 证据。** 干净的 0.12.0 沙箱需要 `dsh plugin add @deepseek-harness-tui/dsh-tui@0.12.0`，本机被只读的 pnpm store 锁拒绝；现有的 `.mpd/recon/tui-012` 夹具是混版组合，其 loader 在出现任何聊天界面前就卡在只属 0.13.0 的 `dsh-tui-panels` 那一行上。因此该路径依赖单元断言 —— 判据是 `src/panel.ts` 中的 `takeoverArmed`（`test/panel.test.ts`，16 通过）加上 `test/dashboard-key.test.ts` 的 `Ctrl+A` 决策臂（11 通过）—— 对真实 0.12.0 pane 不做任何主张。
 
 ## 构建与测试
 

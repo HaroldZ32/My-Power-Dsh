@@ -2028,18 +2028,29 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
           // The identity is the INJECTED SCOPE — the calling activation. The host's own
           // `requirePluginCaller` refuses a consumer ctx, and the same mistake made every
           // `tuiStatus` registration silently refuse on 0.12.0 (see `setStatus`).
-          /** The host's own disposer; the host returns one even for a refused registration. */
+          //
+          // THE HOST'S RETURN IS NOT A PROOF. MEASURED against the installed 0.13.0 host
+          // (`lib/types/dsh-adapter/panels.js`): `register()` returns the disposer ONLY on success
+          // and `undefined` on EVERY refusal path (wrong apiVersion, bad id/title/icon/compact/
+          // minColumns, the ≤4 per-plugin or ≤32 global budget, no live activation owner, a foreign
+          // identity, a failed effect bind). The read-back below — not this return value — is what
+          // distinguishes the two, which is why a missing new id is reported as REFUSED.
+          /** The host's disposer, or `undefined` when the host refused the descriptor. */
           const disposer = registry.register(descriptor, scope)
           if (typeof disposer === "function") {
             release = disposer
             effectOn(scope, dispose, `mpd-tui panel ${descriptor.id}`)
           }
-          if (typeof registry.list === "function") {
-            finalId = (registry.list() ?? []).map((row) => row.id).find((id) => !before.has(id))
+          /** The host's read-back, bound once: present only when the host exposes it at all. */
+          const readBack = typeof registry.list === "function" ? registry.list.bind(registry) : undefined
+          if (readBack !== undefined) {
+            finalId = (readBack() ?? []).map((row) => row.id).find((id) => !before.has(id))
           }
-          handle.record(finalId === undefined
-            ? { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` }
-            : { state: "confirmed", detail: `${finalId} registered` })
+          handle.record(finalId !== undefined
+            ? { state: "confirmed", detail: `${finalId} registered` }
+            : readBack !== undefined
+              ? { state: "refused", detail: `${descriptor.id} refused (the host added no id to its own list() read-back)` }
+              : { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` })
         } catch (error) {
           handle.record({ state: "refused", detail: String((error as Error)?.message ?? error) })
         }
@@ -2057,7 +2068,12 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
         /** The bound panel registry, before `open` is trusted. */
         const registry = service as TuiPanelsLike
         if (typeof registry?.open !== "function") {
-          handle.record({ state: "refused", detail: `${TUI_SEAMS.panels}.open is missing` })
+          // A BOUND SEAM WITH NO `open` MEMBER is a legal host shape (`open` is optional in
+          // {@link TuiPanelsLike}), and it must not read as "queued forever": the request cannot be
+          // made, so the answer is an explicit `false` — a caller that routes on `opened()` then
+          // falls back to its other surface instead of waiting for an answer that never comes.
+          opened = false
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.panels}.open is missing on this host build` })
           return
         }
         try {

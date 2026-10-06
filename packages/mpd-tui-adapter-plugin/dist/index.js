@@ -669,10 +669,11 @@ function createTuiAdapter(ctx, options = {}) {
             release = disposer;
             effectOn(scope, dispose, `mpd-tui panel ${descriptor.id}`);
           }
-          if (typeof registry.list === "function") {
-            finalId = (registry.list() ?? []).map((row) => row.id).find((id) => !before.has(id));
+          const readBack = typeof registry.list === "function" ? registry.list.bind(registry) : undefined;
+          if (readBack !== undefined) {
+            finalId = (readBack() ?? []).map((row) => row.id).find((id) => !before.has(id));
           }
-          handle.record(finalId === undefined ? { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` } : { state: "confirmed", detail: `${finalId} registered` });
+          handle.record(finalId !== undefined ? { state: "confirmed", detail: `${finalId} registered` } : readBack !== undefined ? { state: "refused", detail: `${descriptor.id} refused (the host added no id to its own list() read-back)` } : { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` });
         } catch (error) {
           handle.record({ state: "refused", detail: String(error?.message ?? error) });
         }
@@ -685,7 +686,8 @@ function createTuiAdapter(ctx, options = {}) {
       whenBoundInternal("panels", (service) => {
         const registry = service;
         if (typeof registry?.open !== "function") {
-          handle.record({ state: "refused", detail: `${TUI_SEAMS.panels}.open is missing` });
+          opened = false;
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.panels}.open is missing on this host build` });
           return;
         }
         try {
