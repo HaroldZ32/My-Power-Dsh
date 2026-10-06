@@ -373,3 +373,25 @@ describe("F1 shipped artifact", () => {
     expect(dist, "dist does not expose the identity on the service").toContain("adapterIdentity")
   })
 })
+
+describe("S4: the reported identity follows the SURFACE, not the apply", () => {
+  test("an adapter that mounts AFTER the row is reported as mounted, with no re-apply", async () => {
+    // Stdout capture, because R5 forbids this row's diagnostics from reaching a terminal at all.
+    const stdout = captureStdout()
+    // The no-mount ctx: at apply time ctx.get("mpdDsh") resolves to undefined.
+    const fake = fakeCtx()
+    try {
+      await apply(fake.ctx)
+      // The apply-time truth: the row fell back, and that IS what the surface must report right now.
+      expect(fake.provided.mpdExtensions.adapterIdentity).toBe(ADAPTER_IDENTITY_FALLBACK)
+      // THE ADAPTER ROW MOUNTS LATE (the T-50 window): the SAME ctx now serves the shared adapter.
+      /** The late-mounting stand-in, whose identity the field must pick up. */
+      const late = mountedAdapterStub().adapter
+      ;(fake.ctx as { get: (key: string) => unknown }).get = (key: string) => (key === "mpdDsh" ? late : undefined)
+      // The identity is READ AT SURFACE TIME: no re-apply, no cached apply-time snapshot.
+      expect(fake.provided.mpdExtensions.adapterIdentity).toBe(ADAPTER_IDENTITY_MOUNTED)
+    } finally {
+      stdout.restore()
+    }
+  })
+})

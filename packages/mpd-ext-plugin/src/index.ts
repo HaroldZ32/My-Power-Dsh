@@ -18,7 +18,7 @@
 //   mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show
 // There is deliberately NO mpd_ext_reload in v1 — the honest reload is a
 // restart (a plugin-module change is not hot-reloaded anyway).
-import { rowLogLine, DSH_SEAM_SKILLS, DSH_SEAM_TOOLS, createLazyDshAdapter, dshAdapterIdentity, errorMessage as message, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SKILLS, DSH_SEAM_TOOLS, createLazyDshAdapter, dshAdapterIdentity, errorMessage as message, type AdapterIdentity, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { MPD_EXT_API_VERSION, type MpdExtLoadError, type MpdExtensionPlane } from "./sdk"
 import {
   buildExtension,
@@ -594,7 +594,9 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
   const service = {
     apiVersion: MPD_EXT_API_VERSION,
     /** Which adapter branch THIS read reaches — read at surface time, never cached at apply (T-50). */
-    adapterIdentity: dshAdapterIdentity(ctx),
+    get adapterIdentity(): AdapterIdentity {
+      return dshAdapterIdentity(ctx)
+    },
     register,
     list: (options: { exec?: unknown } = {}) => snapshot(options?.exec),
     describe: (id: string, options: { exec?: unknown } = {}) => snapshot(options?.exec).extensions.find((entry) => entry.id === String(id ?? "")),

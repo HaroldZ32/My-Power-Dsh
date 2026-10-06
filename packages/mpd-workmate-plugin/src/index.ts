@@ -204,14 +204,20 @@ export function sanitizeName(s: string): string {
   return t
 }
 
-/** Cap a text: keep head + tail with a truncation marker (bounded context). */
+/** Cap a text: keep head + tail with a truncation marker, all of it WITHIN the cap. */
 export function capText(text: string, max: number): string {
   if (text.length <= max) return text
-  /** How much of the head survives (three quarters of the cap). */
-  const head = Math.floor(max * 0.75)
-  /** How much of the tail survives; head + tail + marker stay within the cap. */
-  const tail = max - head
-  return text.slice(0, head) + `\n…[truncated ${text.length - max} chars]…\n` + text.slice(-tail)
+  /** The truncation marker, whose own bytes are paid for OUT of `max` rather than added on top (S6). */
+  const marker = `\n…[truncated ${text.length - max} chars]…\n`
+  // A cap too small to carry the marker cannot report one: the hard slice keeps the declared bound.
+  if (marker.length >= max) return text.slice(0, Math.max(0, max))
+  /** The room left for the content once the marker's own bytes are accounted for. */
+  const budget = max - marker.length
+  /** How much of the head survives (three quarters of that room). */
+  const head = Math.floor(budget * 0.75)
+  /** How much of the tail survives; head + tail + marker sum to exactly `max`. */
+  const tail = budget - head
+  return text.slice(0, head) + marker + text.slice(-tail)
 }
 
 /** An instance's on-disk metadata; `baseId` inside it is INTERNAL provenance, never published. */
