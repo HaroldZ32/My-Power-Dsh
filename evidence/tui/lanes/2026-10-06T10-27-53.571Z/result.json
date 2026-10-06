@@ -1,0 +1,410 @@
+{
+  "slug": "tui-panels",
+  "ok": false,
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "d88641e86d47f066ef98a48c6b068b6b9561813a3a5f273e7c1e15231a2a9b66",
+    "bytes": 305525,
+    "mtimeLocal": "2026-10-06T10:02:32.194Z",
+    "mtimeUtc": "2026-10-06T10:02:32.194Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "d88641e86d47f066ef98a48c6b068b6b9561813a3a5f273e7c1e15231a2a9b66",
+    "after": "d88641e86d47f066ef98a48c6b068b6b9561813a3a5f273e7c1e15231a2a9b66",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "01a64a7a37d74b31fa4eed5f55d39cc735d6fbbe26e2f0333bea925afa7d26bc",
+  "steps": {
+    "surfaces": [
+      {
+        "surface": "tuiStatus",
+        "step": "boot",
+        "source": "pane",
+        "keys": [],
+        "waitMs": 0,
+        "pattern": "/mpd:\\s+(?:team|\\u56E2\\u961F)/",
+        "label": "keyed status line above the prompt (English or Chinese rendering)",
+        "requiredPatterns": [
+          "/mpd:\\s+(?:team|\\u56E2\\u961F)/"
+        ],
+        "missingPatterns": [],
+        "missingProof": [],
+        "rendered": true,
+        "sourceChars": 54,
+        "paneChars": 2502,
+        "judgedChars": 2502
+      },
+      {
+        "surface": "tuiCommandTrees",
+        "step": "cmd-tree",
+        "source": "pane",
+        "keys": [
+          "/mpd "
+        ],
+        "waitMs": 5000,
+        "post": [
+          "Escape",
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace"
+        ],
+        "pattern": "/\\u5217\\u51FA workmate|List the durable workmate library|\\u6253\\u5F00 MPD \\u9762\\u677F|Open the mpd board scene/",
+        "label": "/mpd completion advertised the tree child description",
+        "requiredPatterns": [
+          "/\\u5217\\u51FA workmate|List the durable workmate library|\\u6253\\u5F00 MPD \\u9762\\u677F|Open the mpd board scene/"
+        ],
+        "missingPatterns": [],
+        "missingProof": [],
+        "rendered": true,
+        "sourceChars": 54,
+        "paneChars": 4954,
+        "judgedChars": 4954
+      },
+      {
+        "surface": "commands",
+        "step": "cmd-workmates",
+        "source": "store",
+        "keys": [
+          "/mpd workmates",
+          "Enter"
+        ],
+        "waitMs": 7000,
+        "pattern": "/mpd workmates[\\uFF08(]/",
+        "storeProof": {
+          "name": "mpd",
+          "args": {},
+          "doneKind": "success"
+        },
+        "label": "the command really ran (harness command/run + success completion) and printed its localized line",
+        "requiredPatterns": [
+          "/mpd workmates[\\uFF08(]/"
+        ],
+        "missingPatterns": [],
+        "missingProof": [],
+        "rendered": true,
+        "sourceChars": 54,
+        "paneChars": 5011,
+        "judgedChars": 5066
+      },
+      {
+        "surface": "tuiPanels",
+        "step": "cmd-panel",
+        "source": "store",
+        "keys": [
+          "/mpd panel",
+          "Enter"
+        ],
+        "waitMs": 7000,
+        "pattern": "/\\u4FA7\\u680F\\u9762\\u677F\\uFF1A\\u5DF2\\u6253\\u5F00|sidebar panel: opened/",
+        "storeProof": {
+          "name": "mpd",
+          "args": {},
+          "doneKind": "success"
+        },
+        "label": "the sidebar panel seam bound, the host list() read-back yielded an id, and the host ACCEPTED the open",
+        "requiredPatterns": [
+          "/\\u4FA7\\u680F\\u9762\\u677F\\uFF1A\\u5DF2\\u6253\\u5F00|sidebar panel: opened/"
+        ],
+        "missingPatterns": [],
+        "missingProof": [],
+        "rendered": true,
+        "sourceChars": 54,
+        "paneChars": 5011,
+        "judgedChars": 5066
+      },
+      {
+        "surface": "tuiScenes",
+        "step": "scene",
+        "source": "pane",
+        "keys": [
+          "/mpd board",
+          "Enter"
+        ],
+        "waitMs": 8000,
+        "pattern": "/MPD board/",
+        "label": "the board scene opened (title rendered)",
+        "requiredPatterns": [
+          "/MPD board/"
+        ],
+        "missingPatterns": [],
+        "missingProof": [],
+        "rendered": true,
+        "sourceChars": 54,
+        "paneChars": 5094,
+        "judgedChars": 5094
+      },
+      {
+        "surface": "tuiRenderers",
+        "step": "renderer",
+        "source": "pane",
+        "keys": [
+          "Escape"
+        ],
+        "waitMs": 6000,
+        "pattern": "/board opened via/",
+        "label": "the log-only event rendered a transcript row",
+        "requiredPatterns": [
+          "/board opened via/"
+        ],
+        "missingPatterns": [
+          "/board opened via/"
+        ],
+        "missingProof": [],
+        "rendered": false,
+        "sourceChars": 54,
+        "paneChars": 5054,
+        "judgedChars": 5054
+      },
+      {
+        "surface": "tuiSettingsSections",
+        "step": "settings",
+        "source": "pane",
+        "keys": [
+          "/settings",
+          "Enter"
+        ],
+        "waitMs": 8000,
+        "pattern": "/MPD \\u63D2\\u4EF6\\u5305|MPD bundle/",
+        "allPatterns": [
+          {},
+          {},
+          {},
+          {}
+        ],
+        "label": "the /settings section rendered WITH its bridge+restart+never-lost disclosure (pane widened to 320 so the hint is not cut)",
+        "requiredPatterns": [
+          "/MPD \\u63D2\\u4EF6\\u5305|MPD bundle/",
+          "/a save writes <workspace>\\/\\.mpd\\/mpd\\.jsonc for the live session workspace\\(s\\)/",
+          "/takes effect for the mpd plugins after a restart/",
+          "/never lost/"
+        ],
+        "missingPatterns": [],
+        "missingProof": [],
+        "rendered": true,
+        "sourceChars": 54,
+        "paneChars": 14341,
+        "judgedChars": 14341
+      },
+      {
+        "surface": "tuiDialogs",
+        "step": "dialog",
+        "source": "pane",
+        "pre": [
+          "Escape"
+        ],
+        "keys": [
+          "M-w"
+        ],
+        "waitMs": 8000,
+        "pattern": "/mpd workmates/",
+        "label": "the managed select dialog appeared",
+        "requiredPatterns": [
+          "/mpd workmates/"
+        ],
+        "missingPatterns": [],
+        "missingProof": [],
+        "rendered": true,
+        "sourceChars": 54,
+        "paneChars": 14651,
+        "judgedChars": 14651
+      }
+    ],
+    "negativeControl": {
+      "ok": false,
+      "results": [
+        {
+          "surface": "negative-control",
+          "step": "boot",
+          "source": "pane",
+          "pattern": "/MPD-PANELS-CONTROL-CANNOT-APPEAR/",
+          "label": "impossible expectation on the real pane",
+          "requiredPatterns": [
+            "/MPD-PANELS-CONTROL-CANNOT-APPEAR/"
+          ],
+          "missingPatterns": [
+            "/MPD-PANELS-CONTROL-CANNOT-APPEAR/"
+          ],
+          "missingProof": [],
+          "rendered": false,
+          "sourceChars": 220,
+          "paneChars": 2502,
+          "judgedChars": 2502
+        }
+      ]
+    }
+  },
+  "surfaces": [
+    {
+      "surface": "tuiStatus",
+      "source": "pane",
+      "rendered": true,
+      "label": "keyed status line above the prompt (English or Chinese rendering)"
+    },
+    {
+      "surface": "tuiCommandTrees",
+      "source": "pane",
+      "rendered": true,
+      "label": "/mpd completion advertised the tree child description"
+    },
+    {
+      "surface": "commands",
+      "source": "store",
+      "rendered": true,
+      "label": "the command really ran (harness command/run + success completion) and printed its localized line"
+    },
+    {
+      "surface": "tuiPanels",
+      "source": "store",
+      "rendered": true,
+      "label": "the sidebar panel seam bound, the host list() read-back yielded an id, and the host ACCEPTED the open"
+    },
+    {
+      "surface": "tuiScenes",
+      "source": "pane",
+      "rendered": true,
+      "label": "the board scene opened (title rendered)"
+    },
+    {
+      "surface": "tuiRenderers",
+      "source": "pane",
+      "rendered": false,
+      "label": "the log-only event rendered a transcript row"
+    },
+    {
+      "surface": "tuiSettingsSections",
+      "source": "pane",
+      "rendered": true,
+      "label": "the /settings section rendered WITH its bridge+restart+never-lost disclosure (pane widened to 320 so the hint is not cut)"
+    },
+    {
+      "surface": "tuiDialogs",
+      "source": "pane",
+      "rendered": true,
+      "label": "the managed select dialog appeared"
+    }
+  ],
+  "commandRecords": {
+    "dones": [
+      {
+        "sessionId": "835705e3-8c39-497e-8b97-7eda66e63f5d",
+        "commandId": "cmd-e8a2c783-1",
+        "kind": "success",
+        "text": "mpd workmates（1）：qa-tui-probe"
+      },
+      {
+        "sessionId": "835705e3-8c39-497e-8b97-7eda66e63f5d",
+        "commandId": "cmd-e8a2c783-2",
+        "kind": "success",
+        "text": "mpd 侧栏面板：已打开（act1:team）"
+      },
+      {
+        "sessionId": "835705e3-8c39-497e-8b97-7eda66e63f5d",
+        "commandId": "cmd-e8a2c783-3",
+        "kind": "success"
+      }
+    ],
+    "runs": [
+      {
+        "sessionId": "835705e3-8c39-497e-8b97-7eda66e63f5d",
+        "commandId": "cmd-e8a2c783-1",
+        "name": "mpd",
+        "args": " workmates"
+      },
+      {
+        "sessionId": "835705e3-8c39-497e-8b97-7eda66e63f5d",
+        "commandId": "cmd-e8a2c783-2",
+        "name": "mpd",
+        "args": " panel"
+      },
+      {
+        "sessionId": "835705e3-8c39-497e-8b97-7eda66e63f5d",
+        "commandId": "cmd-e8a2c783-3",
+        "name": "mpd",
+        "args": " board"
+      }
+    ],
+    "baselineCommandIds": [
+      "cmd-c33ceaf9-2",
+      "cmd-eafc390a-1",
+      "cmd-6a5771de-1",
+      "cmd-7d02cec7-1",
+      "cmd-7d02cec7-2",
+      "cmd-ce4bafc9-1"
+    ]
+  },
+  "negativeControl": {
+    "expected": "fail",
+    "observed": false,
+    "artifact": "negative/control.json"
+  },
+  "noModelEcho": {
+    "ok": true,
+    "checked": 0,
+    "offenders": [],
+    "failureMode": "a user/message record carrying the command text proves the harness sent the slash command to the model (the plugin did not handle it)"
+  },
+  "panel": {
+    "ok": true,
+    "id": "act1:team",
+    "text": "mpd 侧栏面板：已打开（act1:team）",
+    "reason": "the host's own list() read-back produced the panel id act1:team and open() was ACCEPTED for it",
+    "bound": "the panel's BODY is not observable in a tmux pane capture on this host: the captured pane was byte-identical before and after a host-ACCEPTED open, so this lane proves registration + open (and the id), never a render"
+  },
+  "homeFixture": {
+    "onboarding": {
+      "completed": true,
+      "version": 1
+    },
+    "preset": "mpd",
+    "evidence": [
+      ".mpd/recon/tui-013/home/.dsh-tui/onboarding.json",
+      ".mpd/recon/tui-013/home/.dsh-tui/agent-preset.json"
+    ]
+  },
+  "pane": {
+    "width": 320,
+    "height": 50,
+    "why": "widened from 220 so the /settings disclosure hint is not truncated in the pane"
+  },
+  "rendererCrossCheck": {
+    "eventType": "mpd-tui/board-opened",
+    "eventsInSandboxStore": 4,
+    "storeSessions": [
+      {
+        "sessionId": "835705e3-8c39-497e-8b97-7eda66e63f5d",
+        "sha256": "sha256:9c5cbb6148052383d920dd7d43a5973c2a929341e17c8a7db068b345e2d9ec7b",
+        "hits": 1
+      },
+      {
+        "sessionId": "cb1be62a-7de9-44c8-ab84-6dfa0f651d21",
+        "sha256": "sha256:8b428a6f1f97591e96908cb45ad3f948d166359e2d5bd0cc562cf663efb203c0",
+        "hits": 1
+      },
+      {
+        "sessionId": "fa742fea-504b-48c7-8e09-64c0c98700d6",
+        "sha256": "sha256:53749be3e8e366d0cf90784cf9430f537a6c7343b50245abf298e25f32af44f2",
+        "hits": 1
+      },
+      {
+        "sessionId": "272e3960-95fe-4742-be83-f91e8e1e7fd8",
+        "sha256": "sha256:dcd65778cdffdc27771f1c4d34ec82a5a5bd64429a78b93c7c20cce17d1a03fa",
+        "hits": 1
+      }
+    ],
+    "sceneReportedTranscriptRows": 0,
+    "paneRenderedTheRow": false,
+    "interpretation": "the plugin APPENDED its log-only event (proven in the session store) but the host projected NO row: the Channel's own row count and the captured transcript are both empty, so this is a PROJECTION gap, not a registration one"
+  },
+  "sandboxRoot": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013",
+  "sessions": 13
+}

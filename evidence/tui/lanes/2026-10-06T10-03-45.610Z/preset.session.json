@@ -1,0 +1,29 @@
+{
+  "note": "decoded header records from the sandbox session store",
+  "records": [
+    {
+      "sessionId": "cb1191cc-b5cc-4dd8-9526-d602967e0759",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/cb1191cc-b5cc-4dd8-9526-d602967e0759/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:0032debdfd06e53407cd59421d137e6cb3b17e9498a3111c545b35661355882c",
+      "agentPreset": "standard",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "bf751343-0492-4063-8ce7-2720e1b7433f",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/bf751343-0492-4063-8ce7-2720e1b7433f/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:f36f6c31f8b2446e4489b823c17cfc2f340b35239eaacc25ae0d29b62120cf70",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "c00aad45-1c6b-4f8e-9675-35bd1654fdad",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/c00aad45-1c6b-4f8e-9675-35bd1654fdad/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:586888535435b2a182c4662dc8e0f6a0bd54756cc1befcf994cd81a7f1da264e",
+      "agentPreset": "standard",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    }
+  ]
+}

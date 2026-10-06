@@ -33,7 +33,7 @@
 // boundary in arm 1 is a recording double, so arm 1 proves the GATE and the adapter
 // forwarding, never that the adopted runtime executed.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.12.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -1526,7 +1526,7 @@ export function binaryOnPath(name: string): boolean {
  */
 export function hostPrereqs(root: string, explicitSource: string | undefined): TuiPrereq[] {
   return [
-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.12.0", present: () => binaryOnPath("dsh-tui") },
+    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0", present: () => binaryOnPath("dsh-tui") },
     { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux (a real TTY is required; stdout must not be a pipe)", present: () => binaryOnPath("tmux") },
     { code: "absent-fixture", probe: "a dsh-tui profile in the sandbox root (or a warm source to seed one from)", remedy: "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install", present: () => profileReachable(root, explicitSource) },
   ]

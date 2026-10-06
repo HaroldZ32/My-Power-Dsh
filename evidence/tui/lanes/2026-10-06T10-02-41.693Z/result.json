@@ -1,0 +1,82 @@
+{
+  "slug": "tui-mount",
+  "ok": false,
+  "steps": {
+    "face": {
+      "ok": false,
+      "layering": {
+        "ok": true,
+        "missing": [],
+        "ordered": true,
+        "bundles": [
+          "@deepseek-ai/dsh-base",
+          "@deepseek-harness-tui/dsh-tui",
+          "@mpd-dsh/mpd"
+        ],
+        "reason": "triple layer in order"
+      },
+      "crashSignatures": [],
+      "statusLine": false,
+      "counters": false,
+      "rendered": true,
+      "rowComposed": true,
+      "isolationOffenders": [],
+      "sessionKeysCreated": [
+        "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--"
+      ],
+      "sessionKeysInherited": [],
+      "expectedProjectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "sandboxSessions": 1,
+      "sandboxRoot": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013",
+      "layeringEvidence": "dump-config.txt",
+      "paneEvidence": "boot.pane.txt + tui-pane.log",
+      "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-10-06T10-02-41.693Z/preset.session.json"
+    },
+    "rowComposed": true,
+    "isolation": []
+  },
+  "face": {
+    "ok": false,
+    "layering": {
+      "ok": true,
+      "missing": [],
+      "ordered": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "reason": "triple layer in order"
+    },
+    "crashSignatures": [],
+    "statusLine": false,
+    "counters": false,
+    "rendered": true,
+    "rowComposed": true,
+    "isolationOffenders": [],
+    "sessionKeysCreated": [
+      "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--"
+    ],
+    "sessionKeysInherited": [],
+    "expectedProjectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+    "sandboxSessions": 1,
+    "sandboxRoot": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013",
+    "layeringEvidence": "dump-config.txt",
+    "paneEvidence": "boot.pane.txt + tui-pane.log",
+    "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-10-06T10-02-41.693Z/preset.session.json"
+  },
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "d88641e86d47f066ef98a48c6b068b6b9561813a3a5f273e7c1e15231a2a9b66",
+    "bytes": 305525,
+    "mtimeLocal": "2026-10-06T10:02:32.194Z",
+    "mtimeUtc": "2026-10-06T10:02:32.194Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "d88641e86d47f066ef98a48c6b068b6b9561813a3a5f273e7c1e15231a2a9b66",
+    "after": "d88641e86d47f066ef98a48c6b068b6b9561813a3a5f273e7c1e15231a2a9b66",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "01a64a7a37d74b31fa4eed5f55d39cc735d6fbbe26e2f0333bea925afa7d26bc"
+}

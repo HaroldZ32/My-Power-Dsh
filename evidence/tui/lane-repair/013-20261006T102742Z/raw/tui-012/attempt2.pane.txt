@@ -1,0 +1,44 @@
+env -i 'PATH=/home/haroldzhao/.bun/bin:/home/haroldzhao/.nvm/versions/node/v24.21.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin' 'DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/dshhome' 'HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/home' 'npm_config_cache=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/npm-cache' 'PNPM_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/pnpm-home' 'XDG_CONFIG_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/config' 'XDG_DATA_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/data' 'DSH_TUI_WORKSPACE_TARGET=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/ws' 'DSH_TUI_NO_LAUNCHPAD=1' 'TERM=xterm-256color' node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/bin/dsh-tui.js
+haroldzhao@haroldzhao-aipc:~/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/ws$ env -i 'PATH=/home/haroldzhao/.bun/bin:/home/haroldzhao/.nvm/versions/node/v24.21.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin' 'DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/dshhome' 'HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/home' 'npm_config_cache=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/npm-cache' 'PNPM_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/pnpm-home' 'XDG_CONFIG_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/config' 'XDG_DATA_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/data' 'DSH_TUI_WORKSPACE_TARGET=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/ws' 'DSH_TUI_NO_LAUNCHPAD=1' 'TERM=xterm-256color' node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/bin/dsh-tui.js
+dsh: warning: 2 entries did not activate
+dsh-tui-panels (@deepseek-harness-tui/dsh-tui/panels): failed to import
+dsh-tui (@deepseek-harness-tui/dsh-tui): pending (waiting for service: tuiPanels)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

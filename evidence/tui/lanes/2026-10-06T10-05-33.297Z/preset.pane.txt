@@ -1,0 +1,43 @@
+env -i 'PATH=/home/haroldzhao/.bun/bin:/home/haroldzhao/.nvm/versions/node/v24.21.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin' 'DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/dshhome' 'HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/home' 'npm_config_cache=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/npm-cache' 'PNPM_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/pnpm-home' 'XDG_CONFIG_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/config' 'XDG_DATA_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/data' 'DSH_TUI_WORKSPACE_TARGET=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/ws' 'TERM=xterm-256color' dsh-tui
+haroldzhao@haroldzhao-aipc:~/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/ws$ env -i 'PATH=/home/haroldzhao/.bun/bin:/home/haroldzhao/.nvm/versions/node/v24.21.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin' 'DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/dshhome' 'HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/home' 'npm_config_cache=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/npm-cache' 'PNPM_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/pnpm-home' 'XDG_CONFIG_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/config' 'XDG_DATA_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/data' 'DSH_TUI_WORKSPACE_TARGET=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/ws' 'TERM=xterm-256color' dsh-tui
+[dsh-tui] cannot start: the profile runs v0.12.0 but this launcher is v0.13.0.
+  dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.13.0
+haroldzhao@haroldzhao-aipc:~/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012/ws$ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

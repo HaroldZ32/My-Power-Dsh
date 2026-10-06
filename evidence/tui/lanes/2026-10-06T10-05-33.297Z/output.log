@@ -1,0 +1,7 @@
+sandbox root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-012 explicit=true warm=true fresh=false
+profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+tmux: the TUI did not reach the chat screen within 90000ms (readiness pattern /\u276F|esc to interrupt|\u6309 Esc/)
+statusLine=false counters=false crashes=[]
+session keys created=[] inherited=[]
+preset=undefined session=undefined isolationOffenders=0
