@@ -646,6 +646,20 @@ export interface TuiSettingsFieldLike {
   descriptions?: Record<string, string>
   /** The help text under the field; the TUI plugin states the restart contract there. */
   hint?: string
+  /**
+   * Localized help text, keyed by language tag; the host renders `hintDescriptions[lang] ?? hint`.
+   *
+   * Declared because the installed host HAS the field
+   * (`adapter/ports/channel-settings.d.ts` → `hintDescriptions?: LocalizedDescriptions`), USES it
+   * (`screens/Settings.js` → `pick(field.hint, field.hintDescriptions)` with
+   * `pick = descriptions?.[getLang()] ?? text`) and its own definitions ship the pattern
+   * (`settings/definitions.js` → an English `hint` plus `hintDescriptions: { zh }`). Without this
+   * line the section could not carry it: `TuiSettingsFieldLike` governs the object literal a
+   * consumer builds, so the alternative would be a cast smuggling an undeclared key past the
+   * adapter — the exact reach this interface exists to prevent. Adding an OPTIONAL key changes no
+   * runtime path and no seam id; a consumer that omits it behaves exactly as before.
+   */
+  hintDescriptions?: Record<string, string>
   /** How the host renders and edits the value. */
   kind: "text" | "number" | "boolean" | "select"
   /** The frozen option list of a `select` field; absent for the other kinds. */
