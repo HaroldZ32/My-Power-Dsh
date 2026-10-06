@@ -1196,6 +1196,7 @@ var TUI_TEXT = {
   "command.workmatesList": { zh: "mpd workmates（{count}）：{names}", en: "mpd workmates ({count}): {names}" },
   "panel.opened": { zh: "mpd 侧栏面板：已打开（{id}）", en: "mpd sidebar panel: opened ({id})" },
   "panel.fallback": { zh: "mpd 侧栏面板：宿主拒绝了打开请求（{id}），已改为全屏面板", en: "mpd sidebar panel: the host refused the open request ({id}); opened the full-screen panel instead" },
+  "panel.refused": { zh: "mpd 侧栏面板：宿主拒绝了该面板的注册，已改为全屏面板", en: "mpd sidebar panel: the host refused the panel registration; opened the full-screen panel instead" },
   "panel.unavailable": { zh: "mpd 侧栏面板：该宿主不提供面板接缝，使用全屏面板", en: "mpd sidebar panel: this host exposes no panel seam; using the full-screen panel" },
   "scene.planNeedsStaged": { zh: "计划审批需要一个待定计划", en: "plan approval needs a staged team" },
   "scene.planMissing": { zh: "该组合不提供计划审批界面", en: "the plan approval surface is not available in this composition" },
@@ -1723,16 +1724,18 @@ function createDshAdapter(ctx, config = {}) {
     }
     return liveAgents().find((candidate) => candidate.id === id);
   }
-  const engineCache = new Map;
+  const engineCache = new WeakMap;
   function compactionEngineForAgent(agentId) {
     const id = String(agentId ?? "");
     if (id === "")
       return;
-    const cached = engineCache.get(id);
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    const cached = engineCache.get(agent);
     if (cached !== undefined)
       return cached;
-    const agent = liveAgent(id);
-    const scoped = agent?.ctx;
+    const scoped = agent.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -1743,7 +1746,7 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(id, engine);
+    engineCache.set(agent, engine);
     return engine;
   }
   function onEvent(event, handler) {
@@ -6066,7 +6069,8 @@ function registerPanelSurface(tui, deps) {
     openOrScene: () => {
       const id = panel?.id();
       if (!tui.panelSeamBound() || id === undefined) {
-        return { outcome: "unavailable", sceneOpened: deps.openMergedScene() };
+        const refused = panel !== undefined && tui.panelSeamBound() && panel.outcome().state === "refused";
+        return { outcome: refused ? "refused" : "unavailable", sceneOpened: deps.openMergedScene() };
       }
       if (typeof tui.panels()?.open !== "function") {
         deps.log.debug(`the bound panel seam exposes no open() member; using the full-screen merged scene`);
@@ -6085,6 +6089,8 @@ function panelStatusLine(outcome, id) {
     return t("panel.opened", { id: id ?? "?" });
   if (outcome === "fallback")
     return t("panel.fallback", { id: id ?? "?" });
+  if (outcome === "refused")
+    return t("panel.refused");
   return t("panel.unavailable");
 }
 

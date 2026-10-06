@@ -13,8 +13,8 @@ type Registered = { name: string; description: string; handler: (invocation?: un
 /** The row context the plugin is applied against: only a service lookup, which the arms answer selectively. */
 type Ctx = { get?(key: string): unknown }
 
-/** The three ambient env values these arms overwrite, kept so `afterEach` can put each one back. */
-const savedEnv = { root: process.env.DSH_WORKSPACE_ROOT, project: process.env.MPD_CODEGRAPH_PROJECT_CWD, legacy: process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD }
+/** The five ambient env values these arms overwrite, kept so `afterEach` can put each one back. */
+const savedEnv = { root: process.env.DSH_WORKSPACE_ROOT, project: process.env.MPD_CODEGRAPH_PROJECT_CWD, legacy: process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD, binary: process.env.MPD_CODEGRAPH_BIN, binaryAlias: process.env.MPD_DSH_CODEGRAPH_BIN }
 /** Every temp workspace this file created, removed by `afterEach` so no arm leaks a directory. */
 const temps: string[] = []
 
@@ -94,12 +94,16 @@ beforeEach(() => {
   delete process.env.DSH_WORKSPACE_ROOT
   delete process.env.MPD_CODEGRAPH_PROJECT_CWD
   delete process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD
+  delete process.env.MPD_CODEGRAPH_BIN
+  delete process.env.MPD_DSH_CODEGRAPH_BIN
 })
 
 afterEach(() => {
   if (savedEnv.root === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = savedEnv.root
   if (savedEnv.project === undefined) delete process.env.MPD_CODEGRAPH_PROJECT_CWD; else process.env.MPD_CODEGRAPH_PROJECT_CWD = savedEnv.project
   if (savedEnv.legacy === undefined) delete process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD; else process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD = savedEnv.legacy
+  if (savedEnv.binary === undefined) delete process.env.MPD_CODEGRAPH_BIN; else process.env.MPD_CODEGRAPH_BIN = savedEnv.binary
+  if (savedEnv.binaryAlias === undefined) delete process.env.MPD_DSH_CODEGRAPH_BIN; else process.env.MPD_DSH_CODEGRAPH_BIN = savedEnv.binaryAlias
   while (temps.length > 0) {
     /** One recorded temp workspace, removed with everything the plugin wrote inside it. */
     const dir = temps.pop()
@@ -220,5 +224,64 @@ describe("command registration goes through the adapter (AGENTS.md §6)", () => 
   test("apply never throws when the composition has no command registry at all", () => {
     expect(() => { apply({ get: () => undefined }, { autoInit: false }) }).not.toThrow()
     expect(() => { apply({ get: (key: string) => (key === "commands" ? {} : undefined) }, { autoInit: false }) }).not.toThrow()
+  })
+})
+
+/**
+ * A real file standing in for an operator-supplied `codegraph` binary, so an override that RESOLVES
+ * it is told apart from one that silently fell through to another tier.
+ * @returns the absolute path of the created file, recorded for `afterEach` teardown.
+ */
+function binaryFixture(): string {
+  /** A fresh temp directory holding this fixture. */
+  const dir = mkdtempSync(join(tmpdir(), "mpd-cg-bin-"))
+  temps.push(dir)
+  /** The fixture binary's absolute path. */
+  const file = join(dir, "codegraph")
+  writeFileSync(file, "#!/bin/sh\nexit 0\n")
+  return file
+}
+
+describe("S8: a blank-but-SET env value does not suppress its documented alias", () => {
+  test("a blank MPD_CODEGRAPH_BIN still lets MPD_DSH_CODEGRAPH_BIN resolve the binary", () => {
+    /** The marked session workspace whose log carries the status line. */
+    const session = tempWorkspace(true)
+    /** The alias-named binary, which must be the resolver's answer. */
+    const alias = binaryFixture()
+    process.env.DSH_WORKSPACE_ROOT = session
+    process.env.MPD_CODEGRAPH_BIN = ""
+    process.env.MPD_DSH_CODEGRAPH_BIN = alias
+    apply({ get: () => undefined })
+    // Pre-fix the blank primary suppressed the alias AND was filtered out, so the line read binary=-.
+    expect(lastLogLine(session)).toContain("binary=" + alias)
+  })
+
+  test("a blank MPD_CODEGRAPH_PROJECT_CWD still lets its alias resolve the project root", () => {
+    /** The marked session workspace, which is NOT the project root this arm resolves. */
+    const session = tempWorkspace(true)
+    /** The marked workspace the alias names as the project root. */
+    const override = tempWorkspace(true)
+    process.env.DSH_WORKSPACE_ROOT = session
+    process.env.MPD_CODEGRAPH_PROJECT_CWD = ""
+    process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD = override
+    expect(captureCwd(session, () => apply({ get: () => undefined }))).toBe(override)
+  })
+
+  test("NEGATIVE CONTROL: a non-blank primary still wins, and two blanks fall back to the session", () => {
+    /** The marked session workspace, used as the log root and the fallback project root. */
+    const session = tempWorkspace(true)
+    /** The primary-named binary, which must beat the alias when it is not blank. */
+    const primary = binaryFixture()
+    /** The alias-named binary, which must lose to a usable primary. */
+    const alias = binaryFixture()
+    process.env.DSH_WORKSPACE_ROOT = session
+    process.env.MPD_CODEGRAPH_BIN = primary
+    process.env.MPD_DSH_CODEGRAPH_BIN = alias
+    apply({ get: () => undefined })
+    expect(lastLogLine(session)).toContain("binary=" + primary)
+    // Both variables blank-but-SET: no override at all, so the session workspace decides.
+    process.env.MPD_CODEGRAPH_PROJECT_CWD = ""
+    process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD = ""
+    expect(captureCwd(session, () => apply({ get: () => undefined }))).toBe(session)
   })
 })

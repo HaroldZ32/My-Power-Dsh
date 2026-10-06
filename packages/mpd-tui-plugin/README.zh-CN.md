@@ -61,7 +61,8 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 `opened() === false`（不是本次激活的面板、每 5000 ms 只允许一次的打开限流、或没有活的消费者）会以场景
 兜底并记录原因。**入队**的请求（`opened() === undefined`）**不**被当作拒绝。`/mpd subagents` 保持它在
 面板出现之前的布尔契约；`/mpd panel` 用当前语言打印路由结果（`panel.opened` / `panel.fallback` /
-`panel.unavailable`），因此回退永远不会被读成"面板已打开"。
+`panel.refused` / `panel.unavailable`），因此回退永远不会被读成"面板已打开"，而**已绑定**接缝却**拒绝**注册
+的宿主会报成"被拒绝"，绝不会被读成"该宿主不提供面板接缝"。
 
 **`Ctrl+A` 按版本设闸。** 在提供面板接缝的宿主上，旧的宿主输入接触面被直接跳过 —— 无论配置层说什么，
 `takeoverArmed(seamBound, savedKnob, floor)` 都返回 `false`，聚合行会点名原因，`Ctrl+A` 保留宿主

@@ -177,7 +177,11 @@ export function apply(ctx) {
 `resolveDshAdapter(ctx)` returns the mounted instance when the `mpd-dsh-adapter` row
 (which the bundle patch inserts before every other mpd row) has provided it, and
 otherwise builds an equivalent one with `createDshAdapter(ctx)` — so a plugin works
-standalone in unit tests and partial installs, and every row states the rule once. A row
+standalone in unit tests and partial installs, and every row states the rule once. That
+fallback is **LOUD**: one diagnostic line per resolution names which miss it was (a provider
+that is registered but not ACTIVE yet, or no adapter in this composition at all) and reports
+`adapterIdentity`, because a second instance beside the mounted one bypasses the
+one-contact-surface rule. A row
 that must also survive a TRANSIENT miss (the service is registered but its fiber is not
 ACTIVE yet) calls `createLazyDshAdapter(ctx, { label })`, which re-probes on every use.
 

@@ -1,0 +1,10 @@
+### npm run pack  (the FINAL write on this branch)
+
+> @mpd-dsh/mpd@0.11.6 pack
+> node scripts/pack-mpd.ts
+
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] modes normalized: 1248 files (644: 1232, 755: 16)
+[pack-mpd] staged package -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package  (out-dir source: default (<repo>/dist/mpd-package))
+exit=0

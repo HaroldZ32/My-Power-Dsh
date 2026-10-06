@@ -1,0 +1,15 @@
+### END-TO-END FALSIFIER G1: re-add the RETIRED `- id: agent-preset-registry` at column 0 to the SHIPPED cordis.patch.yml
+sha256 before = 4bc05f0c308698c155d777a2a8eaf46b9fd970b3e6a7142bebd9979773435d7c
+[bundle-lifecycle] FAIL: self-test: [id-target] the main patch id-targets `agent-preset-registry` at column 0 — a HOST-owned id; this bundle is additive-only (docs/preset-default.md)
+MUTATED exit=1
+sha256 after  = 4bc05f0c308698c155d777a2a8eaf46b9fd970b3e6a7142bebd9979773435d7c
+RESTORED byte-identical
+restored tree: bundle-lifecycle self-test PASS
+
+### END-TO-END FALSIFIER G3: revert the git-bash operand in the SHIPPED cordis.patch.yml to the legacy dist/cli.js
+sha256 before = 4bc05f0c308698c155d777a2a8eaf46b9fd970b3e6a7142bebd9979773435d7c
+[preset-register self-test] FAIL: devFlavor MCP operand is not the checkout-absolute mpd-mcp-gitbash/dist/launch.js
+MUTATED exit=1
+sha256 after  = 4bc05f0c308698c155d777a2a8eaf46b9fd970b3e6a7142bebd9979773435d7c
+RESTORED byte-identical
+restored tree: preset-register self-test PASS

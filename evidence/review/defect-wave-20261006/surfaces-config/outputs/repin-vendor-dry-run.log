@@ -1,0 +1,28 @@
+### node scripts/repin-vendor.ts (DRY RUN - the --write is the captain's step)
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (3434 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=501534fa38c273a31a42dae9c1977b2da28803fd0880b9597b52bd176f2b0244 fileCount=334
+[repin-vendor]   computed (LF) : treeSha=f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 fileCount=335 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 2b59aa0c5c4c4b65b495b111eba8b7941210a8648fc492f958eb5a80746d6e98   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha 501534fa38c273a31a42dae9c1977b2da28803fd0880b9597b52bd176f2b0244 -> f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1
+[repin-vendor]   DELTA        : fileCount 334 -> 335
+
+[repin-vendor] asset          : packages/mpd-agent-teams-plugin/_deps
+[repin-vendor]   locked       : treeSha=946d2ac2ed8d431bf40b95e2d270911338576a7ff5755dae7ef2f5db6313a11a fileCount=635
+[repin-vendor]   computed (LF) : treeSha=946d2ac2ed8d431bf40b95e2d270911338576a7ff5755dae7ef2f5db6313a11a fileCount=635 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 946d2ac2ed8d431bf40b95e2d270911338576a7ff5755dae7ef2f5db6313a11a   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] DRY RUN   : 1 asset(s) would be re-pinned; nothing was written
+exit=0

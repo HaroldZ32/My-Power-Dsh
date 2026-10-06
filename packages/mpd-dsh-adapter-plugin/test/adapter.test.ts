@@ -43,7 +43,7 @@ const realContext = (): DrivenContext => new Context() as unknown as DrivenConte
 /** The vendored host message constructor, compared field by field against this adapter's own. */
 // The vendored module now resolves to its .ts source, so this surface is typed from that file.
 import { createUserMessage } from "../../mpd-agent-teams-plugin/_deps/dsh-llm/lib/index.ts"
-import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, GOAL_TOOL_NAMES, SERVICE_NAME, textBlock, userMessage } from "../src/index"
+import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, resolveDshAdapter, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, GOAL_TOOL_NAMES, SERVICE_NAME, textBlock, userMessage } from "../src/index"
 
 /** A recording double of the FULL harness: eleven services (the goal domain included), the event bus and provide(). */
 function fakeHarness(overrides: Record<string, unknown> = {}): {
@@ -1515,5 +1515,88 @@ describe("lazy mpdDsh resolution (T-50)", () => {
     expect(lines.some((line) => line.includes("ROW ORDER"))).toBe(false)
     // …and the SAME facade reaches the mounted adapter once the provider is ACTIVE.
     expect((facade as any).marker).toBe("mounted")
+  })
+})
+
+// ── the eager resolver's fallback, and the compaction-engine memo (S2/S3) ──────
+
+describe("S2: the compaction-engine memo follows the LIVE agent, not the id", () => {
+  test("an agent that left the registry no longer answers with its engine", () => {
+    /** The first incarnation's member-scoped engine, told apart by object identity. */
+    const engine = { realm: "incarnation-1" }
+    /** The live Agent the registry serves while its session lasts. */
+    const agent = { id: "agent-1", ctx: { get: (name: string) => (name === "compaction" ? engine : undefined) } }
+    /** The registry, mutable so the arm can END the session (the recycled-id case). */
+    const live = new Map<string, unknown>([["agent-1", agent]])
+    /** The ctx the adapter is built over: the `agents` registry, nothing else. */
+    const ctx = { get: (name: string) => (name === "agents" ? { get: (id: string) => live.get(id), list: () => [...live.values()] } : undefined) }
+    /** The adapter whose per-agent memo is under test. */
+    const dsh = createDshAdapter(ctx as never)
+    // The first query resolves the agent's OWN scoped engine and memoizes it.
+    expect(dsh.compactionEngineForAgent("agent-1")).toBe(engine)
+    // THE SESSION ENDS: the id leaves the live registry, so the memo must not answer for it.
+    live.delete("agent-1")
+    expect(dsh.compactionEngineForAgent("agent-1")).toBeUndefined()
+  })
+
+  test("a recycled id gets the NEW incarnation's engine, never the previous one's", () => {
+    /** The first incarnation's engine: a dead realm once its session ended. */
+    const first = { realm: "incarnation-1" }
+    /** The second incarnation's engine, reached through the same agent id. */
+    const second = { realm: "incarnation-2" }
+    /** The registry, whose entry for one id is REPLACED below. */
+    const live = new Map<string, unknown>([["agent-1", { id: "agent-1", ctx: { get: () => first } }]])
+    /** The ctx the adapter is built over. */
+    const ctx = { get: (name: string) => (name === "agents" ? { get: (id: string) => live.get(id), list: () => [...live.values()] } : undefined) }
+    /** The adapter whose per-agent memo is under test. */
+    const dsh = createDshAdapter(ctx as never)
+    expect(dsh.compactionEngineForAgent("agent-1")).toBe(first)
+    // The id is RECYCLED: a new Agent object with the same id owns a different realm.
+    live.set("agent-1", { id: "agent-1", ctx: { get: () => second } })
+    expect(dsh.compactionEngineForAgent("agent-1")).toBe(second)
+  })
+})
+
+describe("S3: the EAGER resolver is as loud about its fallback as the lazy twin", () => {
+  test("a composition without mpdDsh warns once, naming the identity, and still falls back", () => {
+    /** The lines the resolver emitted, captured through its own sink. */
+    const lines: string[] = []
+    /** A ctx that provides NO adapter: the standalone composition the fallback must keep working for. */
+    const ctx = { get: (_name: string, _strict?: boolean) => undefined }
+    /** The adapter this call resolves to. */
+    const dsh = resolveDshAdapter(ctx as never, { warn: (line: string) => lines.push(line) })
+    // THE CONTRACT IS UNCHANGED: the fallback still serves the row.
+    expect(typeof dsh.workspaceRoot).toBe("function")
+    // …but it is no longer SILENT: one line, carrying the same marker and identity as the lazy path.
+    expect(lines.length).toBe(1)
+    expect(lines[0]).toContain("ADAPTER FALLBACK")
+    expect(lines[0]).toContain("adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK)
+  })
+
+  test("a registered-but-not-ACTIVE provider is diagnosed as pending, never as a missing row", () => {
+    /** The lines the resolver emitted, captured through its own sink. */
+    const lines: string[] = []
+    /** The mounted adapter the strict read must NOT see yet (a non-ACTIVE provider's fiber). */
+    const mounted = { marker: "mounted" }
+    /** A ctx whose strict read misses while its non-strict read already sees the registration. */
+    const ctx = { get: (name: string, strict?: boolean) => (name === SERVICE_NAME && strict === false ? mounted : undefined) }
+    /** The adapter this call resolves to, built beside the registered one. */
+    const dsh = resolveDshAdapter(ctx as never, { warn: (line: string) => lines.push(line) })
+    expect(typeof dsh.workspaceRoot).toBe("function")
+    expect(lines.length).toBe(1)
+    expect(lines[0]).toContain("NOT YET ACTIVE")
+    // The wrong fix (blaming the row order) is NOT emitted for a registered provider.
+    expect(lines[0]).not.toContain("ROW ORDER")
+  })
+
+  test("a mounted adapter is used as-is, with NO fallback line at all (negative control)", () => {
+    /** The lines the resolver emitted, captured through its own sink. */
+    const lines: string[] = []
+    /** The mounted adapter, whose identity proves which instance answered. */
+    const mounted = { marker: "mounted" }
+    /** A ctx whose strict read resolves the mounted service. */
+    const ctx = { get: (name: string, strict?: boolean) => (name === SERVICE_NAME && strict !== false ? mounted : undefined) }
+    expect(resolveDshAdapter(ctx as never, { warn: (line: string) => lines.push(line) })).toBe(mounted as never)
+    expect(lines).toEqual([])
   })
 })

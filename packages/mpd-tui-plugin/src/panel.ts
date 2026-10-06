@@ -343,13 +343,15 @@ export interface PanelDeps {
 }
 
 /**
- * How one routed open ENDED — which of the three surfaces the user is looking at.
+ * How one routed open ENDED — which of the four surfaces the user is looking at.
  *
- * The three states are kept apart because they are three different facts, and the `/mpd panel`
- * sentence must not merge them: the panel opened, the panel declined and the full-screen scene
- * opened instead, or this host exposes no panel seam and the scene IS the surface.
+ * The states are kept apart because they are four different facts, and the `/mpd panel`
+ * sentence must not merge them: the panel opened; the panel declined the OPEN and the full-screen
+ * scene opened instead; the host BOUND the seam and REFUSED the registration (S7 — a different
+ * defect with a different fix from a missing seam); or this host exposes no panel seam at all and
+ * the scene IS the surface.
  */
-export type PanelOutcome = "opened" | "fallback" | "unavailable"
+export type PanelOutcome = "opened" | "fallback" | "refused" | "unavailable"
 
 /** The result of one routed open: which surface HANDLED the request, and the scene's own answer. */
 export interface PanelOpenOutcome {
@@ -412,9 +414,12 @@ export function registerPanelSurface(tui: TuiAdapter, deps: PanelDeps): PanelSea
       /** The final host id, read PER CALL: the seam may have bound since the last press. */
       const id = panel?.id()
       if (!tui.panelSeamBound() || id === undefined) {
-        // No panel seam (a pre-0.13.0 host) or no confirmed registration yet: the full-screen scene is
-        // the surface, exactly as it was before this wave.
-        return { outcome: "unavailable", sceneOpened: deps.openMergedScene() }
+        // No panel seam (a pre-0.13.0 host), OR no confirmed registration yet. A BOUND seam whose
+        // handle reports a REFUSAL is its own fact (S7): the host has the seam and turned the
+        // descriptor down, so reporting "this host exposes no panel seam" would name the wrong fix.
+        const refused = panel !== undefined && tui.panelSeamBound() && panel.outcome().state === "refused"
+        // Either way the full-screen scene is the surface, exactly as it was before this wave.
+        return { outcome: refused ? "refused" : "unavailable", sceneOpened: deps.openMergedScene() }
       }
       if (typeof tui.panels()?.open !== "function") {
         // A BOUND SEAM WITH NO `open` MEMBER cannot satisfy this request at all — it is not a refusal
@@ -445,5 +450,8 @@ export function registerPanelSurface(tui: TuiAdapter, deps: PanelDeps): PanelSea
 export function panelStatusLine(outcome: PanelOutcome, id: string | undefined): string {
   if (outcome === "opened") return t("panel.opened", { id: id ?? "?" })
   if (outcome === "fallback") return t("panel.fallback", { id: id ?? "?" })
+  // A refusal has no id to name (the host accepted nothing), and its sentence is NOT the
+  // "no panel seam" one: it says the seam exists and the registration was turned down (S7).
+  if (outcome === "refused") return t("panel.refused")
   return t("panel.unavailable")
 }
