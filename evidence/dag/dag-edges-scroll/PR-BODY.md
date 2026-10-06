@@ -57,6 +57,15 @@ useful thing in the wave, so it is recorded rather than summarised:
    border while `labelOverflow` stayed `false` and nothing fell back — a silent cut. Both are fixed, and
    `labelOverflow` is now derived from the clamp's own condition so the report and the truncation cannot
    disagree again.
+   **WHAT THE CAP DOES AND DOES NOT BUY, stated precisely because the capture measures it.** A board whose
+   graph-safe labels fit inside 64 cells now draws BOXES that you pan; a board with a longer label still
+   falls back to the rail, and that fallback is clause T9's safety net working. The PTY capture's own
+   fixture sits **three cells outside** the cap (its widest label is 67), so on THAT fixture the panel
+   refuses a box in both builds — which is why `pty-post → pty-fixed` shows `rail → rail` with C1 going
+   green and C3 becoming reachable, and why the boxes are demonstrated separately by `pty-fixed2` on a
+   fixture whose longest label is 59. Three cells is the whole difference, and the boundary is declared
+   rather than tuned away: a 100-cell cap would let a 70-cell label produce a ~206-cell drawing a 44-cell
+   panel must be panned across five screens, while the rail shows every task on one line.
 2. **Clause C3 was genuinely UNSATISFIED on the TUI, not merely unwitnessed.** The pinned detail body
    printed ten metadata facts and NEITHER original field, and the task row dropped the record's
    `description` entirely — so the Chinese had nowhere to appear. Both are now carried and rendered.
@@ -96,6 +105,7 @@ of our ids, so it repairs a stock profile without ever overruling a user who has
 | Reviewer's independent instruments + numbered findings | `evidence/dag/dag-edges-scroll/review/2026-10-06T14-57-30Z/` |
 | Real browser capture (curves, tips, both C4 branches, negative control) | `…/verify/20261006T145633Z/captures/web-rerun/` |
 | Real PTY capture, pre-wave baseline and post-wave, 3 widths | `…/verify/20261006T145633Z/captures/{pty,pty-post}/` |
+| Real PTY capture AFTER the cap fix (`pty-fixed` unshortened, `pty-fixed2` shortened fixture) | `…/verify/20261006T145633Z/captures/{pty-fixed,pty-fixed2}/` |
 | Panel-visibility arms A-E (loss, control, keeper, degrade, remedy) | `evidence/dag/dag-edges-scroll/panel-visibility/20261006T145907Z/` |
 | Panel-visibility arms C/D **re-verified across a REBUILD** (same readings on two independent `dist` builds) | same directory, `REPORT.md`'s "re-verified across a REBUILD" section |
 
@@ -158,6 +168,17 @@ overshot the band and scrolled the focused task out of view.
 6. **`evidence/tui/dag-port/verification/…/report.md` rides along** uncommitted from the stacked branch; it
    is that wave's own verification-report edit and is named here so the diff is not misread as this wave's.
 7. The TUI scene's vertical `graphY` window is wired and typechecked but carries no dedicated arm.
+8. **The 64-cell cap is a DECLARED taste boundary, not a measured optimum.** Above it the panel falls back
+   to the rail (clause T9's safety net), so a board whose longest graph-safe label exceeds 64 cells gets
+   the full-DAG rail rather than pannable boxes. The boundary is where "boxes plus pan" stops being better
+   than "one line per task", and it is stated here so a reader can disagree with the number instead of
+   having to discover it.
+9. **One PTY finding is about the INSTRUMENT, not the product, and is reported as such.** The verifier's
+   first `pty-fixed` read reported `cjkInDrawing=3` on rows like `│subject REQ · 冻结验收契约：│` — those
+   are the PINNED DETAIL BODY's rows, inside the panel frame, swept into the C1 scan by a box-rule test.
+   That is design-freeze risk #3 ("C1 is asserted over the wrong scope") arriving in the instrument rather
+   than in the product. It split the region on the pin marker into DRAWING and DETAIL halves, scans C1 on
+   the drawing only and reads C3 from the detail, and its 13 self-test arms still pass.
 
 ## 简体中文
 
