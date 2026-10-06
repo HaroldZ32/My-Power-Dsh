@@ -21,20 +21,38 @@ log() { printf '[ui] %s\n' "$*"; }
 
 # ── 1. the client-side toolchain (same order the E2E container uses) ───────────
 export DEBIAN_FRONTEND=noninteractive
-if ! command -v node >/dev/null 2>&1; then
-  log "apt + node + bun + pnpm"
+# ASK ABOUT EACH TOOL, NOT ABOUT `node`. MEASURED 2026-10-05: this block was guarded by
+# `command -v node`, and the shared E2E image ships `node`/`npm` but NOT `bun`, `dsh`, `pnpm`, `tmux`
+# or `socat`. The guard therefore skipped the whole install, the entrypoint then died at its first
+# `bun install` and its first `dsh plugin … add` with "command not found", and the container sat
+# there looking healthy while the Web log held 63 bytes. A health guard that asks about a DIFFERENT
+# tool than the ones it installs is not a guard.
+if ! command -v bun >/dev/null 2>&1 || ! command -v dsh >/dev/null 2>&1 || ! command -v tmux >/dev/null 2>&1; then
+  log "apt + bun + pnpm + dsh (one or more of them were missing)"
   apt-get update -qq >"$LOG_DIR/apt.log" 2>&1
   apt-get install -y -qq --no-install-recommends curl git ca-certificates unzip xz-utils tmux socat >>"$LOG_DIR/apt.log" 2>&1
-  curl -fsSL "https://nodejs.org/dist/v24.19.0/node-v24.19.0-linux-x64.tar.xz" -o /tmp/node.tar.xz 2>>"$LOG_DIR/apt.log"
-  mkdir -p /opt/toolchain/node && tar -xJf /tmp/node.tar.xz -C /opt/toolchain/node --strip-components=1
-  export PATH="/opt/toolchain/node/bin:$PATH"
-  curl -fsSL https://bun.sh/install | bash >>"$LOG_DIR/apt.log" 2>&1
-  export BUN_INSTALL=/root/.bun
-  export PATH="$BUN_INSTALL/bin:$PATH"
-  npm i -g pnpm@11.23.0 >>"$LOG_DIR/apt.log" 2>&1
-  npm i -g "@deepseek-ai/dsh@${MPD_UI_DSH_VERSION:-0.2.0-rc.2}" >>"$LOG_DIR/apt.log" 2>&1
+  # `node` itself may already exist (baked into the image); it is installed only when absent, because
+  # overwriting the image's own node under a different prefix is how two `node`s end up disagreeing.
+  if ! command -v node >/dev/null 2>&1; then
+    curl -fsSL "https://nodejs.org/dist/v24.19.0/node-v24.19.0-linux-x64.tar.xz" -o /tmp/node.tar.xz 2>>"$LOG_DIR/apt.log"
+    mkdir -p /opt/toolchain/node && tar -xJf /tmp/node.tar.xz -C /opt/toolchain/node --strip-components=1
+    export PATH="/opt/toolchain/node/bin:$PATH"
+  fi
+  if ! command -v bun >/dev/null 2>&1; then
+    curl -fsSL https://bun.sh/install | bash >>"$LOG_DIR/apt.log" 2>&1
+    export BUN_INSTALL=/root/.bun
+    export PATH="$BUN_INSTALL/bin:$PATH"
+  fi
+  command -v pnpm >/dev/null 2>&1 || npm i -g pnpm@11.23.0 >>"$LOG_DIR/apt.log" 2>&1
+  # The harness CLI: the Web app and both `plugin add` calls are all `dsh`, so a container without it
+  # cannot produce a single screenshot.
+  command -v dsh >/dev/null 2>&1 || npm i -g "@deepseek-ai/dsh@${MPD_UI_DSH_VERSION:-0.2.0-rc.2}" >>"$LOG_DIR/apt.log" 2>&1
 fi
 export PATH="/opt/toolchain/node/bin:/root/.bun/bin:$PATH"
+# Fail LOUDLY and EARLY rather than booting into a silently half-built container.
+for tool in node bun pnpm dsh tmux; do
+  command -v "$tool" >/dev/null 2>&1 || { log "FATAL: $tool is still not on PATH after the toolchain step — see ${LOG_DIR}/apt.log"; }
+done
 
 # ── 2. the two sandboxes: one profile per surface, both inside /data ──────────
 export HOME=/data/home
@@ -113,10 +131,22 @@ if ! ldconfig -p 2>/dev/null | grep -q 'libglib-2\.0\.so\.0'; then
   ( cd "$LOG_DIR" && npx playwright install-deps chromium >>"$LOG_DIR/pw-install.log" 2>&1 ) \
     || log "install-deps failed — the capture step will fail on missing shared libraries; see ${LOG_DIR}/pw-install.log"
 fi
-cp -f /opt/mpd-e2e/capture.ts "$LOG_DIR/capture.ts" 2>/dev/null || true
+cp -f /opt/mpd-e2e/capture.mts "$LOG_DIR/capture.mts" 2>/dev/null || true
+# The tooling lives in a NAMED VOLUME, so a rebuilt image does not replace what is already there.
+# MEASURED 2026-10-05: `/data/capture.ts` survived the rename, the runner kept invoking it, and the
+# capture died on `Cannot use import statement outside a module` while looking like a script bug.
+# The stale name is therefore REMOVED here, not merely left beside the new one.
+rm -f "$LOG_DIR/capture.ts"
 cp -f /opt/mpd-e2e/run-capture.sh "$LOG_DIR/run-capture.sh" 2>/dev/null || true
 
 # ── 4. the TUI surface, held open in tmux ─────────────────────────────────────
+#
+# THE LANGUAGE IS PINNED EXPLICITLY, and that is a measurement discipline, not a preference: `env -i`
+# strips every locale variable, the container has no `LANG`, and the host's own chain ends in `zh` — so
+# an unpinned pane would silently be the zh render and an "is the TUI bilingual" capture could compare
+# two zh panes and call it parity. `zh` is the default because it matches the host's default; set
+# MPD_UI_TUI_LANG=en for the English render. The same variable is pinned in restart-tui.sh, so a
+# restart cannot change the language under a reviewer.
 # A second sandbox HOME so a TUI boot can never disturb the Web profile, and its own DSH_HOME.
 log "starting the TUI inside tmux (socket /data/tui.sock)"
 npm i -g "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.12.0}" >>"$LOG_DIR/tui-install.log" 2>&1
@@ -126,7 +156,7 @@ DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add "@de
 tmux -f /dev/null -S /data/tui.sock new-session -d -s tui -x 220 -y 50 -c /data/ws
 tmux -S /data/tui.sock pipe-pane -t tui -o "cat > /data/tui-pane.log" 2>/dev/null || true
 tmux -S /data/tui.sock send-keys -t tui \
-  "env -i 'PATH=$PATH' 'DSH_HOME=/data/dsh-tui' 'HOME=/data/home-tui' 'TERM=xterm-256color' 'DSH_TUI_WORKSPACE_TARGET=/data/ws' dsh-tui" Enter
+  "env -i 'PATH=$PATH' 'DSH_HOME=/data/dsh-tui' 'HOME=/data/home-tui' 'TERM=xterm-256color' 'DSH_TUI_LANG=${MPD_UI_TUI_LANG:-zh}' 'DSH_TUI_WORKSPACE_TARGET=/data/ws' dsh-tui" Enter
 
 # Keep the container alive and publish where the surfaces are, so an inspector (or the
 # ui-view driver) can find them without guessing.

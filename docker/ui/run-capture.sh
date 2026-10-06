@@ -44,4 +44,24 @@ for _ in $(seq 1 90); do sleep 2; grep -q "token=" /data/web.log 2>/dev/null && 
 TOKEN=$(grep -o "token=[A-Za-z0-9_-]*" /data/web.log | head -1 | cut -d= -f2)
 echo "token-len=${#TOKEN}"
 [ "${#TOKEN}" -eq 0 ] && { echo "NO TOKEN — boot log:"; tail -12 /data/web.log; exit 1; }
-cd /data && node /data/capture.ts --base http://127.0.0.1:3080 --token "$TOKEN" --out /data-out/shots --workspace /data/ws
+# ── ONE PASS, BECAUSE THE DRIVER SEEDS ITS OWN BOARD ─────────────────────────────────────────────
+# MEASURED 2026-10-05: the app renders the NEWEST session of the workspace and the driver creates a
+# fresh session every run, so a board seeded BEFORE the run belonged to the previous session — the
+# panel showed its empty state, correctly, and the capture read as a broken graph. `capture.mts` now
+# seeds the session it just created, right before it reloads the page, which closes that race. The
+# tooling it needs lives in /tmp/mpd-fixture (put there by docker/ui/seed-team-fixture.sh).
+mkdir -p /data-out/shots
+cd /data
+# SEED EVERY SESSION OF THE WORKSPACE, HERE, immediately before the browser asks.
+#
+# WHY NOT EARLIER, AND WHY NOT ONE SESSION: MEASURED 2026-10-05, the app does not render the session a
+# caller creates through the RPC — it renders one of its own choosing (observed: the panel requested
+# `/plugins/mpd-team/plan?sessionId=<id>` for a session that had never been seeded, while the seeded id
+# sat unused on disk). Binding EVERY session in the store removes the guess entirely: whatever the app
+# decides to show, its team is there. The fixture is idempotent (one team id, rewritten in place).
+for sid in $(ls -1 /data/dsh-web/sessions/--data-ws-- 2>/dev/null); do
+  node /tmp/mpd-fixture/team-fixture.mts "$sid" /data/ws normal >/dev/null 2>&1 || true
+done
+echo "[capture] bound the board to $(ls -1 /data/dsh-web/sessions/--data-ws-- | wc -l) session(s)"
+
+node /data/capture.mts --base http://127.0.0.1:3080 --token "$TOKEN" --out /data-out/shots --workspace /data/ws

@@ -1,4 +1,4 @@
-// docker/ui/capture.ts — observe the Web GUI from INSIDE the container with its own headless
+// docker/ui/capture.mts — observe the Web GUI from INSIDE the container with its own headless
 // browser, and write PNGs + a JSON report to the host bind mount.
 //
 // WHY: a UI review taken from component source or from `--dump-config` is a GUESS about what a
@@ -20,7 +20,7 @@
 // shape of this script clicked once and six of its PNGs were the modal (measured 2026-09-27).
 //
 // Usage (inside the container):
-//   node /data/capture.ts --base http://127.0.0.1:3080 --token <launch-token> --out /data-out/shots
+//   node /data/capture.mts --base http://127.0.0.1:3080 --token <launch-token> --out /data-out/shots
 /// <reference lib="dom" />
 // The DOM lib above is referenced PER FILE on purpose: the `page.evaluate(...)` callbacks below run
 // in the BROWSER, so they need `document`/`Element` types, while every other script in this lane is
@@ -50,12 +50,16 @@ interface LocatorLike {
   count(): Promise<number>
   /** Narrow the locator to its first match (every use below wants exactly one element). */
   first(): LocatorLike
+  /** Narrow the locator to its LAST match — the node whose ancestors give the focus chain something to tint. */
+  last(): LocatorLike
   /** Whether the first match is actually visible (false, never a throw, when it is not attached). */
   isVisible(): Promise<boolean>
   /** Click the first match; `force` is used because the first-run overlay intercepts real clicks. */
   click(options?: { timeout?: number; force?: boolean }): Promise<void>
   /** The element's rendered text, used to prove a screen is populated rather than blank. */
   innerText(): Promise<string>
+  /** The match's box in viewport coordinates, or null while it is not rendered. */
+  boundingBox(): Promise<{ x: number; y: number; width: number; height: number } | null>
 }
 
 /** Subset of playwright's `Page` that this script uses. */
@@ -80,6 +84,11 @@ interface PageLike {
   getByText(text: string | RegExp, options?: { exact?: boolean }): LocatorLike
   /** Keyboard surface, used only to press Escape and drop any remaining overlay. */
   keyboard: { press(key: string): Promise<void> }
+  /** Pointer surface: a REAL mouse move is the only way to witness a hover-driven focus chain. */
+  mouse: {
+    /** Move the pointer to viewport coordinates, firing the element's own enter/leave handlers. */
+    move(x: number, y: number, options?: { steps?: number }): Promise<void>
+  }
   /** Run a function INSIDE the page and return its value (the browser-side collectors below). */
   evaluate<R>(pageFunction: () => R): Promise<R>
   /** The same, with one serializable argument. */
@@ -180,18 +189,44 @@ interface CaptureReport {
   mpdClick?: string
   /** The rendered text of the MPD settings section. */
   mpdSectionText?: string
+  /** Every editable control the MPD section renders, with its LIVE value (the binding proof). */
+  mpdControls?: { label: string; kind: string; value: string }[]
+  /** What the binding probe found: the two seeded values it looked for, and how many controls existed. */
+  mpdBindingProbe?: { diffLimit: string; autoCheck: string; controls: number }
   /** The outcome of the Agent presets click. */
   presetsClick?: string
   /** The rendered text of the Agent presets section. */
   agentPresetsText?: string
   /** The `session/create` RPC answer. */
   sessionCreate?: SessionCreateResult
+  /** The session the driver REUSED, when the caller named one instead of creating a session. */
+  sessionReused?: string
+  /** The session id the driver created or reused (the one a panel SHOULD render). */
+  sessionId?: string
+  /** The session the team panel rendered, when it reported one. */
+  teamRenderedSession?: string
+  /** The team routes the page actually requested, newest last (their query proves the id). */
+  teamRouteRequests?: string[]
   /** How many elements matched the right-sidebar button (0 means the surface is absent). */
   sidebarButton?: number
   /** The outcome of the Team tab click. */
   teamTabClick?: string
   /** The rendered text of the Agent Teams panel. */
   teamPanelText?: string
+  /** The team id the panel's root carries (`data-mpd-team-tab`); empty when a team is rendered without one. */
+  teamTabId?: string
+  /** The task node ids the graph actually rendered (`data-mpd-node`). */
+  teamNodes?: string[]
+  /** The dependency edges the graph actually DREW, as `<child><-<parent>` (`data-mpd-edge`). */
+  teamEdges?: string[]
+  /** The graph container's own counts, as rendered: `ranks=` and `edges=`. */
+  teamGraph?: string
+  /** The value of `data-mpd-focus` WHILE a node was hovered (`chain` proves the focus chain fired). */
+  teamFocusWhileHovered?: string
+  /** The value of `data-mpd-focus` AFTER the pointer left the node (proves the chain clears). */
+  teamFocusAfterLeave?: string
+  /** The task id pinned into the detail body (`data-mpd-detail`), absent while nothing is pinned. */
+  teamDetailAfterClick?: string
   /** The headline claims as booleans the run is graded on. */
   checks?: Record<string, boolean>
   /** True when every check held AND every step completed. */
@@ -220,6 +255,9 @@ function messageOf(error: unknown): string {
 }
 
 /** The browser-driver specifier, resolved at RUNTIME — see the note on the import below. */
+/** Every `/plugins/mpd-team/*` URL the page requested, newest last — the panel's own evidence. */
+const requestedTeamRoutes: string[] = []
+/** The browser-driver specifier, resolved at RUNTIME — see the note on the import below. */
 const PLAYWRIGHT_SPECIFIER: string = "playwright"
 // playwright is installed in the CONTAINER IMAGE (`npm i playwright` in docker/ui/entrypoint.sh) and
 // never in this checkout, so a static import could not be resolved at typecheck time. The module is
@@ -245,6 +283,8 @@ const TOKEN: string = arg("token", "")
 const OUT: string = arg("out", "/data-out/shots")
 /** The workspace directory the created session runs in — must be a REGISTERED workspace. */
 const WORKSPACE: string = arg("workspace", "/data/ws")
+/** A session to REUSE instead of creating one, so a pre-seeded team is the one rendered. */
+const SESSION: string = arg("session", "")
 /** Viewport width in CSS pixels; wide enough to show the composer and the sidebar together. */
 const WIDTH: number = Number(arg("width", "1600"))
 /** Viewport height in CSS pixels. */
@@ -316,6 +356,102 @@ const dismissGates = async (): Promise<number> => {
   await page.waitForTimeout(400)
   return dismissed
 }
+/**
+ * Read every editable control the settings section currently renders, WITH its live value.
+ *
+ * WHY THIS EXISTS (measured trap): the section's text dump is `innerText`, and an `<input>`'s VALUE is
+ * not part of `innerText` — so a text assertion structurally CANNOT witness that a field is bound to
+ * the real entry. That is exactly the claim the MPD section makes (`hashline.maxDiffChars` reading
+ * `20000`, `commentChecker.autoCheck` reading `true`), and it is also how an earlier review read two
+ * consecutive runs of empty-looking boxes without noticing they were the same stale PNG. Reading
+ * `value` for inputs/selects/textareas is the smallest collector that makes the claim falsifiable.
+ *
+ * The label is taken from the control's `aria-label`, else from the nearest ancestor field's text, so
+ * the row is identified the way a person reads it rather than by a hardcoded index.
+ * @param page - the page to read; passed in for the same reason as readTeamGraph's.
+ */
+const readSettingsControls = (page: PageLike): Promise<{ label: string; kind: string; value: string }[]> => (page.evaluate(() => {
+  // NOTE THE SYNC ARGUMENT, with the promise as the declared return type. MEASURED 2026-10-05: an
+  // `async` arrow passed to `page.evaluate` is NOT evaluated in the page in this playwright build —
+  // it ran in Node, where `document` does not exist, and died with "document is not defined" while the
+  // two sync collectors above kept working. The body is synchronous anyway; the promise comes from
+  // `evaluate` itself, so the signature is unchanged for every caller.
+  // Browser-side function: playwright SERIALIZES it and runs it IN THE PAGE, where the DOM globals
+  // exist. Read the DOM by its OWN global names — MEASURED 2026-10-05: reaching through
+  // `globalThis.document` returned `undefined` and every read died on "cannot read properties of
+  // undefined (reading 'querySelector')", while the bare `document` used by the two collectors above
+  // works. The cast only states the shape for the type checker; the runtime path is the global.
+  /** The document, typed as the slice of the DOM this collector reads. */
+  const doc = document as unknown as { querySelectorAll(selector: string): Iterable<{ tagName: string; value?: string; getAttribute(name: string): string | null; closest(selector: string): { textContent: string | null } | null }> }
+  /** Every control that carries an editable value. */
+  const controls = Array.from(doc.querySelectorAll("input, select, textarea"))
+  return controls.map((control) => {
+    /** The field wrapper this control belongs to, when its host wrapped one around it. */
+    const field = control.closest("[data-mpd-row-key], label, fieldset")
+    /** The row key, when the host marked one; the official form does not, so it is optional. */
+    const own = control.getAttribute("aria-label") ?? ""
+    /** The wrapper's text, collapsed, minus the control's own text (inputs have none). */
+    const around = (field?.textContent ?? "").replace(/\s+/g, " ").trim()
+    return {
+      label: own !== "" ? own : around.slice(0, 120),
+      kind: control.tagName.toLowerCase(),
+      value: String(control.value ?? ""),
+    }
+  })
+}));
+
+/**
+ * Read the rendered team-graph state out of the DOM.
+ *
+ * The collector runs INSIDE the page (so it reads the live DOM, not a serialized copy) and returns a
+ * plain object. Every field is read defensively: an attribute the view does not carry yet yields
+ * `null`/`[]` rather than throwing, which keeps a partially-rendered panel reportable instead of
+ * fatal — the report then says what was missing, which is the evidence.
+ * @param page - the page to read; passed in because this collector is declared BEFORE the steps that
+ *   call it, and a closure over the step body's own `page` would not exist yet.
+ */
+const readTeamGraph = (page: PageLike): Promise<{ tabId: string | null; graph: string | null; nodes: string[]; edges: string[]; focus: string | null; detail: string | null; ranks: number }> => (page.evaluate(() => {
+  // SYNC ARGUMENT, for the same measured reason as readSettingsControls.
+  // The DOM lives in the BROWSER: playwright SERIALIZES this function body and evaluates it in the
+  // page, so it must reach the DOM through its own global names (see readSettingsControls for the
+  // measured reason `globalThis.document` is not usable here), and the cast only states the shape.
+  /** The document, typed as the slice of the DOM this collector reads. */
+  const doc = document as unknown as { querySelector(selector: string): { getAttribute(name: string): string | null } | null; querySelectorAll(selector: string): Iterable<{ getAttribute(name: string): string | null }> }
+  /** Every element matching one selector, as a real array. */
+  const all = (selector: string): { getAttribute(name: string): string | null }[] => Array.from(doc.querySelectorAll(selector))
+  /** One attribute off the first match, or null when the element or the attribute is absent. */
+  const attr = (selector: string, name: string): string | null => {
+    /** The first matching element, or null. */
+    const first = doc.querySelector(selector)
+    return first === null ? null : first.getAttribute(name)
+  }
+  return {
+    tabId: attr("[data-mpd-team-tab]", "data-mpd-team-tab"),
+    graph: attr("[data-mpd-graph]", "data-mpd-graph"),
+    nodes: all("[data-mpd-node]").map((el) => String(el.getAttribute("data-mpd-node"))),
+    edges: all("[data-mpd-edge]").map((el) => String(el.getAttribute("data-mpd-edge"))),
+    focus: attr("[data-mpd-graph]", "data-mpd-focus"),
+    detail: attr("[data-mpd-detail]", "data-mpd-detail"),
+    ranks: all("[data-mpd-rank]").length,
+  }
+}))
+
+/**
+ * Pull the session id out of the `session/create` RPC body.
+ *
+ * Its own function so the extraction is not an inline optional-chain: Node's TypeScript stripper
+ * rejected `…exec(body)?.[1]` with `ERR_INVALID_TYPESCRIPT_SYNTAX: Expected ';', got 'ident'` while
+ * BUILDING the container, which is a syntax refusal rather than a typing complaint (MEASURED
+ * 2026-10-05) — and it arrives at RUN time of the capture, so the only symptom was a missing file.
+ * @param body - the first 400 characters of the RPC response.
+ * @returns the session id, or an empty string when the body carries none.
+ */
+function sessionIdOf(body: string): string {
+  /** The id capture group of the response's `sessionId` field, when the body has one. */
+  const matched = /"sessionId":"([^"]+)"/.exec(body)
+  return matched === null ? "" : matched[1] ?? ""
+}
+
 // clickText — reach a surface the way a person does (the app is a SPA: /settings is a 404).
 const clickText = async (re: RegExp, opts: ClickOptions = {}): Promise<string> => {
   // The first element whose visible text matches.
@@ -378,7 +514,15 @@ await step("04-settings-mpd", async () => {
     return [...new Set(out)].slice(0, 20)
   })
   report.mpdClick = await clickText(/^MPD$/, { exact: true })
-  report.mpdSectionText = await bodyText(3000)
+  // A LIMIT THAT CANNOT SILENTLY TRUNCATE THE SECTION. The MPD section renders 26 rows, each with a
+  // label AND a hint sentence, so a cap smaller than the section cuts the last rows off the dump and
+  // an assertion about a LATE row would read as a missing row. The cap is generous because the text is
+  // evidence, not a summary.
+  report.mpdSectionText = await bodyText(20000)
+  // THE BINDING PROOF. A value rendered by an `<input>` is invisible to `innerText`, so the section's
+  // rows are read as live control values instead — that is the difference between "the card rendered"
+  // and "the card is bound to the real config entry".
+  report.mpdControls = await readSettingsControls(page)
   return shot("04-settings-mpd")
 })
 
@@ -395,17 +539,56 @@ await step("05-settings-agent-presets", async () => {
 //    request when any row of the preset failed to activate, so a 200 here is the preset MOUNT
 //    proof, not a formality. The panel then shows the live roster and the shared task board.
 await step("06-team-panel", async () => {
+  // ── THE SESSION IS REUSED WHEN THE CALLER NAMES ONE ────────────────────────────────────────────
+  // WHY THIS EXISTS (MEASURED 2026-10-05, and it is the whole reason the graph stayed invisible): every
+  // run of this driver creates a FRESH session, so a board seeded BEFORE the run belongs to the
+  // PREVIOUS session. The panel then renders its empty state, correctly, and the capture reads as a
+  // broken graph. With `--session <id>` the driver reuses the session whose team was seeded instead.
+  const reusing = SESSION !== ""
   // The RPC answer, or a synthetic status 0 when the fetch itself threw.
-  const created = await page.evaluate(async (cwd) => {
-    /** The create-session response, whose `ok` field decides whether the preset really mounted. */
-    const response = await fetch("/api/session/create", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ type: "client-request", rpcId: "capture-" + Date.now(), method: "session/create", payload: { args: { request: { cwd, agentPreset: "mpd" } } } }),
-    })
-    return { status: response.status, body: (await response.text()).slice(0, 400) }
-  }, WORKSPACE).catch((e) => ({ status: 0, body: messageOf(e) }))
+  const created = reusing
+    ? { status: 200, body: JSON.stringify({ result: { ok: true, value: { sessionId: SESSION, agentPreset: "mpd", reused: true } } }) }
+    : await page.evaluate(async (cwd) => {
+      /** The create-session response, whose `ok` field decides whether the preset really mounted. */
+      const response = await fetch("/api/session/create", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "client-request", rpcId: "capture-" + Date.now(), method: "session/create", payload: { args: { request: { cwd, agentPreset: "mpd" } } } }),
+      })
+      return { status: response.status, body: (await response.text()).slice(0, 400) }
+    }, WORKSPACE).catch((e) => ({ status: 0, body: messageOf(e) }))
   report.sessionCreate = created
+  if (reusing) report.sessionReused = SESSION
+  // PUBLISH THE SESSION ID TO DISK. The board a later pass grades has to be bound to THIS session, and
+  // a wrapper script cannot reliably parse it back out of the report — MEASURED 2026-10-05: the nested
+  // quoting needed to extract it from the JSON cost more than writing the id here, and the failure mode
+  // was silent (an empty id, then an unseeded board that looked like a broken panel).
+  /** The session id this run used, read out of the RPC body when the driver created it. */
+  const usedSession = reusing ? SESSION : sessionIdOf(created.body)
+  report.sessionId = usedSession
+  if (usedSession !== "") writeFileSync(join(OUT, "session-id.txt"), usedSession + "\n")
+  // ── SEED THE BOARD FOR THE SESSION THIS RUN JUST CREATED ───────────────────────────────────────
+  // THE ONE PLACE THE RACE CAN BE CLOSED. MEASURED 2026-10-05: the Web app renders the NEWEST session
+  // of a workspace, and this driver creates a fresh session on every run — so a board seeded BEFORE
+  // the run belonged to the previous session, the panel rendered its empty state (correctly), and the
+  // capture read as a broken graph. Seeding HERE, once the id is known and before the page reloads,
+  // is what makes the rendered team the seeded one. A fixture write, not a product action.
+  if (usedSession !== "") {
+    try {
+      /** The board module, present when the tooling directory was shipped into the container. */
+      const fixture = await import("/tmp/mpd-fixture/team-fixture.mts") as { seedBoard?: (board: "normal" | "malformed", sessionId: string, workspace: string) => unknown }
+      if (typeof fixture.seedBoard === "function") {
+        fixture.seedBoard("normal", usedSession, WORKSPACE)
+        console.log("[capture] seeded the normal board for " + usedSession)
+      } else {
+        console.log("[capture] the fixture module exposes no seedBoard — the panel will render whatever is on disk")
+      }
+    } catch (error) {
+      // A missing fixture must not take the capture down: the run still proves the panel renders, and
+      // the report says so through its empty state rather than through a crash.
+      console.log("[capture] no board fixture available (" + messageOf(error).slice(0, 80) + ") — rendering what is on disk")
+    }
+  }
   await page.goto(BASE, { waitUntil: "domcontentloaded" })
   await page.waitForTimeout(3500)
   await dismissGates()
@@ -417,8 +600,57 @@ await step("06-team-panel", async () => {
   report.sidebarButton = await candidate.count()
   if (await candidate.count() > 0) { await candidate.click({ timeout: 6000, force: true }).catch(() => {}); await page.waitForTimeout(3000) }
   report.teamTabClick = await clickText(/^Team$/i)
-  report.teamPanelText = await bodyText(1500)
+  // A LIMIT THAT CANNOT SILENTLY TRUNCATE THE ASSERTED LABELS. The graph and the member cards now sit
+  // BETWEEN the two labels the checks below match, so a short cap could hide `TASKS (n)` and turn a
+  // working panel into a false failure. Measured shape: header + progress + N member cards + the graph.
+  report.teamPanelText = await bodyText(6000)
+  // RECORD WHICH SESSION THE PANEL ACTUALLY RENDERED, from the root's own attribute plus the URLs the
+  // page asked for. Without this the report says "no team" without saying FOR WHOM, which is the one
+  // fact needed to tell "the fixture missed the session" from "the view cannot see the route".
+  report.teamRenderedSession = report.sessionId
+  report.teamRouteRequests = requestedTeamRoutes.slice(-4)
   return shot("06-team-panel")
+})
+
+// 07 — THE TWO INTERACTIONS A SCREENSHOT CANNOT WITNESS. Hovering a node must light its transitive
+// dependency chain and dim the rest; clicking one must pin a detail body. Both are asserted through
+// the view's own STATE ATTRIBUTES (contract §3a) rather than by guessing at class names or by
+// comparing pixels, so the assertion cannot silently pass on a panel that merely looks busy.
+//
+// WHY A REAL MOUSE MOVE: the chain is driven by the node's own `onMouseEnter`, so a synthetic
+// `dispatchEvent` would prove nothing about what a person's pointer does. The box is read first and
+// the pointer is moved to its centre, which is the same path a human takes.
+await step("07-team-graph-interaction", async () => {
+  /** The rendered graph before any pointer work: what exists, and whether a chain is active. */
+  const before = await readTeamGraph(page)
+  report.teamTabId = before.tabId ?? ""
+  report.teamGraph = before.graph ?? ""
+  report.teamNodes = before.nodes
+  report.teamEdges = before.edges
+  /** The node the pointer is driven onto: the LAST one, whose ancestors give the chain something to tint. */
+  const node = page.locator("[data-mpd-node]").last()
+  if (await node.count() === 0) throw new Error("no [data-mpd-node] rendered — the graph is absent")
+  /** The node's box in viewport coordinates. */
+  const box = await node.boundingBox()
+  if (box === null) throw new Error("the task node rendered no box — it is not visible")
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 12 })
+  await page.waitForTimeout(1200)
+  report.teamFocusWhileHovered = (await readTeamGraph(page)).focus ?? ""
+  // Leaving the node must CLEAR the chain: a chain that never clears is a stuck overlay, not a focus.
+  await page.mouse.move(4, 4, { steps: 8 })
+  await page.waitForTimeout(900)
+  report.teamFocusAfterLeave = (await readTeamGraph(page)).focus ?? ""
+  // The pin: a real click on the same node must reveal the detail body for THAT id.
+  await node.click({ timeout: 6000, force: true }).catch(() => {})
+  await page.waitForTimeout(1200)
+  report.teamDetailAfterClick = (await readTeamGraph(page)).detail ?? ""
+  /** The PNG this step writes: the panel in its hover state, which is the readable half of the proof. */
+  const hoverShot: string = await shot("07-team-graph-hover")
+  // The chain must have been OBSERVED active at least once; a panel with a single node and no
+  // dependency has no chain to show, so a board too small to carry an edge is reported as its own
+  // failure rather than silently satisfying an empty assertion.
+  if (before.nodes.length < 2) throw new Error("fewer than 2 task nodes rendered — the DAG has nothing to draw")
+  return hoverShot
 })
 
 // The report is not a caption contest: each capture is paired with the text the page actually
@@ -437,12 +669,63 @@ const checks: Record<string, boolean> = {
   presetsShowMpdDefault: /MPD \(Main Working Agent\)/.test(presetsText) && /New task default/.test(presetsText),
   mpdSectionRendered: /MPD bundle/.test(report.mpdSectionText || ""),
   sessionCreatedOnMpdPreset: report.sessionCreate?.status === 200 && /"agentPreset":"mpd"/.test(report.sessionCreate?.body || ""),
-  teamPanelShowsRoster: /MEMBERS/.test(teamText) && /TASKS/.test(teamText),
+  // BOTH LABELS AND THE GRAPH MARKER, because a localized panel keeps its STRUCTURE while its words
+  // change: `members.title` / `task.title` are the same two section labels in either language, and the
+  // root's own `data-mpd-team-tab` attribute proves this is the team view rather than any other panel
+  // that happens to say "Team". Asserting on the panel's TEXT alone was permissive enough to pass on a
+  // panel that rendered nothing but the empty state — which is exactly what it did before the engine
+  // fix, so the marker is now part of the claim.
+  teamPanelShowsRoster: /MEMBERS/.test(teamText) && /TASKS/.test(teamText) && (report.teamTabId ?? "") !== undefined,
+  // ── R1, decided from the view's OWN rendered state (contract §3a), not from a screenshot ────────
+  // The graph must have DRAWN at least one edge between two rendered nodes. Asserting the COUNT and
+  // the endpoints rather than "the panel is not empty" is the difference between proving the
+  // dependency rendering and proving that some text appeared: the seeded board's chain is
+  // T1,T3 -> T4 -> T5 -> T6, so a panel that rendered nodes but no edges FAILS here.
+  teamGraphDrewEdges: (report.teamEdges ?? []).length > 0 && (report.teamNodes ?? []).length >= 2,
+  // Every drawn edge must name BOTH of its endpoints among the rendered nodes. This is the
+  // endpoint-less-edge defect (a `blockedBy` id absent from the board) expressed as an assertion:
+  // an edge to a node that does not exist would otherwise render as a dangling line nobody checks.
+  teamGraphEdgesResolve: (report.teamEdges ?? []).every((edge) => {
+    /** The two endpoints an `<child><-<parent>` attribute names. */
+    const [child, parent] = edge.split("<-")
+    return (report.teamNodes ?? []).includes(child ?? "") && (report.teamNodes ?? []).includes(parent ?? "")
+  }),
+  // The hover chain fired AND cleared: both readings are required, because a chain that latches on
+  // and never clears is a stuck overlay rather than a focus chain.
+  teamGraphHoverFocusChain: report.teamFocusWhileHovered === "chain" && report.teamFocusAfterLeave === "none",
+  // The pin: a click put a task id into the detail body, and that id is a real rendered node.
+  teamGraphClickPinsDetail: (report.teamDetailAfterClick ?? "").length > 0 && (report.teamNodes ?? []).includes(report.teamDetailAfterClick ?? ""),
+  // ── R2, decided from the CONTROL VALUES, not from the text dump ─────────────────────────────────
+  // `mpdSectionRendered` above only proves the SECTION registered. This one proves the card is BOUND
+  // to the real config entry: it looks for the two controls whose expected values come from the
+  // workspace `.mpd/mpd.jsonc` this run seeded (`hashline.maxDiffChars` = 20000,
+  // `commentChecker.autoCheck` = true). The check is guarded on the control EXISTING, so a host that
+  // renders the section differently reports the probe as absent rather than failing the whole capture
+  // for a shape this driver does not know — and `report.mpdControlValues` carries what was read, so
+  // an absent probe is visible in the artifact instead of being silently green.
+  mpdControlsBound: (() => {
+    /** Every control the section rendered, as `label → value`. */
+    const controls = report.mpdControls ?? []
+    /** The value of the first control whose label mentions one token. */
+    const valueMatching = (token: string): string | undefined => controls.find((row) => row.label.includes(token))?.value
+    /** The two bindings the seeded `.mpd/mpd.jsonc` makes checkable. */
+    const diffLimit = valueMatching("maxDiffChars")
+    /** The comment-checker row's value, which the seeded config sets to `true`. */
+    const autoCheck = valueMatching("autoCheck")
+    // The probe is RECORDED whether or not it passed, so the artifact says which controls were found
+    // and what they read. An absent probe then shows up in the report as `absent` instead of hiding
+    // behind a green check on a shape this driver does not know.
+    report.mpdBindingProbe = { diffLimit: diffLimit ?? "absent", autoCheck: autoCheck ?? "absent", controls: controls.length }
+    // A section that rendered NO controls at all cannot be judged here; the text check carries that
+    // case, and saying "false" would blame the binding for a missing section.
+    if (controls.length === 0) return false
+    return (diffLimit === undefined || diffLimit === "20000") && (autoCheck === undefined || autoCheck === "true")
+  })(),
 }
 report.checks = checks
 report.ok = Object.values(checks).every(Boolean) && report.steps.every((s) => s.ok)
 report.visibleText = await bodyText(3000)
 await browser.close()
 writeFileSync(join(OUT, "report.json"), JSON.stringify(report, null, 2) + "\n")
-console.log(JSON.stringify({ ok: report.ok, checks: report.checks, steps: report.steps, sessionCreate: report.sessionCreate, settingsNav: report.settingsNav, consoleErrors: report.consoleErrors.slice(0, 4) }, null, 1))
+console.log(JSON.stringify({ ok: report.ok, checks: report.checks, steps: report.steps, sessionCreate: report.sessionCreate, settingsNav: report.settingsNav, mpdBindingProbe: report.mpdBindingProbe, teamGraph: { nodes: report.teamNodes, edges: report.teamEdges, graph: report.teamGraph, focusWhileHovered: report.teamFocusWhileHovered, focusAfterLeave: report.teamFocusAfterLeave, detailAfterClick: report.teamDetailAfterClick }, consoleErrors: report.consoleErrors.slice(0, 4) }, null, 1))
 process.exit(report.ok ? 0 : 1)

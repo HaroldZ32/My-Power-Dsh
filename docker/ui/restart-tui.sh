@@ -8,4 +8,4 @@ rm -f /data/tui-pane.log
 tmux -f /dev/null -S /data/tui.sock new-session -d -s tui -x 220 -y 50 -c /data/ws
 tmux -S /data/tui.sock pipe-pane -t tui -o "cat > /data/tui-pane.log" 2>/dev/null || true
 tmux -S /data/tui.sock send-keys -t tui \
-  "env -i 'PATH=$PATH' 'DSH_HOME=/data/dsh-tui' 'HOME=/data/home-tui' 'TERM=xterm-256color' 'DSH_TUI_WORKSPACE_TARGET=/data/ws' dsh-tui" Enter
+  "env -i 'PATH=$PATH' 'DSH_HOME=/data/dsh-tui' 'HOME=/data/home-tui' 'TERM=xterm-256color' 'DSH_TUI_LANG=${MPD_UI_TUI_LANG:-zh}' 'DSH_TUI_WORKSPACE_TARGET=/data/ws' dsh-tui" Enter
