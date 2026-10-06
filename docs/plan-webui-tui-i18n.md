@@ -267,6 +267,47 @@ A lane's own green test is not the wave's proof: the captain re-runs the gates a
 screenshots. A capture that predates the change it claims to verify is a stale-evidence defect
 (measured in this repository before) — every screenshot is checked against the run's timestamp.
 
+## 8-final. Closed vs. still open, at the end of the sweep
+
+**CLOSED in this wave** (each with an artifact or a measured cause):
+
+1. **R1** — populated team panel, both board shapes, `ok:true`, all twelve checks, layout asserted
+   (`teamNodeBoxes` + `teamGraphNodesDoNotOverlap`, 0 overlaps).
+2. **R2** — verified on screen in **both languages**; bound values read from `input.value`.
+3. **R3** — four panels driven on the live TUI, the chosen route LANDING in the profile patch, the
+   cancel rule reproduced live, and the write target corrected to the config entry.
+4. **R4** — TUI in zh **and** en (panes captured); Web in zh **and** en (`report-zh-CN.json`); role
+   chips localized; 46-key dictionaries key-identical.
+5. **The cycle's disconnected back-edge** (reviewer F3) — both stubs now end at the riser; pinned by
+   the corrected arithmetic in the arm.
+6. **The zh effort labels** (reviewer F5) — MPD names the ids a catalog reports without one; the
+   declared fallback deliberately keeps the schema's labels (relabelling it made an arm
+   language-dependent rather than fixing one, measured).
+7. **Eleven assertions that only passed in English** — the newest finding, and the reason the suite's
+   claim was previously true in one language only. All derive their copy from the dictionary now and
+   **the process-wide language pin is deleted**; the suite passes with no variable, `en` and `zh`.
+8. **The stale malformed-board artifact** (reviewer F2) and the `homeShowsMpdPreset` claim I had
+   falsely called pre-existing (F1) — both re-shot/re-anchored, both reports now `ok:true`.
+
+**STILL OPEN, each with its cause named and none attributed to this wave's code:**
+
+1. **`test:qa` 3 of 48 red.** `bundle-lifecycle` is the sandbox refusing pnpm's store operation lock
+   (`os error 30`); `preset-register` and `extension-lifecycle` are model behaviour on cases that
+   drive a headless agent (the first's agent chatted instead of working; the second's harness passed
+   while the agent's actions did not match its assertions). This branch carries zero files under
+   `mpd-ext-plugin`, and the real mount proof (`preset-conformance` with a negative control) PASSES.
+2. **`verify:docker`: 63 passed / 3 failed / 28 null.** The three are TUI-lane arms of the host-contact
+   take-over, whose entry point this branch does not touch, and whose own code documents the contact
+   as conditional — it arms only after the session has rendered an MPD scene, which is exactly what
+   the failing arm reports (`phaseA=no-mpd-panel`). `tui.noDirectTuiSeam` (on a byte-identical copy of
+   the INSTALLED tree), `tui.boot` (real PTY) and `tui.mergedPanelOrder` all PASS.
+3. **`--mode oneclick` not run**, and the source lane's first attempt died on a transient `bun`
+   download (a fresh container reached the same URL with HTTP 200 seconds later). Both belong to a
+   release sweep on a machine with stable egress.
+4. **`node scripts/pack-mpd.ts` not re-run**, so `dist/mpd-package/` is behind this branch's sources.
+   §11 makes the pack a release step and the closure gate reports it as its own
+   `CONTENT-DRIFT-EXPECTED` class (exit 0).
+
 ## 8. Status (updated as the wave lands)
 
 ### 8-zero. The release sweep, run at the end (each failure diagnosed, not assumed)
