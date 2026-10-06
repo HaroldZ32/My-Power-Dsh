@@ -104,9 +104,13 @@ the rule is now:
   `packages/mpd-tui-plugin/src/panel.ts`) — the second read is not redundant, because the adapter binds
   the seam through a DEFERRED inject and a binding that lands after our row applied must still disarm
   the contact;
-- on a host that OFFERS the seam the contact registers NOTHING and reports one `skipped` outcome naming
-  the reason; `Ctrl+A` keeps the host's own dashboard meaning, and `alt+a` / `/mpd panel` route through
-  `tuiPanels.open()`;
+- on a host that OFFERS the seam the APPLY-TIME test normally keeps the contact out of the session
+  entirely, reporting one `skipped` outcome naming the reason — and when the seam binds LATER (it is
+  bound through a deferred inject, so a binding can land after this row applied), the contact IS
+  registered (a zero-row status view plus its prepended input listener) and is disarmed per press by
+  `takeoverArmed()` instead. Both shapes keep `Ctrl+A` on the host's own dashboard, and `alt+a` /
+  `/mpd panel` route through `tuiPanels.open()`. The per-press read is therefore NOT dead code: it is
+  the half that covers the late binding, and deleting it would break the gate for that case;
 - on a host WITHOUT the seam (0.12.0) the old behaviour stands unchanged: the contact arms under
   `tui.dashboardKey` + a team with ≥1 task, and `alt+a` opens the full-screen merged scene.
 

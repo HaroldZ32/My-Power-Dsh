@@ -57,10 +57,12 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   Route any future host-internals need through this same adapter — never a second contact site.
   **The gate (0.13.0)**: the arbiter is `TuiAdapter.panelSeamBound()`, read at apply AND per press
   (`takeoverArmed()` in `packages/mpd-tui-plugin/src/panel.ts`), because the adapter binds the panel
-  seam through a DEFERRED inject and a late binding must still disarm the contact. With the seam bound
-  the contact registers nothing (one `skipped` outcome names the reason), `Ctrl+A` keeps the host's own
-  dashboard meaning, and `alt+a` / `/mpd panel` route through `tuiPanels.open()` with the full-screen
-  merged scene as the fallback on any refusal.
+  seam through a DEFERRED inject and a late binding must still disarm the contact. The apply-time read
+  normally keeps the contact (a zero-row status view plus its prepended input listener) out of a
+  0.13.0 session altogether and reports one `skipped` outcome naming the reason; when the binding lands
+  late, the contact IS registered and the per-press read is what keeps `Ctrl+A` on the host's own
+  dashboard — so that read is not dead code. `alt+a` / `/mpd panel` route through `tuiPanels.open()`
+  with the full-screen merged scene as the fallback on any refusal.
 - **A patch row NEVER id-targets a host-owned row — binding** (`node scripts/verify-no-host-override.ts`,
   §4). The deployment default preset is the USER's to choose, not the bundle's: `docs/preset-default.md`
   and `node scripts/set-default-preset.ts`.

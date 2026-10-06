@@ -58,10 +58,11 @@ Further reading:
   0.12.0 PTY arm was obtained in this wave (a clean 0.12.0 sandbox needs `dsh plugin add`, blocked here
   by the read-only pnpm store lock, and the fixture that exists is a mixed-version composition that
   never reaches a chat screen), so the old-host arming path rests on unit arms — `takeoverArmed` in
-  `packages/mpd-tui-plugin/test/panel.test.ts` (16 pass / 0 fail on this revision) and the legacy-host
-  arm in `packages/mpd-tui-plugin/test/plugin.test.ts`, which could NOT be loaded here (`require() async
-  module … cosmokit/lib/index.ts is unsupported`, a pre-existing vendored `_deps` module-resolution
-  error in the retired adopted plugin) and is therefore not claimed as evidence.
+  `packages/mpd-tui-plugin/test/panel.test.ts` (16 pass / 0 fail on this revision) together with BOTH
+  version-gate arms in `packages/mpd-tui-plugin/test/plugin.test.ts` ("the contact stays INERT" and
+  "the contact arms", green in the canonical per-package run `bun test packages/mpd-tui-plugin` =
+  220 pass / 0 fail; only the explicit FILE-filtered form cannot load them, on a pre-existing vendored
+  `_deps` module-resolution error in the retired adopted plugin).
 
 **Changed.**
 
