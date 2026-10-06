@@ -23,7 +23,7 @@ import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import ts from "typescript5"
-import { callerScopedService, loadMpdClient, type CallerScopedService, type CardFace, type CardState, type ElementNode, type ElementProps, type HarnessOptions, type LoadedMpdClient, type SlotRegistration, type TreeChild, type TreeNode } from "./client-harness.ts"
+import { callerScopedService, createHookRuntime, loadMpdClient, type CallerScopedService, type CardFace, type CardState, type ElementNode, type ElementProps, type HarnessOptions, type LoadedMpdClient, type SlotRegistration, type TreeChild, type TreeNode } from "./client-harness.ts"
 // The ONE shared knob declaration, imported at RUNTIME for the parity test: the card MIRRORS it
 // (it must not reference `SETTINGS_KNOBS`, which a QA gate pins against the built client), so the
 // test — not the client — compares the two declarations element by element.
@@ -934,9 +934,21 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     // the ROW no longer carries the disclosure; the CARD does, once
     expect(textOf(pointer)).not.toContain(BRIDGE_DISCLOSURE)
     expect(textOf(tree)).toContain(BRIDGE_DISCLOSURE)
-    // readable above, dimmer below — asserted on the styles, not on a screenshot
+    // readable above, dimmer below — asserted on the styles, not on a screenshot.
+    //
+    // RE-ANCHORED BY THE R2 RESTYLE, which moved this hierarchy from a uniform `opacity` onto the
+    // host's own tokens: the sentence is now the host's hint size in label-tertiary, and the key
+    // beneath it is one step DOWN in size (11px) with a dimming opacity. So the SIZE relation is the
+    // load-bearing one and is asserted exactly; the opacity relation is asserted only when BOTH sides
+    // declare one, because a style that expresses "dimmer" through a colour token has no opacity to
+    // compare and an `undefined > undefined` would have been a false failure rather than a finding.
     expect(human.props.style!.fontSize).toBeGreaterThan(pointer.props.style!.fontSize)
-    expect(human.props.style!.opacity).toBeGreaterThan(pointer.props.style!.opacity)
+    // An element with no `opacity` renders at 1, so the comparison is meaningful either way.
+    /** The sentence's opacity, defaulting to fully opaque when the style does not set one. */
+    const humanOpacity = typeof human.props.style!.opacity === "number" ? human.props.style!.opacity : 1
+    /** The key's opacity, defaulting the same way. */
+    const pointerOpacity = typeof pointer.props.style!.opacity === "number" ? pointer.props.style!.opacity : 1
+    expect(humanOpacity).toBeGreaterThanOrEqual(pointerOpacity)
     // BOTH still reach the row's text, so the pre-existing hint assertions keep their subject
     expect(hintOfRow(tree, "teamModels.slot2.provider")).toContain(field.semantics)
     expect(hintOfRow(tree, "teamModels.slot2.provider")).toContain("mpd.jsonc teamModels.slot2.provider")
@@ -1509,5 +1521,283 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     } finally {
       rec.restore()
     }
+  })
+})
+
+// ── R2: the styled contract, stated on the RENDERED tree ────────────────────────
+// The user's requirement is "MPD 的设置菜单也参考 DSH 官方设置做成圆角化的界面". Everything below pins the
+// PRESENTATION that restyle promised, against the values MEASURED in the installed harness
+// primitives (`@deepseek-ai/dsh-client-ui-primitives/lib/settings-form/fields.module.css` and
+// `SettingsForm.module.css`, plus the theme bundle's alias map and its `focus.css`), so a later edit
+// that drifts back to a raw browser control or a hardcoded radius reddens HERE instead of in a
+// screenshot nobody took. PRESENTATION ONLY: no arm below reads a value, a key or a behaviour path —
+// the arms above keep ownership of those, and they still pass unchanged.
+describe("R2: the styled contract (the harness's own settings-form tokens)", () => {
+  /** The card source with its comments stripped, so a token scan reads CODE and never prose. */
+  const CARD_CODE = CARD_SOURCE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "")
+  /** Every BARE `var(--dsw-…)` in a text: a token read with no fallback, which paints nothing. */
+  const bareTokens = (text: string): string[] => text.match(/var\(--dsw-[a-z0-9-]+\)/g) ?? []
+  /** Every element of one type in a rendered tree, depth-first, in document order. */
+  function elementsOf(tree: TreeNode, type: unknown, out: ElementNode[] = []): ElementNode[] {
+    if (tree === null || tree === undefined || typeof tree !== "object") return out
+    if (Array.isArray(tree)) {
+      for (const entry of tree) elementsOf(entry, type, out)
+      return out
+    }
+    if (tree.type === type) out.push(tree)
+    elementsOf(tree.props?.children, type, out)
+    return out
+  }
+  /** The row element the card keys by one knob's dotted path, when the tree holds it. */
+  function rowOf(tree: TreeNode, key: string): ElementNode | undefined {
+    if (tree === null || tree === undefined || typeof tree !== "object") return undefined
+    if (Array.isArray(tree)) {
+      for (const entry of tree) {
+        /** The row found under this entry, when it holds one. */
+        const found = rowOf(entry, key)
+        if (found !== undefined) return found
+      }
+      return undefined
+    }
+    if (tree.key === key) return tree
+    return rowOf(tree.props?.children, key)
+  }
+  /** One element's inline style bag, as the card actually renders it (lengths, numbers, tokens). */
+  function styleOf(node: ElementNode | undefined): Record<string, string | number> {
+    return (node?.props?.style ?? {}) as Record<string, string | number>
+  }
+  /** The control of one row: the `<input>` or `<select>` a reader edits. */
+  function controlOf(tree: TreeNode, key: string): ElementNode | undefined {
+    /** The row the key resolves to. */
+    const row = rowOf(tree, key)
+    return row === undefined ? undefined : [...elementsOf(row, "input"), ...elementsOf(row, "select")][0]
+  }
+  /** The rendered button whose text is `text` (the footer's actions, the rows' reset links). */
+  function buttonOf(tree: TreeNode, text: string): ElementNode | undefined {
+    return elementsOf(tree, "button").find((button) => textOf(button) === text)
+  }
+  /** Fire one recorded handler against a target carrying its own mutable style bag. */
+  function fire(node: ElementNode | undefined, prop: string, style: Record<string, string>): void {
+    /** The handler the element recorded under that prop. */
+    const handler = node?.props?.[prop] as ((event: { currentTarget: { style: Record<string, string> } }) => void) | undefined
+    expect(typeof handler).toBe("function")
+    handler!({ currentTarget: { style } })
+  }
+  /**
+   * Render the SOURCE card (the file this lane edits) against the LIVE controller.
+   *
+   * WHY THE SPLIT: `mountedCard` mounts the BUILT `client.js`, which the captain rebuilds after the
+   * lane lands — so a presentation arm read through it would assert yesterday's bytes and stay red
+   * until that rebuild. The COMPONENT therefore comes from `CARD_SOURCE`, which is this suite's
+   * actual subject, while the STATE still comes from the real controller through the registration
+   * face, so the rows are the ones the host projects and not a hand-written fixture.
+   *
+   * It mounts on `snapshot` (the READY snapshot by default) and renders the source component with
+   * the card's own EN dictionary.
+   */
+  async function renderReady(snapshot: ScopeSnapshot = READY): Promise<ElementNode> {
+    /** This arm's mount, whose registration carries the live controller state. */
+    const { registration } = mountedCard(fakeScope(snapshot))
+    /** The section's host-facing face: the live state snapshot and the four form actions. */
+    const face = registration.inject()
+    /** A fresh hook runtime for the source component under review. */
+    const runtime = createHookRuntime()
+    /** The component built from the source card, with the card's own field list. */
+    const Card = CARD.createCardComponent(runtime.react, CARD.FIELDS, () => [])
+    return runtime.render(Card, { useMpdCard: (selector) => selector(face.hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key })
+  }
+
+  test("R2-S1 (static): the radius is the harness's token and NO token is read without a fallback", () => {
+    // the literal the user complained about (`borderRadius: 8`) is gone from the code, and the token
+    // that used to be read BARE now carries its literal
+    expect(CARD_SOURCE).not.toContain("borderRadius: 8")
+    expect(CARD_CODE).not.toContain("borderRadius: 8")
+    expect(CARD_CODE).not.toContain("var(--dsw-alias-border-l2)")
+    expect(bareTokens(CARD_CODE)).toEqual([])
+    // every pair this restyle introduced, with the literal it must keep: the four aliases the bundle
+    // already paired keep THAT literal (`team-view.ts`), the rest carry the token's light-theme value
+    for (const pair of [
+      "var(--dsw-radius-md, 12px)",
+      "var(--dsw-alias-label-primary, #1c1c1e)",
+      "var(--dsw-alias-label-secondary, #5b6472)",
+      "var(--dsw-alias-label-tertiary, #8a94a6)",
+      "var(--dsw-alias-state-business-primary, #4d6bfe)",
+      "var(--dsw-alias-border-l2, #0000001a)",
+      "var(--dsw-alias-border-l3, #0000001f)",
+      "var(--dsw-alias-border-l4, #00000029)",
+      "var(--dsw-alias-bg-layer-3, #fff)",
+      "var(--dsw-alias-interactive-bg-hover, #2631480f)",
+    ]) expect(CARD_SOURCE).toContain(pair)
+  })
+
+  test("R2-S1 NEGATIVE CONTROL: the token scan reddens on a bare read and clears on a pair", () => {
+    expect(bareTokens("border: '1px solid var(--dsw-alias-border-l2)'")).toEqual(["var(--dsw-alias-border-l2)"])
+    expect(bareTokens("border: '0.5px solid var(--dsw-alias-border-l2, #0000001a)'")).toEqual([])
+    // the PRE-RESTYLE field bag: one bare token and the hardcoded radius, both of which must redden
+    expect(bareTokens("style: { borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2)' }")).toHaveLength(1)
+  })
+
+  test("R2-F1: every field is the host's `.field` — flex column, gap 6px, 12px 0, separator after the first", async () => {
+    /** This arm's rendered tree. */
+    const tree = await renderReady()
+    /** Every knob the card declares, in declaration order. */
+    const fields = CARD.FIELDS as CardField[]
+    expect(fields).toHaveLength(26)
+    /** One rendered row per knob (a missing row is a failure, never a skip). */
+    const rows = fields.map((field) => rowOf(tree, field.path.join(".")))
+    expect(rows.filter((row) => row === undefined)).toEqual([])
+    expect(styleOf(rows[0])).toMatchObject({ display: "flex", flexDirection: "column", gap: 6, padding: "12px 0" })
+    // the FIRST field carries no separator; every field after it carries `.field + .field`
+    expect(styleOf(rows[0]).borderTop).toBeUndefined()
+    for (const row of rows.slice(1)) expect(styleOf(row).borderTop).toBe("0.5px solid var(--dsw-alias-border-l2, #0000001a)")
+    expect(rows.slice(1)).toHaveLength(25)
+  })
+
+  test("R2-F2: the label is 13px/500 primary over a 12px/1.5 tertiary hint", async () => {
+    /** This arm's rendered tree. */
+    const tree = await renderReady()
+    /** A row whose knob carries a human sentence, so its hint is the sentence + dotted key pair. */
+    const row = rowOf(tree, "watchdog.toolInFlightMaxMs")
+    /** The row's four children: the label, the hint block, the control, the reset note. */
+    const [label, hintBlock] = row!.props.children as ElementNode[]
+    expect(styleOf(label)).toMatchObject({ fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: "var(--dsw-alias-label-primary, #1c1c1e)" })
+    /** The human sentence and the dotted key beneath it. */
+    const [human, pointer] = hintBlock.props.children as ElementNode[]
+    expect(styleOf(human)).toMatchObject({ fontSize: 12, lineHeight: 1.5, color: "var(--dsw-alias-label-tertiary, #8a94a6)" })
+    expect(styleOf(pointer).fontSize as number).toBeLessThan(styleOf(human).fontSize as number)
+    expect(styleOf(pointer).color).toBe("var(--dsw-alias-label-tertiary, #8a94a6)")
+    // a knob with no sentence keeps the SINGLE hint span it always had, now at the hint size
+    /** The knob whose hint is the dotted key alone. */
+    const bare = rowOf(tree, "hashline.maxDiffChars")
+    /** The bare row's hint block, its second child. */
+    const bareHint = (bare!.props.children as ElementNode[])[1]
+    expect(Array.isArray(bareHint.props.children)).toBe(false)
+    expect(styleOf(bareHint)).toMatchObject({ fontSize: 12, lineHeight: 1.5, color: "var(--dsw-alias-label-tertiary, #8a94a6)" })
+  })
+
+  test("R2-C1: the control is the host's `.input` and its focus state is the host's own rule", async () => {
+    /** This arm's rendered tree. */
+    const tree = await renderReady()
+    /** The text control of a scalar knob. */
+    const input = controlOf(tree, "hashline.maxDiffChars")
+    expect(input?.type).toBe("input")
+    expect(styleOf(input)).toMatchObject({
+      boxSizing: "border-box",
+      width: "100%",
+      height: 34,
+      padding: "0 12px",
+      border: "0.5px solid var(--dsw-alias-border-l4, #00000029)",
+      borderRadius: "var(--dsw-radius-md, 12px)",
+      background: "var(--dsw-alias-bg-layer-3, #fff)",
+      fontSize: 13,
+      color: "var(--dsw-alias-label-primary, #1c1c1e)",
+    })
+    /** The style bag the focus pair paints into (a DOM element's own `style`). */
+    const painted: Record<string, string> = {}
+    fire(input, "onFocus", painted)
+    expect(painted.borderColor).toBe("var(--dsw-alias-state-business-primary, #4d6bfe)")
+    expect(painted.outline).toBe("none") // the host's `.input:focus-visible` opts out of the ring
+    fire(input, "onBlur", painted)
+    expect(painted.borderColor).toBe("")
+    expect(painted.outline).toBe("")
+    // a picker is the same bag, plus the host's own pointer cursor for a select
+    /** The scalar select knob's control. */
+    const select = controlOf(tree, "memory.vcs")
+    expect(select?.type).toBe("select")
+    expect(styleOf(select)).toMatchObject({ height: 34, borderRadius: "var(--dsw-radius-md, 12px)", cursor: "pointer" })
+    // a control the page refuses writes on takes the host's `.input:disabled` greying, and stays a
+    // control (the field rhythm, the bag and the attributes are the same ones)
+    /** The same card rendered under the read-only scope. */
+    const readOnly = await renderReady({ status: "unavailable", mode: "memory", writable: false, revision: undefined, value: undefined, user: undefined })
+    /** The read-only text control. */
+    const offControl = controlOf(readOnly, "hashline.maxDiffChars")
+    expect(offControl?.props.disabled).toBe(true)
+    expect(styleOf(offControl)).toMatchObject({ color: "var(--dsw-alias-label-tertiary, #8a94a6)", height: 34, borderRadius: "var(--dsw-radius-md, 12px)" })
+  })
+
+  test("R2-C2: the footer is the host's `.footer` and its three actions carry the radius", async () => {
+    /** This arm's rendered tree. */
+    const tree = await renderReady()
+    /** The footer: the one flex row with 16px above it. */
+    const footer = elementsOf(tree, "div").find((node) => styleOf(node).paddingTop === 16)
+    expect(styleOf(footer)).toMatchObject({ display: "flex", alignItems: "center", gap: 8, paddingTop: 16 })
+    /** The primary save action. */
+    const save = buttonOf(tree, EN["save"])
+    expect(styleOf(save)).toMatchObject({
+      borderRadius: "var(--dsw-radius-md, 12px)",
+      padding: "5px 14px",
+      fontSize: 13,
+      background: "var(--dsw-alias-label-primary, #1c1c1e)",
+      color: "var(--dsw-alias-bg-layer-3, #fff)",
+    })
+    // `.save:disabled` dims to 0.4 — a clean READY render has nothing staged, so it IS disabled
+    expect(save?.props.disabled).toBe(true)
+    expect(styleOf(save).opacity).toBe(0.4)
+    /** The secondary discard action. */
+    const discard = buttonOf(tree, EN["discard"])
+    expect(styleOf(discard)).toMatchObject({
+      borderRadius: "var(--dsw-radius-md, 12px)",
+      border: "0.5px solid var(--dsw-alias-border-l3, #0000001f)",
+      background: "transparent",
+    })
+    /** The style bag the discard's hover paints into (`.button.outline:hover`). */
+    const wash: Record<string, string> = {}
+    fire(discard, "onMouseEnter", wash)
+    expect(wash.background).toBe("var(--dsw-alias-interactive-bg-hover, #2631480f)")
+    fire(discard, "onMouseLeave", wash)
+    expect(wash.background).toBe("transparent")
+    // the reset affordance is a LINK, not a second button: no chrome, 12px, label-secondary
+    /** The rows' reset link. */
+    const reset = buttonOf(tree, EN["reset"])
+    expect(styleOf(reset)).toMatchObject({ border: "none", background: "none", fontSize: 12, color: "var(--dsw-alias-label-secondary, #5b6472)" })
+    /** The style bag the reset link's hover paints into (`.reset:hover`). */
+    const hovered: Record<string, string> = {}
+    fire(reset, "onMouseEnter", hovered)
+    expect(hovered.color).toBe("var(--dsw-alias-label-primary, #1c1c1e)")
+    fire(reset, "onMouseLeave", hovered)
+    expect(hovered.color).toBe("var(--dsw-alias-label-secondary, #5b6472)")
+  })
+
+  test("R2-D1: the disclosure is ONE `.help` block — the SAME four sentences, hint-sized, 8px apart", async () => {
+    /** This arm's rendered tree. */
+    const tree = await renderReady()
+    /** The disclosure block: the one flex column with 8px between its parts and a 10px top pad. */
+    const blocks = elementsOf(tree, "div").filter((node) => styleOf(node).flexDirection === "column" && styleOf(node).gap === 8 && styleOf(node).paddingTop === 10)
+    expect(blocks).toHaveLength(1)
+    /** The four paragraphs, in the order the section states them. */
+    const paragraphs = blocks[0].props.children as ElementNode[]
+    expect(paragraphs.map((p) => p.props["data-mpd-disclosure"])).toEqual(["bridge", "restart", "not-lost", "workspace"])
+    for (const p of paragraphs) expect(styleOf(p)).toMatchObject({ margin: 0, fontSize: 12, lineHeight: 1.6, color: "var(--dsw-alias-label-tertiary, #8a94a6)" })
+    /** The four sentences, as rendered. */
+    const sentences = paragraphs.map((p) => textOf(p))
+    // NOTHING was dropped or shortened: each paragraph is present and still says what it said — a
+    // save is written to the file AND the behaviour change waits for a restart
+    expect(sentences.every((sentence) => sentence.length > 0)).toBe(true)
+    expect(sentences[0]).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
+    expect(sentences[0]).toContain("after a restart")
+    expect(sentences[1]).toContain("host-limited")
+    expect(sentences[2]).toContain("never lost")
+    expect(sentences[3]).toContain("if no session is live")
+    // and it reads as a NOTE beside the fields, not as a second body of prose: the title and the
+    // description keep their own sizes above it
+    expect(styleOf(elementsOf(tree, "h3")[0])).toMatchObject({ fontSize: 16, fontWeight: 500, color: "var(--dsw-alias-label-primary, #1c1c1e)" })
+    expect(styleOf(elementsOf(tree, "p")[0])).toMatchObject({ fontSize: 14, color: "var(--dsw-alias-label-secondary, #5b6472)" })
+  })
+
+  test("R2 NEGATIVE CONTROL: the styled predicates redden on the PRE-restyle presentation", async () => {
+    /** This arm's rendered tree. */
+    const tree = await renderReady()
+    /** A rendered row, which must NOT carry the old block-shaped field bag. */
+    const row = rowOf(tree, "hashline.maxDiffChars")
+    expect(styleOf(row)).not.toMatchObject({ display: "block", margin: "8px 0" })
+    expect(styleOf(row).padding).not.toBe("8px 0")
+    expect(styleOf(row).borderRadius).toBeUndefined()
+    /** The pre-restyle field bag, so the rejection above is demonstrably falsifiable. */
+    const legacy: Record<string, string | number> = { display: "block", margin: "8px 0", borderRadius: 8 }
+    expect(legacy).toMatchObject({ display: "block", margin: "8px 0" })
+    expect(legacy.borderRadius).toBe(8)
+    // the token scan finds the bare read the pre-restyle card shipped, and finds NONE in this one
+    expect(bareTokens("style: { border: '1px solid var(--dsw-alias-border-l2)' }")).toEqual(["var(--dsw-alias-border-l2)"])
+    expect(bareTokens(JSON.stringify(styleOf(elementsOf(tree, "input")[0])))).toEqual([])
   })
 })
