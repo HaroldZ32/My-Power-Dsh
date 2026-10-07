@@ -80,6 +80,7 @@ import {
   losslessSummary,
   memberProgress,
   readTeam,
+  recordNamesMember,
   summariseTeam,
   taskDepths,
   taskVisual,
@@ -158,6 +159,22 @@ export interface WatchdogHoldRead {
   state: "held" | "free" | "not-readable"
   /** Why, for `held` and `not-readable`; absent for `free`. */
   reason?: string
+}
+
+/**
+ * What a session's team resolution answered: the team, or the sentence that says why none resolved.
+ *
+ * TWO FIELDS RATHER THAN `TeamRecord | undefined`, because the two ways of resolving nothing are
+ * different facts and a caller must be able to say which one it hit: a session with NO team at all
+ * gets the standing `approve a plan first` sentence, while a session that is a member of MORE THAN
+ * ONE team gets a refusal naming the ambiguity — guessing there would silently bind a board action to
+ * the wrong team. `record` is present exactly when the resolution was unique.
+ */
+interface TeamResolution {
+  /** The one team this session belongs to; absent when nothing (or more than one thing) resolved. */
+  record?: TeamRecord
+  /** Why nothing resolved, already a sentence a refusal quotes; absent when a record did resolve. */
+  refusal?: string
 }
 
 /** The dispatch ledger path: `<workspace>/.mpd/team/dispatch.json`. */
@@ -346,29 +363,66 @@ export function apply(ctx: any): void {
   /**
    * The mpd team record bound to one session — the team itself, once one has been approved.
    *
-   * The index is the fast path; when it is missing (a hand-removed `teams.json`, a workspace copied
-   * without it, a record written by another surface) the newest record whose `leadSessionId` is
-   * this session answers instead, so the team is never lost to a bookkeeping file. Returns
-   * `undefined` — never throws — so a status render cannot be taken down by a bad record.
+   * THREE ARMS, IN THIS ORDER, so nothing that resolved before changes meaning:
+   *   1. THE BOUND INDEX (the fast path) — the id `approve` wrote for this session.
+   *   2. THE RECORDED LEAD — when the index is missing (a hand-removed `teams.json`, a workspace copied
+   *      without it, a record written by another surface) the newest record whose `leadSessionId` is
+   *      this session answers instead, so the team is never lost to a bookkeeping file.
+   *   3. THE RECORDED MEMBER (defect D5a) — a teammate is neither the index's key nor any record's lead,
+   *      so before this arm existed a MEMBER resolved nothing and every board action refused with
+   *      `no team record in this workspace — approve a plan first`; MEASURED on a real session during
+   *      the tui-dag-highlight wave, where a member could claim a task but never close its own row.
+   *      The roster read is the DURABLE one (`recordNamesMember` matches the member's recorded handle
+   *      and name), never a guess from the session's shape.
+   *
+   * AMBIGUITY IS REFUSED, NOT GUESSED: a session recorded on the roster of more than one team resolves
+   * NONE and says so, because binding a board write to the wrong team is worse than refusing it.
+   *
+   * Never throws — a status render cannot be taken down by a bad record.
    * @param workspace - the workspace to read.
-   * @param sessionId - the Lead session whose team is wanted.
-   * @returns the record, or undefined when this session has no team.
+   * @param sessionId - the session whose team is wanted.
+   * @returns the resolution; see {@link TeamResolution}.
    */
-  const recordFor = (workspace: string, sessionId: string): TeamRecord | undefined => {
+  const resolveTeam = (workspace: string, sessionId: string): TeamResolution => {
     try {
       /** The bound team id, when the index still carries one. */
       const bound = activeTeamId(workspace, sessionId)
       if (bound !== undefined) {
         /** The bound record, which may have been deleted out from under the index. */
         const record = readTeam(workspace, bound)
-        if (record !== undefined) return record
+        if (record !== undefined) return { record }
       }
+      /** Every team this workspace holds, newest first. */
+      const teams = listTeams(workspace)
       // Newest first, so a session that approved several waves gets its LATEST team.
-      return listTeams(workspace).find((record) => record.leadSessionId === sessionId)
+      /** The newest team this session LEADS, if any. */
+      const leading = teams.find((record) => record.leadSessionId === sessionId)
+      if (leading !== undefined) return { record: leading }
+      /** Every team whose durable roster names this session as a member. */
+      const memberOf = teams.filter((record) => recordNamesMember(record, [sessionId]))
+      if (memberOf.length === 1) return { record: memberOf[0] }
+      if (memberOf.length > 1) {
+        return {
+          refusal: `this session is on the roster of ${memberOf.length} teams in this workspace (${memberOf.map((record) => record.teamId).join(", ")}) and the record does not say which one it works on — run this from the team's lead session, or remove the duplicate roster entry`,
+        }
+      }
+      return {}
     } catch {
-      return undefined
+      return {}
     }
   }
+
+  /**
+   * The team bound to one session, or `undefined` when it has none — the reading a RENDER takes.
+   *
+   * The sentence-carrying form is {@link resolveTeam}; this one is the same resolution with the
+   * refusal dropped, for the callers that only draw (the `mpdTeams` service, the status payload, the
+   * mailbox roster) and have nothing to refuse.
+   * @param workspace - the workspace to read.
+   * @param sessionId - the session whose team is wanted.
+   * @returns the record, or undefined when this session has no single team.
+   */
+  const recordFor = (workspace: string, sessionId: string): TeamRecord | undefined => resolveTeam(workspace, sessionId).record
 
   // ── the mpd team read surface: THE seam every other mpd plugin reads ────────
   // Published before the tools so a consumer that resolves the service during this row's own
@@ -819,9 +873,13 @@ export function apply(ctx: any): void {
         // from mpd's own team, so a contract can be frozen in a composition where no backend board
         // exists at all. The `revision` the contract freezes is the record's own, which moves on
         // every mpd mutation and never on somebody else's.
-        /** The team this call works on, or a refusal naming what is missing. */
-        const record = recordFor(workspace, sessionIdOf(exec))
-        if (record === undefined) throw new Error("no team record in this workspace — approve a plan first")
+        // THE SPECIFIC SENTENCE WHERE THERE IS ONE: an ambiguous roster gets the refusal that names the
+        // teams instead of the standing "approve a plan first", which would be a lie about the cause.
+        /** The team this call works on, or the sentence saying why none resolved. */
+        const resolved = resolveTeam(workspace, sessionIdOf(exec))
+        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
+        /** The team this call works on. */
+        const record = resolved.record
         /** The task being claimed. */
         const task = record.tasks.find((candidate) => candidate.id === String(args?.task_id ?? ""))
         if (task === undefined) throw new Error(`no task "${String(args?.task_id ?? "")}" in team ${record.teamId}`)
@@ -851,9 +909,13 @@ export function apply(ctx: any): void {
         // their activation needs), so this board is the only board — and a board whose rows never reach
         // a terminal state can never satisfy a dependency, so `agent_teams_dispatch` could not pair a
         // blocked task and the whole DAG was frozen. MEASURED on this wave's own board.
-        /** The team this call works on, or a refusal naming what is missing. */
-        const record = recordFor(workspace, sessionIdOf(exec))
-        if (record === undefined) throw new Error("no team record in this workspace — approve a plan first")
+        // THE SPECIFIC SENTENCE WHERE THERE IS ONE: an ambiguous roster gets the refusal that names the
+        // teams instead of the standing "approve a plan first", which would be a lie about the cause.
+        /** The team this call works on, or the sentence saying why none resolved. */
+        const resolved = resolveTeam(workspace, sessionIdOf(exec))
+        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
+        /** The team this call works on. */
+        const record = resolved.record
         /** The task to close. */
         const taskId = String(args?.task_id ?? "")
         if (taskId === "") throw new Error(`agent_teams_task ${action}: task_id is required`)
@@ -967,11 +1029,13 @@ export function apply(ctx: any): void {
       // works in a composition where the official service cannot mount — which is the whole point
       // of owning the record — and the readiness rule is the store's own OPT-1 rule rather than a
       // projection of somebody else's.
-      /** The team this pass dispatches, or a refusal naming what is missing. */
-      let record = recordFor(workspace, sessionIdOf(exec))
-      if (record === undefined) return { pairs: [], skipped: [], refused: "no team record in this workspace — approve a plan first" }
-      // Bound to a const so the narrowing survives into the two closures below: `record` is
-      // reassigned as pairs are accepted, and a captured `let` would widen back to `| undefined`.
+      /** The team this pass dispatches, or the sentence saying why none resolved. */
+      const resolvedDispatch = resolveTeam(workspace, sessionIdOf(exec))
+      if (resolvedDispatch.record === undefined) return { pairs: [], skipped: [], refused: resolvedDispatch.refusal ?? "no team record in this workspace — approve a plan first" }
+      /** The team this pass dispatches. */
+      let record: TeamRecord = resolvedDispatch.record
+      // Bound to a const because `record` is REASSIGNED as pairs are accepted, so a captured `let`
+      // would change under the two closures below; the tip carries its own `TeamRecord` annotation.
       /** The team as this pass read it. */
       const opened: TeamRecord = record
       /** The tasks this pass may dispatch, by the store's own OPT-1 readiness rule. */

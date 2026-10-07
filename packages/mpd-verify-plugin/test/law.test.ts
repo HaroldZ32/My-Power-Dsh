@@ -11,16 +11,19 @@ import { join } from "node:path"
 
 import {
   captainWriteDecision,
+  DEFAULT_CONTRACT_PATH,
   gitWriteSubcommand,
   gitWriterDecision,
   classifyWriteTarget,
+  loopContractPath,
+  normalizeContractPath,
   pathInScope,
   resolvePositiveInt,
   resolveVerifyMode,
   sessionKeyOf,
   verifierEnvelopeDecision,
 } from "../src/law.ts"
-import type { ArmedLoopView, VerifierSeatView } from "../src/law.ts"
+import type { ArmedLoopView, EnvelopeDecision, VerifierSeatView } from "../src/law.ts"
 import { buildRecord, REFUSAL, validateVerificationRecord } from "../src/record.ts"
 import type { ValidationContext, VerificationRecord } from "../src/record.ts"
 import { appendEscape, readEscapes, readLoops, writeLoop, writeSeats, readSeats, mintId, sha256File, verifyRoot } from "../src/ledger.ts"
@@ -272,10 +275,74 @@ describe("the verifier's envelope", () => {
     expect(decision.deny).toBeUndefined()
     expect(decision.countedRead).toBe(true)
   })
+  // AC-D3 — THE OPENED BAND, both directions on the SAME blind seat: the captain's ruling of 2026-10-07
+  // admits a package's README pair and everything under `evidence/**`, and keeps every implementation
+  // path refused. A widened band that also let `src/**` through would be a defect, not a ruling, so the
+  // refusals are asserted beside the allowances.
+  test("AC-D3: a BLIND seat may read a package README and evidence/**, and NOT src/**, test/** or a non-README package doc", () => {
+    /**
+     * The envelope's decision for one path, read by a BLIND seat in the sandbox workspace.
+     *
+     * @param path - the workspace-relative path the read names.
+     * @returns the decision; `deny` is present exactly when the band refuses the path.
+     */
+    const blind = (path: string): EnvelopeDecision => verifierEnvelopeDecision({ toolName: "read", args: { file_path: path }, workspaceRoot: ws, seat: seat(false) })
+    // ALLOWED: both README spellings, the evidence band's directory and a file inside it.
+    expect(blind("packages/mpd-verify-plugin/README.md").deny).toBeUndefined()
+    expect(blind("packages/mpd-verify-plugin/README.zh-CN.md").deny).toBeUndefined()
+    expect(blind("evidence/gates/verify-law/20261007T000000Z/output.log").deny).toBeUndefined()
+    expect(blind("evidence").deny).toBeUndefined()
+    // REFUSED: the implementation, its tests, and a package document that is not the README pair.
+    expect(blind("packages/mpd-verify-plugin/src/law.ts").deny).toBeDefined()
+    expect(blind("packages/mpd-verify-plugin/test/law.test.ts").deny).toBeDefined()
+    expect(blind("packages/mpd-verify-plugin/CHANGELOG.md").deny).toBeDefined()
+    expect(blind("scripts/verify-law.ts").deny).toBeDefined()
+    // AND THE README ALLOWANCE IS NOT A DOOR INTO A PACKAGE DIRECTORY: `grep` over `packages/a` would
+    // search `src/**` on the way, so the package DIRECTORY stays outside the band.
+    expect(verifierEnvelopeDecision({ toolName: "grep", args: { pattern: "guard", path: "packages/mpd-verify-plugin" }, workspaceRoot: ws, seat: seat(false) }).deny).toBeDefined()
+    // THE WIDENED BAND IS NOT A WAY OUT OF ITSELF: a spelling that starts inside an allowed band and walks
+    // back out with a `..` is refused, on both a band this test opened and a band that predates it.
+    expect(blind("evidence/../packages/mpd-verify-plugin/src/law.ts").deny).toBeDefined()
+    expect(blind("docs/../packages/mpd-verify-plugin/src/law.ts").deny).toBeDefined()
+    // The unlocked seat reads the same documents — the band widens what is a DOCUMENT, it is not a
+    // blind-only gate, and it never turns a README into an implementation read.
+    expect(verifierEnvelopeDecision({ toolName: "read", args: { file_path: "packages/mpd-verify-plugin/README.md" }, workspaceRoot: ws, seat: seat(true) }).deny).toBeUndefined()
+  })
   test("writes are confined to .mpd/verify/**: a verifier never fixes what it found", () => {
     expect(verifierEnvelopeDecision({ toolName: "write", args: { file_path: ".mpd/verify/notes.txt" }, workspaceRoot: ws, seat: seat(false) }).deny).toBeUndefined()
     expect(verifierEnvelopeDecision({ toolName: "edit", args: { file_path: "packages/a/src/index.ts" }, workspaceRoot: ws, seat: seat(false) }).deny).toBeDefined()
     expect(verifierEnvelopeDecision({ toolName: "write", args: { file_path: "docs/index.md" }, workspaceRoot: ws, seat: seat(false) }).deny).toBeDefined()
+  })
+})
+
+// AC-D2 (the pure half) — THE CONTRACT IS THE LOOP'S, and the fallback is DECLARED rather than inherited
+// from whichever wave ran last. The row-level arms in `row.test.ts` prove the seat and the record READ
+// this resolution; these arms prove the resolution itself, including that the declared default is not a
+// plan file at all.
+describe("the loop's frozen contract (AC-D2)", () => {
+  test("a loop's own contract wins, normalised to the workspace-relative POSIX spelling", () => {
+    expect(loopContractPath({ contract: ".mpd/plans/verify-law-defects.md" })).toBe(".mpd/plans/verify-law-defects.md")
+    expect(loopContractPath({ contract: "./.mpd/plans/tui-dag-highlight.md" })).toBe(".mpd/plans/tui-dag-highlight.md")
+    expect(loopContractPath({ contract: "  .mpd/plans/x.md/  " })).toBe(".mpd/plans/x.md")
+  })
+  test("a contract-less loop falls back to the DECLARED default, which is never a wave's plan file", () => {
+    // The loop file an older revision wrote, `undefined`, and a contract that normalises to nothing.
+    expect(loopContractPath({})).toBe(DEFAULT_CONTRACT_PATH)
+    expect(loopContractPath(undefined)).toBe(DEFAULT_CONTRACT_PATH)
+    expect(loopContractPath({ contract: "" })).toBe(DEFAULT_CONTRACT_PATH)
+    expect(loopContractPath({ contract: " . " })).toBe(DEFAULT_CONTRACT_PATH)
+    // THE DEFECT THIS REPLACES: the compiled-in pair handed every wave the de-vendor wave's plan. The
+    // declared default must not be a plan file at all, and must not name either member of that pair.
+    expect(DEFAULT_CONTRACT_PATH.startsWith(".mpd/plans/")).toBe(false)
+    expect(DEFAULT_CONTRACT_PATH).not.toContain("de-vendor-and-verify-law")
+    expect(DEFAULT_CONTRACT_PATH).not.toContain("verify-law-spec")
+  })
+  test("normalizeContractPath refuses everything that is not a usable path", () => {
+    expect(normalizeContractPath(undefined)).toBeUndefined()
+    expect(normalizeContractPath("")).toBeUndefined()
+    expect(normalizeContractPath(".")).toBeUndefined()
+    expect(normalizeContractPath(42)).toBeUndefined()
+    expect(normalizeContractPath("docs/")).toBe("docs")
   })
 })
 
@@ -351,11 +418,39 @@ describe("the record validator: every refusal, and the admissible record beside 
       findings: [{ id: "F1", severity: "blocker", symptom: "the gate is red", expected: "green", docSource: "docs/feature-audit.md" }],
     }, context()).ok).toBe(true)
   })
-  test("blind-spent: a seat that already unlocked diagnosis can only FAIL", () => {
-    /** The decision under test, or its refusal. */
-    const outcome = validateVerificationRecord(goodRecord(), context({ seatUnlocked: true }))
-    expect(outcome.ok).toBe(false)
-    if (!outcome.ok) expect(outcome.reason).toBe(REFUSAL.blindSpent)
+  // AC-D4 — THE RATCHET IS JUDGED FROM THE OBSERVATION LOG, in all three directions: an unlocked seat
+  // with a CLEAN log may record the PASS; an unlocked seat whose log NAMES an implementation read may
+  // not, and the refusal names it; and a FAIL is never barred by the rule (its own message says so).
+  test("AC-D4 blind-spent: judged from the LOG — clean log admits the PASS, a logged read refuses it BY NAME", () => {
+    // THE POSITIVE ARM: one FAIL already unlocked this seat, and its window was never used, so the log
+    // shows no implementation read and the PASS is admissible.
+    expect(validateVerificationRecord(goodRecord(), context({ seatUnlocked: true, loggedImplementationReads: [] })).ok).toBe(true)
+    // The legacy shape of the context (the field simply absent) behaves the same way: a caller that does
+    // not know about the log has shown no read, which is exactly "no logged read".
+    expect(validateVerificationRecord(goodRecord(), context({ seatUnlocked: true })).ok).toBe(true)
+    // THE NEGATIVE CONTROL: the plugin's own log names what it saw, and a PASS cannot rest on a spent
+    // basis. The refusal must NAME the logged read — "it was refused" is the claim AC-D4 replaces.
+    const spent = validateVerificationRecord(goodRecord(), context({
+      seatUnlocked: true,
+      loggedImplementationReads: ["packages/mpd-verify-plugin/src/record.ts"],
+    }))
+    expect(spent.ok).toBe(false)
+    if (!spent.ok) {
+      expect(spent.reason).toBe(REFUSAL.blindSpent)
+      expect(spent.detail).toContain("packages/mpd-verify-plugin/src/record.ts")
+      expect(spent.detail).toContain("observation log")
+    }
+    // A SEAT THAT NEVER UNLOCKED IS REFUSED TOO when its log shows a read: the rule is the READ, not the
+    // flag, so removing the flag from the trigger cannot open a hole on the other side.
+    const readBeforeVerdict = validateVerificationRecord(goodRecord(), context({ seatUnlocked: false, loggedImplementationReads: ["packages/a/src/index.ts"] }))
+    expect(readBeforeVerdict.ok).toBe(false)
+    if (!readBeforeVerdict.ok) expect(readBeforeVerdict.reason).toBe(REFUSAL.blindSpent)
+    // THE OTHER DIRECTION ON THE VERDICT AXIS: the SAME spent seat may still record a FAIL, which is what
+    // "it can only record further FAILs" always claimed and the flag-based rule never allowed.
+    expect(validateVerificationRecord({
+      ...goodRecord(), verdict: "FAIL" as const, sources: [], gateEvidence: [],
+      findings: [{ id: "F1", severity: "blocker", symptom: "still red", expected: "green", docSource: "docs/feature-audit.md" }],
+    }, context({ seatUnlocked: true, loggedImplementationReads: ["packages/a/src/index.ts"] })).ok).toBe(true)
   })
   test("unknown-loop: a record naming a loop this workspace does not know is refused", () => {
     /** The decision under test, or its refusal. */

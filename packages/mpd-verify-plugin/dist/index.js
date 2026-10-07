@@ -1626,6 +1626,36 @@ var DEFAULT_CODE_EXTENSIONS = [
 ];
 var CODE_BASENAMES = ["Dockerfile", "Makefile"];
 var ALWAYS_WRITABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
+var VERIFIER_DOC_PREFIXES = [".mpd/plans/", "docs/", "agent-references/", ".mpd/verify/", "evidence/"];
+var VERIFIER_README_PATTERN = /^packages\/[^/]+\/README(?:\.zh-CN)?\.md$/;
+var DEFAULT_CONTRACT_PATH = "AGENTS.md";
+function loopContractPath(loop) {
+  const named = normalizeContractPath(loop?.contract);
+  return named === undefined ? DEFAULT_CONTRACT_PATH : named;
+}
+function normalizeContractPath(raw) {
+  if (typeof raw !== "string")
+    return;
+  const normalized = stripLeadingDot(toPosix(raw.trim())).replace(/\/+$/, "");
+  return normalized === "" || normalized === "." ? undefined : normalized;
+}
+var VERIFIER_WRITE_PREFIX = ".mpd/verify/";
+var VERIFIER_DENIED_TOOLS = [
+  "bash",
+  "powershell",
+  "pwsh",
+  "mcp__ast_grep__rewrite",
+  "mcp__ast_grep__scan",
+  "mcp__lsp__rename",
+  "mcp__codegraph__codegraph_explore",
+  "mcp__lsp__diagnostics",
+  "mcp__lsp__goto_definition",
+  "mcp__lsp__find_references",
+  "mcp__lsp__symbols",
+  "mcp__lsp__prepare_rename"
+];
+var VERIFIER_DENIED_PREFIXES = ["agent_teams_", "mpd_", "spawn_teammate", "team_task_", "team_"];
+var VERIFY_TOOL_PREFIX = "mpd_verify_";
 var PATH_ARG_KEYS = ["file_path", "path", "filePath", "target"];
 function readTargetPath(toolName, args) {
   if (toolName === "mcp__ast_grep__rewrite") {
@@ -1677,6 +1707,54 @@ function toPosix(value) {
 }
 function stripLeadingDot(value) {
   return value.startsWith("./") ? value.slice(2) : value;
+}
+function verifierEnvelopeDecision(input) {
+  const seat = input.seat;
+  if (seat === undefined)
+    return {};
+  const tool = String(input.toolName ?? "");
+  if (VERIFIER_DENIED_TOOLS.includes(tool)) {
+    return { deny: "verification law: a bound VERIFIER seat may not call `" + tool + "`. The verifier works from the" + " frozen contract and the documentation and proves its verdict with mpd_verify_evidence" + " (a whitelisted gate runner and a content-free artifact probe). Shell access, source-returning" + " tools and every board/team mutation are outside the envelope." };
+  }
+  if (VERIFIER_DENIED_PREFIXES.some((prefix) => tool.startsWith(prefix)) && !tool.startsWith(VERIFY_TOOL_PREFIX)) {
+    return { deny: "verification law: a bound VERIFIER seat may not call `" + tool + "` — staging, dispatching or" + " mutating a team is not verification. Use mpd_verify_evidence / mpd_verify_record." };
+  }
+  const raw = readTargetPath(tool, input.args);
+  const isRead = tool === "read" || tool === "glob" || tool === "grep";
+  const isWrite = tool === "write" || tool === "edit" || tool === "mpd_hashline_edit";
+  if (isWrite) {
+    const target2 = classifyWriteTarget(input.workspaceRoot, raw);
+    if (target2.kind !== "pass" && target2.rel !== undefined && target2.rel.startsWith(VERIFIER_WRITE_PREFIX) && target2.outside !== true)
+      return {};
+    return { deny: "verification law: a bound VERIFIER seat may only write under `" + VERIFIER_WRITE_PREFIX + "` (the tool" + " writes the verification record itself). A verifier never fixes what it found — record the finding and a" + " FAIL bounces the work back to a writer as a repair task." };
+  }
+  if (!isRead)
+    return {};
+  if (raw === undefined) {
+    return { deny: "verification law: a bound VERIFIER seat must NAME the path it reads while it is blind — a bare" + " `" + tool + "` would search the whole workspace, implementation included. Name one of the frozen docs or a" + " path under " + VERIFIER_DOC_PREFIXES.map((prefix) => "`" + prefix + "`").join(", ") + ". After a recorded FAIL" + " the ratchet unlocks implementation reading for diagnosis only." };
+  }
+  const target = classifyWriteTarget(input.workspaceRoot, raw);
+  if (target.kind === "pass")
+    return {};
+  if (isAllowedVerifierRead(target, seat))
+    return seat.unlocked ? { countedRead: true } : {};
+  if (seat.unlocked)
+    return { countedRead: true };
+  return { deny: "verification law: a bound VERIFIER seat may not read " + JSON.stringify(target.rel ?? target.raw) + " while it is BLIND. Record your verdict with mpd_verify_record first, from the frozen contract and the docs:" + " the blindness requirement is that the verdict precedes any implementation read, and reading first makes the" + " verification unprovable. A recorded FAIL unlocks implementation reading for diagnosis, counted." };
+}
+function isAllowedVerifierRead(target, seat) {
+  if (target.rel === undefined || target.outside === true)
+    return false;
+  if (target.rel.split("/").includes(".."))
+    return false;
+  if (VERIFIER_DOC_PREFIXES.some((prefix) => target.rel.startsWith(prefix) || target.rel === prefix.replace(/\/$/, "")))
+    return true;
+  if (VERIFIER_README_PATTERN.test(target.rel))
+    return true;
+  return seat.docPaths.some((doc) => {
+    const normalized = stripLeadingDot(toPosix(String(doc ?? "")));
+    return normalized !== "" && target.rel === normalized;
+  });
 }
 function sessionKeyOf(agent) {
   const view = agent;
@@ -1882,7 +1960,7 @@ var DELEGATION_TOOLS = [
 ];
 function createVerifyRuntime(options) {
   const calls = [];
-  const firstCodeRead = new Map;
+  const codeReads = new Map;
   const escapes = new Map;
   const counted = new Map;
   const delegations = [];
@@ -1893,6 +1971,32 @@ function createVerifyRuntime(options) {
     const created = new Map;
     counted.set(sessionId, created);
     return created;
+  };
+  const seatOf = (workspace, sessionId) => {
+    try {
+      const seat = readSeats(workspace).seats?.[sessionId];
+      if (seat === undefined)
+        return;
+      return {
+        loopId: String(seat.loopId ?? ""),
+        verifierId: String(seat.verifierId ?? sessionId),
+        unlocked: seat.unlocked === true,
+        docPaths: Array.isArray(seat.docPaths) ? seat.docPaths.map(String) : []
+      };
+    } catch {
+      return;
+    }
+  };
+  const recordImplementationRead = (sessionId, path, admitted, at) => {
+    const entries = codeReads.get(sessionId) ?? [];
+    const existing = entries.find((entry) => entry.path === path);
+    if (existing !== undefined) {
+      if (admitted)
+        existing.admitted = true;
+      return;
+    }
+    entries.push({ path, admitted, at });
+    codeReads.set(sessionId, entries);
   };
   return {
     keyOf(agent) {
@@ -1905,12 +2009,19 @@ function createVerifyRuntime(options) {
           return;
         const sessionId = sessionKeyOf(exec?.agent);
         const args = exec?.arguments;
+        const workspace = options.dsh.workspaceRoot(exec);
         const raw = readTargetPath(toolName, args);
-        const target = raw === undefined ? undefined : classifyWriteTarget(options.dsh.workspaceRoot(exec), raw);
+        const target = raw === undefined ? undefined : classifyWriteTarget(workspace, raw);
         const code = target?.kind === "code";
         calls.push({ sessionId, toolName, ...target?.rel === undefined ? {} : { path: target.rel }, code, at: new Date().toISOString() });
-        if (code && !firstCodeRead.has(sessionId))
-          firstCodeRead.set(sessionId, new Date().toISOString());
+        if (code && !GATED_WRITE_TOOLS.includes(toolName)) {
+          const named = target?.rel ?? String(raw ?? "");
+          const mode = resolveVerifyMode(options.configValue("verify.mode"));
+          const seat = seatOf(workspace, sessionId);
+          const refused = mode === "hard" && seat !== undefined && verifierEnvelopeDecision({ toolName, args, workspaceRoot: workspace, seat }).deny !== undefined;
+          if (named !== "")
+            recordImplementationRead(sessionId, named, !refused, new Date().toISOString());
+        }
         if (code && !GATED_WRITE_TOOLS.includes(toolName) && counted.has(sessionId)) {
           const reads = countedOf(sessionId);
           reads.set(target?.rel ?? String(raw ?? ""), (reads.get(target?.rel ?? String(raw ?? "")) ?? 0) + 1);
@@ -1918,7 +2029,10 @@ function createVerifyRuntime(options) {
       } catch {}
     },
     observedCodeRead(sessionId) {
-      return firstCodeRead.has(sessionId);
+      return (codeReads.get(sessionId) ?? []).some((entry) => entry.admitted);
+    },
+    observedImplementationReads(sessionId) {
+      return (codeReads.get(sessionId) ?? []).filter((entry) => entry.admitted).map((entry) => entry.path);
     },
     escapeUses(sessionId) {
       return escapes.get(sessionId) ?? 0;
@@ -1962,19 +2076,7 @@ function createVerifyRuntime(options) {
       }
     },
     seatFor(workspace, sessionId) {
-      try {
-        const seat = readSeats(workspace).seats?.[sessionId];
-        if (seat === undefined)
-          return;
-        return {
-          loopId: String(seat.loopId ?? ""),
-          verifierId: String(seat.verifierId ?? sessionId),
-          unlocked: seat.unlocked === true,
-          docPaths: Array.isArray(seat.docPaths) ? seat.docPaths.map(String) : []
-        };
-      } catch {
-        return;
-      }
+      return seatOf(workspace, sessionId);
     },
     observedDelegations() {
       return [...delegations];
@@ -2150,8 +2252,11 @@ function validateVerificationRecord(record, context) {
       return refuse(REFUSAL.postInstallClaim, "this record claims the pre-plugin basis but was created at " + JSON.stringify(record.createdAt) + ", which does not precede the law's first boot marker (" + JSON.stringify(context.bootInstalledAt) + "): the exemption closes the moment the guard is live");
     }
   }
-  if (context.seatUnlocked) {
-    return refuse(REFUSAL.blindSpent, "this verifier seat has already unlocked an implementation-reading window (a previous FAIL)," + " so it can only record further FAILs; a PASS must come from a fresh verifier that has not read the implementation");
+  if (record.verdict === "PASS") {
+    const spent = context.loggedImplementationReads ?? [];
+    if (spent.length > 0) {
+      return refuse(REFUSAL.blindSpent, "this seat's blindness is SPENT: the plugin's own observation log recorded " + spent.map((path) => JSON.stringify(path)).join(", ") + " as path(s) this verifier read" + (context.seatUnlocked ? ", inside a diagnosis window an earlier FAIL unlocked" : "") + ", so a PASS cannot rest on its blindness. A PASS must come from a fresh verifier that has read nothing;" + " from this seat a FAIL is still admissible, which is what keeps its diagnosis window open.");
+    }
   }
   if (record.verdict === "FAIL") {
     if (record.findings.length === 0) {
@@ -2234,7 +2339,7 @@ function registerVerifyTools(dsh, deps) {
 function openTool(deps) {
   return {
     name: "mpd_verify_open",
-    description: 'Open a delegation+verification LOOP. `writer:"self"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:"delegate"` records a loop whose writer is a member. A loop authorises nothing after `expiresAt`.',
+    description: 'Open a delegation+verification LOOP. `writer:"self"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:"delegate"` records a loop whose writer is a member. `contract` is the document THIS wave\'s verifier is handed (a workspace-relative path, e.g. `.mpd/plans/<wave>.md`); with none the loop falls back to the declared `' + DEFAULT_CONTRACT_PATH + "`. A loop authorises nothing after `expiresAt`.",
     parameters: {
       type: "object",
       properties: {
@@ -2242,6 +2347,7 @@ function openTool(deps) {
         self_write_reason: { type: "string", description: 'writer:"self" only: why this agent writes its own code. Required, echoed in the report.' },
         writer: { type: "string", enum: ["self", "delegate"], description: "Who writes. Defaults to `self`." },
         scope: { type: "array", items: { type: "string" }, description: "The paths this loop covers, relative to the workspace. EMPTY means the whole workspace." },
+        contract: { type: "string", description: "The wave contract this loop freezes for its verifier: a workspace-relative path (e.g. `.mpd/plans/verify-law-defects.md`). `mpd_verify_seat` hands the seat exactly this document and `mpd_verify_record` hashes it as the record's `basis.frozenContract`. With none, the declared default `" + DEFAULT_CONTRACT_PATH + "` applies — never a previous wave's plan." },
         task_id: { type: "string", description: "The board task this loop verifies, when it verifies one." },
         ttl_ms: { type: "number", description: "Loop lifetime in ms; defaults to 24h (verify.loopTtlMs)." }
       },
@@ -2263,12 +2369,14 @@ function openTool(deps) {
         return { refused: 'a writer:"self" loop requires `verifier` — an agent that is NOT the caller. The law is that code written by A is verified by a DIFFERENT agent B; a self-writer loop with no verifier would authorise writes nobody checks.' };
       }
       const ttlMs = resolvePositiveInt(args?.ttl_ms, resolvePositiveInt(deps.configValue("verify.loopTtlMs"), DEFAULT_LOOP_TTL_MS));
+      const contract = normalizeContractPath(args?.contract);
       const now = new Date;
       const loopId = mintId("loop");
       const loop = {
         version: 1,
         loopId,
         taskId: args?.task_id === undefined ? null : String(args.task_id),
+        ...contract === undefined ? {} : { contract },
         workspace,
         sessionId,
         writer: { kind: writerKind, id: writerKind === "self" ? sessionId : "delegate:pending", reason: writerKind === "self" ? reason : undefined },
@@ -2281,8 +2389,13 @@ function openTool(deps) {
       };
       if (!writeLoop(workspace, loop))
         return { refused: "the loop could not be written to " + join5(loopsDir(workspace), loopId + ".json") };
-      deps.log("opened loop " + loopId + " writer=" + loop.writer.kind + " verifier=" + loop.verifier.id);
-      return { loopId, writer: loop.writer, verifier: loop.verifier, scope: loop.scope, status: loop.status, expiresAt: loop.expiresAt };
+      deps.log("opened loop " + loopId + " writer=" + loop.writer.kind + " verifier=" + loop.verifier.id + " contract=" + loopContractPath(loop));
+      const writerView = {
+        kind: loop.writer.kind,
+        id: loop.writer.id,
+        ...typeof loop.writer.reason === "string" ? { reason: loop.writer.reason } : {}
+      };
+      return { loopId, writer: writerView, verifier: loop.verifier, scope: loop.scope, contract: loopContractPath(loop), status: loop.status, expiresAt: loop.expiresAt };
     }
   };
 }
@@ -2343,7 +2456,8 @@ function seatTool(deps) {
         return { refused: "this session (" + sessionId + ") is loop " + loop.loopId + "'s WRITER — a writer cannot verify its own work. Ask a different agent to take the seat." };
       }
       const seats = readSeats(workspace);
-      const docPaths = [...new Set([".mpd/plans/de-vendor-and-verify-law.md", ".mpd/plans/verify-law-spec.md"])];
+      const contract = loopContractPath(loop);
+      const docPaths = [...new Set([contract])];
       const seat = { loopId: loop.loopId, verifierId: sessionId, unlocked: seats.seats?.[sessionId]?.unlocked === true, docPaths };
       seats.version = 1;
       seats.seats = { ...seats.seats ?? {}, [sessionId]: seat };
@@ -2449,7 +2563,7 @@ function recordTool(deps) {
       const loop = readLoops(workspace).find((candidate) => candidate.loopId === loopId);
       const explicitBasis = typeof args?.basis_kind === "string" ? String(args.basis_kind) : "";
       const basisKind = explicitBasis === "pre-plugin" ? "pre-plugin" : explicitBasis === "unproven" ? "unproven" : explicitBasis === "blind" ? "blind" : deps.runtime.observedCodeRead(sessionId) ? "unproven" : "blind";
-      const contractPath = ".mpd/plans/de-vendor-and-verify-law.md";
+      const contractPath = loopContractPath(loop);
       const contractSha = sha256File(join5(workspace, contractPath));
       const sources = (Array.isArray(args?.sources) ? args.sources.map(String) : []).map((path) => sourceDoc(workspace, path)).filter((doc) => doc !== undefined);
       const produced = readEvidence(workspace).filter((row) => row.kind === "gate" && row.loopId === loopId);
@@ -2499,6 +2613,7 @@ function recordTool(deps) {
       const outcome = validateVerificationRecord(record, {
         producedEvidenceIds: produced.map((row) => String(row.evidenceId)),
         seatUnlocked: seat?.unlocked === true,
+        loggedImplementationReads: deps.runtime.observedImplementationReads(sessionId),
         loopKnown: loop !== undefined,
         ...readBootMarker(workspace) === undefined ? {} : { bootInstalledAt: readBootMarker(workspace) },
         ...contractSha === "" ? {} : { frozenContractSha: contractSha }
