@@ -83,3 +83,33 @@ here for the full body; where the two differ, the manual wins.
   tool output, web route or GUI ever exposes.
 - mpd: our naming prefix (my-power-dsh).
 - golden: graded benchmark task set in `tests/golden`.
+
+## verifier's envelope (long form)
+
+The tool and path boundary a BOUND VERIFIER SEAT works inside under the verification law (AGENTS.md §5,
+§13). It is enforced by the SAME `guardTool` install as the captain's write rule — the one extra install
+the `mpd-roles` row performs (`packages/mpd-roles-plugin/src/verify-guard.ts`), decided by the pure
+functions in `packages/mpd-verify-plugin/src/law.ts` and reading its state from the `mpdVerify` service
+PER CALL (never a module singleton: `bun build` inlines imports, so a singleton would exist twice).
+
+A seat is bound with `mpd_verify_seat {loop_id, role:"verifier"}`, which is idempotent and authoritative,
+and which REFUSES a caller that is the loop's own writer. From that moment:
+
+- **DENIED outright**: the shell (`bash`, `powershell`, `pwsh`); the source-returning tools
+  (`mcp__codegraph__codegraph_explore`, the whole `mcp__lsp__*` family, `mcp__ast_grep__rewrite`,
+  `mcp__ast_grep__scan`, `mcp__lsp__rename`); and every `agent_teams_*` / `mpd_*` board or team MUTATION —
+  with `mpd_verify_*` explicitly exempt, because those five tools ARE the seat's job.
+- **PATH-SCOPED while BLIND**: `read` / `glob` / `grep` pass only under the loop's frozen `basis.docs[]`,
+  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**` and `<ws>/.mpd/verify/**`. A BARE path
+  argument is refused, because the tool's default path is the whole workspace and that includes the
+  implementation.
+- **WRITE confined** to `<ws>/.mpd/verify/**`. A verifier never fixes what it found: the record tool writes
+  the verification record itself, and a FAIL bounces the work back to a writer as a `kind=repair` task.
+- **THE RATCHET**: a recorded FAIL unlocks implementation reading for DIAGNOSIS, COUNTED, and the count
+  lands in the next record's `unlockedReads[]`. A PASS NEVER unlocks, and a PASS from an already-unlocked
+  seat is refused (`blind-spent`) — a fresh verifier must take over.
+
+Blindness is NOT asserted by the envelope. It is PROVEN by the plugin's own observation log: `guardTool`
+is consulted before every dispatch, so a verifier whose session never triggered a code-path read is
+`blind`, and one that did is `unproven` — and a PASS on an `unproven` basis is refused (`bind-unproven`).
+The envelope is defence in depth; the RECORD VALIDATOR is the actual guarantee.

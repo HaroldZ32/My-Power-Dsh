@@ -1680,6 +1680,9 @@ function markRead(workspace, ids, now) {
 }
 
 // packages/mpd-team-core-plugin/src/dispatch.ts
+function dispatchNameKey(name) {
+  return String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
 function dispatchMessage(task, description) {
   return [
     `You have been assigned shared task ${task.id}: ${task.subject}`,
@@ -1687,7 +1690,7 @@ function dispatchMessage(task, description) {
     description,
     "",
     "Work it on your own; do not wait for another member to start it.",
-    `When it is done, report the result to the Lead and mark task ${task.id} completed with team_task_update.`
+    `When it is done, close the row with agent_teams_task {action:"complete", task_id:"${task.id}"} — ` + `or {action:"fail", task_id:"${task.id}", note:"…"} if you could not finish it — and report the result to the Lead.`
   ].join(`
 `);
 }
@@ -1722,9 +1725,21 @@ function planDispatch(input) {
       plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "no idle member is free" });
       continue;
     }
-    const member = available[0];
-    available = available.slice(1);
-    plan.pairs.push({ taskId: task.id, subject: task.subject, memberId: member.id, memberName: member.name });
+    const ownerKey = dispatchNameKey(task.ownerName ?? "");
+    const ownerIndex = ownerKey === "" ? -1 : available.findIndex((candidate) => dispatchNameKey(candidate.name) === ownerKey);
+    const memberIndex = ownerIndex >= 0 ? ownerIndex : 0;
+    const member = available[memberIndex];
+    available = available.filter((_candidate, index) => index !== memberIndex);
+    const declaredOwner = ownerKey === "" ? undefined : input.members.find((candidate) => dispatchNameKey(candidate.name) === ownerKey);
+    plan.pairs.push({
+      taskId: task.id,
+      subject: task.subject,
+      memberId: member.id,
+      memberName: member.name,
+      ...ownerIndex >= 0 || ownerKey === "" ? {} : {
+        note: "declared owner " + JSON.stringify(String(task.ownerName ?? "")) + " " + (declaredOwner === undefined ? "is not on this team's roster" : busy.has(declaredOwner.id) ? "is already working another task" : "is not idle (status " + JSON.stringify(declaredOwner.status) + ")") + "; paired the next free member " + JSON.stringify(member.name) + " instead"
+      }
+    });
   }
   return plan;
 }
@@ -1952,6 +1967,12 @@ function updateTeamTask(record, taskId, patch, now) {
       else
         next.owner = patch.owner;
     }
+    if (patch.note !== undefined) {
+      if (patch.note === "")
+        delete next.note;
+      else
+        next.note = patch.note;
+    }
     return next;
   });
   return touched ? { ...record, tasks } : record;
@@ -1966,6 +1987,61 @@ function casClaimTask(fresh, taskId, owner, expectedRevision, now) {
   if (task.status !== "pending")
     return { applied: false, reason: `task ${taskId} is now "${task.status}"` };
   return { applied: true, record: updateTeamTask(fresh, taskId, { owner, status: "in_progress" }, now) };
+}
+function casCloseTask(fresh, input) {
+  const task = fresh.tasks.find((candidate) => candidate.id === input.taskId);
+  if (task === undefined)
+    return { applied: false, reason: `task ${input.taskId} is no longer on the board` };
+  if (input.expectedRevision !== undefined && task.revision !== input.expectedRevision) {
+    return { applied: false, reason: `task ${input.taskId} changed under you (revision ${input.expectedRevision} -> ${task.revision}); re-read it and retry` };
+  }
+  if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
+    return { applied: false, reason: `task ${input.taskId} is already terminal ("${task.status}")` };
+  }
+  const isOwner = task.owner !== undefined && input.caller.some((candidate) => nameMatches(candidate, String(task.owner)));
+  if (!isOwner && !input.lead) {
+    return {
+      applied: false,
+      reason: task.owner === undefined ? `task ${input.taskId} has no owner to close it — claim it first` : `task ${input.taskId} is owned by "${String(task.owner)}" and this caller is neither that owner nor this team's lead`
+    };
+  }
+  const record = updateTeamTask(fresh, input.taskId, {
+    status: input.status,
+    ...input.note === undefined || input.note === "" ? {} : { note: input.note }
+  }, input.now);
+  const closed = record.tasks.find((candidate) => candidate.id === task.id) ?? task;
+  const dependents = [];
+  for (const candidate of record.tasks) {
+    if (candidate.id === task.id)
+      continue;
+    if (!candidate.blockedBy.includes(task.id))
+      continue;
+    if (candidate.status !== "pending" && candidate.status !== "claimed" && candidate.status !== "in_progress")
+      continue;
+    if (blockingDependencies(record.tasks, candidate.blockedBy).blocking.length > 0)
+      continue;
+    dependents.push({
+      id: candidate.id,
+      subject: candidate.subject,
+      became: input.status === "failed" ? "released-by-failure" : "ready"
+    });
+  }
+  return {
+    applied: true,
+    record,
+    task: closed,
+    closedBy: isOwner ? "owner" : "lead",
+    attempt: closed.attempt ?? 0,
+    dependents,
+    status: input.status
+  };
+}
+function nameMatches(a, b) {
+  if (a === b)
+    return true;
+  const key = (value) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const left = key(a);
+  return left !== "" && left === key(b);
 }
 function updateTeamMember(record, key, patch) {
   let touched = false;
@@ -2884,20 +2960,22 @@ function apply(ctx) {
   }));
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
-    description: "Shared board tasks. `claim` claims one for a member AND freezes its contract — the acceptance text, blockers and write scopes as they stand now, with a monotonic attempt counter; `contract` reads a frozen contract back (or every one in this workspace); `release` frees one dispatched task so it can be dispatched again.",
+    description: "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, and terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks its dependents).",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["claim", "contract", "release"], description: "What to do." },
-        task_id: { type: "string", description: "claim/contract: the official task id. release: the task to free." },
-        claimant: { type: "string", description: "claim: who claims it. Defaults to the calling agent." }
+        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail"], description: "What to do." },
+        task_id: { type: "string", description: "the task id; `release` takes the task to free." },
+        claimant: { type: "string", description: "claim: who claims it (default: the caller)." },
+        note: { type: "string", description: "complete/fail: one line recorded on the row." },
+        expected_revision: { type: "number", description: "complete/fail: the revision you decided on; stale is refused." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" } } },
-      render: (_args, value) => text(value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
+      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] } } },
+      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
     },
     execute: async (args, exec) => {
       const { workspace } = where(exec);
@@ -2937,7 +3015,56 @@ function apply(ctx) {
         const view = claimed.tasks.find((candidate) => candidate.id === task.id) ?? task;
         return { contract, task: view };
       }
-      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release)`);
+      if (action === "complete" || action === "fail") {
+        const record = recordFor(workspace, sessionIdOf(exec));
+        if (record === undefined)
+          throw new Error("no team record in this workspace — approve a plan first");
+        const taskId = String(args?.task_id ?? "");
+        if (taskId === "")
+          throw new Error(`agent_teams_task ${action}: task_id is required`);
+        const self = exec.agent;
+        const membership = (() => {
+          try {
+            return dsh.teamMembership(exec.agent);
+          } catch {
+            return;
+          }
+        })();
+        const caller = [sessionIdOf(exec), String(self?.session?.header?.title ?? ""), String(membership?.name ?? "")].filter((value) => value !== "");
+        const fresh = readTeam(workspace, record.teamId) ?? record;
+        const outcome = casCloseTask(fresh, {
+          taskId,
+          status: action === "complete" ? "completed" : "failed",
+          caller,
+          lead: membership?.role === "lead",
+          ...typeof args?.expected_revision === "number" ? { expectedRevision: args.expected_revision } : {},
+          ...args?.note === undefined ? {} : { note: String(args.note) },
+          now: now()
+        });
+        if (!outcome.applied)
+          return { refused: outcome.reason, taskId };
+        writeTeam(workspace, withDerivedPhase(outcome.record));
+        let releasedFromDispatch = false;
+        if (outcome.status === "failed") {
+          const freed = release(readLedger(workspace), taskId);
+          if (freed.released) {
+            writeLedger(workspace, freed.ledger);
+            releasedFromDispatch = true;
+          }
+        }
+        rowLogLine("mpd-team-core", `[mpd-team-core] task ${taskId} ${outcome.status} by ${outcome.closedBy}`);
+        return {
+          taskId,
+          status: outcome.status,
+          closedBy: outcome.closedBy,
+          attempt: outcome.attempt,
+          revision: outcome.task.revision,
+          note: outcome.task.note ?? null,
+          dependents: outcome.dependents,
+          releasedFromDispatch
+        };
+      }
+      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail)`);
     }
   }));
   disposers.push(dsh.registerTool({
@@ -2956,7 +3083,7 @@ function apply(ctx) {
     },
     output: {
       schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, released: { type: "boolean" } } },
-      render: (_args, value) => text(value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.halted !== undefined ? `halted: ${value.halted}` : value?.refused !== undefined ? `refused: ${value.refused}` : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row) => row.subject + ": " + row.reason).join("; ") + ")") : value.pairs.map((pair) => `${pair.subject} -> ${pair.memberName}`).join(`
+      render: (_args, value) => text(value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.halted !== undefined ? `halted: ${value.halted}` : value?.refused !== undefined ? `refused: ${value.refused}` : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row) => row.subject + ": " + row.reason).join("; ") + ")") : value.pairs.map((pair) => `${pair.subject} -> ${pair.memberName}` + (typeof pair.note === "string" && pair.note !== "" ? ` [${pair.note}]` : "")).join(`
 `))
     },
     execute: async (args, exec) => {
@@ -3122,7 +3249,7 @@ ${result.message.body}`, exec.signal);
   }));
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
-    description: 'Halt or resume the team. `halt` records a hold that stops NEW DISPATCH while leaving the team and every teammate alive — it is not an ending (use agent_teams_plan action:"delete" to end and archive a team). `resume` clears the hold.',
+    description: 'Halt or resume the team. `halt` stops NEW DISPATCH and leaves the team and every teammate alive (use agent_teams_plan action:"delete" to end a team). `resume` clears the hold.',
     parameters: {
       type: "object",
       properties: {

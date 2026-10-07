@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "recordId": "lane-e-lane-d-2026-10-07T1050Z",
+  "loopId": "waveloop-lane-d",
+  "taskId": "T15",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "lane-d-lead (T10/T11)",
+  "verifierId": "lane-e-verifier",
+  "basis": {
+    "kind": "pre-plugin",
+    "attestation": "no-guard-in-process",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/verify-law-spec.md",
+        "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+      },
+      {
+        "path": "AGENTS.md",
+        "sha256": "e39082509fdedce0ca22e5e147462001124cc1a36f049b8ae07520ab114d4b5b"
+      },
+      {
+        "path": "cordis.patch.yml",
+        "sha256": "28a7a2570f2d7d926caf234a0721e7414cdc2d2ef1e5a01ab956e64ddeb19bc3"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/verify-law.ts",
+        "sha256": "fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb"
+      },
+      {
+        "path": "packages/mpd-verify-plugin/src/law.ts",
+        "sha256": "7282e71652d77857b9969ca84ccf107b284ffbe44c79d072dd3f534ef54d549e"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-verify-plugin/src/law.ts",
+        "bytes": 33661,
+        "sha256": "7282e71652d77857b9969ca84ccf107b284ffbe44c79d072dd3f534ef54d549e",
+        "mtime": "2026-10-07T10:44:31.544Z"
+      },
+      {
+        "path": "packages/mpd-roles-plugin/src/verify-guard.ts",
+        "bytes": 12937,
+        "sha256": "e336ba21b8095e3ddcce8aa2574117c5d6e5c1a7ea0b50c09785d105a961ef3f",
+        "mtime": "2026-10-07T10:44:08.661Z"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/verify-law.ts",
+        "bytes": 22585,
+        "sha256": "fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb",
+        "mtime": "2026-10-07T10:52:01.803Z"
+      },
+      {
+        "path": "packages/mpd-verify-plugin/dist/index.js",
+        "bytes": 111940,
+        "sha256": "5d31bdc0f83bfb995860a237519f4f3c5fbe6b2cd9660bccc2f48e4d25f62f15",
+        "mtime": "2026-10-07T10:45:41.308Z"
+      },
+      {
+        "path": "evidence/gates/verify-law/2026-10-07T10-50-23.871Z/result.json",
+        "bytes": 1265,
+        "sha256": "f1c82ee8bc7f1b3846714e99b64c95333204030f186c1e10bc04d210fa5d5058",
+        "mtime": "2026-10-07T10:50:52.455Z"
+      },
+      {
+        "path": ".mpd/verify/boot.json",
+        "exists": false
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "e39082509fdedce0ca22e5e147462001124cc1a36f049b8ae07520ab114d4b5b"
+    },
+    {
+      "path": "cordis.patch.yml",
+      "sha256": "28a7a2570f2d7d926caf234a0721e7414cdc2d2ef1e5a01ab956e64ddeb19bc3"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/verify-law.ts",
+      "sha256": "fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb"
+    },
+    {
+      "path": "packages/mpd-verify-plugin/src/law.ts",
+      "sha256": "7282e71652d77857b9969ca84ccf107b284ffbe44c79d072dd3f534ef54d549e"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "cmd": "node skills/dsh-qa/scripts/verify-law.ts --self-test",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d/2026-10-07T1050Z/logs/ev-verify-law-selftest.log",
+      "logSha256": "da7b412dbbfa2879d7665d53e2591d6af9fc51a99b6884c1c83772b93023db10"
+    },
+    {
+      "cmd": "bun test packages/mpd-verify-plugin — the refusal arms as test names",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d/2026-10-07T1050Z/logs/ev-test-verify-plugin.log",
+      "logSha256": "11c7721c721c64dfac27b663fa81db25ca7d6d2ab0ae67b2d78956e691cbae14"
+    },
+    {
+      "cmd": "bun test packages/mpd-team-core-plugin — terminal verbs and owner-first dispatch",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d/2026-10-07T1050Z/logs/ev-test-team-core.log",
+      "logSha256": "b5b296f974321916fd8f6fea2c2b2d7bb1cec65e98d0255fe63a1a83f93c1fd8"
+    },
+    {
+      "cmd": "node scripts/verify-no-host-override.ts",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d/2026-10-07T1050Z/logs/ev-no-host-override.log",
+      "logSha256": "34ff3690bf5feea5647e5d7032fe9768fbac0ead939fbfd7717fee00ade41095"
+    },
+    {
+      "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d/2026-10-07T1050Z/logs/ev-preset-conformance.log",
+      "logSha256": "9e04a8d6739b4f8c16ed7959baa5837363c23e7735e0d67257592e6120cf434e"
+    },
+    {
+      "cmd": "Lane D scope + the live-arm runs + the manual measurable claims + the F.2/F.3 marker re-probe",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d/2026-10-07T1050Z/logs/ev-live-and-settle.log",
+      "logSha256": "c678c9bcdcd530f1f45e2d2e9f6f2a2027ea6c9774edccaacd3b793bee84d2ad"
+    },
+    {
+      "cmd": "Lane D scope presence and the evidence dirs",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d/2026-10-07T1050Z/logs/ev-scope.log",
+      "logSha256": "f5bdd7b7ecb0316183829b71df5884da17aa4405232c54952253cd794961d9ba"
+    }
+  ],
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "symptom": "THE WAVE'S OWN LIVE FALSIFIER DOES NOT GO GREEN, so AC5's live clause has no admissible evidence yet. The newest live run — the CORRECTED re-run at `evidence/gates/verify-law/2026-10-07T10-50-23.871Z/result.json` — reports `ok:false`, and the red step is `steps.denied.ok=false` with detail `'the write was called and blocked (no successful result; sentence relayed: false)'`. The arm was rewritten (the 10:48 run's detail read 'the recorded write result carries the guard's denial sentence'), yet the corrected wording still ANDs the sentence-relay channel into the verdict, so the case exits red. THE MATERIAL CLAIM IS NONETHELESS PROVEN by three sibling steps that DID go green in the same run: `mounted` ('the harness recorded a write call for the code path'), `codeNotWritten` ('the denied code path was never created'), and the falsifiable pair `controlNotDenied` + `controlWritten` ('with verify.mode=off the same write was not refused' / 'the code path really was written').",
+      "expected": "Reduce the conjunct to exactly `write.called && !write.succeeded` — that IS the right evidence for 'the block is real', because a PRE-DISPATCH guard refusal cannot produce a `tool/result` frame carrying the sentence (the writer's own finding), while the sentence is demonstrably visible in the model transcript (`run-a-guarded.log` quotes it verbatim: 'Error: verification law: `write` on the CODE path … is refused …'). Keep the sentence as a RECORDED secondary signal, never as a conjunct of `ok`; then re-run to 9/9 and take THAT run as the live evidence. Answering the two questions asked directly: (a) YES, `called && !succeeded` is the right evidence — it is the material fact and no prose can fake it; (b) YES, the `verify.mode=off` control genuinely falsifies — the SAME write against the SAME path lands when the guard is off and is absent when it is on, which is a two-way, self-contained falsification.",
+      "docSource": "contract §Acceptance criteria AC5 ('the law is mechanical … the verifier's bash/source-read attempts are DENIED'); verify-law-spec §(e) QA case verify-law.ts (the boot-level falsifier); AGENTS.md §7 (a live case proves a tool call from the HARNESS's session log, never from the model's prose)"
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "symptom": "The manual violates its OWN stated instruction budget. AGENTS.md measures **64996 bytes** while the rule it now carries says 'Keep it ≤ 63 KB with headroom' — 63 KiB is 64512 B, so the file is 484 B over its own guidance and only **540 B** under the hard 65536 truncation limit. The hard bound holds today (no truncation), but the headroom the rule exists to protect is gone: the next section growth truncates the tail SILENTLY, which is the failure the rule was written to prevent.",
+      "expected": "Either state the real ceiling (65536 bytes / 64 KiB) and keep a measured headroom figure, or move another section's long form into `agent-references/` and leave the short definition plus pointer — the pattern §13 already uses. Measured with `stat -c %s AGENTS.md`.",
+      "docSource": "AGENTS.md §3 'Instruction budget (binding)' (65536 bytes, a longer file is silently TRUNCATED; keep it ≤ 63 KB with headroom)"
+    }
+  ],
+  "unlockedReads": [],
+  "notes": [
+    "RESIDUAL BOUND (verify-law-spec §(c), verbatim): the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).",
+    "DOCKER DECLARED BOUND (captain ruling D): the Docker lane's evidence is INTEGRATION-borne and declared in the PR body — a declared bound, never a hole.",
+    "VERIFIED PASS — CAPTAIN PROBE 1, THE REFUSALS ARE REFUSALS, not warnings. `bun test packages/mpd-verify-plugin` → **47 pass / 0 fail**, and the arms are named as tests with the ADMISSIBLE record measured beside every refusal ('the good record is ADMITTED (the arm every refusal is measured against)'): same-agent · no-doc-sources / no-gate-evidence ('an empty PASS is refused') · forged-evidence ('an evidence id the runner never produced is refused') · bind-unproven ('a PASS from a seat the observation log cannot show to be blind is refused') · fail-without-findings / finding-without-basis ('a FAIL must be actionable AND grounded') · blind-spent · unknown-loop · and the pre-plugin exemption ('admissible only attested, unlocked-free and pre-marker'). The two-way control beside them is what makes these refusals rather than a table of strings.",
+    "VERIFIED PASS — CAPTAIN PROBE 2, THE pre-plugin EXEMPTION CLOSES ITSELF and has not leaked. The validator arm asserts it is admissible ONLY when attested, unlocked-free and PRE-marker; and the REAL workspace's marker is still ABSENT after every live run (`test -e .mpd/verify/boot.json` → absent; `find . -name boot.json` outside node_modules/.git → nothing). The live run's own steps carry the F.1/F.2 obligations green: `sandboxMarker` ('the law wrote its boot marker in the SANDBOX workspace') and `realMarkerUnchanged` ('the REAL workspace's marker is exactly as it was: before=false after=false').",
+    "VERIFIED PASS — CAPTAIN PROBE 3, THE GIT-WRITE MATCHER, all five arms present as tests and passing (they live in `packages/mpd-verify-plugin/test/law.test.ts` and the team-core suite; both suites ran 0 fail): 'a MEMBER's git write is denied; the CAPTAIN's is allowed' · 'read-only git stays open to everyone' · 'a command that merely MENTIONS git is NOT denied — a guard that reddens on prose is a defect' · '§5's one-git-writer rule through the INSTALLED guard: member denied, captain allowed' · and the DOCUMENTED EVASION is stated as a bound rather than papered over — AGENTS.md §5 rule 5 carries it verbatim ('the matcher reads a command STRING, so an obfuscated invocation can evade it. It is a speed bump that makes the rule real for ordinary use, not a sandbox').",
+    "VERIFIED PASS — CAPTAIN PROBE 4, THE MANUAL AS A READER. The law's honest bound SURVIVES: `verifyGate=absent` appears in §5 rule 4's text ('Where the law cannot be mechanical … the bound is STATED — the boot line says `verifyGate=absent` — never implied'), and §13 carries the verifier's envelope with its long form pointed at `agent-references/glossary.md` by an exact pointer. The two REPLACED sentences are genuinely replaced, not softened. The §6 pinned-toolchain paragraph checks out on both binaries: `package.json.buildToolchain` = `bun@1.4.0`, `.toolchain/node_modules/.bin/bun` exists and reports **1.4.0**, while the PATH `bun` reports **1.4.2** — so the trap the paragraph names is real and the remedy it gives is executable. (Its 24/30-vs-30/30 STALE counts were NOT re-measured by me: that is `verify-dist-fresh`, which is T16's subject; declared.)",
+    "VERIFIED PASS — CAPTAIN PROBE 5, the ROW PLANE, spot-checked rather than cited. `node scripts/verify-no-host-override.ts` → exit 0, 'PASS: every id-target is bundle-owned (0 of 0 collide with the 205 host-declared row ids)', declared exemptions (0): none, across 4 host layers. `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` → exit 0, '32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)'. Both are two-way: the override gate refuses a vacuous PASS and the conformance gate's controls redden.",
+    "VERIFIED PASS — the offline falsifier that IS green: `node skills/dsh-qa/scripts/verify-law.ts --self-test` → exit 0, reporting the registered copy byte-identical (`d5f1eb2f6881`) and 'patch row + dist symbols + refusal vocabulary + decision/row arms'. So the law's OFFLINE arms are green; only the LIVE arm's verdict step is red (F1).",
+    "OBSERVATION for whoever reads the evidence next: `evidence/gates/verify-law/` now holds several runs (10:41:52Z, two integration dirs, 10:47:12Z, 10:48:03Z, 10:50:23.871Z). The newest is authoritative and is the one this record cites; the earlier ones carry the OLD arm wording and must not be quoted as the current state.",
+    "MEASURED, benign QA noise seen in every live run: `dsh: warning: 1 entry did not activate / preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)` — the preset row waiting for its service in the sandbox composition, not a law failure.",
+    "METHOD — the verdict was reached before any implementation read and needed none: no .ts/.js source and no dist/** was opened. Evidence used: the contract + spec + AGENTS.md as a reader, the writer's evidence dirs, unit-test NAMES as the arm inventory, read-only git status, content-free probes (bytes, hashes, existence) and the acceptance-named commands with their exits."
+  ],
+  "createdAt": "2026-10-07T10:52:00Z"
+}

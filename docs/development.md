@@ -181,7 +181,7 @@ profile `node_modules/@mpd-dsh/mpd`) when pnpm store access is unavailable; the 
 
 | Gate | Command |
 |---|---|
-| Vendor | `node scripts/verify-vendor.ts` (needs `MPD_UPSTREAM_ROOT`) |
+| Vendor | `node scripts/verify-vendor.ts` (fingerprints the assets this repo ships; resolves NO upstream checkout) |
 | Tests | `bun test packages` + `bun run typecheck` |
 | QA self-tests | `bun run test:qa` + each case `--self-test` |
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` |

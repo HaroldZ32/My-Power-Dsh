@@ -54,8 +54,6 @@ const SLUG: string = "watchdog-redesign"
 const STATE_DIR: string = join(".mpd", "team")
 /** The watchdog plugin's directory, relative to a tree root. */
 const PLUGIN: string = join("packages", "mpd-team-watchdog-plugin")
-/** The adopted agent-teams plugin's lib directory, relative to a tree root. */
-const ADOPTED_LIB: string = join("packages", "mpd-agent-teams-plugin", "lib")
 /** Where this lane's evidence directories are created by default. */
 const EVIDENCE_BASE: string = join(REPO, "evidence", "team-watchdog", "redesign", "lane")
 /** The detached RED worktree the contrast rows are measured against. */
@@ -203,20 +201,15 @@ interface TreeFingerprints {
 }
 
 /**
- * The adopted plugin's tools module inside one tree, spelled the way THAT tree ships it.
- * The GREEN tree carries the converted `lib/tools.ts`; the frozen RED worktree (detached
- * `75018a1`) predates that rename and still ships `lib/tools.ts` — and the contract pins the
- * bytes of THAT file (`CONTRACT_RED.tools` == sha256 of `75018a1:lib/tools.ts`) — so the
- * extension is PROBED rather than hardcoded, which keeps ONE path expression correct on both
- * sides of the contrast.
- * @param root Absolute path of the tree.
- * @returns The absolute path of the tools module the tree ships, preferring the converted `.ts`.
+ * The ADOPTED plugin's tools module inside one tree — RETIRED, and therefore DECLARED rather than
+ * probed (wave `de-vendor-and-verify-law`, 2026-10-07).
+ *
+ * The rows used to read that file out of each tree to fingerprint it and to drive its registry. The
+ * tree was DELETED with the vendored body, so this reading IS the retirement: the sha256 the contract
+ * froze for the RED worktree (`CONTRACT_RED.tools`) stays a HISTORICAL record in `CONTRACT_RED`, and
+ * nothing here resolves a path that cannot exist.
  */
-function adoptedToolsFile(root: string): string {
-  /** The converted spelling the tree under test carries. */
-  const converted: string = join(root, ADOPTED_LIB, "tools.ts")
-  return existsSync(converted) ? converted : join(root, ADOPTED_LIB, "tools.js")
-}
+const RETIRED_ADOPTED_TOOLS: string = "(retired: the adopted plugin's lib/tools.ts was deleted with the vendored body in wave de-vendor-and-verify-law)"
 
 /**
  * @param root Absolute path of the tree to fingerprint.
@@ -229,7 +222,7 @@ function fingerprint(root: string): TreeFingerprints {
     channel: fileSha(join(root, PLUGIN, "src", "channel.ts")),
     team: fileSha(join(root, PLUGIN, "src", "team.ts")),
     dist: fileSha(join(root, PLUGIN, "dist", "index.js")),
-    tools: fileSha(adoptedToolsFile(root)),
+    tools: RETIRED_ADOPTED_TOOLS,
   }
 }
 
@@ -778,7 +771,7 @@ const SCENARIOS: readonly Scenario[] = [
     redPrediction: "`update_task` throws `team … is held by the team watchdog` at the tool boundary",
     kind: "tools",
     red: (reading) => reading.update.ok === false && new RegExp(GUARD_TEXT).test(String(reading.update.error)) && reading.claim.ok === false,
-    green: (reading) => reading.update.ok === true && reading.update.mutated === true && reading.claim.ok === true && reading.claim.mutated === true && reading.holdReads.fromTools === 0 && reading.reinject.rejected === true,
+    green: (reading) => reading.update.ok === true && reading.update.mutated === true && reading.claim.ok === true && reading.claim.mutated === true && reading.holdReads.fromTools === 0,
   },
   {
     id: "d",
@@ -915,7 +908,7 @@ async function runKickRow(): Promise<RowReading> {
  * @returns The row's reading for this tree.
  */
 async function produceReading(tree: LoadedTree, scenario: Scenario, rawRoot: string, suiteReadings: Map<string, RowReading>): Promise<RowReading> {
-  if (scenario.kind === "tools") return runHoldRow(tree, rawRoot)
+  if (scenario.kind === "tools") return runHoldRow(tree)
   if (scenario.kind === "suite") {
     if (!suiteReadings.has(scenario.id)) suiteReadings.set(scenario.id, await runKickRow())
     // The cached suite reading: the line above guarantees this key is present.
@@ -1058,66 +1051,16 @@ function summarize(raw: TickedReading): RowReading {
 
 // ── row (c): the REAL adopted tools under a REAL hold ────────────────────────────────────
 /**
- * The scratch re-injection control (the shape `self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs` uses).
- * @param tree The tree whose adopted tools are copied and mutated.
- * @param rawRoot The run's raw scratch root.
- * @param workspace The sandbox workspace the probe call is made against.
- * @param captain The captain agent double the mutant registry serves.
- * @param member The member agent double the probe call is made as.
- * @returns The control's verdict: whether the re-injected guard refused the same call.
+ * The re-injection control — DROPPED and DECLARED (wave `de-vendor-and-verify-law`, 2026-10-07).
+ *
+ * Its SUBJECT was the ADOPTED plugin's own `lib/tools.ts`: the control copied that tree's `lib/`,
+ * deleted the hold guard from the copy and re-injected it, proving the re-injected guard refused the
+ * same calls. The tree was DELETED with the vendored body, so the control can no longer run against
+ * anything — it REPORTS the disappeared subject instead of probing a path that cannot exist.
+ * @returns The verdict every call must now produce: never ran, hence never refused.
  */
-async function runReinjection(tree: LoadedTree, rawRoot: string, workspace: string, captain: AgentDouble, member: AgentDouble): Promise<ReinjectResult> {
-  // The adopted plugin's package root inside the tree.
-  const pluginRoot = join(tree.root, "packages", "mpd-agent-teams-plugin")
-  // The adopted plugin's lib directory, which the mutant copy is made from.
-  const libDir = join(pluginRoot, "lib")
-  // The scratch directory the mutant copy lives in.
-  const scratch = mkdtempSync(join(rawRoot, "c-" + tree.label + "-reinject-"))
-  mkdirSync(join(scratch, "lib"), { recursive: true })
-  for (const entry of readdirSync(libDir, { withFileTypes: true })) if (entry.isFile()) cpSync(join(libDir, entry.name), join(scratch, "lib", entry.name))
-  symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "junction")
-  // The mutant tools module the deleted guard is re-injected into, under the tree's own spelling
-  // (the scratch lib is a flat copy of the tree's lib, so the basename is the same).
-  const scratchTools = join(scratch, "lib", basename(adoptedToolsFile(tree.root)))
-  // The mutant's original source text.
-  const source = readFileSync(scratchTools, "utf8")
-  // The offset of the `update_task` registration the execute body is anchored to.
-  const registration = source.indexOf("name: 'agent_teams_update_task'")
-  // The offset of the execute body that follows that registration.
-  const execute = source.indexOf("async execute(args, exec) {", registration)
-  if (registration < 0 || execute < 0) return { ran: false, rejected: false, error: "the injection anchor was not found in lib/tools.ts (registration=" + registration + ", execute=" + execute + ")" }
-  // The hold guard the redesign deleted, re-injected verbatim at the tool boundary.
-  const guard = "\n            { const __held = watchdogHoldOf(ctx, freshTeamProbeId, workspaceOf(exec.agent)); if (__held !== undefined) throw new Error(`team ${freshTeamProbeId} is held by the team watchdog (hold ${__held.holdId}); the team must be released with the watchdog's own session-watchdog-resume action before any further work`); }"
-  // The reader the injected guard resolves the watchdog service through.
-  const reader = "const WATCHDOG_HOLD_SERVICE = 'mpdWatchdog';\nfunction watchdogHoldOf(ctx, teamId, workspace) {\n    try {\n        const watchdog = typeof ctx?.get === 'function' ? ctx.get(WATCHDOG_HOLD_SERVICE, false) : undefined;\n        const view = typeof watchdog?.isHeld === 'function' ? watchdog.isHeld(teamId, workspace) : undefined;\n        if (view === undefined || view === null || view.held !== true)\n            return undefined;\n        return { holdId: String(view.holdId ?? ''), at: 0, reason: String(view.reason ?? ''), source: null };\n    }\n    catch {\n        return undefined;\n    }\n}\nconst freshTeamProbeId = 'probe-team';\n"
-  writeFileSync(scratchTools, reader + source.slice(0, execute + "async execute(args, exec) {".length) + guard + source.slice(execute + "async execute(args, exec) {".length))
-  // Every tool definition the mutant registered, by name.
-  const tools: Map<string, RegisteredTool> = new Map()
-  // The plugin context the mutant registers its tools on.
-  const ctx: PluginStubCtx = {
-    tools: { register: (definition) => { tools.set(definition.name, definition); return () => tools.delete(definition.name) } },
-    agents: { get: (id) => (id === captain.id ? captain : id === member.id ? member : undefined), list: () => [captain, member] },
-    subagents: { prompt: async () => ({ messageId: "m1" }), followup: () => {}, sendMessage: () => {} },
-    effect: () => () => undefined,
-    on: () => () => undefined,
-    logger: { warn: () => {}, info: () => {}, error: () => {}, debug: () => {} },
-    get: (name) => (name === "mpdWatchdog" ? { isHeld: () => ({ held: true, holdId: "hold-probe-1", at: 0, reason: "reinject control" }) } : undefined),
-  }
-  try {
-    // The mutant module, imported with a cache-busting query so the copy is really loaded.
-    const mod = (await import(pathToFileURL(scratchTools).href + "?reinject=" + Date.now())) as AdoptedToolsModule
-    mod.registerAgentTeamsTools(ctx, { stateDir: STATE_DIR })
-    // The `update_task` definition the mutant registered.
-    const definition = tools.get("agent_teams_update_task")
-    if (definition === undefined) return { ran: true, rejected: false, error: "the injected copy registered no `agent_teams_update_task`" }
-    await definition.execute({ task_id: "t2", status: "completed", output: "re-injection control", attempt_id: "att-2", acceptanceResults: [{ criterion: "probe", status: "passed" }], commandsRun: [{ command: "bun test", status: "passed" }] }, { agent: member })
-    return { ran: true, rejected: false, error: "the re-injected guard did NOT refuse the same call" }
-  } catch (error) {
-    // The thrown value is `unknown` under strict mode; it is viewed as a message-bearing record so
-    // a plain-object throw still reports its own `.message`, exactly as that expression did before.
-    const text = String((error as { message?: unknown } | null)?.message ?? error)
-    return { ran: true, rejected: new RegExp(GUARD_TEXT).test(text), error: text }
-  }
+async function runReinjection(): Promise<ReinjectResult> {
+  return { ran: false, rejected: false, error: RETIRED_ADOPTED_TOOLS }
 }
 
 /** A live-agent double in the shape the adopted plugin's registry hands its tools. */
@@ -1242,126 +1185,25 @@ interface TeamFileOnDisk {
 }
 
 /**
- * @param tree The tree whose adopted tools are driven.
- * @param rawRoot The run's raw scratch root.
- * @returns The tools arm's reading: both calls, the re-injection control and the hold reads.
+ * The tools arm's reading for one tree — DECLARED, because its SUBJECT is gone (wave
+ * `de-vendor-and-verify-law`, 2026-10-07).
+ *
+ * The arm drove the ADOPTED plugin's own tools module out of the tree: it registered that module's
+ * tools, invoked `update_task`/`claim_task` against a staged hold, counted the hold reads whose frame
+ * came from the adopted tools and ran the re-injection control. The tree was DELETED with the vendored
+ * body, so the arm cannot be PRODUCED any more; it returns the retirement as its reading rather than
+ * probing a path that cannot exist, and row (c) is judged on its engine arm and the contract fixtures.
+ * @param tree The tree the row would have driven, kept so the arm's call shape stays visible.
+ * @returns The declared retirement, in the reading shape the evaluator consumes.
  */
-async function runHoldRow(tree: LoadedTree, rawRoot: string): Promise<RowReading> {
-  // The arm's own sandbox workspace, inside the run's raw scratch root.
-  const workspace = mkdtempSync(join(rawRoot, "c-" + tree.label + "-"))
-  // The probed team id the hold sidecar and the service view both name.
-  const teamId = "probe-team"
-  // The simulated "now" the probe's timestamps are derived from, in epoch milliseconds.
-  const now = Date.now()
-  // The captain agent double; the hold must not stop its own delivery.
-  const captain: AgentDouble = { id: "session-captain", status: "idle", session: { header: { cwd: workspace } } }
-  // The member agent double every probed call is made as.
-  const member: AgentDouble = { id: "session-member", status: "idle", session: { header: { cwd: workspace } } }
-  // The staged team record's directory.
-  const teamDir = join(workspace, STATE_DIR, teamId)
-  mkdirSync(join(teamDir, "inbox"), { recursive: true })
-  /**
-   * @param id The task id.
-   * @param status The task's status.
-   * @param attemptId The task's generation token, or `undefined` when it has none.
-   * @param attempt How many attempts the task carries.
-   * @returns One probe task row carrying the completion coverage a terminal update needs.
-   */
-  const task = (id: string, status: string, attemptId: string | undefined, attempt: number): TeamTask => ({
-    id, subject: "probe " + id, description: "hold probe", status, assignee: "Architect", dependencies: [],
-    ...(attemptId === undefined ? {} : { attemptId }), attempt, createdAt: now - 60_000, updatedAt: now - 60_000,
-    kind: "verification", acceptance: ["probe"], verify: ["bun test"], acceptanceResults: [], commandsRun: [],
-  })
-  // The staged team record's own path, re-read after the probed calls.
-  const teamFile = join(teamDir, "team.json")
-  writeFileSync(teamFile, JSON.stringify({
-    id: teamId, name: "hold probe", captainSessionId: captain.id, createdAt: now - 60_000, taskSeq: 2, phase: "running",
-    members: [{ id: member.id, name: "Architect", role: "architect", status: "idle", joinedAt: now - 60_000 }],
-    tasks: [task("t1", "pending", undefined, 0), task("t2", "in_progress", "att-2", 1)],
-  }, null, 2) + "\n")
-  // The REAL hold sidecar (the disk truth a reader can consult) — plus the service shape the
-  // deleted guard consumed, so BOTH sources of the hold are live in this probe.
-  const hold: HoldRecord = { id: "hold-probe-1", teamId, since: now, cause: "silence", taskId: "t2", attemptId: "att-2", sceneAt: now, ttlMs: 900_000 }
-  mkdirSync(join(workspace, STATE_DIR, "watchdog", "hold"), { recursive: true })
-  writeFileSync(join(workspace, STATE_DIR, "watchdog", "hold", teamId + ".json"), JSON.stringify(hold, null, 2) + "\n")
-  // Every hold read the adopted tools performed, in call order.
-  const reads: HoldRead[] = []
-  // The watchdog service double the adopted tools resolve their hold view through.
-  const watchdog: WatchdogServiceDouble = {
-    isHeld: (id, ws) => {
-      reads.push({ teamId: id, workspace: ws, frame: ((new Error("hold-read").stack ?? "").split("\n")[2] ?? "").trim() })
-      return id === teamId ? { held: true, holdId: hold.id, at: hold.since, reason: hold.cause, source: "service" } : undefined
-    },
-  }
-  // Every tool definition the adopted module registered, by name.
-  const tools: Map<string, RegisteredTool> = new Map()
-  // The plugin context the adopted module registers its tools on.
-  const ctx: PluginStubCtx = {
-    tools: { register: (definition) => { tools.set(definition.name, definition); return () => tools.delete(definition.name) } },
-    agents: { get: (id) => (id === captain.id ? captain : id === member.id ? member : undefined), list: () => [captain, member] },
-    subagents: { prompt: async () => ({ messageId: "m1" }), followup: () => {}, sendMessage: () => {} },
-    effect: () => () => undefined,
-    on: () => () => undefined,
-    logger: { warn: () => {}, info: () => {}, error: () => {}, debug: () => {} },
-    get: (name) => (name === "mpdWatchdog" ? watchdog : undefined),
-  }
-  // The adopted tools module this tree ships (`.ts` on the working tree, `.js` on the RED one),
-  // imported with the tree's own label as the cache key.
-  const toolsPath = adoptedToolsFile(tree.root)
-  // The adopted tools module, imported from the tree's own lib directory.
-  const mod = (await import(pathToFileURL(toolsPath).href + "?tree=" + tree.label)) as AdoptedToolsModule
-  mod.registerAgentTeamsTools(ctx, { stateDir: STATE_DIR })
-  /**
-   * Invoke one registered tool the way the harness would.
-   * @param name The tool name to invoke.
-   * @param args The tool arguments.
-   * @param agent The agent the call is made as.
-   * @returns The call's outcome: whether it resolved, and its JSON echo or its thrown message.
-   */
-  const call = async (name: string, args: Record<string, unknown>, agent: AgentDouble): Promise<ToolCallOutcome> => {
-    // The registered definition, or nothing when this tree never registered the tool.
-    const definition = tools.get(name)
-    if (definition === undefined) return { ok: false, error: "tool not registered: " + name }
-    try {
-      // The tool's own value.
-      const value = await definition.execute(args, { agent })
-      // The JSON echo of the value, or its string form when it cannot be serialized.
-      let echo: unknown = null
-      try { echo = value === undefined ? null : JSON.parse(JSON.stringify(value)) } catch { echo = String(value) }
-      return { ok: true, value: echo }
-    } catch (error) {
-      // The thrown value is `unknown` under strict mode; it is viewed as a message-bearing record so
-      // a plain-object throw still reports its own `.message`, exactly as that expression did before.
-      return { ok: false, error: String((error as { message?: unknown } | null)?.message ?? error) }
-    }
-  }
-  // The terminal-update payload carries the completion coverage the quality gate requires
-  // (`acceptanceResults` + `commandsRun`), so a GREEN refusal could only come from a hold guard:
-  // the first diagnostic run of this lane measured exactly that gate's own message on GREEN
-  // ("verification completion requires passed acceptanceResults …") and the payload was fixed.
-  const TERMINAL_UPDATE: Record<string, unknown> = { task_id: "t2", status: "completed", output: "hold probe complete", attempt_id: "att-2", acceptanceResults: [{ criterion: "probe", status: "passed" }], commandsRun: [{ command: "bun test", status: "passed" }] }
-  // The terminal `update_task` call, which must SUCCEED while the hold exists.
-  const update = await call("agent_teams_update_task", TERMINAL_UPDATE, member)
-  // The `claim_task` call, which must also succeed while the hold exists.
-  const claim = await call("agent_teams_claim_task", { task_id: "t1" }, member)
-  // The team file as the calls left it on disk.
-  const onDisk = JSON.parse(readFileSync(teamFile, "utf8")) as TeamFileOnDisk
-  // The task rows the file carries, or none when it carries no list.
-  const tasksOnDisk = onDisk.tasks ?? []
-  update.mutated = tasksOnDisk.find((entry) => entry.id === "t2")?.status === "completed"
-  claim.mutated = String(tasksOnDisk.find((entry) => entry.id === "t1")?.attemptId ?? "") !== ""
-  // The re-injection control: only the fold tree deleted the guard, so only there is it applicable.
-  const reinject = tree.generation === "fold" ? await runReinjection(tree, rawRoot, workspace, captain, member) : { ran: false, rejected: false, error: "not run: the guard is present in this tree's lib/tools.ts, so the control is not applicable" }
+async function runHoldRow(tree: LoadedTree): Promise<RowReading> {
+  void tree
   return {
-    tree: tree.label,
-    scenario: "c",
-    workspace,
-    registeredTools: [...tools.keys()].length,
-    toolNames: [...tools.keys()].filter((name) => name.includes("claim_task") || name.includes("update_task")),
-    update, claim, reinject,
-    holdOnDisk: existsSync(join(workspace, STATE_DIR, "watchdog", "hold", teamId + ".json")),
-    holdReads: { total: reads.length, fromTools: reads.filter((read) => read.frame.includes("lib/tools.ts") || read.frame.includes("/tools.js")).length, frames: reads.map((read) => read.frame) },
-    guardInToolsSource: readFileSync(toolsPath, "utf8").includes(GUARD_TEXT),
+    update: { ok: false, mutated: false, error: RETIRED_ADOPTED_TOOLS },
+    claim: { ok: false, mutated: false, error: RETIRED_ADOPTED_TOOLS },
+    reinject: await runReinjection(),
+    holdReads: { total: 0, fromTools: 0, frames: [] },
+    guardInToolsSource: false,
   }
 }
 
@@ -2159,7 +2001,11 @@ if (argv.includes("--self-test")) {
       green.ticks![1] = tick(599_999, ["warn"]); green.ticks![0] = tick(599_999, [])
     }, "a first WARN before the frozen threshold"],
     // The control names row (c), which the healthy fixture above always records.
-    ["vacuous-hold-row", (copy: Observation): void => { copy.rows.find((row) => row.id === "c")!.green.reinject = { ran: true, rejected: false } }, "a hold row whose success could not be falsified (the re-injection control did not refuse)"],
+    // DROPPED CONTROL (wave `de-vendor-and-verify-law`, 2026-10-07): the `vacuous-hold-row` mutant
+    // pinned the `reinject.rejected` conjunct of row (c)'s GREEN criterion. That conjunct is gone
+    // because its ARM is gone — the control's subject (the adopted plugin's `lib/tools.ts`) was deleted
+    // with the vendored body. A mutant whose premise no longer exists would only measure a criterion
+    // nobody checks, so it is DELETED with the arm it pinned rather than left to pass vacuously.
     // The control names row (c), which the healthy fixture above always records.
     ["guard-read-from-tools", (copy: Observation): void => { copy.rows.find((row) => row.id === "c")!.green.holdReads = { fromTools: 1 } }, "a tool-boundary hold read that survived the redesign"],
     // The control names row (e), which the healthy fixture above always records.

@@ -4,11 +4,12 @@
 // the bundle id "@mpd-dsh/mpd" (the loader entry name comes from the bundle patch's
 // self-row `mpd-web-compat`, and client-modules' arrive() checks the registered id
 // against the entry id). The combined file:
-//   1) embeds the adopted agent-teams client.js VERBATIM — it self-registers
+//   1) embeds the adopted agent-teams client bundle VERBATIM — it self-registers
 //      "@nanmicoder/dsh-agent-teams" and is required for its views, monitor store,
-//      locale dictionaries and CSS (reached through the additive export bridge in
-//      scripts/patch-agent-teams-client.ts). Its apply() is NOT called any more: that
-//      is what registered the removed in-conversation card and overlay floater.
+//      locale dictionaries and CSS (reached through the additive export bridge that
+//      is baked into the relocated copy at its marked region). Its apply() is NOT
+//      called any more: that is what registered the removed in-conversation card and
+//      overlay floater.
 //   2) registers "@mpd-dsh/team-page" — the mpd-owned DSH-better-sidebar page that
 //      renders those views inside a sidebar tab (src/team-page.ts), then
 //   3) registers "@mpd-dsh/mpd" with the mpd web-client factory
@@ -44,7 +45,7 @@ const repoRoot: string = repoRootFrom(import.meta.url)
  */
 const stripFactoryTypes = (source: string): string => stripTypeScriptTypes(source, { mode: "strip" })
 /** The adopted agent-teams client bundle, embedded verbatim as the first half of the client entry. */
-const agentTeamsClient: string = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "client.js"), "utf8")
+const agentTeamsClient: string = readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "adopted", "agent-teams-client.js"), "utf8")
 /** The sidebar team-page factory source, registered as its own client module. */
 const teamPageFactory: string = stripFactoryTypes(readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "src", "team-page.ts"), "utf8")).trim()
 /** The mpd web-client factory source, registered last as the bundle's own `@mpd-dsh/mpd` entry. */

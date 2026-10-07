@@ -280,8 +280,10 @@ boot down.
 **Official Agent Teams rows — 3 inserted rows**
 
 The bundle's team capability is the **official** DSH Agent Teams plugin set, not a vendored engine:
-the three packages are declared in `package.json` → `dependencies` and mounted by the rows below
-(*Acknowledgements* records why the retired vendored copy is still on disk).
+the three packages are declared in `package.json` → `dependencies` and mounted by the rows below.
+The vendored `dsh-agent-teams` engine that used to sit behind those rows was retired from the
+composition and has since been DELETED (`de-vendor-and-verify-law`); *Acknowledgements* records what
+of it still ships and where.
 
 | Row id | Package | What it provides |
 |---|---|---|
@@ -1000,17 +1002,22 @@ This bundle stands on other people's work, and it is worth being precise about w
 
 - **[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)** — author **code-yeongyu**
   and contributors. The specialist roster, the eleven role descriptions and the model-chain
-  vocabulary come from this project; it is pinned at commit `8c57e46` (v5.0.0-beta.20) and ships here
-  as adapted teammate templates and workmate base templates. The pinned baseline is an engineering
-  reference, not an identity: this repository is not a fork of OMO and does not chase it release by
-  release.
+  vocabulary come from this project; it is fixed at commit `8c57e46` (v5.0.0-beta.20) and ships here
+  as adapted teammate templates and workmate base templates. That baseline is an engineering
+  reference — historical, with no synchronisation owed: this repository is not a fork of OMO, no gate
+  or document claim depends on an upstream checkout, and nothing here chases it release by release.
+  Its MCP server sources are also snapshotted into this repository at
+  [`vendor/mcp-src/`](./vendor/mcp-src/README.md), which is what `scripts/build-mcp.ts` builds the
+  shipped servers from; the snapshot and no external checkout is the build input.
 - **[dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams)** — author
-  **程序员阿江 (Relakkes)**, MIT. Its `agent-teams` plugin was adopted outright and its main code is
-  still kept at `packages/mpd-agent-teams-plugin/` (adopted version `0.1.16-rc.3-mpd`) as recorded
-  provenance — but it is **retired from the composition**: no loader row mounts it any more, so none
-  of its tools, its `.mpd/team` records or its sidebar panel is part of a shipped session. Team mode
-  runs on the official Agent Teams plugin instead (the three `mpd-*-agent-team` rows above). Its
-  licence and notices are preserved in [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md).
+  **程序员阿江 (Relakkes)**, MIT. Its `agent-teams` plugin was adopted outright (version
+  `0.1.16-rc.3-mpd`), then retired from the composition — no loader row mounted it — and the
+  `de-vendor-and-verify-law` wave DELETED the whole body. Two pieces of that work still ship,
+  relocated into mpd-owned homes: the adopted browser client bundle at
+  `packages/mpd-bundle-plugin/adopted/agent-teams-client.js`, which the shipped sidebar builds on,
+  and the DSH runtime modules now owned at `packages/mpd-schemastery/`. Team mode runs on the
+  official Agent Teams plugin (the three `mpd-*-agent-team` rows above). The MIT attribution and the
+  full record are preserved in [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md).
 - **DeepSeek Harness host packages (`@deepseek-ai/*`)** — the DeepSeek team, MIT. The host supplies
   the plugin system, the tool/agent/skill/preset seams, the model providers and the Web shell this
   bundle plugs into — including the **official Agent Teams plugin set**

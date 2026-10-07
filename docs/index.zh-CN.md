@@ -43,8 +43,9 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 1. [`../AGENTS.md`](../AGENTS.md) —— 有约束力的手册：约定、关卡、git 模型。
 2. [`../agent-references/troubleshooting.md`](../agent-references/troubleshooting.md) —— 完整的
    症状 → 原因 → 修复对照表。
-3. [`../agent-references/agent-teams-deltas.md`](../agent-references/agent-teams-deltas.md) —— 采纳的
-   agent-teams 变更登记表（只有改那个包时才需要）。
+
+此处原先列出的「采纳的 agent-teams 变更登记表」已随它所描述的 vendored 主体一同删除（de-vendor 波次）；
+实时登记见 `agent-references/index.md`。
 
 `agent-references/**` 面向智能体，按策略仅提供英文；它有意位于本文档中心所描述的双语范围之外。
 

@@ -382,7 +382,6 @@ function buildToolchain(root: string, resolution: BuildBinResolution): Toolchain
  * through to the generic "no local source" reason and is still listed.
  */
 function uncoveredReason(root: string, pkg: string, dist: string, ctx: UncoveredContext): string {
-  if (pkg === "mpd-agent-teams-plugin") return "adopted upstream main code under lib/ (no src/, never rebuilt here)"
   if (pkg === "mpd-bundle") return "documentation package for the root cordis.patch.yml layer — no code, not a build artifact"
   if (!dist.endsWith(".js")) return "build metadata, not a bun build artifact"
   if (ctx.declaredNoSource.has(dist)) return "declared by scripts.build but its source file is absent (no local source)"

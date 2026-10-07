@@ -387,6 +387,15 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     {
+      // The verification law's row, placed AFTER mpd-roles exactly as the shipped patch has it: the
+      // guard is installed by the roles row (the bundle's single `guardTool` site) and resolves this
+      // row's `mpdVerify` service PER CALL, so apply order costs nothing. Its config is the shipped
+      // patch's, verbatim — `verify.*` knobs are read RAW and are deliberately NOT settings-schema
+      // entries (the pinned SETTINGS_KNOBS count does not move for this row).
+      id: "mpd-verify", name: p("packages/mpd-verify-plugin/dist/index.js"),
+      config: { mode: "hard", escapeUses: 1 }
+    },
+    {
       id: "mpd-workmate", name: p("packages/mpd-workmate-plugin/dist/index.js"),
       config: {}
     },
@@ -436,11 +445,12 @@ function buildPlan(o: PlanInputs): Plan {
     },
     // ── Agent Teams: the OFFICIAL plugin set (0.1.7-rc.2) ───────────────────
     // The adopted vendored plugin (row `agent-teams`,
-    // packages/mpd-agent-teams-plugin) is RETIRED with this wave: the harness now
-    // ships the TeamService + its model-facing tools + its Web UI as first-class
-    // packages, and the bundle mounts them under mpd-owned entry ids with entry
-    // NAMES equal to the official package names. Mirrored verbatim from
-    // cordis.patch.yml, order included.
+    // packages/mpd-agent-teams-plugin) is DELETED: it was retired from the composition
+    // when the harness began shipping the TeamService + its model-facing tools + its
+    // Web UI as first-class packages, and the de-vendor wave removed the code. The
+    // bundle mounts the OFFICIAL rows under mpd-owned entry ids with entry NAMES equal
+    // to the official package names. Mirrored verbatim from cordis.patch.yml, order
+    // included.
     {
       id: "mpd-agent-team", name: "@deepseek-ai/dsh-experimental-agent-team",
       config: { maxMembers: 16, maxTasks: 256, maxPendingMessagesPerMember: 64, maxMessageBytes: 32768, disposalTimeoutMs: 5000 }
@@ -645,7 +655,9 @@ function selfTest(): void {
   }
   if (!/prefix: >-/.test(presetText)) { console.error("[install-profile self-test] FAIL: the extracted preset-mpd block lost the persona block scalar"); process.exit(1) }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
-  if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap rows"); process.exit(1) }
+  // The assertion lists EVERY row this file is expected to write. A subset would pass while a row went
+  // missing — the vacuous-assertion class this wave keeps hunting (captain ruling, 2026-10-07).
+  if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap") || !rows.includes("mpd-verify")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap/verify rows"); process.exit(1) }
   // The two rows the parity gate proved were missing: the extension registry (new with
   // the extension interface) and the team-compact row (absent since it landed in the
   // patch). Both are pinned here so a future removal fails the self-test too.

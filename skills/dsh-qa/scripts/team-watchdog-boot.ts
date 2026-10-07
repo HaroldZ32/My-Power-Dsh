@@ -749,14 +749,18 @@ export async function selfTest(): Promise<boolean> {
   add("C17", emptyComposition.ok === false && emptyComposition.checks.find((check) => check.id === "B12")!.ok === false, "a boot outside the user's composition REDDENS B12")
 
   // The real cordis waterfall: the retired shape must veto, the fixed shape must not.
+  // RETARGETED (wave `de-vendor-and-verify-law`, 2026-10-07): the subject moved from the DELETED
+  // vendored `_deps/cordis` copy (deleted with the adopted body) to the mpd-owned RELOCATION of
+  // the same implementation at `packages/mpd-schemastery/harness/cordis`. The control is not
+  // disabled — it drives a real cordis `Context`, which is what makes the shape claim falsifiable.
   try {
-    // The vendored cordis lib, loaded by ABSOLUTE PATH. The cast is unavoidable: the specifier
+    // The RELOCATED cordis lib, loaded by ABSOLUTE PATH. The cast is unavoidable: the specifier
     // is a runtime path static analysis cannot resolve, so its surface is asserted here instead.
-    const cordis = await import(join(REPO, "packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.ts")) as CordisModule
+    const cordis = await import(join(REPO, "packages/mpd-schemastery/harness/cordis/lib/index.ts")) as CordisModule
     // The fallback decision a composed waterfall must produce when no listener vetoes.
     const FALLBACK = { kind: "enter", messages: ["claimed-user-message"] }
     /**
-     * Drive one listener through the REAL vendored waterfall.
+     * Drive one listener through the REAL relocated waterfall.
      * @param listener The `agent/pre-step` listener under test.
      * @returns The decision the waterfall composed.
      */
@@ -764,8 +768,9 @@ export async function selfTest(): Promise<boolean> {
       // A vendored context carrying exactly the listener under test.
       const ctx = new cordis.Context()
       ctx.on("agent/pre-step", listener)
-      // The vendored shape (measured in packages/mpd-agent-teams-plugin/test/pre-step-waterfall.test.ts):
-      // the LAST argument is the innermost `next`, so it is a thunk returning the fallback decision.
+      // The shape this control pins (measured against the vendored copy's own test before that tree
+      // was deleted): the LAST argument is the innermost `next`, so it is a thunk returning the
+      // fallback decision.
       return ctx.waterfall(ctx, "agent/pre-step", { turn: 1 }, () => ({ ...FALLBACK }))
     }
     // The RETIRED shape: a listener that returns a stamp without calling `next()`.
@@ -778,10 +783,10 @@ export async function selfTest(): Promise<boolean> {
       return next()
     })
     add("C7", retired?.kind === "step" && retired?.messages === undefined,
-      "the vendored cordis REALLY vetoes on the retired shape: the listener's return value became the decision (" + JSON.stringify(retired) + ")")
+      "the REAL cordis REALLY vetoes on the retired shape: the listener's return value became the decision (" + JSON.stringify(retired) + ")")
     add("C8", fixed?.kind === "enter" && Array.isArray(fixed?.messages),
       "the fixed shape (`return next()`) composes the fallback decision unchanged (" + JSON.stringify(fixed) + ")")
-    checks.push({ id: "C9", ok: true, detail: "the cordis control ran against the REAL vendored implementation at packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.ts" })
+    checks.push({ id: "C9", ok: true, detail: "the cordis control ran against the REAL implementation at packages/mpd-schemastery/harness/cordis/lib/index.ts (the mpd-owned relocation; the vendored copy was deleted with the adopted body)" })
   } catch (error) {
     checks.push({ id: "C7", ok: false, detail: "the cordis waterfall control could not run: " + errorMessage(error) })
   }

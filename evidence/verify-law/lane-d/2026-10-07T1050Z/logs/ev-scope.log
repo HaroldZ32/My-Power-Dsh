@@ -1,0 +1,29 @@
+cmd: revision + Lane D scope presence  [2026-10-07T10:50:29Z]
+97207ab8ec6f662175e843c50c40890b05656cf6
+  present  packages/mpd-verify-plugin                       files=15
+  present  packages/mpd-verify-plugin/src/law.ts            bytes=33661
+  present  packages/mpd-roles-plugin/src/verify-guard.ts    bytes=12937
+  present  skills/dsh-qa/scripts/verify-law.ts              bytes=21451
+  present  packages/mpd-verify-plugin/dist/index.js         bytes=111940
+  present  cordis.patch.yml                                 bytes=54838
+  mpd-verify-plugin src files: 8 | test files: 2
+  the mpd-verify row in cordis.patch.yml: 2 occurrence(s)
+
+cmd: the wave's evidence dirs for the law
+         984  evidence/gates/verify-law/2026-10-07T10-41-52Z/output.log
+        4039  evidence/gates/verify-law/2026-10-07T10-44-42Z-integration/output.log
+        5575  evidence/gates/verify-law/2026-10-07T10-45-47Z-integration/output.log
+        2585  evidence/gates/verify-law/2026-10-07T10-45-47Z-integration/result.json
+        6037  evidence/gates/verify-law/2026-10-07T10-47-12.929Z/output.log
+        1248  evidence/gates/verify-law/2026-10-07T10-47-12.929Z/result.json
+        3364  evidence/gates/verify-law/2026-10-07T10-47-12.929Z/run-a-guarded.log
+        1904  evidence/gates/verify-law/2026-10-07T10-47-12.929Z/run-b-control.log
+         611  evidence/gates/verify-law/2026-10-07T10-47-12.929Z/run-c-docs.log
+        4834  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/output.log
+        1246  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/result.json
+        1246  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/result-run2.json
+        2891  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/run-a-guarded.log
+         954  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/run-b-control.log
+         850  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/run-c-docs.log
+
+cmd: THE ACCEPTANCE-NAMED FALSIFIER — node skills/dsh-qa/scripts/verify-law.ts --self-test

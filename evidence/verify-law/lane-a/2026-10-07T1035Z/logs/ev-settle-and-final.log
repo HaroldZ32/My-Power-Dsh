@@ -1,0 +1,20 @@
+cmd: the 3 MPD_UPSTREAM_ROOT lines in .github/workflows/gates.yml (is it an env export, or prose?)
+  22:#   pinned `oh-my-openagent` checkout by SHA and export `MPD_UPSTREAM_ROOT` for the `vendor` member,
+  25:#   and reads no `MPD_UPSTREAM_ROOT`, so the fetch step is GONE (not disabled) and a run on a bare
+  92:      # checkout and reads NO `MPD_UPSTREAM_ROOT`, so this job needs neither a fetch step nor an env
+
+cmd: is the baseline-fetch step or any env export still present?
+
+cmd: the handoff's open docs item — do the docs still carry the now-false vendor row?
+  docs/development.md              MPD_UPSTREAM_ROOT mentions=1
+  docs/development.zh-CN.md        MPD_UPSTREAM_ROOT mentions=1
+
+cmd: SETTLE re-hash of Lane A's six scope paths (START was 2026-10-07T10:35:20Z)
+2026-10-07T10:37:23Z
+  .github/workflows/gates.yml      1466ab91096f654f
+  VENDOR_LOCK.json                 b2aa620dff8c8216
+  scripts/bootstrap.ts             a70fee1918a8d123
+  scripts/build-mcp.ts             d996b40fad00b4b9
+  scripts/verify-vendor.ts         93e81d6299ffc9ae
+  vendor                           DIR files=459 tree=6c09cadd2ee97e2f
+  START values were: gates.yml=1466ab91096f654f VENDOR_LOCK=b2aa620dff8c8216 bootstrap=a70fee1918a8d123 build-mcp=d996b40fad00b4b9 verify-vendor=93e81d6299ffc9ae vendor=6c09cadd2ee97e2f(459 files)

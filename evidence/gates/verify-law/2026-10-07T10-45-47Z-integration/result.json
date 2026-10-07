@@ -1,0 +1,24 @@
+{
+  "task": "T16 integration (Lane D)",
+  "gateTable": [
+    { "command": "node scripts/verify-dist-fresh.ts", "result": "PASS — 30/30 targets fresh (rebuilt twice, byte-identical) with the PINNED bun 1.4.0", "note": "a PATH bun (1.4.2) rebuild is NOT canonical: it produced 24/30 STALE" },
+    { "command": "bun test packages", "result": "PASS — 1570 pass / 3 skip / 0 fail (98 files)" },
+    { "command": "npx tsgo --noEmit", "result": "PASS — no output (exit 0)" },
+    { "command": "node scripts/verify-comment-coverage.ts", "result": "PASS — 357 files, every declaration documented" },
+    { "command": "node scripts/verify-no-host-override.ts", "result": "PASS — 34 additive rows, 0 id-targets, 205 host ids" },
+    { "command": "node scripts/verify-manual-paths.ts", "result": "PASS — resolved=144, unresolved=0" },
+    { "command": "bun run verify:docs", "result": "PASS — pairs=47 failed=0 violations=0 links=440 dead=0" },
+    { "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test", "result": "PASS — 32 harness rows conform, mpd preset 28 child rows, negative controls 4/4 reddened" },
+    { "command": "node scripts/install-profile.ts --dry-run", "result": "PASS (exit 0)" },
+    { "command": "bun run verify:rows", "result": "FAIL — MISSING from scripts/install-profile.ts: mpd-verify (Lane B's file; exact fix below)" },
+    { "command": "node scripts/pack-mpd.ts", "result": "FAIL — cordis.patch.yml mounts packages/mpd-verify-plugin/dist/index.js but the packed tree has no such file: PLUGIN_PKGS in scripts/pack-mpd.ts is a hand-maintained list (Lane B's file)" },
+    { "command": "node scripts/verify-pack-closure.ts", "result": "FAIL — anticipated: the pack cannot complete until the packer lists the package (and skills/** settled)" },
+    { "command": "node scripts/verify-vendor.ts", "result": "FAIL — asset skills treeSha mismatch: the wave's owed SINGLE re-pin (the captain's, held until every skills/** edit lands)" },
+    { "command": "real workspace .mpd/verify/boot.json", "result": "ABSENT — F.2 satisfied, unchanged by every run in this task" }
+  ],
+  "bounds": [
+    "the live boot case (skills/dsh-qa/scripts/verify-law.ts) has NOT been run: it needs a credential and a long boot, and its registered copy must first be re-taken so the anti-drift arm is the one that runs",
+    "pack-closure and verify-vendor are red for REASONS THAT ARE NOT LANE D's, and both are expected mid-wave (the packer row list and the single re-pin)",
+    "the Docker lane is the captain's LAST step and was not run here"
+  ]
+}

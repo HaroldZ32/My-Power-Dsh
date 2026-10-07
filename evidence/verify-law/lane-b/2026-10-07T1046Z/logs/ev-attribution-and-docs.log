@@ -1,0 +1,40 @@
+cmd: the 1 import-shaped 'skills' match (name + line, to classify it honestly)
+  skills/dsh-qa/SKILL.md:123:| team-watchdog-notify | team watchdog (w9) | AC-12/AC-13/AC-14: BOTH front doors, from payloads and BUILT bytes only. WEB arm (reader key `web-panel`): the REAL bundle route handlers over a sandbox store + the REAL built `client.js` in the offline hook runtime with `fetch` served by the route's own payload — banner as the panel root's FIRST child, one activity record, the first poll with no user action, the acknowledge advancing ONLY its own reader key (watermark bytes before/after), the replay stopping, and a second unacknowledged incident replaying on the next start. TUI arm (reader key `mpd-tui`): the REAL `mpdWatchdog` service driven through the REAL TUI module — composed status notice, replay dialog with the acknowledge option, the acknowledge through the service advancing the `mpd-tui` watermark, replay stop, and the built-bytes wiring. Both arms state the honest fallback: without an acknowledge the replay is PERMANENT RE-DISPLAY BY DESIGN | v0.9.1/watchdog || team-watchdog-boot | team watchdog (r3, extended r5) | **HEAVY (a real `dsh` spawn + a live model call): its real run is deliberately NOT in the `--self-test` sweep — only `--self-test` is.** **r5 adds the GUI-activation assertion this wave lacked:** the boot runs in the USER'S OWN composition (their profile's bundles — `@linxin666/dsh-web-all`, `dshmarket`, `dsh-cost-meter`, `nowledge-mem-deepseek-harness`, `dsh-better-sidebar` — mirror-symlinked when their profile resolves them, each recorded as mirrored/unresolved, never silently dropped) and the lane asserts (a) the boot log carries NONE of the terminal-only activation-failure signatures (`did not activate`, `pending (waiting for service`, `failed to apply loader entry`, a `client-modules` error naming `@mpd-dsh/mpd`) — the signatures that reach the operator's terminal while the browser console stays empty, (b) the host SERVED our client for the `@mpd-dsh/mpd` entry (HTTP 200 from the index-discovered `/plugins/…client.js` URL), and (c) the served bytes carry BOTH tab ids (`mpd-agent-teams`, `mpd-workmate`) plus the adopted export bridge and the sidebar page module. **Ceiling, stated:** no browser exists here, so `registerTab` EXECUTION against the real sidebar is NOT witnessed — whether the strip then renders our tabs stays outside the lane. `--self-test` carries the r5 negative controls too (a `did not activate` log, a `pending (waiting for service` log, a `failed to apply loader entry` log, a 404 client route, served bytes missing a tab id or the bridge, and a boot outside the user's composition — each must redden its own check). The lane the wave needed and did not have: it boots a REAL dev-web `dsh` in a sandbox (bundles base + web-app + the bundle under test, the checkout linked into the sandbox profile), creates a session on `agentPreset: "mpd"`, sends one prompt, and reads the verdict from the HARNESS'S OWN session log (the concatenated-zstd store via `lib/session-evidence.ts`, never prose). It asserts the watchdog row APPLIED (its boot line, `disposers` ≥ 1, `holdService=mpdWatchdog`), that ≥ 1 `turn/end` was recorded, and that NO `turn/end` carries the pre-step veto signature `Cannot read properties of undefined (reading 'map'\|'findLastIndex'\|'length')` — the `agent/pre-step` waterfall defect that killed EVERY turn of EVERY mpd session with the row mounted, ~120 ms after `turn/start`. It distinguishes THREE outcomes and asserts the distinction: `completed` (turn/end + assistant message — the full round trip), `model-error` (the turn REACHED the model call and failed there, e.g. MISSING_CREDENTIAL — passed for THIS invariant but explicitly not a completed turn), `veto`/`no-turn` (FAIL). Sandbox home receives BOTH `.credentials.yaml` and `settings.yaml` (AGENTS.md §7 — without the gateway settings the route falls back to `deepseek-official` and dies MISSING_CREDENTIAL, which the lane must not read as a product failure). `--self-test` is offline: it drives the REAL vendored cordis waterfall (`packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.ts`) with the retired shape (a listener returning a value without `next()`) and requires the veto to be observed, plus the fixed shape composing the fallback unchanged, and it re-classifies synthesized session logs so each verdict path is falsifiable | v0.9.1/watchdog-boot |
+--- and the prose-only mentions in skills (counts) ---
+  skills/dsh-qa/scripts/workmate-library.ts
+  skills/dsh-qa/scripts/watchdog-redesign.ts
+  skills/dsh-qa/scripts/team-watchdog-boot.ts
+  skills/dsh-qa/SKILL.md
+
+cmd: docs/independence.md §5 — is the closure MEASURED or asserted?
+  129:## 5. The pinned debt: the retired body's vendored `schemastery` — CLOSED
+  130-
+  131-**STATUS: CLOSED by the `de-vendor-and-verify-law` wave (2026-10-07).** The closure measurement is the
+  132-one the follow-up named, taken on the same commit as the deletion:
+  133-
+  134-* the adopted body `packages/mpd-agent-teams-plugin/**` is **DELETED** — the measured count is
+  135-  **768 files**, `_deps/` included, and `git ls-files` reported the same 768 before removal;
+  136-* the vendored tree moved to a first-class mpd-owned home: `packages/mpd-schemastery/lib/` carries the
+  137-  validator (`index.ts`), its dependency (`cosmokit.ts`) and the declaration set
+  138-  (`types/index.d.ts`), with the MIT notices reproduced in `packages/mpd-schemastery/LICENSE`;
+  139-* the **four live importers** named below are re-pointed IN THE SAME COMMIT, from
+  140-  `../../mpd-agent-teams-plugin/_deps/schemastery` to `../../mpd-schemastery` — verified with
+  141-  `grep -rn "mpd-agent-teams-plugin" packages/*/src` returning no import, only historical comments;
+  142-* the gate's frozen set still holds exactly those four edges (they were re-pointed, not dropped), so
+  143-  the follow-up cannot grow a fifth: see
+
+cmd: the coupling inventory's Lane D couplings — real?
+  222:  // law by reading the verifier seat and its record shape out of the new `mpd-verify-plugin`, and
+  228:  "packages/mpd-roles-plugin/src/index.ts :: import { VERIFY_SERVICE } from \"../../mpd-verify-plugin/src/service.ts\"",
+  229:  "packages/mpd-roles-plugin/src/verify-guard.ts :: import type { ArmedLoopView, VerifierSeatView } from \"../../mpd-verify-plugin/src/law.ts\"",
+  230:  "packages/mpd-roles-plugin/src/verify-guard.ts :: } from \"../../mpd-verify-plugin/src/law.ts\"",
+--- do the four claimed importers actually import mpd-schemastery? (counts) ---
+  packages/mpd-team-watchdog-plugin/src/index.ts
+  packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts
+  packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts
+  packages/mpd-tui-plugin/src/index.ts
+  packages/mpd-tui-plugin/test/plugin.test.ts
+  packages/mpd-ulw-plugin/test/engine.test.ts
+  packages/mpd-config-plugin/src/index.ts
+  packages/mpd-config-plugin/src/settings-schema.ts
+  packages/mpd-dsh-adapter-plugin/test/adapter.test.ts

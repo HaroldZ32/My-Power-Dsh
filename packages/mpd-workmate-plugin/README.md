@@ -174,12 +174,21 @@ scope, exactly like the sibling AgentTeams tab), not an oversight.
 
 ## Team integration (dsh-agent-teams)
 
-`packages/mpd-agent-teams-plugin`'s `memberPersona()` is patched (this plugin is
-first-class main code) so that a member whose name matches a workmate instance gets
-that workmate's persona + memory injected into its system prompt, plus a
-`mpd_workmate_reflect` instruction at the end of each task — "captain checks the
-note, delegates to the workmate-named member". The captain guidance in the `mpd`
-preset and roster profile instructs: consult `mpd_workmate_match` before delegating;
+**THE PERSONA-INJECTION HOOK IS ABSENT, AND HAS BEEN SINCE 2026-09-27 (chronology, not causation).**
+The hook was a patch to the ADOPTED `agent-teams` body's `memberPersona()`: a member whose name matched
+a workmate instance got that workmate's persona + memory injected into its system prompt, plus a
+`mpd_workmate_reflect` instruction at the end of each task — "captain checks the note, delegates to the
+workmate-named member". That body was RETIRED from the composition on **2026-09-27** — no loader row in
+`cordis.patch.yml` or `presets/mpd.patch.yml` names it since, only a comment — and an UNMOUNTED module
+cannot inject anything, so **the automatic injection could not have fired from that date on**. The
+`de-vendor-and-verify-law` wave then DELETED the body (`packages/mpd-agent-teams-plugin/**`, 768 files),
+which removed dead code and changed NO runtime behaviour: workmate reuse inside a team is today, exactly
+as it has been since the retirement, the captain's explicit act (`mpd_workmate_match` → delegate → the
+member reports and the captain calls `mpd_workmate_reflect`), not a prompt the runtime splices in.
+Re-establishing it belongs to the OFFICIAL team path (`mpd-roster-provider-plugin`, which already routes
+a teammate whose description names a roster member) and is a recorded follow-up, not something this wave
+implements. The captain
+guidance in the `mpd` preset and roster profile still instructs: consult `mpd_workmate_match` before delegating;
 weak match → initialize a new workmate.
 
 ## Build / test

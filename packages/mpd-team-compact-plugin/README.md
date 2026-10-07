@@ -78,4 +78,7 @@ compacted.
 ## Related
 
 - Team mode from the user's side: [`../../docs/user-guide.md`](../../docs/user-guide.md) §6.
-- The plugin that owns `.mpd/team`: [`../mpd-agent-teams-plugin/README.md`](../mpd-agent-teams-plugin/README.md).
+- The plugins that own the team plane: [`../mpd-team-core-plugin/README.md`](../mpd-team-core-plugin/README.md)
+  (the team record, workflow and `mpdTeams` service) and
+  [`../mpd-team-watchdog-plugin/README.md`](../mpd-team-watchdog-plugin/README.md) (stall detection).
+  The retired vendored `mpd-agent-teams-plugin` that owned this state before them is DELETED.

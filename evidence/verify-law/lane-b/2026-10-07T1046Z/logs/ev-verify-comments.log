@@ -1,0 +1,8 @@
+cmd: bun run verify:comments
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-verify-plugin/qa/verify-law.ts (1)
+  136: comment — registeredSha
+
+error: script "verify:comments" exited with code 1
+EXIT=1

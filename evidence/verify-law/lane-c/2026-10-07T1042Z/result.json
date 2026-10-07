@@ -1,0 +1,196 @@
+{
+  "version": 1,
+  "recordId": "lane-e-lane-c-2026-10-07T1042Z",
+  "loopId": "waveloop-lane-c",
+  "taskId": "T14",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "lane-c-junior-engineer (T8)",
+  "verifierId": "lane-e-verifier",
+  "basis": {
+    "kind": "pre-plugin",
+    "attestation": "no-guard-in-process",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/verify-law-spec.md",
+        "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+      },
+      {
+        "path": "AGENTS.md",
+        "sha256": "f52338414c47c8b6c2bedb45aeaa86929f7a49e1a9ed15d68734fe94f08b6450"
+      },
+      {
+        "path": "skills/dsh-qa/cases.json",
+        "sha256": "a9ae27ae3bdd90146350cb9377fd73dc71db525a216948c1826a9bd2bb538c33"
+      },
+      {
+        "path": "skills/dsh-qa/SKILL.md",
+        "sha256": "c216f7f45014879407189544fc0f26362e2a8cda883a82eb0e23d379da7962af"
+      },
+      {
+        "path": "evidence/gates/complexity-gate/2026-10-07T10-32-25Z/skills-retirement-sweep.md",
+        "sha256": "7842da2fcd0fd2c556643e86a8954e0cb8d08b69b1439767bed9d722442b48b8"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-roles-plugin/src/complexity-gate.ts",
+        "bytes": 39422,
+        "sha256": "995564251c877723a6021e3283878ff93f5f44bcf6a8a00b9b320e334bc71a7e",
+        "mtime": "2026-10-07T10:32:25.564Z"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/verify-law.ts",
+        "bytes": 18939,
+        "sha256": "5edaf2f6fa08be4968823a0e880af80fd64a376563ad81cc4893b9746ea4d870",
+        "mtime": "2026-10-07T10:42:59.259Z"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/session-start-team.ts",
+        "bytes": 113697,
+        "sha256": "7c2646a700dfa554a16e7ebd600ffa2fd2191e51e0094262cafa34b9848e588c",
+        "mtime": "2026-10-07T10:35:58.311Z"
+      },
+      {
+        "path": "evidence/dsh-qa/suite-runner/2026-10-07T10-42-03.811Z/result.json",
+        "bytes": 2260,
+        "sha256": "b2459e46a575749b85909c91834c1945a281dd3a7991bbe5c4b012881647b9a2",
+        "mtime": "2026-10-07T10:42:57.666Z"
+      },
+      {
+        "path": "evidence/plan-f/workmate-library/2026-10-07T10-38-04.837Z/result.json",
+        "bytes": 2368,
+        "sha256": "47f2972ceb5299873eadb501f1d2e7b995dee154cceb1c06fa6137769f44d304",
+        "mtime": "2026-10-07T10:38:42.666Z"
+      },
+      {
+        "path": "evidence/plan-f/workmate-library/2026-10-07T10-42-03.828Z/result.json",
+        "bytes": 2521,
+        "sha256": "f5f5494d45d08c255c6fd5da32ab92bb104de4d41d427237582140b763590b92",
+        "mtime": "2026-10-07T10:42:57.661Z"
+      },
+      {
+        "path": ".mpd/verify/boot.json",
+        "exists": false
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "skills/dsh-qa/cases.json",
+      "sha256": "a9ae27ae3bdd90146350cb9377fd73dc71db525a216948c1826a9bd2bb538c33"
+    },
+    {
+      "path": "skills/dsh-qa/SKILL.md",
+      "sha256": "c216f7f45014879407189544fc0f26362e2a8cda883a82eb0e23d379da7962af"
+    },
+    {
+      "path": "evidence/gates/complexity-gate/2026-10-07T10-32-25Z/skills-retirement-sweep.md",
+      "sha256": "7842da2fcd0fd2c556643e86a8954e0cb8d08b69b1439767bed9d722442b48b8"
+    },
+    {
+      "path": "evidence/gates/complexity-gate/2026-10-07T10-32-25Z/revert-control.md",
+      "sha256": "ad996fd244f14fe7805b236e9f552b5d66fb0529c0242868b69d0318193448d5"
+    },
+    {
+      "path": "evidence/dsh-qa/suite-runner/2026-10-07T10-42-03.811Z/result.json",
+      "sha256": "b2459e46a575749b85909c91834c1945a281dd3a7991bbe5c4b012881647b9a2"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/session-start-team.ts",
+      "sha256": "7c2646a700dfa554a16e7ebd600ffa2fd2191e51e0094262cafa34b9848e588c"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "cmd": "node skills/dsh-qa/scripts/session-start-team.ts --self-test",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-c/2026-10-07T1042Z/logs/ev-selftest-session-start.log",
+      "logSha256": "57e8a2f86fdc80a09c4a55d0c852066f5bc875d7ada363793bc141a9f2d2d29e"
+    },
+    {
+      "cmd": "node scripts/run-qa-lanes.ts --check-drift",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-c/2026-10-07T1042Z/logs/ev-run-qa-lanes-drift.log",
+      "logSha256": "78b819177e40e437d0bc94de46609202055baf4172d6fe51e3f070f76c3df9c0"
+    },
+    {
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-c/2026-10-07T1042Z/logs/ev-typecheck.log",
+      "logSha256": "8f61a615742758ff02c97cbbb7bbefb0224591af06b7848260814bb0d846980b"
+    },
+    {
+      "cmd": "bun test packages/mpd-roles-plugin",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-c/2026-10-07T1042Z/logs/ev-bun-test-roles.log",
+      "logSha256": "0a3b926b0ddfbb52aa103300c79774f6f0ca28372deafc50687ba277da24a724"
+    },
+    {
+      "cmd": "bun run test:qa",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-c/2026-10-07T1042Z/logs/ev-test-qa.log",
+      "logSha256": "5df4e16aa761cb289ff7ea6396910f64bfdde8bf3727f1099ba21c40d9fb65ba"
+    },
+    {
+      "cmd": "ruling-A preconditions + settle table + the in-window mutation timeline",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-c/2026-10-07T1042Z/logs/ev-preconditions.log",
+      "logSha256": "32bf66aaab7d9416c55acc517d72469a23f8934572eca00a6f053eb1f61dcb95"
+    },
+    {
+      "cmd": "workmate-library determination: case history, accidental-run isolation, the runner PASS, pre/post structure",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-c/2026-10-07T1042Z/logs/ev-workmate-history.log",
+      "logSha256": "c04973c33732770038848179b165f6fc632f03a8f406eaa430b5deff983d3a7b"
+    }
+  ],
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "symptom": "An acceptance-named command is RED on the measured revision. `node scripts/run-qa-lanes.ts --check-drift` exits 1: '[run-qa-lanes] drift: 3 lane script(s) on disk in no manifest entry: skills/dsh-qa/scripts/goal-bridge.ts, skills/dsh-qa/scripts/tui-deps-ctrla.ts, skills/dsh-qa/scripts/verify-law.ts' and 'discovery: 42 lane script(s) discovered (39 listed, 3 unlisted, 15 outside every suite)'. The captain cited this command as exit 0 (41 listed / 2 unlisted). Worse, the manifest MOVED INSIDE the verification window: at 10:42:07Z cases.json was sha256 53460c32fa1d8198 — byte-identical to manifestSha256 in the lane runner's own evidence — and by 10:43:38Z it was a9ae27ae3bdd9014 (mtime 10:42:14Z), i.e. it changed 7 SECONDS after my start read, while `skills/dsh-qa/scripts/verify-law.ts` did not appear until 10:42:59Z and was never registered.",
+      "expected": "The wave's single `skills/**` writer registers `skills/dsh-qa/scripts/verify-law.ts` in `cases.json` AND in the `SKILL.md` case table (the spec's own HOPS text says that row is owed), and either documents the two additional de-listings (`team-watchdog-fault`, `team-watchdog-scene`, both also DELETED from disk — they are NOT in the sweep doc's enumeration, which claims 44 -> 41) or restores them; then re-run `node scripts/run-qa-lanes.ts --check-drift` to exit 0 and re-publish the sweep evidence. Until then the wave carries a drift red that its own sweep doc contradicts.",
+      "docSource": "contract §Acceptance criteria AC7 (test:qa / the wave's gates); AGENTS.md §7 'New case checklist: add row to SKILL.md case table; script + --self-test; real run; evidence dir'; verify-law-spec §(e) HOPS ('skills/dsh-qa/scripts/verify-law.ts + the SKILL.md case row — written by Lane C from Lane D's text')"
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "symptom": "`bun test packages/mpd-roles-plugin` measures 87 pass / 1 FAIL today — the failure is `F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62)`. The captain's orientation cited this suite as 51/0, which was true at Lane C's own measurement moment; the extra tests and the red arrived with OTHER lanes' edits. The red is the known-red assigned elsewhere (an adapter edit after Lane C's canonical `packages/mpd-roles-plugin/dist/**` rebuild), so it is NOT counted against Lane C — but it proves Lane C's granted dist rebuild is now STALE.",
+      "expected": "The INTEGRATION task rebuilds every dependent `dist/**` with the pinned toolchain after the last adapter/source edit and re-runs the suite; no review record or PR body may read 'Lane C's tests are green' without that attribution, because the current state is 1 red whose cause is a stale dist.",
+      "docSource": "contract §Acceptance criteria AC7 (bun test); AGENTS.md §6 'An ADAPTER edit fans out' (one adapter edit left 12 of 24 dist targets STALE); AGENTS.md §7 T-88 (derived surfaces belong to the integration task)"
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "symptom": "`evidence/gates/complexity-gate/2026-10-07T10-32-25Z/skills-retirement-sweep.md` carries a verification line that is no longer true of the tree it describes: '`node scripts/run-qa-lanes.ts --check-drift` # exit 0; 41 listed lanes, 2 unlisted'. Measured now: exit 1, 39 listed, 3 unlisted. A PR body quoting the sweep doc would assert a green its own gate contradicts.",
+      "expected": "Update the sweep doc's verification block to the FINAL manifest state (or mark it as measured at 10:42:03Z and point at the follow-up edit), so the evidence and the tree agree.",
+      "docSource": "contract §Acceptance criteria AC7; AGENTS.md §4 'No evidence on disk for a gate = the change is not complete'"
+    },
+    {
+      "id": "F4",
+      "severity": "minor",
+      "symptom": "The `skills/**` settle discipline was violated DURING this review: `cases.json` mtime 10:42:14Z, `SKILL.md` 10:42:14Z, `verify-law.ts` 10:42:59Z — all inside my window (start read 10:42:07Z), and two cases were deleted from disk as well. A verifier cannot anchor a verdict to a surface that moves while it is being verified, and the wave's OWN single-writer rule for `skills/**` is what makes the anchor possible.",
+      "expected": "The captain declares the `skills/**` pen CLOSED before a verifier is dispatched (or re-dispatches the review after the last edit). Every `skills/**` edit also invalidates the corpus treeSha, so the wave still owes exactly ONE re-pin in the same commit as the final skills state.",
+      "docSource": "AGENTS.md §9 (single-skills-writer rule + exactly ONE re-pin per wave); AGENTS.md §7 'Verify on SETTLED hashes, and quote a hash WITH its measurement moment'"
+    }
+  ],
+  "unlockedReads": [],
+  "notes": [
+    "RESIDUAL BOUND (verify-law-spec §(c), verbatim): the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).",
+    "DOCKER DECLARED BOUND (captain ruling D): the Docker lane's evidence is INTEGRATION-borne and declared in the PR body; a verifier seat is not expected to run it — a declared bound, never a hole.",
+    "THE CAPTAIN'S SPECIFIC PROBE — ANSWERED: the accidental `workmate-library` red is NEITHER (a) a post-sweep defect NOR (b) a missing-prerequisite artifact. It is the case's LONG-STANDING LIVE-MODEL FLAKINESS, and it is a REAL red of a flaky live case. Evidence, all measured: (1) the case's own history holds 10 reds and 13 greens from 2026-08-28 to 2026-09-27, ALL PRE-WAVE, and FIVE of those reds carry the IDENTICAL signature `attempts=2, noteChars=0, memoryChars=0` (2026-09-17T03-14-09, 03-18-40, 03-29-58; 2026-09-27T21-45-00, 22-05-49) — today's accidental run reproduces exactly that signature; (2) the SAME case on the SAME revision, run PROPERLY through the lane runner 4 minutes later, PASSES: `evidence/dsh-qa/suite-runner/2026-10-07T10-42-03.811Z/result.json` records verdict 'pass', exitCode 0, durationMs 53853, and the case's own `result.json` then carries `files.ok:true, noteChars:251, memoryChars:420`; (3) even that PASSING run needed `attempts=2` with the identical retry note ('attempt 1 did not complete the flow (unproven tools: none; files present: false) — retrying once'), so the flake is in the live model's FIRST attempt completing the flow, not in the sweep; (4) the accidental run's own isolation was CORRECT — `isolation.ok:true, homeSandboxed:true, realWm before:null after:null` (no leak into the real `~/.mpd/workmate`), and its install/dump/live/flow/isolation steps were all ok, so it was not 'run without prerequisites' either; (5) the case's structure is unchanged by the sweep: the step key set and the five-tool flow key set are byte-identical between the pre-wave green run (2026-09-27T22-11-40.595Z) and today's red run, and Lane C's diffstat on the case is +17/-4 lines. CONCLUSION: not a FAIL to bounce — but the case is ~43% red across its lifetime, which is worth its own follow-up task (stabilize the flow assertion or raise the attempt budget); it is PRE-EXISTING and must not be attributed to this wave.",
+    "VERIFIED PASS — the CJK gate itself. `node skills/dsh-qa/scripts/session-start-team.ts --self-test` exits 0 with the corpus naming the user's verbatim Chinese instruction as `cjk-positive han=159 trigger=true signals=[\"E\"]` and THREE silent negatives `han=9/17/52 trigger=false signals=[]`, plus the calibration line `positives han=[159] negatives han=[9,17,52] bound=60 verbs>=2`, and FOUR negative controls reddening including the NEW `CJK-blind 1 problem(s)`. The scale-only control (52 Han chars, no lexicon verb) is silent — the load-bearing calibration claim holds.",
+    "VERIFIED PASS — the live three-source agreement. The row's own log carries `[mpd-roles] session gate fired for agent \"session-10415410-…\" signals=E mode=mechanical staged=1 plan=plan-20261007103657`; `notices.json` carries ONE mechanical notice with the SAME plan id (`mechanical:1, signals:[\"E\"], planIds:[\"plan-20261007103657\"], shellShaped:1, inert:1, retiredVocabulary:0, retiredProvisioned:0`) and `teams:{staged:1, stagedMembers:0, stagedTasks:0, records:0}` — so the shell is staged and NOTHING is spawned. The three CJK negative sides show `any:0, staged:0, gateInstalled:true` with `listener registered` as their LAST row-log line: measured SILENCE of an installed gate, not an absent one.",
+    "VERIFIED PASS — falsifiability (the F3 answer). `revert-control.md` records orig sha256=995564251c877723a6021e3283878ff93f5f44bcf6a8a00b9b320e334bc71a7e, reverted sha 7466363f…, the reverted `--self-test` exiting 1 with `cjk-positive … must trigger with signal E, got {\"trigger\":false,\"signals\":[]}`, and the restoration returning to the ORIGINAL sha — which my own start hash of `packages/mpd-roles-plugin/src/complexity-gate.ts` independently confirms is the file on disk (`995564251c877723…`).",
+    "VERIFIED PASS — calibration: `corpus-before-after.out` shows EXACTLY ONE verdict moving in the whole corpus (cjk-positive `false []` -> `true [\"E\"]`); every English case is identical before and after; the three negatives unchanged.",
+    "VERIFIED PASS — the sweep's enumeration is honest about the retired subjects: 3 cases DELETED with their rows, 3 arms dropped/retargeted with named comments (`team-watchdog-boot`/`team-watchdog-heartbeat` RETARGETED to the relocation, `workmate-library`/`watchdog-redesign` arms DROPPED with reasons), 2 cases KEPT with a capability justification; `grep` agrees the three deleted scripts are gone from disk, from `cases.json` and from `SKILL.md`.",
+    "MEASURED — `bun run test:qa` exits 0 with `[test:qa] all self-tests passed` (the acceptance-named QA sweep), and `bun run typecheck` exits 0. These are the two largest claims in the writer's report and both reproduce.",
+    "METHOD — the verdict was reached before any implementation read and needed none: no .ts/.js source and no dist/** was opened. Evidence used: the contract + spec + AGENTS.md, the writer's evidence tree, the runner's own evidence, the case history under `evidence/plan-f/`, read-only git status/history, content-free probes (mtimes, hashes, counts, existence) and the acceptance-named commands with their exits."
+  ],
+  "createdAt": "2026-10-07T10:45:00Z"
+}

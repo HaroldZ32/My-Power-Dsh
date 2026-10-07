@@ -12,8 +12,8 @@ boulder / comment-checker / codegraph / memory / workmate), the bundle's OWN tea
 (`name: '@mpd-dsh/mpd'` — the loader entry that carries the bundle's web client),
 mpd-bootstrap provisioning, and the THREE official Agent Teams rows (`mpd-agent-team`,
 `mpd-tool-agent-team`, `mpd-ui-agent-team`, plus the `mpd-roster-provider` row the tool row points
-at). The vendored `agent-teams` body is **NOT mounted** — no loader row names
-`packages/mpd-agent-teams-plugin` any more.
+at). The vendored `agent-teams` body is **GONE**: it was unmounted, then DELETED by the
+`de-vendor-and-verify-law` wave, so nothing in this tree loads it.
 
 The waveform-read rows (`mcp-wave-mcp` / `mcp-traceweave`) are **not mounted**: they wrap
 external Python MCP servers and stay commented out in `cordis.patch.yml:92-123` together
@@ -85,8 +85,9 @@ The team plane's own configuration is the gate's key plus the rows' own:
 
 The retired vendored row's upstream-aligned limits (`maxParallelMembers`, `maxMessagesPerRun`,
 `maxWallClockMinutes`, `maxMemberTurns`, `messagePayloadMaxBytes`, `recipientUnreadMaxBytes`,
-`mailboxPollIntervalMs`, `memberMaxDepth`, `stateDir`, `enforcement`) are HISTORY: they exist only in
-`packages/mpd-agent-teams-plugin/lib/index.ts`, which no row mounts.
+`mailboxPollIntervalMs`, `memberMaxDepth`, `stateDir`, `enforcement`) are HISTORY: they existed only
+in the adopted body's `lib/index.ts`, which no row mounted and which the de-vendor wave has since
+DELETED. They are not knobs any live row reads.
 
 ## TUI composition
 

@@ -597,8 +597,9 @@ bun run typecheck
 
 `dist/index.js` is built with the repo's own toolchain (bun, no network step) and
 is self-contained: the only external imports it needs are Node builtins. The
-`Config` schema comes from the schemastery copy the bundle already vendors at
-`packages/mpd-agent-teams-plugin/_deps/schemastery` — this package declares no
+`Config` schema comes from the schemastery copy the bundle OWNS at
+`packages/mpd-schemastery` (relocated out of the retired agent-teams body by the de-vendor wave) —
+this package declares no
 dependency of its own. That vendored copy is the one relative specifier that
 names a package directory (resolved through its own `package.json`, which
 carries both `exports.import` and `types`); every relative **file** import in

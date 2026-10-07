@@ -112,6 +112,17 @@ export interface TeamTaskRecord {
   coverageOf?: string
   /** The task a `repair` was opened from. */
   sourceTaskId?: string
+  /**
+   * The closing note a terminal verb recorded (`complete` / `fail`), one line, optional.
+   *
+   * WHY IT LIVES ON THE RECORD and not only in the tool result: the closure is the moment a caller
+   * explains itself, and a result that is gone by the next turn leaves a reader of the board looking at
+   * a `failed` row with no reason. MEASURED 2026-10-07: the mpd-native plane had NO terminal verb at all
+   * (the official `team_task_*` tools are disabled in a dsh-tui boot), so rows could be opened and
+   * claimed but never closed and the DAG could not advance. This field carries that verb's note into
+   * the durable record; it is never required.
+   */
+  note?: string
   /** ISO instant the task was added to the record. */
   createdAt: string
   /** ISO instant the task last changed. */
@@ -530,6 +541,8 @@ export interface TaskPatch {
   executorRef?: string
   /** The task's new blockers, resolved against this record. */
   blockedBy?: string[]
+  /** The closing note a terminal verb records; an empty string clears it. */
+  note?: string
 }
 
 /**
@@ -571,6 +584,12 @@ export function updateTeamTask(record: TeamRecord, taskId: string, patch: TaskPa
     if (patch.owner !== undefined) {
       if (patch.owner === "") delete next.owner
       else next.owner = patch.owner
+    }
+    // A closing note is a FIELD on the record, so clearing it is a deletion like the owner's — an
+    // empty patch value must not leave `note: ""` behind, which would read as "a note was written".
+    if (patch.note !== undefined) {
+      if (patch.note === "") delete next.note
+      else next.note = patch.note
     }
     return next
   })
@@ -626,6 +645,144 @@ export function casClaimTask(
   // that is a plan-time intent, not a claim. A concurrent CLAIM is still caught by the revision
   // above, because every mpd-side mutation — a claim included — bumps it.
   return { applied: true, record: updateTeamTask(fresh, taskId, { owner, status: "in_progress" }, now) }
+}
+
+/** What one terminal-verb call decided, and what it unblocked. */
+export type CasCloseOutcome = {
+  /** True when the record was patched; persist {@link CasCloseOutcome.record}. */
+  applied: true
+  /** The fresh record carrying the closure. */
+  record: TeamRecord
+  /** The closed task, as the record now holds it. */
+  task: TeamTaskRecord
+  /** Whether the caller closed as the task's OWNER or through the Lead override. */
+  closedBy: "owner" | "lead"
+  /** The attempt counter as it stood, unchanged — a closure never resets it. */
+  attempt: number
+  /**
+   * Tasks whose blockers this closure satisfied (`ready`) or released by failure
+   * (`released-by-failure`, OPT-1), computed against the patched board.
+   */
+  dependents: Array<{ id: string; subject: string; became: "ready" | "released-by-failure" }>
+  /** The status written. */
+  status: "completed" | "failed"
+} | {
+  /** False when nothing was written. */
+  applied: false
+  /** Why nothing was written; already a sentence a caller can show. */
+  reason: string
+}
+
+/**
+ * Decide one terminal-verb call (`complete` / `fail`) against the FRESHEST on-disk record.
+ *
+ * WHY THIS EXISTS. The mpd-native plane could open a plan, add members and create tasks — and then
+ * nothing could ever close a row: the official `team_task_*` verbs are DISABLED in a dsh-tui boot (the
+ * host refuses the root-bound effect their activation needs), so `agent_teams_plan` / `agent_teams_task`
+ * are the only board surface, and `agent_teams_task` had no terminal action. Measured 2026-10-07 on a
+ * live board: every dependency edge stayed unsatisfied, so `agent_teams_dispatch` could never pair a
+ * blocked task and the whole DAG was frozen. This is that missing verb, decided purely so both
+ * directions are unit-testable.
+ *
+ * The four rules it honours:
+ *   * OWNERSHIP — only the task's own owner may close it (`task.owner` matched against the caller's
+ *     identity candidates: session id, session title, team display name). A task with NO owner is
+ *     refused, because nobody has claimed the work. The ONE override is the Lead: a stranded row
+ *     (its owner gone, its work abandoned) must be closable, and the outcome SAYS which rule applied
+ *     (`closedBy`) rather than blurring the two.
+ *   * COMPARE-AND-SET — `expectedRevision`, when supplied, must equal the task's revision on disk; a
+ *     stale caller is refused with both numbers instead of clobbering a concurrent write.
+ *   * ATTEMPT — reported, never reset: the counter is monotonic across claims and closures.
+ *   * OPT-1 — a FAILED closure does NOT pin its dependents: they are reported as
+ *     `released-by-failure` and stay dispatchable (see {@link taskVisual}).
+ *
+ * @param fresh - the record re-read from disk immediately before this call.
+ * @param input - the closure: who calls, which task, which status, the optional CAS revision and note.
+ * @returns the record to persist with its unblocked dependents, or the refusal with its reason.
+ */
+export function casCloseTask(fresh: TeamRecord, input: {
+  /** The mpd task id to close. */
+  taskId: string
+  /** The terminal status to write. */
+  status: "completed" | "failed"
+  /** Every spelling that identifies the caller, so an owner recorded as a name still matches. */
+  caller: readonly string[]
+  /** True when the caller leads this team — the narrow stranded-row override. */
+  lead: boolean
+  /** The revision the caller decided on; a mismatch is refused. */
+  expectedRevision?: number
+  /** The one-line closing note, stored on the record. */
+  note?: string
+  /** The instant to stamp as `updatedAt`. */
+  now: Date
+}): CasCloseOutcome {
+  /** The task as it stands on disk, or undefined when it is gone. */
+  const task = fresh.tasks.find((candidate) => candidate.id === input.taskId)
+  if (task === undefined) return { applied: false, reason: `task ${input.taskId} is no longer on the board` }
+  if (input.expectedRevision !== undefined && task.revision !== input.expectedRevision) {
+    return { applied: false, reason: `task ${input.taskId} changed under you (revision ${input.expectedRevision} -> ${task.revision}); re-read it and retry` }
+  }
+  if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
+    return { applied: false, reason: `task ${input.taskId} is already terminal ("${task.status}")` }
+  }
+  /** Whether any of the caller's own spellings IS the recorded owner. */
+  const isOwner = task.owner !== undefined && input.caller.some((candidate) => nameMatches(candidate, String(task.owner)))
+  if (!isOwner && !input.lead) {
+    return {
+      applied: false,
+      reason: task.owner === undefined
+        ? `task ${input.taskId} has no owner to close it — claim it first`
+        : `task ${input.taskId} is owned by "${String(task.owner)}" and this caller is neither that owner nor this team's lead`,
+    }
+  }
+  /** The patched record; `attempt` is deliberately absent from the patch, so it is carried unchanged. */
+  const record = updateTeamTask(fresh, input.taskId, {
+    status: input.status,
+    ...(input.note === undefined || input.note === "" ? {} : { note: input.note }),
+  }, input.now)
+  /** The closed task as the patched record holds it. */
+  const closed = record.tasks.find((candidate) => candidate.id === task.id) ?? task
+  /** The tasks this closure actually unblocked, computed against the PATCHED board. */
+  const dependents: Array<{ id: string; subject: string; became: "ready" | "released-by-failure" }> = []
+  for (const candidate of record.tasks) {
+    if (candidate.id === task.id) continue
+    if (!candidate.blockedBy.includes(task.id)) continue
+    // Only a row that was genuinely waiting is reported: a terminal row is not "unblocked" by this.
+    if (candidate.status !== "pending" && candidate.status !== "claimed" && candidate.status !== "in_progress") continue
+    if (blockingDependencies(record.tasks, candidate.blockedBy).blocking.length > 0) continue
+    dependents.push({
+      id: candidate.id,
+      subject: candidate.subject,
+      became: input.status === "failed" ? "released-by-failure" : "ready",
+    })
+  }
+  return {
+    applied: true,
+    record,
+    task: closed,
+    closedBy: isOwner ? "owner" : "lead",
+    attempt: closed.attempt ?? 0,
+    dependents,
+    status: input.status,
+  }
+}
+
+/**
+ * Whether two spellings name the same member: exact, or equal after the roster's own normalisation
+ * (lowercase, every run of non-alphanumerics collapsed to `-`).
+ *
+ * The board stores whatever the claim wrote — a session id on one path, a display name on another —
+ * while the caller can present either, so the comparison has to collapse both. The rule is the SAME
+ * one {@link import("./dispatch.ts").dispatchNameKey} applies, and `team-record.test.ts` pins the
+ * agreement by asserting the two functions on the same corpus.
+ */
+function nameMatches(a: string, b: string): boolean {
+  if (a === b) return true
+  /** Normalise one spelling: lowercase, runs of non-alphanumerics to `-`, trimmed. */
+  const key = (value: string): string => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+  /** The first spelling's normalised key. */
+  const left = key(a)
+  return left !== "" && left === key(b)
 }
 
 /** The fields {@link updateTeamMember} may change. */

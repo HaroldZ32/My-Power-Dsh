@@ -1,0 +1,6 @@
+cmd: node scripts/verify-vendor.ts --help
+usage: node scripts/verify-vendor.ts [--help]
+  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker
+  --help              print this text and exit 0
+  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)
+EXIT=0

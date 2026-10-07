@@ -1,0 +1,5 @@
+== TYPECHECK RED FIX, 2026-10-07T10:55:26Z ==
+
+$ bun run typecheck
+$ tsgo --noEmit
+TYPECHECK_EXIT=0

@@ -97,7 +97,9 @@ function selfTest(): void {
     && !client.includes("serviceAvailable(")])
   // BOTH GUIs are sidebar-only: no MPD-OWNED source may register the removed
   // in-conversation card, the removed agent-teams overlay floater, or the removed
-  // workmate floater/footer toggle. The embedded adopted bundle still CONTAINS its own
+  // workmate floater/footer toggle. The embedded adopted bundle — its mpd-owned home is now
+  // `packages/mpd-bundle-plugin/adopted/agent-teams-client.js`, after the vendored body was deleted
+  // in wave `de-vendor-and-verify-law` — still CONTAINS its own
   // registrations (its apply() is dormant and never called — asserted by
   // packages/mpd-bundle-plugin/test/sidebar-tab.test.ts), so this pin mirrors the build
   // gate and reads the mpd sources, not the concatenated artifact. Patterns are

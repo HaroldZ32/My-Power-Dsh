@@ -1,0 +1,21 @@
+{
+  "name": "@mpd-dsh/schemastery",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The mpd-owned home of the schemastery validator (the Config schema of four shipped plugins) plus the DSH runtime modules this repository's suite drives directly. Relocated verbatim out of the retired packages/mpd-agent-teams-plugin/_deps closure; MIT, see LICENSE.",
+  "main": "lib/index.ts",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "import": "./lib/index.ts",
+      "default": "./lib/index.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test"
+  }
+}

@@ -1,115 +1,6 @@
-var __create = Object.create;
-var __getProtoOf = Object.getPrototypeOf;
-var __defProp = Object.defineProperty;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-function __accessProp(key) {
-  return this[key];
-}
-var __toESMCache_node;
-var __toESMCache_esm;
-var __toESM = (mod, isNodeMode, target) => {
-  var canCache = mod != null && typeof mod === "object";
-  if (canCache) {
-    var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
-    var cached = cache.get(mod);
-    if (cached)
-      return cached;
-  }
-  target = mod != null ? __create(__getProtoOf(mod)) : {};
-  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
-  if (mod && typeof mod === "object" || typeof mod === "function") {
-    for (let key of __getOwnPropNames(mod))
-      if (!__hasOwnProp.call(to, key))
-        __defProp(to, key, {
-          get: __accessProp.bind(mod, key),
-          enumerable: true
-        });
-  }
-  if (canCache)
-    cache.set(mod, to);
-  return to;
-};
-var __toCommonJS = (from) => {
-  var entry = (__moduleCache ??= new WeakMap).get(from), desc;
-  if (entry)
-    return entry;
-  entry = __defProp({}, "__esModule", { value: true });
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (var key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(entry, key))
-        __defProp(entry, key, {
-          get: __accessProp.bind(from, key),
-          enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
-        });
-  }
-  __moduleCache.set(from, entry);
-  return entry;
-};
-var __moduleCache;
-var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
-var __returnValue = (v) => v;
-function __exportSetter(name, newValue) {
-  this[name] = __returnValue.bind(null, newValue);
-}
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, {
-      get: all[name],
-      enumerable: true,
-      configurable: true,
-      set: __exportSetter.bind(all, name)
-    });
-};
-var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
-
-// packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.ts
-var exports_lib = {};
-__export(exports_lib, {
-  Binary: () => Binary,
-  Time: () => Time,
-  arrayBufferToBase64: () => arrayBufferToBase64,
-  arrayBufferToHex: () => arrayBufferToHex,
-  base64ToArrayBuffer: () => base64ToArrayBuffer,
-  camelCase: () => camelCase,
-  camelize: () => camelize,
-  capitalize: () => capitalize,
-  clone: () => clone,
-  contain: () => contain,
-  deduplicate: () => deduplicate,
-  deepEqual: () => deepEqual,
-  defineProperty: () => defineProperty,
-  difference: () => difference,
-  filterKeys: () => filterKeys,
-  formatProperty: () => formatProperty,
-  hexToArrayBuffer: () => hexToArrayBuffer,
-  hyphenate: () => hyphenate,
-  intersection: () => intersection,
-  is: () => is,
-  isNonNullable: () => isNonNullable,
-  isNullable: () => isNullable,
-  isPlainObject: () => isPlainObject,
-  makeArray: () => makeArray,
-  mapValues: () => mapValues,
-  noop: () => noop,
-  omit: () => omit,
-  paramCase: () => paramCase,
-  pick: () => pick,
-  remove: () => remove,
-  sanitize: () => sanitize,
-  snakeCase: () => snakeCase,
-  trimSlash: () => trimSlash,
-  uncapitalize: () => uncapitalize,
-  union: () => union,
-  valueMap: () => mapValues
-});
-function noop() {}
+// packages/mpd-schemastery/lib/cosmokit.ts
 function isNullable(value) {
   return value === null || value === undefined;
-}
-function isNonNullable(value) {
-  return !isNullable(value);
 }
 function isPlainObject(data) {
   return data && typeof data === "object" && !Array.isArray(data);
@@ -129,47 +20,6 @@ function pick(source, keys, forced) {
       result[key] = source[key];
   return result;
 }
-function omit(source, keys) {
-  if (!keys)
-    return { ...source };
-  const result = { ...source };
-  for (const key of keys)
-    Reflect.deleteProperty(result, key);
-  return result;
-}
-function defineProperty(object, key, value) {
-  return Object.defineProperty(object, key, {
-    writable: true,
-    value,
-    enumerable: false
-  });
-}
-function contain(array1, array2) {
-  return array2.every((item) => array1.includes(item));
-}
-function intersection(array1, array2) {
-  return array1.filter((item) => array2.includes(item));
-}
-function difference(array1, array2) {
-  return array1.filter((item) => !array2.includes(item));
-}
-function union(array1, array2) {
-  return Array.from(new Set([...array1, ...array2]));
-}
-function deduplicate(array) {
-  return [...new Set(array)];
-}
-function remove(list, item) {
-  const index = list?.indexOf(item);
-  if (index >= 0) {
-    list.splice(index, 1);
-    return true;
-  } else
-    return false;
-}
-function makeArray(source) {
-  return Array.isArray(source) ? source : isNullable(source) ? [] : [source];
-}
 function is(type, value) {
   if (arguments.length === 1)
     return (value2) => is(type, value2);
@@ -181,6 +31,56 @@ function isArrayBufferLike(value) {
 function isArrayBufferSource(value) {
   return isArrayBufferLike(value) || ArrayBuffer.isView(value);
 }
+var Binary;
+(function(Binary2) {
+  Binary2.is = isArrayBufferLike;
+  Binary2.isSource = isArrayBufferSource;
+  function fromSource(source) {
+    if (ArrayBuffer.isView(source))
+      return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+    else
+      return source;
+  }
+  Binary2.fromSource = fromSource;
+  function toBase64(source) {
+    source = fromSource(source);
+    if (typeof Buffer !== "undefined")
+      return Buffer.from(source).toString("base64");
+    let binary = "";
+    const bytes = new Uint8Array(source);
+    for (let i = 0;i < bytes.byteLength; i++)
+      binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+  Binary2.toBase64 = toBase64;
+  function fromBase64(source) {
+    if (typeof Buffer !== "undefined")
+      return fromSource(Buffer.from(source, "base64"));
+    return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
+  }
+  Binary2.fromBase64 = fromBase64;
+  function toHex(source) {
+    source = fromSource(source);
+    if (typeof Buffer !== "undefined")
+      return Buffer.from(source).toString("hex");
+    return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+  Binary2.toHex = toHex;
+  function fromHex(source) {
+    if (typeof Buffer !== "undefined")
+      return fromSource(Buffer.from(source, "hex"));
+    const hex = source.length % 2 === 0 ? source : source.slice(0, source.length - 1);
+    const buffer = [];
+    for (let i = 0;i < hex.length; i += 2)
+      buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
+    return Uint8Array.from(buffer).buffer;
+  }
+  Binary2.fromHex = fromHex;
+})(Binary || (Binary = {}));
+var base64ToArrayBuffer = Binary.fromBase64;
+var arrayBufferToBase64 = Binary.toBase64;
+var hexToArrayBuffer = Binary.fromHex;
+var arrayBufferToHex = Binary.toHex;
 function clone(source, refs = /* @__PURE__ */ new Map) {
   if (!source || typeof source !== "object")
     return source;
@@ -241,577 +141,407 @@ function deepEqual(a, b, strict) {
     ...b
   }).every((key) => deepEqual(a[key], b[key], strict));
 }
-function capitalize(source) {
-  return source.charAt(0).toUpperCase() + source.slice(1);
-}
-function uncapitalize(source) {
-  return source.charAt(0).toLowerCase() + source.slice(1);
-}
-function camelCase(source) {
-  return source.replace(/[_-][a-z]/g, (str) => str.slice(1).toUpperCase());
-}
-function tokenize(source, delimiters, delimiter) {
-  const output = [];
-  let state = 0;
-  for (let i = 0;i < source.length; i++) {
-    const code = source.charCodeAt(i);
-    if (code >= 65 && code <= 90) {
-      if (state === 1) {
-        const next = source.charCodeAt(i + 1);
-        if (next >= 97 && next <= 122)
-          output.push(delimiter);
-        output.push(code + 32);
-      } else {
-        if (state !== 0)
-          output.push(delimiter);
-        output.push(code + 32);
-      }
-      state = 1;
-    } else if (code >= 97 && code <= 122) {
-      output.push(code);
-      state = 2;
-    } else if (delimiters.includes(code)) {
-      if (state !== 0)
-        output.push(delimiter);
-      state = 0;
-    } else
-      output.push(code);
+var Time;
+(function(Time2) {
+  Time2.millisecond = 1;
+  Time2.second = 1000;
+  Time2.minute = Time2.second * 60;
+  Time2.hour = Time2.minute * 60;
+  Time2.day = Time2.hour * 24;
+  Time2.week = Time2.day * 7;
+  let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
+  function setTimezoneOffset(offset) {
+    timezoneOffset = offset;
   }
-  return String.fromCharCode(...output);
-}
-function paramCase(source) {
-  return tokenize(source, [45, 95], 45);
-}
-function snakeCase(source) {
-  return tokenize(source, [45, 95], 95);
-}
-function formatProperty(key) {
-  if (typeof key !== "string")
-    return `[${key.toString()}]`;
-  return /^[a-z_$][\w$]*$/i.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
-}
-function trimSlash(source) {
-  return source.replace(/\/$/, "");
-}
-function sanitize(source) {
-  if (!source.startsWith("/"))
-    source = "/" + source;
-  return trimSlash(source);
-}
-var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, camelize, hyphenate, Time;
-var init_lib = __esm(() => {
-  (function(Binary2) {
-    Binary2.is = isArrayBufferLike;
-    Binary2.isSource = isArrayBufferSource;
-    function fromSource(source) {
-      if (ArrayBuffer.isView(source))
-        return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
-      else
-        return source;
-    }
-    Binary2.fromSource = fromSource;
-    function toBase64(source) {
-      source = fromSource(source);
-      if (typeof Buffer !== "undefined")
-        return Buffer.from(source).toString("base64");
-      let binary = "";
-      const bytes = new Uint8Array(source);
-      for (let i = 0;i < bytes.byteLength; i++)
-        binary += String.fromCharCode(bytes[i]);
-      return btoa(binary);
-    }
-    Binary2.toBase64 = toBase64;
-    function fromBase64(source) {
-      if (typeof Buffer !== "undefined")
-        return fromSource(Buffer.from(source, "base64"));
-      return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
-    }
-    Binary2.fromBase64 = fromBase64;
-    function toHex(source) {
-      source = fromSource(source);
-      if (typeof Buffer !== "undefined")
-        return Buffer.from(source).toString("hex");
-      return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
-    }
-    Binary2.toHex = toHex;
-    function fromHex(source) {
-      if (typeof Buffer !== "undefined")
-        return fromSource(Buffer.from(source, "hex"));
-      const hex = source.length % 2 === 0 ? source : source.slice(0, source.length - 1);
-      const buffer = [];
-      for (let i = 0;i < hex.length; i += 2)
-        buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
-      return Uint8Array.from(buffer).buffer;
-    }
-    Binary2.fromHex = fromHex;
-  })(Binary || (Binary = {}));
-  base64ToArrayBuffer = Binary.fromBase64;
-  arrayBufferToBase64 = Binary.toBase64;
-  hexToArrayBuffer = Binary.fromHex;
-  arrayBufferToHex = Binary.toHex;
-  camelize = camelCase;
-  hyphenate = paramCase;
-  (function(Time2) {
-    Time2.millisecond = 1;
-    Time2.second = 1000;
-    Time2.minute = Time2.second * 60;
-    Time2.hour = Time2.minute * 60;
-    Time2.day = Time2.hour * 24;
-    Time2.week = Time2.day * 7;
-    let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
-    function setTimezoneOffset(offset) {
-      timezoneOffset = offset;
-    }
-    Time2.setTimezoneOffset = setTimezoneOffset;
-    function getTimezoneOffset() {
-      return timezoneOffset;
-    }
-    Time2.getTimezoneOffset = getTimezoneOffset;
-    function getDateNumber(date = /* @__PURE__ */ new Date, offset) {
-      if (typeof date === "number")
-        date = new Date(date);
-      if (offset === undefined)
-        offset = timezoneOffset;
-      return Math.floor((date.valueOf() / Time2.minute - offset) / 1440);
-    }
-    Time2.getDateNumber = getDateNumber;
-    function fromDateNumber(value, offset) {
-      const date = new Date(value * Time2.day);
-      if (offset === undefined)
-        offset = timezoneOffset;
-      return new Date(+date + offset * Time2.minute);
-    }
-    Time2.fromDateNumber = fromDateNumber;
-    const numeric = /\d+(?:\.\d+)?/.source;
-    const timeRegExp = new RegExp(`^${[
-      "w(?:eek(?:s)?)?",
-      "d(?:ay(?:s)?)?",
-      "h(?:our(?:s)?)?",
-      "m(?:in(?:ute)?(?:s)?)?",
-      "s(?:ec(?:ond)?(?:s)?)?"
-    ].map((unit) => `(${numeric}${unit})?`).join("")}$`);
-    function parseTime(source) {
-      const capture = timeRegExp.exec(source);
-      if (!capture)
-        return 0;
-      return (parseFloat(capture[1]) * Time2.week || 0) + (parseFloat(capture[2]) * Time2.day || 0) + (parseFloat(capture[3]) * Time2.hour || 0) + (parseFloat(capture[4]) * Time2.minute || 0) + (parseFloat(capture[5]) * Time2.second || 0);
-    }
-    Time2.parseTime = parseTime;
-    function parseDate(date) {
-      const parsed = parseTime(date);
-      if (parsed)
-        date = Date.now() + parsed;
-      else if (/^\d{1,2}(:\d{1,2}){1,2}$/.test(date))
-        date = `${(/* @__PURE__ */ new Date()).toLocaleDateString()}-${date}`;
-      else if (/^\d{1,2}-\d{1,2}-\d{1,2}(:\d{1,2}){1,2}$/.test(date))
-        date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
-      return date ? new Date(date) : /* @__PURE__ */ new Date;
-    }
-    Time2.parseDate = parseDate;
-    function format(ms) {
-      const abs = Math.abs(ms);
-      if (abs >= Time2.day - Time2.hour / 2)
-        return Math.round(ms / Time2.day) + "d";
-      else if (abs >= Time2.hour - Time2.minute / 2)
-        return Math.round(ms / Time2.hour) + "h";
-      else if (abs >= Time2.minute - Time2.second / 2)
-        return Math.round(ms / Time2.minute) + "m";
-      else if (abs >= Time2.second)
-        return Math.round(ms / Time2.second) + "s";
-      return ms + "ms";
-    }
-    Time2.format = format;
-    function toDigits(source, length = 2) {
-      return source.toString().padStart(length, "0");
-    }
-    Time2.toDigits = toDigits;
-    function template(template2, time = /* @__PURE__ */ new Date) {
-      return template2.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
-    }
-    Time2.template = template;
-  })(Time || (Time = {}));
-});
+  Time2.setTimezoneOffset = setTimezoneOffset;
+  function getTimezoneOffset() {
+    return timezoneOffset;
+  }
+  Time2.getTimezoneOffset = getTimezoneOffset;
+  function getDateNumber(date = /* @__PURE__ */ new Date, offset) {
+    if (typeof date === "number")
+      date = new Date(date);
+    if (offset === undefined)
+      offset = timezoneOffset;
+    return Math.floor((date.valueOf() / Time2.minute - offset) / 1440);
+  }
+  Time2.getDateNumber = getDateNumber;
+  function fromDateNumber(value, offset) {
+    const date = new Date(value * Time2.day);
+    if (offset === undefined)
+      offset = timezoneOffset;
+    return new Date(+date + offset * Time2.minute);
+  }
+  Time2.fromDateNumber = fromDateNumber;
+  const numeric = /\d+(?:\.\d+)?/.source;
+  const timeRegExp = new RegExp(`^${[
+    "w(?:eek(?:s)?)?",
+    "d(?:ay(?:s)?)?",
+    "h(?:our(?:s)?)?",
+    "m(?:in(?:ute)?(?:s)?)?",
+    "s(?:ec(?:ond)?(?:s)?)?"
+  ].map((unit) => `(${numeric}${unit})?`).join("")}$`);
+  function parseTime(source) {
+    const capture = timeRegExp.exec(source);
+    if (!capture)
+      return 0;
+    return (parseFloat(capture[1]) * Time2.week || 0) + (parseFloat(capture[2]) * Time2.day || 0) + (parseFloat(capture[3]) * Time2.hour || 0) + (parseFloat(capture[4]) * Time2.minute || 0) + (parseFloat(capture[5]) * Time2.second || 0);
+  }
+  Time2.parseTime = parseTime;
+  function parseDate(date) {
+    const parsed = parseTime(date);
+    if (parsed)
+      date = Date.now() + parsed;
+    else if (/^\d{1,2}(:\d{1,2}){1,2}$/.test(date))
+      date = `${(/* @__PURE__ */ new Date()).toLocaleDateString()}-${date}`;
+    else if (/^\d{1,2}-\d{1,2}-\d{1,2}(:\d{1,2}){1,2}$/.test(date))
+      date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
+    return date ? new Date(date) : /* @__PURE__ */ new Date;
+  }
+  Time2.parseDate = parseDate;
+  function format(ms) {
+    const abs = Math.abs(ms);
+    if (abs >= Time2.day - Time2.hour / 2)
+      return Math.round(ms / Time2.day) + "d";
+    else if (abs >= Time2.hour - Time2.minute / 2)
+      return Math.round(ms / Time2.hour) + "h";
+    else if (abs >= Time2.minute - Time2.second / 2)
+      return Math.round(ms / Time2.minute) + "m";
+    else if (abs >= Time2.second)
+      return Math.round(ms / Time2.second) + "s";
+    return ms + "ms";
+  }
+  Time2.format = format;
+  function toDigits(source, length = 2) {
+    return source.toString().padStart(length, "0");
+  }
+  Time2.toDigits = toDigits;
+  function template(template2, time = /* @__PURE__ */ new Date) {
+    return template2.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
+  }
+  Time2.template = template;
+})(Time || (Time = {}));
 
-// packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cts
-var require_lib = __commonJS(function(exports, module) {
-  var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
-  var kSchema = Symbol.for("schemastery");
-  var kValidationError = Symbol.for("ValidationError");
-  globalThis.__schemastery_index__ ??= 0;
-  globalThis.__schemastery_refs__ = undefined;
-  var ValidationError = class extends TypeError {
-    options;
-    name = "ValidationError";
-    constructor(message, options) {
-      let prefix = "$";
-      for (const segment of options.path || [])
-        if (typeof segment === "string")
-          prefix += "." + segment;
-        else if (typeof segment === "number")
-          prefix += "[" + segment + "]";
-        else if (typeof segment === "symbol")
-          prefix += `[Symbol(${segment.toString()})]`;
-      if (prefix.startsWith("."))
-        prefix = prefix.slice(1);
-      super((prefix === "$" ? "" : `${prefix} `) + message);
-      this.options = options;
-    }
-    static is(error) {
-      return !!error?.[kValidationError];
-    }
+// packages/mpd-schemastery/lib/index.ts
+var kSchema = Symbol.for("schemastery");
+var kValidationError = Symbol.for("ValidationError");
+globalThis.__schemastery_index__ ??= 0;
+globalThis.__schemastery_refs__ = undefined;
+var ValidationError = class extends TypeError {
+  options;
+  name = "ValidationError";
+  constructor(message, options) {
+    let prefix = "$";
+    for (const segment of options.path || [])
+      if (typeof segment === "string")
+        prefix += "." + segment;
+      else if (typeof segment === "number")
+        prefix += "[" + segment + "]";
+      else if (typeof segment === "symbol")
+        prefix += `[Symbol(${segment.toString()})]`;
+    if (prefix.startsWith("."))
+      prefix = prefix.slice(1);
+    super((prefix === "$" ? "" : `${prefix} `) + message);
+    this.options = options;
+  }
+  static is(error) {
+    return !!error?.[kValidationError];
+  }
+};
+Object.defineProperty(ValidationError.prototype, kValidationError, { value: true });
+var Schema = function(options) {
+  const schema = function(data, options2 = {}) {
+    return Schema.resolve(data, schema, options2)[0];
   };
-  Object.defineProperty(ValidationError.prototype, kValidationError, { value: true });
-  var Schema = function(options) {
-    const schema = function(data, options2 = {}) {
-      return Schema.resolve(data, schema, options2)[0];
-    };
-    if (options.refs) {
-      const refs = (0, _deepseek_ai_cosmokit.valueMap)(options.refs, (options2) => new Schema(options2));
-      const getRef = (uid) => refs[uid];
-      for (const key in refs) {
-        const options2 = refs[key];
-        options2.sKey = getRef(options2.sKey);
-        options2.inner = getRef(options2.inner);
-        options2.list = options2.list && options2.list.map(getRef);
-        options2.dict = options2.dict && (0, _deepseek_ai_cosmokit.valueMap)(options2.dict, getRef);
-      }
-      return refs[options.uid];
+  if (options.refs) {
+    const refs = mapValues(options.refs, (options2) => new Schema(options2));
+    const getRef = (uid) => refs[uid];
+    for (const key in refs) {
+      const options2 = refs[key];
+      options2.sKey = getRef(options2.sKey);
+      options2.inner = getRef(options2.inner);
+      options2.list = options2.list && options2.list.map(getRef);
+      options2.dict = options2.dict && mapValues(options2.dict, getRef);
     }
-    Object.assign(schema, options);
-    if (typeof schema.callback === "string")
+    return refs[options.uid];
+  }
+  Object.assign(schema, options);
+  if (typeof schema.callback === "string")
+    try {
+      schema.callback = new Function("return " + schema.callback)();
+    } catch {}
+  Object.defineProperty(schema, "uid", { value: globalThis.__schemastery_index__++ });
+  Object.setPrototypeOf(schema, Schema.prototype);
+  schema.meta ||= {};
+  schema.toString = schema.toString.bind(schema);
+  return schema;
+};
+Schema.prototype = Object.create(Function.prototype);
+Schema.prototype[kSchema] = true;
+Object.defineProperty(Schema.prototype, "~standard", { get() {
+  return {
+    version: 1,
+    vendor: "schemastery",
+    validate: (value) => {
       try {
-        schema.callback = new Function("return " + schema.callback)();
-      } catch {}
-    Object.defineProperty(schema, "uid", { value: globalThis.__schemastery_index__++ });
-    Object.setPrototypeOf(schema, Schema.prototype);
-    schema.meta ||= {};
-    schema.toString = schema.toString.bind(schema);
-    return schema;
-  };
-  Schema.prototype = Object.create(Function.prototype);
-  Schema.prototype[kSchema] = true;
-  Object.defineProperty(Schema.prototype, "~standard", { get() {
-    return {
-      version: 1,
-      vendor: "schemastery",
-      validate: (value) => {
-        try {
-          return { value: Schema.resolve(value, this, {})[0] };
-        } catch (error) {
-          if (ValidationError.is(error))
-            return { issues: [{
-              message: error.message,
-              path: error.options.path
-            }] };
-          throw error;
-        }
+        return { value: Schema.resolve(value, this, {})[0] };
+      } catch (error) {
+        if (ValidationError.is(error))
+          return { issues: [{
+            message: error.message,
+            path: error.options.path
+          }] };
+        throw error;
       }
-    };
-  } });
-  Schema.ValidationError = ValidationError;
-  Schema.prototype.toJSON = function toJSON() {
-    if (globalThis.__schemastery_refs__) {
-      globalThis.__schemastery_refs__[this.uid] ??= JSON.parse(JSON.stringify({ ...this }));
-      return this.uid;
     }
-    globalThis.__schemastery_refs__ = { [this.uid]: { ...this } };
-    globalThis.__schemastery_refs__[this.uid] = JSON.parse(JSON.stringify({ ...this }));
-    const result = {
-      uid: this.uid,
-      refs: globalThis.__schemastery_refs__
-    };
-    globalThis.__schemastery_refs__ = undefined;
-    return result;
   };
-  Schema.prototype.set = function set(key, value) {
-    this.dict[key] = value;
-    return this;
+} });
+Schema.ValidationError = ValidationError;
+Schema.prototype.toJSON = function toJSON() {
+  if (globalThis.__schemastery_refs__) {
+    globalThis.__schemastery_refs__[this.uid] ??= JSON.parse(JSON.stringify({ ...this }));
+    return this.uid;
+  }
+  globalThis.__schemastery_refs__ = { [this.uid]: { ...this } };
+  globalThis.__schemastery_refs__[this.uid] = JSON.parse(JSON.stringify({ ...this }));
+  const result = {
+    uid: this.uid,
+    refs: globalThis.__schemastery_refs__
   };
-  Schema.prototype.push = function push(value) {
-    this.list.push(value);
-    return this;
-  };
-  function mergeDesc(original, messages) {
-    const result = typeof original === "string" ? { "": original } : { ...original };
-    for (const locale in messages) {
-      const value = messages[locale];
-      if (value?.$description || value?.$desc)
-        result[locale] = value.$description || value.$desc;
-      else if (typeof value === "string")
-        result[locale] = value;
-    }
-    return result;
+  globalThis.__schemastery_refs__ = undefined;
+  return result;
+};
+Schema.prototype.set = function set(key, value) {
+  this.dict[key] = value;
+  return this;
+};
+Schema.prototype.push = function push(value) {
+  this.list.push(value);
+  return this;
+};
+function mergeDesc(original, messages) {
+  const result = typeof original === "string" ? { "": original } : { ...original };
+  for (const locale in messages) {
+    const value = messages[locale];
+    if (value?.$description || value?.$desc)
+      result[locale] = value.$description || value.$desc;
+    else if (typeof value === "string")
+      result[locale] = value;
   }
-  function getInner(value) {
-    return value?.$value ?? value?.$inner;
-  }
-  function extractKeys(data) {
-    return (0, _deepseek_ai_cosmokit.filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
-  }
-  Schema.prototype.i18n = function i18n(messages) {
-    const schema = Schema(this);
-    const desc = mergeDesc(schema.meta.description, messages);
-    if (Object.keys(desc).length)
-      schema.meta.description = desc;
-    if (schema.dict)
-      schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(schema.dict, (inner, key) => {
-        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
-      });
-    if (schema.list)
-      schema.list = schema.list.map((inner, index) => {
-        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data = {}) => {
-          if (Array.isArray(getInner(data)))
-            return getInner(data)[index];
-          if (Array.isArray(data))
-            return data[index];
-          return extractKeys(data);
-        }));
-      });
-    if (schema.inner)
-      schema.inner = schema.inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => {
-        if (getInner(data))
-          return getInner(data);
+  return result;
+}
+function getInner(value) {
+  return value?.$value ?? value?.$inner;
+}
+function extractKeys(data) {
+  return filterKeys(data ?? {}, (key) => !key.startsWith("$"));
+}
+Schema.prototype.i18n = function i18n(messages) {
+  const schema = Schema(this);
+  const desc = mergeDesc(schema.meta.description, messages);
+  if (Object.keys(desc).length)
+    schema.meta.description = desc;
+  if (schema.dict)
+    schema.dict = mapValues(schema.dict, (inner, key) => {
+      return inner.i18n(mapValues(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
+    });
+  if (schema.list)
+    schema.list = schema.list.map((inner, index) => {
+      return inner.i18n(mapValues(messages, (data = {}) => {
+        if (Array.isArray(getInner(data)))
+          return getInner(data)[index];
+        if (Array.isArray(data))
+          return data[index];
         return extractKeys(data);
       }));
-    if (schema.sKey)
-      schema.sKey = schema.sKey.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => data?.$key));
-    return schema;
+    });
+  if (schema.inner)
+    schema.inner = schema.inner.i18n(mapValues(messages, (data) => {
+      if (getInner(data))
+        return getInner(data);
+      return extractKeys(data);
+    }));
+  if (schema.sKey)
+    schema.sKey = schema.sKey.i18n(mapValues(messages, (data) => data?.$key));
+  return schema;
+};
+Schema.prototype.extra = function extra(key, value) {
+  const schema = Schema(this);
+  schema.meta = {
+    ...schema.meta,
+    [key]: value
   };
-  Schema.prototype.extra = function extra(key, value) {
+  return schema;
+};
+for (const key of [
+  "required",
+  "disabled",
+  "collapse",
+  "hidden",
+  "loose"
+])
+  Object.assign(Schema.prototype, { [key](value = true) {
     const schema = Schema(this);
     schema.meta = {
       ...schema.meta,
       [key]: value
     };
     return schema;
+  } });
+Schema.prototype.deprecated = function deprecated() {
+  const schema = Schema(this);
+  schema.meta.badges ||= [];
+  schema.meta.badges.push({
+    text: "deprecated",
+    type: "danger"
+  });
+  return schema;
+};
+Schema.prototype.experimental = function experimental() {
+  const schema = Schema(this);
+  schema.meta.badges ||= [];
+  schema.meta.badges.push({
+    text: "experimental",
+    type: "warning"
+  });
+  return schema;
+};
+Schema.prototype.pattern = function pattern(regexp) {
+  const schema = Schema(this);
+  const pattern2 = pick(regexp, ["source", "flags"]);
+  schema.meta = {
+    ...schema.meta,
+    pattern: pattern2
   };
-  for (const key of [
-    "required",
-    "disabled",
-    "collapse",
-    "hidden",
-    "loose"
-  ])
-    Object.assign(Schema.prototype, { [key](value = true) {
-      const schema = Schema(this);
-      schema.meta = {
-        ...schema.meta,
-        [key]: value
-      };
-      return schema;
-    } });
-  Schema.prototype.deprecated = function deprecated() {
-    const schema = Schema(this);
-    schema.meta.badges ||= [];
-    schema.meta.badges.push({
-      text: "deprecated",
-      type: "danger"
-    });
-    return schema;
-  };
-  Schema.prototype.experimental = function experimental() {
-    const schema = Schema(this);
-    schema.meta.badges ||= [];
-    schema.meta.badges.push({
-      text: "experimental",
-      type: "warning"
-    });
-    return schema;
-  };
-  Schema.prototype.pattern = function pattern(regexp) {
-    const schema = Schema(this);
-    const pattern2 = (0, _deepseek_ai_cosmokit.pick)(regexp, ["source", "flags"]);
-    schema.meta = {
-      ...schema.meta,
-      pattern: pattern2
-    };
-    return schema;
-  };
-  Schema.prototype.simplify = function simplify(value) {
-    if ((0, _deepseek_ai_cosmokit.deepEqual)(value, this.meta.default, this.type === "dict"))
-      return null;
-    if ((0, _deepseek_ai_cosmokit.isNullable)(value))
-      return value;
-    if (this.type === "object" || this.type === "dict") {
-      const result = {};
-      for (const key in value) {
-        const item = (this.type === "object" ? this.dict[key] : this.inner)?.simplify(value[key]);
-        if (this.type === "dict" || !(0, _deepseek_ai_cosmokit.isNullable)(item))
-          result[key] = item;
-      }
-      if ((0, _deepseek_ai_cosmokit.deepEqual)(result, this.meta.default, this.type === "dict"))
-        return null;
-      return result;
-    } else if (this.type === "array" || this.type === "tuple") {
-      const result = [];
-      value.forEach((value2, index) => {
-        const schema = this.type === "array" ? this.inner : this.list[index];
-        const item = schema ? schema.simplify(value2) : value2;
-        result.push(item);
-      });
-      return result;
-    } else if (this.type === "intersect") {
-      const result = {};
-      for (const item of this.list)
-        Object.assign(result, item.simplify(value));
-      return result;
-    } else if (this.type === "union")
-      for (const schema of this.list)
-        try {
-          Schema.resolve(value, schema, {});
-          return schema.simplify(value);
-        } catch {}
+  return schema;
+};
+Schema.prototype.simplify = function simplify(value) {
+  if (deepEqual(value, this.meta.default, this.type === "dict"))
+    return null;
+  if (isNullable(value))
     return value;
+  if (this.type === "object" || this.type === "dict") {
+    const result = {};
+    for (const key in value) {
+      const item = (this.type === "object" ? this.dict[key] : this.inner)?.simplify(value[key]);
+      if (this.type === "dict" || !isNullable(item))
+        result[key] = item;
+    }
+    if (deepEqual(result, this.meta.default, this.type === "dict"))
+      return null;
+    return result;
+  } else if (this.type === "array" || this.type === "tuple") {
+    const result = [];
+    value.forEach((value2, index) => {
+      const schema = this.type === "array" ? this.inner : this.list[index];
+      const item = schema ? schema.simplify(value2) : value2;
+      result.push(item);
+    });
+    return result;
+  } else if (this.type === "intersect") {
+    const result = {};
+    for (const item of this.list)
+      Object.assign(result, item.simplify(value));
+    return result;
+  } else if (this.type === "union")
+    for (const schema of this.list)
+      try {
+        Schema.resolve(value, schema, {});
+        return schema.simplify(value);
+      } catch {}
+  return value;
+};
+Schema.prototype.toString = function toString(inline) {
+  return formatters[this.type]?.(this, inline) ?? `Schema<${this.type}>`;
+};
+Schema.prototype.role = function role(role, extra2) {
+  const schema = Schema(this);
+  schema.meta = {
+    ...schema.meta,
+    role,
+    extra: extra2
   };
-  Schema.prototype.toString = function toString(inline) {
-    return formatters[this.type]?.(this, inline) ?? `Schema<${this.type}>`;
-  };
-  Schema.prototype.role = function role(role, extra) {
+  return schema;
+};
+for (const key of [
+  "default",
+  "link",
+  "comment",
+  "description",
+  "max",
+  "min",
+  "step"
+])
+  Object.assign(Schema.prototype, { [key](value) {
     const schema = Schema(this);
     schema.meta = {
       ...schema.meta,
-      role,
-      extra
+      [key]: value
     };
     return schema;
-  };
-  for (const key of [
-    "default",
-    "link",
-    "comment",
-    "description",
-    "max",
-    "min",
-    "step"
-  ])
-    Object.assign(Schema.prototype, { [key](value) {
-      const schema = Schema(this);
-      schema.meta = {
-        ...schema.meta,
-        [key]: value
-      };
-      return schema;
-    } });
-  var resolvers = {};
-  Schema.extend = function extend(type, resolve) {
-    resolvers[type] = resolve;
-  };
-  Schema.resolve = function resolve(data, schema, options = {}, strict = false) {
-    if (!schema)
-      return [data];
-    if (options.ignore?.(data, schema))
-      return [data];
-    if ((0, _deepseek_ai_cosmokit.isNullable)(data) && schema.type !== "lazy") {
-      if (schema.meta.required)
-        throw new ValidationError(`missing required value`, options);
-      let current = schema;
-      let fallback = schema.meta.default;
-      while (current?.type === "intersect" && (0, _deepseek_ai_cosmokit.isNullable)(fallback)) {
-        current = current.list[0];
-        fallback = current?.meta.default;
-      }
-      if ((0, _deepseek_ai_cosmokit.isNullable)(fallback))
-        return [data];
-      data = (0, _deepseek_ai_cosmokit.clone)(fallback);
+  } });
+var resolvers = {};
+Schema.extend = function extend(type, resolve) {
+  resolvers[type] = resolve;
+};
+Schema.resolve = function resolve(data, schema, options = {}, strict = false) {
+  if (!schema)
+    return [data];
+  if (options.ignore?.(data, schema))
+    return [data];
+  if (isNullable(data) && schema.type !== "lazy") {
+    if (schema.meta.required)
+      throw new ValidationError(`missing required value`, options);
+    let current = schema;
+    let fallback = schema.meta.default;
+    while (current?.type === "intersect" && isNullable(fallback)) {
+      current = current.list[0];
+      fallback = current?.meta.default;
     }
-    const callback = resolvers[schema.type];
-    if (!callback)
-      throw new ValidationError(`unsupported type "${schema.type}"`, options);
-    try {
-      return callback(data, schema, options, strict);
-    } catch (error) {
-      if (!schema.meta.loose)
-        throw error;
-      return [schema.meta.default];
+    if (isNullable(fallback))
+      return [data];
+    data = clone(fallback);
+  }
+  const callback = resolvers[schema.type];
+  if (!callback)
+    throw new ValidationError(`unsupported type "${schema.type}"`, options);
+  try {
+    return callback(data, schema, options, strict);
+  } catch (error) {
+    if (!schema.meta.loose)
+      throw error;
+    return [schema.meta.default];
+  }
+};
+Schema.from = function from(source) {
+  if (isNullable(source))
+    return Schema.any();
+  else if ([
+    "string",
+    "number",
+    "boolean"
+  ].includes(typeof source))
+    return Schema.const(source).required();
+  else if (source[kSchema])
+    return source;
+  else if (typeof source === "function")
+    switch (source) {
+      case String:
+        return Schema.string().required();
+      case Number:
+        return Schema.number().required();
+      case Boolean:
+        return Schema.boolean().required();
+      case Function:
+        return Schema.function().required();
+      default:
+        return Schema.is(source).required();
     }
-  };
-  Schema.from = function from(source) {
-    if ((0, _deepseek_ai_cosmokit.isNullable)(source))
-      return Schema.any();
-    else if ([
-      "string",
-      "number",
-      "boolean"
-    ].includes(typeof source))
-      return Schema.const(source).required();
-    else if (source[kSchema])
-      return source;
-    else if (typeof source === "function")
-      switch (source) {
-        case String:
-          return Schema.string().required();
-        case Number:
-          return Schema.number().required();
-        case Boolean:
-          return Schema.boolean().required();
-        case Function:
-          return Schema.function().required();
-        default:
-          return Schema.is(source).required();
-      }
-    else
-      throw new TypeError(`cannot infer schema from ${source}`);
-  };
-  Schema.lazy = function lazy(builder) {
-    const toJSON = () => {
-      if (!schema.inner[kSchema]) {
-        schema.inner = schema.builder();
-        schema.inner.meta = {
-          ...schema.meta,
-          ...schema.inner.meta
-        };
-      }
-      return schema.inner.toJSON();
-    };
-    const schema = new Schema({
-      type: "lazy",
-      builder,
-      inner: { toJSON }
-    });
-    return schema;
-  };
-  Schema.natural = function natural() {
-    return Schema.number().step(1).min(0);
-  };
-  Schema.percent = function percent() {
-    return Schema.number().step(0.01).min(0).max(1).role("slider");
-  };
-  Schema.date = function date() {
-    return Schema.union([Schema.is(Date), Schema.transform(Schema.string().role("datetime"), (value, options) => {
-      const date2 = new Date(value);
-      if (isNaN(+date2))
-        throw new ValidationError(`invalid date "${value}"`, options);
-      return date2;
-    }, true)]);
-  };
-  Schema.regExp = function regExp(flag = "") {
-    return Schema.union([Schema.is(RegExp), Schema.transform(Schema.string().role("regexp", { flag }), (value, options) => {
-      try {
-        return new RegExp(value, flag);
-      } catch (e) {
-        throw new ValidationError(e.message, options);
-      }
-    }, true)]);
-  };
-  Schema.arrayBuffer = function arrayBuffer(encoding) {
-    return Schema.union([
-      Schema.is(ArrayBuffer),
-      Schema.is(SharedArrayBuffer),
-      Schema.transform(Schema.any(), (value, options) => {
-        if (_deepseek_ai_cosmokit.Binary.isSource(value))
-          return _deepseek_ai_cosmokit.Binary.fromSource(value);
-        throw new ValidationError(`expected ArrayBufferSource but got ${value}`, options);
-      }, true),
-      ...encoding ? [Schema.transform(Schema.string(), (value, options) => {
-        try {
-          return encoding === "base64" ? _deepseek_ai_cosmokit.Binary.fromBase64(value) : _deepseek_ai_cosmokit.Binary.fromHex(value);
-        } catch (e) {
-          throw new ValidationError(e.message, options);
-        }
-      }, true)] : []
-    ]);
-  };
-  Schema.extend("lazy", (data, schema, options, strict) => {
+  else
+    throw new TypeError(`cannot infer schema from ${source}`);
+};
+Schema.lazy = function lazy(builder) {
+  const toJSON2 = () => {
     if (!schema.inner[kSchema]) {
       schema.inner = schema.builder();
       schema.inner.meta = {
@@ -819,320 +549,373 @@ var require_lib = __commonJS(function(exports, module) {
         ...schema.inner.meta
       };
     }
-    return Schema.resolve(data, schema.inner, options, strict);
+    return schema.inner.toJSON();
+  };
+  const schema = new Schema({
+    type: "lazy",
+    builder,
+    inner: { toJSON: toJSON2 }
   });
-  Schema.extend("any", (data) => {
-    return [data];
-  });
-  Schema.extend("never", (data, _, options) => {
-    throw new ValidationError(`expected nullable but got ${data}`, options);
-  });
-  Schema.extend("const", (data, { value }, options) => {
-    if ((0, _deepseek_ai_cosmokit.deepEqual)(data, value))
-      return [value];
-    throw new ValidationError(`expected ${value} but got ${data}`, options);
-  });
-  function checkWithinRange(data, meta, description, options, skipMin = false) {
-    const { max = Infinity, min = -Infinity } = meta;
-    if (data > max)
-      throw new ValidationError(`expected ${description} <= ${max} but got ${data}`, options);
-    if (data < min && !skipMin)
-      throw new ValidationError(`expected ${description} >= ${min} but got ${data}`, options);
-  }
-  Schema.extend("string", (data, { meta }, options) => {
-    if (typeof data !== "string")
-      throw new ValidationError(`expected string but got ${data}`, options);
-    if (meta.pattern) {
-      const regexp = new RegExp(meta.pattern.source, meta.pattern.flags);
-      if (!regexp.test(data))
-        throw new ValidationError(`expect string to match regexp ${regexp}`, options);
-    }
-    checkWithinRange(data.length, meta, "string length", options);
-    return [data];
-  });
-  function decimalShift(data, digits) {
-    const str = data.toString();
-    if (str.includes("e"))
-      return data * Math.pow(10, digits);
-    const index = str.indexOf(".");
-    if (index === -1)
-      return data * Math.pow(10, digits);
-    const frac = str.slice(index + 1);
-    const integer = str.slice(0, index);
-    if (frac.length <= digits)
-      return +(integer + frac.padEnd(digits, "0"));
-    return +(integer + frac.slice(0, digits) + "." + frac.slice(digits));
-  }
-  function isMultipleOf(data, min, step) {
-    step = Math.abs(step);
-    if (!/^\d+\.\d+$/.test(step.toString()))
-      return (data - min) % step === 0;
-    const index = step.toString().indexOf(".");
-    const digits = step.toString().slice(index + 1).length;
-    return Math.abs(decimalShift(data, digits) - decimalShift(min, digits)) % decimalShift(step, digits) === 0;
-  }
-  Schema.extend("number", (data, { meta }, options) => {
-    if (typeof data !== "number")
-      throw new ValidationError(`expected number but got ${data}`, options);
-    checkWithinRange(data, meta, "number", options);
-    const { step } = meta;
-    if (step && !isMultipleOf(data, meta.min ?? 0, step))
-      throw new ValidationError(`expected number multiple of ${step} but got ${data}`, options);
-    return [data];
-  });
-  Schema.extend("boolean", (data, _, options) => {
-    if (typeof data === "boolean")
-      return [data];
-    throw new ValidationError(`expected boolean but got ${data}`, options);
-  });
-  Schema.extend("bitset", (data, { bits, meta }, options) => {
-    let value = 0, keys = [];
-    if (typeof data === "number") {
-      value = data;
-      for (const key in bits)
-        if (data & bits[key])
-          keys.push(key);
-    } else if (Array.isArray(data)) {
-      keys = data;
-      for (const key of keys) {
-        if (typeof key !== "string")
-          throw new ValidationError(`expected string but got ${key}`, options);
-        if (key in bits)
-          value |= bits[key];
-      }
-    } else
-      throw new ValidationError(`expected number or array but got ${data}`, options);
-    if (value === meta.default)
-      return [value];
-    return [value, keys];
-  });
-  Schema.extend("function", (data, _, options) => {
-    if (typeof data === "function")
-      return [data];
-    throw new ValidationError(`expected function but got ${data}`, options);
-  });
-  Schema.extend("is", (data, { constructor }, options) => {
-    if (typeof constructor === "function") {
-      if (data instanceof constructor)
-        return [data];
-      throw new ValidationError(`expected ${constructor.name} but got ${data}`, options);
-    } else {
-      if ((0, _deepseek_ai_cosmokit.isNullable)(data))
-        throw new ValidationError(`expected ${constructor} but got ${data}`, options);
-      let prototype = Object.getPrototypeOf(data);
-      while (prototype) {
-        if (prototype.constructor?.name === constructor)
-          return [data];
-        prototype = Object.getPrototypeOf(prototype);
-      }
-      throw new ValidationError(`expected ${constructor} but got ${data}`, options);
-    }
-  });
-  function property(data, key, schema, options) {
+  return schema;
+};
+Schema.natural = function natural() {
+  return Schema.number().step(1).min(0);
+};
+Schema.percent = function percent() {
+  return Schema.number().step(0.01).min(0).max(1).role("slider");
+};
+Schema.date = function date() {
+  return Schema.union([Schema.is(Date), Schema.transform(Schema.string().role("datetime"), (value, options) => {
+    const date2 = new Date(value);
+    if (isNaN(+date2))
+      throw new ValidationError(`invalid date "${value}"`, options);
+    return date2;
+  }, true)]);
+};
+Schema.regExp = function regExp(flag = "") {
+  return Schema.union([Schema.is(RegExp), Schema.transform(Schema.string().role("regexp", { flag }), (value, options) => {
     try {
-      const [value, adapted] = Schema.resolve(data[key], schema, {
-        ...options,
-        path: [...options.path || [], key]
-      });
-      if (adapted !== undefined)
-        data[key] = adapted;
-      return value;
+      return new RegExp(value, flag);
     } catch (e) {
-      if (!options?.autofix)
-        throw e;
-      delete data[key];
-      return schema.meta.default;
+      throw new ValidationError(e.message, options);
     }
-  }
-  Schema.extend("array", (data, { inner, meta }, options) => {
-    if (!Array.isArray(data))
-      throw new ValidationError(`expected array but got ${data}`, options);
-    checkWithinRange(data.length, meta, "array length", options, !(0, _deepseek_ai_cosmokit.isNullable)(inner.meta.default));
-    return [data.map((_, index) => property(data, index, inner, options))];
-  });
-  Schema.extend("dict", (data, { inner, sKey }, options, strict) => {
-    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
-      throw new ValidationError(`expected object but got ${data}`, options);
-    const result = {};
-    for (const key in data) {
-      let rKey;
+  }, true)]);
+};
+Schema.arrayBuffer = function arrayBuffer(encoding) {
+  return Schema.union([
+    Schema.is(ArrayBuffer),
+    Schema.is(SharedArrayBuffer),
+    Schema.transform(Schema.any(), (value, options) => {
+      if (Binary.isSource(value))
+        return Binary.fromSource(value);
+      throw new ValidationError(`expected ArrayBufferSource but got ${value}`, options);
+    }, true),
+    ...encoding ? [Schema.transform(Schema.string(), (value, options) => {
       try {
-        rKey = Schema.resolve(key, sKey, options)[0];
-      } catch (error) {
-        if (strict)
-          continue;
-        throw error;
+        return encoding === "base64" ? Binary.fromBase64(value) : Binary.fromHex(value);
+      } catch (e) {
+        throw new ValidationError(e.message, options);
       }
-      result[rKey] = property(data, key, inner, options);
-      data[rKey] = data[key];
-      if (key !== rKey)
-        delete data[key];
-    }
-    return [result];
-  });
-  Schema.extend("tuple", (data, { list }, options, strict) => {
-    if (!Array.isArray(data))
-      throw new ValidationError(`expected array but got ${data}`, options);
-    const result = list.map((inner, index) => property(data, index, inner, options));
-    if (strict)
-      return [result];
-    result.push(...data.slice(list.length));
-    return [result];
-  });
-  function merge(result, data) {
-    for (const key in data) {
-      if (key in result)
-        continue;
-      result[key] = data[key];
-    }
+    }, true)] : []
+  ]);
+};
+Schema.extend("lazy", (data, schema, options, strict) => {
+  if (!schema.inner[kSchema]) {
+    schema.inner = schema.builder();
+    schema.inner.meta = {
+      ...schema.meta,
+      ...schema.inner.meta
+    };
   }
-  Schema.extend("object", (data, { dict }, options, strict) => {
-    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
-      throw new ValidationError(`expected object but got ${data}`, options);
-    const result = {};
-    for (const key in dict) {
-      const value = property(data, key, dict[key], options);
-      if (!(0, _deepseek_ai_cosmokit.isNullable)(value) || key in data)
-        result[key] = value;
-    }
-    if (!strict)
-      merge(result, data);
-    return [result];
-  });
-  Schema.extend("union", (data, { list, toString }, options, strict) => {
-    const messages = [];
-    for (const inner of list)
-      try {
-        return Schema.resolve(data, inner, options, strict);
-      } catch (error) {
-        messages.push(error);
-      }
-    throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
-  });
-  Schema.extend("intersect", (data, { list, toString }, options, strict) => {
-    if (!list.length)
-      return [data];
-    let result;
-    for (const inner of list) {
-      const value = Schema.resolve(data, inner, options, true)[0];
-      if ((0, _deepseek_ai_cosmokit.isNullable)(value))
-        continue;
-      if ((0, _deepseek_ai_cosmokit.isNullable)(result))
-        result = value;
-      else if (typeof result !== typeof value)
-        throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
-      else if (typeof value === "object")
-        merge(result ??= {}, value);
-      else if (result !== value)
-        throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
-    }
-    if (!strict && (0, _deepseek_ai_cosmokit.isPlainObject)(data))
-      merge(result, data);
-    return [result];
-  });
-  Schema.extend("transform", (data, { inner, callback, preserve }, options) => {
-    const [result, adapted = data] = Schema.resolve(data, inner, options, true);
-    if (preserve)
-      return [callback(result)];
-    else
-      return [callback(result), callback(adapted)];
-  });
-  var formatters = {};
-  function defineMethod(name, keys, format) {
-    formatters[name] = format;
-    Object.assign(Schema, { [name](...args) {
-      const schema = new Schema({ type: name });
-      keys.forEach((key, index) => {
-        switch (key) {
-          case "sKey":
-            schema.sKey = args[index] ?? Schema.string();
-            break;
-          case "inner":
-            schema.inner = Schema.from(args[index]);
-            break;
-          case "list":
-            schema.list = args[index].map(Schema.from);
-            break;
-          case "dict":
-            schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(args[index], Schema.from);
-            break;
-          case "bits":
-            schema.bits = {};
-            for (const key2 in args[index]) {
-              if (typeof args[index][key2] !== "number")
-                continue;
-              schema.bits[key2] = args[index][key2];
-            }
-            break;
-          case "callback": {
-            const callback = schema.callback = args[index];
-            callback["toJSON"] ||= () => callback.toString();
-            break;
-          }
-          case "constructor": {
-            const constructor = schema.constructor = args[index];
-            if (typeof constructor === "function")
-              constructor["toJSON"] ||= () => constructor["name"];
-            break;
-          }
-          default:
-            schema[key] = args[index];
-        }
-      });
-      if (name === "object" || name === "dict")
-        schema.meta.default = {};
-      else if (name === "array" || name === "tuple")
-        schema.meta.default = [];
-      else if (name === "bitset")
-        schema.meta.default = 0;
-      return schema;
-    } });
-  }
-  defineMethod("is", ["constructor"], ({ constructor }) => {
-    if (typeof constructor === "function")
-      return constructor.name;
-    else
-      return constructor;
-  });
-  defineMethod("any", [], () => "any");
-  defineMethod("never", [], () => "never");
-  defineMethod("const", ["value"], ({ value }) => typeof value === "string" ? JSON.stringify(value) : value);
-  defineMethod("string", [], () => "string");
-  defineMethod("number", [], () => "number");
-  defineMethod("boolean", [], () => "boolean");
-  defineMethod("bitset", ["bits"], () => "bitset");
-  defineMethod("function", [], () => "function");
-  defineMethod("array", ["inner"], ({ inner }) => `${inner.toString(true)}[]`);
-  defineMethod("dict", ["inner", "sKey"], ({ inner, sKey }) => `{ [key: ${sKey.toString()}]: ${inner.toString()} }`);
-  defineMethod("tuple", ["list"], ({ list }) => `[${list.map((inner) => inner.toString()).join(", ")}]`);
-  defineMethod("object", ["dict"], ({ dict }) => {
-    if (Object.keys(dict).length === 0)
-      return "{}";
-    return `{ ${Object.entries(dict).map(([key, inner]) => {
-      return `${key}${inner.meta.required ? "" : "?"}: ${inner.toString()}`;
-    }).join(", ")} }`;
-  });
-  defineMethod("union", ["list"], ({ list }, inline) => {
-    const result = list.map(({ toString: format }) => format()).join(" | ");
-    return inline ? `(${result})` : result;
-  });
-  defineMethod("intersect", ["list"], ({ list }) => {
-    return `${list.map((inner) => inner.toString(true)).join(" & ")}`;
-  });
-  defineMethod("transform", [
-    "inner",
-    "callback",
-    "preserve"
-  ], ({ inner }, isInner) => inner.toString(isInner));
-  module.exports = Schema;
+  return Schema.resolve(data, schema.inner, options, strict);
 });
-
-// packages/mpd-team-watchdog-plugin/src/index.ts
-var import_schemastery = __toESM(require_lib(), 1);
+Schema.extend("any", (data) => {
+  return [data];
+});
+Schema.extend("never", (data, _, options) => {
+  throw new ValidationError(`expected nullable but got ${data}`, options);
+});
+Schema.extend("const", (data, { value }, options) => {
+  if (deepEqual(data, value))
+    return [value];
+  throw new ValidationError(`expected ${value} but got ${data}`, options);
+});
+function checkWithinRange(data, meta, description, options, skipMin = false) {
+  const { max = Infinity, min = -Infinity } = meta;
+  if (data > max)
+    throw new ValidationError(`expected ${description} <= ${max} but got ${data}`, options);
+  if (data < min && !skipMin)
+    throw new ValidationError(`expected ${description} >= ${min} but got ${data}`, options);
+}
+Schema.extend("string", (data, { meta }, options) => {
+  if (typeof data !== "string")
+    throw new ValidationError(`expected string but got ${data}`, options);
+  if (meta.pattern) {
+    const regexp = new RegExp(meta.pattern.source, meta.pattern.flags);
+    if (!regexp.test(data))
+      throw new ValidationError(`expect string to match regexp ${regexp}`, options);
+  }
+  checkWithinRange(data.length, meta, "string length", options);
+  return [data];
+});
+function decimalShift(data, digits) {
+  const str = data.toString();
+  if (str.includes("e"))
+    return data * Math.pow(10, digits);
+  const index = str.indexOf(".");
+  if (index === -1)
+    return data * Math.pow(10, digits);
+  const frac = str.slice(index + 1);
+  const integer = str.slice(0, index);
+  if (frac.length <= digits)
+    return +(integer + frac.padEnd(digits, "0"));
+  return +(integer + frac.slice(0, digits) + "." + frac.slice(digits));
+}
+function isMultipleOf(data, min, step) {
+  step = Math.abs(step);
+  if (!/^\d+\.\d+$/.test(step.toString()))
+    return (data - min) % step === 0;
+  const index = step.toString().indexOf(".");
+  const digits = step.toString().slice(index + 1).length;
+  return Math.abs(decimalShift(data, digits) - decimalShift(min, digits)) % decimalShift(step, digits) === 0;
+}
+Schema.extend("number", (data, { meta }, options) => {
+  if (typeof data !== "number")
+    throw new ValidationError(`expected number but got ${data}`, options);
+  checkWithinRange(data, meta, "number", options);
+  const { step } = meta;
+  if (step && !isMultipleOf(data, meta.min ?? 0, step))
+    throw new ValidationError(`expected number multiple of ${step} but got ${data}`, options);
+  return [data];
+});
+Schema.extend("boolean", (data, _, options) => {
+  if (typeof data === "boolean")
+    return [data];
+  throw new ValidationError(`expected boolean but got ${data}`, options);
+});
+Schema.extend("bitset", (data, { bits, meta }, options) => {
+  let value = 0, keys = [];
+  if (typeof data === "number") {
+    value = data;
+    for (const key in bits)
+      if (data & bits[key])
+        keys.push(key);
+  } else if (Array.isArray(data)) {
+    keys = data;
+    for (const key of keys) {
+      if (typeof key !== "string")
+        throw new ValidationError(`expected string but got ${key}`, options);
+      if (key in bits)
+        value |= bits[key];
+    }
+  } else
+    throw new ValidationError(`expected number or array but got ${data}`, options);
+  if (value === meta.default)
+    return [value];
+  return [value, keys];
+});
+Schema.extend("function", (data, _, options) => {
+  if (typeof data === "function")
+    return [data];
+  throw new ValidationError(`expected function but got ${data}`, options);
+});
+Schema.extend("is", (data, { constructor }, options) => {
+  if (typeof constructor === "function") {
+    if (data instanceof constructor)
+      return [data];
+    throw new ValidationError(`expected ${constructor.name} but got ${data}`, options);
+  } else {
+    if (isNullable(data))
+      throw new ValidationError(`expected ${constructor} but got ${data}`, options);
+    let prototype = Object.getPrototypeOf(data);
+    while (prototype) {
+      if (prototype.constructor?.name === constructor)
+        return [data];
+      prototype = Object.getPrototypeOf(prototype);
+    }
+    throw new ValidationError(`expected ${constructor} but got ${data}`, options);
+  }
+});
+function property(data, key, schema, options) {
+  try {
+    const [value, adapted] = Schema.resolve(data[key], schema, {
+      ...options,
+      path: [...options.path || [], key]
+    });
+    if (adapted !== undefined)
+      data[key] = adapted;
+    return value;
+  } catch (e) {
+    if (!options?.autofix)
+      throw e;
+    delete data[key];
+    return schema.meta.default;
+  }
+}
+Schema.extend("array", (data, { inner, meta }, options) => {
+  if (!Array.isArray(data))
+    throw new ValidationError(`expected array but got ${data}`, options);
+  checkWithinRange(data.length, meta, "array length", options, !isNullable(inner.meta.default));
+  return [data.map((_, index) => property(data, index, inner, options))];
+});
+Schema.extend("dict", (data, { inner, sKey }, options, strict) => {
+  if (!isPlainObject(data))
+    throw new ValidationError(`expected object but got ${data}`, options);
+  const result = {};
+  for (const key in data) {
+    let rKey;
+    try {
+      rKey = Schema.resolve(key, sKey, options)[0];
+    } catch (error) {
+      if (strict)
+        continue;
+      throw error;
+    }
+    result[rKey] = property(data, key, inner, options);
+    data[rKey] = data[key];
+    if (key !== rKey)
+      delete data[key];
+  }
+  return [result];
+});
+Schema.extend("tuple", (data, { list }, options, strict) => {
+  if (!Array.isArray(data))
+    throw new ValidationError(`expected array but got ${data}`, options);
+  const result = list.map((inner, index) => property(data, index, inner, options));
+  if (strict)
+    return [result];
+  result.push(...data.slice(list.length));
+  return [result];
+});
+function merge(result, data) {
+  for (const key in data) {
+    if (key in result)
+      continue;
+    result[key] = data[key];
+  }
+}
+Schema.extend("object", (data, { dict }, options, strict) => {
+  if (!isPlainObject(data))
+    throw new ValidationError(`expected object but got ${data}`, options);
+  const result = {};
+  for (const key in dict) {
+    const value = property(data, key, dict[key], options);
+    if (!isNullable(value) || key in data)
+      result[key] = value;
+  }
+  if (!strict)
+    merge(result, data);
+  return [result];
+});
+Schema.extend("union", (data, { list, toString: toString2 }, options, strict) => {
+  const messages = [];
+  for (const inner of list)
+    try {
+      return Schema.resolve(data, inner, options, strict);
+    } catch (error) {
+      messages.push(error);
+    }
+  throw new ValidationError(`expected ${toString2()} but got ${JSON.stringify(data)}`, options);
+});
+Schema.extend("intersect", (data, { list, toString: toString2 }, options, strict) => {
+  if (!list.length)
+    return [data];
+  let result;
+  for (const inner of list) {
+    const value = Schema.resolve(data, inner, options, true)[0];
+    if (isNullable(value))
+      continue;
+    if (isNullable(result))
+      result = value;
+    else if (typeof result !== typeof value)
+      throw new ValidationError(`expected ${toString2()} but got ${JSON.stringify(data)}`, options);
+    else if (typeof value === "object")
+      merge(result ??= {}, value);
+    else if (result !== value)
+      throw new ValidationError(`expected ${toString2()} but got ${JSON.stringify(data)}`, options);
+  }
+  if (!strict && isPlainObject(data))
+    merge(result, data);
+  return [result];
+});
+Schema.extend("transform", (data, { inner, callback, preserve }, options) => {
+  const [result, adapted = data] = Schema.resolve(data, inner, options, true);
+  if (preserve)
+    return [callback(result)];
+  else
+    return [callback(result), callback(adapted)];
+});
+var formatters = {};
+function defineMethod(name, keys, format) {
+  formatters[name] = format;
+  Object.assign(Schema, { [name](...args) {
+    const schema = new Schema({ type: name });
+    keys.forEach((key, index) => {
+      switch (key) {
+        case "sKey":
+          schema.sKey = args[index] ?? Schema.string();
+          break;
+        case "inner":
+          schema.inner = Schema.from(args[index]);
+          break;
+        case "list":
+          schema.list = args[index].map(Schema.from);
+          break;
+        case "dict":
+          schema.dict = mapValues(args[index], Schema.from);
+          break;
+        case "bits":
+          schema.bits = {};
+          for (const key2 in args[index]) {
+            if (typeof args[index][key2] !== "number")
+              continue;
+            schema.bits[key2] = args[index][key2];
+          }
+          break;
+        case "callback": {
+          const callback = schema.callback = args[index];
+          callback["toJSON"] ||= () => callback.toString();
+          break;
+        }
+        case "constructor": {
+          const constructor = schema.constructor = args[index];
+          if (typeof constructor === "function")
+            constructor["toJSON"] ||= () => constructor["name"];
+          break;
+        }
+        default:
+          schema[key] = args[index];
+      }
+    });
+    if (name === "object" || name === "dict")
+      schema.meta.default = {};
+    else if (name === "array" || name === "tuple")
+      schema.meta.default = [];
+    else if (name === "bitset")
+      schema.meta.default = 0;
+    return schema;
+  } });
+}
+defineMethod("is", ["constructor"], ({ constructor }) => {
+  if (typeof constructor === "function")
+    return constructor.name;
+  else
+    return constructor;
+});
+defineMethod("any", [], () => "any");
+defineMethod("never", [], () => "never");
+defineMethod("const", ["value"], ({ value }) => typeof value === "string" ? JSON.stringify(value) : value);
+defineMethod("string", [], () => "string");
+defineMethod("number", [], () => "number");
+defineMethod("boolean", [], () => "boolean");
+defineMethod("bitset", ["bits"], () => "bitset");
+defineMethod("function", [], () => "function");
+defineMethod("array", ["inner"], ({ inner }) => `${inner.toString(true)}[]`);
+defineMethod("dict", ["inner", "sKey"], ({ inner, sKey }) => `{ [key: ${sKey.toString()}]: ${inner.toString()} }`);
+defineMethod("tuple", ["list"], ({ list }) => `[${list.map((inner) => inner.toString()).join(", ")}]`);
+defineMethod("object", ["dict"], ({ dict }) => {
+  if (Object.keys(dict).length === 0)
+    return "{}";
+  return `{ ${Object.entries(dict).map(([key, inner]) => {
+    return `${key}${inner.meta.required ? "" : "?"}: ${inner.toString()}`;
+  }).join(", ")} }`;
+});
+defineMethod("union", ["list"], ({ list }, inline) => {
+  const result = list.map(({ toString: format }) => format()).join(" | ");
+  return inline ? `(${result})` : result;
+});
+defineMethod("intersect", ["list"], ({ list }) => {
+  return `${list.map((inner) => inner.toString(true)).join(" & ")}`;
+});
+defineMethod("transform", [
+  "inner",
+  "callback",
+  "preserve"
+], ({ inner }, isInner) => inner.toString(isInner));
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { resolve as resolve3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -1142,7 +925,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve as resolve2 } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -1167,7 +950,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -1364,10 +1147,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 var rowLogSinks = new Map;
@@ -1393,14 +1176,14 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
     return [];
   }
 }
-function noop2() {}
+function noop() {}
 var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
 function goalSnapshotOf(view) {
   if (view === null || view === undefined || typeof view !== "object")
@@ -1864,10 +1647,10 @@ function createDshAdapter(ctx, config = {}) {
           const membership = tryMembership.call(teams, agent);
           if (membership === undefined || membership === null)
             return;
-          const role = membership.role;
-          if (role !== "lead" && role !== "teammate")
+          const role2 = membership.role;
+          if (role2 !== "lead" && role2 !== "teammate")
             return;
-          return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+          return { teamId: String(membership.id ?? ""), role: role2, name: String(membership.name ?? "") };
         } catch {
           return;
         }
@@ -2103,7 +1886,7 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof tools.register !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
       const registered = tools.register(definition);
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
@@ -2131,7 +1914,7 @@ function createDshAdapter(ctx, config = {}) {
     registerCommand(definition) {
       const commands = service("commands");
       if (commands === undefined || commands === null || typeof commands.register !== "function")
-        return noop2;
+        return noop;
       const registered = commands.register({
         name: definition?.name,
         description: definition?.description,
@@ -2144,14 +1927,14 @@ function createDshAdapter(ctx, config = {}) {
           });
         }
       });
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     registerPromptSection(section) {
       const systemPrompt = requireService("systemPrompt", 'cannot register prompt section "' + String(section?.name) + '"');
       if (typeof systemPrompt.section !== "function")
         throw new Error("mpd-dsh-adapter: the harness systemPrompt service exposes no section()");
       const registered = systemPrompt.section(section);
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
@@ -2161,7 +1944,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     onPreToolExecute(listener) {
       if (typeof ctx?.on !== "function")
-        return noop2;
+        return noop;
       return ctx.on("tools/pre-execute", async (exec, next) => {
         const downstream = typeof next === "function" ? await next() : undefined;
         try {
@@ -2172,7 +1955,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
-        return noop2;
+        return noop;
       return ctx.on("tools/post-execute", async (exec, result, next) => {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
@@ -2181,7 +1964,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     onAgentPreStep(listener) {
       if (typeof ctx?.on !== "function")
-        return noop2;
+        return noop;
       return ctx.on("agent/pre-step", preStepWrapper(listener));
     },
     registerAgentPreStep(agent, listener) {
@@ -2296,7 +2079,7 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof subagents.registerProvider !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()");
       const registered = subagents.registerProvider(provider);
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     interruptAgent(targetSessionId, authority) {
       const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
@@ -2337,10 +2120,10 @@ function createDshAdapter(ctx, config = {}) {
       }
       if (membership === undefined || membership === null)
         return;
-      const role = membership.role;
-      if (role !== "lead" && role !== "teammate")
+      const role2 = membership.role;
+      if (role2 !== "lead" && role2 !== "teammate")
         return;
-      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+      return { teamId: String(membership.id ?? ""), role: role2, name: String(membership.name ?? "") };
     },
     teamListMembers(agent) {
       const teams = requireService("agentTeams", "cannot list the team roster of an agent");
@@ -2514,10 +2297,10 @@ function createDshAdapter(ctx, config = {}) {
           listener(revision, source);
         } catch {}
       };
-      const offUpdated = adapter.onEvent("settings/updated", (ns, _next, _prev, from) => {
+      const offUpdated = adapter.onEvent("settings/updated", (ns, _next, _prev, from2) => {
         if (String(ns) !== namespace)
           return;
-        pendingSource = from === undefined ? undefined : String(from);
+        pendingSource = from2 === undefined ? undefined : String(from2);
         return;
       });
       const offDocument = adapter.onEvent("settings/document-updated", (ns, revision) => {
@@ -2611,7 +2394,7 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
       }
       const registered = systemPrompt.section(section);
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     startAgentTurn(agent, message) {
       const followup = agent?.followup;
@@ -3675,7 +3458,7 @@ function readWatchdogSection(workspace) {
 
 // packages/mpd-team-watchdog-plugin/src/holds.ts
 import { existsSync as existsSync3, readFileSync as readFileSync4, readdirSync as readdirSync2, statSync as statSync2 } from "node:fs";
-import { join as join6, resolve as resolve3 } from "node:path";
+import { join as join6, resolve as resolve4 } from "node:path";
 var HOLD_SERVICE = "mpdWatchdog";
 function readHoldFile(workspace, stateDir, teamId) {
   let text;
@@ -3701,17 +3484,17 @@ class HoldRegistry {
   fallbackWorkspace = null;
   constructor(stateDir, fallbackWorkspace = null) {
     this.stateDir = stateDir;
-    this.fallbackWorkspace = fallbackWorkspace === null ? null : resolve3(fallbackWorkspace);
+    this.fallbackWorkspace = fallbackWorkspace === null ? null : resolve4(fallbackWorkspace);
   }
   key(workspace, teamId) {
-    return resolve3(workspace) + "\x00" + teamId;
+    return resolve4(workspace) + "\x00" + teamId;
   }
   hydrate(roots) {
     let loaded = 0;
     for (const root of roots) {
       if (typeof root !== "string" || root === "")
         continue;
-      const workspace = resolve3(root);
+      const workspace = resolve4(root);
       if (this.fallbackWorkspace === null)
         this.fallbackWorkspace = workspace;
       if (this.hydrated.has(workspace))
@@ -3738,14 +3521,14 @@ class HoldRegistry {
   }
   record(workspace, hold) {
     this.entries.set(this.key(workspace, hold.teamId), hold);
-    this.hydrated.add(resolve3(workspace));
+    this.hydrated.add(resolve4(workspace));
   }
   forget(workspace, teamId) {
     this.entries.delete(this.key(workspace, teamId));
   }
   isHeld(teamId, workspace) {
     const id = String(teamId ?? "");
-    const notHeld = (from, where2 = null) => ({
+    const notHeld = (from2, where2 = null) => ({
       held: false,
       holdId: null,
       at: null,
@@ -3753,7 +3536,7 @@ class HoldRegistry {
       taskId: null,
       attemptId: null,
       workspace: where2,
-      source: from
+      source: from2
     });
     if (id === "")
       return notHeld("none");
@@ -3771,7 +3554,7 @@ class HoldRegistry {
       } catch {
         return notHeld("none");
       }
-      return notHeld("none", resolve3(where));
+      return notHeld("none", resolve4(where));
     }
     for (const [key, hold] of this.entries) {
       const [root, team] = key.split("\x00");
@@ -3845,7 +3628,7 @@ class HoldRegistry {
   }
   workspaceOf(workspace) {
     if (typeof workspace === "string" && workspace !== "")
-      return resolve3(workspace);
+      return resolve4(workspace);
     return this.fallbackWorkspace;
   }
   holdView(hold, workspace, source) {
@@ -4587,7 +4370,7 @@ class WatchdogEngine {
   workspaceOf(agent) {
     return this.dsh.workspaceRoot(agent === undefined ? undefined : { agent });
   }
-  stamp(kind, agent, extra = {}) {
+  stamp(kind, agent, extra2 = {}) {
     const ids = agentIds(agent);
     const workspace = this.workspaceOf(ids.cwd !== undefined ? agent : undefined);
     this.remember(workspace);
@@ -4607,9 +4390,9 @@ class WatchdogEngine {
       taskId: task?.id ?? null,
       attemptId: task?.attemptId ?? null,
       turnId: memberKey + "#" + String(this.turnSeq),
-      ...extra.tool === undefined ? {} : { tool: extra.tool },
-      ...extra.callId === undefined ? {} : { callId: extra.callId },
-      ...extra.ok === undefined ? {} : { ok: extra.ok },
+      ...extra2.tool === undefined ? {} : { tool: extra2.tool },
+      ...extra2.callId === undefined ? {} : { callId: extra2.callId },
+      ...extra2.ok === undefined ? {} : { ok: extra2.ok },
       workspace
     };
     const written = appendHeartbeat(workspace, this.config.stateDir, memberKey, stamp);
@@ -5159,20 +4942,20 @@ class WatchdogEngine {
 // packages/mpd-team-watchdog-plugin/src/index.ts
 var name = "mpd-team-watchdog";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_AGENTS);
-var Config = import_schemastery.default.object({
-  enabled: import_schemastery.default.boolean().default(true),
-  warnSilenceMs: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.warnSilenceMs),
-  tickIntervalMs: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.tickIntervalMs),
-  warnStreakToEscalate: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.warnStreakToEscalate),
-  actionOnEscalate: import_schemastery.default.string().default(WATCHDOG_DEFAULTS.actionOnEscalate),
-  stateDir: import_schemastery.default.string().default(DEFAULT_STATE_DIR),
-  teamCacheMs: import_schemastery.default.number().default(2000),
-  keepGenerations: import_schemastery.default.number().default(3),
-  deadTeamGraceMs: import_schemastery.default.number().default(86400000),
-  toolInFlightMaxMs: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
-  holdTtlMs: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.holdTtlMs),
-  verboseSkips: import_schemastery.default.boolean().default(false),
-  logPrefix: import_schemastery.default.string().default("mpd-team-watchdog")
+var Config = Schema.object({
+  enabled: Schema.boolean().default(true),
+  warnSilenceMs: Schema.number().default(WATCHDOG_DEFAULTS.warnSilenceMs),
+  tickIntervalMs: Schema.number().default(WATCHDOG_DEFAULTS.tickIntervalMs),
+  warnStreakToEscalate: Schema.number().default(WATCHDOG_DEFAULTS.warnStreakToEscalate),
+  actionOnEscalate: Schema.string().default(WATCHDOG_DEFAULTS.actionOnEscalate),
+  stateDir: Schema.string().default(DEFAULT_STATE_DIR),
+  teamCacheMs: Schema.number().default(2000),
+  keepGenerations: Schema.number().default(3),
+  deadTeamGraceMs: Schema.number().default(86400000),
+  toolInFlightMaxMs: Schema.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
+  holdTtlMs: Schema.number().default(WATCHDOG_DEFAULTS.holdTtlMs),
+  verboseSkips: Schema.boolean().default(false),
+  logPrefix: Schema.string().default("mpd-team-watchdog")
 });
 function resolveConfig(config = {}) {
   const bool = (value, fallback) => typeof value === "boolean" ? value : fallback;

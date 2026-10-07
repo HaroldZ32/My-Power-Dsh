@@ -47,9 +47,11 @@ instead of across every plugin.
 | capability probing | `capabilities()` | one boolean per seam, so a caller can degrade instead of crashing |
 
 The fourteen rows from `registerHostTool` down to `injectAgentMessage` exist for ONE consumer:
-the adopted `agent-teams` plugin, whose bridge module
-`packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts` (mpd-owned, name rule `lib/mpd-*.js`)
-builds the facade once at the top of `apply` and routes six bridged adopted files through them.
+the adopted `agent-teams` plugin, whose bridge module was
+`packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts` (mpd-owned, name rule `lib/mpd-*.js`) and
+built the facade once at the top of `apply`, routing six bridged adopted files through them. Both the
+plugin and its bridge module were DELETED by the `de-vendor-and-verify-law` wave; the paragraph below
+is kept as the record of a boundary that was closed.
 Each method sits behind a `capabilities()` flag (one flag may cover two methods;
 `subagentRuntime` reuses the existing `subagents` flag), so the bridge degrades per seam instead
 of aborting the plugin tree: `toolsRegisterHost`, `subagents`, `subagentsProvider`,
@@ -138,9 +140,10 @@ package is the only file in the repository allowed to touch a harness service di
 The rule is binding (AGENTS.md §6): **a plugin row must not call `ctx.tools`,
 `ctx.subagents`, `ctx.skills` or `ctx.agentPresets` itself.**
 
-**Adopted-plugin routing (the former boundary, closed 2026-09-19):** the adopted
-`agent-teams` plugin (`packages/mpd-agent-teams-plugin`) is upstream MIT main code
-re-vendored on upgrades, and it reaches the harness seams through THIS adapter — via its
+**Adopted-plugin routing (the former boundary, closed 2026-09-19, and now HISTORICAL — the plugin
+it describes was DELETED by the `de-vendor-and-verify-law` wave):** the adopted
+`agent-teams` plugin was upstream MIT main code re-vendored on upgrades, and it reached the harness
+seams through THIS adapter — via its
 mpd-owned bridge `lib/mpd-adapter-ctx.ts`, which resolves the mounted `mpdDsh` lazily and
 falls back warn-once when the adapter is absent (one absent line per plugin instance). Its
 local adaptations stay as they were (the `registerContinuableSetup` boot-safety guard, the

@@ -1,0 +1,13 @@
+[session-start-team self-test] corpus (verdicts from the SHIPPED predicate):
+  ok simple        han=  0 trigger=false signals=[]       "Reply with exactly: hello-ok"
+  ok simple        han=  0 trigger=false signals=[]       "What does the git-master skill do? Answer in one sentence."
+  ok simple        han=  0 trigger=false signals=[]       "Rename the variable `foo` to `bar` in src/util.ts and run it"
+  ok soft-complex  han=  0 trigger=true  signals=["C"]    "Align the bundle with upstream: audit the orchestration surf"
+  ok soft-complex  han=  0 trigger=true  signals=["C"]    "1. Read the patch file\n2. Audit the gates\n3. Implement the c"
+  ok explicit      han=  0 trigger=true  signals=["A"]    "team: fix the flaky test"
+  ok cjk-positive  han=159 trigger=true  signals=["E"]    "脱去该项目对于Oh-my-openagent与dsh-agent-teams项目的源码的所有依赖及检查，文档里只写参考鸣"
+  ok cjk-negative  han=  9 trigger=false signals=[]       "这个函数是干什么的？"
+  ok cjk-negative  han= 17 trigger=false signals=[]       "读一下 AGENTS.md 的第一节，然后告诉我它说了什么"
+  ok cjk-negative  han= 52 trigger=false signals=[]       "请解释一下这个项目里 preset 和 profile 到底有什么区别，为什么会这样设计，以及这样做对我们有什么好处和坏"
+  calibration: positives han=[159] negatives han=[9,17,52] bound=60 verbs>=2
+[session-start-team self-test] ok: the shipped PURE gate module conforms to the MECHANICAL contract (3 simple / 2 soft-complex / 1 explicit / 1 cjk-positive / 3 cjk-negative / 1 boulder-probe prompt, both ways; signal D through the INJECTED reader AND the real filesystem, the mode FAIL-SAFE, the shell builder's honest bounds, both notices with the retired vocabulary scoped per text, and the session scope); FOUR negative controls reddened (always-trigger 12, always-silent 14, advisory-only-mechanical 10, CJK-blind 1 problem(s)); C7 (a session already leading a team) and C8 (an inbound `team-message`/`agent-message` is never the human turn) each driven BOTH ways; the LIVE verdict and the REAL `.mpd/team` stage scan were each driven offline BOTH ways (a matching shell passes; a spawned record, a plan-id mismatch, a leaked notice and a non-shell staged plan all redden); bundle mounts mpd-roles with the retired rows gone; preset carries the SESSION STARTUP RULE

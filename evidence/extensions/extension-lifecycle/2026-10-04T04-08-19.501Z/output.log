@@ -1,0 +1,131 @@
+=== install ===
+ - id: mpd-roles
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-workmate
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-roster-provider
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roster-provider-plugin/dist/index.js"
+    config:
+      baseProvider: "spawn"
+  - id: mpd-team-core
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/dist/index.js"
+  - id: mpd-team-compact
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-team-watchdog
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-watchdog-plugin/dist/index.js"
+    config:
+      stateDir: ".mpd/team"
+      warnSilenceMs: 90000
+      tickIntervalMs: 15000
+      warnStreakToEscalate: 3
+      actionOnEscalate: "pause"
+  - id: mpd-bootstrap
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: mpd-tui-adapter
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-adapter-plugin/dist/index.js"
+  - id: mpd-tui
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/dist/index.js"
+  - id: mpd-agent-team
+    name: "@deepseek-ai/dsh-experimental-agent-team"
+    config:
+      maxMembers: 16
+      maxTasks: 256
+      maxPendingMessagesPerMember: 64
+      maxMessageBytes: 32768
+      disposalTimeoutMs: 5000
+  - id: mpd-tool-agent-team
+    name: "@deepseek-ai/dsh-experimental-tool-agent-team"
+    config:
+      freshProvider: "spawn"
+      forkProvider: "fork"
+  - id: mpd-ui-agent-team
+    name: "@deepseek-ai/dsh-experimental-client-ui-agent-team"
+[install-profile] wrote profile/ + home patch (33 rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+
+=== main arm (exit 1, 9508ms) ===
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+=== failure arm (exit 1) ===
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+=== session-a (cwd=/tmp/mpd-extension-lifecycle-OPROWu/ws-a) ===
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+=== session-b (cwd=/tmp/mpd-extension-lifecycle-OPROWu/ws-b) ===
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+=== decoy-cwd-control (cwd=/tmp/mpd-extension-lifecycle-OPROWu/decoy) ===
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+=== scratch pack via the sanctioned --out flag (exit 1, out-dir /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/extensions/extension-lifecycle/2026-10-04T04-08-19.501Z/scratch-pack/mpd-package) ===
+[pack-mpd] FAIL: cordis.patch.yml mounts packages/mpd-goal-plugin/dist/index.js but the packed tree has no such file
+
+
+=== packed negative control (fixture trees) ===
+{
+  "closed": {
+    "hasRow": true,
+    "hasPlugin": true,
+    "hasExtensions": true,
+    "ok": true
+  },
+  "no-plugin-package": {
+    "hasRow": true,
+    "hasPlugin": false,
+    "hasExtensions": true,
+    "ok": false
+  },
+  "no-extensions-root": {
+    "hasRow": true,
+    "hasPlugin": true,
+    "hasExtensions": false,
+    "ok": false
+  },
+  "no-mpd-ext-row": {
+    "hasRow": false,
+    "hasPlugin": true,
+    "hasExtensions": true,
+    "ok": false
+  }
+}
+
+=== canonical artifact stamp (before/after) ===
+{
+  "canonicalBefore": {
+    "present": false,
+    "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package",
+    "files": 0,
+    "manifestSha256": null,
+    "patchSha256": null
+  },
+  "canonicalAfter": {
+    "present": false,
+    "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package",
+    "files": 0,
+    "manifestSha256": null,
+    "patchSha256": null
+  },
+  "canonicalUnmoved": true
+}

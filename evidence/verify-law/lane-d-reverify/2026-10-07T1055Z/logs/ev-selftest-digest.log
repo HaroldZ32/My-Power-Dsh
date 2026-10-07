@@ -1,0 +1,4 @@
+cmd: node skills/dsh-qa/scripts/verify-law.ts --self-test  (the anti-drift digest line)
+[verify-law self-test] ok: the registered copy is byte-identical (fa61eb5825ad)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+EXIT=0

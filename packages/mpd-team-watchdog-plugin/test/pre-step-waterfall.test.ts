@@ -28,7 +28,7 @@ import { describe, expect, test } from "bun:test"
 // The vendored cordis build ships no declaration file, so this module resolves to `any`; the
 // directive stays loud and self-healing rather than a blanket `@ts-ignore`.
 // The vendored module now resolves to its .ts source, so this surface is typed from that file.
-import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.ts"
+import { Context } from "../../mpd-schemastery/harness/cordis/lib/index.ts"
 import { WatchdogEngine, type EngineContext } from "../src/engine"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { readHeartbeats } from "../src/store"

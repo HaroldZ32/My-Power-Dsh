@@ -1,0 +1,49 @@
+### bun install --frozen-lockfile
+bun install v1.4.2 (744846f84)
+
+Checked 347 installs across 336 packages (no changes) [9.00ms]
+EXIT=0
+
+### bun run typecheck
+$ tsgo --noEmit
+EXIT=0
+
+### bun test packages
+ 1564 pass
+ 3 skip
+ 1 fail
+ 22674 expect() calls
+Ran 1568 tests across 98 files. [12.77s]
+EXIT=1
+
+### bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=22 derived=3 links=440 dead=0 — PASS
+EXIT=0
+
+### bun run verify:manifest
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+EXIT=0
+
+### node scripts/verify-manual-paths.ts
+[verify-manual-paths] census family=under-report direction=under-report total=83 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] PASS resolved=137 over-report=75 under-report=83 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+EXIT=0
+
+### node scripts/verify-comment-coverage.ts
+scanned 357 TypeScript file(s) of 357 in the source set; inspected 31111 declaration(s); skipped 13770 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+EXIT=0
+
+### node scripts/verify-dist-fresh.ts
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-dist-fresh] FAIL - 9 of 30 targets not fresh (STALE: 9) — 622ms
+EXIT=1
+
+### node scripts/pack-mpd.ts
+[pack-mpd] FAIL: cordis.patch.yml mounts packages/mpd-verify-plugin/dist/index.js but the packed tree has no such file
+EXIT=1

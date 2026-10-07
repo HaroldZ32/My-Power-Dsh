@@ -134,7 +134,6 @@ function declaredEntries(pkgDir: string): string[] {
 
 /** Packages that legitimately own no rebuildable src/, with the reason the repository records. */
 function noSrcReason(pkg: string): string {
-  if (pkg === "mpd-agent-teams-plugin") return "adopted upstream main code under lib/ (no src/)"
   if (pkg === "mpd-mcp-codegraph") return "sha-pinned prebuilt vendored at pack time (no local src/)"
   if (pkg.startsWith("mpd-mcp-")) return "built offline by scripts/build-mcp.ts from the upstream checkout (no local src/)"
   return "package has no src/ directory (dist is the only committed artifact)"

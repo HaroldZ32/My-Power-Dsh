@@ -1,0 +1,86 @@
+{
+  "runner": "scripts/run-qa-lanes.ts",
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "53460c32fa1d8198b444d4135140b1ebae8dc0fbc23de02f1e7383fdd09b466d",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-10-07T10:42:03.812Z",
+  "finishedAt": "2026-10-07T10:42:57.667Z",
+  "durationMs": 53855,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [
+      "skills/dsh-qa/scripts/goal-bridge.ts",
+      "skills/dsh-qa/scripts/tui-deps-ctrla.ts"
+    ],
+    "missingScripts": [],
+    "countDrift": {
+      "discovered": 43,
+      "allTsEntries": 43,
+      "listed": 41,
+      "unlisted": 2,
+      "outsideSuites": 17,
+      "excludedUnderscore": [],
+      "unexpectedDrop": [],
+      "partition": {
+        "discoveredPlusExcludedEqualsAllTs": true,
+        "ok": true
+      },
+      "problems": []
+    },
+    "guard": {
+      "required": [
+        "team-watchdog-boot",
+        "team-watchdog-config",
+        "team-watchdog-fault",
+        "team-watchdog-heartbeat",
+        "team-watchdog-notify",
+        "team-watchdog-scene",
+        "tui-settings-bridge",
+        "watchdog-redesign",
+        "wave2b-lane-d",
+        "web-settings-bridge"
+      ],
+      "exemptCount": 31,
+      "undeclared": [],
+      "malformed": [],
+      "missingImports": [],
+      "empty": false
+    }
+  },
+  "lanes": [
+    {
+      "case": "workmate-library",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 53853,
+      "command": "bun skills/dsh-qa/scripts/workmate-library.ts --no-skip",
+      "script": "skills/dsh-qa/scripts/workmate-library.ts",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-f/workmate-library/2026-10-07T10-42-03.828Z",
+      "logPath": "evidence/dsh-qa/suite-runner/2026-10-07T10-42-03.811Z/lanes/workmate-library.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}

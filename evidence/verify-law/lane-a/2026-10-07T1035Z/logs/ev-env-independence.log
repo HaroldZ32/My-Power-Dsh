@@ -1,0 +1,10 @@
+cmd: three arms of node scripts/verify-vendor.ts, GATE OUTPUT ONLY (no shell headers, no exit lines)
+  arm1 = env -u MPD_UPSTREAM_ROOT
+  arm2 = MPD_UPSTREAM_ROOT=/nonexistent/surely/absent
+  arm3 = MPD_UPSTREAM_ROOT=<the real checkout that flipped the OLD gate green>
+sha256 arm1: fa5dcba89e966e434de4f481a0675043
+sha256 arm2: fa5dcba89e966e434de4f481a0675043
+sha256 arm3: fa5dcba89e966e434de4f481a0675043
+arm1 vs arm2: IDENTICAL
+arm1 vs arm3: IDENTICAL
+arm2 vs arm3: IDENTICAL

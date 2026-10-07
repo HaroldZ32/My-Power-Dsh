@@ -1,0 +1,19 @@
+cmd: the fix reasoning probes (name level)
+  reader declares succeeded: 11 line(s)
+  case copy A mentions succeeded: 5 | copy B: 5
+  dynamic import( in the case: 4 | pathToFileURL/fileURLToPath: 3
+--- the closure verification log the writer measured with ---
+
+TYPECHECK
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+DRIFT
+[run-qa-lanes] manifest and disk agree (48 entries, 42 lane script(s) discovered) and the immutability guard is declared
+DRIFT_EXIT=0
+
+TEST:QA
+[test:qa] all self-tests passed
+TESTQA_EXIT=0
+--- the LIVE arm on the closing bytes ---
+  ok=true | mounted=true | denied=true | codeNotWritten=true | controlNotDenied=true | controlWritten=true | docsAllowed=true | sandboxMarker=true | realMarkerUnchanged=true | sessionsSandboxed=true

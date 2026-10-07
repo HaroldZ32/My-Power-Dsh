@@ -1,0 +1,41 @@
+cmd: the 7 snapshotted packages — name / version / license field / entry
+  ast-grep-mcp     name=@oh-my-opencode/ast-grep-mcp version=0.1.0 license=<ABSENT> bin=omo-ast-grep main=-
+  git-bash-mcp     name=@oh-my-opencode/git-bash-mcp version=0.0.0 license=<ABSENT> bin=omo-git-bash main=-
+  lsp-daemon       name=@code-yeongyu/lsp-daemon version=0.1.0 license="MIT" bin=omo-lsp-daemon main=-
+  lsp-core         name=@oh-my-opencode/lsp-core version=0.1.0 license=<ABSENT> bin=- main=-
+  mcp-stdio-core   name=@oh-my-opencode/mcp-stdio-core version=0.1.0 license=<ABSENT> bin=- main=-
+  omo-config-core  name=@oh-my-opencode/omo-config-core version=0.1.0 license=<ABSENT> bin=- main=-
+  utils            name=@oh-my-opencode/utils version=0.1.0 license=<ABSENT> bin=- main=-
+
+cmd: per-package tree hash — snapshot vs the PRISTINE pinned checkout (same recipe: sorted relpath + raw sha256)
+  ast-grep-mcp     snapshot=08dee2f58d87c871 upstream=aebb6964a42d73b2 files(snap=23, up=24) DIFFERS
+  git-bash-mcp     snapshot=0750f5060d38b37f upstream=ef733fa8a289beb1 files(snap=14, up=15) DIFFERS
+  lsp-daemon       snapshot=ea2a8017accb0fd3 upstream=a44adadab163f0c5 files(snap=54, up=55) DIFFERS
+  lsp-core         snapshot=8d16b90af157eceb upstream=bbb921a5fd612bfa files(snap=93, up=94) DIFFERS
+  mcp-stdio-core   snapshot=540d7c347d24f08f upstream=58b8dde3e3c8b9b8 files(snap=10, up=11) DIFFERS
+  omo-config-core  snapshot=18462e5440f6be60 upstream=160fc2b77b4d69f3 files(snap=79, up=80) DIFFERS
+  utils            snapshot=64999a23ca65ab06 upstream=286f71dde093ad7f files(snap=184, up=185) DIFFERS
+
+cmd: the licence section of vendor/mcp-src/README.md (doc read)
+## License and attribution — measured, never assumed
+
+The upstream repository's own `LICENSE.md` (at the pinned commit) licenses its content under the
+**Sustainable Use License 1.0 (SUL-1.0)**, and states that "All third party components incorporated
+into the oh-my-opencode Software are licensed under the original license provided by the owner of the
+applicable component". That is the same SUL-1.0 this repository inherits (see `LICENSE.md` and
+`LICENSE-NOTICES.md`).
+
+Per-package declaration, read from each snapshot's own `package.json`:
+
+| Package | `license` field |
+|---|---|
+| `lsp-daemon` (`@code-yeongyu/lsp-daemon`) | `MIT` — self-declared by the package |
+| the other six (`@oh-my-opencode/*`) | absent — they fall under the repository's SUL-1.0 |
+
+**A correction, stated rather than silently resolved:** the wave plan's clause A3 asks this snapshot to
+carry "its provenance + MIT notice". Measured against the pinned sources, that wording is wrong for
+this snapshot — the MCP sources are SUL-1.0 (with `lsp-daemon` self-declaring MIT), and labelling them
+MIT would be a false provenance claim. The MIT acknowledgement the plan refers to belongs to the
+`dsh-agent-teams` body, which is a DIFFERENT upstream relocated by a different lane. This file records
+the measured licence instead. Attribution for both upstreams survives in `LICENSE-NOTICES.md` and in
+the bilingual `README.md` pair, as clause A5 requires.

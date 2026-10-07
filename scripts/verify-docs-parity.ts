@@ -114,10 +114,18 @@ const EXEMPT_WITHOUT_README: ReadonlyMap<string, string> = new Map([
 ]);
 // A third, deliberately tiny source: files whose BYTES must stay verbatim, so the in-file marker
 // cannot be added without destroying the property that earns the exemption.
+//
+// VACUOUS AS OF THE DE-VENDOR WAVE, AND NAMED SO RATHER THAN QUIETLY KEPT ALIVE: this map used to
+// carry exactly one entry, `packages/mpd-agent-teams-plugin/README.md`, the adopted upstream
+// README kept byte-verbatim as provenance. That package is DELETED (the whole 768-file body), and
+// the adopted agent-teams attribution now lives in `LICENSE-NOTICES.md` and in
+// `packages/mpd-bundle-plugin/adopted/` — neither of which is a `.md` file inside this gate's
+// discovery band, so no live file can earn this exemption. The MECHANISM is kept (the three call
+// sites below are one lookup each, and a future verbatim third-party doc is a one-line re-entry),
+// and the self-test asserts the two directions of the REMOVAL instead: a dead link in a file at
+// the retired path now reddens like any other, exactly as it would for a file that never existed.
 /** Files kept byte-verbatim as provenance, which therefore cannot carry an in-file marker. */
-const EXEMPT_PROVENANCE: ReadonlyMap<string, string> = new Map([
-  ["packages/mpd-agent-teams-plugin/README.md", "adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker"],
-]);
+const EXEMPT_PROVENANCE: ReadonlyMap<string, string> = new Map<string, string>();
 /** The reason carried by the file's in-file exemption marker, or `undefined` when it carries none. */
 const markerExemption = (text: string | null): string | undefined => {
   /** The marker's captured reason group, or `null` when the text carries no marker at all. */
@@ -443,8 +451,17 @@ function checkDerivedValues(root: string): DerivedCheck {
     /** Every `A1–D<n>` pointer this site hand-carries. */
     const carried = [...text.matchAll(DELTA_RANGE_LITERAL)];
     if (!range.ok) {
-      violations.push({ id: `derived-value:delta-range:${site}`, detail: `cannot adjudicate the delta-range claim(s) in ${site}: ${range.reason}` });
-      continue;
+      // AN ABSENT ARTIFACT IS A NOTE, NOT A VIOLATION — the same rule the region-count half below
+      // already applied, and the inconsistency between the two halves was the bug. MEASURED
+      // 2026-10-07 (de-vendor wave): `agent-references/agent-teams-deltas.md` was deleted WITH the
+      // adopted body it documented, and the two sites that hand-carried its `A1–D<n>` pointer
+      // (AGENTS.md and agent-references/index.md) then each reddened this gate for a claim that no
+      // longer has an artifact to adjudicate against. A root that does not ship the artifact cannot
+      // adjudicate ANY of these claims, so it reports them and moves on; the zero-subject guard
+      // still fires in the direction that matters — an artifact that IS present with a site that
+      // DROPPED its claim (the `missing-claim` violation below), and a site whose claim disagrees.
+      notes.push({ path: site, reason: `delta-range claims NOT adjudicated (${range.reason}) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here` });
+      continue
     }
     if (carried.length === 0) {
       violations.push({ id: `derived-value:delta-range:${site}:missing-claim`, detail: `${site} carries NO "A1–D<n>" registry pointer while ${DELTAS_DOC_REL} derives "${range.text}" (zero-subject run: refusing to report PASS with nothing compared). If the pointer was deliberately removed, update this rule in the same change.` });
@@ -463,7 +480,12 @@ function checkDerivedValues(root: string): DerivedCheck {
   /** The deltas doc's text, or `null` when this root does not ship it. */
   const doc = readIf(join(root, DELTAS_DOC_REL));
   if (doc === null) {
-    notes.push({ path: DELTAS_DOC_REL, reason: "site file not present in this root — region-count claim skipped" });
+    // THE RETIRED-ARTIFACT ABSENCE PATH, reported rather than silently skipped: the artifact AND the
+    // registry it derived from were deleted together with the adopted body (de-vendor wave), so
+    // neither the region-count claim nor its registry corroboration has a subject in this tree. The
+    // line is emitted on EVERY run, which is what keeps the vacuity visible in the gate's own output
+    // instead of only in a pull-request note.
+    notes.push({ path: DELTAS_DOC_REL, reason: `region-count claim skipped AND its registry (${REGISTRY_REL}) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree` });
   } else {
     /** The hand-carried count sentence, or `null` when the doc no longer states it. */
     const claim = REGION_COUNT_CLAIM.exec(doc);
@@ -1054,7 +1076,9 @@ function selfTest(): void {
     write("templates/tpl/README.zh-CN.md", zhGood("模板").replace("./X.md", "./README.md"));
     write("templates/tpl/notes/asset.md", "# Asset\n\nan asset, no twin demanded\n");
     write("packages/mpd-mcp-shared/src/index.ts", "export {}\n");
-    write("packages/mpd-agent-teams-plugin/README.md", "# upstream verbatim\n");
+    // The retired provenance README is deliberately NOT written here any more: the de-vendor wave
+    // deleted the file AND its exemption, and a clean fixture must not demonstrate a rule that no
+    // longer exists. Arm 5 writes the path deliberately (in its own root) to prove it is policed.
     /** The clean-fixture verdict every later arm compares against. */
     const clean = verifyDocsParity(sandbox);
     cases.push({ case: "clean tree passes", ok: clean.ok, detail: `pairs=${clean.pairs.length} exempt=${clean.exemptNotes.length} violations=${clean.violations.length}` });
@@ -1079,7 +1103,7 @@ function selfTest(): void {
       ...["docs/plan-c.md", "docs/plan-d.md", "docs/plan-e.md", "docs/plan-f.md", "docs/plan-tui-edition.md",
         "docs/bline-report.md", "docs/omo-parity-gap.md", "docs/review-p0-p3.md", "docs/track-a-report.md",
         "docs/ulw-deepseek-optimization.md", "docs/adder4.md", "docs/cnt8.md", "docs/tui-edition-report.md",
-        "docs/decisions.md", "packages/mpd-agent-teams-plugin/README.md", "packages/mpd-mcp-shared"],
+        "docs/decisions.md", "packages/mpd-mcp-shared"],
     ];
     /** Declared exemption paths the clean run did NOT report; it must stay empty. */
     const missingExempt = expectedExempt.filter((rel: string): boolean => !clean.exemptNotes.some((n: Note): boolean => n.path === rel));
@@ -1431,10 +1455,14 @@ function selfTestLinks(): SelfTestCase[] {
     write(root, REGISTRY_REL, `export const MPD_DELTAS = [\n    {\n        file: "adopted/a.js",\n        id: "mpd-delta fixture-0",\n        beforeContext: [],\n        afterContext: [],\n        block: "",\n    },\n];\n`);
     write(root, "adopted/a.js", "//#region mpd-delta fixture-0 (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\nexport const fixture0 = 0;\n//#endregion mpd-delta fixture-0\n");
     // The registry path above puts a PACKAGE directory in the fixture, and an undocumented package is
-    // a violation in its own right — so the fixture also carries the provenance README (link-free).
-    write(root, "packages/mpd-agent-teams-plugin/README.md", "# Upstream verbatim fixture\n\nno relative links here\n");
+    // a violation in its own right — so the fixture also carries that package's README. It is now a
+    // NORMAL POLICED PAIR, not an exempt verbatim file: the de-vendor wave deleted the package this
+    // path belonged to, so no exemption covers it any more and the arm below proves that by putting a
+    // dead link where the exemption used to be.
+    write(root, "packages/mpd-agent-teams-plugin/README.md", "# Fixture package\n\n**English** | [中文](./README.zh-CN.md)\n\n## One\n\nlink-free on purpose: the shared fixture stays free of dead links so the link COUNTER arms are stable\n");
+    write(root, "packages/mpd-agent-teams-plugin/README.zh-CN.md", "# 夹具包\n\n[English](./README.md)\n\n## 一\n\n正文\n");
   };
-  /** Rebuild one fixture root from scratch: the skeleton plus the linked pair and one exempt doc. */
+  /** Rebuild one fixture root from scratch: the skeleton plus the linked pair and one marked doc. */
   const fixture = (root: string, { manual }: ManualPresence): void => {
     rmSync(root, { recursive: true, force: true });
     skeleton(root, { manual });
@@ -1516,27 +1544,32 @@ function selfTestLinks(): SelfTestCase[] {
       detail: JSON.stringify({ counters: packedResult.linkChecks, notes: packedResult.linkNotes }),
     });
 
-    // Arm 5 — EXEMPT_PROVENANCE, file-scoped. Half (a) is the verbatim path with a dead link: still
-    // green, reported as EXEMPT. Half (b) is the SAME kind of dead link in a NON-exempt package
-    // README (with its zh twin, so the pair rule is satisfied): exactly ONE link violation, naming
-    // that file — the control against "ignore every packages/*/README.md".
-    write(full, "packages/mpd-agent-teams-plugin/README.md", "# Upstream\n\n[dead](./docs/usage.md)\n");
+    // Arm 5 — the RETIRED EXEMPT_PROVENANCE, file-scoped, asserted in BOTH directions after the
+    // de-vendor wave deleted its only subject (`packages/mpd-agent-teams-plugin/README.md`, the
+    // adopted upstream README kept byte-verbatim). The fixture still writes a file at that exact
+    // path — that is what makes the removal falsifiable rather than merely declared — but the file
+    // is now an ORDINARY policed package README pair, so a dead link in it REDDENS like any other.
+    // The second half keeps the original control: the SAME dead link in an unrelated package README
+    // reddens too, so the arm cannot be satisfied by "ignore every packages/*/README.md".
+    write(full, "packages/mpd-agent-teams-plugin/README.md", "# Fixture package\n\n**English** | [中文](./README.zh-CN.md)\n\n## One\n\n[dead](./docs/usage.md)\n");
     write(full, "packages/mpd-fixture-pkg/README.md", "# Pkg\n\n**English** | [中文](./README.zh-CN.md)\n\n## One\n\n[dead](./dead.md)\n");
     write(full, "packages/mpd-fixture-pkg/README.zh-CN.md", "# 包\n\n[English](./README.md)\n\n## 一\n\n正文\n");
-    /** The verdict on the two dead links, one in each kind of README. */
+    /** The verdict on the two dead links, one at the retired path and one in a fresh package. */
     const prov = verifyDocsParity(full);
-    /** The link violations of that arm; exactly one is expected, naming the non-exempt README. */
+    /** The link violations of that arm; both dead links must be reported, with no exemption left. */
     const provLinkViolations = prov.violations.filter((v: Violation): boolean => v.id.startsWith("link-missing:"));
     cases.push({
-      case: "links PROVENANCE: a dead link in the VERBATIM file stays green and is REPORTED as EXEMPT, while the SAME dead link in a non-exempt README reddens (the skip is FILE-scoped)",
+      case: "links PROVENANCE: the retired verbatim exemption is GONE — a dead link at its old path reddens like any other package README, and the skip counter stays at zero",
       ok:
         prov.ok === false &&
-        prov.violations.length === 1 &&
-        provLinkViolations.length === 1 &&
-        provLinkViolations[0].id === "link-missing:packages/mpd-fixture-pkg/README.md:./dead.md" &&
-        prov.linkChecks.skippedProvenance === 1 &&
-        prov.linkNotes.some((n: Note): boolean => n.path === "packages/mpd-agent-teams-plugin/README.md" && n.reason.includes("EXEMPT_PROVENANCE") && n.reason.includes("./docs/usage.md")),
-      detail: JSON.stringify({ violations: prov.violations.map((v: Violation): string => v.id), counters: prov.linkChecks, provenanceNote: prov.linkNotes.find((n: Note): boolean => n.path === "packages/mpd-agent-teams-plugin/README.md") ?? null }),
+        provLinkViolations.length === 2 &&
+        provLinkViolations.map((v: Violation): string => v.id).sort().join(",") === [
+          "link-missing:packages/mpd-agent-teams-plugin/README.md:./docs/usage.md",
+          "link-missing:packages/mpd-fixture-pkg/README.md:./dead.md",
+        ].sort().join(",") &&
+        prov.linkChecks.skippedProvenance === 0 &&
+        !prov.linkNotes.some((n: Note): boolean => n.reason.includes("EXEMPT_PROVENANCE")),
+      detail: JSON.stringify({ violations: prov.violations.map((v: Violation): string => v.id), counters: prov.linkChecks, provenanceNotes: prov.linkNotes.filter((n: Note): boolean => n.reason.includes("EXEMPT_PROVENANCE")) }),
     });
 
     // Arm 6 — ROOT-relative targets (t5-F1): a `/`-prefixed target resolves against the REPO ROOT, so

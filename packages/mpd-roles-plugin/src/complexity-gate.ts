@@ -8,7 +8,7 @@
 // import at all, so the QA case and the unit tests can drive the frozen predicate and the two
 // notice builders without a boot.
 //
-// The frozen predicate is `trigger = explicit flag OR (matchedSignals >= 1)` with four signals,
+// The frozen predicate is `trigger = explicit flag OR (matchedSignals >= 1)` with five signals,
 // reproduced from the retired implementation (`packages/mpd-agent-teams-plugin/lib/session-start.ts`,
 // read as the SPEC — never mounted or imported):
 //   A (hard) a `team:` prefix or a token-boundary `!team`; the marker is CONSUMED from the goal text;
@@ -18,15 +18,29 @@
 //   D (soft) an ACTIVE boulder work exists for the session workspace. REPAIRED 2026-10-07: D used
 //            to mean "some `.mpd/plans/*.md` exists", which MEASURABLY fired in EVERY session of
 //            this workspace — its one plan file outlives the work that produced it.
+//   E (soft) a CJK-SCALE instruction. ADDED 2026-10-07: A–D are English-centric by construction —
+//            B/C count clauses and verbs, and a Chinese one-liner enumerates with `、，。；：` and
+//            carries scale in CHARACTERS, so the user's own 159-Han-character instruction measured
+//            B=0, C=0, D=absent and staged nothing whatever the workload. E reads scale
+//            ({@link CJK_CHAR_MIN} Han characters) AND intent (>= {@link CJK_ACTION_VERB_MIN}
+//            distinct action verbs), both calibrated over the frozen corpus.
 //
 // What a TRIGGER does is resolved per call by the wiring: `team.gate` selects `mechanical` (the
 // default: stage an APPROVABLE SHELL through the `agent_teams_plan` tool), `advisory` (one notice,
 // stage nothing) or `off`.
-import { readFile as readFileFs } from "node:fs/promises"
+import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises"
 import { join } from "node:path"
 
 /** The notice marker (frozen; AGENTS.md §1 and the retired implementation both carry it). */
 export const STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule"
+
+/**
+ * The ONE source kind the harness tags a HUMAN turn with: the CLI/ACP path writes
+ * `{kind:"user"}`, and the web/RPC path's `user-rpc` variant carries the same `kind` field
+ * (`MessageSourceMap` in the installed harness). Every other kind in that map — and every kind a
+ * plugin adds — is producer-owned and therefore never a human turn.
+ */
+export const HUMAN_SOURCE_KIND = "user"
 
 /** The three `team.gate` modes; the default is {@link GATE_MODE_MECHANICAL}. */
 export type GateMode = "mechanical" | "advisory" | "off"
@@ -91,15 +105,22 @@ export const SOLO_PERMISSION_SENTENCE = "- If the work does not warrant a team (
 /** The sentence the shipped preset must NOT carry any more: an explicit flag is no longer merely advised. */
 export const DRIFTED_ADVISORY_SENTENCE = "routed to team mode"
 /** Signal B: deliverable verbs (English + CJK), counted by DISTINCT match. */
-export const DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu
+export const DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/giu
 /** Signal C2: action verbs (English + CJK), counted by DISTINCT match. */
-export const ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu
+export const ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充/giu
 /** Signal C1: numbered / bulleted / table rows that read as enumerated steps. */
 export const ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u
-/** Signal C: clause separators — a single-line plan enumerates steps through punctuation too. */
-export const CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u
+/**
+ * Signal C: clause separators — a single-line plan enumerates steps through punctuation too.
+ *
+ * FULL-WIDTH SET ADDED 2026-10-07: the ASCII set alone never split a Chinese one-liner, so C3
+ * counted ONE clause for a `、`-enumerated instruction. The set now carries the named CJK clause
+ * separators (`、，。；：`), the bracketing/quoting pairs a CJK instruction quotes with, and the two
+ * full-width sentence terminators `！？` — the same sentence-boundary class as `。；` for this count.
+ */
+export const CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.、，。；：！？（）「」『』“”‘’【】]/u
 /** Signal C3: a clause that OPENS (optionally after a conjunction) with an action verb. */
-export const CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu
+export const CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/iu
 /** Signal B threshold: distinct deliverable-verb matches. */
 export const DELIVERABLE_VERB_MIN = 4
 /** Signal C1 and C3 threshold: enumerated lines / positional clauses. */
@@ -108,6 +129,21 @@ export const ENUMERATED_LINE_MIN = 3
 export const ACTION_VERB_MIN = 3
 /** Signal C: how many of its three sub-signals must hold (its own majority). */
 export const C_SUBSIGNAL_MIN = 2
+/** Signal E: ONE Han character, so this pattern's occurrence COUNT is a text's CJK scale. */
+export const CJK_CHAR_PATTERN = /\p{Script=Han}/gu
+/**
+ * Signal E threshold: Han characters. A CJK instruction states its scale in CHARACTERS where an
+ * English one states it in clauses, so scale has to be read on its own axis. CALIBRATED over the
+ * frozen corpus (measured margins in the evidence dir): the positive — the user's verbatim
+ * instruction — carries 159 Han characters, and every frozen negative carries at most 22, so 60 is
+ * the midpoint with 99 above and 38 below it.
+ */
+export const CJK_CHAR_MIN = 60
+/**
+ * Signal E threshold: distinct action-verb matches. Scale ALONE never fires E — a long Chinese
+ * question that asks for no work must stay silent — which is what this second conjunct holds down.
+ */
+export const CJK_ACTION_VERB_MIN = 2
 /** The plan NAME cap: the staged shell's name is the goal's first line, clipped to this many chars. */
 export const GATE_PLAN_NAME_MAX = 60
 /** How much of the goal the staged shell's DESCRIPTION inlines, in chars. */
@@ -139,6 +175,13 @@ function clauseStepCount(text: string): number {
   let count = 0
   for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN)) if (CLAUSE_ACTION_PATTERN.test(clause)) count += 1
   return count
+}
+
+/** Han characters in a text (signal E's scale measure), counted by OCCURRENCE and not by distinct spelling. */
+function cjkCharCount(text: string): number {
+  /** Every Han-character occurrence, or null when the text carries none. */
+  const matches = text.match(CJK_CHAR_PATTERN)
+  return matches === null ? 0 : matches.length
 }
 
 /**
@@ -174,6 +217,10 @@ export function consumeExplicitFlag(text: string): { flagged: boolean; text: str
  * ledgered cost (the frozen complex prompts #1/#3 carry C as their only signal).
  *
  * D reads `activeBoulder` — the caller's `readBoulderGate` verdict, NOT a plan-file probe.
+ *
+ * E is the CJK-SCALE signal: {@link CJK_CHAR_MIN} Han characters AND {@link CJK_ACTION_VERB_MIN}
+ * distinct action verbs. It is English-immune by construction (an ASCII text carries zero Han
+ * characters), so adding it cannot move any frozen English verdict.
  */
 export function evaluateComplexityGate(
   text: string,
@@ -181,18 +228,21 @@ export function evaluateComplexityGate(
 ): { trigger: boolean; signals: string[] } {
   /** The goal text as given; a non-string reads as empty rather than throwing. */
   const source = String(text ?? "")
-  /** The fired signal letters, in A to D order, which is what the notice names. */
+  /** The fired signal letters, in A to E order, which is what the notice names. */
   const signals: string[] = []
   if (input.explicitFlag === true) signals.push("A")
   if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN) signals.push("B")
+  /** Distinct action-verb matches, which BOTH signal C2 and signal E read. */
+  const actionVerbs = distinctMatches(source, ACTION_VERB_PATTERN)
   /** How many of signal C's three sub-signals hold (its own 2-of-3 majority). */
   const cSubSignals = [
     enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
-    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
+    actionVerbs >= ACTION_VERB_MIN,
     clauseStepCount(source) >= ENUMERATED_LINE_MIN,
   ].filter(Boolean).length
   if (cSubSignals >= C_SUBSIGNAL_MIN) signals.push("C")
   if (input.activeBoulder === true) signals.push("D")
+  if (cjkCharCount(source) >= CJK_CHAR_MIN && actionVerbs >= CJK_ACTION_VERB_MIN) signals.push("E")
   return { trigger: input.explicitFlag === true || signals.length >= 1, signals }
 }
 
@@ -264,6 +314,90 @@ export async function readBoulderGate(workspace: string, opts: BoulderGateOption
   } catch {
     return { active: false }
   }
+}
+
+/** Where a workspace's live team records live, relative to the workspace root (C7's only subject). */
+export const TEAM_RECORDS_DIR = join(".mpd", "team", "teams")
+
+/** What one workspace's team records say about a session ALREADY LEADING a team (C7's only input). */
+export interface LeadingTeamRead {
+  /** Whether THIS session's own team record names at least one member. */
+  leading: boolean
+  /** The team id of the record that decided the verdict, when one was found. */
+  teamId?: string
+  /** How many members that record named; `0` when no record for this session was found. */
+  members: number
+}
+
+/** The seams {@link readLeadingTeam} accepts: the two readers (tests and the QA case only). */
+export interface LeadingTeamOptions {
+  /** The file reader; defaults to `node:fs/promises`' `readFile` in utf8 mode. */
+  readFile?: (path: string) => Promise<string>
+  /** The directory lister; defaults to `node:fs/promises`' `readdir` in utf8 mode. */
+  readDir?: (path: string) => Promise<readonly string[]>
+}
+
+/**
+ * Whether THIS session already LEADS a team — C7's guard, decided from positive structural evidence.
+ *
+ * The subject is the team record itself (`<workspace>/.mpd/team/teams/<id>.json`, written by
+ * `mpd-team-core`): a record whose `leadSessionId` equals this session's id AND that names at least
+ * one member is a team this session is leading. A record with ZERO members is NOT one — that is a
+ * staged 0-member plan shell, exactly the thing this guard must still allow to be staged.
+ *
+ * WHY NOT the `acted` set, a "did we fire before" flag, or a notice scan (C7's rejection of
+ * heuristics): each of those answers a question about the GATE, not about the session, so a session
+ * that acquired a team by another route (an approved plan, a hand-spawned teammate, another wave's
+ * live team) would still stage a second shell — MEASURED 2026-10-07, `plan-20261007102357` staged
+ * while this very session was leading team-20261007102205.
+ *
+ * NON-THROWING BY CONTRACT: a missing directory, a permission error, malformed JSON, a non-object
+ * payload or an empty session id all read `{leading:false, members:0}` — the gate is an ASSISTANT,
+ * and a reader that cannot answer must never block the session.
+ *
+ * @param workspace - the session workspace the team-record directory resolves from.
+ * @param sessionId - the session id {@link readLeadingTeam} matches against `leadSessionId`.
+ * @param opts - the injectable readers, both optional.
+ * @returns the verdict, never a throw.
+ */
+export async function readLeadingTeam(
+  workspace: string,
+  sessionId: string,
+  opts: LeadingTeamOptions = {},
+): Promise<LeadingTeamRead> {
+  /** The verdict every failure path answers. */
+  const nothing: LeadingTeamRead = { leading: false, members: 0 }
+  if (typeof sessionId !== "string" || sessionId === "") return nothing
+  try {
+    /** The file reader: the injected seam in a test, `node:fs/promises` in a boot. */
+    const read = opts.readFile ?? ((path: string) => readFileFs(path, "utf8"))
+    /** The directory lister: the injected seam in a test, `node:fs/promises` in a boot. */
+    const list = opts.readDir ?? ((path: string): Promise<readonly string[]> => readDirFs(path, { encoding: "utf8", withFileTypes: false }))
+    /** The record file names this workspace holds; a missing directory throws into the catch below. */
+    const entries = await list(join(String(workspace ?? ""), TEAM_RECORDS_DIR))
+    for (const entry of entries) {
+      if (!String(entry).endsWith(".json")) continue
+      try {
+        /** The decoded record, accepted only when it is a plain object. */
+        const record: unknown = JSON.parse(await read(join(String(workspace ?? ""), TEAM_RECORDS_DIR, String(entry))))
+        if (record === null || typeof record !== "object" || Array.isArray(record)) continue
+        /** The record as a bag of fields, which every lookup below reads defensively. */
+        const fields = record as Record<string, unknown>
+        // The LEAD is the session id this gate is bound to, and members[] is what makes it a TEAM
+        // rather than a staged shell — both facts read from the record, never inferred.
+        if (String(fields.leadSessionId ?? "") !== String(sessionId)) continue
+        /** How many members the record names; a non-array reads as none. */
+        const members = Array.isArray(fields.members) ? fields.members.length : 0
+        if (members === 0) continue
+        return { leading: true, teamId: String(fields.teamId ?? ""), members }
+      } catch {
+        // ONE unreadable record never hides the others: keep scanning.
+      }
+    }
+  } catch {
+    return nothing
+  }
+  return nothing
 }
 
 /**
@@ -339,7 +473,7 @@ export function gatePlanShell(input: { signals: readonly string[]; goal: string;
  * taxonomy stays two-valued: either a plan WAS staged and the mechanical notice names the id the
  * call returned, or nothing was staged and this text says so.
  *
- * @param signals - the fired signal letters, in A–D order.
+ * @param signals - the fired signal letters, in A–E order.
  * @param explicit - whether an explicit `team:` / `!team` marker was consumed from the goal.
  * @returns the notice text, always carrying {@link STARTUP_NOTICE_MARKER}.
  */
@@ -371,7 +505,7 @@ export function advisoryNoticeText(signals: readonly string[], explicit: boolean
 export function mechanicalNoticeText(input: {
   /** The plan id the `agent_teams_plan` call returned; may be empty when the call reported none. */
   planId: string
-  /** The fired signal letters, in A–D order. */
+  /** The fired signal letters, in A–E order. */
   signals: readonly string[]
   /** Whether an explicit `team:` / `!team` marker was consumed from the goal text. */
   explicit: boolean
@@ -416,17 +550,25 @@ function messageText(message: unknown): string | undefined {
  * This snapshot supersedes earlier ru…"}` — so "the last user-role message" is NOT the goal.
  * The gate judged that snapshot on every triggered prompt and the predicate was always false.
  *
- * The rule is therefore SOURCE-AWARE: a message whose `source.kind` is `user` is the caller's
- * own turn and wins (the LAST such message); only when a host tags no message that way does
- * this fall back to the last user-role message with text. Callers pass the PAYLOAD's raw
- * claimed list first (before the injected notices are spliced onto the decision).
+ * The rule is therefore SOURCE-AWARE, in BOTH directions. A message whose `source.kind` is `user`
+ * is the caller's own turn and wins (the LAST such message); a message carrying any OTHER
+ * producer-owned kind is never the goal; and a message with NO source kind at all stays eligible,
+ * which is the fallback for a host that tags nothing.
+ *
+ * WHY THE SECOND DIRECTION WAS ADDED (C8, MEASURED 2026-10-07): an INBOUND AGENT MESSAGE is a
+ * user-role message too. The official team plugin delivers a teammate's report as
+ * `createUserMessage({ content, source: { kind: "team-message", teamId, messageId, senderId,
+ * senderName } })` (`dsh-experimental-agent-team/lib/index.js`, `dispatchOnce`), and the harness
+ * relays a subagent's as `{kind:"agent-message", form:"relay", senderSessionId}` (the installed
+ * `MessageSourceMap`). Judging one MEASURABLY staged a spurious 0-member/0-task shell
+ * (`plan-20261007102357`, archived to `.mpd/team/archive/plan-20261007102357`) while that session
+ * was already LEADING a team — the report it judged was a plain numbered verdict with action verbs,
+ * so signal C fired on a message no human wrote.
  *
  * @param candidates - the messages to inspect, oldest to newest.
  * @returns the chosen message with its joined text, or `undefined` when none carries text.
  */
 export function latestUserMessage(candidates: readonly unknown[]): { message: unknown; text: string } | undefined {
-  /** The last user-role message with text, used only when no message is tagged as the caller's own. */
-  let fallback: { message: unknown; text: string } | undefined
   for (let index = candidates.length - 1; index >= 0; index -= 1) {
     /** The candidate under inspection, walked from newest to oldest. */
     const message = candidates[index]
@@ -434,12 +576,17 @@ export function latestUserMessage(candidates: readonly unknown[]): { message: un
     /** The candidate's joined text, or undefined when it has no text blocks. */
     const text = messageText(message)
     if (text === undefined) continue
-    /** The message's source kind, which is what separates the real turn from an injected notice. */
-    const source = String((message as { source?: { kind?: unknown } } | undefined)?.source?.kind ?? "")
-    if (source === "user") return { message, text }
-    fallback ??= { message, text }
+    /** The message's source, which is what separates the caller's turn from an injected notice. */
+    const source = (message as { source?: { kind?: unknown } } | undefined)?.source
+    /** The producer-owned source kind, or `undefined` when this host tags the message with none. */
+    const kind = source === undefined || source === null ? undefined : source.kind
+    // An UNTAGGED message stays eligible (the no-tag host fallback); anything tagged with a kind
+    // other than `user` is producer-owned — a runtime snapshot, a teammate report, a relayed
+    // subagent message — and is NEVER the human turn the gate judges.
+    if (kind !== undefined && String(kind) !== HUMAN_SOURCE_KIND) continue
+    return { message, text }
   }
-  return fallback
+  return undefined
 }
 
 /**

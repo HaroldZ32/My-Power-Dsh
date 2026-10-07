@@ -1,0 +1,36 @@
+{
+  "notice": {
+    "any": 1,
+    "advisory": 0,
+    "mechanical": 1,
+    "signalsNamed": 1,
+    "shellShaped": 1,
+    "inert": 1,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "mechanicalTool": 1,
+    "retiredVocabulary": 0,
+    "signals": [
+      "A"
+    ],
+    "planIds": [
+      "plan-20261007104515"
+    ]
+  },
+  "teams": {
+    "staged": 1,
+    "planIds": [
+      "plan-20261007104515"
+    ],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 0,
+    "recordIds": []
+  },
+  "goal": "fix the flaky test",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 verifyGate=installed rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "firedLine": "[mpd-roles] session gate fired for agent \"session-0a5f3b89-ddc0-46c5-8252-597c54d26c77\" signals=A mode=mechanical staged=1 plan=plan-20261007104515",
+  "gateInstalled": true,
+  "ownKeyWritten": true,
+  "problems": []
+}

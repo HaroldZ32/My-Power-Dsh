@@ -25,10 +25,6 @@
         "dsh-better-sidebar",
       ],
     },
-    "packages/mpd-agent-teams-plugin": {
-      "name": "@mpd-dsh/agent-teams",
-      "version": "0.1.16-rc.3-mpd",
-    },
     "packages/mpd-better-sidebar-host": {
       "name": "@mpd-dsh/better-sidebar-host",
       "version": "0.1.0",
@@ -105,6 +101,10 @@
       "name": "@mpd-dsh/roster-provider-plugin",
       "version": "0.1.0",
     },
+    "packages/mpd-schemastery": {
+      "name": "@mpd-dsh/schemastery",
+      "version": "0.1.0",
+    },
     "packages/mpd-team-compact-plugin": {
       "name": "@mpd-dsh/team-compact-plugin",
       "version": "0.3.2",
@@ -132,6 +132,10 @@
     "packages/mpd-ulw-plugin": {
       "name": "@mpd-dsh/ulw",
       "version": "0.2.3",
+    },
+    "packages/mpd-verify-plugin": {
+      "name": "@mpd-dsh/verify-plugin",
+      "version": "0.1.0",
     },
     "packages/mpd-workmate-plugin": {
       "name": "@mpd-dsh/workmate",
@@ -397,8 +401,6 @@
 
     "@mermaid-js/parser": ["@mermaid-js/parser@1.2.1", "https://repo.huaweicloud.com/repository/npm/@mermaid-js/parser/-/parser-1.2.1.tgz", { "dependencies": { "@chevrotain/types": "~11.1.2" } }, "sha512-n12NohV3mrUyUL2o93IgG/ifeW9FTyeJn3zDxkhwa8MJ9Fxg3HQMlA3RiGmD/3UnJvheztkjjQAjA2T4LmUcpw=="],
 
-    "@mpd-dsh/agent-teams": ["@mpd-dsh/agent-teams@workspace:packages/mpd-agent-teams-plugin"],
-
     "@mpd-dsh/better-sidebar-host": ["@mpd-dsh/better-sidebar-host@workspace:packages/mpd-better-sidebar-host"],
 
     "@mpd-dsh/bootstrap": ["@mpd-dsh/bootstrap@workspace:packages/mpd-bootstrap-plugin"],
@@ -439,6 +441,8 @@
 
     "@mpd-dsh/roster-provider-plugin": ["@mpd-dsh/roster-provider-plugin@workspace:packages/mpd-roster-provider-plugin"],
 
+    "@mpd-dsh/schemastery": ["@mpd-dsh/schemastery@workspace:packages/mpd-schemastery"],
+
     "@mpd-dsh/team-compact-plugin": ["@mpd-dsh/team-compact-plugin@workspace:packages/mpd-team-compact-plugin"],
 
     "@mpd-dsh/team-core-plugin": ["@mpd-dsh/team-core-plugin@workspace:packages/mpd-team-core-plugin"],
@@ -450,6 +454,8 @@
     "@mpd-dsh/tui-adapter": ["@mpd-dsh/tui-adapter@workspace:packages/mpd-tui-adapter-plugin"],
 
     "@mpd-dsh/ulw": ["@mpd-dsh/ulw@workspace:packages/mpd-ulw-plugin"],
+
+    "@mpd-dsh/verify-plugin": ["@mpd-dsh/verify-plugin@workspace:packages/mpd-verify-plugin"],
 
     "@mpd-dsh/workmate": ["@mpd-dsh/workmate@workspace:packages/mpd-workmate-plugin"],
 

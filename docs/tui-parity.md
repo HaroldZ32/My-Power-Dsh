@@ -1,6 +1,15 @@
 # TUI surface-parity ledger — the Web edition against the DSH-TUI edition
 **English** | [中文](./tui-parity.zh-CN.md)
 
+> **STATUS REFRAMED (de-vendor-and-verify-law, 2026-10-07).** oh-my-openagent is an EARLY
+> REFERENCE, not a conformance target. The identity checks that used to measure this repository
+> against it are DELETED, no gate reads an upstream checkout, and no synchronisation is owed — the
+> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are
+> acknowledged in [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) and the root README. Everything below
+> is therefore a HISTORICAL MEASUREMENT of a capability surface, kept because the comparison is
+> informative; read a ✅ as "this shipped", never as "this is still upstream-conformant", and read
+> nothing here as a promise to follow upstream release by release.
+
 > Wave: `tui-team-surface`. Status: **INTEGRATED — every row below was measured on the frozen
 > revision; two measured deviations and three known limits are carried OPEN (never described as
 > fixed), and no row was dropped to make the table look better.**
@@ -8,8 +17,10 @@
 > The frozen interface this page reports against is `.mpd/plans/tui-team-surface.md` (surface
 > contract, incl. AMENDMENT A1). The TUI side of the wave is
 > `packages/mpd-tui-plugin/src/{scenes.ts,team-state.ts,state.ts,sanitize.ts,commands.ts,command-trees.ts}`;
-> the Web side is `packages/mpd-agent-teams-plugin/lib/**` (the adopted MIT plugin, read-only for
-> this wave) and `packages/mpd-bundle-plugin/src/**` (our own Web pages).
+> the Web side WAS `packages/mpd-agent-teams-plugin/lib/**` (the adopted MIT plugin, read-only for
+> this wave) plus `packages/mpd-bundle-plugin/src/**` (our own Web pages). The adopted plugin has since
+> been DELETED (de-vendor wave); the Web pages are unchanged and the adopted browser bundle that fed
+> them now lives at `packages/mpd-bundle-plugin/adopted/agent-teams-client.js`.
 
 > **BASELINE STATUS — read this before quoting any team row (0.1.7-rc.2).** The Web side this ledger
 > scores against is the **vendored `agent-teams` plugin, which is now RETIRED from the composition**:

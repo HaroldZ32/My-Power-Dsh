@@ -1,0 +1,33 @@
+== T10 evidence: the verification law (Lane D) ==
+utc: 2026年 10月 07日 星期三 10:41:52 UTC
+
+== bun test packages/mpd-verify-plugin ==
+(pass) the mpd-verify row > an escape is counted, logged and buys exactly one write [0.59ms]
+
+ 42 pass
+ 0 fail
+ 163 expect() calls
+Ran 42 tests across 2 files. [110.00ms]
+
+== bun test packages/mpd-team-core-plugin ==
+(pass) the terminal verbs > the LEAD override closes a stranded row, and SAYS it was the lead [0.14ms]
+
+ 149 pass
+ 0 fail
+ 673 expect() calls
+Ran 149 tests across 11 files. [163.00ms]
+
+== npx tsgo --noEmit ==
+(empty above = green)
+
+== verify-comment-coverage ==
+  172: comment — h
+  186: comment — h
+
+
+== verify-no-host-override ==
+[verify-no-host-override] declared exemptions (0): none
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 205 host-declared row ids)
+
+== QA case self-test ==
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms

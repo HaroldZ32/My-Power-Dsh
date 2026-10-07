@@ -1,0 +1,20 @@
+cmd: is the committed dist PRE-EXISTING or touched by this wave? (read-only git history)
+  packages/mpd-mcp-astgrep/dist/cli.js         working-tree-modified=  last commit: 7d8f910e 2026-08-27 chore(scrub): remove omo/opencode traces everywhere outside README.md (provenance only)
+  packages/mpd-mcp-gitbash/dist/cli.js         working-tree-modified=  last commit: ff1932f2 2026-09-14 chore(naming): land the OMO/Codex/OpenCode to DSH naming wave
+  packages/mpd-mcp-lsp/dist/cli.js             working-tree-modified=  last commit: 010d9ef6 2026-09-22 fix(windows): make the bundle resolve, boot and verify on win32
+  packages/mpd-mcp-codegraph/dist/serve.js     working-tree-modified=  last commit: 3c1a8507 2026-09-14 fix(agent-teams,qa): amend guards, member read-only deny, and QA isolation/auth drift
+
+cmd: packages/mpd-mcp-lsp layout (names only)
+    src/launch.ts
+    overlay:
+      lsp
+    package scripts: {"test":"bun test","build":"cd \"$(git rev-parse --show-toplevel)\" && bun build packages/mpd-mcp-lsp/src/launch.ts --target node --format esm --outfile packages/mpd-mcp-lsp/dist/launch.js"}
+
+cmd: bun build reproduce attempt to /tmp (NON-destructive: outfile outside the repo)
+  installed bun: 1.4.2   (package.json buildToolchain: "bun@1.4.0")
+  entry=src/cli.ts exit=1 built_bytes=0 sha=
+    (committed dist: 234916 bytes sha=555d6bf2b940ea2c)
+    /tmp path occurrences in artifact: 0
+  entry=src/index.ts exit=1 built_bytes=0 sha=
+    (committed dist: 234916 bytes sha=555d6bf2b940ea2c)
+    /tmp path occurrences in artifact: 0

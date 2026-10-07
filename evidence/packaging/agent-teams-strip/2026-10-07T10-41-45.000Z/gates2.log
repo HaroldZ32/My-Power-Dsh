@@ -1,0 +1,44 @@
+### node scripts/pack-mpd.ts
+[pack-mpd] FAIL: cordis.patch.yml mounts packages/mpd-verify-plugin/dist/index.js but the packed tree has no such file
+EXIT=1
+
+### node scripts/verify-pack-closure.ts
+  cli: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/scripts/mpd-ext.ts
+  packages dir: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages
+  patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml
+  packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (408 asset files); content bytes: 538 file(s) compared, 538 identical, 0 drift, 0 expected-after-pack; completeness: 445 declared source file(s) compared, 443 present, 1 declared exemption(s), 1 absent; pack stamp 2026-10-07T10:42:34.443Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time))
+EXIT=1
+
+### node scripts/verify-pack-closure.ts --self-test
+[verify-pack-closure] self-test PASS - negative-control (same mutation, stamp pinned -> hard CONTENT-DRIFT, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-verify-plugin/dist/index.js: source mtime 2026-10-07T10:41:00.416Z is AFTER the artifact stamp 2026-10-07T10:39:57.159Z (anchor: command line (--pack-stamp)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test FAIL: 26/33 arms
+EXIT=1
+
+### node scripts/verify-dist-fresh.ts
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-dist-fresh] FAIL - 9 of 30 targets not fresh (STALE: 9) — 626ms
+EXIT=1
+
+### bun run verify:gates
+[verify-gates] comment-coverage out| VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[verify-gates] member comment-coverage: exit=0 PASS - 1899ms
+[verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+[verify-gates] workflows out| [verify-workflows] audited 1 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 66ms
+[verify-gates] FAIL - 3/8 member gate(s) failed: vendor (exit=1), dist-fresh (exit=1), rows-parity (exit=1)
+error: script "verify:gates" exited with code 1
+EXIT=1
+
+### bun test packages (post-fix)
+
+ 1564 pass
+ 3 skip
+ 1 fail
+ 22674 expect() calls
+Ran 1568 tests across 98 files. [13.12s]
+EXIT=1

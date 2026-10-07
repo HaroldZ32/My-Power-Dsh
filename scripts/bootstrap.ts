@@ -37,4 +37,4 @@ for (const d of ["packages/mpd-bundle", "packages/mpd-bootstrap-plugin", "packag
 }
 
 if (failed) { console.error("[bootstrap] FAIL"); process.exit(1) }
-step("PASS - preflight and vendor baseline checks passed (set MPD_UPSTREAM_ROOT if the upstream checkout is not auto-detected at .mpd-dsh/upstream)")
+step("PASS - preflight and shipped-asset checks passed (the vendor gate checks VENDOR_LOCK.json fingerprints only; no upstream checkout is resolved or needed)")

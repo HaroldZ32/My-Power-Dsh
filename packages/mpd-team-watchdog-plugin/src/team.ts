@@ -1,7 +1,8 @@
 // READ-ONLY projection of the team plane: the MPD TEAM RECORD first, the OFFICIAL readout second.
 //
 // 0.1.7 retired the vendored `mpd-agent-teams-plugin` and its `<stateDir>/<teamId>/team.json`
-// record. Team state now lives in TWO places, and this module reads them in that order:
+// record; the de-vendor wave then DELETED that body outright. Team state now lives in TWO places,
+// and this module reads them in that order:
 //
 //   1. THE MPD TEAM RECORD (`<workspace>/.mpd/team/teams/<teamId>.json`, served by
 //      `mpd-team-core-plugin` as the `mpdTeams` service) — the AUTHORITATIVE plane per AGENTS.md

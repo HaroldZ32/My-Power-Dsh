@@ -1,0 +1,33 @@
+cmd: the SANCTIONED READER's exported surface (API names only, no logic)  [2026-10-07T10:54:16Z]
+  DecodedSessionLog
+  decodeSessionLog
+  findToolCall
+  norm
+  readSessionEvents
+  ReadSessionEventsOptions
+  RecordedToolCall
+  recordedToolNames
+  scanZstdFrames
+  SessionLogCandidate
+  SessionRecord
+  SessionStore
+  SessionStoreKey
+  ToolCallEvidence
+  ZstdFrameSpan
+  ZstdScanResult
+  exported-name count: 16
+  --- do the four fields the writer names appear as the reader's own vocabulary? ---
+    called       11
+    succeeded    11
+    resultText   4
+    calls        9
+
+cmd: does the INSTALLED HARNESS record a guard-denial event type? (bounded, name-level)
+  harness root: /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh (present=YES)
+  event-type declarations mentioning guard/den/refus/block: 3
+  --- the files that mention anything guard-shaped (names only, first 6) ---
+    /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js
+    /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/types/index.js
+    /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-subagent-in-process-driver/lib/index.js
+  event-name declarations of the form "…" (sample of the harness event vocabulary): 0
+  --- any event name containing den/refus/guard? ---

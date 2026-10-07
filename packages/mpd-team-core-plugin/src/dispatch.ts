@@ -28,8 +28,34 @@ export interface DispatchTask {
   ready: boolean
   /** Ids of the tasks still blocking this one, listed in the skip reason. */
   blockedBy?: readonly string[]
-  /** Display name the board credits, when it credits one — informational, never the pairing key. */
+  /**
+   * Display name the board credits as this task's DECLARED OWNER.
+   *
+   * It is a PREFERENCE, never a hard key (see {@link planDispatch}): a task whose owner is free is
+   * paired with that owner; one whose owner is busy, absent or unnamed falls back to the positional
+   * rule, and the fallback is reported on the pairing itself. MEASURED 2026-10-07 on a live board:
+   * pairing purely positionally sent T1 (declared owner Plan Reviewer) to Architect and T2
+   * (declared owner Architect) to Plan Reviewer — a review task landing on a writer, which is
+   * exactly the independence the verification law rests on.
+   */
   ownerName?: string
+}
+
+/**
+ * The name key two member spellings must agree on: lowercase, every run of non-alphanumerics
+ * collapsed to one `-`, leading and trailing separators trimmed (`"Plan Reviewer"` →
+ * `"plan-reviewer"`).
+ *
+ * Deliberately the SAME rule as the roster's own `normalizeTeamMemberKey` (mpd-roles-plugin): the
+ * board stores a member's DISPLAY name while a caller may spell it any way, and the two spellings
+ * must collapse to one key. `dispatch.test.ts` pins the agreement by asserting both functions on the
+ * same corpus, so a future edit to either one reddens instead of drifting.
+ */
+export function dispatchNameKey(name: string): string {
+  return String(name ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
 }
 
 /** One team member, as the roster reports it. */
@@ -60,7 +86,25 @@ export type DispatchLedger = Record<string, DispatchAssignment>
 /** What one pass decided, and why it decided nothing for the rest. */
 export interface DispatchPlan {
   /** The pairings this pass decided, in board order. */
-  pairs: Array<{ taskId: string; subject: string; memberId: string; memberName: string }>
+  pairs: Array<{
+    /** The dispatched task's id. */
+    taskId: string
+    /** The task's one-line title, echoed into the dispatch message. */
+    subject: string
+    /** Session id of the member the pairing records. */
+    memberId: string
+    /** The paired member's display name. */
+    memberName: string
+    /**
+     * Why this pairing did NOT go to the task's declared owner, when it did not.
+     *
+     * ABSENT means the pairing is exactly what the board declared (owner honoured, or no owner
+     * declared at all). Present means the owner was busy, absent from the roster or unnamed, and the
+     * positional rule chose instead — reported here rather than in `skipped`, because the task WAS
+     * dispatched; dropping the reason would make a wrong pairing indistinguishable from a right one.
+     */
+    note?: string
+  }>
   /** One line per task that was NOT paired, naming the task and the reason. */
   skipped: Array<{ taskId: string; subject: string; reason: string }>
   /** The whole pass refused because the team is halted. */
@@ -75,12 +119,22 @@ export function dispatchMessage(task: DispatchTask, description: string): string
     description,
     "",
     "Work it on your own; do not wait for another member to start it.",
-    `When it is done, report the result to the Lead and mark task ${task.id} completed with team_task_update.`,
+    // MEASURED DEFECT, closed with the terminal verbs: this line used to tell a member to close its
+    // row with `team_task_update`, a verb NO member of this composition carries (the official team
+    // tool row is disabled in a dsh-tui boot, so the mpd-native plane is the only one — and it had no
+    // terminal action at all). A dispatch message that names a tool the recipient does not have is a
+    // message that guarantees a stranded row.
+    `When it is done, close the row with agent_teams_task {action:"complete", task_id:"${task.id}"} — `
+      + `or {action:"fail", task_id:"${task.id}", note:"…"} if you could not finish it — and report the result to the Lead.`,
   ].join("\n")
 }
 
 /**
  * Decide one dispatch pass.
+ *
+ * The pairing rule, in order: a task's DECLARED OWNER when that member is idle and unbooked;
+ * otherwise the first free member in roster order, with the fallback and its reason carried on the
+ * pairing's `note`. One member is consumed per pairing, so a pass never double-books.
  *
  * @param input - the board, the roster, the ledger and the hold.
  * @returns the pairs to dispatch and, for every other considered task, why it was skipped.
@@ -136,10 +190,37 @@ export function planDispatch(input: {
       plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "no idle member is free" })
       continue
     }
-    /** The next free candidate, taken in roster order so a pass is deterministic. */
-    const member = available[0]
-    available = available.slice(1)
-    plan.pairs.push({ taskId: task.id, subject: task.subject, memberId: member.id, memberName: member.name })
+    /** The task's declared owner, normalised; the empty string means the board credited none. */
+    const ownerKey = dispatchNameKey(task.ownerName ?? "")
+    /** Where the declared owner sits in the free pool, or -1 when it is not free. */
+    const ownerIndex = ownerKey === "" ? -1 : available.findIndex((candidate) => dispatchNameKey(candidate.name) === ownerKey)
+    // OWNER-FIRST, POSITIONAL ONLY AS A FALLBACK (captain ruling, 2026-10-07). A declared owner is
+    // PREFERRED: the board's `owner` is the captain's own dispatch decision, and re-deciding it here
+    // is what put a review task on a writer. The fallback to roster order is kept because a busy or
+    // absent owner must never stall a ready task — but it is REPORTED on the pairing, so a wrong
+    // pairing can never read as a right one.
+    /** The position this task takes in the free pool: the owner's when it is free, else the first. */
+    const memberIndex = ownerIndex >= 0 ? ownerIndex : 0
+    /** The member this task is paired with. */
+    const member = available[memberIndex]
+    available = available.filter((_candidate, index) => index !== memberIndex)
+    /** The board's roster entry for the declared owner, used only to spell a fallback reason. */
+    const declaredOwner = ownerKey === "" ? undefined : input.members.find((candidate) => dispatchNameKey(candidate.name) === ownerKey)
+    plan.pairs.push({
+      taskId: task.id,
+      subject: task.subject,
+      memberId: member.id,
+      memberName: member.name,
+      ...(ownerIndex >= 0 || ownerKey === "" ? {} : {
+        note: "declared owner " + JSON.stringify(String(task.ownerName ?? "")) + " "
+          + (declaredOwner === undefined
+            ? "is not on this team's roster"
+            : busy.has(declaredOwner.id)
+              ? "is already working another task"
+              : "is not idle (status " + JSON.stringify(declaredOwner.status) + ")")
+          + "; paired the next free member " + JSON.stringify(member.name) + " instead",
+      }),
+    })
   }
   return plan
 }

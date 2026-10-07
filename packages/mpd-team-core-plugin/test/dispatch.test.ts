@@ -120,7 +120,10 @@ describe("the message a dispatched member receives", () => {
     const text = dispatchMessage({ id: "t4", subject: "wire the gate", status: "pending", ready: true }, "acceptance: the gate is wired")
     expect(text).toContain("shared task t4: wire the gate")
     expect(text).toContain("acceptance: the gate is wired")
-    expect(text).toContain("team_task_update")
+    // MEASURED DEFECT, closed: the line used to name `team_task_update`, a verb NO member of this
+    // composition carries — a dispatch message that names a tool the recipient does not have is a
+    // message that guarantees a stranded row.
+    expect(text).toContain('agent_teams_task {action:"complete"')
     expect(text).toContain("do not wait for another member")
   })
 })

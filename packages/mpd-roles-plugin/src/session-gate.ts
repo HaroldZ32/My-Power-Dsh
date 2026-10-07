@@ -40,6 +40,7 @@ import {
   latestUserMessage,
   mechanicalNoticeText,
   readBoulderGate,
+  readLeadingTeam,
   resolveBoulderDir,
   resolveGateMode,
   sessionQualifies,
@@ -133,6 +134,8 @@ export interface SessionGateOptions {
   configValue?: (key: string) => unknown
   /** The boulder-state READER seam (`node:fs/promises` by default), for tests and the QA case. */
   readFile?: (path: string) => Promise<string>
+  /** The team-record DIRECTORY-LIST seam (`node:fs/promises` by default), for tests and the QA case. */
+  readDir?: (path: string) => Promise<readonly string[]>
   /**
    * Whether a plan is ALREADY staged for one session — `mpdTeams.planFor(...).plan` in a boot.
    *
@@ -408,6 +411,25 @@ export function installSessionGate(
       if (user === undefined) { gateTrace("no user text yet agent=" + agentId); return undefined }
       /** The workspace the boulder probe reads and the staging call writes under. */
       const workspace = dsh.workspaceRoot({ agent } as never)
+      // C7 — A SESSION THAT IS ALREADY LEADING A TEAM IS NEVER SENT TO STAGE ONE. Decided from the
+      // team RECORD (positive structural evidence: this session's `leadSessionId` in
+      // `.mpd/team/teams/*.json` with at least one member), never from a "did the gate fire before"
+      // flag — MEASURED 2026-10-07, an inbound teammate report fired the gate on a session that was
+      // already leading team-20261007102205 and staged a spurious 0-member shell
+      // (plan-20261007102357, archived). NO notice is injected on this path either, in ANY mode: the
+      // session needs no instruction to stage a team it already has, and the advisory text's "stage
+      // a team yourself" would contradict the very rule that forbids a second team. The session is
+      // NOT marked acted, so the record is re-read on the next step and a session whose team has
+      // ended is judged again rather than silenced for good.
+      /** What THIS session's own team record says, read fresh on every step. */
+      const leading = await readLeadingTeam(workspace, sessionIdOf(agent), {
+        ...(options.readFile === undefined ? {} : { readFile: options.readFile }),
+        ...(options.readDir === undefined ? {} : { readDir: options.readDir }),
+      })
+      if (leading.leading) {
+        gateTrace("already leading team=" + String(leading.teamId ?? "(id not read)") + " members=" + String(leading.members) + " agent=" + agentId)
+        return undefined
+      }
       /** The goal text with the explicit marker removed, plus whether it was there. */
       const consumed = consumeExplicitFlag(user.text)
       // Signal D's state root, resolved PER CALL from `boulder.dir` (never cached) and normalized by

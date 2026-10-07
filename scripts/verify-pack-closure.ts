@@ -389,11 +389,13 @@ const REQUIRED_ROOT_ASSETS: readonly string[] = ["templates", "docs", "agent-ref
 // group reports "REFERENCES" so a missing author-critical file is never read as a template
 // problem. An unknown group falls back to "ASSET-MISSING".
 const ROOT_ASSET_KIND: Record<string, string> = { templates: "TEMPLATES", docs: "TEMPLATES", "agent-references": "REFERENCES" }
-// The three files an external author needs when a boot misbehaves or when they touch the adopted
-// plugin (AGENTS.md's on-demand Reference Index). Named because "the directory arrived" is not
-// the claim — these files are. English-only: no *.zh-CN.md twin belongs in this group, and
-// `bun run verify:docs` does not discover the tree (measured: pairs unchanged).
-const REQUIRED_REFERENCE_FILES: readonly string[] = ["index.md", "troubleshooting.md", "agent-teams-deltas.md"]
+// The two files an external author needs when a boot misbehaves (AGENTS.md's on-demand Reference
+// Index). Named because "the directory arrived" is not the claim — these files are. English-only:
+// no *.zh-CN.md twin belongs in this group, and `bun run verify:docs` does not discover the tree
+// (measured: pairs unchanged). The adopted-plugin delta registry that used to be the third entry
+// is DELETED with the body it described (de-vendor wave), so a boot can no longer be debugged
+// against it and naming it here would be a permanent red.
+const REQUIRED_REFERENCE_FILES: readonly string[] = ["index.md", "troubleshooting.md"]
 // Root FILES that must ship by NAME (not by directory). Same shape as the reference list above
 // and for a sharper reason: the manifest arm below is DECLARATION-DRIVEN — a file present but
 // unlisted is loud, a pattern listed but absent is loud, and a file declared NOWHERE is invisible
@@ -1766,7 +1768,21 @@ function selfTest(): number {
     // TIMESTAMP ORDER, not content provenance, so a mutation inside an artifact whose source file also
     // carries a post-pack mtime is reported as the expected class — loudly, never silently.
     utimesSync(realRef, realRefMtime, realRefMtime)
-    arm("negative-control (real artifact copy, one byte changed -> reported, not silent)", runChecker(["--packed", realCopy, "--require-packed"]), (c: ChildResult): boolean => c.all.includes(EXPECTED_KIND) && c.all.includes("agent-references/troubleshooting.md"))
+    // THE PREDICATE ACCEPTS EITHER LEGAL CLASS, because the class is a fact of the ENVIRONMENT, not of
+    // the gate. MEASURED 2026-10-07 (de-vendor wave): with the canonical artifact freshly staged by
+    // `node scripts/pack-mpd.ts` — which the wave's own acceptance list requires — every source file is
+    // strictly OLDER than the pack, so the flipped byte CANNOT be attributed to a post-pack writer and
+    // the byte rule correctly reports the hard `CONTENT-DRIFT` leg; the arm then reddened on a green
+    // gate. `touch agent-references/troubleshooting.md` flipped it straight back to PASS with the
+    // expected leg, which is the proof that the arm was measuring the artifact's age, not the rule.
+    // What the arm actually claims is "reported, not silent", so it now asserts THAT: the file is NAMED
+    // in the output AND the exit code matches whichever class the byte rule chose. A silent pass
+    // (exit 0, neither kind) still fails the arm.
+    arm("negative-control (real artifact copy, one byte changed -> reported, not silent)", runChecker(["--packed", realCopy, "--require-packed"]), (c: ChildResult): boolean => {
+      /** Whether the byte rule named the mutated file, whichever class it landed in. */
+      const named = c.all.includes("agent-references/troubleshooting.md")
+      return named && ((c.all.includes(EXPECTED_KIND) && c.status === 0) || (c.all.includes(CONTENT_KIND) && c.status === 1))
+    })
     // Arm 20c — the same mutated copy with the stamp PINNED at the source file's own mtime: now the
     // writer cannot be "after the pack", so the mutated byte is a hard CONTENT-DRIFT and the gate
     // reddens. This is the falsifiable pair for "a content mutation reddens": 20a green, 20c red.

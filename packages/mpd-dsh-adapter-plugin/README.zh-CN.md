@@ -43,10 +43,11 @@
 | 活跃 agent 自有的 scoped `ctx.systemPrompt.section` | `agentPromptSection(agent, section)` | 段落被**逐字节**转发到**该 agent 自己的** scope（绑定接收者、disposer 透传），因此该贡献只送达某一个 preset 的 session，而不是本进程服务的所有 session；agent scope 无此接缝时在调用点抛错 |
 | 能力探测 | `capabilities()` | 每个接缝一个布尔值，调用方据此降级而不是崩溃 |
 
-上表中从 `registerHostTool` 到 `injectAgentMessage` 这十四个接缝只有一个消费方：采纳的
-`agent-teams` 插件。其桥接模块
-`packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts`（mpd 自有，命名规则 `lib/mpd-*.js`）在
-`apply` 顶部只构建一次门面，把六个已桥接的采纳文件都接到这些方法上。每个方法都在一个
+上表中从 `registerHostTool` 到 `injectAgentMessage` 这十四个接缝只有一个消费方：当时采纳的
+`agent-teams` 插件。其桥接模块曾是
+`packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts`（mpd 自有，命名规则 `lib/mpd-*.js`），在
+`apply` 顶部只构建一次门面，把六个已桥接的采纳文件都接到这些方法上。该插件与其桥接模块均已由
+`de-vendor-and-verify-law` 波次**删除**；下面这段保留为“一条已关闭边界”的记录。每个方法都在一个
 `capabilities()` 标志之后（一个标志可覆盖两个方法；`subagentRuntime` 复用既有的 `subagents`
 标志），因此桥接层按接缝降级，而不是让整棵插件树失败：`toolsRegisterHost`、
 `subagents`、`subagentsProvider`、`subagentsContinuable`、`subagentsInterrupt`、`llmListModels`、
@@ -122,8 +123,9 @@ node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts --self-t
 
 Harness 更新是常态，但“每次更新都改所有调用点”不是。本包是仓库中**唯一**允许直接触碰 Harness 服务的文件。该规则具有约束力（AGENTS.md §6）：**插件行不得自行调用 `ctx.tools`、`ctx.subagents`、`ctx.skills`、`ctx.agentPresets`。**
 
-**采纳插件的路由（原“边界”，已于 2026-09-19 关闭）：** 采纳的 `agent-teams` 插件
-（`packages/mpd-agent-teams-plugin`）是升级时从上游重新 vendor 的 MIT 主代码，它经由**本适配器**
+**采纳插件的路由（原“边界”，已于 2026-09-19 关闭；本段现为历史记录 —— 它所描述的插件已由
+`de-vendor-and-verify-law` 波次删除）：** 采纳的 `agent-teams` 插件
+（`packages/mpd-agent-teams-plugin`）曾是升级时从上游重新 vendor 的 MIT 主代码，它经由**本适配器**
 接触 Harness 接缝 —— 通过其 mpd 自有的桥接模块 `lib/mpd-adapter-ctx.ts` 惰性解析已挂载的
 `mpdDsh`，适配器缺席时 warn-once 回退（每个插件实例一行缺失日志）。本地适配保持不变
 （`registerContinuableSetup` 启动安全守卫、workmate persona 注入、`mpd-delta` 区域）。

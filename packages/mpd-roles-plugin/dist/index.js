@@ -197,9 +197,10 @@ function installReadonlyGuard(dsh, options) {
 }
 
 // packages/mpd-roles-plugin/src/complexity-gate.ts
-import { readFile as readFileFs } from "node:fs/promises";
+import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises";
 import { join } from "node:path";
 var STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule";
+var HUMAN_SOURCE_KIND = "user";
 var GATE_MODE_MECHANICAL = "mechanical";
 var GATE_MODE_ADVISORY = "advisory";
 var GATE_MODE_OFF = "off";
@@ -221,15 +222,18 @@ var ALREADY_STAGED_PLAN_PHRASE = "a team PLAN is ALREADY STAGED";
 var INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until approved";
 var NO_TEAM_STAGED_PHRASE = "NO team was staged";
 var SOLO_PERMISSION_SENTENCE = "- If the work does not warrant a team (a short or single-threaded task), continue solo";
-var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
-var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu;
+var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/giu;
+var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充/giu;
 var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
-var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u;
-var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
+var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.、，。；：！？（）「」『』“”‘’【】]/u;
+var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/iu;
 var DELIVERABLE_VERB_MIN = 4;
 var ENUMERATED_LINE_MIN = 3;
 var ACTION_VERB_MIN = 3;
 var C_SUBSIGNAL_MIN = 2;
+var CJK_CHAR_PATTERN = /\p{Script=Han}/gu;
+var CJK_CHAR_MIN = 60;
+var CJK_ACTION_VERB_MIN = 2;
 var GATE_PLAN_NAME_MAX = 60;
 var GATE_PLAN_EXCERPT_MAX = 500;
 var GATE_PLAN_NAME_FALLBACK = "session-start complexity gate team";
@@ -255,6 +259,10 @@ function clauseStepCount(text) {
       count += 1;
   return count;
 }
+function cjkCharCount(text) {
+  const matches = text.match(CJK_CHAR_PATTERN);
+  return matches === null ? 0 : matches.length;
+}
 function consumeExplicitFlag(text) {
   const source = String(text ?? "");
   const trimmed = source.trimStart();
@@ -273,15 +281,18 @@ function evaluateComplexityGate(text, input = {}) {
     signals.push("A");
   if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
     signals.push("B");
+  const actionVerbs = distinctMatches(source, ACTION_VERB_PATTERN);
   const cSubSignals = [
     enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
-    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
+    actionVerbs >= ACTION_VERB_MIN,
     clauseStepCount(source) >= ENUMERATED_LINE_MIN
   ].filter(Boolean).length;
   if (cSubSignals >= C_SUBSIGNAL_MIN)
     signals.push("C");
   if (input.activeBoulder === true)
     signals.push("D");
+  if (cjkCharCount(source) >= CJK_CHAR_MIN && actionVerbs >= CJK_ACTION_VERB_MIN)
+    signals.push("E");
   return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
 }
 async function readBoulderGate(workspace, opts = {}) {
@@ -307,6 +318,36 @@ async function readBoulderGate(workspace, opts = {}) {
   } catch {
     return { active: false };
   }
+}
+var TEAM_RECORDS_DIR = join(".mpd", "team", "teams");
+async function readLeadingTeam(workspace, sessionId, opts = {}) {
+  const nothing = { leading: false, members: 0 };
+  if (typeof sessionId !== "string" || sessionId === "")
+    return nothing;
+  try {
+    const read = opts.readFile ?? ((path) => readFileFs(path, "utf8"));
+    const list = opts.readDir ?? ((path) => readDirFs(path, { encoding: "utf8", withFileTypes: false }));
+    const entries = await list(join(String(workspace ?? ""), TEAM_RECORDS_DIR));
+    for (const entry of entries) {
+      if (!String(entry).endsWith(".json"))
+        continue;
+      try {
+        const record = JSON.parse(await read(join(String(workspace ?? ""), TEAM_RECORDS_DIR, String(entry))));
+        if (record === null || typeof record !== "object" || Array.isArray(record))
+          continue;
+        const fields = record;
+        if (String(fields.leadSessionId ?? "") !== String(sessionId))
+          continue;
+        const members = Array.isArray(fields.members) ? fields.members.length : 0;
+        if (members === 0)
+          continue;
+        return { leading: true, teamId: String(fields.teamId ?? ""), members };
+      } catch {}
+    }
+  } catch {
+    return nothing;
+  }
+  return nothing;
 }
 function resolveGateMode(value) {
   if (value === GATE_MODE_ADVISORY)
@@ -357,7 +398,6 @@ function messageText(message) {
 `);
 }
 function latestUserMessage(candidates) {
-  let fallback;
   for (let index = candidates.length - 1;index >= 0; index -= 1) {
     const message = candidates[index];
     if (message?.role !== "user")
@@ -365,12 +405,13 @@ function latestUserMessage(candidates) {
     const text = messageText(message);
     if (text === undefined)
       continue;
-    const source = String(message?.source?.kind ?? "");
-    if (source === "user")
-      return { message, text };
-    fallback ??= { message, text };
+    const source = message?.source;
+    const kind = source === undefined || source === null ? undefined : source.kind;
+    if (kind !== undefined && String(kind) !== HUMAN_SOURCE_KIND)
+      continue;
+    return { message, text };
   }
-  return fallback;
+  return;
 }
 function consumeFlagFromMessage(message, source) {
   if (!consumeExplicitFlag(source).flagged)
@@ -399,6 +440,373 @@ function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
     return true;
   return presets.includes(String(preset));
 }
+
+// packages/mpd-verify-plugin/src/law.ts
+var GATED_WRITE_TOOLS = [
+  "write",
+  "edit",
+  "mpd_hashline_edit",
+  "mcp__ast_grep__rewrite",
+  "mcp__ast_grep__scan"
+];
+var DEFAULT_CODE_EXTENSIONS = [
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".cts",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ".json",
+  ".jsonc",
+  ".yml",
+  ".yaml",
+  ".toml",
+  ".sh",
+  ".bash",
+  ".zsh",
+  ".ps1",
+  ".cmd",
+  ".bat",
+  ".py",
+  ".rs",
+  ".go",
+  ".css",
+  ".html",
+  ".vue",
+  ".sql"
+];
+var CODE_BASENAMES = ["Dockerfile", "Makefile"];
+var ALWAYS_WRITABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
+var VERIFIER_DOC_PREFIXES = [".mpd/plans/", "docs/", "agent-references/", ".mpd/verify/"];
+var VERIFIER_WRITE_PREFIX = ".mpd/verify/";
+var VERIFIER_DENIED_TOOLS = [
+  "bash",
+  "powershell",
+  "pwsh",
+  "mcp__ast_grep__rewrite",
+  "mcp__ast_grep__scan",
+  "mcp__lsp__rename",
+  "mcp__codegraph__codegraph_explore",
+  "mcp__lsp__diagnostics",
+  "mcp__lsp__goto_definition",
+  "mcp__lsp__find_references",
+  "mcp__lsp__symbols",
+  "mcp__lsp__prepare_rename"
+];
+var VERIFIER_DENIED_PREFIXES = ["agent_teams_", "mpd_", "spawn_teammate", "team_task_", "team_"];
+var VERIFY_TOOL_PREFIX = "mpd_verify_";
+var PATH_ARG_KEYS = ["file_path", "path", "filePath", "target"];
+function readTargetPath(toolName, args) {
+  if (toolName === "mcp__ast_grep__rewrite") {
+    const paths = args?.paths;
+    if (Array.isArray(paths) && typeof paths[0] === "string")
+      return paths[0];
+  }
+  for (const key of PATH_ARG_KEYS) {
+    const value = args?.[key];
+    if (typeof value === "string" && value !== "")
+      return value;
+  }
+  return;
+}
+function classifyWriteTarget(workspaceRoot, raw, extensions = DEFAULT_CODE_EXTENSIONS) {
+  if (typeof raw !== "string" || raw === "")
+    return { kind: "pass", raw: String(raw ?? "") };
+  const root = toPosix(workspaceRoot).replace(/\/+$/, "");
+  const absolute = raw.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(raw);
+  const posixRaw = toPosix(raw);
+  let rel;
+  if (!absolute)
+    rel = stripLeadingDot(posixRaw);
+  else if (root !== "" && posixRaw.startsWith(root + "/"))
+    rel = posixRaw.slice(root.length + 1);
+  if (rel === undefined)
+    return { kind: "code", raw, outside: true };
+  const base = rel.slice(rel.lastIndexOf("/") + 1);
+  if (ALWAYS_WRITABLE_PREFIXES.some((prefix) => rel.startsWith(prefix)))
+    return { kind: "always", raw, rel };
+  if (ALWAYS_WRITABLE_PREFIXES.some((prefix) => rel === prefix.replace(/\/$/, "")))
+    return { kind: "always", raw, rel };
+  if (/\.mdx?$/i.test(base) || /^LICENSE/i.test(base))
+    return { kind: "always", raw, rel };
+  if (anyAlwaysWritableSegment(rel))
+    return { kind: "always", raw, rel };
+  if (CODE_BASENAMES.includes(base))
+    return { kind: "code", raw, rel };
+  const dot = base.lastIndexOf(".");
+  const ext = dot <= 0 ? "" : base.slice(dot).toLowerCase();
+  return { kind: "code", raw, rel, ...ext !== "" && extensions.includes(ext) ? { declared: true } : {} };
+}
+function anyAlwaysWritableSegment(rel) {
+  const segments = rel.split("/");
+  return segments.some((segment) => ["docs", "evidence", "agent-references", ".mpd"].includes(segment));
+}
+function toPosix(value) {
+  return String(value ?? "").replace(/\\/g, "/");
+}
+function stripLeadingDot(value) {
+  return value.startsWith("./") ? value.slice(2) : value;
+}
+function pathInScope(rel, scope) {
+  if (rel === undefined)
+    return false;
+  if (scope === undefined || scope.length === 0)
+    return true;
+  const target = stripLeadingDot(toPosix(rel)).replace(/\/+$/, "");
+  return scope.some((entry) => {
+    const prefix = stripLeadingDot(toPosix(String(entry ?? ""))).replace(/\/+$/, "").replace(/\/\*\*$/, "");
+    if (prefix === "" || prefix === ".")
+      return true;
+    return target === prefix || target.startsWith(prefix + "/");
+  });
+}
+function captainWriteDecision(input) {
+  const target = classifyWriteTarget(input.workspaceRoot, readTargetPath(input.toolName, input.args), input.extensions);
+  if (!GATED_WRITE_TOOLS.includes(input.toolName))
+    return { allow: "always", target };
+  if (target.kind === "pass")
+    return { allow: "always", target };
+  if (target.kind === "always")
+    return { allow: "always", target };
+  if (!input.topLevel)
+    return { allow: "always", target };
+  const nowMs = input.now.getTime();
+  const loop = input.loops.find((candidate) => candidate.status === "armed" && candidate.sessionId === input.sessionId && candidate.writerKind === "self" && candidate.writerId === input.sessionId && candidate.verifierId !== candidate.writerId && pathInScope(target.rel, candidate.scope) && Date.parse(candidate.expiresAt) > nowMs);
+  if (loop !== undefined)
+    return { allow: "loop", loopId: loop.loopId, target };
+  if (input.escapeUses > 0)
+    return { allow: "escape", consumesEscape: true, target };
+  return { deny: writeDenial(input.toolName, target), target };
+}
+function writeDenial(toolName, target) {
+  const where = target.rel ?? target.raw;
+  return "verification law: `" + toolName + "` on the CODE path " + JSON.stringify(where) + " is refused for this workspace's top-level agent" + (target.outside === true ? " (an absolute path outside the workspace root counts as code)" : "") + ". Code written here must be verified by a DIFFERENT agent working from the docs, so take one of the three routes: " + "(1) DELEGATE the write — give the scope to a write-capable member (a team work task, or mpd_role_spawn / a subagent), " + "which is the normal path; " + '(2) OPEN A SELF-WRITER LOOP with mpd_verify_open {writer:"self", selfWriteReason:"…", verifier:"<another agent>"} ' + "naming a verifier that is NOT you, which permits writes inside the loop's scope until it expires; " + '(3) take the COUNTED ESCAPE with mpd_verify_escape {reason:"…"}, which logs a row and allows one write. ' + "Docs, `*.md`, `LICENSE*`, `.mpd/**`, `docs/**`, `evidence/**` and `agent-references/**` are never gated.";
+}
+function verifierEnvelopeDecision(input) {
+  const seat = input.seat;
+  if (seat === undefined)
+    return {};
+  const tool = String(input.toolName ?? "");
+  if (VERIFIER_DENIED_TOOLS.includes(tool)) {
+    return { deny: "verification law: a bound VERIFIER seat may not call `" + tool + "`. The verifier works from the" + " frozen contract and the documentation and proves its verdict with mpd_verify_evidence" + " (a whitelisted gate runner and a content-free artifact probe). Shell access, source-returning" + " tools and every board/team mutation are outside the envelope." };
+  }
+  if (VERIFIER_DENIED_PREFIXES.some((prefix) => tool.startsWith(prefix)) && !tool.startsWith(VERIFY_TOOL_PREFIX)) {
+    return { deny: "verification law: a bound VERIFIER seat may not call `" + tool + "` — staging, dispatching or" + " mutating a team is not verification. Use mpd_verify_evidence / mpd_verify_record." };
+  }
+  const raw = readTargetPath(tool, input.args);
+  const isRead = tool === "read" || tool === "glob" || tool === "grep";
+  const isWrite = tool === "write" || tool === "edit" || tool === "mpd_hashline_edit";
+  if (isWrite) {
+    const target2 = classifyWriteTarget(input.workspaceRoot, raw);
+    if (target2.kind !== "pass" && target2.rel !== undefined && target2.rel.startsWith(VERIFIER_WRITE_PREFIX) && target2.outside !== true)
+      return {};
+    return { deny: "verification law: a bound VERIFIER seat may only write under `" + VERIFIER_WRITE_PREFIX + "` (the tool" + " writes the verification record itself). A verifier never fixes what it found — record the finding and a" + " FAIL bounces the work back to a writer as a repair task." };
+  }
+  if (!isRead)
+    return {};
+  if (raw === undefined) {
+    return { deny: "verification law: a bound VERIFIER seat must NAME the path it reads while it is blind — a bare" + " `" + tool + "` would search the whole workspace, implementation included. Name one of the frozen docs or a" + " path under " + VERIFIER_DOC_PREFIXES.map((prefix) => "`" + prefix + "`").join(", ") + ". After a recorded FAIL" + " the ratchet unlocks implementation reading for diagnosis only." };
+  }
+  const target = classifyWriteTarget(input.workspaceRoot, raw);
+  if (target.kind === "pass")
+    return {};
+  if (isAllowedVerifierRead(target, seat))
+    return seat.unlocked ? { countedRead: true } : {};
+  if (seat.unlocked)
+    return { countedRead: true };
+  return { deny: "verification law: a bound VERIFIER seat may not read " + JSON.stringify(target.rel ?? target.raw) + " while it is BLIND. Record your verdict with mpd_verify_record first, from the frozen contract and the docs:" + " the blindness requirement is that the verdict precedes any implementation read, and reading first makes the" + " verification unprovable. A recorded FAIL unlocks implementation reading for diagnosis, counted." };
+}
+function isAllowedVerifierRead(target, seat) {
+  if (target.rel === undefined || target.outside === true)
+    return false;
+  if (VERIFIER_DOC_PREFIXES.some((prefix) => target.rel.startsWith(prefix) || target.rel === prefix.replace(/\/$/, "")))
+    return true;
+  return seat.docPaths.some((doc) => {
+    const normalized = stripLeadingDot(toPosix(String(doc ?? "")));
+    return normalized !== "" && target.rel === normalized;
+  });
+}
+function resolveVerifyMode(raw) {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (value === "off")
+    return "off";
+  if (value === "advisory")
+    return "advisory";
+  return "hard";
+}
+var GIT_WRITE_SUBCOMMANDS = [
+  "commit",
+  "add",
+  "rm",
+  "mv",
+  "checkout",
+  "switch",
+  "restore",
+  "reset",
+  "stash",
+  "merge",
+  "branch",
+  "rebase",
+  "tag",
+  "cherry-pick",
+  "revert",
+  "clean",
+  "apply",
+  "am",
+  "update-index",
+  "worktree",
+  "init",
+  "clone",
+  "push",
+  "fetch",
+  "pull",
+  "reflog"
+];
+function gitWriteSubcommand(command) {
+  if (typeof command !== "string" || command === "")
+    return;
+  const stripped = stripHeredocBodies(command);
+  const boundary = /(?:^|[;&|()\n{}]|\b(?:sudo|env|time|nice|command|exec|nohup|xargs)\s+)\s*git\s+/;
+  for (const segment of stripped.split(boundary).slice(1)) {
+    const tokens = segment.trim().split(/\s+/);
+    let index = 0;
+    while (index < tokens.length) {
+      const token = tokens[index];
+      if (!token.startsWith("-"))
+        break;
+      index += GIT_VALUE_FLAGS.includes(token) ? 2 : 1;
+    }
+    const sub = (tokens[index] ?? "").toLowerCase().replace(/[^a-z-].*$/, "");
+    if (sub !== "" && GIT_WRITE_SUBCOMMANDS.includes(sub))
+      return sub;
+  }
+  return;
+}
+var GIT_VALUE_FLAGS = ["-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"];
+function stripHeredocBodies(command) {
+  return command.replace(/<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1[^\n]*\n[\s\S]*?\n\s*\2(?=\s|$|\n)/g, " ");
+}
+function gitWriterDecision(input) {
+  if (input.topLevelCaptain)
+    return;
+  const sub = gitWriteSubcommand(input.command);
+  if (sub === undefined)
+    return;
+  return "one-git-writer rule (AGENTS.md §5): this session is NOT the workspace's top-level captain, so it may not run" + " `git " + sub + "`. Teammates share the captain's checkout and two writers race on the single `.git/HEAD` —" + " measured 2026-09-14, a member's `reset HEAD~1` moved the `dev` tip. Read-only git (`git status` / `log` /" + " `diff` / `show` / `grep` / `ls-files` / `rev-parse` / `merge-base` / `describe` / `blame`) stays open to you:" + " edit files, run gates and write evidence, and ask the captain to commit.";
+}
+
+// packages/mpd-roles-plugin/src/verify-guard.ts
+function verifyGuardDecision(exec, options) {
+  try {
+    const toolName = String(exec?.name ?? "");
+    if (toolName === "")
+      return;
+    const agent = exec?.agent;
+    const law = options.law;
+    if (law !== undefined) {
+      try {
+        law.noteCall(exec);
+      } catch {}
+    }
+    if (options.mode === "off")
+      return;
+    if (law === undefined)
+      return;
+    const sessionId = law.keyOf(agent);
+    const seat = law.seatFor(options.workspaceRoot, sessionId);
+    if (seat !== undefined) {
+      const envelope = verifierEnvelopeDecision({
+        toolName,
+        args: exec?.arguments,
+        workspaceRoot: options.workspaceRoot,
+        seat
+      });
+      if (envelope.deny !== undefined)
+        return advisoryOr(mode(options.mode), envelope.deny, options.warn);
+      if (envelope.countedRead === true) {
+        try {
+          law.countRead(sessionId, String(exec?.arguments?.file_path ?? ""));
+        } catch {}
+      }
+      return;
+    }
+    if (toolName === "bash" || toolName === "powershell" || toolName === "pwsh") {
+      const isCaptain = sessionQualifies(agent, options.presets);
+      const gitDeny = gitWriterDecision({
+        command: exec?.arguments?.command,
+        topLevelCaptain: isCaptain
+      });
+      if (gitDeny !== undefined)
+        return advisoryOr(mode(options.mode), gitDeny, options.warn);
+    }
+    const decision = captainWriteDecision({
+      toolName,
+      args: exec?.arguments,
+      workspaceRoot: options.workspaceRoot,
+      sessionId,
+      topLevel: sessionQualifies(agent, options.presets),
+      loops: law.armedLoops(options.workspaceRoot),
+      escapeUses: law.escapeUses(sessionId),
+      now: options.now
+    });
+    if (decision.deny === undefined) {
+      if (decision.consumesEscape === true) {
+        const spent = law.consumeEscape(sessionId);
+        if (!spent) {
+          return advisoryOr(mode(options.mode), decision.deny ?? escalation(sessionId, toolName, decision.target.rel ?? decision.target.raw), options.warn);
+        }
+        options.warn("verify-law: the counted escape was spent on `" + toolName + "` (" + String(decision.target.rel ?? decision.target.raw) + ")");
+      }
+      return;
+    }
+    return advisoryOr(mode(options.mode), decision.deny, options.warn);
+  } catch {
+    return;
+  }
+}
+function mode(raw) {
+  return raw;
+}
+function advisoryOr(active, deny, warn) {
+  if (active !== "advisory")
+    return deny;
+  warn("verify-law (advisory): " + deny);
+  return;
+}
+function escalation(sessionId, toolName, path) {
+  return "verification law: the counted escape for " + JSON.stringify(sessionId) + " was already spent by a concurrent call, so `" + toolName + "` on " + JSON.stringify(path) + " is refused. Take another escape or delegate the write.";
+}
+function installVerifyGuard(dsh, options) {
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the verification law's write guard is NOT installed " + "(the ledger, the five tools and the record validator still work; the captain's writes are unguarded)");
+      return { installed: false, reason: "no-guard-seam" };
+    }
+    const dispose = dsh.guardTool((exec) => verifyGuardDecision(exec, {
+      presets: options.presets,
+      law: options.law(),
+      mode: resolveVerifyMode(options.configValue("verify.mode")),
+      workspaceRoot: (() => {
+        try {
+          return options.workspaceRootOf(exec);
+        } catch {
+          return "";
+        }
+      })(),
+      now: new Date,
+      warn: options.warn
+    }));
+    return { installed: true, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the verification law's write guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, reason: "install-failed" };
+  }
+}
+
+// packages/mpd-verify-plugin/src/service.ts
+var VERIFY_SERVICE = "mpdVerify";
 
 // packages/mpd-roles-plugin/src/roster-section.ts
 var ROSTER_SECTION_NAME = "mpd:roster";
@@ -2180,8 +2588,8 @@ function installSessionGate(dsh, options) {
       const agentId = String(agent.id ?? "");
       if (agentId !== "" && acted.has(agentId))
         return;
-      const mode = resolveGateMode(configValue(GATE_CONFIG_KEY));
-      if (mode === GATE_MODE_OFF) {
+      const mode2 = resolveGateMode(configValue(GATE_CONFIG_KEY));
+      if (mode2 === GATE_MODE_OFF) {
         gateTrace("mode off agent=" + agentId);
         return;
       }
@@ -2193,6 +2601,14 @@ function installSessionGate(dsh, options) {
         return;
       }
       const workspace = dsh.workspaceRoot({ agent });
+      const leading = await readLeadingTeam(workspace, sessionIdOf(agent), {
+        ...options.readFile === undefined ? {} : { readFile: options.readFile },
+        ...options.readDir === undefined ? {} : { readDir: options.readDir }
+      });
+      if (leading.leading) {
+        gateTrace("already leading team=" + String(leading.teamId ?? "(id not read)") + " members=" + String(leading.members) + " agent=" + agentId);
+        return;
+      }
       const consumed = consumeExplicitFlag(user.text);
       const boulderDir = resolveBoulderDir(configValue(BOULDER_DIR_CONFIG_KEY));
       const boulder = await readBoulderGate(workspace, {
@@ -2207,7 +2623,7 @@ function installSessionGate(dsh, options) {
       if (agentId !== "")
         acted.add(agentId);
       let outcome = { ok: false, planId: "", alreadyStaged: false };
-      if (mode === GATE_MODE_MECHANICAL) {
+      if (mode2 === GATE_MODE_MECHANICAL) {
         outcome = await stagePlan({
           agent,
           workspace,
@@ -2220,9 +2636,9 @@ function installSessionGate(dsh, options) {
           warn('session-start gate: staging degraded to the advisory notice for agent "' + agentId + '" (' + String(outcome.error) + ")");
         }
       }
-      const staged = mode === GATE_MODE_MECHANICAL && outcome.ok;
-      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " mode=" + mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId));
-      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged));
+      const staged = mode2 === GATE_MODE_MECHANICAL && outcome.ok;
+      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " mode=" + mode2 + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId));
+      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode2 + " staged=" + String(staged));
       const notice = dsh.userMessage({
         text: staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged }) : advisoryNoticeText(verdict.signals, consumed.flagged),
         source: { kind: "mpd-roles", reason: "session-start-advisory" }
@@ -2643,6 +3059,26 @@ Work with the tools your role requires (read-only roles must never modify anythi
   } catch (error) {
     guardOutcome.push("readOnlyGuard=absent reason=threw");
     warnOnce("team-guard:threw", "the team-path read-only guard could not be installed (" + errText(error) + ")");
+  }
+  try {
+    const lawAccess = () => {
+      try {
+        return ctx.get?.(VERIFY_SERVICE, false) ?? undefined;
+      } catch {
+        return;
+      }
+    };
+    const verifyGuard = installVerifyGuard(dsh, {
+      presets: ["mpd"],
+      law: lawAccess,
+      workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
+      configValue,
+      warn: (line) => warnOnce("verify-guard:" + line, line)
+    });
+    guardOutcome.push(verifyGuard.installed ? "verifyGate=installed" : "verifyGate=absent reason=" + String(verifyGuard.reason));
+  } catch (error) {
+    guardOutcome.push("verifyGate=absent reason=threw");
+    warnOnce("verify-guard:threw", "the verification law's write guard could not be installed (" + errText(error) + ")");
   }
   try {
     installRosterSection(dsh, {

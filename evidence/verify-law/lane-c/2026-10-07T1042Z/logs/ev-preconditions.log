@@ -1,0 +1,24 @@
+cmd: ruling-A preconditions (captured 2026-10-07T10:44:47Z)
+--- A2: frozen contract on disk ---
+e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610  .mpd/plans/de-vendor-and-verify-law.md
+bytes=10277 mtime=2026-10-07 18:35:14.185707077 +0800
+--- A2b: amended spec (docs[].sha256 copied from THIS line) ---
+65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74  .mpd/plans/verify-law-spec.md
+--- A2c: the manual (it moved DURING this review: Lane D) ---
+f52338414c47c8b6c2bedb45aeaa86929f7a49e1a9ed15d68734fe94f08b6450  AGENTS.md
+bytes=65102 mtime=2026-10-07 18:44:17.304494007 +0800
+--- A3: F.3 marker re-probe ---
+ABSENT - a pre-plugin record is admissible (the exemption has not closed)
+--- settle: Lane C paths, START(10:42:07Z) vs END ---
+  complexity-gate  start=995564251c877723 end=995564251c877723
+  session-gate     start=81082cb588235743 end=81082cb588235743
+  session-start-team start=7c2646a700dfa554 end=7c2646a700dfa554
+  ulw src/index    start=6e2035821e063806 end=6e2035821e063806
+  cases.json       start=53460c32fa1d8198 end=a9ae27ae3bdd9014   <-- MOVED at 10:42:14Z (F1/F4)
+  SKILL.md         start=0fc50a7e6e47bc2c end=c216f7f450148794   <-- MOVED at 10:42:14Z (F4)
+  skills/**        start=1c8b9e4a06021b34(332 files) end=78ad940cb45b5ad2(331 files)
+--- the mutation timeline INSIDE the verification window ---
+  cases.json      mtime=2026-10-07 18:42:14.577916486 +0800
+  SKILL.md        mtime=2026-10-07 18:44:16.721008312 +0800
+  verify-law.ts   mtime=2026-10-07 18:42:59.259567285 +0800
+  runner evidence manifestSha256 = 53460c32fa1d8198b444d4135140b1ebae8dc0fbc23de02f1e7383fdd09b466d (the PRE-edit manifest)

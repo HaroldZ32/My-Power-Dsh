@@ -88,12 +88,16 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   `lib/client.js` (browser bundle) is OUT OF SCOPE, its export bridge guarded by
   `scripts/patch-agent-teams-client.ts`; (R4) `liveAgent`/`liveAgents`/`onEvent` swallow-and-degrade
   where the raw ctx would throw — the adapter's never-crash contract, deliberate; (R5) the count sentence
-  in `agent-references/agent-teams-deltas.md` keeps its exact wording (the docs gate's regex is FIXED)
-  while only its numbers move.
-- **The adopted-plugin delta registry lives in `agent-references/agent-teams-deltas.md`** (on demand,
-  not injected): the A1–D42 table, the registry mechanics, the region count and the wave-2 driver-script
-  warning. Two rules bind: (a) the registry is **derived** — regenerate with `--write-registry`, never
-  hand-edit an entry; (b) the **REPLACEMENT-shaped** deltas (D13/D14/D21/D22) do **not** self-heal after
+  in `agent-references/agent-teams-deltas.md` kept its exact wording (the docs gate's regex is FIXED)
+  while only its numbers moved. **That file, its registry and the whole adopted body are DELETED by the
+  `de-vendor-and-verify-law` wave**, so R5 and R1–R4 are now HISTORY: they describe a boundary that
+  existed while the body did. `docs/independence.md` §5 records the closure and the relocated home.
+- **The adopted-plugin delta registry was `agent-references/agent-teams-deltas.md`** (on demand, not
+  injected): the A1–D42 table, the registry mechanics, the region count and the wave-2 driver-script
+  warning. It was DELETED with the body it documented; the gate's derived-value rule survives only as a
+  self-test fixture, and it SAYS SO in its own run output rather than passing silently. Two rules bound
+  while it lived: (a) the registry was **derived** — regenerate with `--write-registry`, never
+  hand-edit an entry; (b) the **REPLACEMENT-shaped** deltas (D13/D14/D21/D22) did **not** self-heal after
   a human re-materialize — the applier REFUSES loudly, file byte-untouched, and the remedy is to restore
   the region or re-author it plus `--write-registry`. `scripts/vendor-agent-teams.ts` never re-copies the
   tree (it rewrites bare specifiers in place, works inside `_deps/`, and asserts OUR `lib/index.ts`

@@ -33,8 +33,10 @@
 //     above a coupling never rewrites the entry (T-55);
 //   * a non-`.ts` file under a scanned `src/` is the DECLARED OUT-OF-BAND set: hits there are
 //     printed in a loud NOT COVERED section and never fail the run;
-//   * `packages/mpd-agent-teams-plugin/lib/**` is OUT of the band by declaration (it is the RETIRED
-//     adopted body, not an mpd row); the report still counts its files so the blind spot is measured;
+//   * NO tree is declared out of the band any more: the RETIRED adopted body
+//     (`packages/mpd-agent-teams-plugin/lib/**`) that used to be declared here — and counted on every
+//     run so the blind spot stayed measured — is DELETED (de-vendor wave), and its replacement home
+//     (`packages/mpd-schemastery/{lib,harness}`) sits outside `src/` and so outside this subject;
 //   * a `.provide(...)` whose first argument is not a string LITERAL is printed in its own
 //     "not statically readable" section and never fails — a line scan cannot follow a constant, and
 //     naming that bound beats pretending the rule covers it.
@@ -110,8 +112,6 @@ export interface CouplingScan {
   packages: number
   /** How many `.ts` files were read inside those roots. */
   files: number
-  /** How many files the declared out-of-band tree `packages/mpd-agent-teams-plugin/lib` holds. */
-  declaredOutOfBandFiles: number
 }
 
 /** One self-test arm: its description, its verdict, and the detail printed when it fails. */
@@ -143,8 +143,13 @@ export type ReportStream = (line: string) => void
 const BAND_EXTENSION = ".ts"
 /** Extensions reported (never failed) when they sit under a scanned package's `src/`. */
 const OUT_OF_BAND_EXTENSIONS = [".js", ".mjs", ".cjs", ".jsx", ".tsx", ".mts", ".cts"]
-/** The RETIRED adopted body's vendored tree, declared out of the band and counted so it stays visible. */
-const DECLARED_OUT_OF_BAND_DIR = "packages/mpd-agent-teams-plugin/lib"
+// NO DECLARED OUT-OF-BAND TREE REMAINS. This constant used to name the RETIRED adopted body's
+// `packages/mpd-agent-teams-plugin/lib`, counted and printed on every run so a tree the band never
+// scans stayed visible. That body is DELETED (de-vendor wave), and its replacement home
+// (`packages/mpd-schemastery/{lib,harness}`) needs no declaration for the same reason the old one
+// arguably never did: the scanned band is `packages/mpd-<name>/src/**`, so a tree outside `src/`
+// is not skipped by this rule, it is simply outside the subject. The report line went with it —
+// a "0 file(s), never scanned" line for a directory that does not exist is noise, not a guard.
 
 /** A `from "<specifier>"` clause, the shape every static import/export of this repo uses. */
 const FROM_SPECIFIER = /\bfrom\s*["']([^"']+)["']/g
@@ -202,13 +207,27 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-mcp-codegraph/src/launch.ts :: import { resolveCodegraphBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
   "packages/mpd-mcp-gitbash/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
   "packages/mpd-mcp-lsp/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
-  // THE PINNED DEBT (docs/independence.md §4): four live files import the RETIRED adopted body's
-  // vendored schemastery tree. Re-homing it before the body is deleted would duplicate a 92 KB
-  // third-party library, so the debt is NAMED with a follow-up instead of fixed twice.
-  "packages/mpd-config-plugin/src/index.ts :: import z from \"../../mpd-agent-teams-plugin/_deps/schemastery\"",
-  "packages/mpd-config-plugin/src/settings-schema.ts :: import z from \"../../mpd-agent-teams-plugin/_deps/schemastery\"",
-  "packages/mpd-team-watchdog-plugin/src/index.ts :: import z from \"../../mpd-agent-teams-plugin/_deps/schemastery\"",
-  "packages/mpd-tui-plugin/src/index.ts :: import z from \"../../mpd-agent-teams-plugin/_deps/schemastery\"",
+  // THE DEBT IS REPAID, NOT DELETED (de-vendor wave): the four files below used to import the
+  // schemastery tree vendored inside the adopted `packages/mpd-agent-teams-plugin`, which is why
+  // docs/independence.md §4 carried them as a PINNED DEBT. That body is DELETED and the validator
+  // now lives in `packages/mpd-schemastery` — an mpd-owned package — so the four couplings are
+  // still real cross-package edges and stay FROZEN here, pointed at their new home. Frozen, not
+  // dropped: this gate exists to make a NEW edge loud, and quietly deleting these entries would
+  // hide the exact edges the wave rewrote.
+  "packages/mpd-config-plugin/src/index.ts :: import z from \"../../mpd-schemastery\"",
+  "packages/mpd-config-plugin/src/settings-schema.ts :: import z from \"../../mpd-schemastery\"",
+  "packages/mpd-team-watchdog-plugin/src/index.ts :: import z from \"../../mpd-schemastery\"",
+  "packages/mpd-tui-plugin/src/index.ts :: import z from \"../../mpd-schemastery\"",
+  // LANE D'S LAW (the W4 wave this same pull request lands): the roles plugin arms the verification
+  // law by reading the verifier seat and its record shape out of the new `mpd-verify-plugin`, and
+  // the service NAME is imported from its `service.ts` rather than restated — the same one-source
+  // rule the roster/table couplings above already follow. Frozen HERE by lane B, which owns this
+  // inventory this wave, so the gate stays green across the two lanes instead of reddening on an
+  // edge that was written on purpose. The third entry is spelled exactly as the scanner captures a
+  // multi-line `import type { … } from` clause; that leading `}` is the scanner's own form.
+  "packages/mpd-roles-plugin/src/index.ts :: import { VERIFY_SERVICE } from \"../../mpd-verify-plugin/src/service.ts\"",
+  "packages/mpd-roles-plugin/src/verify-guard.ts :: import type { ArmedLoopView, VerifierSeatView } from \"../../mpd-verify-plugin/src/law.ts\"",
+  "packages/mpd-roles-plugin/src/verify-guard.ts :: } from \"../../mpd-verify-plugin/src/law.ts\"",
   // mpd-ext -> mpd-roles: the roster table is read, never restated.
   "packages/mpd-ext-plugin/src/registry.ts :: import { ROLES, ROLE_BY_ID } from \"../../mpd-roles-plugin/src/roles.data\"",
   // mpd-roster-provider -> mpd-config: the slot membership has ONE declaration for both settings
@@ -626,7 +645,6 @@ export function scanCouplings(repoRoot: string, inventory: readonly string[] = F
     inventorySize: inventory.length,
     packages: packages.length,
     files,
-    declaredOutOfBandFiles: walkFiles(join(repoRoot, DECLARED_OUT_OF_BAND_DIR)).length,
   }
 }
 
@@ -851,7 +869,6 @@ export function report(result: CouplingScan, stream: ReportStream = console.log)
     stream(`NOT COVERED (non-${BAND_EXTENSION} files under a scanned src/, never a failure) — ${result.outOfBand.length}:`)
     for (const hit of result.outOfBand) stream(`  ${hit.file}:${hit.line}`)
   }
-  stream(`DECLARED OUT OF BAND: ${DECLARED_OUT_OF_BAND_DIR} (the RETIRED adopted body's tree) — ${result.declaredOutOfBandFiles} file(s), never scanned, never silently skipped`)
   if (result.unfrozen.length > 0) {
     stream(`NEW COUPLINGS (${result.unfrozen.length}) — each one is a compile-time dependency the frozen set does not describe:`)
     for (const finding of result.unfrozen) stream(findingLine(finding))
