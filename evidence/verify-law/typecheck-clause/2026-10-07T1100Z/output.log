@@ -1,0 +1,119 @@
+===================================================================
+Lane E — the SEVENTH record: the `typecheck` clause + the amended re-pin
+recordId: lane-e-typecheck-clause-2026-10-07T1100Z   verdict: PASS
+===================================================================
+
+--- RESIDUAL BOUND (verify-law-spec (c)), verbatim ---
+the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin’s own observation log.
+
+=== LOG: ev-clause-state.log
+cmd: the closing state  [2026-10-07T10:58:25Z]
+HEAD=e183311cdebc13d3a612fa00cf0b1fe2427edf73
+tracked-change count: 0
+--- F.3 marker ---
+ABSENT (the law has not booted in the real workspace)
+--- the lock skills entry + corpus ---
+  lock skills.treeSha=4b3b68e9ef60d16f4c6b1292da93de51b17a375752e907c835601a5000936285 fileCount=331
+  working corpus: files=331
+--- settle: the clause subjects ---
+  skills/dsh-qa/scripts/verify-law.ts                  e6dc5db58db3b815b32dca06eceb3bef
+  packages/mpd-verify-plugin/qa/verify-law.ts          e6dc5db58db3b815b32dca06eceb3bef
+  skills/dsh-qa/scripts/lib/session-evidence.ts        cadf2086a2a6ba30e320f6debae23acf
+  VENDOR_LOCK.json                                     a4812d02f3b92b63b174ce24382477c0
+
+=== LOG: ev-comments-direct.log
+cmd: node scripts/verify-comment-coverage.ts  (direct form)
+# verify-comment-coverage
+
+scanned 357 TypeScript file(s) of 357 in the source set; inspected 31107 declaration(s); skipped 13740 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+EXIT=0
+
+=== LOG: ev-comments.log
+cmd: bun run verify:comments  (re-run, no timeout wrapper)
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 357 TypeScript file(s) of 357 in the source set; inspected 31107 declaration(s); skipped 13740 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+EXIT=0
+
+=== LOG: ev-fix-reasoning.log
+cmd: the fix reasoning probes (name level)
+  reader declares succeeded: 11 line(s)
+  case copy A mentions succeeded: 5 | copy B: 5
+  dynamic import( in the case: 4 | pathToFileURL/fileURLToPath: 3
+--- the closure verification log the writer measured with ---
+
+TYPECHECK
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+DRIFT
+[run-qa-lanes] manifest and disk agree (48 entries, 42 lane script(s) discovered) and the immutability guard is declared
+DRIFT_EXIT=0
+
+TEST:QA
+[test:qa] all self-tests passed
+TESTQA_EXIT=0
+--- the LIVE arm on the closing bytes ---
+  ok=true | mounted=true | denied=true | codeNotWritten=true | controlNotDenied=true | controlWritten=true | docsAllowed=true | sandboxMarker=true | realMarkerUnchanged=true | sessionsSandboxed=true
+
+=== LOG: ev-law-selftest.log
+cmd: node skills/dsh-qa/scripts/verify-law.ts --self-test
+[verify-law self-test] ok: the registered copy is byte-identical (e6dc5db58db3)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+EXIT=0
+
+=== LOG: ev-pack-gate.log
+cmd: node scripts/verify-pack-closure.ts
+[verify-pack-closure] ok: 23 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 24 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (409 asset files); agent references 2/2; root files 1/1; declared packages 28/28 present in the artifact; content bytes: 542 file(s) compared, 542 identical, 0 drift, 0 expected-after-pack; completeness: 446 declared source file(s) compared, 445 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-07T10:57:42.412Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+EXIT=0
+
+=== LOG: ev-repin-check.log
+cmd: node scripts/repin-vendor.ts --check
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)
+EXIT=0
+
+=== LOG: ev-test-qa.log
+cmd: bun run test:qa
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+[test:qa] all self-tests passed
+EXIT=0
+
+=== LOG: ev-typecheck.log
+cmd: bun run typecheck
+$ tsgo --noEmit
+EXIT=0
+
+=== LOG: ev-vendor-unset.log
+cmd: env -u MPD_UPSTREAM_ROOT node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 331 files
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS - 6 shipped asset(s) fingerprinted, upstream identity not checked
+EXIT=0
+
+=== LOG: ev-verify-gates.log
+cmd: bun run verify:gates
+[verify-gates] member comment-coverage: exit=0 PASS - 1718ms
+[verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+[verify-gates] workflows out| [verify-workflows] audited 1 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 61ms
+[verify-gates] PASS - 8/8 member gate(s) green
+EXIT=0
+

@@ -1,0 +1,8 @@
+cmd: bun run verify:gates
+[verify-gates] member comment-coverage: exit=0 PASS - 1718ms
+[verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+[verify-gates] workflows out| [verify-workflows] audited 1 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 61ms
+[verify-gates] PASS - 8/8 member gate(s) green
+EXIT=0

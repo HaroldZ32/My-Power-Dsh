@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "recordId": "lane-e-typecheck-clause-2026-10-07T1100Z",
+  "loopId": "waveloop-lane-c",
+  "taskId": null,
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "lane-c-repair (the stub fix) + the wave closing sweep",
+  "verifierId": "lane-e-verifier",
+  "basis": {
+    "kind": "pre-plugin",
+    "attestation": "no-guard-in-process",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/verify-law-spec.md",
+        "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+      },
+      {
+        "path": "AGENTS.md",
+        "sha256": "81ad82454e5056363f739b4f48014fbc15c69d68f201d9df25d1d3f388b10baf"
+      },
+      {
+        "path": "VENDOR_LOCK.json",
+        "sha256": "a4812d02f3b92b63b174ce24382477c021f3f789ec72fd8f037afa1e743121a6"
+      },
+      {
+        "path": "package.json",
+        "sha256": "98653072508f20594a0101f44e3b669e9edae889263d170fd212517a2c9fbb97"
+      },
+      {
+        "path": "evidence/gates/complexity-gate/2026-10-07T10-32-25Z/closure-verification.out",
+        "sha256": "63bfaa474bb7a95b6772d5bfcb524b2cc6cf85e1eb8438570167e58a8000367e"
+      },
+      {
+        "path": "evidence/gates/verify-law/2026-10-07T10-55-54.339Z/result.json",
+        "sha256": "4db76932f73eee5c9d2cbc1de65e81cec46962967908215fe92f752145d191d4"
+      }
+    ],
+    "probe": [
+      {
+        "path": "skills/dsh-qa/scripts/verify-law.ts",
+        "bytes": 23534,
+        "sha256": "e6dc5db58db3b815b32dca06eceb3bef6a72becbb67a7b8fb2474128e97cffac",
+        "mtime": "2026-10-07T10:55:49.378Z"
+      },
+      {
+        "path": "packages/mpd-verify-plugin/qa/verify-law.ts",
+        "bytes": 23534,
+        "sha256": "e6dc5db58db3b815b32dca06eceb3bef6a72becbb67a7b8fb2474128e97cffac",
+        "mtime": "2026-10-07T10:55:49.375Z"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/lib/session-evidence.ts",
+        "bytes": 32629,
+        "sha256": "cadf2086a2a6ba30e320f6debae23acfb53fd956e44146af117625bd31fe01da",
+        "mtime": "2026-10-02T12:34:41.729Z"
+      },
+      {
+        "path": "VENDOR_LOCK.json",
+        "bytes": 4011,
+        "sha256": "a4812d02f3b92b63b174ce24382477c021f3f789ec72fd8f037afa1e743121a6",
+        "mtime": "2026-10-07T10:57:34.020Z"
+      },
+      {
+        "path": "scripts/verify-comment-coverage.ts",
+        "bytes": 19803,
+        "sha256": "2c3825fd636e32f7275b91b984b5ac845cd4d25e1e9cfa0d4e18e2a3081cc48a",
+        "mtime": "2026-10-07T10:32:02.765Z"
+      },
+      {
+        "path": ".mpd/verify/boot.json",
+        "exists": false
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/verify-law-spec.md",
+      "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "81ad82454e5056363f739b4f48014fbc15c69d68f201d9df25d1d3f388b10baf"
+    },
+    {
+      "path": "VENDOR_LOCK.json",
+      "sha256": "a4812d02f3b92b63b174ce24382477c021f3f789ec72fd8f037afa1e743121a6"
+    },
+    {
+      "path": "package.json",
+      "sha256": "98653072508f20594a0101f44e3b669e9edae889263d170fd212517a2c9fbb97"
+    },
+    {
+      "path": "evidence/gates/complexity-gate/2026-10-07T10-32-25Z/closure-verification.out",
+      "sha256": "63bfaa474bb7a95b6772d5bfcb524b2cc6cf85e1eb8438570167e58a8000367e"
+    },
+    {
+      "path": "evidence/gates/verify-law/2026-10-07T10-55-54.339Z/result.json",
+      "sha256": "4db76932f73eee5c9d2cbc1de65e81cec46962967908215fe92f752145d191d4"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-typecheck.log",
+      "logSha256": "8f61a615742758ff02c97cbbb7bbefb0224591af06b7848260814bb0d846980b"
+    },
+    {
+      "cmd": "bun run verify:comments (re-run; the first pass was a harness bug, see notes)",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-comments.log",
+      "logSha256": "d0632c3611985ca1af9c0749bbbf5544aa0cd21632c50dc16aeb1bca8fb7cb55"
+    },
+    {
+      "cmd": "node scripts/verify-comment-coverage.ts (direct form)",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-comments-direct.log",
+      "logSha256": "66a96dd450a3a62df4f61adc61081448f4b05ffccaf9fa1d3dacc766c16c9695"
+    },
+    {
+      "cmd": "node scripts/repin-vendor.ts --check",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-repin-check.log",
+      "logSha256": "9b4412b5e64870820a1bc891637b0f820dd46f31963e231a203b489dfc30f386"
+    },
+    {
+      "cmd": "env -u MPD_UPSTREAM_ROOT node scripts/verify-vendor.ts",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-vendor-unset.log",
+      "logSha256": "3a5e0a37f734d64db1ebaca30196e614c3dc10c6f9eab0fd0887e6349251c22a"
+    },
+    {
+      "cmd": "node scripts/verify-pack-closure.ts (the gate)",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-pack-gate.log",
+      "logSha256": "5051f6332acf301935ec9b00d62316ef79895270b34da8ee00473b08dc18daaa"
+    },
+    {
+      "cmd": "node skills/dsh-qa/scripts/verify-law.ts --self-test",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-law-selftest.log",
+      "logSha256": "36243e8a03af7c9cd022c2b294f597d267a1b805158482838cb5d077f6f00c40"
+    },
+    {
+      "cmd": "bun run test:qa",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-test-qa.log",
+      "logSha256": "a9aa3f8bf2cd12ac7028b2a39b9169c1a9d3d4724b25f15d2d1cd077c2443562"
+    },
+    {
+      "cmd": "bun run verify:gates",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-verify-gates.log",
+      "logSha256": "244397e9e5e826ca7b3271973907f0a9860eb328b78d5b74613bc48a1595fc19"
+    },
+    {
+      "cmd": "the closing state: HEAD, quiescence, marker, lock-versus-corpus, the clause subjects",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-clause-state.log",
+      "logSha256": "753aff0d5f74fd55bf997ec019e9ed52e81f387093745dc32a81828fc75028ec"
+    },
+    {
+      "cmd": "the fix reasoning probes + the writer closure log + the live arm on the closing bytes",
+      "exit": 0,
+      "logPath": "evidence/verify-law/typecheck-clause/2026-10-07T1100Z/logs/ev-fix-reasoning.log",
+      "logSha256": "eff4c8874675905ca5ba076a36b3f8dece83d918a0d3575eb8bf3805033c9bdf"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "notes": [
+    "RESIDUAL BOUND (verify-law-spec §(c), verbatim): the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).",
+    "DOCKER DECLARED BOUND (captain ruling D): the Docker lane's evidence is INTEGRATION-borne and declared in the PR body — a declared bound, never a hole.",
+    "THE CLAUSE IS GREEN ON SETTLED BYTES: `bun run typecheck` → **EXIT=0** (`$ tsgo --noEmit`, no diagnostics). This is the one red no lane record covered, and it is closed.",
+    "THE AMENDED RE-PIN MATCHES THE COMMITTED CORPUS, with BOTH witnesses green and the env unset where it matters: `node scripts/repin-vendor.ts --check` → exit 0, `CHECK: GREEN - lock matches the working tree (drift=0, problems=0)`; `env -u MPD_UPSTREAM_ROOT node scripts/verify-vendor.ts` → exit 0, `PASS - 6 shipped asset(s) fingerprinted, upstream identity not checked`. The lock's `assets.skills.treeSha` reads `4b3b68e9ef60d16f4c6b1292da93de51b17a375752e907c835601a5000936285` at `fileCount 331`, and the working corpus measures 331 files — so the wave still lands exactly ONE re-pin, in the same commit as the `skills/**` change that invalidated the treeSha (§9's invariant, checked rather than assumed).",
+    "THE CLOSING SWEEP IS WHAT CAUGHT THIS RED, and that is recorded here as the clause's provenance: four lane records had passed the BEHAVIOUR of the law while `bun run typecheck` failed on `skills/dsh-qa/scripts/verify-law.ts(200,36)` (`Property 'succeeded' does not exist on type …`). A verifier proves behaviour, the type checker proves types, and neither retires the other — this record exists because a PASS must not silently stand for a gate that was never re-run after the last write.",
+    "THE FIX'S REASONING IS SOUND AND CORROBORATED AT THE NAME LEVEL. (a) The READER was not the problem: `skills/dsh-qa/scripts/lib/session-evidence.ts` mentions `succeeded` 11 times, so its interface already declared the member. (b) The case's own stub did not: both copies of the case now mention `succeeded` 5 times each and are BYTE-IDENTICAL (`e6dc5db58db3b815…`), the same digest the acceptance-named self-test prints (`registered copy is byte-identical (e6dc5db58db3)`), so the authored and registered homes agree byte-for-byte. (c) Completing the shape locally instead of adding `import type` is JUSTIFIED by the file's own construction, which I probed rather than took on trust: the case uses dynamic imports (`import(` 4×) plus `pathToFileURL`/`fileURLToPath` (3×), i.e. its QA-library specifiers are computed at run time from the repo root — a single static relative specifier cannot serve both the authored and the registered location, so a local structural member is the correct tool.",
+    "THE LIVE ARM RE-RAN ON THE CLOSING BYTES and is nine of nine true at `evidence/gates/verify-law/2026-10-07T10-55-54.339Z/result.json` (`mounted | denied | codeNotWritten | controlNotDenied | controlWritten | docsAllowed | sandboxMarker | realMarkerUnchanged | sessionsSandboxed` all true), so the behaviour the lane records verified was not disturbed by the stub fix. The real workspace's `.mpd/verify/boot.json` is ABSENT before and after (re-probed in this record's own logs).",
+    "REVISION NOTE, REPORTED RATHER THAN RECONCILED: the captain's measurement cited `HEAD e987c3ac`; my measurements are on **`HEAD e183311cdebc13d3a612fa00cf0b1fe2427edf73`** with `git status --porcelain --untracked-files=no` = **0 tracked changes**, i.e. the tip advanced one commit after that measurement. Every claim above was re-derived on `e183311c`, not carried over: the clause, both re-pin witnesses, the lock/corpus agreement and the nine live values are all measured there.",
+    "A FALSE RED IN MY OWN HARNESS, disclosed because it is the kind of thing a record must not hide: my first pass logged `bun run verify:comments` as EXIT=127. That was MY bug — a `for pair in \"label:command\"` loop split with `${pair##*:}` truncates a command containing a colon, so the shell tried to run the literal token `comments`. Re-run in both forms on the same bytes: `bun run verify:comments` → exit 0 (`VERDICT: PASS — every declaration in the family carries a precise comment and a full signature`, 357 files / 31107 declarations) and `node scripts/verify-comment-coverage.ts` → exit 0. The gate was never red; my wrapper was.",
+    "ALL OTHER CLOSING GATES RE-RUN GREEN BY THIS SEAT: `bun run test:qa` → exit 0 (`all self-tests passed`); `bun run verify:gates` → exit 0; `node scripts/verify-pack-closure.ts` → exit 0; `node skills/dsh-qa/scripts/verify-law.ts --self-test` → exit 0. Taken with the two witnesses above, the wave's static surface is green on the closing bytes.",
+    "THE LANE E LEDGER CLOSES WITH SEVEN RECORDS (eight pairs counting the pre-flight): A PASS · B FAIL then re-verified PASS · C FAIL then re-verified PASS · D FAIL then re-verified PASS · pre-flight FAIL · this clause PASS. Every verdict was recorded before any implementation read, `unlockedReads` stayed empty throughout, and no implementation file was opened for any of them.",
+    "METHOD — no implementation read: no .ts/.js source and no dist/** was opened. Evidence used: the acceptance-named commands with their exits and outputs, byte hashes of both case copies, name-level probes (mention counts, dynamic-import and file-URL helpers), the lock versus the corpus file count, the writer's own closure-verification log, read-only git state, and the marker probe."
+  ],
+  "createdAt": "2026-10-07T11:01:00Z",
+  "predecessor": "the wave closing sweep (evidence/gates/complexity-gate/2026-10-07T10-32-25Z/closure-verification.out) and lane-e-lane-d-reverify-2026-10-07T1055Z (a70ef165…)"
+}
