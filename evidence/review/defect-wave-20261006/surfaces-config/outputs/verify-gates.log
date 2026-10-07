@@ -1,0 +1,4 @@
+### bun run verify:gates (post-pack)
+[verify-gates] FAIL - 1/8 member gate(s) failed: vendor (exit=1)
+error: script "verify:gates" exited with code 1
+exit=1

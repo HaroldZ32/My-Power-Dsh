@@ -1,0 +1,29 @@
+[mpd-better-sidebar] mount guard: DISABLED - no enabled @deepseek-ai/dsh-host-webserver entry in this composition
+[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted. THE MPD TEAM IS UNAFFECTED: since the team-plane split (W2) it runs on the NATIVE executor over ctx.subagents, which needs nothing from this row (see cordis.patch.yml TUI PLANE / W5)
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/mount-boot/20261002T152926Z/sandbox/ws
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills (provider mpd-bundle, bundle 0.11.6)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)
+[mpd-team-core] team web routes: /plugins/mpd-team/state /plugins/mpd-team/plan /plugins/mpd-team/task /plugins/mpd-team/mail
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+dsh: warning: 1 entry did not activate
+mpd-tui-adapter (@mpd-dsh/mpd/packages/mpd-tui-adapter-plugin/dist/index.js): failed to import
+[?1049l[?1006l[?1003l[?1002l[?1000l[>4m[<u[?9001l[?1004l[?2004l[?25h]9;4;0;
+
+dsh-tui startup failed: dsh-tui requires an interactive terminal (stdout must be a TTY).
+[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)
+[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)
+[dsh-tui] dsh profile 已退出（退出码 1）。可直接运行以下命令查看诊断：
+  dsh --profile dsh-tui
+[dsh-tui] 异常退出（码 1）。可运行 dsh-tui safe 进入安全模式
+[dsh-tui] dsh profile 已退出（退出码 1）。可直接运行以下命令查看诊断：
+  dsh --profile dsh-tui
+[?1000h[?1002h[?1003h[?1006h[?1049$p[c[0m]8;;[H[4C[5B [48;5;59m[38;5;153m╭────────────────────────────╮[4C[1B[39m[49m [48;5;59m[38;5;153m│[39m[48;5;68m ❯ 编辑                     [48;5;59m[38;5;153m│[5C[1B│[39m   在此新建会话             [38;5;153m│[4C[1B[39m[49m [48;5;59m[38;5;153m│[39m   重命名工作区             [38;5;153m│[5C[1B│[38;5;181m   从列表移除[39m               [38;5;153m│[5C[1B╰────────────────────────────╯[39m[49m[24;1H

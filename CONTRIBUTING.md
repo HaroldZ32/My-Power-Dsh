@@ -58,11 +58,12 @@ cd My-Power-Dsh
 bun install
 ```
 
-`bun install` materializes the declared runtime dependencies, including `dsh-better-sidebar`, whose
-transitive `node-pty` needs `node-gyp`. Where `node-gyp` is unavailable:
+`bun install` materializes the declared runtime dependencies, including `dsh-better-sidebar`. Earlier
+releases pulled a transitive `node-pty` that needs `node-gyp`; `0.24.1` no longer depends on it
+(measured 2026-10-02), so this is only needed where `node-gyp` is unavailable:
 
 ```bash
-bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts
+bun add dsh-better-sidebar@0.24.1 --ignore-scripts
 ```
 
 Only the sidebar's terminal panel degrades.
@@ -72,7 +73,7 @@ Only the sidebar's terminal panel degrades.
 | Path | Holds |
 |---|---|
 | `packages/` | one directory per plugin package (`src/`, committed `dist/`, the bilingual `README` pair) |
-| `packages/mpd-bundle/cordis.patch.yml` | the bundle patch: every plugin, MCP and sidebar row |
+| `cordis.patch.yml` | the bundle patch: every plugin, MCP and sidebar row |
 | `presets/mpd.patch.yml` | the `mpd` preset row |
 | `scripts/` | gates, the packer, the installer and the extension CLI |
 | `skills/` | the served skill corpus (including `skills/dsh-qa`) |

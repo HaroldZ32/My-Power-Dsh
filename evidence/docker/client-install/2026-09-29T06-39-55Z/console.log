@@ -1,0 +1,33 @@
+ Image mpd-docker-e2e:local Building 
+ Image mpd-docker-e2e:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 975B done
+#1 DONE 0.0s
+
+#2 [mpd-client internal] load build definition from Dockerfile
+#2 transferring dockerfile: 4.72kB done
+#2 DONE 0.1s
+
+#3 [mpd-oneclick internal] load metadata for docker.io/library/ubuntu:24.04
+#3 ERROR: failed to do request: Head "https://registry-1.docker.io/v2/library/ubuntu/manifests/24.04": dial tcp 103.246.246.144:443: connect: connection refused
+------
+ > [mpd-client internal] load metadata for docker.io/library/ubuntu:24.04:
+------
+Dockerfile:17
+
+--------------------
+
+  15 |     # apparatus is TypeScript and is executed by the Node 24 the entrypoint installs, so the image needs
+
+  16 |     # no build step of its own.
+
+  17 | >>> FROM ubuntu:24.04
+
+  18 |     
+
+  19 |     ENV DEBIAN_FRONTEND=noninteractive
+
+--------------------
+
+target mpd-client: failed to solve: ubuntu:24.04: failed to resolve source metadata for docker.io/library/ubuntu:24.04: failed to do request: Head "https://registry-1.docker.io/v2/library/ubuntu/manifests/24.04": dial tcp 103.246.246.144:443: connect: connection refused
+

@@ -1,0 +1,3 @@
+cmd: git ls-files | xargs grep -l -E 'oh-my-openagent|dsh-agent-teams|mpd-dsh/upstream'
+tracked_total=1442
+code_config_surface=92

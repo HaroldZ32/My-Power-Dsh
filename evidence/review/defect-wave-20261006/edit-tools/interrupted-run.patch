@@ -1,0 +1,1114 @@
+diff --git a/packages/mpd-boulder-plugin/dist/index.js b/packages/mpd-boulder-plugin/dist/index.js
+index 053180d4..36742426 100644
+--- a/packages/mpd-boulder-plugin/dist/index.js
++++ b/packages/mpd-boulder-plugin/dist/index.js
+@@ -659,7 +659,8 @@ function endTaskTimer(directory, workId, taskKey, endedAt) {
+   return writeBoulderState(directory, state) ? state : null;
+ }
+ // packages/mpd-boulder-plugin/src/index.ts
+-import { join as join5 } from "node:path";
++import { join as join5, isAbsolute as isAbsolute2, resolve as resolve4 } from "node:path";
++import { existsSync as existsSync5 } from "node:fs";
+ 
+ // packages/mpd-dsh-adapter-plugin/src/index.ts
+ import { randomUUID } from "node:crypto";
+@@ -2210,6 +2211,9 @@ function mergedConfig(ctx, config) {
+ function boulderRoot(config, dsh, exec) {
+   return resolveBoulderDir(config.boulderDir) ?? dsh.workspaceRoot(exec);
+ }
++function planPathFor(dir, planPath) {
++  return isAbsolute2(planPath) ? resolve4(planPath) : resolve4(dir, planPath);
++}
+ function apply(ctx, config = {}) {
+   const dsh = resolveDshAdapter(ctx);
+   const merged = mergedConfig(ctx, config);
+@@ -2262,7 +2266,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
+       let planProgress = null;
+       if (args?.planPath) {
+         try {
+-          planProgress = getPlanProgress(String(args.planPath));
++          planProgress = getPlanProgress(planPathFor(dir, String(args.planPath)));
+         } catch (e) {
+           planProgress = { error: String(e?.message ?? e) };
+         }
+@@ -2347,8 +2351,11 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
+     execute: async (args, exec) => {
+       const dir = root(exec);
+       const planPath = String(args?.planPath);
+-      const progress = getPlanProgress(planPath);
+-      return { planPath, progress };
++      const resolved = planPathFor(dir, planPath);
++      if (!existsSync5(resolved))
++        throw new Error("mpd-boulder: plan not found: " + resolved + " (relative paths resolve against the state root " + dir + ")");
++      const progress = getPlanProgress(resolved);
++      return { planPath: resolved, progress };
+     }
+   });
+   dsh.registerTool({
+diff --git a/packages/mpd-boulder-plugin/src/index.ts b/packages/mpd-boulder-plugin/src/index.ts
+index 8119e36b..a6e2edf9 100644
+--- a/packages/mpd-boulder-plugin/src/index.ts
++++ b/packages/mpd-boulder-plugin/src/index.ts
+@@ -17,7 +17,8 @@ import {
+   startTaskTimer,
+   endTaskTimer,
+ } from "./vendor/index.ts"
+-import { join } from "node:path"
++import { join, isAbsolute, resolve } from "node:path"
++import { existsSync } from "node:fs"
+ import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+ // THE ONE READING OF `boulder.dir`. Its normalization rule is shared with the session gate's signal D
+ // (`mpd-roles-plugin`'s `resolveBoulderDir`), deliberately: this knob is a STATE ROOT whose ledger is
+@@ -76,6 +77,21 @@ function boulderRoot(config: Config, dsh: DshAdapter, exec?: any): string {
+   return resolveBoulderDir(config.boulderDir) ?? dsh.workspaceRoot(exec)
+ }
+ 
++/**
++ * A caller-named plan path as an absolute path: a RELATIVE one resolves against this call's state
++ * root — the same base the vendor's `resolveBoulderPlanPathForWork` uses for a recorded work — and
++ * never against the dsh process cwd, which for a session launched elsewhere resolves to a path that
++ * does not exist. The vendor's progress reader answers silent ZEROES for such a path, so resolution
++ * has to happen here, where the caller can still be told.
++ *
++ * @param dir - the session-resolved state root for this call (`boulderRoot`).
++ * @param planPath - the plan path exactly as the caller spelled it.
++ * @returns the absolute plan path to read.
++ */
++function planPathFor(dir: string, planPath: string): string {
++  return isAbsolute(planPath) ? resolve(planPath) : resolve(dir, planPath)
++}
++
+ /** Register every boulder tool on the adapter; `config` is the row config, which `mpd.jsonc` may override per key. */
+ export function apply(ctx: Ctx, config: Config = {}): void {
+   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
+@@ -162,7 +178,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
+       // Filled only when the caller names a plan; the schema types it `object` and does not require it.
+       let planProgress: any = null
+       if (args?.planPath) {
+-        try { planProgress = getPlanProgress(String(args.planPath)) } catch (e: any) { planProgress = { error: String(e?.message ?? e) } }
++        // Same session resolution as the dedicated progress tool: a RELATIVE path belongs to this
++        // session's workspace, so it is no longer probed against the process cwd (which answered the
++        // same silent zeroes the progress tool used to).
++        try { planProgress = getPlanProgress(planPathFor(dir, String(args.planPath))) } catch (e: any) { planProgress = { error: String(e?.message ?? e) } }
+       }
+       // Response envelope: the ledger path is always reported, so a caller sees where state lives.
+       const result: any = { stateFile: join(dir, ".mpd", "boulder.json"), activeWorks, resumeOptions }
+@@ -266,13 +285,19 @@ export function apply(ctx: Ctx, config: Config = {}): void {
+     parameters: { type: "object", properties: { planPath: { type: "string" } }, required: ["planPath"] },
+     output: { schema: { type: "object", properties: { planPath: { type: "string" }, progress: { type: "object" } }, required: ["planPath", "progress"] }, render: (_a: unknown, v: any) => textBlock("plan progress " + v.planPath + ": " + JSON.stringify(v.progress, null, 1)) },
+     execute: async (args: any, exec: any) => {
+-      // Resolved for parity with the other tools; this one reads only the plan file the caller named.
++      // State root for this call; it is the base a RELATIVE plan path resolves against below.
+       const dir = root(exec)
+       // Plan file to parse; the tool schema makes it required.
+       const planPath = String(args?.planPath)
+-      // Checklist counts parsed from disk; a missing or checkbox-less plan yields zeroes, not an error.
+-      const progress = getPlanProgress(planPath)
+-      return { planPath, progress }
++      // The plan path this call actually reads: session-relative input resolved against `dir`.
++      const resolved = planPathFor(dir, planPath)
++      // REPORT an unresolvable plan rather than answering `{total: 0, completed: 0}`: zeroes are
++      // indistinguishable from a plan with no checkboxes, which is the silent-wrong-answer class this
++      // tool shared with the guard rows.
++      if (!existsSync(resolved)) throw new Error("mpd-boulder: plan not found: " + resolved + " (relative paths resolve against the state root " + dir + ")")
++      // Checklist counts parsed from disk.
++      const progress = getPlanProgress(resolved)
++      return { planPath: resolved, progress }
+     }
+   })
+ 
+diff --git a/packages/mpd-boulder-plugin/test/boulder.test.ts b/packages/mpd-boulder-plugin/test/boulder.test.ts
+index dbb81415..9e964e3b 100644
+--- a/packages/mpd-boulder-plugin/test/boulder.test.ts
++++ b/packages/mpd-boulder-plugin/test/boulder.test.ts
+@@ -96,6 +96,40 @@ test("mpd_boulder_status omits planProgress when null (lossless JSON contract)",
+   }
+ })
+ 
++// ── E7: a caller-named plan path resolves against THIS session's root ────────────────────────────
++// `mpd_boulder_plan_progress` handed the caller's path verbatim to the vendor's progress reader,
++// which answers silent ZEROES for a path it cannot resolve (`plan-progress.ts#getPlanProgress`).
++// A RELATIVE path — the spelling `mpd_boulder_start` records and every caller uses — therefore
++// reported `total: 0` while the plan sat in the session workspace, and an absent plan was
++// indistinguishable from an empty one.
++test("mpd_boulder_plan_progress resolves a relative plan path and REPORTS an unresolvable one", async () => {
++  // Saved so the sandbox workspace root is restored after the test, whatever it asserted.
++  const prev = process.env.DSH_WORKSPACE_ROOT
++  /** The session workspace this arm's tools resolve through the adapter. */
++  const ws = mkdtempSync(join(tmpdir(), "mpd-bl-progress-"))
++  process.env.DSH_WORKSPACE_ROOT = ws
++  try {
++    /** The plan path as a caller spells it: relative to the session workspace. */
++    const rel = join(".mpd", "plans", "e7-progress-fixture.md")
++    mkdirSync(join(ws, ".mpd", "plans"), { recursive: true })
++    writeFileSync(join(ws, rel), "# P\n\n## TODOs\n- [ ] 1. A\n- [x] 2. B\n\n## Final Verification Wave\n- [ ] F1. C\n")
++    /** Capture array standing in for the harness tool registry. */
++    const tools: any[] = []
++    apply({ tools: { register: (t: any) => tools.push(t) } } as any, {})
++    // The progress tool under test.
++    const progress = tools.find((t: any) => t.name === "mpd_boulder_plan_progress")
++    /** The progress of the RELATIVE path: pre-fix the reader probed it against the process cwd. */
++    const resolved = await progress.execute({ planPath: rel })
++    expect(resolved.progress).toEqual({ total: 3, completed: 1, isComplete: false })
++    // A plan that cannot be resolved at all must be REPORTED; zeroes would read as an empty plan.
++    /** The refusal text, or null when the tool answered zeroes instead of refusing. */
++    const missing = await progress.execute({ planPath: join(".mpd", "plans", "ghost.md") }).then(() => null, (e: unknown) => String(e))
++    expect(missing ?? "ANSWERED ZEROES: no error was raised").toContain(join(ws, ".mpd", "plans", "ghost.md"))
++  } finally {
++    if (prev === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = prev
++  }
++})
++
+ // ── THE STATE ROOT (D4 defect, measured live 2026-10-06) ─────────────────────
+ // `mpd_boulder_*` reads and writes `<root>/.mpd/boulder.json`, where `root` is the session workspace
+ // unless `boulder.dir` overrides it. The knob's retired schema default resolved to `.mpd` in every
+diff --git a/packages/mpd-comment-checker-plugin/dist/index.js b/packages/mpd-comment-checker-plugin/dist/index.js
+index 9daf1b3e..4a7cc275 100644
+--- a/packages/mpd-comment-checker-plugin/dist/index.js
++++ b/packages/mpd-comment-checker-plugin/dist/index.js
+@@ -2,7 +2,7 @@
+ import { existsSync, readFileSync } from "node:fs";
+ import { spawnSync } from "node:child_process";
+ import { createRequire } from "node:module";
+-import { dirname as dirname2, join as join2, resolve as resolve3 } from "node:path";
++import { dirname as dirname2, isAbsolute, join as join2, resolve as resolve3 } from "node:path";
+ 
+ // packages/mpd-dsh-adapter-plugin/src/index.ts
+ import { randomUUID } from "node:crypto";
+@@ -1643,6 +1643,14 @@ function apply(ctx, config = {}) {
+     }
+   });
+   if (cfg.autoCheck === true) {
++    const appendNote = (out, result, note) => {
++      const c = out.content ?? result?.content;
++      const text = typeof c === "string" ? c : Array.isArray(c) ? c.map((b) => b && b.type === "text" ? b.text : "").join(`
++`) : "";
++      return { ...out, content: [{ type: "text", text: (text ? text + `
++
++` : "") + note }] };
++    };
+     dsh.onPostToolExecute(async (exec, result, out) => {
+       if (out.kind !== "accept")
+         return out;
+@@ -1652,28 +1660,27 @@ function apply(ctx, config = {}) {
+       const fp = exec.arguments?.file_path ?? exec.arguments?.path;
+       if (typeof fp !== "string")
+         return out;
++      const target = isAbsolute(fp) ? resolve3(fp) : resolve3(dsh.workspaceRoot(exec), fp);
+       const binary = resolveBinary(cfg);
+       if (!binary)
+         return out;
+       let content = "";
++      let readError = "";
+       try {
+-        content = readFileSync(fp, "utf8");
+-      } catch {
+-        return out;
++        content = readFileSync(target, "utf8");
++      } catch (e) {
++        readError = String(e?.message ?? e);
+       }
++      if (readError)
++        return appendNote(out, result, "[mpd-comment-checker] auto-check skipped " + target + ": " + readError);
+       if (!content)
+         return out;
+-      const res = runCheck(binary, hookInputFor(fp, content, dsh.workspaceRoot(exec)), timeoutMs);
++      const res = runCheck(binary, hookInputFor(target, content, dsh.workspaceRoot(exec)), timeoutMs);
+       if (!res.hasComments)
+         return out;
+-      const hint = "[mpd-comment-checker] comments/docstrings detected in " + fp + `:
++      const hint = "[mpd-comment-checker] comments/docstrings detected in " + target + `:
+ ` + res.message.slice(0, maxMessageChars);
+-      const c = out.content ?? result?.content;
+-      const text = typeof c === "string" ? c : Array.isArray(c) ? c.map((b) => b && b.type === "text" ? b.text : "").join(`
+-`) : "";
+-      return { ...out, content: [{ type: "text", text: (text ? text + `
+-
+-` : "") + hint }] };
++      return appendNote(out, result, hint);
+     });
+   }
+ }
+diff --git a/packages/mpd-comment-checker-plugin/src/index.ts b/packages/mpd-comment-checker-plugin/src/index.ts
+index 84206450..9029031e 100644
+--- a/packages/mpd-comment-checker-plugin/src/index.ts
++++ b/packages/mpd-comment-checker-plugin/src/index.ts
+@@ -11,7 +11,7 @@
+ import { existsSync, readFileSync } from "node:fs"
+ import { spawnSync } from "node:child_process"
+ import { createRequire } from "node:module"
+-import { dirname, join, resolve } from "node:path"
++import { dirname, isAbsolute, join, resolve } from "node:path"
+ import { DSH_SEAM_TOOLS, bundleRootOf, dshSeamInject, textBlock, workspaceRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+ 
+ /** The cordis row id this plugin registers under; the bundle patch mounts it as `mpd-comment-checker`. */
+@@ -177,6 +177,22 @@ export function apply(ctx: Ctx, config: Config = {}): void {
+   })
+ 
+   if (cfg.autoCheck === true) {
++    /**
++     * Append one note to a decision without replacing the text it already carries.
++     *
++     * @param out - the downstream decision the waterfall received.
++     * @param result - the raw tool result, read only when the decision carries no content.
++     * @param note - the text to append.
++     * @returns a decision of the same kind whose single text block ends with `note`.
++     */
++    const appendNote = (out: any, result: any, note: string): any => {
++      /** The decision's content in whichever shape the harness produced it. */
++      const c = out.content ?? result?.content
++      /** The decision's existing text, blocks flattened, so the note appends rather than replaces. */
++      const text = typeof c === "string" ? c : (Array.isArray(c) ? c.map((b: any) => (b && b.type === "text" ? b.text : "")).join("\n") : "")
++      return { ...out, content: [{ type: "text", text: (text ? text + "\n\n" : "") + note }] }
++    }
++
+     dsh.onPostToolExecute(async (exec: any, result: any, out: any) => {
+       if (out.kind !== "accept") return out
+       /** Whether the finished call is one that writes content; `str_replace_editor` is the legacy name. */
+@@ -185,23 +201,29 @@ export function apply(ctx: Ctx, config: Config = {}): void {
+       /** The path the edit targeted, under either argument spelling. */
+       const fp = exec.arguments?.file_path ?? exec.arguments?.path
+       if (typeof fp !== "string") return out
++      // Session-absolute target: the plain edit/write tools report the path as the MODEL wrote it —
++      // usually RELATIVE — so probing it against the dsh process cwd found nothing and skipped in
++      // silence, i.e. the check silently never ran for the session's own file.
++      /** The path this hook really reads: a relative `file_path` belongs to the calling session. */
++      const target = isAbsolute(fp) ? resolve(fp) : resolve(dsh.workspaceRoot(exec), fp)
+       /** The resolved detector binary; absent leaves the decision untouched. */
+       const binary = resolveBinary(cfg)
+       if (!binary) return out
+-      /** The edited file's content; an unreadable file leaves the decision untouched. */
++      /** The edited file's content, empty when the read failed. */
+       let content = ""
+-      try { content = readFileSync(fp, "utf8") } catch { return out }
++      /** Why the read failed, or "" when it succeeded; the failure is REPORTED below, never swallowed. */
++      let readError = ""
++      try { content = readFileSync(target, "utf8") } catch (e: any) { readError = String(e?.message ?? e) }
++      // A DECLARED miss: the degrade stays (the decision passes through), but it now says which path
++      // could not be read, so "the check found nothing" is distinguishable from "the check never ran".
++      if (readError) return appendNote(out, result, "[mpd-comment-checker] auto-check skipped " + target + ": " + readError)
+       if (!content) return out
+       /** The detector's verdict on the edited file. */
+-      const res = runCheck(binary, hookInputFor(fp, content, dsh.workspaceRoot(exec)), timeoutMs)
++      const res = runCheck(binary, hookInputFor(target, content, dsh.workspaceRoot(exec)), timeoutMs)
+       if (!res.hasComments) return out
+       /** The text appended to the tool result when comments were found. */
+-      const hint = "[mpd-comment-checker] comments/docstrings detected in " + fp + ":\n" + res.message.slice(0, maxMessageChars)
+-      /** The decision's content in whichever shape the harness produced it. */
+-      const c = out.content ?? result?.content
+-      /** The decision's existing text, blocks flattened, so the hint appends rather than replaces. */
+-      const text = typeof c === "string" ? c : (Array.isArray(c) ? c.map((b: any) => (b && b.type === "text" ? b.text : "")).join("\n") : "")
+-      return { ...out, content: [{ type: "text", text: (text ? text + "\n\n" : "") + hint }] }
++      const hint = "[mpd-comment-checker] comments/docstrings detected in " + target + ":\n" + res.message.slice(0, maxMessageChars)
++      return appendNote(out, result, hint)
+     })
+   }
+ }
+diff --git a/packages/mpd-comment-checker-plugin/test/comment-checker.test.ts b/packages/mpd-comment-checker-plugin/test/comment-checker.test.ts
+index 71a49aa6..a0e89687 100644
+--- a/packages/mpd-comment-checker-plugin/test/comment-checker.test.ts
++++ b/packages/mpd-comment-checker-plugin/test/comment-checker.test.ts
+@@ -1,7 +1,9 @@
+ import { test, expect } from "bun:test"
+-import { existsSync } from "node:fs"
++import { chmodSync, existsSync, mkdtempSync, writeFileSync } from "node:fs"
+ import { join } from "node:path"
+-import { resolveBinary, hookInputFor, runCheck } from "../src/index.ts"
++import { tmpdir } from "node:os"
++import { resolveBinary, hookInputFor, runCheck, apply } from "../src/index.ts"
++import type { DshPostDecision, DshPostResult, DshTextBlock, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index.ts"
+ 
+ /**
+  * The detector binary this checkout resolves; null when it is not installed here.
+@@ -28,3 +30,53 @@ test.skipIf(SKIP)("clean file passes (exit 0)", () => {
+   const res = runCheck(BINARY!, hookInputFor("/tmp/b.js", "let x = 1\nconst y = 2\n"), 30000)
+   expect(res.hasComments).toBe(false)
+ })
++
++// ── E8: the autoCheck hook resolves the edited path against the SESSION workspace ─────────────────
++// The hook did `readFileSync(fp, "utf8")` on the path exactly as the model wrote it — usually
++// RELATIVE — inside a `try` that returned the decision untouched on failure. So a relative path was
++// probed against the dsh process cwd and an honest miss was a SILENT skip. These arms need no real
++// detector: an explicit `binary` is first in the resolution order, and a stub that echoes its stdin
++// payload and exits 2 (the detector's "comments found" status) proves WHICH file the hook read.
++test("autoCheck: the hook resolves a relative file_path against the session workspace", async () => {
++  /** One `tools/post-execute` listener as the adapter registers and calls it. */
++  type PostExecuteListener = (exec: DshToolExec, result: DshPostResult, next: () => Promise<DshPostDecision>) => Promise<DshPostDecision>
++  /** Captured `tools/post-execute` listeners, in registration order. */
++  const listeners: PostExecuteListener[] = []
++  /** The session workspace the hook must resolve against; unrelated to the process cwd. */
++  const ws = mkdtempSync(join(tmpdir(), "mpd-cc-ws-"))
++  /** The edited file inside that workspace, carrying a marker the stub echoes back. */
++  writeFileSync(join(ws, "notes.js"), "// session-file-marker\nlet x = 1\n")
++  /** Directory holding the stub detector. */
++  const stubDir = mkdtempSync(join(tmpdir(), "mpd-cc-stub-"))
++  /** The stub detector: echoes the JSON payload it received on stderr, then exits 2. */
++  const stub = join(stubDir, "fake-detector.sh")
++  writeFileSync(stub, "#!/bin/sh\npayload=$(cat)\nprintf '%s' \"$payload\" >&2\nexit 2\n")
++  chmodSync(stub, 0o755)
++  /** Minimal host ctx: no config service, so the row config stays authoritative. */
++  const ctx: Parameters<typeof apply>[0] = {
++    tools: { register: (): void => {} },
++    get: (): undefined => undefined,
++    // The post-execute hook registers through this seam; capturing the listener keeps apply() pure
++    // while letting the arm drive the hook exactly as the harness waterfall does.
++    on: (event: string, listener: PostExecuteListener): void => { if (event === "tools/post-execute") listeners.push(listener) },
++  }
++  apply(ctx, { autoCheck: true, binary: stub })
++  // The single hook `autoCheck: true` registers.
++  const hook = listeners[0]
++  /** The decision the harness accepted before the hook ran; the hook only ever appends text to it. */
++  const accept = async (): Promise<DshPostDecision> => ({ kind: "accept" })
++  /** The text a driven hook appended, or "" when it let the decision through untouched. */
++  const appended = (out: DshPostDecision): string => ((out.content as DshTextBlock[] | undefined)?.[0]?.text) ?? ""
++
++  // Arm 1: a RELATIVE path inside the session workspace. The stub's echo proves the hook read the
++  // session's file; had it probed process.cwd() it would have found nothing and skipped in silence.
++  const hit = await hook({ name: "write", arguments: { file_path: "notes.js" }, agent: { session: { header: { cwd: ws } } } }, {}, accept)
++  expect(appended(hit)).toContain("[mpd-comment-checker] comments/docstrings detected")
++  expect(appended(hit)).toContain("session-file-marker")
++
++  // Arm 2: a relative path the session workspace does not hold is a DECLARED miss, not a silent
++  // skip — the appended note names the path that could not be read.
++  const miss = await hook({ name: "write", arguments: { file_path: "absent.js" }, agent: { session: { header: { cwd: ws } } } }, {}, accept)
++  expect(appended(miss)).toContain("[mpd-comment-checker] auto-check skipped")
++  expect(appended(miss)).toContain(join(ws, "absent.js"))
++})
+diff --git a/packages/mpd-hashline-plugin/README.md b/packages/mpd-hashline-plugin/README.md
+index 38b9091c..25fdd786 100644
+--- a/packages/mpd-hashline-plugin/README.md
++++ b/packages/mpd-hashline-plugin/README.md
+@@ -16,6 +16,14 @@ minimal unified-diff generator instead of the npm `diff` dependency.
+ | `mpd_hashline_format` | Register a file for the discipline (idempotent; no disk change). |
+ | `mpd_hashline_restore` | Unregister the discipline. |
+ 
++## Line count, diff header and file envelope
++
++`lines` is ONE source-line count shared by read/format/edit: a final newline TERMINATES the last
++line, so a 2-line file reports 2 (not 3). A unified-diff hunk header names the hunk's own first
++line, including a hunk that starts at line 1. `mpd_hashline_edit` reads and writes through the
++vendored canonicalization (`canonicalizeFileText` / `restoreFileText`), so an anchored edit
++preserves a CRLF- or BOM-carrying file's envelope while the anchors stay CR-insensitive.
++
+ ## Guard
+ 
+ `config.guardEditTools` (default true) warns through `tools/post-execute` when a
+diff --git a/packages/mpd-hashline-plugin/README.zh-CN.md b/packages/mpd-hashline-plugin/README.zh-CN.md
+index dac58a02..7c55c707 100644
+--- a/packages/mpd-hashline-plugin/README.zh-CN.md
++++ b/packages/mpd-hashline-plugin/README.zh-CN.md
+@@ -14,6 +14,10 @@ Vendored core：上游项目 `packages/hashline-core`（base commit 8c57e46；
+ | `mpd_hashline_format` | Register a file for the discipline (idempotent; no disk change). |
+ | `mpd_hashline_restore` | Unregister the discipline. |
+ 
++## 行数、diff 头与文件封装
++
++`lines` 是 read/format/edit 共用的**唯一**源码行数：末尾换行是最后一行的**终止符**，所以 2 行文件报 2（而不是 3）。unified-diff 的 hunk 头命名该 hunk 自己的首行，包括从第 1 行开始的 hunk。`mpd_hashline_edit` 通过 vendored 的规范化函数（`canonicalizeFileText` / `restoreFileText`）读写文件，因此锚定编辑会保留 CRLF 或带 BOM 文件的封装，而 anchors 依旧对 CR 不敏感。
++
+ ## Guard
+ 
+ `config.guardEditTools`（默认 true）在普通 edit/str_replace_editor/write 触及已注册纪律的文件时，通过 `tools/post-execute` 发出警告，以便模型重读 anchors 或改用 `mpd_hashline_edit`。
+diff --git a/packages/mpd-hashline-plugin/dist/index.js b/packages/mpd-hashline-plugin/dist/index.js
+index 3bda3605..dba13a48 100644
+--- a/packages/mpd-hashline-plugin/dist/index.js
++++ b/packages/mpd-hashline-plugin/dist/index.js
+@@ -736,6 +736,54 @@ function applyHashlineEditsWithReport(content, edits) {
+     deduplicatedEdits: dedupeResult.deduplicatedEdits
+   };
+ }
++// packages/mpd-hashline-plugin/src/vendor/file-text-canonicalization.ts
++function detectLineEnding(content) {
++  const crlfIndex = content.indexOf(`\r
++`);
++  const lfIndex = content.indexOf(`
++`);
++  if (lfIndex === -1)
++    return `
++`;
++  if (crlfIndex === -1)
++    return `
++`;
++  return crlfIndex < lfIndex ? `\r
++` : `
++`;
++}
++function stripBom(content) {
++  if (!content.startsWith("\uFEFF")) {
++    return { content, hadBom: false };
++  }
++  return { content: content.slice(1), hadBom: true };
++}
++function normalizeToLf(content) {
++  return content.replace(/\r\n/g, `
++`).replace(/\r/g, `
++`);
++}
++function restoreLineEndings(content, lineEnding) {
++  if (lineEnding === `
++`)
++    return content;
++  return content.replace(/\n/g, `\r
++`);
++}
++function canonicalizeFileText(content) {
++  const stripped = stripBom(content);
++  return {
++    content: normalizeToLf(stripped.content),
++    hadBom: stripped.hadBom,
++    lineEnding: detectLineEnding(stripped.content)
++  };
++}
++function restoreFileText(content, envelope) {
++  const withLineEnding = restoreLineEndings(content, envelope.lineEnding);
++  if (!envelope.hadBom)
++    return withLineEnding;
++  return `\uFEFF${withLineEnding}`;
++}
+ // packages/mpd-hashline-plugin/src/vendor/normalize-edits.ts
+ function normalizeAnchor(value) {
+   if (typeof value !== "string")
+@@ -888,23 +936,23 @@ function generateUnifiedDiff(oldContent, newContent, filePath) {
+     while (end < ops.length && ops[end].t === "eq")
+       end++;
+     end = Math.min(ops.length, end + context);
+-    let aStart = 0, aCount = 0, bStart = 0, bCount = 0;
++    let aStart = -1, aCount = 0, bStart = -1, bCount = 0;
+     const body = [];
+     for (const op of ops.slice(start, end)) {
+       if (op.t === "eq") {
+-        aStart === 0 && (aStart = op.a);
+-        bStart === 0 && (bStart = op.b);
++        aStart === -1 && (aStart = op.a);
++        bStart === -1 && (bStart = op.b);
+         aCount++;
+         bCount++;
+         body.push(" " + op.lines[0]);
+       } else if (op.t === "del") {
+-        aStart === 0 && (aStart = op.a);
+-        bStart === 0 && (bStart = op.b);
++        aStart === -1 && (aStart = op.a);
++        bStart === -1 && (bStart = op.b);
+         aCount++;
+         body.push("-" + op.lines[0]);
+       } else {
+-        aStart === 0 && (aStart = op.a);
+-        bStart === 0 && (bStart = op.b);
++        aStart === -1 && (aStart = op.a);
++        bStart === -1 && (bStart = op.b);
+         bCount++;
+         body.push("+" + op.lines[0]);
+       }
+@@ -2482,17 +2530,24 @@ function registered(config, dsh, fp, exec) {
+   const target = sessionPath(fp, dsh, exec);
+   return list.some((x) => sessionPath(x, dsh, exec) === target);
+ }
++function sourceLineCount(text) {
++  const body = text.endsWith(`
++`) ? text.slice(0, -1) : text;
++  return body === "" ? 0 : body.split(`
++`).length;
++}
++function readEnvelope(fp) {
++  return canonicalizeFileText(readFileSync(fp, "utf8"));
++}
+ function editFile(fp, edits, maxDiffChars) {
+-  const raw = readFileSync(fp, "utf8");
+-  const report = applyHashlineEditsWithReport(raw, edits);
+-  writeFileSync(fp, report.content);
+-  const diff = report.content === raw ? "" : generateUnifiedDiff(raw, report.content, fp).slice(0, maxDiffChars);
+-  const contentForCount = report.content.endsWith(`
+-`) ? report.content.slice(0, -1) : report.content;
++  const envelope = readEnvelope(fp);
++  const before = envelope.content;
++  const report = applyHashlineEditsWithReport(before, edits);
++  writeFileSync(fp, restoreFileText(report.content, envelope));
++  const diff = report.content === before ? "" : generateUnifiedDiff(before, report.content, fp).slice(0, maxDiffChars);
+   return {
+     path: fp,
+-    lines: contentForCount === "" ? 0 : contentForCount.split(`
+-`).length,
++    lines: sourceLineCount(report.content),
+     noopEdits: report.noopEdits,
+     deduplicatedEdits: report.deduplicatedEdits,
+     diff
+@@ -2511,10 +2566,9 @@ function apply(ctx, config = {}) {
+       const fp = sessionPath(String(args?.path), dsh, exec);
+       if (!existsSync(fp))
+         throw new Error("mpd-hashline: file not found: " + fp);
+-      const raw = readFileSync(fp, "utf8");
++      const raw = readEnvelope(fp).content;
+       const out = toHashlineContent(raw);
+-      return { path: fp, lines: out === "" ? 0 : out.split(`
+-`).length, view: out };
++      return { path: fp, lines: sourceLineCount(out), view: out };
+     }
+   });
+   dsh.registerTool({
+@@ -2557,10 +2611,9 @@ function apply(ctx, config = {}) {
+         throw new Error("mpd-hashline: file not found: " + fp);
+       const rp = registryPath(cfg, dsh, exec);
+       writeRegistry(rp, [...readRegistry(rp), fp]);
+-      const raw = readFileSync(fp, "utf8");
++      const raw = readEnvelope(fp).content;
+       const out = toHashlineContent(raw);
+-      return { path: fp, lines: out === "" ? 0 : out.split(`
+-`).length, view: out };
++      return { path: fp, lines: sourceLineCount(out), view: out };
+     }
+   });
+   dsh.registerTool({
+diff --git a/packages/mpd-hashline-plugin/src/index.ts b/packages/mpd-hashline-plugin/src/index.ts
+index b9755da5..0f6763d4 100644
+--- a/packages/mpd-hashline-plugin/src/index.ts
++++ b/packages/mpd-hashline-plugin/src/index.ts
+@@ -18,6 +18,9 @@ import {
+   generateUnifiedDiff,
+   computeLineHash,
+   normalizeHashlineEdits,
++  canonicalizeFileText,
++  restoreFileText,
++  type FileTextEnvelope,
+   type HashlineEdit,
+ } from "./vendor/index.ts"
+ import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+@@ -88,20 +91,51 @@ function registered(config: Config, dsh: DshAdapter, fp: string, exec?: any): bo
+   return list.some((x) => sessionPath(x, dsh, exec) === target)
+ }
+ 
++/**
++ * Source-line count of a file body, or of the hashline view derived from one: a final newline
++ * TERMINATES the last line rather than adding an empty one, so the trailing "" that `split("\n")`
++ * yields must not be counted. The ONE count read, format and edit all report, so they cannot drift.
++ *
++ * @param text - the plain file body, or the `LINE#HASH|content` view built from it.
++ * @returns the number of source lines; an empty body reports 0.
++ */
++function sourceLineCount(text: string): number {
++  /** The text with its single terminating newline removed, when it carries one. */
++  const body = text.endsWith("\n") ? text.slice(0, -1) : text
++  return body === "" ? 0 : body.split("\n").length
++}
++
++/**
++ * Read a file through the vendor's canonicalization: BOM stripped, line endings folded to LF, plus
++ * the two facts that write it back in the file's own envelope.
++ *
++ * The anchor hashes are CR-insensitive, so this text publishes exactly the anchors the raw file
++ * would; canonicalizing the READ as well as the write is what keeps an edit's anchors valid for a
++ * CRLF or BOM-carrying file instead of silently rewriting its envelope away.
++ *
++ * @param fp - absolute path of the file to read.
++ * @returns the canonical text with its BOM flag and dominant line ending.
++ */
++function readEnvelope(fp: string): FileTextEnvelope {
++  return canonicalizeFileText(readFileSync(fp, "utf8"))
++}
++
+ /** Apply validated edits, write the plain result back, and report counts plus a capped diff. */
+ function editFile(fp: string, edits: HashlineEdit[], maxDiffChars: number): any {
++  // The file's canonical text plus the envelope its write-back must restore.
++  const envelope = readEnvelope(fp)
+   // Content before the edit: the diff's left side and the no-change test.
+-  const raw = readFileSync(fp, "utf8")
++  const before = envelope.content
+   // Vendored applier's outcome: plain content plus the noop and deduplicated edit counts.
+-  const report = applyHashlineEditsWithReport(raw, edits)
+-  writeFileSync(fp, report.content)
++  const report = applyHashlineEditsWithReport(before, edits)
++  // Written back in the file's OWN shape — its line ending first, then its BOM — so an anchored edit
++  // never strips a CRLF or BOM envelope the file carried (restoreFileText, not a plain write).
++  writeFileSync(fp, restoreFileText(report.content, envelope))
+   // Empty when nothing changed, otherwise the unified diff truncated to the configured cap.
+-  const diff = report.content === raw ? "" : generateUnifiedDiff(raw, report.content, fp).slice(0, maxDiffChars)
+-  // Trailing-newline-insensitive body, so a file ending in a newline reports its real line count.
+-  const contentForCount = report.content.endsWith("\n") ? report.content.slice(0, -1) : report.content
++  const diff = report.content === before ? "" : generateUnifiedDiff(before, report.content, fp).slice(0, maxDiffChars)
+   return {
+     path: fp,
+-    lines: contentForCount === "" ? 0 : contentForCount.split("\n").length,
++    lines: sourceLineCount(report.content),
+     noopEdits: report.noopEdits,
+     deduplicatedEdits: report.deduplicatedEdits,
+     diff
+@@ -130,11 +164,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
+       // Absolute path of the file to view, resolved against the calling session's workspace.
+       const fp = sessionPath(String(args?.path), dsh, exec)
+       if (!existsSync(fp)) throw new Error("mpd-hashline: file not found: " + fp)
+-      // Plain file content; the anchor view is derived from it and never written back.
+-      const raw = readFileSync(fp, "utf8")
++      // The canonical text is what the anchors are computed over; the file itself is untouched here.
++      const raw = readEnvelope(fp).content
+       // The LINE#HASH|content view whose anchors the caller passes back to mpd_hashline_edit.
+       const out = toHashlineContent(raw)
+-      return { path: fp, lines: out === "" ? 0 : out.split("\n").length, view: out }
++      return { path: fp, lines: sourceLineCount(out), view: out }
+     }
+   })
+ 
+@@ -181,11 +215,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
+       // Registry location for THIS session: an explicit registryFile override wins over the workspace root.
+       const rp = registryPath(cfg, dsh, exec)
+       writeRegistry(rp, [...readRegistry(rp), fp])
+-      // Plain content of the registered file, read only to build the returned anchor view.
+-      const raw = readFileSync(fp, "utf8")
++      // Plain content of the registered file, read only to build the returned anchor view; the same
++      // canonical shape the read tool publishes, so both views carry identical anchors.
++      const raw = readEnvelope(fp).content
+       // Anchor view returned to the caller; registration itself never changes the file.
+       const out = toHashlineContent(raw)
+-      return { path: fp, lines: out === "" ? 0 : out.split("\n").length, view: out }
++      return { path: fp, lines: sourceLineCount(out), view: out }
+     }
+   })
+ 
+diff --git a/packages/mpd-hashline-plugin/src/vendor/diff-utils.ts b/packages/mpd-hashline-plugin/src/vendor/diff-utils.ts
+index 1b9cf704..23be552c 100644
+--- a/packages/mpd-hashline-plugin/src/vendor/diff-utils.ts
++++ b/packages/mpd-hashline-plugin/src/vendor/diff-utils.ts
+@@ -92,21 +92,23 @@ export function generateUnifiedDiff(oldContent: string, newContent: string, file
+     let end = idx + context
+     while (end < ops.length && ops[end].t === "eq") end++
+     end = Math.min(ops.length, end + context)
+-    // Running hunk counters and 0-based first-line markers for each side.
+-    let aStart = 0, aCount = 0, bStart = 0, bCount = 0
++    // Running hunk counters and 0-based first-line markers for each side; the markers start at -1
++    // because line index 0 is LEGAL, so 0 cannot double as the "unset" sentinel (a hunk whose first
++    // op sits at the head of the file would otherwise be re-anchored by the next op).
++    let aStart = -1, aCount = 0, bStart = -1, bCount = 0
+     // Hunk body lines in diff order, each prefixed with ` `, `-` or `+`.
+     const body: string[] = []
+     for (const op of ops.slice(start, end)) {
+       if (op.t === "eq") {
+-        aStart === 0 && (aStart = op.a); bStart === 0 && (bStart = op.b)
++        aStart === -1 && (aStart = op.a); bStart === -1 && (bStart = op.b)
+         aCount++; bCount++
+         body.push(" " + op.lines[0])
+       } else if (op.t === "del") {
+-        aStart === 0 && (aStart = op.a); bStart === 0 && (bStart = op.b)
++        aStart === -1 && (aStart = op.a); bStart === -1 && (bStart = op.b)
+         aCount++
+         body.push("-" + op.lines[0])
+       } else {
+-        aStart === 0 && (aStart = op.a); bStart === 0 && (bStart = op.b)
++        aStart === -1 && (aStart = op.a); bStart === -1 && (bStart = op.b)
+         bCount++
+         body.push("+" + op.lines[0])
+       }
+diff --git a/packages/mpd-hashline-plugin/test/hashline.test.ts b/packages/mpd-hashline-plugin/test/hashline.test.ts
+index 533ddc56..8751cadf 100644
+--- a/packages/mpd-hashline-plugin/test/hashline.test.ts
++++ b/packages/mpd-hashline-plugin/test/hashline.test.ts
+@@ -62,3 +62,16 @@ test("unified diff shape", () => {
+   expect(d).toContain("-b")
+   expect(d).toContain("+X")
+ })
++
++// The hunk header must name the hunk's FIRST line. `0` served as the "unset" sentinel although line
++// index 0 is a legal start, so a hunk whose first op sits at the head of the file had its start
++// overwritten by the NEXT op's index: a change to line 1 printed `@@ -2,4 +2,4 @@`, and a prepend
++// printed `@@ -1,4 +2,4 @@`. Both sides of the header were shifted.
++test("unified diff hunk header names line 1 when the hunk starts at the head of the file", () => {
++  // A 3-line file (the trailing newline is a fourth split element) with its FIRST line changed.
++  const replaced = generateUnifiedDiff("a\nb\nc\n", "A\nb\nc\n", "f.txt")
++  expect(replaced).toContain("@@ -1,4 +1,4 @@")
++  // A pure PREPEND: every old line survives (3 old lines, 4 new), so both sides must start at 1.
++  const prepended = generateUnifiedDiff("b\nc\n", "a\nb\nc\n", "f.txt")
++  expect(prepended).toContain("@@ -1,3 +1,4 @@")
++})
+diff --git a/packages/mpd-hashline-plugin/test/tool-schema.test.ts b/packages/mpd-hashline-plugin/test/tool-schema.test.ts
+index 6202a1be..d607ce39 100644
+--- a/packages/mpd-hashline-plugin/test/tool-schema.test.ts
++++ b/packages/mpd-hashline-plugin/test/tool-schema.test.ts
+@@ -144,9 +144,9 @@ test("read then edit works with lines as a single string AND as an array of stri
+   try {
+     writeFileSync(file, "alpha\nbeta\ngamma\n")
+ 
+-    // First view: three source lines plus the empty line the trailing newline produces.
++    // First view: three source lines; the file's final newline TERMINATES line 3 rather than adding one.
+     const first = await read.execute({ path: file })
+-    expect(first.lines).toBe(4)
++    expect(first.lines).toBe(3)
+     // Anchors of the first view; a1[1] is the anchor of line 2 ('beta').
+     const a1 = anchorsOf(first.view)
+ 
+@@ -173,6 +173,70 @@ test("read then edit works with lines as a single string AND as an array of stri
+   }
+ })
+ 
++// ── E4: ONE source-line count for read / format / edit ───────────────────────────────────────────
++// `toHashlineContent` re-appends the final newline, so counting the VIEW with `split("\n")` counted
++// that terminator as an extra empty line: a 2-line file reported 3 while `#editFile` reported the
++// honest count for the same file. All three tools must report the SAME count.
++test("read, format and edit report the same source-line count for a terminated file", async () => {
++  // Fresh mount for the three tools whose counts must agree.
++  const { byName } = mount()
++  // Read and format share one output shape: both answer path/lines/view.
++  const read = byName("mpd_hashline_read") as HashlineTool<ReadResult>
++  const format = byName("mpd_hashline_format") as HashlineTool<ReadResult>
++  // The edit tool, whose own count must land on the same number.
++  const edit = byName("mpd_hashline_edit") as HashlineTool<EditResult>
++  // Throwaway directory for the two-line fixture.
++  const dir = mkdtempSync(join(tmpdir(), "mpd-hashline-count-"))
++  // The fixture: exactly two source lines, newline-terminated.
++  const file = join(dir, "two.txt")
++  try {
++    writeFileSync(file, "one\ntwo\n")
++    expect((await read.execute({ path: file })).lines).toBe(2)
++    expect((await format.execute({ path: file })).lines).toBe(2)
++    // Anchors for the replace below, taken from a fresh view of the same file.
++    const view = (await read.execute({ path: file })).view
++    const edited = await edit.execute({ path: file, edits: [{ op: "replace", pos: anchorsOf(view)[1], lines: "TWO" }] })
++    expect(edited.lines).toBe(2)
++    // The file really holds two lines after the edit, so the count describes the file and not a view artifact.
++    expect(readFileSync(file, "utf8")).toBe("one\nTWO\n")
++  } finally {
++    rmSync(dir, { recursive: true, force: true })
++  }
++})
++
++// ── E5: the CRLF/BOM envelope survives an anchored edit ──────────────────────────────────────────
++// `canonicalizeFileText` / `restoreFileText` were exported and never called: `#editFile` wrote the
++// applier's LF-only body straight back, so a CRLF file came back with MIXED endings and a BOM file
++// silently lost its BOM.
++test("an anchored edit keeps a CRLF file's line endings and a BOM file's BOM", async () => {
++  // Fresh mount for the read/edit pair driving both envelope fixtures.
++  const { byName } = mount()
++  const read = byName("mpd_hashline_read") as HashlineTool<ReadResult>
++  const edit = byName("mpd_hashline_edit") as HashlineTool<EditResult>
++  // Throwaway directory holding the two envelope fixtures.
++  const dir = mkdtempSync(join(tmpdir(), "mpd-hashline-envelope-"))
++  // CRLF fixture: every line ends with a carriage return plus a line feed.
++  const crlf = join(dir, "crlf.txt")
++  // BOM fixture: a leading U+FEFF before the first line.
++  const bom = join(dir, "bom.txt")
++  try {
++    writeFileSync(crlf, "alpha\r\nbeta\r\n")
++    // The view's anchors, taken as the caller would: the envelope arm asserts the WRITE-BACK only.
++    const crlfView = await read.execute({ path: crlf })
++    await edit.execute({ path: crlf, edits: [{ op: "replace", pos: anchorsOf(crlfView.view)[1], lines: "BETA" }] })
++    // The whole file keeps CRLF: an LF-only write-back leaves a MIXED file behind.
++    expect(readFileSync(crlf, "utf8")).toBe("alpha\r\nBETA\r\n")
++
++    writeFileSync(bom, "\uFEFFalpha\nbeta\n")
++    const bomView = await read.execute({ path: bom })
++    await edit.execute({ path: bom, edits: [{ op: "replace", pos: anchorsOf(bomView.view)[1], lines: "BETA" }] })
++    // The leading BOM is still there; the edit must not strip it.
++    expect(readFileSync(bom, "utf8")).toBe("\uFEFFalpha\nBETA\n")
++  } finally {
++    rmSync(dir, { recursive: true, force: true })
++  }
++})
++
+ test("the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix", () => {
+   // Source of the plugin entry, scanned for the rejected union spelling.
+   const src = readFileSync(join(PLUGIN_ROOT, "src", "index.ts"), "utf8")
+diff --git a/packages/mpd-memory-plugin/dist/index.js b/packages/mpd-memory-plugin/dist/index.js
+index 0ae12979..259e9c51 100644
+--- a/packages/mpd-memory-plugin/dist/index.js
++++ b/packages/mpd-memory-plugin/dist/index.js
+@@ -1768,6 +1768,10 @@ REFLECTION DUE` : "")) },
+     output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a, v) => textBlock("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
+     execute: async (args, exec) => {
+       const d = ensureDirs(cfg, dsh, exec);
++      const s = readReflection(d);
++      if (s.triggered !== true && s.reservation?.status !== "pending") {
++        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered === true) + ", reservation=" + String(s.reservation?.status ?? "none") + ", steps_since_last_successful_reflection=" + String(s.steps_since_last_successful_reflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.");
++      }
+       ensureVcs(cfg, d);
+       const name2 = "reflection-" + Date.now().toString(36);
+       const file = safeMemoryPath(d.memoryDir, name2 + ".md");
+@@ -1778,7 +1782,6 @@ REFLECTION DUE` : "")) },
+ ` + String(args?.content) + `
+ `);
+       commitAll(cfg, d, "memory: reflection " + name2);
+-      const s = readReflection(d);
+       s.reflected_completed_steps = (s.reflected_completed_steps ?? 0) + 1;
+       s.steps_since_last_successful_reflection = 0;
+       s.triggered = false;
+diff --git a/packages/mpd-memory-plugin/src/index.ts b/packages/mpd-memory-plugin/src/index.ts
+index edf230e6..1255ea4f 100644
+--- a/packages/mpd-memory-plugin/src/index.ts
++++ b/packages/mpd-memory-plugin/src/index.ts
+@@ -315,6 +315,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
+     execute: async (args: any, exec: any) => {
+       /** The agent's state directories, created on demand so a reflection can complete in a fresh workspace. */
+       const d = ensureDirs(cfg, dsh, exec)
++      /** The reflection state as persisted, and the value this transition mutates when it is legal. */
++      const s = readReflection(d)
++      // THE PRECONDITION: `mpd_memory_reflect` reports `due` under exactly this predicate. Without it a
++      // completion ran with nothing pending: it wrote a reflection entry, bumped
++      // `reflected_completed_steps`, zeroed `steps_since_last_successful_reflection` and stamped
++      // `reservation: {status:"completed"}`, stranding the counters of a machine that never triggered.
++      if (s.triggered !== true && s.reservation?.status !== "pending") {
++        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered === true) + ", reservation=" + String(s.reservation?.status ?? "none") + ", steps_since_last_successful_reflection=" + String(s.steps_since_last_successful_reflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.")
++      }
+       ensureVcs(cfg, d)
+       /** The reflection entry's file stem: a fixed prefix plus a base-36 timestamp. */
+       const name = "reflection-" + Date.now().toString(36)
+@@ -324,8 +333,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
+       const meta = { description: String(args?.title ?? "reflection"), kind: "reflection" }
+       writeFileSync(file, "---\n" + JSON.stringify(meta) + "\n---\n" + String(args?.content) + "\n")
+       commitAll(cfg, d, "memory: reflection " + name)
+-      /** The reflection state, advanced by one completed transition and re-armed for the next threshold. */
+-      const s = readReflection(d)
++      // The state read at the top of this call, advanced by one completed transition: the reservation
++      // is cleared and the counter re-armed for the next threshold.
+       s.reflected_completed_steps = (s.reflected_completed_steps ?? 0) + 1
+       s.steps_since_last_successful_reflection = 0
+       s.triggered = false
+diff --git a/packages/mpd-memory-plugin/test/memory.test.ts b/packages/mpd-memory-plugin/test/memory.test.ts
+index 58c64567..5b4d463a 100644
+--- a/packages/mpd-memory-plugin/test/memory.test.ts
++++ b/packages/mpd-memory-plugin/test/memory.test.ts
+@@ -125,6 +125,31 @@ test("git backend: write -> commit -> read -> reflection due", async () => {
+   restore()
+ })
+ 
++// The reflection transition carries a PRECONDITION: a completion with nothing pending used to write a
++// reflection entry, bump `reflected_completed_steps`, zero `steps_since_last_successful_reflection`
++// and stamp `reservation: {status: "completed"}` — stranding a state machine that never triggered.
++test("mpd_memory_reflect_complete refuses when no reflection is due or reserved", async () => {
++  /** The throwaway workspace this arm's memory store lives under. */
++  const dir = mkdtempSync(join(tmpdir(), "mpd-mem-guard-"))
++  /** The captured tools and the ambient-root restorer for this arm. */
++  const { tools, restore } = makePlugin(dir, { vcs: "git", dir: ".mpd", agentSlug: "t2", reflectionEvery: 10 })
++  try {
++    // The two tools under test, cast under the same unconditional-registration contract as above.
++    const reflect = tools.find((t) => t.name === "mpd_memory_reflect") as MemoryTool<MemoryReflectResult>
++    const complete = tools.find((t) => t.name === "mpd_memory_reflect_complete") as MemoryTool<MemoryReflectCompleteResult>
++    // Nothing was written and no threshold was crossed, so no reflection is due and none is reserved.
++    expect((await reflect.execute({}, {})).due).toBe(false)
++    /** The refusal this arm asserts on: the completion must not be recorded with nothing pending. */
++    const refusal = await complete.execute({ content: "premature reflection" }, {}).then(() => null, (e: unknown) => String(e))
++    // Pre-fix this resolved `{completed: true}` and wrote an entry, so the refusal is the whole fix.
++    expect(refusal ?? "RESOLVED: the completion was recorded").toContain("no reflection is due")
++    // The counters are untouched: still nothing pending, so a second completion is refused too.
++    expect((await reflect.execute({}, {})).due).toBe(false)
++  } finally {
++    restore()
++  }
++})
++
+ test("svn backend REAL svn CLI: repo create, checkout, commit, log", async () => {
+   /** The child-process module, imported here for the two real-CLI probes. */
+   const { spawnSync } = await import("node:child_process")
+diff --git a/packages/mpd-tools-plugin/README.md b/packages/mpd-tools-plugin/README.md
+index 067cc8e5..a2279d8e 100644
+--- a/packages/mpd-tools-plugin/README.md
++++ b/packages/mpd-tools-plugin/README.md
+@@ -9,10 +9,14 @@ execution, configured via the `mpd-tools` row.
+ 
+ 1. **Write-existing-file guard** (pre-execute guard, `writeGuard`): `write` to an
+    existing file with different content is denied with a recovery hint (identical
+-   content passes; use `edit` otherwise).
++   content passes; use `edit` otherwise). A RELATIVE `file_path` resolves against the
++   CALLING SESSION's workspace (`workspaceRoot`: session cwd → `DSH_WORKSPACE_ROOT` →
++   cwd), never the dsh process cwd, so the guard probes exactly the file the write
++   tool will touch.
+ 2. **Tool-output truncation** (post-execute waterfall): oversized outputs are replaced
+-   by one text block capped at `truncateMaxBytes` — protects the token budget from
+-   giant tool dumps.
++   by one text block capped at `truncateMaxBytes` — banner included, at EVERY budget, so
++   the truncated output is never larger than the cap (or than the input it caps) —
++   protects the token budget from giant tool dumps.
+ 3. **Edit-error recovery guidance** (post-execute waterfall): when an edit fails, the
+    waterfall appends a deterministic recovery hint (re-read the file, re-check exact
+    old/new strings, retry).
+diff --git a/packages/mpd-tools-plugin/README.zh-CN.md b/packages/mpd-tools-plugin/README.zh-CN.md
+index 027aacef..0ab37409 100644
+--- a/packages/mpd-tools-plugin/README.zh-CN.md
++++ b/packages/mpd-tools-plugin/README.zh-CN.md
+@@ -9,8 +9,13 @@
+ 
+ 1. **写已有文件守卫**（pre-execute guard，`writeGuard`）：向内容不同的已有文件执行
+    `write` 会被拒绝，并附带一条恢复提示（内容完全相同则放行；否则请改用 `edit`）。
++   相对的 `file_path` 按**调用会话**的工作区解析（`workspaceRoot`：session cwd →
++   `DSH_WORKSPACE_ROOT` → cwd），绝不用 dsh 进程的 cwd，因此守卫检查的正是 write 工具
++   将要触碰的那个文件。
+ 2. **工具输出截断**（post-execute waterfall）：超大的输出会被替换为以
+-   `truncateMaxBytes` 为上限的单个文本块——保护 token 预算免受巨型工具输出的冲击。
++   `truncateMaxBytes` 为上限的单个文本块——**包含横幅**，且在任何预算下都成立，所以截断
++   后的输出永远不会超过上限（也不会超过它本要裁剪的原文）——保护 token 预算免受巨型工具
++   输出的冲击。
+ 3. **编辑错误恢复引导**（post-execute waterfall）：当一次编辑失败时，waterfall 会追加
+    一条确定性的恢复提示（重新读取文件、重新核对精确的 old/new 字符串、重试）。
+ 
+diff --git a/packages/mpd-tools-plugin/dist/index.js b/packages/mpd-tools-plugin/dist/index.js
+index bbec7e3c..2fbbc466 100644
+--- a/packages/mpd-tools-plugin/dist/index.js
++++ b/packages/mpd-tools-plugin/dist/index.js
+@@ -1,5 +1,6 @@
+ // packages/mpd-tools-plugin/src/index.ts
+ import { existsSync, readFileSync } from "node:fs";
++import { isAbsolute, resolve as resolve3 } from "node:path";
+ 
+ // packages/mpd-dsh-adapter-plugin/src/index.ts
+ import { randomUUID } from "node:crypto";
+@@ -1529,6 +1530,9 @@ function resolveDshAdapter(ctx) {
+ // packages/mpd-tools-plugin/src/index.ts
+ var name = "mpd-tools";
+ var inject = dshSeamInject(DSH_SEAM_TOOLS);
++function sessionTarget(target, dsh, exec) {
++  return isAbsolute(target) ? resolve3(target) : resolve3(dsh.workspaceRoot(exec), target);
++}
+ function apply(ctx, config = {}) {
+   const dsh = resolveDshAdapter(ctx);
+   const writeGuard = config.writeGuard ?? true;
+@@ -1542,10 +1546,11 @@ function apply(ctx, config = {}) {
+       const content = exec.arguments?.content;
+       if (typeof fp !== "string" || typeof content !== "string")
+         return;
+-      if (!existsSync(fp))
++      const target = sessionTarget(fp, dsh, exec);
++      if (!existsSync(target))
+         return;
+       try {
+-        const old = readFileSync(fp, "utf8");
++        const old = readFileSync(target, "utf8");
+         if (old === content)
+           return;
+       } catch {
+@@ -1572,8 +1577,9 @@ function apply(ctx, config = {}) {
+ ... [mpd-tools truncated ` + text.length + " chars; keep " + maxBytes + ` budget; tail follows] ...
+ `;
+     const budget = Math.max(0, maxBytes - banner.length);
++    const tailChars = Math.max(1, Math.floor(budget * 0.3));
+     const head = budget > 0 ? text.slice(0, Math.floor(budget * 0.7)) : "";
+-    const tail = budget > 0 ? text.slice(-Math.floor(budget * 0.3)) : "";
++    const tail = budget > 0 ? text.slice(-tailChars) : "";
+     return { ...out, content: [{ type: "text", text: head + banner + tail }] };
+   });
+   dsh.onPostToolExecute(async (exec, result, out) => {
+diff --git a/packages/mpd-tools-plugin/src/index.ts b/packages/mpd-tools-plugin/src/index.ts
+index 82eff7e9..d3ceab13 100644
+--- a/packages/mpd-tools-plugin/src/index.ts
++++ b/packages/mpd-tools-plugin/src/index.ts
+@@ -3,6 +3,7 @@
+ // 2) tool-output truncation (post-execute, token budget protection)
+ // 3) edit-error recovery guidance (post-execute)
+ import { existsSync, readFileSync } from "node:fs"
++import { isAbsolute, resolve } from "node:path"
+ import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+ 
+ /** The plugin id the bundle row mounts this module under. */
+@@ -15,6 +16,20 @@ type Ctx = { tools: any; on: (ev: string, fn: (...args: any[]) => any) => void;
+ /** The row's own config keys; every one is optional because the defaults below are the shipped behaviour. */
+ type Config = { writeGuard?: boolean; truncateMaxBytes?: number; recoveryHint?: string }
+ 
++/**
++ * Resolve a model-supplied path the way every mpd tool does: a RELATIVE path is taken against the
++ * CALLING SESSION's workspace (`dsh.workspaceRoot(exec)`: session header cwd -> `DSH_WORKSPACE_ROOT`
++ * -> cwd), never against the dsh process cwd; an absolute path is normalized and returned unchanged.
++ *
++ * @param target - the path exactly as the model spelled it.
++ * @param dsh - the resolved adapter; its `workspaceRoot` is the ONE root source this row may use.
++ * @param exec - the tool execution carrying the calling session, or undefined on an agentless call.
++ * @returns the session-absolute target path.
++ */
++function sessionTarget(target: string, dsh: any, exec: any): string {
++  return isAbsolute(target) ? resolve(target) : resolve(dsh.workspaceRoot(exec), target)
++}
++
+ /**
+  * Install the three agent-safety hooks on this row's tool pipeline: the pre-execute write guard, the
+  * post-execute output truncation and the post-execute edit-error recovery hint.
+@@ -42,10 +57,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
+       /** The requested file body, when the call carried a string one. */
+       const content = exec.arguments?.content
+       if (typeof fp !== "string" || typeof content !== "string") return undefined
+-      if (!existsSync(fp)) return undefined
++      // Session-absolute target: a RELATIVE file_path belongs to the calling session's workspace.
++      // Probing the process cwd instead made BOTH directions silent — a clobber of <ws>/X went
++      // through, and an honest CREATE of <ws>/X was denied when <cwd>/X happened to exist.
++      /** The path this guard probes, resolved exactly as the write tool itself will resolve it. */
++      const target = sessionTarget(fp, dsh, exec)
++      if (!existsSync(target)) return undefined
+       try {
+         /** The current on-disk body, read only to tell an idempotent rewrite from a clobber. */
+-        const old = readFileSync(fp, "utf8")
++        const old = readFileSync(target, "utf8")
+         if (old === content) return undefined // idempotent rewrite passes
+       } catch { return undefined }
+       return "mpd-tools guard: target file already exists with different content — use the edit tool (or read then rewrite deliberately via write with identical content) instead of overwriting."
+@@ -70,10 +90,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
+     const banner = "\n... [mpd-tools truncated " + text.length + " chars; keep " + maxBytes + " budget; tail follows] ...\n"
+     /** The characters left for the head and tail once the banner is paid for. */
+     const budget = Math.max(0, maxBytes - banner.length) // banner counts against the budget
++    // The tail's share, floored — but NEVER 0: `slice(-0)` is `slice(0)`, i.e. the WHOLE text, so a
++    // budget of 1..3 (where `Math.floor(budget * 0.3)` is 0) used to return an output LARGER than
++    // maxBytes and larger than the input it was meant to cap.
++    /** Characters the trailing slice keeps; at least one whenever any budget is left. */
++    const tailChars = Math.max(1, Math.floor(budget * 0.3))
+     /** The leading slice, 70% of what is left after the banner (empty when the banner alone overruns). */
+     const head = budget > 0 ? text.slice(0, Math.floor(budget * 0.7)) : ""
+     /** The trailing slice, the remaining 30% (empty when the banner alone overruns). */
+-    const tail = budget > 0 ? text.slice(-Math.floor(budget * 0.3)) : ""
++    const tail = budget > 0 ? text.slice(-tailChars) : ""
+     return { ...out, content: [{ type: "text", text: head + banner + tail }] }
+   })
+ 
+diff --git a/packages/mpd-tools-plugin/test/tools.test.ts b/packages/mpd-tools-plugin/test/tools.test.ts
+index ba06ed5f..7bdbe59b 100644
+--- a/packages/mpd-tools-plugin/test/tools.test.ts
++++ b/packages/mpd-tools-plugin/test/tools.test.ts
+@@ -1,7 +1,8 @@
+ import { test, expect } from "bun:test"
+ import { mkdtempSync, writeFileSync } from "node:fs"
+-import { join } from "node:path"
++import { join, relative } from "node:path"
+ import { tmpdir } from "node:os"
++import { fileURLToPath } from "node:url"
+ import { apply } from "../src/index.ts"
+ import type { DshPostDecision, DshPostResult, DshTextBlock, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index.ts"
+ 
+@@ -99,6 +100,31 @@ test("write-guard allows idempotent rewrite of a >1MB file (full-file compare)",
+   expect(guard({ name: "write", arguments: { file_path: fp, content: big + "diff" } })).toContain("use the edit tool")
+ })
+ 
++// The write guard must resolve a RELATIVE file_path against the CALLING SESSION's workspace, never
++// against the dsh process cwd — the same class the hashline guard was repaired for. Both failure
++// directions are silent: a clobber the guard exists to prevent goes through (cwd has no such file),
++// and an honest CREATE of <ws>/X is denied (cwd happens to hold an X with different content).
++test("write-guard resolves a RELATIVE file_path against the session workspace, not process.cwd()", () => {
++  /** The session workspace the guard must resolve against; unrelated to the process cwd. */
++  const ws = mkdtempSync(join(tmpdir(), "mpd-tools-ws-"))
++  /** The file already in that workspace: rewriting it with different content is the clobber. */
++  writeFileSync(join(ws, "notes.md"), "old")
++  /** One exec carrying the session whose header cwd IS that workspace. */
++  const sessionExec: DshToolExec = { name: "write", arguments: { file_path: "notes.md", content: "new" }, agent: { session: { header: { cwd: ws } } } }
++  /** The guard under test, as the plugin registered it. */
++  const guard = makeGuard()
++  // 1) The clobber: pre-fix the guard probed `<cwd>/notes.md`, found nothing and returned undefined.
++  expect(guard(sessionExec) ?? "").toContain("use the edit tool")
++  // 2) The mirror: a relative path that EXISTS from the process cwd but is absent from the session
++  //    workspace must not be denied — pre-fix this honest CREATE was refused for a file the session
++  //    never had. This test file's own cwd-relative path is that path by construction.
++  /** This test file as a path relative to the process cwd, which resolves back to an existing file. */
++  const relativeToCwd = relative(process.cwd(), fileURLToPath(import.meta.url))
++  /** The same relative path read as the session would: a file that workspace does not contain. */
++  const strayExec: DshToolExec = { name: "write", arguments: { file_path: relativeToCwd, content: "new" }, agent: { session: { header: { cwd: ws } } } }
++  expect(guard(strayExec)).toBeUndefined()
++})
++
+ /** The downstream accept decision every truncation arm starts from: one 100,000-character text block. */
+ const ACCEPT = { kind: "accept", content: [{ type: "text", text: "x".repeat(100_000) }] } as const
+ 
+@@ -127,6 +153,18 @@ test("truncation output (incl. banner) never exceeds truncateMaxBytes", async ()
+   }
+ })
+ 
++// THE BOUNDARY the sampled budgets above never crossed: `budget = maxBytes - banner.length` is 1..3
++// exactly when `Math.floor(budget * 0.3)` is 0, and `-0 === 0` made `slice(-0)` the WHOLE text — so
++// the "truncated" output grew by 100,000 characters. The banner is 74 chars for these budgets.
++test("truncation near the banner-length boundary never inflates the output", async () => {
++  for (const maxBytes of [74, 75, 76, 77, 78, 79, 80]) {
++    /** The truncated text produced at this boundary budget. */
++    const text = await runTruncation(maxBytes)
++    expect(text.length, "maxBytes=" + maxBytes).toBeLessThanOrEqual(maxBytes)
++    expect(text, "maxBytes=" + maxBytes).toContain("[mpd-tools truncated 100000 chars")
++  }
++})
++
+ test("truncation with a budget smaller than the banner adds no head/tail slices", async () => {
+   /** The truncated text, which here is the banner alone. */
+   const text = await runTruncation(64) // banner alone is ~74 chars

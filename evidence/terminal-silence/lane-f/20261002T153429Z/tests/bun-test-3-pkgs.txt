@@ -1,0 +1,57 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-codegraph-plugin/src/index.test.ts:
+(pass) O-1 apply-time project root > no session and no override falls back to process.cwd() [0.96ms]
+(pass) O-1 apply-time project root > a session workspace (exec-less DSH_WORKSPACE_ROOT) beats the process cwd [0.36ms]
+(pass) O-1 apply-time project root > the explicit project-cwd override wins over the session workspace [0.31ms]
+(pass) O-1 apply-time project root > the status line names the session workspace, and the home skip still applies [0.21ms]
+(pass) O-1 call-time /mpd-codegraph handler > resolves the invocation's session workspace, not the apply-time root [0.38ms]
+(pass) O-1 call-time /mpd-codegraph handler > returns the harness CommandResult shape (kind), never the legacy success flag [0.15ms]
+(pass) O-1 call-time /mpd-codegraph handler > re-resolves per invocation: two sessions, two targets [0.18ms]
+(pass) command registration goes through the adapter (AGENTS.md §6) > the standalone adapter registers the command and survives a stub register returning no disposer [0.17ms]
+(pass) command registration goes through the adapter (AGENTS.md §6) > apply never throws when the composition has no command registry at all [0.14ms]
+
+packages/mpd-mcp-shared/log-sink.test.ts:
+(pass) root resolution and writability > the documented env keys come first, in order [0.09ms]
+(pass) root resolution and writability > blank and duplicate candidates are dropped [0.02ms]
+(pass) root resolution and writability > the first WRITABLE root wins and the log file appears under it [0.18ms]
+(pass) root resolution and writability > an unwritable candidate falls through to the next one [0.14ms]
+(pass) when no root is writable > the sink goes to the ring: no file, no throw, and the lines are kept in memory [0.13ms]
+(pass) size cap and rotation > the log rotates to a single `.1` generation once the cap is crossed [0.37ms]
+(pass) size cap and rotation > a line longer than the per-line cap is truncated with a marker [0.20ms]
+(pass) capture and restore > stderr and the five console methods are replaced, stdout is NOT touched, restore puts them back [2.55ms]
+
+packages/mpd-mcp-shared/bin-resolve.test.ts:
+(pass) ast-grep: $MPD_AST_GREP_BIN_DIR tier wins and prefers ast-grep over sg [0.32ms]
+(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [0.12ms]
+(pass) ast-grep: createRequire tier resolves the packed optionalDependency [0.14ms]
+(pass) ast-grep: <bundle>/.toolchain tier resolves the link: checkout layout [0.09ms]
+(pass) ast-grep: precedence is bin-dir > require > toolchain [0.26ms]
+(pass) ast-grep: nothing resolvable returns null and never throws [0.09ms]
+(pass) codegraph: <bundle>/.toolchain tier resolves the link: checkout layout [0.19ms]
+(pass) codegraph: createRequire tier reads the package's own bin entry [0.20ms]
+(pass) ast-grep: win32 resolves the .exe spelling of a candidate [0.18ms]
+(pass) ast-grep: win32 honours the caller's own PATHEXT order [0.14ms]
+(pass) ast-grep: win32 never offers a .cmd/.bat candidate (a shell-less spawn cannot start one) [0.15ms]
+(pass) ast-grep: POSIX keeps the bare name as the only spelling [0.10ms]
+(pass) ast-grep: <bundle>/node_modules/.bin tier resolves a bundle-root install [0.14ms]
+(pass) ast-grep: .toolchain still wins over the bundle-root tier [0.13ms]
+(pass) bundleRootFrom: <bundle>/packages/<pkg>/launch.ts -> <bundle> [0.14ms]
+[bin-resolve test] toolchain absent — real-probe assertions skipped
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [0.04ms]
+
+packages/mpd-mcp-codegraph/test/daemon-policy.test.ts:
+(pass) parseDaemonSetting: truthy, falsy, unset and invalid stay distinguishable [0.06ms]
+(pass) default (no env): serve in-process, and the reason names the measured failure [0.04ms]
+(pass) MPD_CODEGRAPH_DAEMON=1 keeps upstream's shared daemon (no opt-out pinned) [0.05ms]
+(pass) MPD_CODEGRAPH_DAEMON=0 pins the opt-out explicitly [0.02ms]
+(pass) an explicit CODEGRAPH_NO_DAEMON=1 is respected and never overridden [0.02ms]
+(pass) an unrecognized value warns and falls back to the safe default [0.03ms]
+(pass) the default emits exactly ONE informational line (never stdout) [0.02ms]
+(pass) launch.ts applies the policy before importing the vendored serve.js [0.05ms]
+(pass) the vendored bridge forwards CODEGRAPH_NO_DAEMON to the child env [0.45ms]
+
+ 42 pass
+ 0 fail
+ 130 expect() calls
+Ran 42 tests across 4 files. [25.00ms]

@@ -22,7 +22,7 @@
 // absent from PLUGIN_PKGS because it is adopted first-class main code (MIT) copied
 // WHOLESALE — `cpSync(join(repoRoot, "packages", "mpd-agent-teams-plugin"), …,
 // { recursive: true, filter: … })` in scripts/pack-mpd.ts — and the patch mounts
-// it as `…/lib/index.js`, never `…/dist/index.js`; it ships no `dist/` at all, so
+// it as `…/lib/index.ts`, never `…/dist/index.js`; it ships no `dist/` at all, so
 // listing it would trip the packer's own missing-dist check. A glob rule would fail
 // RED on a healthy tree and read as a regression. Hence the three reference classes
 // below, keyed on the patch's real file path, not on a directory name.
@@ -78,7 +78,7 @@ const DEFAULT_CLI: string = join(repoRoot, "scripts", "mpd-ext.ts")
 /** The directory holding one `packages/<pkg>` tree per plugin package. */
 const DEFAULT_PACKAGES_DIR: string = join(repoRoot, "packages")
 /** The bundle patch whose `packages/<pkg>/<rel>` rows the static half classifies. */
-const DEFAULT_PATCH: string = join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml")
+const DEFAULT_PATCH: string = join(repoRoot, "cordis.patch.yml")
 /** The packed artifact the PACKED half checks when no `--packed <dir>` is given. */
 const DEFAULT_PACKED: string = join(repoRoot, "dist", "mpd-package")
 /** Prefix of every line this gate prints, so a caller can attribute the output. */
@@ -324,7 +324,7 @@ interface CheckStats {
   refCount: number
   /** Patch rows mounted as `dist/index.js` (built plugin packages). */
   classA: number
-  /** Patch rows mounted as `lib/index.js` (adopted main code, copied wholesale). */
+  /** Patch rows mounted as `lib/index.ts` (adopted main code, copied wholesale). */
   classB: number
   /** Patch rows mounted as anything else (MCP launchers and other CLI entries). */
   classC: number
@@ -389,11 +389,13 @@ const REQUIRED_ROOT_ASSETS: readonly string[] = ["templates", "docs", "agent-ref
 // group reports "REFERENCES" so a missing author-critical file is never read as a template
 // problem. An unknown group falls back to "ASSET-MISSING".
 const ROOT_ASSET_KIND: Record<string, string> = { templates: "TEMPLATES", docs: "TEMPLATES", "agent-references": "REFERENCES" }
-// The three files an external author needs when a boot misbehaves or when they touch the adopted
-// plugin (AGENTS.md's on-demand Reference Index). Named because "the directory arrived" is not
-// the claim — these files are. English-only: no *.zh-CN.md twin belongs in this group, and
-// `bun run verify:docs` does not discover the tree (measured: pairs unchanged).
-const REQUIRED_REFERENCE_FILES: readonly string[] = ["index.md", "troubleshooting.md", "agent-teams-deltas.md"]
+// The two files an external author needs when a boot misbehaves (AGENTS.md's on-demand Reference
+// Index). Named because "the directory arrived" is not the claim — these files are. English-only:
+// no *.zh-CN.md twin belongs in this group, and `bun run verify:docs` does not discover the tree
+// (measured: pairs unchanged). The adopted-plugin delta registry that used to be the third entry
+// is DELETED with the body it described (de-vendor wave), so a boot can no longer be debugged
+// against it and naming it here would be a permanent red.
+const REQUIRED_REFERENCE_FILES: readonly string[] = ["index.md", "troubleshooting.md"]
 // Root FILES that must ship by NAME (not by directory). Same shape as the reference list above
 // and for a sharper reason: the manifest arm below is DECLARATION-DRIVEN — a file present but
 // unlisted is loud, a pattern listed but absent is loud, and a file declared NOWHERE is invisible
@@ -586,14 +588,14 @@ function resolveCliTemplate(cliSrc: string, sdkSrc: string): CliTemplate | null 
 
 // Reference class of a patch row, keyed on the FILE the row mounts:
 //   A  `dist/index.js` — a built plugin package: MUST be in PLUGIN_PKGS ∪ MCP_PKGS.
-//   B  `lib/index.js`  — adopted main code copied wholesale (no dist/): the package
+//   B  `lib/index.ts`  — adopted main code copied wholesale (no dist/): the package
 //                        directory must exist and it must NOT be in the lists.
 //   C  anything else   — e.g. `launch.ts` / `dist/cli.js` for an MCP server:
 //                        MUST be in PLUGIN_PKGS ∪ MCP_PKGS.
 /** The reference class of one mounted path: A built plugin, B adopted main code, C anything else. */
 function classifyRef(rel: string): "A" | "B" | "C" {
   if (rel === "dist/index.js") return "A"
-  if (rel === "lib/index.js") return "B"
+  if (rel === "lib/index.ts") return "B"
   return "C"
 }
 
@@ -1230,7 +1232,7 @@ function printReport(report: CheckReport, opts: Options): void {
   /** Every EXPECTED reading from both halves, printed in both branches below. */
   const expected = [...(content?.expected ?? []), ...(completeness?.expected ?? [])]
   if (report.findings.length === 0) {
-    console.log(PREFIX + " ok: " + s.classA + " dist/index.js row(s) + " + s.classB + " adopted lib/index.js row(s) + " + s.classC + " mcp row(s) of the bundle patch all resolve; " + s.pluginCount + " PLUGIN_PKGS + " + s.mcpCount + " MCP_PKGS entries all exist; root assets " + s.rootAssets.join("/") + " declared and present; CLI validator surface " + s.shimExports.length + " exports in step; " + packedLine + (packedStats.packed === "checked" ? "; agent references " + packedStats.referenceFiles + "/" + REQUIRED_REFERENCE_FILES.length + "; root files " + packedStats.rootFiles + "/" + REQUIRED_ROOT_FILES.length + "; declared packages " + packedStats.packedPackages.present + "/" + packedStats.packedPackages.declared + " present in the artifact" + contentLine + completenessLine + stampLine + exemptLine : ""))
+    console.log(PREFIX + " ok: " + s.classA + " dist/index.js row(s) + " + s.classB + " adopted lib/index.ts row(s) + " + s.classC + " mcp row(s) of the bundle patch all resolve; " + s.pluginCount + " PLUGIN_PKGS + " + s.mcpCount + " MCP_PKGS entries all exist; root assets " + s.rootAssets.join("/") + " declared and present; CLI validator surface " + s.shimExports.length + " exports in step; " + packedLine + (packedStats.packed === "checked" ? "; agent references " + packedStats.referenceFiles + "/" + REQUIRED_REFERENCE_FILES.length + "; root files " + packedStats.rootFiles + "/" + REQUIRED_ROOT_FILES.length + "; declared packages " + packedStats.packedPackages.present + "/" + packedStats.packedPackages.declared + " present in the artifact" + contentLine + completenessLine + stampLine + exemptLine : ""))
   } else {
     console.error(PREFIX + " FAIL - " + report.findings.length + " closure violation(s)")
     for (const f of report.findings) {
@@ -1478,7 +1480,7 @@ function selfTest(): number {
       put(fxPacked, "package.json", manifestBody())
       for (const dir of assets) put(fxPacked, dir + "/.keep", "")
       for (const f of rootFiles) put(fxPacked, f, "# fixture root file\n")
-      for (const pkg of fixturePkgs) put(fxPacked, "packages/" + pkg + "/" + (adoptedPkgs.includes(pkg) ? "lib/index.js" : "dist/index.js"), "export {}\n")
+      for (const pkg of fixturePkgs) put(fxPacked, "packages/" + pkg + "/" + (adoptedPkgs.includes(pkg) ? "lib/index.ts" : "dist/index.js"), "export {}\n")
       put(fxPacked, "templates/mpd-extension/mpd-ext.json", "{}\n")
       put(fxPacked, "templates/mpd-extension/README.md", "# fixture template\n")
       put(fxPacked, "docs/guide.md", "# guide\n")
@@ -1499,7 +1501,7 @@ function selfTest(): number {
     // its OWN `packages/` dir: borrowing the real one would judge the fixture artifact against a tree
     // it was never packed from (measured: all 27 real dist files would be "absent"). Mirror the packed
     // side byte for byte, then point `--packages-dir` at it.
-    for (const pkg of fixturePkgs) put(fxSource, "packages/" + pkg + "/" + (adoptedPkgs.includes(pkg) ? "lib/index.js" : "dist/index.js"), "export {}\n")
+    for (const pkg of fixturePkgs) put(fxSource, "packages/" + pkg + "/" + (adoptedPkgs.includes(pkg) ? "lib/index.ts" : "dist/index.js"), "export {}\n")
     buildPacked()
     /** The three fixture paths every packed arm below drives the child with. */
     const fixtureArgs = ["--source-root", fxSource, "--packages-dir", join(fxSource, "packages"), "--packed", fxPacked]
@@ -1766,7 +1768,21 @@ function selfTest(): number {
     // TIMESTAMP ORDER, not content provenance, so a mutation inside an artifact whose source file also
     // carries a post-pack mtime is reported as the expected class — loudly, never silently.
     utimesSync(realRef, realRefMtime, realRefMtime)
-    arm("negative-control (real artifact copy, one byte changed -> reported, not silent)", runChecker(["--packed", realCopy, "--require-packed"]), (c: ChildResult): boolean => c.all.includes(EXPECTED_KIND) && c.all.includes("agent-references/troubleshooting.md"))
+    // THE PREDICATE ACCEPTS EITHER LEGAL CLASS, because the class is a fact of the ENVIRONMENT, not of
+    // the gate. MEASURED 2026-10-07 (de-vendor wave): with the canonical artifact freshly staged by
+    // `node scripts/pack-mpd.ts` — which the wave's own acceptance list requires — every source file is
+    // strictly OLDER than the pack, so the flipped byte CANNOT be attributed to a post-pack writer and
+    // the byte rule correctly reports the hard `CONTENT-DRIFT` leg; the arm then reddened on a green
+    // gate. `touch agent-references/troubleshooting.md` flipped it straight back to PASS with the
+    // expected leg, which is the proof that the arm was measuring the artifact's age, not the rule.
+    // What the arm actually claims is "reported, not silent", so it now asserts THAT: the file is NAMED
+    // in the output AND the exit code matches whichever class the byte rule chose. A silent pass
+    // (exit 0, neither kind) still fails the arm.
+    arm("negative-control (real artifact copy, one byte changed -> reported, not silent)", runChecker(["--packed", realCopy, "--require-packed"]), (c: ChildResult): boolean => {
+      /** Whether the byte rule named the mutated file, whichever class it landed in. */
+      const named = c.all.includes("agent-references/troubleshooting.md")
+      return named && ((c.all.includes(EXPECTED_KIND) && c.status === 0) || (c.all.includes(CONTENT_KIND) && c.status === 1))
+    })
     // Arm 20c — the same mutated copy with the stamp PINNED at the source file's own mtime: now the
     // writer cannot be "after the pack", so the mutated byte is a hard CONTENT-DRIFT and the gate
     // reddens. This is the falsifiable pair for "a content mutation reddens": 20a green, 20c red.

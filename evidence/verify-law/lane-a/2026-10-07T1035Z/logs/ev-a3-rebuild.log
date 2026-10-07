@@ -1,0 +1,23 @@
+cmd: snapshot package entries (bin/main) + a rebuild attempt per MCP server, outfile OUTSIDE the repo
+  ast-grep-mcp bin={"omo-ast-grep":"dist/cli.js"} main=null module=null
+  git-bash-mcp bin={"omo-git-bash":"dist/cli.js"} main=null module=null
+  lsp-daemon bin={"omo-lsp-daemon":"./dist/cli.js"} main=null module=null
+
+  astgrep                                              exit=1  (no artifact)
+    first error lines:
+      24 | } from "@oh-my-opencode/mcp-stdio-core";
+                  ^
+      error: Could not resolve: "@oh-my-opencode/mcp-stdio-core". Maybe you need to "bun install"?
+          at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/vendor/mcp-src/ast-grep-mcp/src/mcp.ts:24:8
+  gitbash                                              exit=1  (no artifact)
+    first error lines:
+      2 | import { errorResponse, isPlainRecord, jsonRpcId, runJsonRpcStdioServer, successResponse } from "@oh-my-opencode/mcp-stdio-core";
+                                                                                                          ^
+      error: Could not resolve: "@oh-my-opencode/mcp-stdio-core". Maybe you need to "bun install"?
+          at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/vendor/mcp-src/git-bash-mcp/src/mcp.ts:2:97
+  lsp                                                  exit=1  (no artifact)
+    first error lines:
+      4 | import { handleLspMcpRequest, type JsonRpcId, type JsonRpcResponse } from "@oh-my-opencode/lsp-core/mcp";
+                                                                                    ^
+      error: Could not resolve: "@oh-my-opencode/lsp-core/mcp". Maybe you need to "bun install"?
+          at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/vendor/mcp-src/lsp-daemon/src/proxy.ts:4:75

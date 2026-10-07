@@ -1,0 +1,621 @@
+// THE DEPENDENCY GRAPH: the drawing behind the team scene (W3 of the team-plane split).
+//
+// WHAT THIS IS. `team-state.ts` answers WHAT the team is (a `TeamWorkflow`, read from the mpd-owned
+// record); this module answers HOW to draw it in a terminal. The two are deliberately separate so
+// the drawing is testable without a terminal, a React reconciler or a team — every function here is
+// pure, takes its width as an argument, and returns text and tones.
+//
+// THREE VIEWS, ONE PREFERENCE:
+//   `boxes` — a layered DAG, one box per task, edges drawn with box-drawing junctions. Rank (the
+//             longest dependency path) is the vertical axis, so a chain reads top to bottom. This
+//             is the view a wide terminal gets, and it is the reason the module exists: a flat list
+//             with indentation cannot show a task with TWO blockers, which is the common shape.
+//   `rail`  — an indented forest, one line per task, for a terminal too narrow for boxes. A task
+//             with several blockers names the extra ones inline (`⇠ T4+T6`) rather than losing them.
+//   `list`  — a rank-grouped table with progress bars, for a DAG too dense to lay out as boxes.
+//
+// CORRECTNESS COMES FROM A DIRECTION MASK, not from per-edge corner glyphs: every cell accumulates
+// which of up/down/left/right the drawing enters it from, and the glyph is chosen once at the end.
+// That is what makes a horizontal bus running under another column render `┼` instead of being
+// overwritten by whichever edge was painted last.
+//
+// OPT-1 (user decision, 2026-09-13) — DO NOT "FIX" THE BLOCKED RULE. A FAILED dependency does NOT
+// block its dependents: they stay `open` and dispatchable, and the failure is reported beside the
+// state (`failedDependencies`) rather than folded into it. `team-store.ts` and `team-state.ts` carry
+// the same rule; this module only DRAWS the `visual` it is handed and never re-derives it, which is
+// how the three stay in agreement.
+import { cellWidth, clampCells, stripControl } from "./sanitize.js"
+
+/** One task as the graph needs it; a structural subset of `TeamTaskRow` so a fixture is cheap. */
+export interface GraphTask {
+  /** The task id the drawing labels and the caller focuses by. */
+  id: string
+  /** The task title, truncated to whatever the geometry allows. */
+  subject: string
+  /** `requirement` | `work` | `review` | `repair` | `integration`, abbreviated for the label. */
+  kind?: string
+  /** The RENDERED state `team-state.ts` computed: completed|running|failed|blocked|open|cancelled. */
+  visual: string
+  /** Owner display name, absent when nobody holds it. */
+  assignee?: string
+  /** Ids this task is blocked by, in board order. */
+  dependencies: readonly string[]
+  /** Longest dependency path (0 = a root); the boxes view's RANK. */
+  depth: number
+  /** Attempt counter, when the record carries one. */
+  attempt?: number
+}
+
+/**
+ * What a span of a row MEANS, not what colour it is.
+ *
+ * The mapping to a theme key lives in {@link GRAPH_THEME} so the drawing never hard-codes a colour:
+ * a theme change is one table, and a test can assert the semantics.
+ */
+export type GraphTone =
+  | "completed" | "running" | "failed" | "blocked" | "cancelled" | "open"
+  | "focus" | "dim" | "edge" | "chain" | "blank"
+
+/** One rendered span: text plus the tone it is drawn in. */
+export interface GraphSpan {
+  /** The characters, already clamped to the viewport. */
+  text: string
+  /** What the characters mean. */
+  tone: GraphTone
+}
+
+/** A task's box or row, in the view's own coordinates, so a pointer can be resolved to a task. */
+export interface GraphHit {
+  /** The task this rectangle belongs to. */
+  taskId: string
+  /** The first row of the rectangle, relative to the graph's own top. */
+  row: number
+  /** The last row of the rectangle, inclusive. */
+  rowEnd: number
+  /** The first column, relative to the graph's own left. */
+  col: number
+  /** The last column, inclusive. */
+  colEnd: number
+}
+
+/** One rendered graph: the lines to draw, the hit rectangles, and what the layout decided. */
+export interface GraphView {
+  /** The rows, top to bottom; each row is a list of same-tone spans. */
+  lines: GraphSpan[][]
+  /** The rectangles a pointer can land in. */
+  hits: GraphHit[]
+  /** The width the drawing occupies, in cells. */
+  width: number
+  /** Which layout was drawn, and therefore why it looks the way it does. */
+  mode: "boxes" | "rail" | "list"
+  /** The task ids taking part in a dependency cycle, which the drawing reports rather than hides. */
+  cycles: string[]
+  /** The task the drawing lit; absent when nothing is focused. */
+  focus?: string
+  /** The tasks lit beside the focus: its transitive DEPENDENCIES. */
+  chain: string[]
+}
+
+/**
+ * The dsh-tui THEME KEY each tone draws in.
+ *
+ * Declared as data so a theme change is one edit, and so a test can assert the semantics rather than
+ * a hex value. The keys are the host's own (`theme.d.ts`): `success`, `activity`, `warning`, `error`,
+ * `subtle`, `inactive`, `accent`, `accentShimmer`, `promptBorder`.
+ */
+export const GRAPH_THEME: Readonly<Record<GraphTone, string>> = Object.freeze({
+  completed: "success",
+  running: "activity",
+  failed: "error",
+  blocked: "warning",
+  cancelled: "inactive",
+  open: "subtle",
+  focus: "accentShimmer",
+  dim: "inactive",
+  edge: "promptBorder",
+  chain: "accent",
+  // UNTOUCHED CELLS ARE NOT `dim`. A drawing is mostly background, and labelling that background
+  // "dimmed" would make the focus's own dimming signal unreadable — measured: the no-focus arm saw
+  // `dim` in a drawing where nothing was dimmed at all.
+  blank: "text",
+})
+
+/** The state glyph per rendered state; `?` for a state this drawing does not know. */
+const GLYPH: Readonly<Record<string, string>> = Object.freeze({
+  completed: "✓", running: "◐", failed: "✗", blocked: "○", cancelled: "⊘", open: "○",
+})
+
+/** The three-letter kind abbreviation the labels carry. */
+const KIND_ABBREV: Readonly<Record<string, string>> = Object.freeze({
+  requirement: "REQ", work: "WRK", review: "REV", repair: "FIX", integration: "INT",
+})
+
+/** The smallest box that can still hold `◐ T12 WRK …`; below this the rail is drawn instead. */
+const MIN_NODE_WIDTH = 16
+/** The gap between two boxes in one rank. */
+const NODE_GAP = 3
+/** The widest a box may grow, so one long subject cannot push a rank off the screen. */
+const MAX_NODE_WIDTH = 34
+/** Ranks at or above this count are drawn as the list, because boxes stop being readable. */
+const MAX_BOX_RANKS = 12
+
+/** The four directions a cell can be entered from, as bits. */
+const UP = 1, DOWN = 2, LEFT = 4, RIGHT = 8
+
+/** The glyph for each direction mask. Anything absent is a space. */
+const JUNCTION: Readonly<Record<number, string>> = Object.freeze({
+  0: " ",
+  [UP]: "│", [DOWN]: "│", [UP | DOWN]: "│",
+  [LEFT]: "─", [RIGHT]: "─", [LEFT | RIGHT]: "─",
+  [DOWN | RIGHT]: "┌", [DOWN | LEFT]: "┐", [UP | RIGHT]: "└", [UP | LEFT]: "┘",
+  [UP | DOWN | RIGHT]: "├", [UP | DOWN | LEFT]: "┤",
+  [UP | LEFT | RIGHT]: "┴", [DOWN | LEFT | RIGHT]: "┬",
+  [UP | DOWN | LEFT | RIGHT]: "┼",
+})
+
+/**
+ * Trim a built row to a cell budget, dropping whole spans from the end.
+ *
+ * THE INVARIANT THIS ENFORCES: a drawing never exceeds the width it was given. The three layouts
+ * each assemble rows from parts whose widths interact (a connector, a label, a right-hand tail), and
+ * doing that arithmetic correctly in three places is how a renderer overflows a scene — measured:
+ * the rail produced 31 cells for a 24-cell viewport because its label floor outranked the tail.
+ * Clamping here makes the guarantee structural: whatever the arithmetic says, THIS is what prints.
+ * @param spans - the row's spans, left to right.
+ * @param cols - the cells available.
+ * @returns the spans that fit, the last one truncated if it straddles the boundary.
+ */
+function clampSpans(spans: readonly GraphSpan[], cols: number): GraphSpan[] {
+  /** The kept spans. */
+  const kept: GraphSpan[] = []
+  /** The cells used so far. */
+  let used = 0
+  for (const span of spans) {
+    if (used >= cols) break
+    /** The cells this span may occupy. */
+    const room = cols - used
+    if (cellWidth(span.text) <= room) { kept.push(span); used += cellWidth(span.text); continue }
+    kept.push({ text: clampCells(span.text, room), tone: span.tone })
+    used = cols
+  }
+  return kept
+}
+
+/**
+ * The label one task draws: marker, id, kind abbreviation and subject, single-spaced.
+ *
+ * Built here rather than inline in three renderers so an ABSENT kind cannot leave a double space in
+ * one view and not the others — measured: the boxes view drew `✓ t1  freeze the contract` while the
+ * rail drew it single-spaced.
+ * @param task - the task to label.
+ * @param focus - the focused task id, which draws the `▶` marker instead of the state glyph.
+ * @returns the label text.
+ */
+function labelOf(task: GraphTask, focus: string | undefined): string {
+  /** The marker: the focus outranks the state glyph, because where you ARE beats what it is. */
+  const marker = task.id === focus ? "▶" : (GLYPH[task.visual] ?? "?")
+  /** The kind abbreviation, absent when the record carries no kind. */
+  const kind = KIND_ABBREV[task.kind ?? ""] ?? ""
+  return (kind === "" ? [marker, task.id, task.subject] : [marker, task.id, kind, task.subject]).join(" ")
+}
+
+/** The tone a task draws in, given the focus and its chain. */
+function toneOf(task: GraphTask, focus: string | undefined, chain: ReadonlySet<string> | undefined): GraphTone {
+  if (task.id === focus) return "focus"
+  if (chain === undefined) {
+    /** The task's own rendered state, or `open` for a state this drawing does not know. */
+    const visual = task.visual
+    return (visual === "completed" || visual === "running" || visual === "failed" || visual === "blocked" || visual === "cancelled") ? visual : "open"
+  }
+  return chain.has(task.id) ? toneOf(task, undefined, undefined) : "dim"
+}
+
+/**
+ * The transitive DEPENDENCIES of one task — what a focus lights up.
+ *
+ * Only the UPSTREAM direction: the question a focus asks is "what does this rest on", and a task
+ * that this one UNBLOCKS is a different question, answered by the detail pane rather than by the
+ * drawing. A cycle is walked once, so a malformed board cannot spin here.
+ * @param tasks - the board.
+ * @param id - the task to walk from.
+ * @returns the ids depended on, directly or transitively; never including `id` itself.
+ */
+export function dependencyChain(tasks: readonly GraphTask[], id: string): Set<string> {
+  /** Task lookup by id. */
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  /** The ids reached so far. */
+  const seen = new Set<string>()
+  /** The walk's frontier, seeded with the focus's own dependencies. */
+  const stack = [...(byId.get(id)?.dependencies ?? [])]
+  while (stack.length > 0) {
+    /** The next id to visit. */
+    const current = stack.pop() as string
+    if (seen.has(current) || !byId.has(current)) continue
+    seen.add(current)
+    for (const next of byId.get(current)?.dependencies ?? []) if (!seen.has(next)) stack.push(next)
+  }
+  return seen
+}
+
+/** The ranks a board lays out in: index = depth, value = that rank's tasks in board order. */
+function ranksOf(tasks: readonly GraphTask[]): GraphTask[][] {
+  /** The highest depth on the board; a negative depth is treated as a root. */
+  const deepest = tasks.reduce((max, task) => Math.max(max, Number.isFinite(task.depth) ? task.depth : 0), 0)
+  /** One bucket per rank, so an empty rank still exists and the spacing stays honest. */
+  const ranks: GraphTask[][] = Array.from({ length: deepest + 1 }, () => [])
+  for (const task of tasks) {
+    /** The rank this task claims; a negative or unknown depth falls back to 0. */
+    const rank = Number.isFinite(task.depth) && task.depth >= 0 ? Math.min(task.depth, deepest) : 0
+    ranks[rank].push(task)
+  }
+  return ranks
+}
+
+/** Ids taking part in a dependency cycle, so a malformed board is REPORTED rather than drawn flat. */
+export function cycleIds(tasks: readonly GraphTask[]): string[] {
+  /** Task lookup by id. */
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  /** Ids whose whole subtree was walked. */
+  const done = new Set<string>()
+  /** The current walk, in visit order. */
+  const stack: string[] = []
+  /** Membership index of `stack`. */
+  const onStack = new Set<string>()
+  /** Ids proven to sit on a cycle. */
+  const cyclic = new Set<string>()
+  /**
+   * Walk one id's dependencies.
+   * @param id - the id to visit.
+   */
+  const visit = (id: string): void => {
+    if (done.has(id)) return
+    if (onStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id))) cyclic.add(entry)
+      return
+    }
+    /** This id's task, undefined when the board does not carry it. */
+    const task = byId.get(id)
+    if (task === undefined) return
+    onStack.add(id)
+    stack.push(id)
+    for (const dependency of task.dependencies) if (byId.has(dependency)) visit(dependency)
+    stack.pop()
+    onStack.delete(id)
+    done.add(id)
+  }
+  for (const task of tasks) visit(task.id)
+  return [...cyclic].sort()
+}
+
+/**
+ * THE LAYERED BOX DAG.
+ *
+ * Rank is the vertical axis and the box width is derived from the WIDEST rank, so the drawing can
+ * never exceed the viewport — the caller passes a width and gets a drawing that fits, which is what
+ * makes this safe to run on every render.
+ * @param tasks - the board to draw.
+ * @param cols - the cells available.
+ * @param focus - the task to light, with its dependency chain.
+ * @returns the view, or `undefined` when even the narrowest boxes would not fit.
+ */
+export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: string): GraphView | undefined {
+  if (tasks.length === 0) {
+    /** The empty view: a board with no tasks draws nothing rather than a bare frame. */
+    const empty: GraphView = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [] }
+    if (focus !== undefined) empty.focus = focus
+    return empty
+  }
+  /** The ranks, in draw order. */
+  const ranks = ranksOf(tasks)
+  if (ranks.length > MAX_BOX_RANKS) return undefined
+  /** The count of tasks in the busiest rank, which sets the box width. */
+  const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1)
+  /** The box width that fits `widest` boxes in `cols`; below the minimum there is no room. */
+  const nodeWidth = Math.min(MAX_NODE_WIDTH, Math.floor((cols - NODE_GAP * (widest - 1)) / widest))
+  if (nodeWidth < MIN_NODE_WIDTH) return undefined
+  /** The focus's chain, or undefined when nothing is focused. */
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus)
+  /** The drawn width: exactly what the widest rank occupies. */
+  const width = widest * (nodeWidth + NODE_GAP) - NODE_GAP
+
+  /** Each task's left column, laid out rank by rank. */
+  const column = new Map<string, number>()
+  for (const rank of ranks) {
+    // Order within a rank by the BARYCENTRE of the parents already placed, which is what keeps a
+    // chain roughly vertical instead of zig-zagging across the drawing.
+    /** The rank in draw order, carrying the mean parent column as its sort key. */
+    const ordered = rank.map((task, index) => {
+      /** The left columns of this task's parents that are already placed. */
+      const parents = task.dependencies.filter((id) => column.has(id)).map((id) => column.get(id) as number)
+      return { task, index, key: parents.length === 0 ? Number.MAX_SAFE_INTEGER : parents.reduce((sum, at) => sum + at, 0) / parents.length }
+    }).sort((left, right) => left.key - right.key || left.index - right.index)
+    ordered.forEach((entry, index) => column.set(entry.task.id, index * (nodeWidth + NODE_GAP)))
+  }
+
+  /** The accumulated direction mask per cell. */
+  const mask: number[][] = []
+  /** The literal characters written over the mask (labels). */
+  const text: (string | null)[][] = []
+  /** The tone per cell; a later, LOUDER write wins so a chain edge stays visible across a trunk. */
+  const tone: (GraphTone | null)[][] = []
+  /** The tone precedence, so a merge never dims something the focus lit. `blank` is lowest. */
+  const order: GraphTone[] = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"]
+  /** The tone currently in a cell, or undefined. */
+  const toneAt = (row: number, col: number): GraphTone | undefined => tone[row]?.[col] ?? undefined
+  /** Grow the canvas so a cell can be written. */
+  const grow = (row: number): void => {
+    while (mask.length <= row) { mask.push(new Array(width).fill(0)); text.push(new Array(width).fill(null)); tone.push(new Array(width).fill(null)) }
+  }
+  /** OR one direction into a cell; edges MERGE, they never overwrite. */
+  const link = (row: number, col: number, dir: number, at: GraphTone): void => {
+    if (col < 0 || col >= width || row < 0) return
+    grow(row)
+    mask[row][col] |= dir
+    /** The tone already there, if any. */
+    const current = toneAt(row, col)
+    if (current === undefined || order.indexOf(at) > order.indexOf(current)) tone[row][col] = at
+  }
+  /** Write a label character; it always beats a junction glyph. */
+  const label = (row: number, col: number, char: string, at: GraphTone): void => {
+    if (col < 0 || col >= width) return
+    grow(row)
+    text[row][col] = char
+    tone[row][col] = at
+  }
+  /** The centre column of one task's box. */
+  const centreOf = (id: string): number => (column.get(id) ?? 0) + Math.floor(nodeWidth / 2)
+  /** One row per box, plus the border rows above and below. */
+  const RANK_STRIDE = 6
+  /** Every rectangle the pointer can land in. */
+  /** One rectangle per box, so the pointer can resolve to a task. */
+  const hits: GraphHit[] = []
+  for (let rank = 0; rank < ranks.length; rank++) {
+    /** The row this rank's top border sits on. */
+    const top = rank * RANK_STRIDE
+    for (const task of ranks[rank]) {
+      /** The box's left column. */
+      const left = column.get(task.id) ?? 0
+      /** The box's right column, inclusive. */
+      const right = left + nodeWidth - 1
+      /** This task's tone: its state, or the chain/dim treatment when something is focused. */
+      const at = toneOf(task, focus, chain)
+      for (let col = left + 1; col < right; col++) link(top, col, LEFT | RIGHT, at)
+      link(top, left, RIGHT | DOWN, at); link(top, right, LEFT | DOWN, at)
+      link(top + 1, left, UP | DOWN, at); link(top + 1, right, UP | DOWN, at)
+      /** The label: the marker, the id, the kind abbreviation and as much subject as fits. */
+      const body = labelOf(task, focus)
+      /** The column the next label character goes to. */
+      let cursor = left + 1
+      for (const char of clampCells(stripControl(" " + body), nodeWidth - 2)) { label(top + 1, cursor, char, at); cursor += cellWidth(char) }
+      for (let col = left + 1; col < right; col++) link(top + 2, col, LEFT | RIGHT, at)
+      link(top + 2, left, RIGHT | UP, at); link(top + 2, right, LEFT | UP, at)
+      // An edge LEAVES from the middle of the bottom border, which is what makes the `┬` read as
+      // "this box has children" without a separate stub row.
+      if (ranks[rank + 1]?.some((child) => child.dependencies.includes(task.id)) === true) link(top + 2, centreOf(task.id), DOWN, at)
+      hits.push({ taskId: task.id, row: top, rowEnd: top + 2, col: left, colEnd: right })
+    }
+    if (rank + 1 >= ranks.length) break
+    /** The three connector rows between this rank and the next. */
+    const stubTop = top + 3, bus = top + 4, stubBottom = top + 5
+    for (const child of ranks[rank + 1]) {
+      /** This child's blockers that live in the rank above. */
+      const parents = child.dependencies.filter((id) => ranks[rank].some((parent) => parent.id === id))
+      if (parents.length === 0) continue
+      /** This child's centre column. */
+      const centre = centreOf(child.id)
+      link(top + 6, centre, UP, toneOf(child, focus, chain))
+      link(stubBottom, centre, UP | DOWN, toneOf(child, focus, chain))
+      for (const id of parents) {
+        /** The parent's centre column. */
+        const from = centreOf(id)
+        /** The tone this EDGE carries: bright only while BOTH of its ends are inside the chain. */
+        const edgeTone: GraphTone = focus === undefined
+          ? "edge"
+          : ((id === focus || chain?.has(id) === true) && (child.id === focus || chain?.has(child.id) === true)) ? "chain" : "dim"
+        link(stubTop, from, UP | DOWN, edgeTone)
+        if (from === centre) { link(bus, from, UP | DOWN, edgeTone); continue }
+        link(bus, from, UP, edgeTone); link(bus, centre, DOWN, edgeTone)
+        for (let col = Math.min(from, centre) + 1; col < Math.max(from, centre); col++) link(bus, col, LEFT | RIGHT, edgeTone)
+        link(bus, Math.min(from, centre), RIGHT, edgeTone); link(bus, Math.max(from, centre), LEFT, edgeTone)
+      }
+    }
+  }
+  /** The rendered rows: trailing blanks trimmed, runs of one tone collapsed into spans. */
+  const lines: GraphSpan[][] = []
+  for (let row = 0; row < mask.length; row++) {
+    /** This row's cells, junction or label. */
+    const cells: GraphSpan[] = []
+    /** The run being accumulated. */
+    let run: GraphSpan | null = null
+    for (let col = 0; col < width; col++) {
+      /** The character at this cell: a label wins over the junction glyph for its mask. */
+      const char = text[row][col] ?? JUNCTION[mask[row][col]] ?? " "
+      // An untouched cell is BACKGROUND, and consecutive background is ONE span rather than one per
+      // cell: the host renders each span as its own element, so a 108-cell row of mostly gaps would
+      // otherwise build ~100 elements per row on every render — and this scene re-renders on hover.
+      /** The tone at this cell; an untouched cell is background. */
+      const at: GraphTone = toneAt(row, col) ?? "blank"
+      if (run !== null && run.tone === at) run.text += char
+      else { run = { text: char, tone: at }; cells.push(run) }
+    }
+    while (cells.length > 0 && (cells[cells.length - 1].text ?? "").trim() === "") cells.pop()
+    lines.push(clampSpans(cells, width))
+  }
+  while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === "")) lines.pop()
+  /** The focus's chain as a list, for the header and the tests. */
+  const chainList = chain === undefined ? [] : [...chain].sort()
+  /** The finished view; `focus` is assigned only when there IS one, which exactOptionalPropertyTypes requires. */
+  const view: GraphView = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList }
+  if (focus !== undefined) view.focus = focus
+  return view
+}
+
+/**
+ * THE RAIL: an indented forest, one line per task, for a terminal too narrow for boxes.
+ *
+ * A task with several blockers is drawn under ONE of them and names the rest inline (`⇠ T4+T6`),
+ * which is the honest choice: the alternatives are to duplicate the row or to drop an edge.
+ * @param tasks - the board to draw.
+ * @param cols - the cells available.
+ * @param focus - the task to light, with its dependency chain.
+ * @returns the view; never undefined, because a rail fits any width.
+ */
+export function layoutRail(tasks: readonly GraphTask[], cols: number, focus?: string): GraphView {
+  /** The focus's chain, or undefined when nothing is focused. */
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus)
+  /** Task lookup by id. */
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  /** Each task's children, attached to the FIRST of its blockers in draw order. */
+  const children = new Map<string, GraphTask[]>()
+  for (const task of tasks) {
+    /** The blocker this task hangs under: the deepest one, so the forest stays shallow. */
+    const parent = task.dependencies.filter((id) => byId.has(id)).sort((left, right) => (byId.get(right)?.depth ?? 0) - (byId.get(left)?.depth ?? 0))[0]
+    if (parent === undefined) continue
+    if (!children.has(parent)) children.set(parent, [])
+    ;(children.get(parent) as GraphTask[]).push(task)
+  }
+  /** The rows, accumulated depth-first. */
+  const drawn: Array<{ task: GraphTask; prefix: string; leaf: boolean; depth: number }> = []
+  // A task is drawn AT MOST ONCE. Without this the fallback pass below would re-enter a cycle and
+  // recurse until the stack died — measured: a two-task cycle hung the render. The forest is a
+  // DRAWING of a DAG, so a row per task is both the correct output and the termination proof.
+  /** The ids already drawn. */
+  const seen = new Set<string>()
+  /**
+   * Walk one task's subtree, recording the row it draws.
+   * @param task - the task to draw.
+   * @param prefix - the connector prefix inherited from the ancestors.
+   * @param leaf - whether this task is the last child of its parent.
+   * @param depth - how deep the walk is, which decides whether a connector is drawn.
+   */
+  const walk = (task: GraphTask, prefix: string, leaf: boolean, depth: number): void => {
+    if (seen.has(task.id)) return
+    seen.add(task.id)
+    drawn.push({ task, prefix, leaf, depth })
+    /** This task's children, in board order. */
+    const kids = children.get(task.id) ?? []
+    kids.forEach((child, index) => walk(child, depth === 0 ? "" : prefix + (leaf ? "   " : "│  "), index === kids.length - 1, depth + 1))
+  }
+  for (const root of tasks.filter((task) => task.dependencies.filter((id) => byId.has(id)).length === 0)) walk(root, "", true, 0)
+  // A task reached by no root (a cycle) must still be drawn, or the board would silently lose a row.
+  for (const task of tasks) walk(task, "", true, 0)
+
+  /** The lines and the rectangles, built together so they cannot disagree. */
+  const lines: GraphSpan[][] = []
+  /** One rectangle per row, so the pointer can resolve to a task. */
+  const hits: GraphHit[] = []
+  drawn.forEach((entry, index) => {
+    /** This task's tone: its state, or the chain/dim treatment when something is focused. */
+    const at = toneOf(entry.task, focus, chain)
+    /** The extra blockers this row names instead of drawing a second connector for. */
+    const extra = entry.task.dependencies.length > 1 ? `  ⇠ ${entry.task.dependencies.join("+")}` : ""
+    /** The right-hand facts, which are what the row is scanned for. */
+    const tail = `${at === "dim" ? "" : entry.task.assignee ?? ""}${entry.task.attempt === undefined ? "" : ` a${entry.task.attempt}`}${extra}`
+    /** The connector this row hangs from. */
+    const connector = entry.depth === 0 ? "" : `${entry.prefix}${entry.leaf ? "└─" : "├─"} `
+    /** The label: marker, glyph, id, kind and subject. */
+    const label = labelOf(entry.task, focus)
+    // THE LABEL OUTRANKS THE TAIL. A row with no id is unreadable, while a row without its
+    // assignee is merely terse — so the tail is DROPPED on a narrow viewport rather than squeezing
+    // the label below the width at which a task id is still legible.
+    /** The cells the tail would need, gap included. */
+    const tailWidth = tail === "" ? 0 : cellWidth(tail) + 2
+    /** Whether the tail fits without pushing the label under its floor. */
+    const useTail = tailWidth > 0 && cols - cellWidth(connector) - tailWidth >= 10
+    /** The cells the label may occupy. */
+    const labelRoom = Math.max(0, cols - cellWidth(connector) - (useTail ? tailWidth : 0))
+    /** The visible label, truncated to that room. */
+    const shown = clampCells(stripControl(label), labelRoom)
+    /** The padding that puts the tail at the right edge, or nothing when the tail was dropped. */
+    const gap = useTail ? " ".repeat(Math.max(0, labelRoom - cellWidth(shown))) : ""
+    lines.push(clampSpans([
+      { text: connector, tone: at },
+      { text: shown + gap, tone: at },
+      ...(useTail ? [{ text: "  " + tail, tone: at }] : []),
+    ], cols))
+    hits.push({ taskId: entry.task.id, row: index, rowEnd: index, col: 0, colEnd: Math.max(0, cols - 1) })
+  })
+  /** The focus's chain as a list, for the header and the tests. */
+  const chainList = chain === undefined ? [] : [...chain].sort()
+  /** The finished view; `focus` is assigned only when there IS one. */
+  const view: GraphView = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList }
+  if (focus !== undefined) view.focus = focus
+  return view
+}
+
+/**
+ * THE LIST: a rank-grouped table with progress bars, for a board too dense for boxes.
+ * @param tasks - the board to draw.
+ * @param cols - the cells available.
+ * @param focus - the task to light, with its dependency chain.
+ * @returns the view; never undefined.
+ */
+export function layoutList(tasks: readonly GraphTask[], cols: number, focus?: string): GraphView {
+  /** The focus's chain, or undefined when nothing is focused. */
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus)
+  /** The ranks, in draw order. */
+  const ranks = ranksOf(tasks)
+  /** The lines and the rectangles, built together. */
+  const lines: GraphSpan[][] = []
+  /** One rectangle per row, so the pointer can resolve to a task. */
+  const hits: GraphHit[] = []
+  for (let rank = 0; rank < ranks.length; rank++) {
+    /** The rank header's rule length, which never goes negative. */
+    const rule = "─".repeat(Math.max(0, cols - 8))
+    lines.push(clampSpans([{ text: `rank ${rank} `, tone: "edge" }, { text: rule, tone: "edge" }], cols))
+    for (const task of ranks[rank]) {
+      /** This task's tone. */
+      const at = toneOf(task, focus, chain)
+      /** The dependency suffix, so a multi-blocker row is readable at a glance. */
+      const suffix = task.dependencies.length === 0 ? "" : ` ⇠${task.dependencies.join(",")}`
+      /** The row's left half: marker, id, kind, subject. */
+      const head = labelOf(task, focus)
+      /** The row's right half: state, assignee, blocker list. */
+      const tail = `${task.visual}${task.attempt === undefined ? "" : ` a${task.attempt}`}${task.assignee === undefined ? "" : `  @${task.assignee}`}${suffix}`
+      /** The head, truncated to leave the tail its room. */
+      const shown = clampCells(stripControl(head), Math.max(8, cols - cellWidth(tail) - 3))
+      lines.push(clampSpans([{ text: "  " + shown + " ".repeat(Math.max(0, cols - 2 - cellWidth(shown) - cellWidth(tail) - 1)), tone: at }, { text: tail, tone: at }], cols))
+      hits.push({ taskId: task.id, row: lines.length - 1, rowEnd: lines.length - 1, col: 0, colEnd: Math.max(0, cols - 1) })
+    }
+  }
+  /** The focus's chain as a list, for the header and the tests. */
+  const chainList = chain === undefined ? [] : [...chain].sort()
+  /** The finished view; `focus` is assigned only when there IS one. */
+  const view: GraphView = { lines, hits, width: cols, mode: "list", cycles: cycleIds(tasks), chain: chainList }
+  if (focus !== undefined) view.focus = focus
+  return view
+}
+
+/**
+ * Draw the board at one width, choosing the view that fits.
+ *
+ * The preference is BOXES, then RAIL: a rail is always legible, and boxes are the view that answers
+ * the question the graph exists for. `layoutBoxes` returns undefined rather than a squeezed drawing,
+ * so this decision is a fact about the geometry instead of a guess about the terminal.
+ * @param tasks - the board to draw.
+ * @param cols - the cells available.
+ * @param focus - the task to light, with its dependency chain.
+ * @returns the view to render.
+ */
+export function layoutGraph(tasks: readonly GraphTask[], cols: number, focus?: string): GraphView {
+  /** The widest drawing this call will produce; a negative or tiny width still yields a rail. */
+  const width = Math.max(8, Math.floor(cols))
+  return layoutBoxes(tasks, width, focus) ?? layoutRail(tasks, width, focus)
+}
+
+/**
+ * Resolve a pointer position to a task.
+ *
+ * The graph computes its own geometry, so this is a rectangle lookup rather than a second layout —
+ * there is nothing here that can drift from what was drawn.
+ * @param view - the drawn view.
+ * @param row - the pointer's row, relative to the graph's own top.
+ * @param col - the pointer's column, relative to the graph's own left.
+ * @returns the task id under the pointer, or undefined for blank space.
+ */
+export function hitTest(view: GraphView, row: number, col: number): string | undefined {
+  for (const hit of view.hits) {
+    if (row >= hit.row && row <= hit.rowEnd && col >= hit.col && col <= hit.colEnd) return hit.taskId
+  }
+  return undefined
+}

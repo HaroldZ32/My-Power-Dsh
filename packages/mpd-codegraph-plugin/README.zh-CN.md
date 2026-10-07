@@ -7,7 +7,8 @@ CodeGraph（仓库/代码智能索引）集成：解析 `codegraph` 二进制，
 ## 它做什么
 
 - 二进制解析顺序：`config.binary` → `MPD_CODEGRAPH_BIN` / `MPD_DSH_CODEGRAPH_BIN`
-  环境变量（存在性检查）→ bundle 的可选依赖（`createRequire("@colbymchenry/codegraph")`，
+  环境变量（存在性检查；别名对按**首个非空白**读取，因此已导出但为空的
+  `MPD_CODEGRAPH_BIN=""` 视为未设置，绝不会遮蔽别名——与启动器同一条规则）→ bundle 的可选依赖（`createRequire("@colbymchenry/codegraph")`，
   packed 布局）→ `<bundle>/.toolchain/node_modules/.bin/codegraph`（B8：checkout
   `link:` 布局；pnpm 不会把 link 包的可选依赖装进 profile——与
   `mpd-comment-checker-plugin` 一致）→ PATH。
@@ -46,4 +47,4 @@ CodeGraph（仓库/代码智能索引）集成：解析 `codegraph` 二进制，
 
 ## 用法
 
-没有模型工具；MCP 伴生行 `mcp-codegraph` 暴露 `mcp__codegraph__*`。`codegraph` MCP 行的 `command` env 使用 `MPD_DSH_CODEGRAPH_CLI || <pkg>/packages/mpd-mcp-codegraph/launch.ts`；launcher（B8）自行解析二进制，且仅在未设置时写入 `MPD_CODEGRAPH_BIN`，因此本插件与 MCP 行共享同一套解析规则。
+没有模型工具；MCP 伴生行 `mcp-codegraph` 暴露 `mcp__codegraph__*`。`codegraph` MCP 行的 `command` env 使用 `MPD_DSH_CODEGRAPH_CLI || <pkg>/packages/mpd-mcp-codegraph/dist/launch.js`；launcher（B8）自行解析二进制，且仅在未设置时写入 `MPD_CODEGRAPH_BIN`，因此本插件与 MCP 行共享同一套解析规则。

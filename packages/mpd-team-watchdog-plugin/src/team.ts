@@ -1,28 +1,38 @@
-// READ-ONLY projection of the OFFICIAL Agent Teams readout.
+// READ-ONLY projection of the team plane: the MPD TEAM RECORD first, the OFFICIAL readout second.
 //
 // 0.1.7 retired the vendored `mpd-agent-teams-plugin` and its `<stateDir>/<teamId>/team.json`
-// record: team state now lives in the LEAD SESSION LOG of the official
-// `@deepseek-ai/dsh-experimental-agent-team` service and is read through the adapter
-// (`dsh.teamLiveTeams()`), which folds the live agent registry into one view per live Team.
+// record; the de-vendor wave then DELETED that body outright. Team state now lives in TWO places,
+// and this module reads them in that order:
 //
-// This module never writes and never reads a team file: it PROJECTS the adapter's
-// {@link DshTeamView} onto the vocabulary the watchdog's fold was written in, so the four-state
-// machine, the heartbeat store and the scene schema keep their meaning. Every projection below
-// is field-for-field and named, because a silent mismatch here is a watchdog that watches the
-// wrong thing.
+//   1. THE MPD TEAM RECORD (`<workspace>/.mpd/team/teams/<teamId>.json`, served by
+//      `mpd-team-core-plugin` as the `mpdTeams` service) — the AUTHORITATIVE plane per AGENTS.md
+//      §1. It is read first because it is the plane `agent_teams_dispatch` names, so its
+//      `team-<stamp>` ids are the ids a hold is filed under and asked about.
+//   2. THE OFFICIAL Agent Teams readout (`dsh.teamLiveTeams()`, folded by the adapter over the
+//      live agent registry) — the FALLBACK for a composition that runs the official executor.
+//
+// Reading only the official fold (the shipped behaviour until this change) was a defect, not a
+// choice: the adapter's DEFAULT executor backend is `native`, a native team is never registered
+// with the official service, so `tryMembership` never answered `lead` and the watchdog watched
+// exactly zero teams while its hold was filed under an id nothing asked about.
+//
+// This module never writes and never reads a team file itself: it PROJECTS either plane onto the
+// vocabulary the watchdog's fold was written in, so the four-state machine, the heartbeat store and
+// the scene schema keep their meaning. Every projection is field-for-field and named, because a
+// silent mismatch here is a watchdog that watches the wrong thing.
 //
 // WHAT THE OFFICIAL VIEW DOES NOT CARRY, and what replaces it (stated, never hidden):
 //   * `attemptId` — the official board has NO per-attempt id. It has a monotonic, every-mutation
 //     `revision` (compare-and-set), which plays the SAME role: a re-claim, a re-open or an edit
 //     starts a new generation, so a stale streak/stamp cannot be spent on it. `attemptId` is
-//     therefore the revision rendered as a string.
-//   * `createdAt`/`approvedAt` — no record timestamps exist, so T-16's generation floor is
-//     `null` (PERMISSIVE, the documented §0/A3 convention): the revision in the streak key is
-//     what scopes a stamp to a generation now.
-//   * `activityAt` — likewise absent. It only fed the r4 dead-record fallback, and a team can no
-//     longer APPEAR in the readout without a live agent, so a dead record cannot be read at all.
-//   * `halted`/`haltedAt`/`phase` — the official service exposes no halt; `phase` is DERIVED
-//     here from the roster's live statuses so the diagnostics keep a word for it.
+//     therefore the revision rendered as a string. The mpd record carries the same pair.
+//   * `createdAt`/`approvedAt` — the official view has no timestamps, so T-16's generation floor is
+//     `null` (PERMISSIVE, the documented §0/A3 convention). The mpd record DOES carry them, and
+//     `projectMpdTeam` maps them.
+//   * `activityAt` — absent on both planes as far as this package is concerned; it only feeds the
+//     r4 dead-record bound, and arming that bound is a separate decision (see `projectMpdTeam`).
+//   * `halted`/`haltedAt` — neither plane exposes a halt; `phase` is DERIVED from the roster's live
+//     statuses so the diagnostics keep a word for it.
 import type { DshAdapter, DshTeamMemberView, DshTeamTaskView, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 
 /**
@@ -249,16 +259,166 @@ export function projectTeamView(view: DshTeamView): TeamRecord {
 }
 
 /**
- * Every Team the adapter's live readout reports, projected and filtered to REAL teams.
+ * The FACE of one MPD TEAM RECORD this plugin reads: the authoritative team plane's persisted shape
+ * (`<workspace>/.mpd/team/teams/<teamId>.json`, owned by `mpd-team-core-plugin`).
  *
- * Degrade: `[]` when the adapter cannot answer (no team service, no agent registry, or a stub
- * without the seam). This is the read the tick and the status tool both use, so an absent service
- * reads as "no team to report" — never as an exception inside a tick.
+ * It is a NARROWED FACE rather than an import of that package's own `TeamRecord`, deliberately: the
+ * two rows are separate packages and this bundle's cross-package coupling inventory
+ * (`mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`) is FROZEN and may only
+ * shrink, so a new compile-time dependency has to be argued in ANOTHER package's contract. Every
+ * field below is one this module actually reads; a field the record grows is simply not seen, and
+ * the test suite still types its fixtures with the RECORD's own type so the two are checked to agree.
+ */
+export interface MpdTeamRecord {
+  /** mpd's own team identity (`team-<stamp>`), which is the id the dispatch gate asks about. */
+  teamId?: string
+  /** The team name the user reads. */
+  name?: string
+  /** The lifecycle word (`staged` | `active` | `idle` | `ended`). */
+  phase?: string
+  /** The Lead session this team belongs to. */
+  leadSessionId?: string
+  /** ISO instant the record was created; T-16's generation floor reads it. */
+  createdAt?: string
+  /** ISO instant the plan was approved, when it has been. */
+  approvedAt?: string
+  /** The roster, as far as this module reads it. */
+  members?: ReadonlyArray<{ id?: string; name?: string; status?: string; executorRef?: string }>
+  /** The board, as far as this module reads it. */
+  tasks?: ReadonlyArray<{ id?: string; status?: string; owner?: string; revision?: number; blockedBy?: readonly string[] }>
+}
+
+/**
+ * The structural face of the `mpdTeams` service — the AUTHORITATIVE team plane (AGENTS.md §1).
+ *
+ * It is resolved PER CALL by the caller (`ctx.get("mpdTeams", false)`), never captured at apply,
+ * because the row that provides it may mount after this one and a composition may not run it at all.
+ * `list` is synchronous and, in the shipped service, non-throwing; this module still guards it.
+ */
+export interface MpdTeamsRead {
+  /** Every mpd team record in one workspace. */
+  list(workspace: string): readonly MpdTeamRecord[]
+}
+
+/**
+ * Whether an mpd record is a TEAM the watchdog should watch.
+ *
+ * The same rule {@link isWatchedTeam} applies to an official view: a record with no roster and no
+ * board is a staged SHELL nothing has been spawned into, so watching it would report nothing while
+ * keying heartbeats onto a team that has no members.
+ *
+ * @param record - one mpd team record.
+ * @returns true when the record carries a roster row or a board row.
+ */
+export function isWatchedMpdRecord(record: MpdTeamRecord): boolean {
+  // The roster rows, read defensively because a hand-written record may carry a non-array.
+  const members = Array.isArray(record.members) ? record.members : []
+  if (members.length > 0) return true
+  return Array.isArray(record.tasks) && record.tasks.length > 0
+}
+
+/** One ISO instant read as epoch ms, or null when it is absent or unparseable. */
+function epochOf(iso: string | undefined): number | null {
+  /** The parsed instant, NaN when the field is absent or not a date. */
+  const parsed = typeof iso === "string" ? Date.parse(iso) : Number.NaN
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+/**
+ * Project one MPD TEAM RECORD onto {@link TeamRecord}.
+ *
+ * WHY THIS IS THE PRIMARY READ (T1/T3): the mpd record is the authoritative team plane, and it is
+ * the plane `agent_teams_dispatch` asks about — its gate calls
+ * `watchdog.isHeld(record.teamId, workspace)` with the mpd-minted `team-<stamp>`. Projecting the
+ * record therefore makes the two id spaces COINCIDE (`id` is the record's own `teamId`), which is
+ * what lets a hold filed under `team.id` be found again. Reading only the official fold kept the
+ * watchdog keyed by the Lead Session id, so `isHeld` missed every hold and the ladder watched zero
+ * teams in the DEFAULT (native) composition.
+ *
+ * A member's identity is the EXECUTOR's handle (the session id the agent registry keys on), never
+ * mpd's short `M1`; a member that was never spawned has no handle and reads as the empty string,
+ * the same "staged" convention this bundle's compaction uses.
+ *
+ * The transform is total: an odd or missing field yields the same record with that field absent.
+ *
+ * @param record - one `mpdTeams.list(workspace)` row.
+ * @returns the projected record.
+ */
+export function projectMpdTeam(record: MpdTeamRecord): TeamRecord {
+  // The roster, projected onto the fields the watchdog's identity resolution reads.
+  const members: TeamMember[] = (Array.isArray(record.members) ? record.members : []).map((member) => ({
+    id: typeof member.executorRef === "string" ? member.executorRef : "",
+    name: String(member.name ?? ""),
+    ...(typeof member.status === "string" ? { status: member.status } : {}),
+  }))
+  // The board, projected onto the watchdog's task vocabulary.
+  const tasks: TeamTask[] = (Array.isArray(record.tasks) ? record.tasks : []).map((task) => {
+    // The task's own mpd revision, which is the generation counter a stamp is scoped to.
+    const revision = typeof task.revision === "number" && Number.isFinite(task.revision) ? task.revision : undefined
+    // The owner, when the record names one; the empty string is the store's "unowned".
+    const owner = typeof task.owner === "string" && task.owner !== "" ? task.owner : undefined
+    return {
+      id: String(task.id ?? ""),
+      status: String(task.status ?? ""),
+      ...(owner === undefined ? {} : { assignee: owner, dispatched: true }),
+      ...(revision === undefined ? {} : { attempt: revision, attemptId: String(revision) }),
+      ...(Array.isArray(task.blockedBy)
+        // The parameter is annotated because `Array.isArray` widens a `readonly string[]` to `any[]`.
+        ? { dependencies: task.blockedBy.filter((id: unknown): id is string => typeof id === "string") }
+        : {}),
+    }
+  })
+  return {
+    // THE ID THAT MATTERS: mpd's own `team-<stamp>`, which is what the dispatch gate asks about.
+    id: String(record.teamId ?? ""),
+    name: String(record.name ?? ""),
+    ...(typeof record.phase === "string" ? { phase: record.phase } : {}),
+    ...(typeof record.leadSessionId === "string" && record.leadSessionId !== "" ? { captainSessionId: record.leadSessionId } : {}),
+    members,
+    tasks,
+    // DELIBERATELY null, and NOT mapped from a task's `updatedAt`: this field arms the r4 dead-record
+    // bound (`tickable: false` once the newest activity is older than `deadTeamGraceMs`), which is
+    // inert while it is null. Arming it is a separate decision about a safety mechanism, not part of
+    // reading the record, so the honest projection leaves it where the official plane left it.
+    activityAt: null,
+    // T-16's generation floor: the record DOES carry these, and a member only ever exists after the
+    // instant its team was created, so the floor cannot drop a legitimate stamp.
+    createdAt: epochOf(record.createdAt),
+    approvedAt: epochOf(record.approvedAt),
+    raw: record as unknown as Record<string, unknown>,
+  }
+}
+
+/**
+ * Every Team the bundle watches for one workspace, MPD record FIRST.
+ *
+ * The mpd record is the authoritative plane (AGENTS.md §1) and the one the dispatch gate names, so
+ * it is read first; the OFFICIAL fold (`dsh.teamLiveTeams()`) stays as the FALLBACK for a
+ * composition that runs the official executor and mounts no mpd record. The two are deliberately NOT
+ * unioned: one team visible on both planes would be reported twice under two different ids, which is
+ * the very drift this read exists to end.
+ *
+ * Degrade: `[]` when neither plane answers, and the official fold when the mpd read is absent,
+ * empty or throwing. This is the read the tick, the actions and the status tool all use, so an
+ * absent service reads as "no team to report" — never as an exception inside a tick.
  *
  * @param dsh - the adapter (the ONE harness contact surface).
- * @returns the projected records, in adapter order.
+ * @param workspace - the workspace whose mpd records are read; resolved per call by the caller.
+ * @param mpdTeams - the `mpdTeams` service face, or undefined when this composition has none.
+ * @returns the projected records, mpd records first when the mpd plane answers.
  */
-export function readTeams(dsh: DshAdapter): TeamRecord[] {
+export function readTeams(dsh: DshAdapter, workspace: string, mpdTeams?: MpdTeamsRead | undefined): TeamRecord[] {
+  if (mpdTeams !== undefined) {
+    try {
+      // The mpd readout for this workspace; a half-mounted service that throws falls through.
+      const records = mpdTeams.list(workspace)
+      if (Array.isArray(records) && records.length > 0) {
+        return records.filter(isWatchedMpdRecord).map(projectMpdTeam)
+      }
+    } catch {
+      // fall through to the official fold: an unreadable mpd plane must not blind the watchdog
+    }
+  }
   // The adapter's live readout; an absent team service degrades to the empty list below.
   let views: DshTeamView[]
   try {
@@ -269,16 +429,29 @@ export function readTeams(dsh: DshAdapter): TeamRecord[] {
   return views.filter(isWatchedTeam).map(projectTeamView)
 }
 
-/** One Team by id, or undefined when the live readout does not carry it. */
-export function readTeam(dsh: DshAdapter, teamId: string): TeamRecord | undefined {
+/**
+ * One Team by id, or undefined when neither plane carries it.
+ * @param dsh - the adapter.
+ * @param workspace - the workspace whose mpd records are read.
+ * @param teamId - the team id asked about (an mpd `team-<stamp>`, or an official Lead Session id).
+ * @param mpdTeams - the `mpdTeams` service face, or undefined.
+ * @returns the projected record, or undefined.
+ */
+export function readTeam(dsh: DshAdapter, workspace: string, teamId: string, mpdTeams?: MpdTeamsRead | undefined): TeamRecord | undefined {
   // The requested team id as a string, because a caller may pass a non-string.
   const wanted = String(teamId)
-  return readTeams(dsh).find((team) => team.id === wanted)
+  return readTeams(dsh, workspace, mpdTeams).find((team) => team.id === wanted)
 }
 
-/** The watched team ids in this process (sorted). */
-export function listTeamIds(dsh: DshAdapter): string[] {
-  return readTeams(dsh)
+/**
+ * The watched team ids in this workspace (sorted).
+ * @param dsh - the adapter.
+ * @param workspace - the workspace whose mpd records are read.
+ * @param mpdTeams - the `mpdTeams` service face, or undefined.
+ * @returns the sorted ids.
+ */
+export function listTeamIds(dsh: DshAdapter, workspace: string, mpdTeams?: MpdTeamsRead | undefined): string[] {
+  return readTeams(dsh, workspace, mpdTeams)
     .map((team) => team.id)
     .sort()
 }

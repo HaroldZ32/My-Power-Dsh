@@ -1,6 +1,15 @@
 # Upstream Parity Ledger — my-power-dsh specialist parity against the pinned baseline
 **English** | [中文](./upstream-parity-ledger.zh-CN.md)
 
+> **STATUS REFRAMED (de-vendor-and-verify-law, 2026-10-07).** oh-my-openagent is an EARLY
+> REFERENCE, not a conformance target. The identity checks that used to measure this repository
+> against it are DELETED, no gate reads an upstream checkout, and no synchronisation is owed — the
+> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are
+> acknowledged in [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) and the root README. Everything below
+> is therefore a HISTORICAL MEASUREMENT of a capability surface, kept because the comparison is
+> informative; read a ✅ as "this shipped", never as "this is still upstream-conformant", and read
+> nothing here as a promise to follow upstream release by release.
+
 > Wave: `omo-parity-align`. Status: **VERIFIED — values frozen, implementation landed, gates green
 > (§8).**
 > This is the persistent human-facing ledger for the functional-alignment wave against upstream
@@ -18,11 +27,17 @@
 > tools and its staged-team flow do not exist in a shipped session any more. What SURVIVED the
 > migration, and is what a reader should carry away, is the **gate semantics**: the same frozen
 > predicate `trigger = explicit flag OR (matchedSignals >= 1)` is still evaluated at the session's
-> first pre-step, its notice keeps the marker `[AgentTeams] Session-start team rule`, and it still
-> **ADVISES — it stages nothing**; only its implementation moved (into `mpd-roles-plugin`, on the
-> official plugin's seams) and the captain now stages with `spawn_teammate` + `team_task_create`.
+> first pre-step, and its notice keeps the marker `[AgentTeams] Session-start team rule`. The gate is
+> now **MECHANICAL by default** (the implementation moved into `mpd-roles-plugin`, on the official
+> plugin's seams): a trigger STAGES an approvable plan shell — 0 members, 0 tasks, through this
+> bundle's OWN `agent_teams_plan` tool — and injects ONE notice naming the returned plan id, with
+> NOTHING spawned and the shell INERT until the captain extends it (`add_member` / `create_task`) and
+> approves it with `agent_teams_plan {action:"approve"}`. `team.gate` in `mpd.jsonc` selects
+> `mechanical` (the default) | `advisory` | `off`; under `advisory`, or with that tool unmounted, the
+> ONE notice is advisory and says `NO team was staged`.
 > See `docs/plan-0.1.7-adaptation.md` and AGENTS.md §1. Everything else below is that wave's frozen
-> record, read as history.
+> record, read as history — including the `D_AUTOROUTE_ADVISORY` decision and the `D_planArtifact`
+> signal row, both superseded on 2026-10-07 (see the dated note under the signal table).
 
 Single source of truth for frozen values: `evidence/omo-align/requirements/frozen-contract.json`
 (captain-owned). Research input: `evidence/omo-align/research/team-vs-mass-ulw/gap.json` (t2) and
@@ -68,6 +83,17 @@ least two of its three sub-signals hold, so `C1`/`C2`/`C3` are never top-level s
 | `C_enumeratedSteps` | soft | satisfied at **2-of-3** sub-signals: `C1` ≥ 3 enumerated lines (`^\s*(\d+[.)]\|[-*])\s`); `C2` ≥ 3 distinct action verbs; `C3` ≥ 3 action clauses (each pairing an action verb with an object, numbered or not) |
 | `D_planArtifact` | soft | a `.mpd/plans/*.md` file exists for the session workspace at the first pre-step |
 
+> **SUPERSEDED 2026-10-07 — signal `D`, and the advisory decision with it.** The `D_planArtifact` row
+> above is this wave's frozen record and is kept VERBATIM as history; the shipped predicate no longer
+> probes for a plan file. **`D` is an ACTIVE boulder work for the workspace** — `status: "active"` in
+> `.mpd/boulder.json` — because the plan-file probe measurably fired in EVERY session of this
+> workspace: one plan file outlives the work that produced it. A plan FILE alone is not a signal any
+> more. The same date supersedes `D_AUTOROUTE_ADVISORY` (§ above): a trigger no longer only advises —
+> the default mode STAGES an approvable, inert plan shell through `agent_teams_plan` and the captain
+> approves it, while the advisory notice and its `NO team was staged` wording survive as the
+> `team.gate: "advisory"` fallback. Authority: AGENTS.md §1, `presets/mpd.patch.yml` and
+> `packages/mpd-roles-plugin/README.md`.
+
 **Harmonized verb tables (behaviour change, R3).** `C2` and `C3` now carry ONE shared verb set:
 14 English — `add, align, audit, build, change, check, consolidate, implement, migrate, overhaul,
 port, refactor, rewrite, verify` — and 12 CJK — `设计, 实现, 验证, 改造, 补充, 对齐, 重构, 迁移, 审计,
@@ -82,6 +108,9 @@ frozen expectation. A satisfied C therefore triggers on its own. **Accepted and 
 multi-clause request such as “Check the test, build the package, verify the output.” satisfies C
 (C2+C3) and therefore DOES route to a team; no rule operating on C alone can separate it from frozen
 complex prompt #1. See §7 `O1` and §8's rate study.
+
+*Frozen wave record. Superseded 2026-10-07 — the default mode now STAGES an approvable plan shell
+through `agent_teams_plan` and the captain approves it; see the dated note under the signal table.*
 
 On a trigger the gate now **ADVISES** (`D_AUTOROUTE_ADVISORY`): it stages nothing and injects ONE
 advisory notice (marker `[AgentTeams] Session-start team rule`) naming the fired signals and stating
@@ -144,7 +173,7 @@ Renaming any of these WAS forbidden at the time; **adding** names was allowed. T
 describe the retired plugin and are kept as the wave's record.
 
 - Slash commands: `/agent-teams`, `/agent-teams-mpd` (from `AGENT_TEAMS_COMMAND = 'agent-teams'`
-  and `profileCommandName('mpd')`, `lib/command.js:3,24-34,95-111`) — **retired with the plugin; no
+  and `profileCommandName('mpd')`, `lib/command.ts:3,24-34,95-111`) — **retired with the plugin; no
   `/agent-teams` command exists in a shipped session**
 - Tools: the full team-tool set — **retired with the plugin; team work runs on the official
   `spawn_teammate` / `team_*` tools**
@@ -159,8 +188,8 @@ current landing points are named in `docs/plan-0.1.7-adaptation.md` and AGENTS.m
 
 | Id | File | Region |
 |---|---|---|
-| `L1` | `packages/mpd-bundle/cordis.patch.yml` | agent-teams row `sessionTeamPolicy` block + its comment (RETIRED — no such row) |
-| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` predicate + `advisoryNotice` / `provisionedNotice` / `instructNotice` text (retained code, not mounted) |
+| `L1` | `cordis.patch.yml` | agent-teams row `sessionTeamPolicy` block + its comment (RETIRED — no such row) |
+| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.ts` | `policyQualifies` predicate + `advisoryNotice` / `provisionedNotice` / `instructNotice` text (retained code, not mounted) |
 | `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` block and the sizing doctrine placement (RETIRED path; the preset is now `presets/mpd.patch.yml`) |
 | `L4` | `packages/mpd-bundle/README.md` | the whole `Session-start team gate (binding)` section |
 | `L5` | `packages/mpd-bundle/README.zh-CN.md` | the whole `会话启动团队门（强制）` section (same commit as `L4`) |
@@ -170,7 +199,7 @@ current landing points are named in `docs/plan-0.1.7-adaptation.md` and AGENTS.m
 | `L9` | `AGENTS.md` | the startup-rule section and the delta-table row describing the old behaviour |
 
 The frozen contract's `changeLocations.items` is the authority and enumerates **ten** entries: the
-list above, plus `packages/mpd-agent-teams-plugin/lib/index.js` (config schema + resolved defaults)
+list above, plus `packages/mpd-agent-teams-plugin/lib/index.ts` (config schema + resolved defaults)
 and `packages/mpd-agent-teams-plugin/self-fix-tests/**` (only when lib bodies change under a
 registered `mpd-delta` region). The single EN and ZH bundle READMEs are counted as two entries there.
 
@@ -203,9 +232,10 @@ anchors. The wave's own frozen values and gate code were byte-identical across t
 | Anchor | sha256 |
 |---|---|
 | `evidence/omo-align/requirements/frozen-contract.json` | `09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41` |
-| `packages/mpd-agent-teams-plugin/lib/session-start.js` | `8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6` |
-| `packages/mpd-agent-teams-plugin/lib/state.js` | `751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825` |
+| `packages/mpd-agent-teams-plugin/lib/session-start.ts` | `8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6` |
+| `packages/mpd-agent-teams-plugin/lib/state.ts` | `751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825` |
 | `evidence/omo-parity-rate/raw/prompts.jsonl` | `123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5` |
+| (historical) `packages/mpd-agent-teams-plugin/lib/{session-start,state}.ts` | the two pins above are HISTORICAL, not live: the TypeScript-conversion wave renamed these files `.js` -> `.ts` and gave the adopted body a `@ts-nocheck` first line, so today's bytes differ ON PURPOSE. Current: `session-start.ts` `f6f73d0b4248141bf5c2e8305b0b26a935460fbfd2dc909d552ba39dad82d920`, `state.ts` `f8c0cb5d8945cd73f92f47fdff977ba58ac0ddc6f36142a7c3e4a5b74878fe4d` (`evidence/ts-cordis-conformance/`). |
 
 | Gate | Command | State |
 |---|---|---|

@@ -1,0 +1,25 @@
+{
+  "startedAt": "2026-09-30T03:51:15.601Z",
+  "finishedAt": "2026-09-30T03:58:38.294Z",
+  "docker": "Docker version 29.8.0, build 88096ef",
+  "compose": "Docker Compose version v5.5.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 151,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-Hwve1f",
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /root/dshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /root/dshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e DEEPSEEK_API_KEY mpd-client",
+      "status": 0,
+      "signal": null
+    }
+  ],
+  "containerExit": 0,
+  "verdict": "ok=true complete=true passed=45 failed=0 null=0",
+  "exitCode": 0
+}

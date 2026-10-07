@@ -1,0 +1,82 @@
+===================================================================
+Lane E — Lane D blocker RE-VERIFICATION — OUTPUT.LOG
+recordId: lane-e-lane-d-reverify-2026-10-07T1055Z   verdict: PASS
+predecessor: lane-e-lane-d-2026-10-07T1050Z (result.json sha256 f2d7aa3839d2607d1679e9ecee0565ab…)
+===================================================================
+
+--- RESIDUAL BOUND (verify-law-spec (c)), verbatim ---
+the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin’s own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).
+
+=== LOG: ev-channel-claim.log
+cmd: the SANCTIONED READER's exported surface (API names only, no logic)  [2026-10-07T10:54:16Z]
+  DecodedSessionLog
+  decodeSessionLog
+  findToolCall
+  norm
+  readSessionEvents
+  ReadSessionEventsOptions
+  RecordedToolCall
+  recordedToolNames
+  scanZstdFrames
+  SessionLogCandidate
+  SessionRecord
+  SessionStore
+  SessionStoreKey
+  ToolCallEvidence
+  ZstdFrameSpan
+  ZstdScanResult
+  exported-name count: 16
+  --- do the four fields the writer names appear as the reader's own vocabulary? ---
+    called       11
+    succeeded    11
+    resultText   4
+    calls        9
+
+cmd: does the INSTALLED HARNESS record a guard-denial event type? (bounded, name-level)
+  harness root: /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh (present=YES)
+  event-type declarations mentioning guard/den/refus/block: 3
+  --- the files that mention anything guard-shaped (names only, first 6) ---
+    /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js
+    /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/types/index.js
+    /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-subagent-in-process-driver/lib/index.js
+  event-name declarations of the form "…" (sample of the harness event vocabulary): 0
+  --- any event name containing den/refus/guard? ---
+
+=== LOG: ev-nine-values.log
+cmd: the corrected live run — the raw nine, per the writer's report
+  ok=true  slug=verify-law  sandbox=/tmp/mpd-verify-law-1J88iQ
+  1: mounted               true  the harness recorded a write call for the code path
+  2: denied                true  the harness recorded a write CALL for the code path and the artifact was
+  3: codeNotWritten        true  the denied code path was never created
+  4: controlNotDenied      true  with verify.mode=off the same write was not refused
+  5: controlWritten        true  with verify.mode=off the code path really was written
+  6: docsAllowed           true  a docs/** write is allowed and exists in the sandbox
+  7: sandboxMarker         true  the law wrote its boot marker in the SANDBOX workspace
+  8: realMarkerUnchanged   true  the REAL workspace's marker is exactly as it was: before=false after=fal
+  9: sessionsSandboxed     true  no real-cwd session key exists
+  nine-value summary: mounted=true | denied=true | codeNotWritten=true | controlNotDenied=true | controlWritten=true | docsAllowed=true | sandboxMarker=true | realMarkerUnchanged=true | sessionsSandboxed=true
+  all nine green: true
+  reported: {"sentenceRelayed":false,"controlSentenceRelayed":false}
+  realMarkerBefore=false
+--- is sentenceRelayed ASSERTED anywhere in the run payload, or only reported? ---
+  occurrences in result.json: 1
+
+=== LOG: ev-scope-and-digest.log
+cmd: revision, tree quiescence, marker, settle  [2026-10-07T10:54:07Z]
+HEAD=e7036109120d58cfba0df8a40f325e4097e12271
+--- tracked working-tree changes (a quiesced tree shows none) ---
+  tracked-change count: 0
+--- A3: the real workspace's boot marker (F.3 re-probe) ---
+  ABSENT - the law has not booted in the real workspace
+--- settle: the clause's own artifacts ---
+  packages/mpd-verify-plugin/qa/verify-law.ts (authored) fa61eb5825ad7f21ce309ddea82edf3d
+  skills/dsh-qa/scripts/verify-law.ts (registered)     fa61eb5825ad7f21ce309ddea82edf3d
+  evidence/gates/verify-law/2026-10-07T10-52-07.173Z/result.json 1d740463d26083dfb5d4201ba81f5bb0
+  CLAIMED digest of both copies: fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb
+
+=== LOG: ev-selftest-digest.log
+cmd: node skills/dsh-qa/scripts/verify-law.ts --self-test  (the anti-drift digest line)
+[verify-law self-test] ok: the registered copy is byte-identical (fa61eb5825ad)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+EXIT=0
+

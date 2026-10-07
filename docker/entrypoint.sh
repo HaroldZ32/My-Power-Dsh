@@ -49,12 +49,16 @@ ONE_CLICK_SRC="${MPD_E2E_ONECLICK_SRC:-/opt/oneclick-src}"
 ONE_CLICK_REPO="${MPD_E2E_ONECLICK_REPO:-/opt/oneclick.git}"
 
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
-DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.1.7-rc.2}"
+DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}"
 PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
-# The DSH-TUI host. 0.11.1 is the FIRST dsh-tui release whose peer ranges include
-# 0.1.7-rc.2 (0.10.1 and 0.10.2 stop at 0.1.5-rc.1), so it is the only pin that can
-# boot the TUI against the harness this bundle targets.
-TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.11.1}"
+# The DSH-TUI host. 0.13.0 is the dsh-tui release this bundle targets, and its peer ranges still
+# cover the WHOLE band this lane is
+# expected to run — its lists end with `|| 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2` — so ONE default
+# serves the pinned baseline and any older adaptation run. (0.12.0 was the pin before it.) 0.11.2 stopped at 0.2.0-rc.1, and a
+# `dsh plugin --profile dsh-tui add` against a 0.2.0-rc.2 harness is then REFUSED on peer ranges: the
+# same failure mode measured 2026-09-29 on the 0.11.1/0.2.0-rc.1 pair, which aborted this lane
+# (evidence/docker/client-install/2026-09-29T07-07-01Z).
+TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.13.0}"
 export TUI_VERSION
 PORT="${MPD_E2E_PORT:-3197}"
 BOOT_BUDGET="${MPD_E2E_BOOT_BUDGET:-300}"
@@ -127,6 +131,30 @@ record() {
 witness() {
   local file="$1" pattern="$2" max="${3:-2}"
   { grep -nE -- "$pattern" "$file" 2>/dev/null | head -n "$max" | tr '\n' ' ' ; } || true
+}
+
+# row_log_line <row> <ere> — the first LINE of an MPD row's OWN file log, naming the file it came from.
+#
+# R5 (AGENTS.md §6, agent-references/seam-adapters.md) moved every MPD runtime diagnostic OUT of the
+# terminal: a row never prints, it appends to `<workspace>/.mpd/logs/<row>.log`. A console grep
+# therefore witnesses NOTHING for these rows — measured 2026-10-02 on the client-install run: the
+# adapter's boot line and the session-gate registration line both recorded false with an EMPTY raw
+# while the boot itself was green (evidence/docker/client-install/2026-10-02T16-14-48Z/result.json).
+#
+# The candidate roots are the two workspaces this lane really has, in resolution order: the boot
+# process's own cwd ($WORK_DIR, the exec-less `rowLogLine` fallback) and the session workspace the
+# `/api/session/create` call named ($WORK_DIR/ws). The FIRST file carrying the line wins and the
+# printed result NAMES it, so the witness can be re-read by hand instead of trusted, and a line
+# absent from every candidate makes the caller record FALSE.
+row_log_line() {
+  local row="$1" pattern="$2" root file line
+  for root in "$WORK_DIR" "$WORK_DIR/ws"; do
+    file="$root/.mpd/logs/$row.log"
+    [ -f "$file" ] || continue
+    line="$(grep -m1 -oE -- "$pattern" "$file" 2>/dev/null || true)"
+    if [ -n "$line" ]; then printf '%s (file=%s)' "$line" "$file"; return 0; fi
+  done
+  return 1
 }
 
 append_step() { # id exit seconds logfile cmd
@@ -225,13 +253,16 @@ log "ubuntu image : $(. /etc/os-release; printf '%s %s' "$ID" "$VERSION_ID")"
 log "app dir      : $APP_DIR   (copy of $SRC_DIR)"
 log "HOME         : $HOME"
 log "DSH_HOME     : $DSH_HOME"
-log "pins         : node=$NODE_VERSION dsh=$DSH_VERSION pnpm=$PNPM_VERSION"
+# `nodePin`, NOT `node`: this line prints the TARBALL route's pin, and in image mode the node that
+# actually runs is the `node:24-bookworm` one (measured 2026-10-02: the label read `node=24.19.0` while
+# the container ran v24.21.0). The effective version is recorded by `fact node` in BOTH routes below.
+log "pins         : nodePin=$NODE_VERSION dsh=$DSH_VERSION pnpm=$PNPM_VERSION"
 
 fact stamp "$STAMP"
 fact entrypoint "docker/entrypoint.sh"
 fact image "$IMAGE"
 fact ubuntuImage "$(. /etc/os-release; printf '%s %s (%s)' "$ID" "$VERSION_ID" "$PRETTY_NAME")"
-fact pins "node=$NODE_VERSION dsh=$DSH_VERSION pnpm=$PNPM_VERSION"
+fact pins "nodePin=$NODE_VERSION dsh=$DSH_VERSION pnpm=$PNPM_VERSION"
 fact home "$HOME"
 fact dshHome "$DSH_HOME"
 
@@ -275,12 +306,24 @@ case "$(dpkg --print-architecture)" in
     ;;
 esac
 fact nodeArch "$(dpkg --print-architecture) -> linux-$NODE_ARCH"
+# ── THE PREINSTALLED NODE IS ASSERTED, NOT RE-FETCHED (default) ───────────────
+# The image carries node from the OFFICIAL `node:24-bookworm` image (docker/Dockerfile), because the
+# nodejs.org tarball path — the FIRST hard dependency of this run — died on this environment's network
+# three times in a row even with `--retry 8 --retry-all-errors`. That path is NOT deleted: set
+# `MPD_E2E_NODE_SOURCE=tarball` and the original install runs exactly as it did, so a machine whose
+# nodejs.org route holds can still make the stronger claim.
+if [ "${MPD_E2E_NODE_SOURCE:-image}" = "tarball" ]; then
+fact nodeSource "tarball (nodejs.org, sha256 verified)"
 run_step 02-node bash -c '
 set -euo pipefail
 V="$1"; A="$2"
 cd /tmp
-curl -fsSLO "https://nodejs.org/dist/v${V}/node-v${V}-linux-${A}.tar.xz"
-curl -fsSL -o SHASUMS256.txt "https://nodejs.org/dist/v${V}/SHASUMS256.txt"
+# --retry-all-errors, NOT just --retry: curl only retries its own transient failures by default, and
+# `curl: (35) Recv failure: Connection reset by peer` is a TRANSPORT error that a plain --retry leaves
+# alone. Measured: three consecutive runs died on THIS step, which is the first hard dependency of the
+# whole lane, while the same lane had passed twice on the same code when the network held.
+curl -fsSLO --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 "https://nodejs.org/dist/v${V}/node-v${V}-linux-${A}.tar.xz"
+curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 -o SHASUMS256.txt "https://nodejs.org/dist/v${V}/SHASUMS256.txt"
 grep " node-v${V}-linux-${A}.tar.xz\$" SHASUMS256.txt > node.sha256
 sha256sum -c node.sha256
 tar -xJf "node-v${V}-linux-${A}.tar.xz" -C /usr/local --strip-components=1 --no-same-owner
@@ -291,22 +334,74 @@ npm -v
 NODE_V="$(node -v 2>/dev/null || true)"
 NPM_V="$(npm -v 2>/dev/null || true)"
 fact node "$NODE_V (npm $NPM_V)"
-case "$NODE_V" in
-  "v${NODE_VERSION%%.*}"*) record toolchain.node true "install by official tarball, sha256 verified against the published SHASUMS256.txt" "$NODE_V ($(witness "$STEPS_DIR/02-node.log" 'linux-.*tar\.xz: OK' 1))" ;;
-  *) record toolchain.node false "node is not the pinned major v${NODE_VERSION}" "$NODE_V" ;;
-esac
+  case "$NODE_V" in
+    "v${NODE_VERSION%%.*}"*) record toolchain.node true "install by official tarball, sha256 verified against the published SHASUMS256.txt" "$NODE_V ($(witness "$STEPS_DIR/02-node.log" 'linux-.*tar\.xz: OK' 1))" ;;
+    *) record toolchain.node false "node is not the pinned major v${NODE_VERSION}" "$NODE_V" ;;
+  esac
+else
+  # The image's own node. `node -v` and `npm -v` are BOTH asserted: copying `/usr/local` carries npm's
+  # module tree with it, and a node that runs while npm does not would fail at the first `dsh plugin`
+  # call instead of here where the cause is legible.
+  NODE_V="$(node -v 2>/dev/null || true)"
+  NPM_V="$(npm -v 2>/dev/null || true)"
+  fact nodeSource "image (node:24-bookworm /usr/local)"
+  # The EFFECTIVE version is recorded in the image route too, exactly as the tarball route does it: the
+  # `pins` line above holds the tarball pin, so without this fact an image-mode result.json states no
+  # node version at all (measured 2026-10-02 on the first green run of the multi-stage Dockerfile).
+  fact node "$NODE_V (npm $NPM_V)"
+  case "$NODE_V" in
+    "v${NODE_VERSION%%.*}"*) [ -n "$NPM_V" ] && record toolchain.node true "node $NODE_V and npm $NPM_V come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org" "$NODE_V npm=$NPM_V" || record toolchain.node false "node runs but npm does not — the copied /usr/local is incomplete" "node=$NODE_V npm=missing" ;;
+    *) record toolchain.node false "the image's node is not the pinned major v${NODE_VERSION}" "$NODE_V" ;;
+  esac
+fi
 [ -n "$NODE_V" ] || bail "node is not on PATH after the tarball install"
 
 # ── 04. bun (official install script, into the toolchain dir) ─────────────────
 log ""
 log "----- bun (official install script) -----"
-run_step 03-bun bash -c 'set -euo pipefail; curl -fsSL https://bun.sh/install | bash'
-ln -sf "$BUN_INSTALL/bin/bun" /usr/local/bin/bun
+# ── the official script FIRST, npm SECOND, and the route is RECORDED ─────────
+# The official script fetches the binary from GITHUB RELEASES, and this environment's route to
+# github.com is intermittent: measured twice in one session as
+# `curl: (56) Failure when receiving data from the peer` and
+# `curl: (28) Failed to connect to github.com port 443 after 135500 ms`, while registry.npmjs.org
+# answered 200 in under a second. A flake there REDDENED A LANE WHOSE SUBJECT IS THIS BUNDLE — the
+# toolchain is a means, not the thing under test — and a retry passed, which is the definition of an
+# assertion that measures the network rather than the artifact. So the fallback exists, and `fact bun`
+# names which route produced the binary so a reader is never told the official script ran when it did not.
+# `run_step` returns the append's status, NOT the child's — its own contract is "never abort (the
+# verdict is the report's)" — so the fallback tests the `STEP_CODE` global it sets. Measured: an
+# `|| { ... }` here never fired even though the step exited 1, and the fallback silently did not run.
+BUN_ROUTE="official-script"
+run_step 03-bun bash -c 'set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash'
+if [ "$STEP_CODE" != "0" ]; then
+  BUN_ROUTE="npm"
+  # `--allow-scripts=bun`: the npm package downloads its platform binary in `install.js`, and npm
+  # REFUSES to run a dependency install script by default — measured: `added 2 packages` with
+  # `npm warn allow-scripts bun@1.4.2 (postinstall: node install.js)` and NO binary on PATH, so the
+  # fallback exited 0 and still left `bun --version` empty. The same class as the pnpm
+  # `ERR_PNPM_IGNORED_BUILDS` this repository already documents in AGENTS.md §8.
+  run_step 03-bun-npm bash -c 'set -euo pipefail; npm i -g --allow-scripts=bun bun'
+fi
+# RESOLVE THE BINARY BY SEARCH, not by guessing its layout. The official script installs to
+# `$BUN_INSTALL/bin/bun`; the npm package puts its downloaded binary somewhere under its own tree, and
+# two attempts to guess that path left `bun --version` EMPTY while the install exited 0. So: prefer the
+# script's path, then npm's global bin, and only then search — reporting which one was used, because a
+# silent miss here is what made two runs die at the FIRST assertion.
+BUN_ON_PATH="$(command -v bun 2>/dev/null || true)"
+if [ -z "$BUN_ON_PATH" ] && [ -x "$BUN_INSTALL/bin/bun" ]; then BUN_ON_PATH="$BUN_INSTALL/bin/bun"; fi
+if [ -z "$BUN_ON_PATH" ] && [ -x "$(npm prefix -g 2>/dev/null)/bin/bun" ]; then BUN_ON_PATH="$(npm prefix -g)/bin/bun"; fi
+if [ -z "$BUN_ON_PATH" ]; then
+  # `-print -quit` rather than `| head -1`: pipefail turns the reader's early exit into a SIGPIPE on
+  # `find`, which `set -e` then turns into an abort. Measured earlier in this very script.
+  BUN_ON_PATH="$(find /usr /opt /root -name bun -type f -perm -u+x -print -quit 2>/dev/null || true)"
+fi
+[ -n "$BUN_ON_PATH" ] && ln -sf "$BUN_ON_PATH" /usr/local/bin/bun 2>/dev/null || true
+fact bunPath "${BUN_ON_PATH:-not-found}"
 BUN_V="$(bun --version 2>/dev/null || true)"
-fact bun "$BUN_V (BUN_INSTALL=$BUN_INSTALL)"
+fact bun "$BUN_V (route=$BUN_ROUTE, BUN_INSTALL=$BUN_INSTALL)"
 case "$BUN_V" in
-  1.*) record toolchain.bun true "bun installed by the official script and asserted on PATH" "$BUN_V" ;;
-  *) record toolchain.bun false "bun did not install / did not report a 1.x version" "$BUN_V" ;;
+  1.*) record toolchain.bun true "bun $BUN_V on PATH, installed via $BUN_ROUTE" "$BUN_V" ;;
+  *) record toolchain.bun false "bun did not install / did not report a 1.x version (routes tried: official-script, npm)" "$BUN_V" ;;
 esac
 [ -n "$BUN_V" ] || bail "bun is not usable"
 
@@ -519,8 +614,8 @@ if [ "$INSTALL_MODE" = "oneclick" ]; then
   log ""
   log "----- one-click packaging: what the published package carried -----"
   ONE_CLICK_MISSING=""
-  for rel in packages/mpd-bundle/cordis.patch.yml presets/mpd.patch.yml \
-             packages/mpd-mcp-astgrep/launch.ts packages/mpd-mcp-codegraph/launch.ts \
+  for rel in cordis.patch.yml presets/mpd.patch.yml \
+             packages/mpd-mcp-astgrep/dist/launch.js packages/mpd-mcp-codegraph/dist/launch.js \
              packages/mpd-bundle-plugin/client.js icon.svg locale/en.json \
              dsh-plugin.json skills/dsh-qa/SKILL.md; do
     [ -e "$INSTALLED_DIR/$rel" ] || ONE_CLICK_MISSING="$ONE_CLICK_MISSING$rel,"
@@ -582,7 +677,8 @@ fi
 
 # An id-target row is matched as an EXACT id on its own YAML line, at whatever indentation the
 # composer used (nested insert entries are indented). A substring match would let
-# `mpd-agent-team` be satisfied by `mpd-agent-teams-plugin` — the retired vendored row.
+# `mpd-agent-team` be satisfied by `mpd-agent-teams-plugin` — the retired vendored row (DELETED
+# by the de-vendor wave, which is why the guard is now belt-and-braces rather than load-bearing).
 has_row() { grep -qE "^[[:space:]]*- id: $1[[:space:]]*\$" "$DUMP_TXT" 2>/dev/null; }
 has_name() { grep -qE "^[[:space:]]*name: ['\"]?$1['\"]?[[:space:]]*\$" "$DUMP_TXT" 2>/dev/null; }
 MISSING_ROWS=""
@@ -591,11 +687,81 @@ for row in mpd-dsh-adapter mpd-bootstrap mpd-web-compat mpd-roles mpd-workmate; 
 done
 DEFAULT_MPD="$(grep -cE "^[[:space:]]*default: ['\"]?mpd['\"]?[[:space:]]*\$" "$DUMP_TXT" 2>/dev/null || true)"
 fact obs.dumpMpdRowIds "$(grep -oE "^[[:space:]]*- id: mpd-[a-z-]+" "$DUMP_TXT" 2>/dev/null | sed 's/^[[:space:]]*- id: //' | sort -u | tr '\n' ',' || true)"
-fact obs.dumpDefaultMpdLines "$DEFAULT_MPD"
-if [ -z "$MISSING_ROWS" ] && [ "${DEFAULT_MPD:-0}" -ge 1 ]; then
-  record compose.mpdRows true "the mpd host rows compose and the default preset selection is mpd" "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate default: mpd x$DEFAULT_MPD"
+# The bundle no longer selects anything by override (strict zero-override, user decision 2026-10-02),
+# so ZERO `default: mpd` lines is the expected shape in the composed tree too. It is an OBSERVATION,
+# not a gate: the gate on that contract is the structural scan of the SHIPPED patch below, which names
+# the offending line — and this read also covers host layers this bundle does not own.
+fact obs.dumpDefaultMpdLines "$DEFAULT_MPD (expected 0: the bundle ships no preset override)"
+
+# ── the SHIPPED patch of the INSTALLED bundle: zero column-0 id-targets ───────────────────────
+# WHY THE INSTALLED TREE and not the checkout: the composition above was produced from THIS tree, so
+# this is the patch a user's harness actually read (a source-mode profile resolves the very same file
+# through its `link:` dependency). An unreadable tree is recorded as a failure below rather than
+# silently compared against a copy somewhere else in the image.
+BUNDLE_DIR=""
+if [ -f "$PROFILE_DIR/node_modules/@mpd-dsh/mpd/cordis.patch.yml" ]; then BUNDLE_DIR="$PROFILE_DIR/node_modules/@mpd-dsh/mpd"; fi
+# A TOP-LEVEL `- id: <x>` entry is an ID-TARGET (a per-key replacement of a row some host layer
+# declares — the retired `default: mpd` registry override was exactly that); rows inside an `insert:`
+# list are the ones this bundle ADDS, which is what the additive-only contract permits. The rule is
+# therefore structural and needs no host list: at indent 0, every `- id:` is a violation. Two ships
+# two layers (`package.json` dsh.bundle.patch), so both are read.
+ID_TARGET_HITS=""
+ID_TARGET_LAYERS=0
+for layer in cordis.patch.yml presets/mpd.patch.yml; do
+  [ -f "$BUNDLE_DIR/$layer" ] || continue
+  ID_TARGET_LAYERS=$((ID_TARGET_LAYERS + 1))
+  LAYER_HITS="$(grep -nE '^- id: ' "$BUNDLE_DIR/$layer" 2>/dev/null | tr '\n' ';' || true)"
+  if [ -n "$LAYER_HITS" ]; then ID_TARGET_HITS="$ID_TARGET_HITS$layer:$LAYER_HITS"; fi
+done
+# The repo's own gate is a STRONGER witness when it can run: it compares every id-target against the
+# ids the host layers on disk actually declare. Three container facts shape HOW it is invoked:
+#   * the installed bundle can live UNDER node_modules (the oneclick/pnpm layout), where Node refuses
+#     to strip types for a `.ts` file — measured 2026-10-02: the gate died there with no verdict line
+#     and this step aborted the whole run. So the gate's source is COPIED out to a scratch dir
+#     together with the manifest and the very layers under test: the subject stays the INSTALLED
+#     bytes (asserted with `cmp`), only the runner's location changes.
+#   * a container copy can resolve zero host layers, and that ONE condition (a vacuous comparison)
+#     must not redden an arm whose structural read already ran; `--allow-no-host` downgrades exactly
+#     that condition to a NOTE, while a real finding still exits 1.
+#   * the gate's own output is PRINTED (into the step log) instead of only grepped: a witness whose
+#     failure mode cannot be read is not evidence.
+# Classification, so the arm decides on the CONTRACT and never on infrastructure: a verdict line
+# naming a violation fails the assertion, an exit 0 is recorded as the witness, and a gate that
+# could not run at all is named as UNAVAILABLE in the raw while the structural read still decides.
+NO_OVERRIDE_WITNESS="gate=skipped (no node, or the installed tree carries no gate script)"
+NO_OVERRIDE_FINDING=0
+NO_OVERRIDE_CODE=0
+SUBJECT_COPY="not compared"
+if command -v node >/dev/null 2>&1 && [ -f "$BUNDLE_DIR/scripts/verify-no-host-override.ts" ] && [ -f "$BUNDLE_DIR/package.json" ]; then
+  GATE_DIR="$WORK_DIR/no-host-override-subject"
+  rm -rf "$GATE_DIR"
+  mkdir -p "$GATE_DIR"
+  for rel in package.json cordis.patch.yml presets scripts; do
+    cp -a "$BUNDLE_DIR/$rel" "$GATE_DIR/" 2>/dev/null || true
+  done
+  if cmp -s "$BUNDLE_DIR/cordis.patch.yml" "$GATE_DIR/cordis.patch.yml" \
+     && cmp -s "$BUNDLE_DIR/presets/mpd.patch.yml" "$GATE_DIR/presets/mpd.patch.yml"; then
+    SUBJECT_COPY="byte-identical"
+  fi
+  # `|| NO_OVERRIDE_CODE=$?` and NOT `set +e`: this file runs under an ERR trap, which a bare
+  # non-zero command fires even with errexit off (the same trap the TUI step below works around).
+  NO_OVERRIDE_OUT="$(cd "$GATE_DIR" && node scripts/verify-no-host-override.ts --home "$HOME" --allow-no-host 2>&1)" || NO_OVERRIDE_CODE=$?
+  log "----- scripts/verify-no-host-override.ts (subject: a $SUBJECT_COPY copy of the installed patch) -----"
+  printf '%s\n' "$NO_OVERRIDE_OUT"
+  NO_OVERRIDE_TAIL="$(printf '%s\n' "$NO_OVERRIDE_OUT" | grep -E 'PASS:|NOTE|VIOLATION|FAIL' | tail -n 2 | tr '\n' ' ' || true)"
+  if [ "$NO_OVERRIDE_CODE" -eq 0 ]; then
+    NO_OVERRIDE_WITNESS="gate exit=0 subject=$SUBJECT_COPY ${NO_OVERRIDE_TAIL:-<no verdict line>}"
+  elif printf '%s' "$NO_OVERRIDE_TAIL" | grep -qE 'VIOLATION|FAIL'; then
+    NO_OVERRIDE_WITNESS="gate exit=$NO_OVERRIDE_CODE subject=$SUBJECT_COPY ${NO_OVERRIDE_TAIL}(REAL FINDING)"
+    NO_OVERRIDE_FINDING=1
+  else
+    NO_OVERRIDE_WITNESS="gate exit=$NO_OVERRIDE_CODE UNAVAILABLE (this witness decides nothing; the structural read above does) ${NO_OVERRIDE_TAIL:-<no verdict line>}"
+  fi
+fi
+if [ -z "$MISSING_ROWS" ] && [ "$ID_TARGET_LAYERS" -ge 2 ] && [ -z "$ID_TARGET_HITS" ] && [ "$NO_OVERRIDE_FINDING" -eq 0 ]; then
+  record compose.mpdRows true "the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's" "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate layers=$ID_TARGET_LAYERS idTargets=0 defaultMpdLines=$DEFAULT_MPD $NO_OVERRIDE_WITNESS"
 else
-  record compose.mpdRows false "composed rows missing: ${MISSING_ROWS:-none}; 'default: mpd' lines: $DEFAULT_MPD" "$(witness "$DUMP_TXT" '^- id: mpd-' 6)"
+  record compose.mpdRows false "the mpd rows did not compose as ADDITIVE-ONLY rows with zero host overrides: rowsMissing=${MISSING_ROWS:-none} bundleLayers=$ID_TARGET_LAYERS/2 column0IdTargets=${ID_TARGET_HITS:-none} bundleDir=${BUNDLE_DIR:-<not installed>} zero-override=$NO_OVERRIDE_WITNESS" "$(witness "$DUMP_TXT" '^- id: mpd-' 6)"
 fi
 
 if has_row preset-mpd; then
@@ -618,6 +784,75 @@ if [ -z "$TEAM_MISSING" ] && [ -z "$TEAM_NAMES_MISSING" ]; then
 else
   record compose.agentTeamRows false "agent-team rows missing: ${TEAM_MISSING:-none}; official package names missing: ${TEAM_NAMES_MISSING:-none}" "$(witness "$DUMP_TXT" '(preset-mpd|agent-team)' 6)"
 fi
+
+# ── 9b. the LIVE credential, staged BEFORE the boot ───────────────────────────
+# A live turn on ANY plane needs the provider credential in the SANDBOX home, and it has to be there
+# BEFORE the Web app starts: the credentials service is read by the running server, so staging it
+# later (which is what the headless-only step used to do) leaves the Web and TUI planes
+# credential-less and their turns fail with MISSING_CREDENTIAL. Staging it once, here, is what makes
+# one live turn per plane possible.
+#
+# AGENTS.md §10 permits exactly this shape: the value is copied ONCE into an ephemeral sandbox home,
+# is never logged or echoed, and is DELETED before the report is written. The caller opts in with
+# `MPD_E2E_LIVE=1` and forwards the value by NAME (`docker compose run -e DEEPSEEK_API_KEY`), so the
+# secret never reaches any argv this script echoes.
+LIVE=0
+LIVECRED="$DSH_HOME/.credentials.yaml"
+if [ "${MPD_E2E_LIVE:-0}" = "1" ] && [ -n "${DEEPSEEK_API_KEY:-}" ]; then
+  mkdir -p "$DSH_HOME"
+  # `version: 1` AND the nested `refs:` mapping: the harness's credential reader REFUSES the
+  # pre-release flat layout by name ("uses the pre-release flat layout. Add `version: 1` and nest the
+  # existing 1 entry under `refs:`") — measured on the first live attempt, which then had no
+  # credentials at all and every dependent row reported `pending (waiting for service: credentials)`.
+  { printf 'version: 1\n'; printf 'refs:\n'; printf '  DEEPSEEK_API_KEY: %s\n' "$DEEPSEEK_API_KEY"; } > "$LIVECRED"
+  chmod 600 "$LIVECRED"
+  LIVE=1
+  record live.credentialStaged true "the provider credential was staged ONCE into the SANDBOX home (mode 0600) so every plane can run a real turn; the value is never recorded" "path=$LIVECRED scope=sandbox"
+else
+  record live.credentialStaged null "not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum" "MPD_E2E_LIVE=${MPD_E2E_LIVE:-0} key=$([ -n "${DEEPSEEK_API_KEY:-}" ] && echo forwarded || echo absent)"
+fi
+# The staged file's SCOPE is asserted while it exists: sandbox-only path, mode 0600, and the two
+# structural keys the harness's reader demands. A credential that landed outside the sandbox home or
+# world-readable is a failure of §10, not a working live turn.
+if [ "$LIVE" = "1" ]; then
+  CRED_MODE="$(stat -c '%a' "$LIVECRED" 2>/dev/null || echo '?')"
+  if [ "$CRED_MODE" = "600" ] && [ "${LIVECRED#"$SANDBOX_DSH"/}" != "$LIVECRED" ] && grep -q '^version: 1$' "$LIVECRED" && grep -q '^refs:$' "$LIVECRED"; then
+    record live.credentialScoped true "the staged credential sits under the SANDBOX dsh home, is mode 0600, and carries the version:1/refs shape the harness reader demands" "mode=$CRED_MODE path=$LIVECRED"
+  else
+    record live.credentialScoped false "the staged credential is not sandbox-scoped / not 0600 / not in the shape the harness reads" "mode=$CRED_MODE path=$LIVECRED"
+  fi
+else
+  record live.credentialScoped null "not attempted: no credential was staged, so there was nothing to scope-check" "staged=none"
+fi
+
+# ── 9c. register the scratch workspace BEFORE the boot ────────────────────────
+# WHY: the Web GUI opens on a landing page whose composer is DISABLED until a workspace is chosen
+# ("Choose a workspace to start"), and the picker behind that control is a NATIVE directory dialog a
+# headless browser cannot drive. With no registered workspace the GUI is therefore un-driveable no
+# matter how healthy it is — measured 2026-10-03, when the browser lane's `ui.composerPresent` failed
+# with `no element with placeholder "Add files or run commands"` while the screenshot showed the
+# landing page.
+#
+# The store is plain JSON and the record shape is the controller's own projection, so the fixture is
+# written straight into `<DSH_HOME>/storages/workspace.json` BEFORE the app starts: the running server
+# loads it at boot and the workspace appears in the sidebar like any other. This is a UI FIXTURE, not
+# a product claim — what it makes reachable is the composer and the session view, which is what the
+# browser lane is about (the same recipe docker/ui/run-capture.sh documents).
+mkdir -p "$WORK_DIR/ws" "$DSH_HOME/storages"
+MPD_UI_WS_ID="ws-mpd-e2e"
+node -e '
+const fs = require("node:fs")
+const [file, id, path, now] = process.argv.slice(1)
+let store = { unit: { name: "workspace", version: 2 }, global: { initialized: true, workspaceIds: [], archivedSessionIds: [], pinnedSessionIds: [] }, tables: { workspaces: {} } }
+try { const current = JSON.parse(fs.readFileSync(file, "utf8")); if (current && current.tables) store = current } catch {}
+store.tables.workspaces = store.tables.workspaces || {}
+store.tables.workspaces[id] = { id, path, title: "ws", sessionIds: [], createdAt: now, updatedAt: now }
+store.global.workspaceIds = [id]
+fs.writeFileSync(file, JSON.stringify(store, null, 2) + "\n")
+' "$DSH_HOME/storages/workspace.json" "$MPD_UI_WS_ID" "$WORK_DIR/ws" "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+record boot.workspaceRegistered "$([ -f "$DSH_HOME/storages/workspace.json" ] && echo true || echo false)" \
+  "the scratch workspace was registered in the harness's own store BEFORE the boot, so the Web GUI renders a usable composer instead of the disabled landing state" \
+  "id=$MPD_UI_WS_ID path=$WORK_DIR/ws"
 
 # ── 10. MOUNT: boot the installed profile with registration instrumentation ────
 log ""
@@ -644,6 +879,10 @@ PROBE_SERVICE="$(grep -m1 -oE '\[docker-probe\] ADAPTER_SERVICE=[a-z]+' "$BOOT_L
 PROBE_CALL="$(grep -m1 -oE '\[docker-probe\] ADAPTER_TOOL_CALL=.*' "$BOOT_LOG" 2>/dev/null | cut -d= -f2- || true)"
 PROBE_CORE="$(grep -m1 -oE '\[docker-probe\] CORE_TOOLS=[0-9]+/[0-9]+' "$BOOT_LOG" 2>/dev/null | cut -d= -f2 || true)"
 PROBE_CORE_MISSING="$(grep -m1 -oE '\[docker-probe\] CORE_TOOLS_MISSING=.*' "$BOOT_LOG" 2>/dev/null | cut -d= -f2- || true)"
+# The MCP arm waits up to 60 s for the stdio children, so this read happens after the probe printed
+# its DONE line — the boot poll above already blocks on that, which is what makes the wait safe.
+PROBE_MCP="$(grep -m1 -oE '\[docker-probe\] MCP_TOOLS=[0-9]+/[0-9]+' "$BOOT_LOG" 2>/dev/null | cut -d= -f2 || true)"
+PROBE_MCP_MISSING="$(grep -m1 -oE '\[docker-probe\] MCP_TOOLS_MISSING=.*' "$BOOT_LOG" 2>/dev/null | cut -d= -f2- || true)"
 PROBE_TEAM_ROOT="$(grep -m1 -oE '\[docker-probe\] TEAM_TOOLS_ROOT=[0-9]+/[0-9]+' "$BOOT_LOG" 2>/dev/null | cut -d= -f2 || true)"
 PROBE_CAPS="$(grep -m1 -oE '\[docker-probe\] ADAPTER_CAPS=.*' "$BOOT_LOG" 2>/dev/null | cut -d= -f2- || true)"
 PROBE_RETIRED="$(grep -m1 -oE '\[docker-probe\] RETIRED_TOOLS_PRESENT=.*' "$BOOT_LOG" 2>/dev/null | cut -d= -f2- || true)"
@@ -661,10 +900,15 @@ if [ -n "$BOOT_APPLIED" ] && [ -n "$BOOT_DONE" ]; then
 else
   record boot.probeApplied false "the probe never applied — the profile did not mount" "$(witness "$BOOT_LOG" 'Error|error|did not activate|Cannot find module' 4)"
 fi
-if [ -n "$BOOT_SERVICE" ]; then
-  record boot.adapterService true "the mpd-dsh-adapter row applied and provided the mpdDsh service" "[mpd-dsh-adapter] mpdDsh provided"
+# THE WITNESS IS THE ROW'S OWN FILE (R5). BOOT_SERVICE greps the console log the boot was launched
+# with, and since R5 no MPD row prints there at all — so the file is the PRIMARY evidence and the
+# console grep is kept as the secondary one. The assertion still has to be falsifiable in the other
+# direction: a line absent from BOTH witnesses records false, and the raw then names both places.
+SERVICE_LOG_LINE="$(row_log_line mpd-dsh-adapter '\[mpd-dsh-adapter\] mpdDsh provided' || true)"
+if [ -n "$SERVICE_LOG_LINE" ] || [ -n "$BOOT_SERVICE" ]; then
+  record boot.adapterService true "the mpd-dsh-adapter row applied and provided the mpdDsh service — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-dsh-adapter.log (R5: MPD diagnostics never touch the terminal)" "${SERVICE_LOG_LINE:-<file log absent>}${BOOT_SERVICE:+ (console witness also present)}"
 else
-  record boot.adapterService false "the adapter row did not provide mpdDsh in the booted profile" "$(witness "$BOOT_LOG" '\[mpd-dsh-adapter\]|adapter' 4)"
+  record boot.adapterService false "the adapter row did not provide mpdDsh in the booted profile: the line is absent from <workspace>/.mpd/logs/mpd-dsh-adapter.log AND from the console log" "console=$(witness "$BOOT_LOG" '\[mpd-dsh-adapter\]|adapter' 2) file-roots=$WORK_DIR,$WORK_DIR/ws"
 fi
 if [ "$PROBE_CALL" = "ok" ] && [ "$PROBE_SERVICE" = "present" ]; then
   record boot.adapterToolCall true "an internal tool call through the adapter answered ok" "[docker-probe] ADAPTER_TOOL_CALL=ok"
@@ -675,6 +919,15 @@ if [ -n "$PROBE_CORE" ] && [ -z "$PROBE_CORE_MISSING" ]; then
   record boot.mpdTools true "every core mpd tool answered from the live registry" "CORE_TOOLS=$PROBE_CORE"
 else
   record boot.mpdTools false "core mpd tools are missing from the live registry" "CORE_TOOLS=${PROBE_CORE:-<absent>} MISSING=${PROBE_CORE_MISSING:-<absent>}"
+fi
+# THE MCP CAPABILITY SURFACE. The bundle mounts three `@deepseek-ai/dsh-mcp-client` rows (ast_grep,
+# lsp, codegraph); each tool appears only after its stdio child has spawned and completed the MCP
+# handshake. A server that fails to launch therefore leaves the session without the tool while every
+# composition assertion stays green — which is why presence is asserted here and not assumed.
+if [ -n "$PROBE_MCP" ] && [ -z "$PROBE_MCP_MISSING" ]; then
+  record boot.mcpTools true "every MCP server this bundle mounts exposed its tool from the live registry" "MCP_TOOLS=$PROBE_MCP"
+else
+  record boot.mcpTools false "an MCP tool is missing from the live registry — its stdio server did not come up" "MCP_TOOLS=${PROBE_MCP:-<absent>} MISSING=${PROBE_MCP_MISSING:-<absent>}"
 fi
 
 # The SERVICE half of the same row set: `mpd-agent-team` mounts @deepseek-ai/dsh-experimental-agent-team,
@@ -826,22 +1079,30 @@ else
 fi
 
 # THE SESSION-GATE LIVENESS PROOF. `mpd-roles-plugin` mounts the session-start complexity gate per
-# qualifying agent and prints one line when the listener is ACTUALLY registered. In v0.10.0 the gate
+# qualifying agent and logs one line when the listener is ACTUALLY registered. In v0.10.0 the gate
 # was MOUNTED BUT NEVER FIRED (three root causes, fixed for v0.10.1), so "the row composed" was never
 # evidence for this contract — only this line is. It is emitted on `agent/created`, i.e. for the agent
 # the session created above, which is exactly the session the gate must cover.
+#
+# TWO PLACES, ONE FACT (R5): `<workspace>/.mpd/logs/mpd-roles.log` is the PRIMARY witness because the
+# row writes there by design; the console log is the secondary one, kept so the arm still passes if a
+# future host ever routes a row's diagnostics back to the terminal. Both are polled, because the line
+# arrives with the created session and neither destination is guaranteed to flush first. A line
+# present in NEITHER is recorded false with both places named.
 GATE_LINE=""
+GATE_LOG_LINE=""
 GATE_DEADLINE=$(( $(date +%s) + 45 ))
 while [ "$(date +%s)" -lt "$GATE_DEADLINE" ]; do
   GATE_LINE="$(grep -m1 -oE '\[mpd-roles\] session gate listener registered for agent "[^"]*" agentPreset=[A-Za-z0-9_-]+' "$BOOT_LOG" 2>/dev/null || true)"
-  [ -n "$GATE_LINE" ] && break
+  GATE_LOG_LINE="$(row_log_line mpd-roles '\[mpd-roles\] session gate listener registered for agent "[^"]*" agentPreset=[A-Za-z0-9_-]+' || true)"
+  if [ -n "$GATE_LINE" ] || [ -n "$GATE_LOG_LINE" ]; then break; fi
   sleep 2
 done
-fact bootSessionGate "${GATE_LINE:-<no gate registration line>}"
-if printf '%s' "$GATE_LINE" | grep -q 'agentPreset=mpd'; then
-  record boot.sessionGateListener true "the mpd session gate listener is REGISTERED for the created session — liveness, not composition (the contract that was silently dead in v0.10.0)" "$GATE_LINE"
+fact bootSessionGate "${GATE_LOG_LINE:-${GATE_LINE:-<no gate registration line in the row log or on the console>}}"
+if printf '%s' "$GATE_LOG_LINE$GATE_LINE" | grep -q 'agentPreset=mpd'; then
+  record boot.sessionGateListener true "the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)" "${GATE_LOG_LINE:-<file log absent>}${GATE_LINE:+ (console witness also present)}"
 else
-  record boot.sessionGateListener false "no '[mpd-roles] session gate listener registered … agentPreset=mpd' line after session creation" "${GATE_LINE:-<absent>} warn-lines=$(witness "$BOOT_LOG" 'session-start gate not registered' 2)"
+  record boot.sessionGateListener false "no '[mpd-roles] session gate listener registered … agentPreset=mpd' line after session creation — absent from <workspace>/.mpd/logs/mpd-roles.log AND from the console log" "${GATE_LOG_LINE:-<no row-log line>} ${GATE_LINE:-<no console line>} warn-lines=$(witness "$BOOT_LOG" 'session-start gate not registered' 2)"
 fi
 
 FATAL_LINES="$(grep -cE 'Cannot find module|did not activate|Unhandled|uncaught|is not a function' "$BOOT_LOG" 2>/dev/null || true)"
@@ -856,7 +1117,195 @@ BOOT_ENDED="$(date +%s)"
 # column is recorded as -1 for exactly that reason.
 append_step "11-boot" -1 "$((BOOT_ENDED - BOOT_STARTED))" "11-boot.log" "dsh --profile web --patch probe.yml --port $PORT --no-open (background; terminated by the harness after the assertions)"
 
-# Stop the boot before the isolation checks (a live session writes workspace state).
+# ── 10b. the mpd TEAM ROUTES, against the REAL mounted bundle ────────────────
+# W4 of the team-plane split added four host routes and this is the only place they meet a REAL
+# mounted row: `/plugins/mpd-team/{state,plan,task,mail}`. A 404 here would mean the row never
+# registered them — a fact no unit arm can produce, because the arms mount the row themselves.
+#
+# The session id created just above is passed to `/plan`, because a staged plan is keyed by SESSION:
+# asking without one is a legitimate empty answer, and asserting on THAT would prove nothing about the
+# lookup.
+LIVE_SESSION_ID="$(node -e '
+  try {
+    const body = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))
+    process.stdout.write(String(body?.result?.value?.sessionId ?? body?.result?.value?.id ?? ""))
+  } catch { process.stdout.write("") }
+' "$SESSION_JSON" 2>/dev/null || true)"
+fact teamRoutesSession "${LIVE_SESSION_ID:-none}"
+TEAM_ROUTE_OK=0
+TEAM_ROUTE_SEEN=""
+for ROUTE in state plan task mail; do
+  ROUTE_BODY="$WORK_DIR/route-$ROUTE.json"
+  ROUTE_URL="http://127.0.0.1:$PORT/plugins/mpd-team/$ROUTE"
+  [ "$ROUTE" = "plan" ] && [ -n "$LIVE_SESSION_ID" ] && ROUTE_URL="$ROUTE_URL?sessionId=$LIVE_SESSION_ID"
+  ROUTE_CODE="$(curl -s -b "$COOKIE_JAR" -c "$COOKIE_JAR" -o "$ROUTE_BODY" -w '%{http_code}' --max-time 20 "$ROUTE_URL" 2>/dev/null || true)"
+  ROUTE_VERDICT="$(node -e '
+    try {
+      const body = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))
+      process.stdout.write(String(body?.ok === true) + "|" + Object.keys(body).filter((k) => k !== "ok").join(","))
+    } catch { process.stdout.write("false|unparseable") }
+  ' "$ROUTE_BODY" 2>/dev/null || echo "false|node-failed")"
+  ROUTE_OK="${ROUTE_VERDICT%%|*}"
+  ROUTE_KEYS="${ROUTE_VERDICT#*|}"
+  TEAM_ROUTE_SEEN="$TEAM_ROUTE_SEEN $ROUTE=$ROUTE_CODE/$ROUTE_OK"
+  if [ "$ROUTE_CODE" = "200" ] && [ "$ROUTE_OK" = "true" ]; then TEAM_ROUTE_OK=$((TEAM_ROUTE_OK + 1)); fi
+  record "team.route.$ROUTE" "$([ "$ROUTE_CODE" = "200" ] && [ "$ROUTE_OK" = "true" ] && echo true || echo false)" \
+    "the mpd team route answered a JSON payload from a REAL mounted row" "HTTP $ROUTE_CODE keys=$ROUTE_KEYS"
+done
+fact teamRoutes "$TEAM_ROUTE_SEEN"
+record team.routesAll "$([ "$TEAM_ROUTE_OK" = "4" ] && echo true || echo false)" \
+  "all four /plugins/mpd-team routes are registered by the mounted row and answer ok:true" "green=$TEAM_ROUTE_OK/4"
+# The PLANNED lookup is asserted apart from the count: a route can answer 200 with `plan: null` for a
+# session that staged nothing, so the SHAPE is what says the lookup ran rather than the status.
+PLAN_SHAPE="$(node -e '
+  try {
+    const body = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))
+    process.stdout.write(Object.prototype.hasOwnProperty.call(body, "plan") ? (body.plan === null ? "null" : "object") : "missing")
+  } catch { process.stdout.write("unreadable") }
+' "$WORK_DIR/route-plan.json" 2>/dev/null || echo unreadable)"
+record team.planLookup "$([ "$PLAN_SHAPE" = "null" ] || [ "$PLAN_SHAPE" = "object" ] && echo true || echo false)" \
+  "the plan route answered a plan SHAPE for the live session (null when nothing is staged, which is the honest pre-approval answer)" "plan=$PLAN_SHAPE session=${LIVE_SESSION_ID:-none}"
+
+# ── 12. a LIVE turn through the WEB GATEWAY (the plane the user actually runs) ─
+# WHY THIS IS SEPARATE FROM THE HEADLESS STEP BELOW: the headless arm proves the CLI plane; this one
+# drives the RUNNING Web app over the same `/api/session/prompt` endpoint the browser uses, so a
+# credential-free-but-mounted Web plane can no longer look healthy while its agent plane is dead.
+# The verdict is read from the harness's own session store (docker/lib/live-verdict.ts), never from
+# the model's prose (AGENTS.md §7) — and it is scoped by SESSION plus `--since`, which is the fix for
+# the defect this lane had: the old team-record lookup took whatever `.mpd/team/teams/*.json`
+# `find -print -quit` returned first, so after the TUI lane landed it graded `tui-scene.json` and
+# reported a PASS for a live turn it had not measured at all.
+log ""
+log "----- LIVE TURN ON THE WEB PLANE (gateway) -----"
+WEB_LIVE_LOG="$STEPS_DIR/12-web-live.log"
+: > "$WEB_LIVE_LOG"
+WEB_LIVE_SINCE=0
+if [ "$LIVE" = "1" ]; then
+  WEB_SESSION_ID="$(node -e '
+    try {
+      const body = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))
+      process.stdout.write(String(body?.result?.value?.sessionId ?? ""))
+    } catch { process.stdout.write("") }
+  ' "$SESSION_JSON" 2>/dev/null || true)"
+  if [ -z "$WEB_SESSION_ID" ]; then
+    node "$LIB_DIR/live-verdict.ts" --label web --state "$STATE_FILE" \
+      --unavailable "the web session was never created, so no turn could be driven through the gateway" >>"$WEB_LIVE_LOG" 2>&1
+    append_step 12-web-live 1 0 "12-web-live.log" "web live turn — no session id in $SESSION_JSON"
+  else
+    # The prompt is deliberately SHORT and asks for ONE MPD tool: it keeps the turn cheap and makes
+    # `live.web.mpdToolCalled` a statement about this bundle's own tool plane, not about the model's
+    # mood. `mpd_config_get` is in the probe's CORE_TOOLS, so it is registered wherever that arm passes.
+    WEB_PROMPT='Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE'
+    WEB_REQ_ID="req-$$-$(date +%s)-$RANDOM"
+    WEB_LIVE_SINCE="$(date +%s%3N)"
+    WEB_BODY="$(node -e '
+      const [requestId, sessionId, text] = process.argv.slice(1)
+      process.stdout.write(JSON.stringify({
+        type: "client-request",
+        rpcId: requestId,
+        method: "session/prompt",
+        payload: { args: { request: { requestId, sessionId, mode: "queue", content: [{ type: "text", text }], clientTimeZone: "UTC" } } }
+      }))
+    ' "$WEB_REQ_ID" "$WEB_SESSION_ID" "$WEB_PROMPT" 2>>"$WEB_LIVE_LOG" || true)"
+    WEB_CODE=""
+    if [ -n "$WEB_BODY" ]; then
+      WEB_CODE="$(curl -s -b "$COOKIE_JAR" -c "$COOKIE_JAR" -o "$WORK_DIR/web-prompt.json" -w '%{http_code}' --max-time 30 \
+        -H 'content-type: application/json' -d "$WEB_BODY" \
+        "http://127.0.0.1:$PORT/api/session/prompt" 2>>"$WEB_LIVE_LOG" || true)"
+      if [ "$WEB_CODE" != "200" ] && [ -n "$TOKEN" ]; then
+        WEB_CODE="$(curl -s -b "$COOKIE_JAR" -c "$COOKIE_JAR" -o "$WORK_DIR/web-prompt.json" -w '%{http_code}' --max-time 30 \
+          -H 'content-type: application/json' -d "$WEB_BODY" \
+          "http://127.0.0.1:$PORT/api/session/prompt?token=$TOKEN" 2>>"$WEB_LIVE_LOG" || true)"
+      fi
+    fi
+    # The prompt POST is evidence in its own right: an accepted turn that never produces a session
+    # record is a different failure from a rejected prompt, and the two must be distinguishable.
+    cp "$WORK_DIR/web-prompt.json" "$OUT_DIR/web-live-prompt.json" 2>/dev/null || true
+    log "[web-live] session=$WEB_SESSION_ID http=$WEB_CODE prompt=$WEB_PROMPT"
+    {
+      printf 'session=%s http=%s\n' "$WEB_SESSION_ID" "$WEB_CODE"
+      printf 'prompt=%s\n' "$WEB_PROMPT"
+      head -c 1200 "$WORK_DIR/web-prompt.json" 2>/dev/null || true
+      printf '\n'
+    } >>"$WEB_LIVE_LOG"
+    # A generous budget on purpose: this turn costs one live request and the whole point is to let it
+    # finish, not to race it. A budget that expires still produces an honest verdict (turnStarted
+    # false), never a silent pass. `|| WEB_LIVE_CODE=$?` is REQUIRED: the entrypoint runs under
+    # `set -e`, so an unguarded non-zero here would abort the run and hide the verdict it just took.
+    WEB_LIVE_CODE=0
+    node "$LIB_DIR/live-verdict.ts" --dsh-home "$DSH_HOME" --workspace "$WORK_DIR/ws" --label web \
+      --state "$STATE_FILE" --since "$WEB_LIVE_SINCE" --wait "${MPD_E2E_LIVE_BUDGET_MS:-300000}" >>"$WEB_LIVE_LOG" 2>&1 || WEB_LIVE_CODE=$?
+    cat "$WEB_LIVE_LOG"
+    append_step 12-web-live "$WEB_LIVE_CODE" 0 "12-web-live.log" "POST /api/session/prompt + docker/lib/live-verdict.ts (label=web)"
+  fi
+else
+  node "$LIB_DIR/live-verdict.ts" --label web --state "$STATE_FILE" \
+    --unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum" 2>&1 | tee -a "$WEB_LIVE_LOG" || true
+  append_step 12-web-live 0 0 "12-web-live.log" "skipped: no live credential staged"
+fi
+
+# ── 13. the REAL Web GUI, in a REAL browser ───────────────────────────────────
+# Every other Web assertion in this lane is an HTTP or filesystem fact. This step opens the app in
+# Chromium, types a prompt into the composer, sends it and waits for the answer to render — the only
+# proof that the GUI is USABLE rather than merely served. It is opt-in (`MPD_E2E_BROWSER=1`) because
+# it downloads a browser; when it is off, every `ui.*` assertion is recorded as NULL, never dropped.
+log ""
+log "----- BROWSER LANE (real Web GUI) -----"
+if [ "${MPD_E2E_BROWSER:-0}" = "1" ]; then
+  BROWSER_LOG="$STEPS_DIR/13-browser.log"
+  : > "$BROWSER_LOG"
+  UI_DIR="$WORK_DIR/ui"
+  mkdir -p "$UI_DIR"
+  # PLAYWRIGHT_BROWSERS_PATH is set for BOTH the install and the run: when it was left unset, the
+  # install put the browsers under one HOME and the run looked under another, and the capture died
+  # with "browser not found" (the trap docker/ui/entrypoint.sh documents).
+  export PLAYWRIGHT_BROWSERS_PATH="$WORK_DIR/pw-browsers"
+  BROWSER_STEP=0
+  BROWSER_INSTALL=0
+  if [ "${MPD_E2E_BROWSER_SKIP_INSTALL:-0}" != "1" ]; then
+    # `npm pkg set type=module` IS LOAD-BEARING, not tidiness. Node decides a `.ts` file's module
+    # system from the nearest package.json: with NO package.json it falls back to syntax detection and
+    # the ESM lane loads, but `npm init -y` writes one WITHOUT `"type"`, which pins the directory to
+    # CommonJS — and the lane then dies with "Warning: Failed to load the ES module … Make sure to set
+    # \"type\": \"module\"" before recording a single assertion (measured 2026-10-03).
+    ( cd "$UI_DIR" && npm init -y >/dev/null 2>&1 \
+      && npm pkg set type=module >>"$BROWSER_LOG" 2>&1 \
+      && npm i playwright@1.49.1 >>"$BROWSER_LOG" 2>&1 \
+      && npx playwright install --with-deps chromium >>"$BROWSER_LOG" 2>&1 ) || BROWSER_INSTALL=$?
+  fi
+  # The lane is COPIED beside its node_modules: a bare `import("playwright")` resolves from the
+  # IMPORTING FILE's directory, so a script run straight out of /opt/mpd-e2e/lib would look in
+  # /opt/mpd-e2e/lib/node_modules and never find the install under /work/ui.
+  cp "$LIB_DIR/browser-lane.ts" "$UI_DIR/browser-lane.ts" 2>/dev/null || true
+  if [ "$BROWSER_INSTALL" != "0" ]; then
+    node "$LIB_DIR/browser-lane.ts" --state "$STATE_FILE" --out "$OUT_DIR/ui-shots" \
+      --unavailable "the browser toolchain did not install (npm/npx exit $BROWSER_INSTALL), so the GUI was never driven" >>"$BROWSER_LOG" 2>&1 || true
+    BROWSER_STEP=$BROWSER_INSTALL
+  else
+    node "$UI_DIR/browser-lane.ts" --base "http://127.0.0.1:$PORT" --token "$TOKEN" \
+      --out "$OUT_DIR/ui-shots" --state "$STATE_FILE" --budget-ms "${MPD_E2E_BROWSER_BUDGET_MS:-240000}" \
+      >>"$BROWSER_LOG" 2>&1 || BROWSER_STEP=$?
+  fi
+  # A LANE THAT CRASHED BEFORE RECORDING leaves the reporter's "not reached" NULLs, which say nothing
+  # about WHY. This net turns that silent hole into an explicit "not attempted (node exit N)" row set,
+  # so the evidence names the failure instead of merely showing an absence.
+  if ! grep -q '"name":"ui\.' "$STATE_FILE" 2>/dev/null; then
+    node "$LIB_DIR/browser-lane.ts" --state "$STATE_FILE" --out "$OUT_DIR/ui-shots" \
+      --unavailable "the browser lane produced no verdict at all (node exit ${BROWSER_STEP}); its own log is 13-browser.log" >>"$BROWSER_LOG" 2>&1 || true
+  fi
+  cat "$BROWSER_LOG"
+  append_step 13-browser "$BROWSER_STEP" 0 "13-browser.log" "node browser-lane.ts (Chromium drives the real Web GUI)"
+else
+  node "$LIB_DIR/browser-lane.ts" --state "$STATE_FILE" --out "$OUT_DIR/ui-shots" \
+    --unavailable "not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum" || true
+  append_step 13-browser 0 0 "13-browser.log" "skipped: MPD_E2E_BROWSER was not set"
+fi
+
+# Stop the boot now that EVERY server-dependent lane has run, and before the isolation checks
+# (a live session keeps writing workspace state). The ORDER IS LOAD-BEARING: the Web live turn and
+# the browser lane both drive the RUNNING app, so both must run ABOVE this line — measured
+# 2026-10-03, when they were placed after it and answered `http=000` / `ERR_CONNECTION_REFUSED`
+# against a server the harness had already stopped.
 if kill -0 "$BOOT_PID" 2>/dev/null; then
   kill -TERM "$BOOT_PID" 2>/dev/null || true
   sleep 2
@@ -865,7 +1314,8 @@ if kill -0 "$BOOT_PID" 2>/dev/null; then
 fi
 BOOT_PID=""
 
-# ── 11. isolation: the real home was never touched, no credentials anywhere ───
+# ── isolation: the real home was never touched, no credentials anywhere ──────
+# (No step number: it runs after every server-dependent lane and before the TUI lane.)
 log ""
 log "----- isolation -----"
 if [ "$HOME" = "$SANDBOX_HOME" ] && [ "$DSH_HOME" = "$SANDBOX_DSH" ] && [ -d "$SANDBOX_HOME" ] && [ -d "$SANDBOX_DSH" ]; then
@@ -890,27 +1340,39 @@ fi
 # credential-shaped file with its size, and judge only CONTENT — a non-empty secret-shaped value.
 CRED_INVENTORY=""
 CRED_MATERIAL=""
+STAGED_MATCHED=""
 while IFS= read -r file; do
   [ -n "$file" ] || continue
   size="$(stat -c '%s' "$file" 2>/dev/null || echo 0)"
   CRED_INVENTORY="$CRED_INVENTORY$(basename "$file")(${size}B),"
   if [ "${size:-0}" != "0" ] && grep -qE '(_authToken|apiKey|api_key)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9_/+-]{12,}|sk-[A-Za-z0-9_-]{16,}' "$file" 2>/dev/null; then
-    CRED_MATERIAL="$CRED_MATERIAL$file,"
+    # ONE file is EXPECTED to carry material when the caller opted into a live turn: the credential
+    # this run staged itself, in the sandbox home, mode-asserted by live.credentialScoped and deleted
+    # before the report is written. Anything ELSE carrying secret-shaped content is still a leak.
+    if [ "$LIVE" = "1" ] && [ "$file" = "$LIVECRED" ]; then
+      STAGED_MATCHED="1"
+    else
+      CRED_MATERIAL="$CRED_MATERIAL$file,"
+    fi
   fi
 done < <(find "$SANDBOX_DSH" "$SANDBOX_HOME" -maxdepth 4 -type f \( -name '*credential*' -o -name 'settings.yaml' -o -name '.npmrc' -o -name 'auth.json' \) 2>/dev/null | head -n 20)
 fact obs.credentialFiles "${CRED_INVENTORY:-none} (sizes only; the CONTENT of a credential-shaped file is deliberately never copied into the evidence — the check is a secret-shape match, not a dump)"
 if [ -z "$CRED_MATERIAL" ]; then
-  record isolation.noCredentials true "no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)" "inventory=${CRED_INVENTORY:-none}"
+  if [ "$LIVE" = "1" ] && [ "$STAGED_MATCHED" = "1" ]; then
+    record isolation.noCredentials true "the ONLY credential-bearing file is the one this run staged into the SANDBOX home for the live arm (scoped by live.credentialScoped, deleted before the report); no other file carries secret-shaped content and nothing was staged into the real home" "inventory=${CRED_INVENTORY:-none} staged=$LIVECRED"
+  else
+    record isolation.noCredentials true "no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)" "inventory=${CRED_INVENTORY:-none} live=$LIVE"
+  fi
 else
   record isolation.noCredentials false "a credential file carries a secret-shaped value (AGENTS.md §10)" "$CRED_MATERIAL"
 fi
 
-# ── 12. the DSH-TUI edition: the profile a developer host cannot exercise ─────
+# ── 14. the DSH-TUI edition: the profile a developer host cannot exercise ─────
 # The TUI host must be installed from npm and booted on a REAL PTY, and this machine's
 # sandbox cannot write a global npm prefix — so the container is the only place the TUI
 # profile can be exercised end to end. docker/tui-lane.sh records its own verdicts; a
 # missing tmux or a failed boot lands as `false`, never as a silent skip.
-log "===== STEP 12-tui ====="
+log "===== STEP 14-tui ====="
 # `|| TUI_STEP=$?` rather than `set +e`: the ERR trap fires on a bare non-zero command even
 # with errexit off, so a plain `set +e` around a step that is EXPECTED to be allowed to
 # fail would abort the whole run (measured 2026-09-27: the TUI step returned non-zero and
@@ -921,19 +1383,151 @@ TUI_STEP=0
 # "STATE_FILE: parameter null or not set" at the lane's first line).
 STATE_FILE="$STATE_FILE" FACTS_FILE="$FACTS_FILE" APP_DIR="$APP_DIR" WORK_DIR="$WORK_DIR" \
   TUI_VERSION="$TUI_VERSION" DSH_HOME="$DSH_HOME" HOME="$HOME" PATH="$PATH" \
+  OUT_DIR="$OUT_DIR" \
+  LIB_DIR="$LIB_DIR" LIVE="$LIVE" MPD_E2E_LIVE_BUDGET_MS="${MPD_E2E_LIVE_BUDGET_MS:-300000}" \
   npm_config_cache="${npm_config_cache:-$HOME/.npm}" \
-  bash /opt/mpd-e2e/tui-lane.sh >"$STEPS_DIR/12-tui.log" 2>&1 || TUI_STEP=$?
-cat "$STEPS_DIR/12-tui.log" || true
-append_step 12-tui "$TUI_STEP" 0 "12-tui.log" "bash docker/tui-lane.sh"
+  bash /opt/mpd-e2e/tui-lane.sh >"$STEPS_DIR/14-tui.log" 2>&1 || TUI_STEP=$?
+cat "$STEPS_DIR/14-tui.log" || true
+append_step 14-tui "$TUI_STEP" 0 "14-tui.log" "bash docker/tui-lane.sh"
 
-# ── 13. the assertion that cannot be made here, stated instead of faked ───────
-record boot.llmTurn null \
-  "not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum." \
-  "no credentials staged by design"
+# ── 15. a LIVE LLM turn on the HEADLESS plane (opt-in) ────────────────────────
+# THE CREDENTIAL IS NEVER LOGGED OR ECHOED (AGENTS.md §10). It was staged ONCE before the boot
+# (step 9b) so the Web, TUI and headless planes can all use it; this step deliberately does NOT stage
+# its own copy, because a second write would race the running Web app's credential reader.
+if [ "$LIVE" = "1" ]; then
+  fact liveCredentialStaged "refs:DEEPSEEK_API_KEY was staged in the SANDBOX home before the boot (mode 0600); the value is never recorded"
 
-# ── 14. pin the state the run measured (§7: quote a hash with its measurement moment) ──
+  # ── the task: exercise the TEAM plane end to end, in one turn ───────────────
+  # A staged plan and its approval are the two steps the team-plane split rebuilt: `approve`
+  # materialises the mpd RECORD and raises the member through the NATIVE executor
+  # (`ctx.subagents.startContinuable`), which is the whole point of W2.
+  #
+  # STEP (1) IS NOT DECORATION. It is what makes `live.headless.mpdToolCalled` a statement about THIS
+  # bundle's tool plane: `agent_teams_plan` is the retained team-workflow tool and does NOT carry the
+  # `mpd_` prefix, so a team-only prompt would leave that arm measuring nothing at all.
+  LIVE_PROMPT="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action \"create\" (name it live-smoke, description \"docker live turn\"); (3) call agent_teams_plan with action \"add_member\" for a member named Reviewer; (4) call agent_teams_plan with action \"create_task\" with subject \"check the mount\"; (5) call agent_teams_plan with action \"approve\". Then reply with the single word DONE."
+  LIVE_LOG="$STEPS_DIR/15-headless-live.log"
+  LIVE_CODE=0
+  # The instant this step's own evidence must postdate. Every artifact graded below is checked against
+  # it, which is what stops another lane's leftover fixture from being graded as this turn's work.
+  LIVE_STARTED_MS="$(date +%s%3N)"
+  # THE BUNDLE MUST BE INSTALLED INTO THE PROFILE THE TURN RUNS UNDER, and that is not optional:
+  # `--profile headless` alone composes the harness's BASE headless tree, which registers NOTHING of
+  # ours. Measured on the first live attempt: the model listed its own tools (bash, create_goal, edit,
+  # … read, write) and `agent_teams_plan` was not among them, so it correctly refused to invent a call.
+  #
+  # A `--patch <installed bundle>` operand does NOT fix that, and the reason is worth writing down:
+  # every path-bearing value in the patch resolves through the loader's baseUrl, which is the PROFILE
+  # directory — so patching the web profile's copy into a headless run made the loader look for
+  # `profiles/headless/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.ts` and die with
+  # MODULE_NOT_FOUND. Installing the bundle INTO the headless profile is the one-command fix.
+  dsh plugin --profile headless add "$APP_DIR" >"$STEPS_DIR/15-headless-install.log" 2>&1 || true
+  ( cd "$WORK_DIR/ws" && DSH_HOME="$DSH_HOME" HOME="$HOME" PATH="$PATH" dsh --profile headless "$LIVE_PROMPT" ) >"$LIVE_LOG" 2>&1 || LIVE_CODE=$?
+  # The step's own log is ECHOED, unlike the mostly-silent steps above: this is the one live run whose
+  # transcript a human needs when its verdict reddens, and without this line it existed only inside the
+  # container (measured 2026-10-03: a failing headless arm was undiagnosable from the evidence tree).
+  cat "$LIVE_LOG" || true
+  append_step 15-headless-live "$LIVE_CODE" 0 "15-headless-live.log" "dsh --profile headless <team-plane live prompt>"
+  # THE HEADLESS PRESET ROW, graded on its CAUSE rather than on the accident.
+  #
+  # Measured 2026-10-03: `dsh --profile headless` reports
+  #   dsh: warning: 1 entry did not activate
+  #   preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+  # because the `agentPresets` service comes from `@deepseek-ai/dsh-agent-preset-registry`, and that
+  # row is declared ONLY by the `dsh-web-app` bundle — `dsh-headless` declares no registry at all. So
+  # this bundle's preset row can never activate in a headless-only composition, and the honest verdict
+  # is the EXPLANATION, not the symptom: a bare `false` here would redden every run for a harness-plane
+  # fact no bundle patch may fix (id-targeting `agent-preset-registry` is a host-owned override, and
+  # shipping our own registry row would decide the DEPLOYMENT DEFAULT, which §6 reserves for the user).
+  #
+  # A pending row for any OTHER reason — a missing required key in OUR config, the real failure mode —
+  # still records FALSE, which is what keeps this arm worth having.
+  if grep -qE 'preset-mpd .*pending' "$LIVE_LOG"; then
+    HEADLESS_REGISTRY="$(dsh --profile headless --dump-config 2>/dev/null | grep -cE '^[[:space:]]*- id: agent-preset-registry$' || true)"
+    if [ "${HEADLESS_REGISTRY:-0}" = "0" ]; then
+      record live.headlessPresetRow true "preset-mpd pends because the HEADLESS composition declares no agent-presets registry (a harness-plane fact: only dsh-web-app declares @deepseek-ai/dsh-agent-preset-registry); the mpd HOST rows still mount, which the live turn proves" "pending=$(grep -m1 -E 'preset-mpd' "$LIVE_LOG" | tr -d '\r' | cut -c1-160) registryRows=0"
+    else
+      record live.headlessPresetRow false "the headless composition DOES declare an agent-presets registry, yet preset-mpd still did not activate — a real defect in this bundle's preset row" "pending=$(grep -m1 -E 'preset-mpd' "$LIVE_LOG" | tr -d '\r' | cut -c1-160) registryRows=$HEADLESS_REGISTRY"
+    fi
+  else
+    record live.headlessPresetRow true "the headless composition activated preset-mpd (no pending row in the run log)" "pending=absent"
+  fi
+
+  # ── (a) THE SESSION STORE, scoped by `--since` ──────────────────────────────
+  # This is the arm that catches a model-output defect (an unparseable tool-call payload aborts the
+  # turn with MALFORMED_RESPONSE). It can only ever grade the turn THIS step drove, because a session
+  # record older than LIVE_STARTED_MS is filtered out.
+  node "$LIB_DIR/live-verdict.ts" --dsh-home "$DSH_HOME" --workspace "$WORK_DIR/ws" --label headless \
+    --state "$STATE_FILE" --since "$LIVE_STARTED_MS" --wait "${MPD_E2E_LIVE_BUDGET_MS:-300000}" || true
+  if grep -q '"name":"live.headless.turnCompleted","ok":true' "$STATE_FILE"; then
+    record boot.llmTurn true "a live headless turn ran to turn/end reason=completed (read from the harness's own session store)" "see live.headless.* rows"
+  else
+    record boot.llmTurn false "the live headless turn did not reach turn/end reason=completed (exit $LIVE_CODE)" "see 15-headless-live.log and the live.headless.* rows"
+  fi
+
+  # ── (b) THE TEAM RECORD — and the SELECTION is the defect this rewrite fixes ─
+  # The mpd record is materialised AT approval and carries an `executorRef` for every member the
+  # native executor actually raised, so a record on disk with a non-empty handle is a fact only a
+  # real tool call could have produced.
+  #
+  # THE OLD LOOKUP TOOK WHATEVER `find … -print -quit` RETURNED FIRST. After the TUI lane landed that
+  # was `tui-scene.json` — a FIXTURE another lane wrote — so `boot.llmTurn` and `live.teamRecord`
+  # recorded a PASS for a live turn they had never measured, and `live.nativeExecutor` failed against
+  # the fixture's own empty handles (measured 2026-10-03, evidence/docker/client-install/
+  # 2026-10-03T16-23-40Z). A verdict must be about THIS step's artifact or say so.
+  #
+  # `sort -rn | sed -n '1p'` rather than `| head -1`: this script runs under `set -o pipefail`, and a
+  # reader that exits early takes SIGPIPE, which pipefail turns into a non-zero pipeline and `set -e`
+  # turns into an abort. `sed -n '1p'` reads its whole input, so no signal is involved.
+  LIVE_TEAMS_DIR="$WORK_DIR/ws/.mpd/team/teams"
+  LIVE_TEAMS_PICK=""
+  if [ -d "$LIVE_TEAMS_DIR" ]; then
+    LIVE_TEAMS_PICK="$(find "$LIVE_TEAMS_DIR" -name '*.json' -type f -printf '%T@ %p\n' 2>/dev/null | sort -rn | sed -n '1p' || true)"
+  fi
+  LIVE_TEAMS_TS="${LIVE_TEAMS_PICK%% *}"
+  LIVETEAMS="${LIVE_TEAMS_PICK#* }"
+  # `%T@` prints fractional epoch seconds; the step start is in milliseconds, so compare in seconds.
+  LIVE_FRESH="$(awk -v t="${LIVE_TEAMS_TS:-0}" -v s="$(( LIVE_STARTED_MS / 1000 ))" 'BEGIN { print (t + 0 >= s) ? "yes" : "no" }')"
+  if [ -n "$LIVETEAMS" ] && [ -f "$LIVETEAMS" ] && [ "$LIVE_FRESH" = "yes" ]; then
+    LIVE_MEMBERS="$(node -e 'const d=require(process.argv[1]);const m=(d.members||[]).filter(x=>typeof x.executorRef==="string"&&x.executorRef!=="");console.log(m.length+"/"+(d.members||[]).length)' "$LIVETEAMS" 2>/dev/null || echo "?")"
+    LIVE_PHASE="$(node -e 'console.log(require(process.argv[1]).phase||"?")' "$LIVETEAMS" 2>/dev/null || echo "?")"
+    record live.teamRecord true "the team record THIS step produced exists (written at/after the step started) after a REAL approval" "file=$(basename "$LIVETEAMS") phase=$LIVE_PHASE mtime=$LIVE_TEAMS_TS"
+    record live.nativeExecutor "$([ "${LIVE_MEMBERS%%/*}" != "0" ] && echo true || echo false)" \
+      "a member carries an executorRef, i.e. the NATIVE executor raised it through ctx.subagents" "members-with-handle=$LIVE_MEMBERS file=$(basename "$LIVETEAMS")"
+  elif [ -n "$LIVETEAMS" ] && [ -f "$LIVETEAMS" ]; then
+    record live.teamRecord false "the newest team record PREDATES this step, so it cannot be evidence about the live turn (it is another lane's fixture or a leftover)" "file=$(basename "$LIVETEAMS") mtime=$LIVE_TEAMS_TS stepStarted=$(( LIVE_STARTED_MS / 1000 ))"
+    record live.nativeExecutor null "not measured: the newest team record belongs to another lane, so there is no THIS-step artifact to read" "file=$(basename "$LIVETEAMS")"
+  else
+    record live.teamRecord false "no team record exists at $LIVE_TEAMS_DIR after the live turn — the model did not reach agent_teams_plan approve (exit $LIVE_CODE)" "see 15-headless-live.log"
+    record live.nativeExecutor null "not measured: no team record exists, so no executor handle could be read" "dir=$LIVE_TEAMS_DIR"
+  fi
+else
+  node "$LIB_DIR/live-verdict.ts" --label headless --state "$STATE_FILE" \
+    --unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum" || true
+  record boot.llmTurn null \
+    "not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum." \
+    "no credentials staged by design"
+  record live.teamRecord null "not attempted: no live turn ran, so no approval could materialise a record" "staged=none"
+  record live.nativeExecutor null "not attempted: no live turn ran, so no member could be raised" "staged=none"
+  record live.headlessPresetRow null "not attempted: the headless profile was never driven, so its preset activation is unmeasured" "staged=none"
+fi
+# The staged credential is removed BEFORE the report is written, so it can never reach the evidence
+# tree or a re-used container (AGENTS.md §10). Recorded either way, so a silent failure to remove it
+# is visible instead of assumed.
+if [ "$LIVE" = "1" ]; then
+  rm -f "$LIVECRED" 2>/dev/null || true
+  if [ -e "$LIVECRED" ]; then
+    record live.credentialRemoved false "the staged credential file survived removal" "path=$LIVECRED"
+  else
+    record live.credentialRemoved true "the staged credential was deleted before the report was written" "path=$LIVECRED"
+  fi
+else
+  record live.credentialRemoved null "not attempted: nothing was staged, so nothing needed removing" "staged=none"
+fi
+
+# ── 16. pin the state the run measured (§7: quote a hash with its measurement moment) ──
 {
-  sha256sum "$APP_DIR/package.json" "$APP_DIR/packages/mpd-bundle/cordis.patch.yml" 2>/dev/null || true
+  sha256sum "$APP_DIR/package.json" "$APP_DIR/cordis.patch.yml" 2>/dev/null || true
   [ -f "$APP_DIR/presets/mpd.patch.yml" ] && sha256sum "$APP_DIR/presets/mpd.patch.yml" || true
   find "$APP_DIR/packages" -path '*/dist/index.js' -type f -print0 2>/dev/null | sort -z | xargs -0 -r sha256sum 2>/dev/null | sed "s#$APP_DIR/##" || true
 } > "$HASHES_FILE"

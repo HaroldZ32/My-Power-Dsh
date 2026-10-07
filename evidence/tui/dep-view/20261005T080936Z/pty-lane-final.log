@@ -1,0 +1,5 @@
+[tui-deps-ctrla] seeded team fixture at .qa-tmp/tui-dep-lane/ws/.mpd/team/teams/mpd-fixture-1.json
+[tui-deps-ctrla] records removed for the control arm: .qa-tmp/tui-dep-lane/ws/.mpd/team/teams/mpd-fixture-1.json
+[tui-deps-ctrla] host contact: bound to the launched profile copy: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tui-dep-lane/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+[tui-deps-ctrla] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-05T08-07-56.249Z
+[tui-deps-ctrla] PASS: Ctrl+A opened the MPD panel with the arrow drawn, and the host dashboard without a team

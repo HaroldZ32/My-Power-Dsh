@@ -1,0 +1,35 @@
+{
+  "change": "the TUI real-machine lane can run again, and it found two defects",
+  "why_it_could_not_run": "tui-mount pinned `@deepseek-harness-tui/dsh-tui@0.11.1`, which harness 0.2.0-rc.1 REFUSES on peer ranges. This repository already recorded the answer in `docker/README.md` \u2014 0.11.2 is the first release whose ranges accept BOTH harness pins \u2014 and the Docker lane was moved at the time; the QA lane was not. The refusal then surfaced as the generic `absent-fixture` SKIP, which reads as 'not set up yet' about a setup that had just been attempted and rejected.",
+  "defects_fixed": [
+    "the host pin: now 0.11.2, overridable with the SAME env knob the Docker lane uses (`MPD_E2E_TUI_VERSION`), so one variable moves both",
+    "a refused host install is now its OWN prerequisite (`host-install-refused`), checked BEFORE `absent-fixture`, and it carries the harness's own rejection sentence",
+    "the session reader looked for `session.v3.jsonl.zstd` while harness 0.2.0-rc.1 writes `session.v4.jsonl.zstd`, so the preset witness could NEVER be found: measured, a real boot created a v4 store whose single decoded frame carries `\"agentPreset\":\"mpd\"` \u2014 the very value the lane reported missing. The reader now DISCOVERS the store version. A version-pinned FILENAME in a reader is a claim about the harness, and this one had silently expired."
+  ],
+  "tui_mount": {
+    "result": "PASS",
+    "proves": [
+      "profile bundles = [@deepseek-ai/dsh-base, @deepseek-harness-tui/dsh-tui, @mpd-dsh/mpd] \u2014 the triple layer, in order",
+      "statusLine=true counters=true crashes=[] \u2014 the TUI booted on a real PTY through tmux and rendered, with ZERO apply-crash signatures",
+      "preset=mpd session=3cb80e26-618f-418c-9f6c-cb14e0e3a364 \u2014 the session really ran the mpd preset",
+      "rowComposed=true \u2014 the mpd-tui row is composed and names its dist entry point",
+      "isolationOffenders=0 \u2014 nothing landed outside the sandbox"
+    ],
+    "source": "evidence/tui/lanes/2026-09-30T01-26-58.807Z/"
+  },
+  "tui_team_surface": {
+    "result": "FAIL \u2014 10 assertions",
+    "one_cause": "`skills/dsh-qa/scripts/tui-team-surface.ts` `writeTeamFixture()` writes the PRE-SPLIT layout `<workspace>/.mpd/team/<id>/team.json`, but the team-plane split (W1) moved the record to `<workspace>/.mpd/team/teams/<teamId>.json` plus the index `.mpd/team/teams.json`. The scene therefore reads NO team and renders `MPD plan approval \u2014 (none)`, and the phrase, the echo, the approval call and the outcome line all fail as a CASCADE from that one cause \u2014 not as ten independent defects.",
+    "why_this_is_the_lane_working": "no unit arm could have caught it: the arms build their fixtures through the STORE, so they write the new layout by construction. Only a case that hand-writes a record on disk and then drives a REAL host can see the two disagree \u2014 which is exactly what this lane is for.",
+    "fix_needed": "teach `writeTeamFixture` the post-split layout (the record body and the `teams.json` index), then re-run."
+  },
+  "environment": {
+    "harness": "0.2.0-rc.1",
+    "dsh_tui": "0.11.2",
+    "bun_on_path_during_the_recording": "1.3.14 (the pinned 1.4.0 is resolved by the dist-fresh gate itself, not by this lane)"
+  },
+  "not_claimed": [
+    "the team SURFACE itself is unproven on a real host until the fixture is updated; the failure is in the FIXTURE, not evidence that the scene is broken",
+    "`tui-team-surface` was run with `--sandbox-root .mpd/tui-lane` (the profile `tui-mount` built), not against a freshly installed one"
+  ]
+}

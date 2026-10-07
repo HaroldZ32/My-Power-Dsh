@@ -1,31 +1,45 @@
 # mpd-bundle
 **中文** | [English](./README.md)
 
-DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row — MCP servers（ast-grep / git-bash / lsp / codegraph + 远程 context7 / grep.app）、B/C 线 plugins（mpd-config 置顶，使 mpdConfig service 对下方 rows 可见；随后是 mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline / boulder / comment-checker / codegraph / memory / workmate）、`mpd-web-compat` 自注册行（`name: '@mpd-dsh/mpd'`——承载 bundle web client 的 loader 条目）、mpd-bootstrap provisioning，以及被采纳的 `agent-teams` row（`stateDir: .mpd/team`）。
+本 bundle 的 host 平面 patch 层是 `cordis.patch.yml`，它位于**仓库根目录**（标准 cordis bundle 布局 —— `package.json` 把它声明为 `dsh.bundle.patch` 数组的第一个条目）。它挂载每一个 mpd-dsh plugin row — MCP servers（ast-grep / git-bash / lsp / codegraph + 远程 context7 / grep.app）、B/C 线 plugins（mpd-config 置顶，使 mpdConfig service 对下方 rows 可见；随后是 mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline / boulder / comment-checker / codegraph / memory / workmate）、本 bundle **自己**的团队平面（`mpd-team-core` / `mpd-team-watchdog` / `mpd-team-compact`）、`mpd-web-compat` 自注册行（`name: '@mpd-dsh/mpd'`——承载 bundle web client 的 loader 条目）、mpd-bootstrap provisioning，以及**三个**官方 Agent Teams 行（`mpd-agent-team`、`mpd-tool-agent-team`、`mpd-ui-agent-team`，外加工具行指向的 `mpd-roster-provider` 行）。被采纳的 `agent-teams` body 已**消失**：它先被取消挂载，随后由 `de-vendor-and-verify-law` 波次**删除**，
+因此本树中已无任何东西加载它。
 
 波形读取行（`mcp-wave-mcp` / `mcp-traceweave`）**未挂载**：它们包装外部 Python MCP server，在 `cordis.patch.yml:92-123` 中连同安装步骤一起保持注释状态，因此没有这些二进制的机器仍能原样启动。
 
-该 bundle 只随附 ONE preset（`mpd`，主工作 agent；assets 位于 `packages/mpd-bootstrap-plugin/presets/mpd`）：它配置 `dsh-agent-instructions`，使用 `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]`，使每个 project session 都尝试读取 AGENT.md，并声明 native tool presentation。各专家以 subagent roster（`mpd-roles-plugin`）形式存在，而非 presets。
+该 bundle 只随附 ONE preset（`mpd`，主工作 agent），声明为 `presets/mpd.patch.yml` 中的 **`preset-mpd` 行** —— `dsh.bundle.patch` 数组的第二个条目：它配置 `dsh-agent-instructions`，使用 `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]`，使每个 project session 都尝试读取 AGENT.md，并声明 native tool presentation。（已退役的 preset **目录**形式 `packages/mpd-bootstrap-plugin/presets/` 不再存在：harness 0.1.7-rc.2 的预设模型是"每个预设一行"，子条目列表内联在该行里。）各专家以 subagent roster（`mpd-roles-plugin`）形式存在，而非 presets。
 
 ## 会话启动团队门（强制）
 
-会话启动时**没有团队** —— 团队不是会话的前提条件（对齐上游：上游 team mode 默认关闭）。被采纳的 agent-teams 插件**机械式强制**的是一道**咨询式复杂度门**（`sessionTeamPolicy` 配置，实现见 `packages/mpd-agent-teams-plugin/lib/session-start.js`），而不是仅靠提示词约束：
+会话启动时**没有团队** —— 团队不是会话的前提条件。冻结谓词在会话第一步的 pre-step 求值，并由 `mpd-roles-plugin` 在官方插件的接缝上**机械执行**：
 
-- `mode: off`（默认）= 不自动建队、不无条件注入通知；机械门是与 `mode` 解耦的 `autoRoute: true`（默认启用）。
-- 在会话第一步的 pre-step 上，门按 `trigger = 显式标记 OR (matchedSignals >= 1)` 判定：显式标记为 `team:` 前缀或 `!team`（标记会被**消费掉**，不会作为目标文本进入模型）；软信号为 (B) 去重命中 ≥4 个交付动词、(C) 编号/动作动词/子句 ≥3、(D) 该工作区存在 `.mpd/plans/*.md`。
+```
+trigger = explicit flag OR (matchedSignals >= 1)
+```
+
+- 显式标记（**A**）为 `team:` 前缀或处于词边界的 `!team`；标记会被**消费掉**，绝不会作为目标文本进入模型。
+- 软信号为 (**B**) 去重命中 ≥ 4 个交付动词、(**C**) **一个**信号、由其 3 路子信号中的 2 路满足（≥ 3 条枚举行、≥ 3 个不同动作动词、≥ 3 个动作子句），以及 (**D**) 该会话工作区存在**正在进行**的 boulder 工作（`.mpd/boulder.json` 中 `status: "active"`）—— 仅有 plan **文件**并不构成信号（旧的"文件探测"在本工作区的每个会话都会触发）。
 - **未命中** → 会话单独运行：没有团队、也没有通知。
-- **软信号命中** → 门**不建任何团队**：只注入**恰好一条**咨询通知（标记 `[AgentTeams] Session-start team rule`），点名命中的信号并明确说明**没有团队被 staged**。captain 应在工作确实需要团队时自行调用 `agent_teams_create(approval="required", profile="mpd")` 建队；若工作不需要团队（短小或单线程任务），则继续单独执行，并用一句话说明。已有团队的会话（恢复）则直接沿用原团队。
-- **显式 `team:` / `!team`** → 建队路径不变：供应 staged 默认团队 **“MPD Default”**（profile `mpd`，`approval: required` —— 成员此时只是 roster 行，只有用户审阅并在 Web 计划面板批准后才会真正 spawn），并注入「本会话由复杂度门路由」通知。`/agent-teams` 命令同样会建队。
-- 适用范围：`presets: [mpd]` 覆盖 mpd preset 会话，以及没有任何 preset 的会话（headless 直跑）；subagent/成员会话（带 `parentSession`）永远不会被自动建队。
-- 门落在 **PRE-STEP**，先于 preset 的规模判定纪律生效 —— 规模纪律不再出现「只有团队已存在时才被提到」的顺序缺陷。
-- 该策略每个会话只结算一次：会话中途被删除的团队不会被重建，之后 captain 自己新建的团队也不会被覆盖/争抢。
-- `mpd` preset 的 persona 带有对应的 SESSION STARTUP RULE，使 captain 无论门是否命中都按正确方式工作。
 
-如需旧行为，可显式选择加入：`mode: auto` 仍会无条件供应默认团队，`mode: instruct` 仍只注入指令通知而不建队 —— 三个取值全部保留。
+`team.gate`（`mpd.jsonc`）决定一次触发**做什么**，按调用解析：`mechanical`（默认）| `advisory` | `off`。
+
+- **mechanical** → 门通过本 bundle **自己**的 `agent_teams_plan` 工具 **stage** 一个**可批准的 plan shell** —— 0 成员、0 任务、`approval: required` —— 并注入**恰好一条**携带标记 `[AgentTeams] Session-start team rule` 的通知，点名该调用**返回**的 plan id。此时**没有 spawn 任何东西**：该 shell 在 captain 用 `add_member` / `create_task` 扩展（每个成员的 prompt 取自 `mpd_role_persona`）并用 `agent_teams_plan {action:"approve"}` 批准之前一直是**惰性**的 —— 批准才是落地团队记录、并通过本 bundle 的 **native 执行器**唤醒成员的时刻。若该会话已有 staged 的 plan，门只报告这一事实、不再重复 stage（第二次 stage 会归档进行中的 plan）。
+- **advisory** —— 未挂载 `agent_teams_plan` 时实际也走这条路 —— 那**一条**通知声明 `NO team was staged`，由 captain 在工作确实需要时自行组队。
+- **off** → 监听器直接返回。
+
+显式的 `team:` / `!team` 请求属于信号 **A**，走**同一条**路径（在 `mechanical` 下同样会 stage 该 shell）。门只作用于顶层 `mpd` session —— 带 `parentSession` 的 subagent/成员会话永远不适用，其它 preset 的会话亦然 —— 每个会话只结算一次，且其内部失败不会影响该 step。`mpd` preset 的 persona 带有对应的 SESSION STARTUP RULE，使 captain 无论门是否命中都按正确方式工作。
+
+**已退役 —— 作为历史保留，不再是配置。** 本节过去记录的是内置 `agent-teams` 插件的 `sessionTeamPolicy` / `autoRoute` 旋钮、它供应的 **“MPD Default”** 默认团队（由 `agent_teams_create(approval="required", profile="mpd")` staged），以及 `mode: auto | instruct` 选择加入项。已无任何 loader 行挂载该插件，以上键、工具与该 staged-team 流程在已发布的会话里都不存在。
 
 ## 配置平面
 
-该行同时携带对齐上游 `team_mode` 的上限键（全部**缺省安全**，默认落到本地冻结取值）：`maxMembers: 16`（保留本地上限）、`maxParallelMembers: 8`、`maxMessagesPerRun: 10000`、`maxWallClockMinutes: 120`、`maxMemberTurns: 500`、`messagePayloadMaxBytes: 32768`（min 1024）、`recipientUnreadMaxBytes: 262144`（min 1024）、`mailboxPollIntervalMs: 3000`（min 500）、`memberMaxDepth: 1`、`stateDir: .mpd/team`，以及 `enforcement: enforce`（超限发送被挡下；`observe` 仅记录 —— 与上游语义一致）。
+团队平面自身的配置就是门的那个键，加上各行自己的配置：
+
+- `team.gate` —— `mechanical`（默认）| `advisory` | `off`，由 `mpd-roles-plugin` **按调用**读取。
+- 官方 `mpd-agent-team` 行携带 patch 中的上限：`maxMembers: 16`、`maxTasks: 256`、`maxPendingMessagesPerMember: 64`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000`。
+- `mpd-team-core` 拥有 `<workspace>/.mpd/team/` 下的团队记录：`teams/<id>.json`、staged plan 所在的 `staging/<sessionId>.json` 槽位，以及已归档的计划。
+
+已退役内置行那套对齐上游的上限（`maxParallelMembers`、`maxMessagesPerRun`、`maxWallClockMinutes`、`maxMemberTurns`、`messagePayloadMaxBytes`、`recipientUnreadMaxBytes`、`mailboxPollIntervalMs`、`memberMaxDepth`、`stateDir`、`enforcement`）属于**历史**：它们只存在于采纳主体的 `lib/index.ts` 中，而没有任何行挂载它，且该主体已被 de-vendor
+波次**删除**。它们不是任何在用行会读取的旋钮。
 
 ## TUI 组合
 
@@ -36,4 +50,4 @@ DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row —
 - `agent-preset-registry` —— `dsh-web-app` 为 web/base 组合插入的那一行；
 - `dsh-tui-agent-preset-registry` —— `dsh-tui` 为自己组合铸造的**带作用域**的行。
 
-第二个并非冗余：`dsh-tui` profile 不组合 `dsh-web-app` 层，所以第一个目标在那里会被跳过（`patch: entry agent-preset-registry not found`），而 TUI 自己的行会保留 `default: standard` —— 可该组合里没有任何东西声明 `standard` 预设（`@deepseek-harness-tui/dsh-tui@0.11.1` 不附带预设行），于是每个新的 TUI 会话都会去要一个并不存在的预设。两个 id 各自只存在于一个组合中，因此另一个 profile 只会记录一条 not-found 警告、什么都不改；id-target 只赋值本文件携带的键并跳过 `id`，所以 TUI 那一行自带的「编译期 DISABLED 表达式」原样保留。Harness 0.1.7-rc.2 移除了本文件过去针对的「预设根」行（`agent-presets` / `dsh-tui-agent-presets`，二者都挂在已删除的 `@deepseek-ai/dsh-agent-presets` 包上）。不携带该行的组合——headless profile，或 `dsh-tui` 平面上另铸了不同名字的注册表行——只会记录 `patch: entry agent-preset-registry not found` 并保留自己的默认值；`mpd` 预设本身由第二个 patch 文件声明（`presets/mpd.patch.yml`，行 `preset-mpd`），任何组合都不需要再单独选择它。
+第二个并非冗余：`dsh-tui` profile 不组合 `dsh-web-app` 层，所以第一个目标在那里会被跳过（`patch: entry agent-preset-registry not found`），而 TUI 自己的行会保留 `default: standard` —— 可该组合里没有任何东西声明 `standard` 预设（`@deepseek-harness-tui/dsh-tui@0.12.0` 完全没有声明任何 `@deepseek-ai/dsh-agent-preset` 行 —— 2026-10-02 实测：它自带的作用域注册表行仍保留 `default: standard`，而该版本附带的唯一预设目录是 `presets/liangshen/`），于是每个新的 TUI 会话都会去要一个并不存在的预设。两个 id 各自只存在于一个组合中，因此另一个 profile 只会记录一条 not-found 警告、什么都不改；id-target 只赋值本文件携带的键并跳过 `id`，所以 TUI 那一行自带的「编译期 DISABLED 表达式」原样保留。Harness 0.1.7-rc.2 移除了本文件过去针对的「预设根」行（`agent-presets` / `dsh-tui-agent-presets`，二者都挂在已删除的 `@deepseek-ai/dsh-agent-presets` 包上）。不携带该行的组合——headless profile，或 `dsh-tui` 平面上另铸了不同名字的注册表行——只会记录 `patch: entry agent-preset-registry not found` 并保留自己的默认值；`mpd` 预设本身由第二个 patch 文件声明（`presets/mpd.patch.yml`，行 `preset-mpd`），任何组合都不需要再单独选择它。

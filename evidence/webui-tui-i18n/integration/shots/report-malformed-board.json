@@ -1,0 +1,401 @@
+{
+  "base": "http://127.0.0.1:3080",
+  "workspace": "/data/ws",
+  "viewport": [
+    1600,
+    1000
+  ],
+  "steps": [
+    {
+      "name": "01-first-run",
+      "ok": true,
+      "file": "/data-out/shots/01-first-run.png"
+    },
+    {
+      "name": "02-home",
+      "ok": true,
+      "file": "/data-out/shots/02-home.png"
+    },
+    {
+      "name": "03-plugins",
+      "ok": true,
+      "file": "/data-out/shots/03-plugins.png"
+    },
+    {
+      "name": "04-settings-mpd",
+      "ok": true,
+      "file": "/data-out/shots/04-settings-mpd.png"
+    },
+    {
+      "name": "05-settings-agent-presets",
+      "ok": true,
+      "file": "/data-out/shots/05-settings-agent-presets.png"
+    },
+    {
+      "name": "06-team-panel",
+      "ok": true,
+      "file": "/data-out/shots/06-team-panel.png"
+    },
+    {
+      "name": "06b-team-board-seed",
+      "ok": true,
+      "file": "/data-out/shots/06b-team-board.png"
+    },
+    {
+      "name": "07-team-graph-interaction",
+      "ok": true,
+      "file": "/data-out/shots/07-team-graph-hover.png"
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "failedRequests": [
+    "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED",
+    "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED"
+  ],
+  "mpdConsole": [
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=host",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=host",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=host",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
+    "info: [mpd] team sidebar session: session-fec33d80-0794-4f0e-b033-101ede442604"
+  ],
+  "firstRunText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nAdd an API key to get started\nConfigure the official DeepSeek provider to start building.\nAPI key\nConfigure later\nSave and continue",
+  "gatesDismissedOnHome": 1,
+  "controls": [
+    "New session",
+    "Collapse sidebar",
+    "New Session",
+    "Plugins",
+    "Search sessions",
+    "View options",
+    "Add workspace",
+    "Workspace actions for ws",
+    "New session in ws",
+    "Settings",
+    "Open right sidebar",
+    "ws",
+    "Standard mode",
+    "Add files or run commands",
+    "Workspace Write",
+    "DeepSeek-V41-Flash\nHigh",
+    "Send message",
+    "New tab",
+    "Split",
+    "Fullscreen",
+    "Collapse right sidebar"
+  ],
+  "homeText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh",
+  "composerPresetNames": [
+    "Standard mode",
+    "MPD (Main Working Agent)",
+    "The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, one-shot-consults the specialists (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin.",
+    "Standard mode",
+    "Includes all Standard mode capabilities. Better suited to tasks that call tools in batches and then filter, organize, deduplicate, count, or summarize the results.",
+    "The agent works using only a terminal tool. Useful for testing and comparing its basic performance.",
+    "Customize DSH through conversation. Let the agent write plugins that add features or UI, or combine tools and prompts to create your own mode."
+  ],
+  "pluginsClick": "clicked",
+  "pluginsText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nPlugins\nInstall, enable, and configure plugins\nAdd plugin\nOfficial\n8\nAgent Teams\nExperimental\nEnable team collaboration, team tools, the member roster, and the shared task board.\nAuto Authorization Review\nExperimental\nAdd an Auto review permission mode that uses the model to assess authorization before each tool call.\nAutomation tasks\nExperimental\nRun tasks in your sessions at a set time or on a repeating schedule.\nVoice input\nExperimental\nTranscribe recordings locally with SenseVoice; first use requires installing dependencies\nShell\nLimit how long each command may run and how much it may output.\nAgent loop\nControl how the Agent dispatches tool calls.\nSubagent\nSet Subagent recursion depth, count, and models.\nWeb search\nSet up the DeepSeek search provider.\nInstalled\n1\n@mpd-dsh/mpd\nmy-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream baseline: oh-my-openagent 8c57e46, pinned)",
+  "settingsClick": "clicked",
+  "settingsNav": [
+    "General",
+    "Models",
+    "Built-in plugins",
+    "Agent presets",
+    "MPD"
+  ],
+  "mpdClick": "clicked",
+  "mpdSectionText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nSettings\nGeneral\nModels\nBuilt-in plugins\nAgent presets\nMPD\nOpen configuration file\nClose\nMPD bundle\nThe mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot\nThe \"MPD (Main Working Agent)\" preset is this bundle's main agent: it reads the project's AGENT.md/AGENTS.md/CLAUDE.md, works natively, consults the 11 specialists through mpd_role_spawn, and runs teams on the official Agent Teams plugin. Its description in the preset picker is supplied by the harness as plain text and is not localizable.\nlive catalog — 1 provider · 2 models\na save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime\nthe file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update\nthe value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session\nif no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc\nInline diff limit\nmpd.jsonc hashline.maxDiffChars\nReset to the file value\nComment checker\nmpd.jsonc commentChecker.autoCheck\nReset to the file value\nUltrawork rounds\nmpd.jsonc ulw.maxRounds\nReset to the file value\nMemory backend\nmpd.jsonc memory.vcs\n—\ngit\nsvn\nReset to the file value\nTeam state directory\nmpd.jsonc team.stateDir\nReset to the file value\nBoulder directory\nmpd.jsonc boulder.dir\nReset to the file value\nWatchdog enabled\nmpd.jsonc watchdog.enabled\nReset to the file value\nSilence warning threshold (ms)\nmpd.jsonc watchdog.warnSilenceMs\nReset to the file value\nWatchdog tick interval (ms)\nmpd.jsonc watchdog.tickIntervalMs\nReset to the file value\nWarn streak before escalation\nmpd.jsonc watchdog.warnStreakToEscalate\nReset to the file value\nAction on escalation\nmpd.jsonc watchdog.actionOnEscalate\n—\npause\nwarn-only\nReset to the file value\nTool-in-flight bound (ms, 0 = no bound)\nhow long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound\nmpd.jsonc watchdog.toolInFlightMaxMs\nReset to the file value\nHold TTL (ms, 0 = no expiry)\nhow long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry\nmpd.jsonc watchdog.holdTtlMs\nReset to the file value\nlive catalog — 1 provider · 2 models\nSlot 1 — heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer)\nWhen a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.\nSlot 1 provider (heavy members)\nThe provider half of this slot. The slots are the default model route of team members: when a team is created, the heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.\nmpd.jsonc teamModels.slot1.provider\n—\nDeepSeek\nReset to the file value\nSlot 1 model (heavy members)\nThis slot's model. Together with the provider above, it decides the model the heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.\nmpd.jsonc teamModels.slot1.model\n—\nDeepSeek-V41-Flash\nDeepSeek-V4-Pro\nReset to the file value\nSlot 1 reasoning effort (heavy members)\nThis slot's reasoning effort (off / low / high / max). It sets how much the heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.\nmpd.jsonc teamModels.slot1.reasoningEffort\n—\noff\nlow\nhigh\nmax\nReset to the file value\nSlot 2 — analysis members (Researcher, Explorer, Plan Reviewer)\nWhen a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.\nSlot 2 provider (analysis members)\nThe provider half of this slot. The slots are the default model route of team members: when a team is created, the analysis members (Researcher, Explorer, Plan Reviewer) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.\nmpd.jsonc teamModels.slot2.provider\n—\nDeepSeek\nReset to the file value\nSlot 2 model (analysis members)\nThis slot's model. Together with the provider above, it decides the model the analysis members (Researcher, Explorer, Plan Reviewer) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.\nmpd.jsonc teamModels.slot2.model\n—\nDeepSeek-V41-Flash\nDeepSeek-V4-Pro\nReset to the file value\nSlot 2 reasoning effort (analysis members)\nThis slot's reasoning effort (off / low / high / max). It sets how much the analysis members (Researcher, Explorer, Plan Reviewer) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.\nmpd.jsonc teamModels.slot2.reasoningEffort\n—\noff\nlow\nhigh\nmax\nReset to the file value\nSlot 3 — execution members (Deep Worker, Junior Engineer)\nWhen a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.\nSlot 3 provider (execution members)\nThe provider half of this slot. The slots are the default model route of team members: when a team is created, the execution members (Deep Worker, Junior Engineer) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.\nmpd.jsonc teamModels.slot3.provider\n—\nDeepSeek\nReset to the file value\nSlot 3 model (execution members)\nThis slot's model. Together with the provider above, it decides the model the execution members (Deep Worker, Junior Engineer) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.\nmpd.jsonc teamModels.slot3.model\n—\nDeepSeek-V41-Flash\nDeepSeek-V4-Pro\nReset to the file value\nSlot 3 reasoning effort (execution members)\nThis slot's reasoning effort (off / low / high / max). It sets how much the execution members (Deep Worker, Junior Engineer) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.\nmpd.jsonc teamModels.slot3.reasoningEffort\n—\noff\nlow\nhigh\nmax\nReset to the file value\nSlot 4 — vision member (Vision Analyst)\nWhen a team is created Vision Analyst starts on this slot's provider · model · reasoning effort; the model here MUST accept image input or image analysis fails; an unusable value fails team creation loudly, naming the member and the slot.\nSlot 4 provider (vision member)\nThe provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.\nmpd.jsonc teamModels.slot4.provider\n—\nDeepSeek\nReset to the file value\nSlot 4 model (vision member)\nThis slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.\nmpd.jsonc teamModels.slot4.model\n—\nDeepSeek-V41-Flash\nDeepSeek-V4-Pro\nReset to the file value\nSlot 4 reasoning effort (vision member)\nThis slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.\nmpd.jsonc teamModels.slot4.reasoningEffort\n—\noff\nlow\nhigh\nmax\nReset to the file value\nteamModels.dashboardKey.heading\nteamModels.dashboardKey.impact\nCtrl+A dependency view\nwhile MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard\nmpd.jsonc tui.dashboardKey\nReset to the file value\nSave\nDiscard",
+  "mpdControls": [
+    {
+      "label": "",
+      "kind": "input",
+      "value": ""
+    },
+    {
+      "label": "",
+      "kind": "input",
+      "value": ""
+    },
+    {
+      "label": "Inline diff limitmpd.jsonc hashline.maxDiffCharsReset to the file value",
+      "kind": "input",
+      "value": "20000"
+    },
+    {
+      "label": "Comment checkermpd.jsonc commentChecker.autoCheckReset to the file value",
+      "kind": "input",
+      "value": "true"
+    },
+    {
+      "label": "Ultrawork roundsmpd.jsonc ulw.maxRoundsReset to the file value",
+      "kind": "input",
+      "value": "6"
+    },
+    {
+      "label": "Memory backendmpd.jsonc memory.vcs—gitsvnReset to the file value",
+      "kind": "select",
+      "value": "git"
+    },
+    {
+      "label": "Team state directorympd.jsonc team.stateDirReset to the file value",
+      "kind": "input",
+      "value": ".mpd/team"
+    },
+    {
+      "label": "Boulder directorympd.jsonc boulder.dirReset to the file value",
+      "kind": "input",
+      "value": ".mpd"
+    },
+    {
+      "label": "Watchdog enabledmpd.jsonc watchdog.enabledReset to the file value",
+      "kind": "input",
+      "value": "true"
+    },
+    {
+      "label": "Silence warning threshold (ms)mpd.jsonc watchdog.warnSilenceMsReset to the file value",
+      "kind": "input",
+      "value": "600000"
+    },
+    {
+      "label": "Watchdog tick interval (ms)mpd.jsonc watchdog.tickIntervalMsReset to the file value",
+      "kind": "input",
+      "value": "15000"
+    },
+    {
+      "label": "Warn streak before escalationmpd.jsonc watchdog.warnStreakToEscalateReset to the file value",
+      "kind": "input",
+      "value": "6"
+    },
+    {
+      "label": "Action on escalationmpd.jsonc watchdog.actionOnEscalate—pausewarn-onlyReset to the file value",
+      "kind": "select",
+      "value": "warn-only"
+    },
+    {
+      "label": "Tool-in-flight bound (ms, 0 = no bound)how long ONE tool call may run before it stops explaining a silent member: past t",
+      "kind": "input",
+      "value": "900000"
+    },
+    {
+      "label": "Hold TTL (ms, 0 = no expiry)how long a watchdog hold may stay latched before it auto-releases: past this bound the hold ",
+      "kind": "input",
+      "value": "900000"
+    },
+    {
+      "label": "Slot 1 provider (heavy members)The provider half of this slot. The slots are the default model route of team members: wh",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "Slot 1 model (heavy members)This slot's model. Together with the provider above, it decides the model the heavy members ",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Slot 1 reasoning effort (heavy members)This slot's reasoning effort (off / low / high / max). It sets how much the heavy",
+      "kind": "select",
+      "value": "max"
+    },
+    {
+      "label": "Slot 2 provider (analysis members)The provider half of this slot. The slots are the default model route of team members:",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "Slot 2 model (analysis members)This slot's model. Together with the provider above, it decides the model the analysis me",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Slot 2 reasoning effort (analysis members)This slot's reasoning effort (off / low / high / max). It sets how much the an",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "Slot 3 provider (execution members)The provider half of this slot. The slots are the default model route of team members",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "Slot 3 model (execution members)This slot's model. Together with the provider above, it decides the model the execution ",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Slot 3 reasoning effort (execution members)This slot's reasoning effort (off / low / high / max). It sets how much the e",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "Slot 4 provider (vision member)The provider half of this slot. It drives Vision Analyst only (the one member that reads ",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "Slot 4 model (vision member)This slot's model. It MUST accept image input: Vision Analyst's whole value is reading image",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Slot 4 reasoning effort (vision member)This slot's reasoning effort (off / low / high / max). It sets how much Vision An",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "Ctrl+A dependency viewwhile MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependenc",
+      "kind": "input",
+      "value": "true"
+    }
+  ],
+  "presetsClick": "clicked",
+  "agentPresetsText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nSettings\nGeneral\nModels\nBuilt-in plugins\nAgent presets\nMPD\nOpen configuration file\nClose\nAgent presets\nChoose the agent’s tools and how it works. Use Standard mode for everyday tasks, or Creator mode to add capabilities to DSH.\nBUILT-IN\nStandard mode\nNew task default\nstandard\nWork with code, files, and information. Suitable for most tasks, with search, editing, terminal commands, and other tools available as needed.\nMode details\nHow to use\nPTC mode\nBuilt-in\nptc\nIncludes all Standard mode capabilities. Better suited to tasks that call tools in batches and then filter, organize, deduplicate, count, or summarize the results.\nMode details\nHow to use\nMinimal mode\nBuilt-in\nminimal\nThe agent works using only a terminal tool. Useful for testing and comparing its basic performance.\nMode details\nHow to use\nCreator mode\nBuilt-in\ncordis\nCustomize DSH through conversation. Let the agent write plugins that add features or UI, or combine tools and prompts to create your own mode.\nMode details\nHow to use\nCUSTOM\nMPD (Main Working Agent)\nCustom\nmpd\nThe my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, one-shot-consults the specialists (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin.\nLet the agent help me create a preset",
+  "browserLocale": "",
+  "sessionCreate": {
+    "status": 200,
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791268803517\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-bf20cf27-3a99-4edd-920c-62d2d1ffc190\",\"agentPreset\":\"mpd\"}}}"
+  },
+  "sessionId": "session-bf20cf27-3a99-4edd-920c-62d2d1ffc190",
+  "sidebarButton": 1,
+  "teamTabClick": "clicked",
+  "teamPanelText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nmalformed-board\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n0 running · 0 ready · 6 blocked\n2/8 complete · 0 running / 0 ready\nProgress 25%\nnative executor\nMEMBERS (5)\nlead\nLead\n1/1\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n1/2\ndeepseek-official/deepseek-flash\ncurrent T7\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T5\ntui-model-i18n\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T3\nui-reviewer\nReviewer\n0/1\ndeepseek-official/deepseek-v4-pro\ncurrent T8\nTASKS (8)\nCYCLE T7, T8\n✓\nT1\nREQ\nRequirement: freeze the interfaces\n✓\nT2\nWRK\nWork: the first independent piece\n○\nT3\nWRK\nWork: blocked by a task absent from this board\n○\nT8\nWRK\nWork: the other half of the cycle\n○\nT4\nREV\nReview: depends on the absent-blocker task\n○\nT7\nWRK\nWork: half of a dependency cycle\n○\nT5\nFIX\nRepair: opened from the failed review\n○\nT6\nINT\nIntegration: waits on everything\ncycle T7,T8",
+  "teamRouteRequests": [],
+  "teamPanelSession": "",
+  "teamPanelNodesAfterSeed": 8,
+  "teamTabId": "team-2026-10-05T22-30-00.000Z",
+  "teamGraph": "ranks=5 edges=7",
+  "teamNodes": [
+    "T1",
+    "T2",
+    "T3",
+    "T8",
+    "T4",
+    "T7",
+    "T5",
+    "T6"
+  ],
+  "teamEdges": [
+    "T2<-T1",
+    "T3<-T1",
+    "T8<-T7",
+    "T4<-T3",
+    "T7<-T8",
+    "T5<-T4",
+    "T6<-T5"
+  ],
+  "teamHoverReachable": true,
+  "teamRanks": {
+    "T1": 0,
+    "T2": 1,
+    "T3": 1,
+    "T8": 1,
+    "T4": 2,
+    "T7": 2,
+    "T5": 3,
+    "T6": 4
+  },
+  "teamForwardEdges": [
+    "T2<-T1",
+    "T3<-T1",
+    "T4<-T3",
+    "T7<-T8",
+    "T5<-T4",
+    "T6<-T5"
+  ],
+  "teamHoverTarget": "T5",
+  "teamFocusWhileHovered": "chain",
+  "teamFocusAfterLeave": "none",
+  "teamNodeBoxes": [
+    {
+      "id": "T1",
+      "x": 897,
+      "y": 609,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T2",
+      "x": 1065,
+      "y": 609,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T3",
+      "x": 1065,
+      "y": 661,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T8",
+      "x": 1065,
+      "y": 713,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T4",
+      "x": 1233,
+      "y": 609,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T7",
+      "x": 1233,
+      "y": 661,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T5",
+      "x": 1401,
+      "y": 609,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T6",
+      "x": 1569,
+      "y": 609,
+      "w": 160,
+      "h": 42
+    }
+  ],
+  "teamNodeOverlaps": [],
+  "teamDetailAfterClick": "T5",
+  "mpdBindingProbe": {
+    "diffLimit": "20000",
+    "autoCheck": "true",
+    "controls": 28
+  },
+  "checks": {
+    "mpdPresetOffered": true,
+    "pluginsShowsInstalledBundle": true,
+    "presetsShowMpdDefault": true,
+    "mpdSectionRendered": true,
+    "sessionCreatedOnMpdPreset": true,
+    "teamPanelShowsRoster": true,
+    "teamGraphDrewEdges": true,
+    "teamGraphEdgesResolve": true,
+    "teamGraphHoverFocusChain": true,
+    "teamGraphNodesDoNotOverlap": true,
+    "teamGraphClickPinsDetail": true,
+    "mpdControlsBound": true
+  },
+  "ok": true,
+  "visibleText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nmalformed-board\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n0 running · 0 ready · 6 blocked\n2/8 complete · 0 running / 0 ready\nProgress 25%\nnative executor\nMEMBERS (5)\nlead\nLead\n1/1\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n1/2\ndeepseek-official/deepseek-flash\ncurrent T7\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T5\ntui-model-i18n\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T3\nui-reviewer\nReviewer\n0/1\ndeepseek-official/deepseek-v4-pro\ncurrent T8\nTASKS (8)\nCYCLE T7, T8\n✓\nT1\nREQ\nRequirement: freeze the interfaces\n✓\nT2\nWRK\nWork: the first independent piece\n○\nT3\nWRK\nWork: blocked by a task absent from this board\n○\nT8\nWRK\nWork: the other half of the cycle\n○\nT4\nREV\nReview: depends on the absent-blocker task\n○\nT7\nWRK\nWork: half of a dependency cycle\n○\nT5\nFIX\nRepair: opened from the failed review\n○\nT6\nINT\nIntegration: waits on everything\nRepair: opened from the failed review\nclose\nT5 · FIX · ○ blocked\nowner\nweb-settings-card\nblocked by\nT4\ndependents\nT6\nNo frozen acceptance contract was served for this task.\ncycle T7,T8"
+}

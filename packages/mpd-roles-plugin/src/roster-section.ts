@@ -13,7 +13,7 @@
 // slots therefore stay on the one-shot consult path, and the section says so rather than
 // promising a route the harness cannot deliver.
 import type { DshAdapter, DshPromptSection } from "../../mpd-dsh-adapter-plugin/src/index"
-import { sessionQualifies } from "./session-gate.ts"
+import { sessionQualifies } from "./complexity-gate.ts"
 
 /** Section name (unique within an agent scope; the harness throws on a duplicate). */
 export const ROSTER_SECTION_NAME = "mpd:roster"

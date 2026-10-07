@@ -7,11 +7,15 @@
 //     and the four tools are registered THROUGH the mounted adapter (the discriminator:
 //     a private adapter would have registered them into `ctx.tools` instead).
 //
+// R5 (terminal silence): the row's diagnostics are READ BACK from
+// `<workspace>/.mpd/logs/mpd-ext.log` under a per-arm sandbox, and stdout is asserted EMPTY —
+// the warning is still emitted exactly once, it no longer goes to a terminal.
+//
 // The healthy arm is what keeps "one contact surface" checkable: the mounted stub
 // records its own registrations, so a stray second adapter cannot pass silently.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, apply } from "../src/index.ts"
@@ -69,6 +73,56 @@ function captureStdout(): { lines: string[]; restore: () => void } {
 }
 
 /**
+ * Read the non-empty lines a file gained since `offset`.
+ *
+ * @param file the row log to read back.
+ * @param offset the byte offset marked before the call under test.
+ * @returns the appended text split into non-empty lines; `[]` when the file is unreadable.
+ */
+function appendedAfter(file: string, offset: number): string[] {
+  try {
+    return readFileSync(file, "utf8").slice(offset).split("\n").filter((line) => line !== "")
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Run `run` with the row-log root pinned to a fresh SANDBOX workspace, and collect what this row
+ * appended to its log.
+ *
+ * R5 moved the row's diagnostics off `console.log` and into `<workspace>/.mpd/logs/<row>.log`, so the
+ * arms below read the file a user would instead of a stdout capture that can no longer see anything.
+ * `MPD_MCP_LOG_DIR` and `DSH_WORKSPACE_ROOT` are BOTH pinned to the sandbox — the adapter's
+ * workspace-root helper resolves `DSH_WORKSPACE_ROOT` first and an ambient value would otherwise win
+ * — and both are put back before the arm returns. The repository's own `.mpd/logs` is never touched.
+ *
+ * @param row the row log's base name, i.e. `<row>.log`.
+ * @param run the call under test.
+ * @returns the call's own result, plus the lines appended to that row log while it ran.
+ */
+async function inRowLog<T>(row: string, run: () => T): Promise<{ result: T; lines: string[] }> {
+  // The sandbox workspace this arm's row log is written under; removed before the arm returns.
+  const sandbox = mkdtempSync(join(tmpdir(), "mpd-ext-rowlog-"))
+  // The two env keys the sink's root chain reads, saved for the restore below.
+  const saved = { logDir: process.env.MPD_MCP_LOG_DIR, workspace: process.env.DSH_WORKSPACE_ROOT }
+  process.env.MPD_MCP_LOG_DIR = sandbox
+  process.env.DSH_WORKSPACE_ROOT = sandbox
+  // This row's log file under the sandbox.
+  const file = join(sandbox, ".mpd", "logs", `${row}.log`)
+  // The log's byte size BEFORE the call, so only the appended bytes are read back.
+  let offset = 0
+  try { offset = statSync(file).size } catch { offset = 0 }
+  try {
+    return { result: await run(), lines: appendedAfter(file, offset) }
+  } finally {
+    if (saved.logDir === undefined) delete process.env.MPD_MCP_LOG_DIR; else process.env.MPD_MCP_LOG_DIR = saved.logDir
+    if (saved.workspace === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = saved.workspace
+    rmSync(sandbox, { recursive: true, force: true })
+  }
+}
+
+/**
  * A mounted `mpdDsh` stand-in: it records the registrations made THROUGH it,
  * which is what makes "the row used the mounted adapter" assertable rather than
  * inferred. Its return type names only what the assertions read; the row itself
@@ -108,7 +162,7 @@ function mountedAdapterStub(): {
 interface FakeCtxOptions {
   /** The value `ctx.get("mpdDsh")` resolves to (undefined = the fallback branch). */
   mounted?: unknown
-  /** Omit the logger entirely to prove the warning still reaches stdout. */
+  /** Omit the logger entirely to prove the warning still reaches the ROW LOG. */
   logger?: boolean
 }
 
@@ -152,26 +206,29 @@ const fallbackWarnings = (lines: string[]): string[] => lines.filter((line) => l
 
 describe("F1 fallback arm: no mounted mpdDsh", () => {
   test("warns exactly ONCE per apply and names the private adapter identity", async () => {
-    // Stdout capture, because this arm counts the warning per sink.
+    // Stdout capture, because R5 forbids this row's diagnostics from reaching a terminal at all.
     const stdout = captureStdout()
     // The no-mount ctx: ctx.get("mpdDsh") resolves to undefined, i.e. the fallback branch.
     const fake = fakeCtx()
     try {
-      await apply(fake.ctx)
+      // The apply's own effect on `mpd-ext.log`: the log root is pinned to a sandbox for the call.
+      const log = await inRowLog("mpd-ext", async () => { await apply(fake.ctx) })
+
+      // Exactly one warning, from the one emission the fix adds (the row writes it to the ROW LOG
+      // and to the logger, so count it per sink, never across sinks).
+      expect(fallbackWarnings(log.lines).length).toBe(1)
+      expect(fallbackWarnings(fake.warnings).length).toBe(1)
+      expect(fallbackWarnings(log.lines)[0]).toContain("adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK)
+      // The R5 invariant: the same diagnostic never reaches stdout.
+      expect(stdout.lines).toEqual([])
+
+      // The fallback really built a second adapter: the four tools landed in the
+      // fake ctx's own tools service, which is what `createDshAdapter(ctx)` registers
+      // through.
+      expect(fake.registered.map((definition) => definition.name).sort()).toEqual([...EXPECTED_TOOLS].sort())
     } finally {
       stdout.restore()
     }
-
-    // Exactly one warning, from the one emission the fix adds (it is written to
-    // stdout AND the logger, so count it per sink, never across sinks).
-    expect(fallbackWarnings(stdout.lines).length).toBe(1)
-    expect(fallbackWarnings(fake.warnings).length).toBe(1)
-    expect(fallbackWarnings(stdout.lines)[0]).toContain("adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK)
-
-    // The fallback really built a second adapter: the four tools landed in the
-    // fake ctx's own tools service, which is what `createDshAdapter(ctx)` registers
-    // through.
-    expect(fake.registered.map((definition) => definition.name).sort()).toEqual([...EXPECTED_TOOLS].sort())
   })
 
   test("the fallback identity is assertable on the mpdExtensions service field", async () => {
@@ -191,44 +248,52 @@ describe("F1 fallback arm: no mounted mpdDsh", () => {
     }
   })
 
-  test("a warning reaches stdout even when the ctx exposes no logger", async () => {
+  test("a warning reaches the row log even when the ctx exposes no logger", async () => {
     // Stdout capture; the ctx below deliberately exposes no logger.
     const stdout = captureStdout()
-    // A no-mount ctx WITHOUT a logger: stdout must still carry the one warning.
+    // A no-mount ctx WITHOUT a logger: the row log is the only sink left for the one warning.
     const fake = fakeCtx({ logger: false })
     try {
-      await apply(fake.ctx)
+      // The apply's own effect on `mpd-ext.log`, read back from the sandbox.
+      const log = await inRowLog("mpd-ext", async () => { await apply(fake.ctx) })
+      // A headless boot still reports: the warning lands in the row log...
+      expect(fallbackWarnings(log.lines).length).toBe(1)
+      // ...with no logger sink to duplicate it into, and nothing on stdout (R5).
+      expect(fake.warnings).toEqual([])
+      expect(stdout.lines).toEqual([])
     } finally {
       stdout.restore()
     }
-    expect(fallbackWarnings(stdout.lines).length).toBe(1)
   })
 })
 
 describe("F1 healthy arm: a mounted mpdDsh", () => {
   test("emits NO warning and reports the mounted identity on both surfaces", async () => {
-    // Stdout capture, the sink a mount lane greps for the boot line.
+    // Stdout capture, which stays EMPTY on the healthy path too (R5).
     const stdout = captureStdout()
     // The mounted stand-in recording what the row registers THROUGH it.
     const stub = mountedAdapterStub()
     // A ctx whose ctx.get("mpdDsh") resolves to that mounted stand-in.
     const fake = fakeCtx({ mounted: stub.adapter })
     try {
-      await apply(fake.ctx)
+      // The apply's own effect on `mpd-ext.log`, read back from the sandbox.
+      const log = await inRowLog("mpd-ext", async () => { await apply(fake.ctx) })
+
+      expect(fallbackWarnings(log.lines)).toEqual([])
+      expect(fake.warnings.filter((line) => line.includes("ADAPTER FALLBACK"))).toEqual([])
+
+      // The boot line carries the identity a mount lane greps for — in the ROW LOG since R5.
+      const identityLines = log.lines.filter((line) => line.includes("adapterIdentity="))
+      expect(identityLines.length).toBe(1)
+      expect(identityLines[0]).toContain("adapterIdentity=" + ADAPTER_IDENTITY_MOUNTED)
+      expect(identityLines[0]).not.toContain("fallback:")
+      // The boot line is a row-log line now, never a terminal write.
+      expect(stdout.lines).toEqual([])
+
+      expect(fake.provided.mpdExtensions.adapterIdentity).toBe(ADAPTER_IDENTITY_MOUNTED)
     } finally {
       stdout.restore()
     }
-
-    expect(fallbackWarnings(stdout.lines)).toEqual([])
-    expect(fake.warnings.filter((line) => line.includes("ADAPTER FALLBACK"))).toEqual([])
-
-    // The boot line carries the identity a mount lane greps for.
-    const identityLines = stdout.lines.filter((line) => line.includes("adapterIdentity="))
-    expect(identityLines.length).toBe(1)
-    expect(identityLines[0]).toContain("adapterIdentity=" + ADAPTER_IDENTITY_MOUNTED)
-    expect(identityLines[0]).not.toContain("fallback:")
-
-    expect(fake.provided.mpdExtensions.adapterIdentity).toBe(ADAPTER_IDENTITY_MOUNTED)
   })
 
   test("the four tools are registered THROUGH the mounted adapter, not beside it", async () => {
@@ -306,5 +371,27 @@ describe("F1 shipped artifact", () => {
     expect(dist, "dist does not carry the mounted identity").toContain("mounted:mpdDsh")
     expect(dist, "dist does not carry the fallback identity").toContain("fallback:createDshAdapter")
     expect(dist, "dist does not expose the identity on the service").toContain("adapterIdentity")
+  })
+})
+
+describe("S4: the reported identity follows the SURFACE, not the apply", () => {
+  test("an adapter that mounts AFTER the row is reported as mounted, with no re-apply", async () => {
+    // Stdout capture, because R5 forbids this row's diagnostics from reaching a terminal at all.
+    const stdout = captureStdout()
+    // The no-mount ctx: at apply time ctx.get("mpdDsh") resolves to undefined.
+    const fake = fakeCtx()
+    try {
+      await apply(fake.ctx)
+      // The apply-time truth: the row fell back, and that IS what the surface must report right now.
+      expect(fake.provided.mpdExtensions.adapterIdentity).toBe(ADAPTER_IDENTITY_FALLBACK)
+      // THE ADAPTER ROW MOUNTS LATE (the T-50 window): the SAME ctx now serves the shared adapter.
+      /** The late-mounting stand-in, whose identity the field must pick up. */
+      const late = mountedAdapterStub().adapter
+      ;(fake.ctx as { get: (key: string) => unknown }).get = (key: string) => (key === "mpdDsh" ? late : undefined)
+      // The identity is READ AT SURFACE TIME: no re-apply, no cached apply-time snapshot.
+      expect(fake.provided.mpdExtensions.adapterIdentity).toBe(ADAPTER_IDENTITY_MOUNTED)
+    } finally {
+      stdout.restore()
+    }
   })
 })

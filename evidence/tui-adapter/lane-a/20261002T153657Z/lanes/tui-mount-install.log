@@ -1,0 +1,6 @@
+[tui-mount] installing the host into the sandbox profile (network required): /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tui-adapter
+[tui-mount] host install exit=1
+[tui-mount] bundle install exit=0
+[tui-mount] install log=evidence/tui/lanes/2026-10-02T15-40-23.206Z/install.log
+[mpd-qa] FAIL case=tui-mount lane=real reason=requested-host-install-refused prereq=the dsh-tui host install (@deepseek-harness-tui/dsh-tui@0.12.0 exited 1) remedy="move the pin to the version the installed harness accepts (see docker/README.md) or grant an exact-version exemption deliberately"
+EXIT=1

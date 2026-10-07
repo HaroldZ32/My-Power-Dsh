@@ -1,10 +1,26 @@
 // packages/mpd-better-sidebar-host/src/index.ts
-import { dirname, join } from "node:path";
+import { dirname, join as join2 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_TOOLS = "tools";
+var DSH_SEAM_SESSIONS = "sessions";
+var DSH_SEAM_WEB_SERVER = "webServer";
+var DSH_SEAM_WEB_RUNTIME = "webRuntime";
+function dshSeamInject(...names) {
+  return [...names];
+}
+var rowLogSinks = new Map;
+
+// packages/mpd-better-sidebar-host/src/index.ts
 function hostUrl() {
   const here = dirname(fileURLToPath(import.meta.url));
-  const bundleRoot = join(here, "..", "..", "..");
-  return pathToFileURL(join(bundleRoot, "node_modules", "dsh-better-sidebar", "lib", "index.js")).href;
+  const bundleRoot = join2(here, "..", "..", "..");
+  return pathToFileURL(join2(bundleRoot, "node_modules", "dsh-better-sidebar", "lib", "index.js")).href;
 }
 var cached;
 async function loadSidebarHost() {
@@ -19,7 +35,7 @@ async function loadSidebarHost() {
   }
 }
 var name = "mpd-better-sidebar-host";
-var inject = ["webServer", "sessions", "webRuntime", "tools"];
+var inject = dshSeamInject(DSH_SEAM_WEB_SERVER, DSH_SEAM_SESSIONS, DSH_SEAM_WEB_RUNTIME, DSH_SEAM_TOOLS);
 async function apply(ctx, config) {
   const host = await loadSidebarHost();
   if (typeof host.apply !== "function")

@@ -1,0 +1,18 @@
+===================================================================
+Lane E — evidence/verify-law/lane-c-reverify/2026-10-07T1051Z — OUTPUT.LOG
+recordId: lane-e-lane-c-reverify-2026-10-07T1051Z   verdict: PASS
+===================================================================
+
+--- RESIDUAL BOUND (verify-law-spec (c)), verbatim ---
+the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin’s own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).
+
+=== LOG: ev-clause-green.log
+cmd: node scripts/run-qa-lanes.ts --check-drift  (CLOSING read, 2026-10-07T10:52:20Z)
+[run-qa-lanes] discovery: 42 lane script(s) discovered (42 listed, 0 unlisted, 17 outside every suite); .ts entries 42, underscore-excluded 0
+[run-qa-lanes] immutability required=8: team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=34
+[run-qa-lanes] manifest and disk agree (48 entries, 42 lane script(s) discovered) and the immutability guard is declared
+EXIT=0
+--- the subject settle table ---
+  cases.json 39360f57f2a6a548
+  SKILL.md   2cfd89be3b4ac695
+

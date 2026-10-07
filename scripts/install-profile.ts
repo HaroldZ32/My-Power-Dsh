@@ -108,7 +108,7 @@ function extractRowBlock(patchText: string, rowId: string): RawRow {
 /** The bundle patch's own `!!js` mount guard for the sidebar row. */
 function sidebarGuardFromPatch(): string {
   /** The bundle patch: the single source of truth for the sidebar mount guard. */
-  const text: string = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const text: string = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   /** The patch's `mpd-better-sidebar` row, extracted verbatim. */
   const block: RawRow = extractRowBlock(text, "mpd-better-sidebar")
   /** The row's `disabled: !!js …` line, or undefined when the row carries no such guard. */
@@ -255,27 +255,21 @@ function buildPlan(o: PlanInputs): Plan {
   /** Every home-patch row this installer writes, in the order the patch must carry them. */
   const rows: Row[] = [
     // ── agent preset plane (0.1.7-rc.2 row model) ───────────────────────────
-    // The registry row is declared by the WEB-APP layer (`@deepseek-ai/dsh-web-app`
-    // inserts `agent-preset-registry` with `default: standard`), so this row is an
-    // ID-TARGET at column 0 — emitting it as an insert would collide on the loader
-    // entry id. It mirrors the bundle patch's own column-0 id-target verbatim.
-    {
-      id: "agent-preset-registry", name: "@deepseek-ai/dsh-agent-preset-registry",
-      config: { default: "mpd" }, alwaysIdTarget: true
-    },
-    // dsh-tui plane: the TUI mints its OWN registry row under the SCOPED id
-    // `dsh-tui-agent-preset-registry` (name `@deepseek-ai/dsh-agent-preset-registry`,
-    // stock config `{ default: 'standard' }`), and a `dsh-tui` profile composes no
-    // dsh-web-app layer — so the row above is skipped there and the TUI's own default
-    // would win. NOTHING in that composition declares a `standard` preset
-    // (`@deepseek-harness-tui/dsh-tui@0.11.1` ships no preset rows), so without this
-    // target every new TUI session asks for a preset that does not exist. Column-0
-    // id-target for the same reason as the row above: the subject is minted by
-    // dsh-tui's own patch, and emitting it as an insert would collide on the entry id.
-    {
-      id: "dsh-tui-agent-preset-registry", name: "@deepseek-ai/dsh-agent-preset-registry",
-      config: { default: "mpd" }, alwaysIdTarget: true
-    },
+    // NO registry row is emitted here, and that is the intent (strict zero-override,
+    // user decision 2026-10-02). This installer used to carry TWO column-0 id-targets
+    // (`agent-preset-registry` and `dsh-tui-agent-preset-registry`, both with
+    // `default: mpd`) that mirrored the bundle patch's own overrides. Both raws are
+    // HOST-OWNED: dsh-web-app declares the first, dsh-tui's own cordis.patch.yml
+    // declares the second — an id-target REPLACES a host layer's decision, and an
+    // additive second registry row is not an alternative (two rows mounting
+    // `@deepseek-ai/dsh-agent-preset-registry` both `reflect.provide('agentPresets')`,
+    // which is a hard cordis boot error). The deployment default is therefore the
+    // USER's to set: `node scripts/set-default-preset.ts --yes` for a dsh-tui profile,
+    // the registry entry's `selectedDefault` for web/headless, or `DSH_TUI_PRESET`.
+    // Documented in `docs/preset-default.md` (bilingual pair). A future row that
+    // id-targets a host-declared id fails `node scripts/verify-no-host-override.ts`,
+    // which derives the host set from the layers on disk rather than from a list here.
+    //
     // The `mpd` preset itself: a `@deepseek-ai/dsh-agent-preset` ROW whose whole
     // composition is inline under `config.plugins`. Extracted VERBATIM from
     // `presets/mpd.patch.yml` (the bundle's single declaration of the mpd
@@ -367,6 +361,13 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     {
+      // The persisted-GOAL bridge (C8): `mpd_goal_*`, the `mpdGoal` service that mpd-ulw and
+      // mpd-boulder consume, and the `goal.*` auto-anchor knobs. It mirrors the bundle patch row
+      // value-for-value and sits beside its mpd.jsonc source (mpd-config), above its consumers.
+      id: "mpd-goal", name: p("packages/mpd-goal-plugin/dist/index.js"),
+      config: { enabled: true, autoAnchor: true, autoRounds: 32 },
+    },
+    {
       id: "mpd-comment-checker", name: p("packages/mpd-comment-checker-plugin/dist/index.js"),
       config: { autoCheck: false }
     },
@@ -386,6 +387,15 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     {
+      // The verification law's row, placed AFTER mpd-roles exactly as the shipped patch has it: the
+      // guard is installed by the roles row (the bundle's single `guardTool` site) and resolves this
+      // row's `mpdVerify` service PER CALL, so apply order costs nothing. Its config is the shipped
+      // patch's, verbatim — `verify.*` knobs are read RAW and are deliberately NOT settings-schema
+      // entries (the pinned SETTINGS_KNOBS count does not move for this row).
+      id: "mpd-verify", name: p("packages/mpd-verify-plugin/dist/index.js"),
+      config: { mode: "hard", escapeUses: 1 }
+    },
+    {
       id: "mpd-workmate", name: p("packages/mpd-workmate-plugin/dist/index.js"),
       config: {}
     },
@@ -394,7 +404,7 @@ function buildPlan(o: PlanInputs): Plan {
       config: { baseProvider: "spawn" }
     },
     {
-      id: "mpd-team-tools", name: p("packages/mpd-team-tools-plugin/dist/index.js"),
+      id: "mpd-team-core", name: p("packages/mpd-team-core-plugin/dist/index.js"),
       config: {}
     },
     {
@@ -414,6 +424,18 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     {
+      // DSH-TUI PLANE ADAPTER (R2/A2.2): the ONE contact surface with the TUI's own
+      // seams, mirrored from the bundle patch (id, module path and empty config).
+      // A plain INSERT, like the patch row: it overrides nothing, so it can never
+      // shadow a host-minted `mpd-tui*` id. The module is the package's built dist,
+      // so the row only activates once `packages/mpd-tui-adapter-plugin/dist` exists;
+      // with it absent the loader warns and leaves the row inactive instead of
+      // failing the boot (measured on harness 0.2.0-rc.2, evidence under
+      // evidence/preset-default/preset-conformance/).
+      id: "mpd-tui-adapter", name: p("packages/mpd-tui-adapter-plugin/dist/index.js"),
+      config: {}
+    },
+    {
       // DSH-TUI edition (t5): the TUI-native surface row. Mirrors the bundle
       // patch verbatim; it is NOT disabled here — under a web/headless profile
       // the plugin probes every tui* seam with ctx.get(id, false) and degrades
@@ -423,11 +445,12 @@ function buildPlan(o: PlanInputs): Plan {
     },
     // ── Agent Teams: the OFFICIAL plugin set (0.1.7-rc.2) ───────────────────
     // The adopted vendored plugin (row `agent-teams`,
-    // packages/mpd-agent-teams-plugin) is RETIRED with this wave: the harness now
-    // ships the TeamService + its model-facing tools + its Web UI as first-class
-    // packages, and the bundle mounts them under mpd-owned entry ids with entry
-    // NAMES equal to the official package names. Mirrored verbatim from
-    // packages/mpd-bundle/cordis.patch.yml, order included.
+    // packages/mpd-agent-teams-plugin) is DELETED: it was retired from the composition
+    // when the harness began shipping the TeamService + its model-facing tools + its
+    // Web UI as first-class packages, and the de-vendor wave removed the code. The
+    // bundle mounts the OFFICIAL rows under mpd-owned entry ids with entry NAMES equal
+    // to the official package names. Mirrored verbatim from cordis.patch.yml, order
+    // included.
     {
       id: "mpd-agent-team", name: "@deepseek-ai/dsh-experimental-agent-team",
       config: { maxMembers: 16, maxTasks: 256, maxPendingMessagesPerMember: 64, maxMessageBytes: 32768, disposalTimeoutMs: 5000 }
@@ -441,7 +464,7 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     // B9: every row mirrors the bundle patch verbatim (same id, entry and empty
-    // config) and in the same order (packages/mpd-bundle/cordis.patch.yml plus the
+    // config) and in the same order (cordis.patch.yml plus the
     // preset patch presets/mpd.patch.yml). Row-id parity with the patch layer is
     // enforced by scripts/verify-rows-parity.ts.
   ]
@@ -533,6 +556,33 @@ function renderPatch(rows: readonly Row[], existingIds: ReadonlySet<string>): st
   return parts.join("\n\n")
 }
 
+/**
+ * The column-0 `- id:` overrides a rendered home patch carries.
+ * WHY THIS EXISTS: an id-target is the shape that REPLACES another layer's row, so it is the
+ * shape a zero-override installer must be able to prove it never emits for a host-owned id.
+ * Only column 0 counts — an `- id:` indented under `- insert:` is an ADD, which the policy wants.
+ * @param patchText The rendered home patch.
+ * @returns The ids emitted as column-0 overrides, in file order.
+ */
+function columnZeroIdTargets(patchText: string): string[] {
+  /** The override ids collected so far. */
+  const ids: string[] = []
+  for (const line of patchText.split("\n")) {
+    /** The column-0 id-target match on this line, or null when the line is not one. */
+    const m = /^- id: ['"]?([A-Za-z0-9_.@/-]+)['"]?\s*$/.exec(line)
+    if (m !== null) ids.push(m[1])
+  }
+  return ids
+}
+
+/**
+ * The row-id SHAPE an installer row may never carry, because the subject is declared by a host
+ * layer: a preset-REGISTRY row (the authority for the full host-owned set is
+ * `scripts/verify-no-host-override.ts`, which derives it from the layers on disk; this shape check
+ * is the offline half that also runs without an installed harness).
+ */
+const HOST_OWNED_ROW_SHAPE = /-preset-registry$/
+
 /** The offline self-test: pins the plan's path model, row set and render rules; writes only under `.qa-reloc/`. */
 function selfTest(): void {
   /** The plan for the mpd profile against a home that never exists on disk. */
@@ -548,7 +598,7 @@ function selfTest(): void {
   /** The sidebar row under test; its guard must be the extracted one. */
   const sidebarRow: Row | undefined = plan.rows.find((r: Row): boolean => r.id === "mpd-better-sidebar")
   /** The bundle patch's bytes, so the assertion compares against the patch itself. */
-  const bundlePatchText: string = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const bundlePatchText: string = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   if (!sidebarRow || sidebarRow.name !== "dsh-better-sidebar" || sidebarRow.disabledYaml !== SIDEBAR_GUARD) { console.error("[install-profile self-test] FAIL: sidebar row + guard"); process.exit(1) }
   if (!/^!!js\s/.test(SIDEBAR_GUARD) || !SIDEBAR_GUARD.includes("dsh-better-sidebar")) { console.error("[install-profile self-test] FAIL: the extracted sidebar guard is not the patch's `!!js` mount guard"); process.exit(1) }
   if (!bundlePatchText.includes("disabled: " + SIDEBAR_GUARD)) { console.error("[install-profile self-test] FAIL: the extracted sidebar guard is not byte-identical to the bundle patch's own `disabled:` scalar"); process.exit(1) }
@@ -580,16 +630,21 @@ function selfTest(): void {
   const toolTeamPlane = plan.rows.find((r: Row): boolean => r.id === "mpd-tool-agent-team")!.config!
   if (toolTeamPlane.freshProvider !== "spawn" || toolTeamPlane.forkProvider !== "fork") { console.error("[install-profile self-test] FAIL: mpd-tool-agent-team providers"); process.exit(1) }
   // ── the agent preset plane (0.1.7-rc.2 row model) ─────────────────────────
-  // The registry row must be an UNCONDITIONAL column-0 id-target (its subject is
-  // declared by the web-app layer) and the preset row must carry the composition
-  // extracted VERBATIM from the bundle's own preset patch.
-  /** The web-plane registry row: an unconditional id-target defaulting to the mpd preset. */
-  const registry: Row | undefined = plan.rows.find((r: Row): boolean => r.id === "agent-preset-registry")
-  if (!registry || registry.alwaysIdTarget !== true || registry.config?.default !== "mpd") { console.error("[install-profile self-test] FAIL: agent-preset-registry row (want an always-id-target with default: mpd)"); process.exit(1) }
-  /** The TUI-plane registry row, which a dsh-tui profile needs for the same reason. */
-  const tuiRegistry: Row | undefined = plan.rows.find((r: Row): boolean => r.id === "dsh-tui-agent-preset-registry")
-  if (!tuiRegistry || tuiRegistry.alwaysIdTarget !== true || tuiRegistry.config?.default !== "mpd") { console.error("[install-profile self-test] FAIL: dsh-tui-agent-preset-registry row (want an always-id-target with default: mpd — a dsh-tui profile composes no dsh-web-app layer, so the web-plane target is skipped there and that composition declares no `standard` preset)"); process.exit(1) }
-  if (tuiRegistry.name !== registry.name) { console.error("[install-profile self-test] FAIL: both registry targets must name the SAME package"); process.exit(1) }
+  // STRICT ZERO-OVERRIDE (user decision 2026-10-02): the installer carries NO
+  // registry row. Its subject is host-owned (dsh-web-app declares
+  // `agent-preset-registry`, dsh-tui's own patch declares
+  // `dsh-tui-agent-preset-registry`), and an id-target on either REPLACES a host
+  // layer's decision. The default preset is set from the USER channel
+  // (`scripts/set-default-preset.ts`, the Settings `selectedDefault`, or
+  // `DSH_TUI_PRESET`), documented in `docs/preset-default.md`. The assertions below
+  // are shape- and render-based so the arm stays OFFLINE; the authoritative
+  // host-layer comparison is `node scripts/verify-no-host-override.ts`.
+  /** The row ids the installer declares, which the render assertions below cross-check. */
+  const declaredIds: string[] = plan.rows.map((r: Row): string => r.id)
+  /** Rows whose id names a host-owned shape; any hit is the regression this arm exists to catch. */
+  const hostOwnedShaped: string[] = declaredIds.filter((id: string): boolean => HOST_OWNED_ROW_SHAPE.test(id))
+  if (hostOwnedShaped.length > 0) { console.error("[install-profile self-test] FAIL: the installer declares host-owned preset-registry row(s) " + hostOwnedShaped.join(", ") + " — a shipped row may ADD a capability, never override a host layer's default (see scripts/verify-no-host-override.ts)"); process.exit(1) }
+  if (!declaredIds.includes("mpd-tui-adapter")) { console.error("[install-profile self-test] FAIL: mpd-tui-adapter row is missing (the installer must mirror the bundle patch's new TUI-plane adapter row)"); process.exit(1) }
   /** The preset row, which must carry the verbatim bundle block. */
   const presetRow: Row | undefined = plan.rows.find((r: Row): boolean => r.id === "preset-mpd")
   if (!presetRow || !presetRow.rawRow) { console.error("[install-profile self-test] FAIL: preset-mpd row must carry the verbatim block from the bundle patch"); process.exit(1) }
@@ -600,11 +655,13 @@ function selfTest(): void {
   }
   if (!/prefix: >-/.test(presetText)) { console.error("[install-profile self-test] FAIL: the extracted preset-mpd block lost the persona block scalar"); process.exit(1) }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
-  if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap rows"); process.exit(1) }
+  // The assertion lists EVERY row this file is expected to write. A subset would pass while a row went
+  // missing — the vacuous-assertion class this wave keeps hunting (captain ruling, 2026-10-07).
+  if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap") || !rows.includes("mpd-verify")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap/verify rows"); process.exit(1) }
   // The two rows the parity gate proved were missing: the extension registry (new with
   // the extension interface) and the team-compact row (absent since it landed in the
   // patch). Both are pinned here so a future removal fails the self-test too.
-  if (!rows.includes("mpd-ext") || !rows.includes("mpd-team-compact") || !rows.includes("mpd-team-tools") || !rows.includes("mpd-roster-provider")) { console.error("[install-profile self-test] FAIL: mpd-ext/team-compact/team-tools/roster-provider rows"); process.exit(1) }
+  if (!rows.includes("mpd-ext") || !rows.includes("mpd-team-compact") || !rows.includes("mpd-team-core") || !rows.includes("mpd-roster-provider")) { console.error("[install-profile self-test] FAIL: mpd-ext/team-compact/team-core/roster-provider rows"); process.exit(1) }
   // web-compat entry name must be exactly the bare bundle specifier (client-modules
   // contract) — never an absolute path
   /** The web-compat row, whose entry name is a resolution contract, not a path. */
@@ -631,15 +688,37 @@ function selfTest(): void {
     // its subject lives in the web-app layer, not in the target patch.
     /** The patch rendered against a home that declares no row at all. */
     const fresh: string = renderPatch(p2.rows, new Set())
-    if (!/^- id: agent-preset-registry\b/m.test(fresh)) { console.error("[install-profile self-test] FAIL: agent-preset-registry must render as a column-0 id-target on a fresh install"); process.exit(1) }
-    if (/- insert:[\s\S]*^ {0,2}- id: agent-preset-registry\b/m.test(fresh)) { console.error("[install-profile self-test] FAIL: agent-preset-registry rendered as an insert (duplicate loader entry id)"); process.exit(1) }
+    // A FRESH install must emit ZERO column-0 overrides: every row this installer
+    // writes is its OWN row, so it belongs under `- insert:`. Falsifiability is
+    // asserted right below, on a SEEDED copy of this same text.
+    /** The column-0 overrides a fresh render carries; any entry is a policy violation. */
+    const freshTargets: string[] = columnZeroIdTargets(fresh)
+    if (freshTargets.length > 0) { console.error("[install-profile self-test] FAIL: a fresh install rendered column-0 id-target(s) " + freshTargets.join(", ") + " — every installer row must be an insert when the target patch declares nothing"); process.exit(1) }
+    /** A copy of the fresh render with the historic offender seeded at column 0. */
+    const seeded: string = "- id: agent-preset-registry\n  name: '@deepseek-ai/dsh-agent-preset-registry'\n" + fresh
+    // The NEGATIVE CONTROL: the checker above must REDDEN on the seeded text, so the
+    // green on `fresh` is a measurement rather than an assertion about nothing. Both
+    // halves are exercised — the render scan and the host-owned shape test.
+    /** The seeded text's column-0 overrides, which must contain the offender. */
+    const seededTargets: string[] = columnZeroIdTargets(seeded)
+    if (!seededTargets.includes("agent-preset-registry")) { console.error("[install-profile self-test] FAIL: NEGATIVE CONTROL did not hold — seeding a column-0 id-target must be detected, got [" + seededTargets.join(", ") + "]"); process.exit(1) }
+    if (!seededTargets.some((id: string): boolean => HOST_OWNED_ROW_SHAPE.test(id))) { console.error("[install-profile self-test] FAIL: NEGATIVE CONTROL did not hold — the seeded host-owned row id must match HOST_OWNED_ROW_SHAPE"); process.exit(1) }
+    // The id-target contract itself is NOT dead: a row the TARGET patch already declares
+    // still renders as a column-0 override (that is a row of THIS installer's own id, so
+    // it overrides nothing host-owned). `mcp-astgrep` is seeded into the scratch home above.
+    /** The re-install render, whose existing-ids set drives the override branch. */
+    const reInstall: string = renderPatch(p2.rows, existing)
+    /** The column-0 overrides of the re-install render. */
+    const reInstallTargets: string[] = columnZeroIdTargets(reInstall)
+    if (!reInstallTargets.includes("mcp-astgrep")) { console.error("[install-profile self-test] FAIL: an mpd-owned row already present in the target patch must still render as a column-0 id-target (got [" + reInstallTargets.join(", ") + "])"); process.exit(1) }
+    if (reInstallTargets.some((id: string): boolean => HOST_OWNED_ROW_SHAPE.test(id))) { console.error("[install-profile self-test] FAIL: the re-install render emitted a host-owned id-target: [" + reInstallTargets.join(", ") + "]"); process.exit(1) }
     // The preset row renders inside the insert list with its nested children intact.
     if (!/^ {2}- id: preset-mpd\b/m.test(fresh)) { console.error("[install-profile self-test] FAIL: preset-mpd must render as an insert row at indent 2"); process.exit(1) }
     if (!/^ {8}- id: persona\b/m.test(fresh)) { console.error("[install-profile self-test] FAIL: the preset row's inline child rows must keep their nesting (persona not found at indent 8)"); process.exit(1) }
   } finally {
     try { rmSync(tmp, { recursive: true, force: true }) } catch { /* best-effort cleanup */ }
   }
-  console.log("[install-profile self-test] ok: path model + row set + official agent-team rows + preset row (verbatim) + registry id-target + web-compat entry + id-target render verified")
+  console.log("[install-profile self-test] ok: path model + row set + official agent-team rows + preset row (verbatim) + zero-override row policy (negative control reddens on a seeded id-target) + web-compat entry + id-target render verified")
 }
 
 /** The entry point: parse the flags, print the plan, and write it only under `--yes`. */
@@ -697,8 +776,11 @@ function main(): void {
   }, null, 2) + "\n")
   // NO preset copy: the 0.1.7-rc.2 preset model has no preset ROOT to scan. The
   // mpd composition ships as the `preset-mpd` ROW inside the home patch written
-  // above (extracted verbatim from the bundle's own preset patch), and
-  // `agent-preset-registry` is id-targeted to `default: mpd` there. A legacy
+  // above (extracted verbatim from the bundle's own preset patch). The deployment
+  // DEFAULT is deliberately NOT set here: the registry row is host-owned and this
+  // installer adds nothing to it (strict zero-override) — the user sets the default
+  // through `node scripts/set-default-preset.ts --yes`, the Settings
+  // `selectedDefault`, or `DSH_TUI_PRESET`; see docs/preset-default.md. A legacy
   // `.agent-presets` copy would be dead bytes the harness never reads.
   console.log("[install-profile] wrote profile/ + home patch (" + plan.rows.length + " rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd")
   // ONE npm install for ALL toolchain packages: separate --no-save installs prune

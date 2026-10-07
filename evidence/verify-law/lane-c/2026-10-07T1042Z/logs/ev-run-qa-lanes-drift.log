@@ -1,0 +1,5 @@
+cmd: node scripts/run-qa-lanes.ts --check-drift
+[run-qa-lanes] drift: 3 lane script(s) on disk in no manifest entry: skills/dsh-qa/scripts/goal-bridge.ts, skills/dsh-qa/scripts/tui-deps-ctrla.ts, skills/dsh-qa/scripts/verify-law.ts
+[run-qa-lanes] discovery: 42 lane script(s) discovered (39 listed, 3 unlisted, 15 outside every suite); .ts entries 42, underscore-excluded 0
+[run-qa-lanes] immutability required=8: team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=31
+EXIT=1

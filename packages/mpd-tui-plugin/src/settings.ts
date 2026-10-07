@@ -34,15 +34,15 @@
 // available (an unregistered namespace is rendered as unavailable by design).
 // `z` comes from the bundle's already-vendored schemastery copy. Same directory
 // specifier rule as `index.ts`.
-import type { PluginContextLike, SeamOutcome, SettingsProviderLike, TuiSettingsFieldLike, TuiSettingsSectionLike, TuiSettingsSectionsLike } from "./types.js"
+import type { PluginContextLike, SeamOutcome, SeamState, SettingsProviderLike, TuiAdapter, TuiSettingsFieldLike, TuiSettingsSectionLike } from "./types.js"
 // ONE source for the namespace schema, the twenty-two knobs and the disclosure: `mpd-config-plugin`
 // owns the namespace (design §10.1) and exports them; this package consumes them for its
 // guarded FALLBACK registration and for the section it declares.
 import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS } from "../../mpd-config-plugin/src/settings-schema"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
-import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import type { DshAdapter, DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { Log } from "./log.js"
-import { onService, serviceOf } from "./host.js"
+import { serviceOf } from "../../mpd-tui-adapter-plugin/src/index.js"
 
 export { SETTINGS_NS }
 
@@ -88,8 +88,22 @@ function knobHint(key: string, semantics?: string): string {
   // The ROW hint is the knob's own sentence plus its dotted key. The bridge disclosure is stated
   // ONCE, in the section's own description (see SETTINGS_SECTION below) — inlining it per row is
   // what made 25 rows read as the same four lines (measured in docker/ui, `05b-mpd-section.png`).
+  /** The dotted `.mpd/mpd.jsonc` key the row edits; the same pointer in both languages. */
   const pointer = `mpd.jsonc ${key}`
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`
+}
+
+/**
+ * The hint pair the host resolves per render (`hintDescriptions` at use, the host's own `pick()`).
+ *
+ * Both halves are built by the SAME {@link knobHint}, so the zh hint cannot lose the `.mpd/mpd.jsonc`
+ * pointer or the human sentence the EN one carries — it differs only in the language of the
+ * sentence, which the shared schema declares twice (`semantics` / `semanticsZh`).
+ */
+function knobHintPair(knob: (typeof SETTINGS_KNOBS)[number]): { zh: string; en: string } {
+  /** The dotted key both halves point at. */
+  const key = knob.path.join(".")
+  return { zh: knobHint(key, knob.semanticsZh), en: knobHint(key, knob.semantics) }
 }
 
 // ── the twelve team-model slot knobs: a SELECT with a live option list (A4) ─────
@@ -102,7 +116,7 @@ function knobHint(key: string, semantics?: string): string {
 /** The leaf names of one slot knob, in the schema's path order (`teamModels.<slot>.<leaf>`). */
 const TEAM_MODEL_LEAVES = ["provider", "model", "reasoningEffort"] as const
 /** The three leaf names of a team-model slot, in schema path order. */
-type TeamModelLeaf = (typeof TEAM_MODEL_LEAVES)[number]
+export type TeamModelLeaf = (typeof TEAM_MODEL_LEAVES)[number]
 
 /** One rendered option: the RAW id the settings document stores, plus its display label. */
 export interface SettingsOption {
@@ -260,15 +274,42 @@ function configPluginPresent(ctx: PluginContextLike): boolean {
  * baseline this package exports) and the registered section cannot drift apart.
  */
 function declaredField(knob: (typeof SETTINGS_KNOBS)[number]): TuiSettingsFieldLike {
+  /** The localized hint pair; the host resolves it per render (its own `pick()`, measured). */
+  const hints = knobHintPair(knob)
   return {
     path: [...knob.path],
     label: knob.label,
+    // `label` is the English base and `descriptions` carries the zh translation — the HOST'S OWN
+    // pattern (measured in its `settings/definitions.js`: `descriptions: { zh: … }` with the
+    // English living in the base field). An `en` twin would duplicate the base string and buy
+    // nothing: the host's `pick(text, descriptions)` falls back to the base when the map has no
+    // entry for the active language.
     descriptions: { zh: knob.zh },
-    hint: knobHint(knob.path.join("."), knob.semantics),
+    hint: hints.en,
+    // `hintDescriptions` is the host's OWN localized hint field: its settings screen renders
+    // `pick(field.hint, field.hintDescriptions)`, so the zh reader gets a zh sentence while the
+    // rest of the screen is Chinese. Set only when the two differ, so a field whose hint is
+    // language-neutral keeps one string.
+    ...(hints.zh === hints.en ? {} : { hintDescriptions: { zh: hints.zh } }),
     kind: knob.kind,
     ...(knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }),
   }
 }
+
+// ── the ONE TUI-owned knob: the Ctrl+A takeover (W2) ────────────────────────────────────────────
+//
+// The knob is DECLARED in the shared schema (`mpd-config-plugin/src/settings-schema.ts`), which is the
+// single source for the namespace schema and for the list BOTH front doors render: `SETTINGS_KNOBS`
+// carries `tui.dashboardKey` (boolean, `hint` = the semantics sentence), `SettingsSchema` carries its
+// L0 default (true), and this package renders it through the SAME `declaredField` path as every other
+// row — so there is no locally-declared lookalike for the same path, and no count this file can drift
+// from. The write path is unchanged: the section is keyed by the config ENTRY (`SETTINGS_ENTRY`), a
+// save stores the leaf in the entry's section, the bridge writes it into the workspace's
+// `.mpd/mpd.jsonc` as `tui.dashboardKey`, and the takeover reads it back through the `mpdConfig`
+// service with the TUI row's own config (`dashboardKey`, default true) as the floor.
+
+/** The mpd.jsonc key of the Ctrl+A takeover toggle, in its dotted form (the shared knob's own path). */
+export const DASHBOARD_TAKEOVER_KNOB = "tui.dashboardKey"
 
 /** The declared field list: every knob with its declared options (the pre-catalog baseline). */
 export const SETTINGS_FIELDS: readonly TuiSettingsFieldLike[] = SETTINGS_KNOBS.map(declaredField)
@@ -314,10 +355,14 @@ export const SETTINGS_SECTION: TuiSettingsSectionLike = {
   // screen bound no value for any of its 25 rows and rendered `（未设置）` for all of them. The Web
   // front door had the same defect and the same fix (`configForms.get("mpd-config")`).
   ns: SETTINGS_ENTRY,
+  // The section header the host draws. `title` is the English fallback AND the string every
+  // non-localized reader (a log line, a test, an older host) still gets, so the two halves stay in
+  // sync by construction: the en description IS this title.
   title: "MPD bundle",
   // The section's own description carries the disclosure ONCE; the 25 rows carry their own
-  // sentences and their keys. `title` is the section header the host draws, so the sentence a
-  // reader needs before touching any knob belongs here and nowhere else.
+  // sentences and their keys. Because `title` is the section header the host draws, the sentence a
+  // reader needs before touching any knob belongs here and nowhere else — in BOTH languages, since
+  // the host resolves `descriptions` with its own active language (`pick()`).
   descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE}`, en: `MPD bundle · ${SECTION_NOTICE}` },
   fields: SETTINGS_FIELDS,
 }
@@ -330,11 +375,21 @@ export const SETTINGS_SECTION: TuiSettingsSectionLike = {
  * `mpdDsh` miss (rows are applied concurrently, cordis answers `undefined` for a
  * non-ACTIVE provider) cannot cost the section its live options. An adapter that predates
  * the `llmCatalog` seam simply reports no catalog, which is the declared-fallback branch.
+ *
+ * EXPORTED because the `/mpd-model` pick-list must read the catalog through the same
+ * resolution: two readers could name different providers, which is the drift the menu's
+ * whole contract forbids. The type is DERIVED from the adapter's own surface (only the three
+ * members this package consumes), so it cannot drift from a hand-written copy of it — and each
+ * member stays OPTIONAL, because that is what makes a partial double (a catalog and nothing
+ * else) a legal override in a test.
  */
-function resolveCatalogReader(ctx: PluginContextLike): { llmCatalog?: () => Promise<DshLlmCatalog> } {
+export type CatalogReadSeam = Partial<Pick<DshAdapter, "llmCatalog" | "settingsReader" | "settingsMutate">>
+
+/** Resolve the shared catalog/settings read-write seam; see the doc comment above. */
+export function resolveCatalogReader(ctx: PluginContextLike): CatalogReadSeam {
   try {
     /** The mounted adapter, when this row can read it. */
-    const mounted = serviceOf<{ llmCatalog?: () => Promise<DshLlmCatalog> }>(ctx, "mpdDsh")
+    const mounted = serviceOf<CatalogReadSeam>(ctx, "mpdDsh")
     if (mounted !== undefined) return mounted
   } catch {
     // fall through to a standalone adapter
@@ -344,7 +399,8 @@ function resolveCatalogReader(ctx: PluginContextLike): { llmCatalog?: () => Prom
 
 /**
  * Activate the settings namespace and the `/settings` section.
- * @param ctx - the plugin context.
+ * @param ctx - the plugin context; the host records it as each registration's identity.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @param adapterOverride - the adapter to read the model catalog through; when omitted the
  *   mounted `mpdDsh` is resolved here, with a standalone adapter over the same ctx as the
@@ -354,16 +410,14 @@ function resolveCatalogReader(ctx: PluginContextLike): { llmCatalog?: () => Prom
  */
 export function registerSettingsSection(
   ctx: PluginContextLike,
+  tui: TuiAdapter,
   log: Log,
-  adapterOverride?: { llmCatalog?: () => Promise<DshLlmCatalog> },
+  adapterOverride?: CatalogReadSeam,
 ): { outcome(): SeamOutcome } {
   /** The namespace registration result, folded into the section outcome. */
-  let namespace: SeamOutcome = { state: "absent", detail: "settings was not injected" }
-  /** The section registration result, the outcome the caller reads. */
-  let section: SeamOutcome = { state: "absent", detail: "tuiSettingsSections was not injected" }
-  // ONE register call per section, whatever the activation path does: the host throws
-  // `TUI settings section "mpd" is already registered` on a second one.
-  let registrationStarted = false
+  let namespace: { state: SeamState; detail?: string } = { state: "absent", detail: "settings was not injected" }
+  /** The section result this file measured; `undefined` until a path decides it. */
+  let section: { state: SeamState; detail?: string } | undefined
   /** The adapter whose `llmCatalog()` supplies the slot options. */
   const catalogReader = adapterOverride ?? resolveCatalogReader(ctx)
 
@@ -372,11 +426,12 @@ export function registerSettingsSection(
   //    namespace is genuinely unserved — duplicate registration fails loud on this host
   //    (`dsh-settings` `register()` throws `settings namespace "<ns>" is already registered`), so
   //    the probe below is the guard that keeps the two owners from colliding.
-  onService(ctx, "settings", (_scoped, service) => {
-    /** The probed service as the settings provider, before `register` is trusted. */
+  tui.whenBound("settings", (service, _scope, handle) => {
+    /** The bound service as the settings provider, before `register` is trusted. */
     const provider = service as SettingsProviderLike
     if (typeof provider?.register !== "function") {
       namespace = { state: "refused", detail: "settings.register is missing" }
+      handle.record(namespace)
       return
     }
     // DETERMINISTIC owner check first: `mpd-config` provides the `mpdConfig` service, and a service
@@ -388,20 +443,25 @@ export function registerSettingsSection(
     if (configPluginPresent(ctx)) {
       namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is owned by mpd-config in this composition — the fallback registration was skipped` }
       log.info(`settings namespace ${SETTINGS_NS}: mpd-config owns the registration — fallback skipped (design §10.1)`)
+      handle.record(namespace)
       return
     }
     if (isServed(provider)) {
       namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is already served by mpd-config — the fallback registration was skipped` }
       log.info(`settings namespace ${SETTINGS_NS} is already served — fallback registration skipped (design §10.1)`)
+      handle.record(namespace)
       return
     }
-    try {
-      provider.register(SETTINGS_NS, SettingsSchema, { applies: "restart" })
-      namespace = { state: "requested", detail: `namespace ${SETTINGS_NS} requested by the fallback (no other registrant) (no host read-back)` }
-    } catch (error) {
-      namespace = { state: "refused", detail: String((error as Error)?.message ?? error) }
-      log.warn(`settings namespace ${SETTINGS_NS} not registered: ${namespace.detail ?? ""}`)
-    }
+    /** The adapter's handle for this one registration; the host call itself happened there. */
+    const registered = tui.registerSettingsNamespace(SETTINGS_NS, SettingsSchema, { applies: "restart" })
+    /** What that registration measured. */
+    const measured = registered.outcome()
+    namespace =
+      measured.state === "requested"
+        ? { state: "requested", detail: `namespace ${SETTINGS_NS} requested by the fallback (no other registrant) (no host read-back)` }
+        : { state: measured.state, detail: measured.detail }
+    handle.record(namespace)
+    if (namespace.state === "refused") log.warn(`settings namespace ${SETTINGS_NS} not registered: ${namespace.detail ?? ""}`)
   })
 
   // 2) Section: the mpd.jsonc fields. The twelve team-model slot knobs carry CATALOG-DERIVED
@@ -412,75 +472,43 @@ export function registerSettingsSection(
   //    registry is built for exactly this: `register()`/`subscribe()` are its
   //    late-registration seam ("a plugin (un)loading mid-session changes the list") and the
   //    screen re-reads the section list on every change event.
-  onService(ctx, "tuiSettingsSections", (_scoped, service) => {
-    /** The probed service as the section registry, before `register` is trusted. */
-    const sections = service as TuiSettingsSectionsLike
-    if (typeof sections?.register !== "function") {
-      section = { state: "refused", detail: "tuiSettingsSections.register is missing" }
-      return
-    }
-    if (registrationStarted) return
-    registrationStarted = true
-    // NO catalog seam (an older mounted adapter, or a composition without one): the declared
-    // lists are the only possible source, so register HERE and SYNCHRONOUSLY — exactly as
-    // this section did before the feature — instead of paying a deferral that could only
-    // risk the registration.
-    if (typeof catalogReader.llmCatalog !== "function") {
-      completeRegistration(sections, teamModelOptionLists(undefined), undefined)
-      return
-    }
-    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (awaiting the model catalog for the slot options)` }
-    void readCatalogThenRegister(sections)
-  })
-
-  /**
-   * Read the catalog and register with the projected options.
-   *
-   * TOTAL by construction: every failure — a rejecting `llmCatalog()`, a refused
-   * registration — is reported through {@link section} and the log, never as a rejected
-   * promise, because this runs detached from `apply`.
-   */
-  async function readCatalogThenRegister(sections: TuiSettingsSectionsLike): Promise<void> {
+  //
+  //    The adapter resolves this THUNK when the seam binds, which is what keeps the read from
+  //    racing the frozen option list; this file still owns WHAT the section says.
+  /** The section seam handle; its id is the adapter's, so this file names no seam. */
+  const sectionHandle = tui.registerSettingsSection(async (): Promise<TuiSettingsSectionLike> => {
+    /** The catalog the slot options are derived from; undefined means the declared fallback. */
+    let catalog: DshLlmCatalog | undefined
     try {
-      /** The catalog this registration is based on; undefined means the declared fallback. */
-      let catalog: DshLlmCatalog | undefined
-      try {
-        catalog = await catalogReader.llmCatalog?.()
-      } catch {
-        // A reader that throws is the same as an unavailable catalog: declared fallback.
-        catalog = undefined
-      }
-      completeRegistration(sections, teamModelOptionLists(catalog), catalog)
-    } catch (error) {
-      section = { state: "refused", detail: String((error as Error)?.message ?? error) }
-      log.warn(`/settings section refused: ${section.detail ?? ""}`)
+      catalog = await catalogReader.llmCatalog?.()
+    } catch {
+      // A reader that throws is the same as an unavailable catalog: declared fallback.
+      catalog = undefined
     }
-  }
-
-  /** ONE `register()` call, with the A4 branch line logged immediately before it. */
-  function completeRegistration(
-    sections: TuiSettingsSectionsLike,
-    lists: TeamModelOptionLists,
-    catalog: DshLlmCatalog | undefined,
-  ): void {
-    try {
-      // The A4 measurement line: WHICH branch produced each leaf's option list.
-      log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})`
-        + ` model=${lists.source.model}(${lists.model.length})`
-        + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})`
-        + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`)
-      sections.register({ ...SETTINGS_SECTION, fields: settingsFields(lists) })
-      section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` }
-    } catch (error) {
-      section = { state: "refused", detail: String((error as Error)?.message ?? error) }
-      log.warn(`/settings section refused: ${section.detail ?? ""}`)
-    }
-  }
+    /** The projected option lists, plus which branch produced each leaf. */
+    const lists = teamModelOptionLists(catalog)
+    // The A4 measurement line: WHICH branch produced each leaf's option list.
+    log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})`
+      + ` model=${lists.source.model}(${lists.model.length})`
+      + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})`
+      + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`)
+    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` }
+    return { ...SETTINGS_SECTION, fields: settingsFields(lists) }
+  }, ctx)
 
   return {
-    outcome: () => ({
-      state: section.state,
-      detail: `${section.detail ?? ""} · namespace ${SETTINGS_NS}: ${namespace.state}${namespace.detail === undefined ? "" : ` (${namespace.detail})`}`,
-    }),
+    outcome: (): SeamOutcome => {
+      /** What the adapter measured for the section seam (its own id and, on a refusal, its reason). */
+      const measured = sectionHandle.outcome()
+      // A REFUSAL always wins: it is the registration's measured truth, while `section` may still
+      // hold the pre-registration state this file recorded.
+      /** The section state this outcome reports. */
+      const chosen = measured.state === "refused" ? { state: "refused" as const, detail: measured.detail } : (section ?? { state: measured.state, detail: measured.detail })
+      return {
+        id: measured.id,
+        state: chosen.state,
+        detail: `${chosen.detail ?? ""} · namespace ${SETTINGS_NS}: ${namespace.state}${namespace.detail === undefined ? "" : ` (${namespace.detail})`}`,
+      }
+    },
   }
 }

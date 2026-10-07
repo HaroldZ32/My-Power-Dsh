@@ -35,10 +35,11 @@
 //   * cleanup through `ctx.effect`;
 //   * never a thrown boot failure — a missing optional seam degrades with a warning;
 //   * the harness contact goes through the ADAPTER only (AGENTS.md §6).
-import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
-import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import z from "../../mpd-schemastery"
+import { rowLogLine, createDshAdapter, dshSeamInject, DSH_SEAM_AGENTS, DSH_SEAM_TOOLS, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerWatchdogActions } from "./actions.js"
 import { WatchdogEngine, type EngineConfig, type EngineContext, type EngineStats } from "./engine.js"
+import type { MpdTeamsRead } from "./team.js"
 import { HOLD_GATE_CALL, HOLD_SERVICE, HoldRegistry } from "./holds.js"
 import { readKnobs, WATCHDOG_DEFAULTS, type ResolvedKnobs } from "./machine.js"
 import { DEFAULT_STATE_DIR } from "./paths.js"
@@ -54,8 +55,11 @@ export const name = "mpd-team-watchdog"
  * captain's own turn is the wedged one) and needs the live-session workspace list;
  * every harness profile that can run a session mounts `dsh-agent`, which is the
  * service's owner, so this inject cannot park the row.
+ *
+ * Both NAMES come from the adapter's seam vocabulary, so a harness rename of either service is an
+ * edit in ONE file (the adapter) rather than in every row that lists the id.
  */
-export const inject: string[] = ["tools", "agents"]
+export const inject: string[] = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_AGENTS)
 
 /** Configurable knobs; every key has a default in BOTH the schema and the resolver. */
 export type Config = {
@@ -162,10 +166,35 @@ export function resolveConfig(config: Config = {}): EngineConfig {
   }
 }
 
+/**
+ * Resolve the `mpdTeams` service face for ONE call.
+ *
+ * Resolved here, at the point of use, and never captured at apply — the service is provided by
+ * another row, which may mount after this one, and a composition without it must read exactly as it
+ * did before. The soft probe (`ctx.get(id, false)`) is what keeps an unmounted service from
+ * throwing inside a tool call or a tick.
+ *
+ * @param ctx - the row's cordis context.
+ * @returns the service face, or undefined when it is absent or of the wrong shape.
+ */
+function mpdTeamsOf(ctx: unknown): MpdTeamsRead | undefined {
+  try {
+    // The context's soft service probe; a minimal test context may not carry one.
+    const get = (ctx as { get?: (id: string, strict?: boolean) => unknown })?.get
+    if (typeof get !== "function") return undefined
+    /** The service as the composition answers it, or undefined when it is not mounted. */
+    const service = get.call(ctx, "mpdTeams", false)
+    if (service === null || typeof service !== "object") return undefined
+    return typeof (service as MpdTeamsRead).list === "function" ? (service as MpdTeamsRead) : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** One line on stderr, never a throw. */
 function warn(prefix: string, text: string): void {
   try {
-    console.warn("[" + prefix + "] " + text)
+    rowLogLine("mpd-team-watchdog", "[" + prefix + "] " + text)
   } catch {
     // nothing left to report with
   }
@@ -269,6 +298,8 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
       knobs: () => engine.knobDivergence(),
       // T-17: a hold created without an explicit `ttl_ms` inherits the resolved `holdTtlMs`.
       holdTtlMs: () => engine.getKnobs().holdTtlMs,
+      // The status view names the AUTHORITATIVE plane's teams, read per call (T3).
+      mpdTeams: () => mpdTeamsOf(context),
     })
     disposers = engine.install()
   } catch (error) {
@@ -334,7 +365,7 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
   for (const issue of issues) warn(resolved.logPrefix, "knob " + issue.path + ": " + issue.problem + " — using " + JSON.stringify(issue.fallback))
   // The boot log line a mount lane greps: proof the row APPLIED (not merely composed).
   try {
-    console.log(
+    rowLogLine("mpd-team-watchdog", 
       "[mpd-team-watchdog] applied: enabled=" + engine.getKnobs().enabled +
         " warnSilenceMs=" + engine.getKnobs().warnSilenceMs +
         " tickIntervalMs=" + intervalMs +

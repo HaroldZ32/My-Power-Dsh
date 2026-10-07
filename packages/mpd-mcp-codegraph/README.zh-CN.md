@@ -50,9 +50,29 @@
 `$HOME/.mpd` 驱动真实 MCP 子进程：修复前的 launcher 以未捕获的
 `ENOENT: ... mkdir '<home>/.mpd/codegraph'` 崩溃且不响应任何 MCP 请求，修复后的 launcher
 退出码 0 并响应 `initialize` / `tools/list`（0 个工具）。
-`evidence/mpd-defects-2/raw/codegraph-daemon-probe.mjs` 是 daemon 的双向证明：A 臂（默认）用自身
+`evidence/mpd-defects-2/raw/codegraph-daemon-probe.ts` 是 daemon 的双向证明：A 臂（默认）用自身
 引擎应答 `initialize`/`tools/call`，且不产生任何 daemon 产物、也没有 `Shared daemon` 提示；B 臂
 （`MPD_CODEGRAPH_DAEMON=1`）则走上游的 daemon 路径。
+
+## 终端输出（R5）
+
+`launch.ts` 的第一条语句就调用 `packages/mpd-mcp-shared/log-sink.ts` 的
+`installTerminalSilence("mpd-mcp-codegraph")`，早于 `dist/serve.js` 的导入。harness 构造该 row 时
+**没有 `stderr` 选项**，MCP SDK 随后以 `stdio: ["pipe", "pipe", "inherit"]` 派生本子进程，于是本进程的
+fd 2 就是 dsh 进程的 fd 2——在 TUI 会话中即 Ink 备用屏幕。该 sink 把 `process.stderr.write` 与
+`console` 的五个输出方法替换为写入 `<root>/.mpd/logs/mpd-mcp-codegraph.log`（1 MiB 上限、单个 `.1`
+轮转），且绝不回退到终端。`process.stdout` 始终不动：它承载 MCP 协议。
+
+**已知残留（2026-10-02 实测）：** 被采纳的 `dist/serve.js` bridge 以硬编码的
+`stdio: ["pipe", "pipe", "inherit"]`（`runBridgedCodegraphProcess`）派生真正的 codegraph CLI，
+因此那个孙进程的 stderr 仍会直达 fd 2、绕过本次替换。`dist/serve.js` 是 vendor 门禁下的
+sha 固定预构建件，故此处不做 delta。两条可行路径：(a) row 层修复属于 harness——在
+`createTransport` 的 `StdioClientTransport` 选项中传入 `stderr: "pipe"`；(b) 在文件描述符层面加一层
+包装，让 bridge 的子进程拿到日志 fd 而非继承的 fd。
+
+**手工调试开关：** `MPD_MCP_STDERR_REBIND=0` 只跳过描述符重绑，因此人工运行该 launcher 时仍能在终端
+看到 stderr；基于 writer 的 sink（写文件）保持生效。此时
+`installTerminalSilence(...).stderrRebind()` 报告 `"disabled"`。
 
 ## 用法
 
@@ -69,6 +89,6 @@ bundle patch 行的配置：
     serverName: codegraph
     transport: stdio
     command: node
-    args: [<bundle>/packages/mpd-mcp-codegraph/launch.ts]
+    args: [<bundle>/packages/mpd-mcp-codegraph/dist/launch.js]
     toolCallTimeoutMs: 60000
 ```

@@ -332,7 +332,7 @@ function check(): void {
   /** The on-disk definitions to scan, as (label, path) pairs in reporting order. */
   const targets: ReadonlyArray<readonly [string, string]> = [
     ["generated overlay", join(homedir(), ".mpd", "mcp-wave.patch.yml")],
-    ["bundle patch (source)", join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml")],
+    ["bundle patch (source)", join(repoRoot, "cordis.patch.yml")],
     ["bundle patch (dist)", join(repoRoot, "dist", "mpd-package", "cordis.patch.yml")],
   ]
   /** How many scanned definitions still carry the stale row; a non-zero count fails the run. */

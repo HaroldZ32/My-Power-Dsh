@@ -1,0 +1,21 @@
+== CLOSURE (typecheck-red fix, final bytes), 2026-10-07T10:56:28Z ==
+
+COPIES
+e6dc5db58db3b815b32dca06eceb3bef6a72becbb67a7b8fb2474128e97cffac  packages/mpd-verify-plugin/qa/verify-law.ts
+e6dc5db58db3b815b32dca06eceb3bef6a72becbb67a7b8fb2474128e97cffac  skills/dsh-qa/scripts/verify-law.ts
+
+SELF-TEST
+[verify-law self-test] ok: the registered copy is byte-identical (e6dc5db58db3)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+
+TYPECHECK
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+DRIFT
+[run-qa-lanes] manifest and disk agree (48 entries, 42 lane script(s) discovered) and the immutability guard is declared
+DRIFT_EXIT=0
+
+TEST:QA
+[test:qa] all self-tests passed
+TESTQA_EXIT=0

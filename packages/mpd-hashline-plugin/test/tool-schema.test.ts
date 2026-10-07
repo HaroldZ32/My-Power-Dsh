@@ -144,9 +144,9 @@ test("read then edit works with lines as a single string AND as an array of stri
   try {
     writeFileSync(file, "alpha\nbeta\ngamma\n")
 
-    // First view: three source lines plus the empty line the trailing newline produces.
+    // First view: three source lines; the file's final newline TERMINATES line 3 rather than adding one.
     const first = await read.execute({ path: file })
-    expect(first.lines).toBe(4)
+    expect(first.lines).toBe(3)
     // Anchors of the first view; a1[1] is the anchor of line 2 ('beta').
     const a1 = anchorsOf(first.view)
 
@@ -168,6 +168,75 @@ test("read then edit works with lines as a single string AND as an array of stri
     const appended = await edit.execute({ path: file, edits: [{ op: "append", lines: ["TAIL-1", "TAIL-2"] }] })
     expect(appended.lines).toBe(6)
     expect(readFileSync(file, "utf8")).toBe("alpha\nBETA\nGAMMA-1\nGAMMA-2\nTAIL-1\nTAIL-2")
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// ── E4: ONE source-line count for read / format / edit ───────────────────────────────────────────
+// `toHashlineContent` re-appends the final newline, so counting the VIEW with `split("\n")` counted
+// that terminator as an extra empty line: a 2-line file reported 3 while `#editFile` reported the
+// honest count for the same file. All three tools must report the SAME count.
+test("read, format and edit report the same source-line count for a terminated file", async () => {
+  // Fresh mount for the three tools whose counts must agree.
+  const { byName } = mount()
+  // Read and format share one output shape: both answer path/lines/view.
+  const read = byName("mpd_hashline_read") as HashlineTool<ReadResult>
+  // The format tool, whose count must land on the same number as read's and edit's.
+  const format = byName("mpd_hashline_format") as HashlineTool<ReadResult>
+  // The edit tool, whose own count must land on the same number.
+  const edit = byName("mpd_hashline_edit") as HashlineTool<EditResult>
+  // Throwaway directory for the two-line fixture.
+  const dir = mkdtempSync(join(tmpdir(), "mpd-hashline-count-"))
+  // The fixture: exactly two source lines, newline-terminated.
+  const file = join(dir, "two.txt")
+  try {
+    writeFileSync(file, "one\ntwo\n")
+    expect((await read.execute({ path: file })).lines).toBe(2)
+    expect((await format.execute({ path: file })).lines).toBe(2)
+    // Anchors for the replace below, taken from a fresh view of the same file.
+    const view = (await read.execute({ path: file })).view
+    // The edit tool's answer for the same file; its count must land on 2 as well.
+    const edited = await edit.execute({ path: file, edits: [{ op: "replace", pos: anchorsOf(view)[1], lines: "TWO" }] })
+    expect(edited.lines).toBe(2)
+    // The file really holds two lines after the edit, so the count describes the file and not a view artifact.
+    expect(readFileSync(file, "utf8")).toBe("one\nTWO\n")
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// ── E5: the CRLF/BOM envelope survives an anchored edit ──────────────────────────────────────────
+// `canonicalizeFileText` / `restoreFileText` were exported and never called: `#editFile` wrote the
+// applier's LF-only body straight back, so a CRLF file came back with MIXED endings and a BOM file
+// silently lost its BOM.
+test("an anchored edit keeps a CRLF file's line endings and a BOM file's BOM", async () => {
+  // Fresh mount for the read/edit pair driving both envelope fixtures.
+  const { byName } = mount()
+  // The read tool, whose view supplies each envelope fixture's anchors.
+  const read = byName("mpd_hashline_read") as HashlineTool<ReadResult>
+  // The anchored-edit tool whose write-back both envelope arms assert on.
+  const edit = byName("mpd_hashline_edit") as HashlineTool<EditResult>
+  // Throwaway directory holding the two envelope fixtures.
+  const dir = mkdtempSync(join(tmpdir(), "mpd-hashline-envelope-"))
+  // CRLF fixture: every line ends with a carriage return plus a line feed.
+  const crlf = join(dir, "crlf.txt")
+  // BOM fixture: a leading U+FEFF before the first line.
+  const bom = join(dir, "bom.txt")
+  try {
+    writeFileSync(crlf, "alpha\r\nbeta\r\n")
+    // The view's anchors, taken as the caller would: the envelope arm asserts the WRITE-BACK only.
+    const crlfView = await read.execute({ path: crlf })
+    await edit.execute({ path: crlf, edits: [{ op: "replace", pos: anchorsOf(crlfView.view)[1], lines: "BETA" }] })
+    // The whole file keeps CRLF: an LF-only write-back leaves a MIXED file behind.
+    expect(readFileSync(crlf, "utf8")).toBe("alpha\r\nBETA\r\n")
+
+    writeFileSync(bom, "\uFEFFalpha\nbeta\n")
+    // The BOM fixture's anchors, taken before the edit consumes them.
+    const bomView = await read.execute({ path: bom })
+    await edit.execute({ path: bom, edits: [{ op: "replace", pos: anchorsOf(bomView.view)[1], lines: "BETA" }] })
+    // The leading BOM is still there; the edit must not strip it.
+    expect(readFileSync(bom, "utf8")).toBe("\uFEFFalpha\nBETA\n")
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

@@ -1,0 +1,36 @@
+{
+  "notice": {
+    "any": 1,
+    "advisory": 0,
+    "mechanical": 1,
+    "signalsNamed": 1,
+    "shellShaped": 1,
+    "inert": 1,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "mechanicalTool": 1,
+    "retiredVocabulary": 0,
+    "signals": [
+      "E"
+    ],
+    "planIds": [
+      "plan-20261007103657"
+    ]
+  },
+  "teams": {
+    "staged": 1,
+    "planIds": [
+      "plan-20261007103657"
+    ],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 0,
+    "recordIds": []
+  },
+  "goal": "脱去该项目对于Oh-my-openagent与dsh-agent-teams项目的源码的所有依赖及检查，文档里只写参考鸣谢与License；验证当前工作量门，现在貌似用户只要不提，不论如何都不会建队；不论如何工作量，帮我找一个办法尽量避免面向用户的主代理去直接写/验证代码，做这些事情由子代理去干，并且该插件的PRESET硬要求无论什么模式下，A写出来的一部分代码必须由B验证，两agent必须独立，且要求不直接看代码只看文档，若有问题打回去改",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "firedLine": "[mpd-roles] session gate fired for agent \"session-10415410-e005-419e-8b20-6dca9a20fe11\" signals=E mode=mechanical staged=1 plan=plan-20261007103657",
+  "gateInstalled": true,
+  "ownKeyWritten": true,
+  "problems": []
+}

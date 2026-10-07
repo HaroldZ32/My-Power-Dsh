@@ -33,7 +33,7 @@
 // boundary in arm 1 is a recording double, so arm 1 proves the GATE and the adapter
 // forwarding, never that the adopted runtime executed.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.11.1"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -60,10 +60,14 @@ export const TASK: string = "t3"
 export const PLAN_SCENE: TuiScene = { id: "mpd-tui-plan", title: "MPD plan approval" }
 /** The second frozen scene of the pair: its registration is asserted alongside the plan scene's. */
 export const TEAM_SCENE: TuiScene = { id: "mpd-tui-team", title: "MPD team" }
-/** The adopted tools the two mutations must ride (§6.1). */
-export const APPROVE_TOOL: string = "agent_teams_approve"
-/** The adopted tool the discard mutation rides; recorded so the boundary double answers it too. */
-export const DISCARD_TOOL: string = "agent_teams_delete"
+// THE TOOL NAME MOVED WITH THE SPLIT (W6). These named the RETIRED vendored plugin's tools, and after
+// the split the approval rides `mpd-team-core`'s own `agent_teams_plan` — one tool with an `action`
+// enum, not a tool per verb. The boundary double below answers THIS name, so a stale constant here
+// made `available()` answer false and the surface refuse before any call could be observed.
+/** The tool both plan mutations ride, through its `action` argument (§6.1). */
+export const APPROVE_TOOL: string = "agent_teams_plan"
+/** The discard mutation rides the SAME tool, so the boundary records it under one name. */
+export const DISCARD_TOOL: string = "agent_teams_plan"
 /** The frozen confirmation phrase is built from the record's OWN id (§4.1). */
 export const TEAM_ID: string = "mpd-fixture-1"
 /** The display name the surface renders beside the id; A4 reads it off the rendered line. */
@@ -71,12 +75,25 @@ export const TEAM_NAME: string = "Fixture Team"
 /** The captain session the fixture names by default; arm 2 rewrites it to the attached one. */
 export const CAPTAIN_ID: string = "fixture-captain-session"
 /** The instruction line the surface must always render verbatim (§3.2). */
-export const INSTRUCTION: string = "approval needs the exact team id typed below, then Ctrl+X"
+// The instruction names the PHRASE since W6. It used to say "the exact team id", and that wording went
+// with the record-derived gate: the shared projection builds the phrase from the PRE-approval identity,
+// which is what the surface has when the gate asks. The frozen contract §3.2 fixed the INSTRUCTION
+// LINE, so the constant moves with the line rather than the line being bent to keep the constant.
+export const INSTRUCTION: string = "approval needs the exact phrase typed below, then Ctrl+X"
 
 /** Absolute path of the built plugin dist the arm-1 mount imports. */
 export const TUI_DIST: string = join(REPO, "packages", "mpd-tui-plugin", "dist", "index.js")
 /** Absolute path of the built adapter dist whose REAL factory answers the boundary calls. */
 export const ADAPTER_DIST: string = join(REPO, "packages", "mpd-dsh-adapter-plugin", "dist", "index.js")
+/**
+ * The TEAM CORE plugin, whose REAL `apply()` publishes `mpdTeams`.
+ *
+ * MOUNTING THIS IS THE POINT (user directive: both sides share the infrastructure). A case-local
+ * double that read `teams/<id>.json` and `staging/<sessionId>.json` would be a SECOND implementation
+ * of the store's read — free to drift from the one every shipped surface uses, which is exactly what
+ * the shared projection exists to prevent.
+ */
+export const CORE_DIST: string = join(REPO, "packages", "mpd-team-core-plugin", "dist", "index.js")
 /** Evidence root of this lane; each run writes `<root>/<timestamp>/`. */
 export const EVIDENCE_ROOT: string = join(REPO, "evidence", "tui", "team-surface-verify")
 
@@ -279,16 +296,157 @@ export interface WriteTeamFixtureOptions {
  * @returns the record dir, the file, and the file's digest (the "no write" witness).
  */
 export function writeTeamFixture(workspace: string, record: StagedTeamRecord, { mailbox = true }: WriteTeamFixtureOptions = {}): TeamFixture {
-  /** The record's own directory under the sandbox workspace's `.mpd/team/`. */
-  const dir = join(workspace, ".mpd", "team", String(record.id))
-  mkdirSync(join(dir, "inbox"), { recursive: true })
-  /** Absolute path of the serialized record. */
-  const file = join(dir, "team.json")
-  writeFileSync(file, JSON.stringify(record, null, 2) + "\n")
+  // ── THE POST-SPLIT LAYOUT (fixed 2026-09-30) ────────────────────────────────
+  // This wrote the RETIRED directory form, `<ws>/.mpd/team/<id>/team.json`. The team-plane split
+  // moved the record to `<ws>/.mpd/team/teams/<teamId>.json` plus the index
+  // `<ws>/.mpd/team/teams.json`, so the surface read NOTHING and rendered
+  // `MPD plan approval — (none)` — and A4–A8, B2, B3, H1, H3 and H4 all failed as a CASCADE from
+  // that one cause. No unit arm could see it: the arms build fixtures through the STORE.
+  /** The teams directory the record lives in. */
+  const teamsDir = join(workspace, ".mpd", "team", "teams")
+  mkdirSync(join(teamsDir, "inbox"), { recursive: true })
+  /** The record file, named by its OWN id as the store names it. */
+  const file = join(teamsDir, String(record.id) + ".json")
+  writeFileSync(file, JSON.stringify(teamRecordFrom(record), null, 2) + "\n")
+  // The INDEX is what `activeTeamId` reads; a record without one is a team no session is bound to.
+  writeFileSync(join(workspace, ".mpd", "team", "teams.json"), JSON.stringify({ version: 1, active: { [record.captainSessionId]: record.id } }, null, 2) + "\n")
   if (mailbox) {
-    writeFileSync(join(dir, "inbox", "captain.jsonl"), JSON.stringify({ id: "a", from: "Architect", to: "captain", content: "contract frozen", ts: 1 }) + "\n")
+    writeFileSync(join(teamsDir, "inbox", "captain.jsonl"), JSON.stringify({ id: "a", from: "Architect", to: "captain", content: "contract frozen", ts: 1 }) + "\n")
   }
-  return { dir, file, sha256: sha256File(file) }
+  return { dir: teamsDir, file, sha256: sha256File(file) }
+}
+
+/** An ISO instant from one the fixture records as epoch milliseconds. */
+const isoOf = (ms: number): string => new Date(Number.isFinite(ms) ? ms : 0).toISOString()
+
+/**
+ * Translate the case's own record shape into the STORE's `TeamRecord`.
+ *
+ * The case's `StagedTeamRecord` predates the split and names its fields its own way
+ * (`id`/`captainSessionId`/`taskSeq`); the store is what the surface actually reads, so the fixture
+ * must speak the store's language rather than a lookalike of it. Every union value is mapped
+ * EXPLICITLY, because a silently mistyped status is a state the surface would render as `open`.
+ * @param record The case's record.
+ * @returns the record as `.mpd/team/teams/<id>.json` carries it.
+ */
+function teamRecordFrom(record: StagedTeamRecord): Record<string, unknown> {
+  /** The store's own status vocabulary; the case's `running` phase is the store's `active`. */
+  const phase = record.phase === "staged" ? "staged" : record.phase === "running" ? "active" : record.phase === "ended" ? "ended" : "idle"
+  /** The task status the store knows, defaulting to `pending` for anything else. */
+  const statusOf = (value: string): string =>
+    value === "in_progress" || value === "completed" || value === "failed" || value === "cancelled" || value === "claimed" ? value : "pending"
+  /** The task kind the store knows, defaulting to `work`. */
+  const kindOf = (value: string): string =>
+    value === "requirement" || value === "review" || value === "repair" || value === "integration" ? value : "work"
+  return {
+    version: 1,
+    teamId: String(record.id),
+    name: record.name,
+    description: record.description,
+    leadSessionId: record.captainSessionId,
+    phase,
+    createdAt: isoOf(record.createdAt),
+    // THE TUI DERIVES `staged` FROM `approvedAt`, NOT FROM `phase` (`team-state.ts`: `staged:
+    // record.approvedAt === undefined`). A fixture that set only the phase therefore read as STAGED
+    // whatever it said — which is why the `non-staged-record` control could not produce the empty
+    // state it exists for. A record past staging HAS an approval instant, so this states it.
+    ...(phase === "staged" ? {} : { approvedAt: isoOf(record.createdAt) }),
+    members: record.members.map((member, index) => ({
+      id: member.id,
+      name: member.name,
+      description: member.role,
+      ...(member.role === "" ? {} : { role: member.role }),
+      ...(member.provider === "" && member.model === "" ? {} : { route: member.provider + "/" + member.model }),
+      status: member.status === "running" || member.status === "failed" || member.status === "inactive" ? member.status : "inactive",
+      spawnedAt: isoOf(member.joinedAt),
+      // Order is the store's own numbering; a member without one reads as unnumbered rather than 0.
+      ...(index === 0 ? {} : {}),
+    })),
+    tasks: record.tasks.map((task) => ({
+      id: task.id,
+      subject: task.subject,
+      description: task.subject,
+      kind: kindOf(task.kind),
+      status: statusOf(task.status),
+      blockedBy: [...task.dependencies],
+      writeScopes: [],
+      ...(task.assignee === "" ? {} : { owner: task.assignee }),
+      attempt: task.attempt,
+      round: task.round,
+      ...(task.verdict === undefined ? {} : { verdict: task.verdict }),
+      createdAt: isoOf(task.createdAt),
+      updatedAt: isoOf(task.updatedAt),
+      revision: 1,
+    })),
+    nextMemberNumber: record.members.length + 1,
+    nextTaskNumber: Math.max(record.taskSeq, record.tasks.length + 1),
+  }
+}
+
+/**
+ * Remove the staged plan of one session, so a control can present a workspace with none.
+ *
+ * The counterpart of {@link stagePlanFixture}: a control that means "nothing is awaiting approval" has
+ * to CLEAR the plan, because the record's phase no longer decides usability on its own.
+ * @param workspace The sandbox workspace.
+ * @param sessionId The session whose plan is dropped.
+ * @returns whether a plan file was there to remove.
+ */
+export function clearPlanFixture(workspace: string, sessionId: string): boolean {
+  /** The plan file the surface would have read. */
+  const file = join(workspace, ".mpd", "team", "staging", sessionId + ".json")
+  if (!existsSync(file)) return false
+  rmSync(file, { force: true })
+  return true
+}
+
+/**
+ * The PRE-approval identity of a staged plan, derived from the record the case builds.
+ *
+ * ONE derivation, used by both the fixture that writes the plan and the step that types the phrase: a
+ * second spelling of the plan id would make the gate and the fixture disagree, and the case would then
+ * fail for a reason that has nothing to do with the surface.
+ * @param record The case's staged record.
+ * @returns the plan id (`plan-<instant>`).
+ */
+export function planIdOf(record: StagedTeamRecord): string {
+  return "plan-" + isoOf(record.createdAt).replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")
+}
+
+/**
+ * Stage a PLAN for one session, in the layout the shared projection reads.
+ *
+ * WHY THE RECORD ALONE IS NOT ENOUGH (W6): the plan surface is usable through the SHARED projection,
+ * and a plan is keyed by SESSION — `.mpd/team/staging/<sessionId>.json`. The team record is
+ * materialised AT approval, so before one there is no record, and a fixture that wrote only a record
+ * would leave the surface showing its empty state in exactly the state it exists for.
+ * @param workspace The sandbox workspace.
+ * @param sessionId The LIVE session the surface will read with, discovered after the boot.
+ * @param record The case's staged record, whose members and tasks become the plan's.
+ * @returns the staged plan's file and its own identity.
+ */
+export function stagePlanFixture(workspace: string, sessionId: string, record: StagedTeamRecord): { file: string; planId: string } {
+  /** The staging directory, one JSON file per session as the store writes it. */
+  const stagingDir = join(workspace, ".mpd", "team", "staging")
+  mkdirSync(stagingDir, { recursive: true })
+  /** The plan's own identity: the PRE-approval name, and the phrase the gate demands. */
+  const planId = planIdOf(record)
+  /** The staged plan, in the store's own shape. */
+  const plan = {
+    version: 1,
+    planId,
+    sessionId,
+    name: record.name,
+    description: record.description,
+    approval: "required",
+    members: record.members.map((member) => ({ name: member.name, description: member.role === "" ? member.name : member.role, prompt: member.role === "" ? member.name : member.role, ...(member.role === "" ? {} : { role: member.role }) })),
+    tasks: record.tasks.map((task) => ({ subject: task.subject, description: task.subject, blockedBy: [...task.dependencies], ...(task.assignee === "" ? {} : { owner: task.assignee }) })),
+    stagedAt: isoOf(record.createdAt),
+  }
+  /** Where the plan is written; the surface resolves it by session id. */
+  const file = join(stagingDir, sessionId + ".json")
+  writeFileSync(file, JSON.stringify(plan, null, 2) + "\n")
+  return { file, planId }
 }
 
 /** The lines of a rendered surface this case judges, already trimmed for the pane's own padding. */
@@ -356,9 +514,20 @@ export interface BoundaryCall {
     /** The phrase the surface typed, which the adopted gate compares against the record's id. */
     readonly confirmation?: string
   }
-  /** The calling agent the adapter forwarded from `exec.agent`. */
+  /**
+   * The calling agent the adapter forwarded from `exec.agent`.
+   *
+   * ALL THREE SPELLINGS, because the product's own `sessionIdOf` tries them in order:
+   * `agent.session.id`, then a flattened `agent.sessionId`, then `agent.id`. A surface that
+   * legitimately presents a session (the TUI scene acts for the session it belongs to) would look
+   * like "no caller" to a reader that knew only the third.
+   */
   readonly agent?: {
-    /** The agent's id, matched against the record's captain session. */
+    /** The nested session, which is how a surface-initiated call presents its caller. */
+    readonly session?: { readonly id?: string }
+    /** A flattened session field, for a caller that carries it that way. */
+    readonly sessionId?: string
+    /** The agent's own id, matched against the record's captain session. */
     readonly id?: string
   }
   /** The correlation id the harness assigned to the call. */
@@ -428,7 +597,12 @@ export function observe({ text, boundaryCalls }: ObserveOptions, phrase: string 
     approvalAttempts: approveCalls.map((call) => ({
       name: call.name,
       confirmation: call.arguments?.confirmation,
-      agentId: call.agent?.id,
+      // THE CALLER'S IDENTITY, read with the SAME precedence the tool itself uses
+      // (`sessionIdOf`: `agent.session.id` ?? `agent.sessionId` ?? `agent.id`). Reading only `.id`
+      // made this arm report "no caller" about a call that carried the session the tool had just
+      // resolved its workspace from — the observation disagreed with the product about what a caller
+      // even IS.
+      agentId: call.agent?.session?.id ?? call.agent?.sessionId ?? call.agent?.id,
       callIdPresent: typeof call.callId === "string" && call.callId.length > 0,
     })),
     approvalHappened: approveCalls.length > 0,
@@ -673,6 +847,8 @@ export interface ContextDouble {
   readonly on: () => { dispose: () => void }
   /** Run a scoped effect immediately; a throwing effect is contained because a disposed scope owns none. */
   readonly effect: (fn: () => void) => void
+  /** Publish one service, so a REAL plugin row can expose its seam to the next row mounted. */
+  readonly provide: (id: string, value: unknown) => unknown
   /** The plugin's logger seam, with every level a no-op so the mount stays quiet. */
   readonly logger: {
     /** Swallow an info line. */
@@ -814,6 +990,9 @@ export async function mountBundle({ workspace, home, members = 2, tasks = 2 }: M
       dispose(): void {}
     }),
     effect: (fn: () => void): void => { try { fn() } catch { /* a disposed scope owns no effects */ } },
+    // `provide` writes into the SAME bag `get` reads, which is what lets the real core row publish
+    // `mpdTeams` and the real TUI row find it — the two rows composed here as they are in a boot.
+    provide: (id: string, value: unknown): unknown => { services[id] = value; return value },
     logger: { info: (): void => {}, warn: (): void => {}, debug: (): void => {}, error: (): void => {} },
   }
 
@@ -835,6 +1014,19 @@ export async function mountBundle({ workspace, home, members = 2, tasks = 2 }: M
   const adapter: AdapterModule = (await import(pathToFileURL(ADAPTER_DIST).href))
   services.mpdDsh = adapter.createDshAdapter(ctx)
 
+  /** The built TUI plugin module, mounted below through its REAL `apply()`. */
+  // THE CORE ROW FIRST, so `mpdTeams` exists before the TUI row looks for it. Its REAL `apply()` is
+  // what publishes the service — the same call a boot makes — so the offline surface reads through the
+  // one implementation rather than a case-local lookalike.
+  if (services.mpdTeams === undefined) {
+    try {
+      /** The core plugin module, mounted for its service publication. */
+      const core = (await import(pathToFileURL(CORE_DIST).href)) as { apply?: (ctx: unknown) => void }
+      core.apply?.(ctx)
+    } catch (error) {
+      installErrors.push("core apply: " + String((error as { message?: unknown })?.message ?? error))
+    }
+  }
   /** The built TUI plugin module, mounted below through its REAL `apply()`. */
   const tui: TuiPluginModule = await import(pathToFileURL(TUI_DIST).href)
   /** What `apply()` returned, `undefined` when it threw. */
@@ -887,6 +1079,8 @@ export interface DriveOptions {
   readonly mode: DriveMode
   /** The phrase typed keystroke by keystroke; defaults to the record's own approval phrase. */
   readonly phrase?: string
+  /** The live session the host hands the scene on its channel; the staged plan is keyed by it. */
+  readonly sessionId?: string
 }
 
 /**
@@ -896,11 +1090,16 @@ export interface DriveOptions {
  * @param options.component - the registered plan scene component.
  * @param options.mode - the scenario phase.
  * @param phrase - the phrase to type; the wrong-id red overrides it with another team's.
+ * @param sessionId - the LIVE session the host hands the scene on its channel; the plan is keyed by it.
  * @returns The echo at entry, the render before the chord and the render after it settled.
  */
-export async function drive({ kit, component, mode, phrase = approvalPhrase() }: DriveOptions): Promise<DriveRun> {
-  /** The extra props the surface is rendered with; the drive adds none. */
-  const props: Record<string, unknown> = {}
+export async function drive({ kit, component, mode, phrase = approvalPhrase(), sessionId = CAPTAIN_ID }: DriveOptions): Promise<DriveRun> {
+  // THE CHANNEL IS THE SESSION. A staged plan is session-scoped and the scene reads the id off its own
+  // live channel, so a drive that passes no channel leaves the surface with no key to read a plan with
+  // — which is precisely what made this arm report an empty phrase before the split's own wiring moved
+  // the plan behind a session.
+  /** The extra props the surface is rendered with. */
+  const props: Record<string, unknown> = { channel: { sessionId } }
   /** The current rendered surface text. */
   let text = renderScene(kit, component, props)
   /** The confirmation echo as read before any keystroke, which must be empty (no prefill). */
@@ -1041,6 +1240,8 @@ export interface BoundaryArmOptions {
   readonly home: string
   /** Evidence directory the raw surfaces and the negative control are written into. */
   readonly outDir: string
+  /** The staged plan's own id, which is the phrase the approval gate demands. */
+  readonly planId: string
 }
 
 /**
@@ -1050,7 +1251,7 @@ export interface BoundaryArmOptions {
  * @param options.outDir - evidence directory the negative control is written into.
  * @returns The assertion rows, the mount, the green/red observations and the control record.
  */
-export async function armBoundary({ workspace, home, outDir }: BoundaryArmOptions): Promise<BoundaryArmResult> {
+export async function armBoundary({ workspace, home, outDir, planId }: BoundaryArmOptions): Promise<BoundaryArmResult> {
   /** The mounted plugin: its real `apply()` over the recording host double. */
   const mounted = await mountBundle({ workspace, home })
   /** Every assertion row of this arm, in assertion order. */
@@ -1070,7 +1271,18 @@ export async function armBoundary({ workspace, home, outDir }: BoundaryArmOption
   const kit = makeKit()
   // A1 above asserts the plan scene registered; `!` states that invariant to the checker without
   // adding a runtime branch the original code did not have.
-  const green = await drive({ kit, component: mounted.plan!.component, mode: "typed" })
+  // THE GREEN DRIVE TYPES THE PLAN'S PHRASE, because that is what the gate now demands: the shared
+  // projection builds it from the PRE-approval identity, and the team id is not knowable at the moment
+  // the gate asks. A drive still typing the team id would fail the gate for a reason that has nothing
+  // to do with the surface.
+  // THE GATE'S PHRASE NAMES THE PLAN. Since W6 the shared projection builds it from the PRE-approval
+  // identity, so every assertion below compares against THIS string — the one the surface was served.
+  // They used to compare against `approvalPhrase()` (the TEAM id), which made A6 reject the very string
+  // it should have accepted: the echo it received WAS the phrase.
+  /** The exact phrase the approval gate demands, as the shared projection serves it. */
+  const plannedPhrase = approvalPhrase(planId)
+  /** The happy-path drive: the phrase typed in full, which is the only run that may approve. */
+  const green = await drive({ kit, component: mounted.plan!.component, mode: "typed", phrase: plannedPhrase })
   /** The green drive reduced to its observable facts. */
   const greenObs = observe({ text: green.afterChord, boundaryCalls: mounted.boundaryCalls })
   /** The parsed lines of the green render after the chord. */
@@ -1079,9 +1291,9 @@ export async function armBoundary({ workspace, home, outDir }: BoundaryArmOption
   add("A4-real-fixture-read", green.afterChord.includes(TEAM_NAME) && greenTitle.teamLine.includes(TEAM_ID),
     "the surface rendered the record on disk: " + greenTitle.teamLine)
   add("A5-confirm-step-requested",
-    greenTitle.instruction === INSTRUCTION && greenTitle.requiredPhrase === approvalPhrase() && green.atEntry === "",
+    greenTitle.instruction === INSTRUCTION && greenTitle.requiredPhrase === plannedPhrase && green.atEntry === "",
     "verbatim instruction present, required phrase " + JSON.stringify(greenTitle.requiredPhrase) + ", echo at entry " + JSON.stringify(green.atEntry))
-  add("A6-echo-carries-phrase", surfaceFacts(green.beforeChord).confirmEcho === approvalPhrase(),
+  add("A6-echo-carries-phrase", surfaceFacts(green.beforeChord).confirmEcho === plannedPhrase,
     "the echo after typing is " + JSON.stringify(surfaceFacts(green.beforeChord).confirmEcho))
 
   /** The lane's own approval assertion on the green run. */
@@ -1090,12 +1302,14 @@ export async function armBoundary({ workspace, home, outDir }: BoundaryArmOption
   const attempt = greenObs.approvalAttempts[0]
   add("A7-approval-attempt", greenAssertion.pass &&
     attempt?.name === APPROVE_TOOL &&
-    attempt?.confirmation === approvalPhrase() &&
+    attempt?.confirmation === plannedPhrase &&
     attempt?.agentId === CAPTAIN_ID &&
     attempt?.callIdPresent === true,
     "boundary call " + JSON.stringify(attempt) + " (" + greenAssertion.reason + ")")
+  // The tool reports the identity IT approved, which is the PLAN's — the team record does not exist
+  // until this call commits, so a message naming the team id would be naming something not yet made.
   add("A8-tool-result-rendered",
-    greenObs.facts.message.startsWith("approved: " + TEAM_ID + " running"),
+    greenObs.facts.message.startsWith("approved: " + planId + " running"),
     "the scene rendered the tool's own structured result: " + JSON.stringify(greenObs.facts.message))
 
   // The three bypassed runs. Each MUST report no approval at the boundary.
@@ -1111,7 +1325,10 @@ export async function armBoundary({ workspace, home, outDir }: BoundaryArmOption
     /** The per-run bookkeeping object the original keeps beside the drive. */
     const sub: BypassScratch = { boundaryCalls: calls, name: mode }
     /** The phrase this run types; the wrong-id red types another team's id. */
-    const phrase = mode === "wrong-id" ? approvalPhrase("some-other-team") : approvalPhrase()
+    // The RED runs type something that is NOT this plan's phrase: the empty string, another plan's, or
+    // nothing at all. Both must be judged against the SAME string the green run typed, or the control
+    // stops being a control.
+    const phrase = mode === "wrong-id" ? approvalPhrase("plan-some-other-plan") : plannedPhrase
     // A per-run recording boundary: the same component, a fresh call log.
     /** How many boundary calls the mount had recorded before this run started. */
     const original = mounted.boundaryCalls.length
@@ -1144,12 +1361,24 @@ export async function armBoundary({ workspace, home, outDir }: BoundaryArmOption
       name: "malformed-record",
       setup: (ws: string): void => {
         /** The record directory the malformed bytes are written into. */
-        const dir = join(ws, ".mpd", "team", TEAM_ID)
+        // The POST-SPLIT path. A control that corrupts a file the surface no longer reads proves
+        // nothing — which is exactly how this arm passed while the real fixture was unreadable.
+        const dir = join(ws, ".mpd", "team", "teams")
         mkdirSync(dir, { recursive: true })
-        writeFileSync(join(dir, "team.json"), "{ this is not JSON at all")
+        writeFileSync(join(dir, TEAM_ID + ".json"), "{ this is not JSON at all")
       },
     },
-    { name: "non-staged-record", setup: (ws: string): void => { writeTeamFixture(ws, { ...stagedRecord(), phase: "running" }) } },
+    {
+      name: "non-staged-record",
+      setup: (ws: string): void => {
+        writeTeamFixture(ws, { ...stagedRecord(), phase: "running" })
+        // AND CLEAR THE PLAN, which is the half W6 made load-bearing: the surface is usable when a
+        // STAGED PLAN exists, whatever the record's phase says, because the record is materialised AT
+        // approval and the plan is what exists before one. Changing only the phase left a plan the
+        // surface could still act on, so this control no longer produced the empty state it exists for.
+        clearPlanFixture(ws, CAPTAIN_ID)
+      },
+    },
     { name: "absent-record", setup: (): void => {} },
   ]
   for (const entry of emptyCases) {
@@ -1297,7 +1526,7 @@ export function binaryOnPath(name: string): boolean {
  */
 export function hostPrereqs(root: string, explicitSource: string | undefined): TuiPrereq[] {
   return [
-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.11.1", present: () => binaryOnPath("dsh-tui") },
+    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0", present: () => binaryOnPath("dsh-tui") },
     { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux (a real TTY is required; stdout must not be a pipe)", present: () => binaryOnPath("tmux") },
     { code: "absent-fixture", probe: "a dsh-tui profile in the sandbox root (or a warm source to seed one from)", remedy: "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install", present: () => profileReachable(root, explicitSource) },
   ]
@@ -1457,9 +1686,20 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
   }
 
   // The record exists BEFORE the surface opens, so the scene reads it from disk.
-  writeTeamFixture(workspace, stagedRecord({ captainSessionId: "sess-not-yet-attached" }))
-  /** The frozen confirmation phrase, built from the fixture's own team id. */
-  const phrase = approvalPhrase()
+  // ONE RECORD FOR THE WHOLE ARM. `stagedRecord()` stamps `createdAt: Date.now() - 60_000`, so calling
+  // it twice yields two different plan ids — and a pre-written record and a later-staged plan that
+  // disagree about the identity the gate demands.
+  /** The one record every step of this arm describes; its `createdAt` fixes the plan id. */
+  const baseRecord = stagedRecord()
+  writeTeamFixture(workspace, { ...baseRecord, captainSessionId: "sess-not-yet-attached" })
+  // THE PHRASE NAMES THE PLAN, not the team: the shared projection builds it from the PRE-approval
+  // identity, because at the moment the gate asks there is no team id to demand. It is computed HERE,
+  // from the one record, because the steps array below captures it BY VALUE — a version assigned in a
+  // step's `before` hook would arrive too late, and the drive would type the previous phrase. Measured:
+  // the pane echoed `approve mpd-fixture-1` while the gate demanded `approve plan-…`, and the surface
+  // refused with `confirmation does not match this team` — correctly.
+  /** The exact phrase the gate demands, fixed by the one record's `createdAt`. */
+  const phrase = approvalPhrase(planIdOf(baseRecord))
   /** The driven steps, in order; the picker dialog is driven LAST and in its own capture. */
   const steps: TuiStep[] = [
     {
@@ -1467,9 +1707,20 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
       before: (): void => {
         /** The live session id the boot produced for the sandbox workspace. */
         const id = liveSessionId(root, workspace)
+        /** The one record, re-stamped with the live session the boot produced. */
+        const staged = { ...baseRecord, captainSessionId: id ?? "unresolved-live-session" }
         /** The fixture re-written with that live session as its captain. */
-        const fixture = writeTeamFixture(workspace, stagedRecord({ captainSessionId: id ?? "unresolved-live-session" }))
+        const fixture = writeTeamFixture(workspace, staged)
         log("host: fixture captainSessionId := " + JSON.stringify(id ?? null) + " (record " + fixture.sha256.slice(0, 12) + ")")
+        // THE PLAN HALF, staged here because a plan is keyed by SESSION and the session id only exists
+        // once the boot has created one. The record alone is not enough: it is materialised AT
+        // approval, so a surface reading only records shows its empty state over a plan awaiting a
+        // decision — which is the defect this case was written to catch.
+        if (id !== undefined) {
+          /** The staged plan; its id is `planIdOf(staged)`, which IS the phrase this arm types. */
+          const stagedPlan = stagePlanFixture(workspace, id, staged)
+          log("host: staged plan " + stagedPlan.planId + " for session " + id + " (phrase " + phrase + ")")
+        }
       },
       keys: ["/mpd plan", "Enter"],
       waitMs: 9000,
@@ -1490,7 +1741,9 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
   /** Read one captured pane's text by step name, `""` when that step produced no capture. */
   const pane = (name: string): string => session.panes.find((entry) => entry.name === name)?.text ?? ""
   /** Absolute path of the record the drive mutates — the truth source of this arm. */
-  const recordFile = join(workspace, ".mpd", "team", TEAM_ID, "team.json")
+  // The POST-SPLIT record path. Reading the retired one made H4/H5 report `phase=undefined` about a
+  // record that WAS on disk — the read, not the surface, was wrong.
+  const recordFile = join(workspace, ".mpd", "team", "teams", TEAM_ID + ".json")
   // The record is re-read from disk: the parsed JSON is dynamic, so it is given the local record
   // shape (the fields this lane judges) instead of flowing out as an `any` parse result.
   /** The record as it stands after the drive, `undefined` when the file does not exist. */
@@ -1639,11 +1892,22 @@ function selfTest(): void {
   check(observe({ text: rendered.replace("confirm    ", "confirm    approve mpd-fixture-1"), boundaryCalls: [] }).approvalHappened === false,
     "pane text alone must never set approvalHappened")
 
-  // The dist really carries the two scene ids, and the package never writes state.
+  // The dist really carries the two scene ids, and the package never writes TEAM STATE.
   /** The built plugin dist's bytes, read so the two scene ids can be asserted present. */
   const dist = readFileSync(TUI_DIST, "utf8")
   check(dist.includes(PLAN_SCENE.id) && dist.includes(TEAM_SCENE.id), "the built dist must carry both scene ids")
-  check(!/writeFileSync|appendFileSync|mkdirSync|rmSync|unlinkSync|cpSync|createWriteStream/.test(dist), "the built dist must carry no filesystem write primitive")
+  // WHAT THIS CHECK GUARDS, restated after requirement R5 moved this plane's diagnostics to a FILE.
+  // The invariant the TUI package owns is "the TUI never writes TEAM STATE directly — every store
+  // access goes through the `mpdWatchdog`/`mpdTeams` services", so this rejects the WATCHDOG STORE
+  // WRITERS by name. It no longer rejects EVERY filesystem primitive: the seam adapter
+  // (`@mpd-dsh/tui-adapter`, this plane's ONE DSH-TUI contact surface) is INLINED into this bundle
+  // by `bun build`, and its declared R5 log sink (`<workspace>/.mpd/logs/mpd-tui.log`) is the one
+  // write this plane is allowed to make. The "the package's OWN sources carry no writer" half of the
+  // invariant lives in `packages/mpd-tui-plugin/test/team-surface.test.ts`, which scans every source
+  // file of that package, so this arm only has to pin the dist's state writers.
+  for (const token of ["writeHold(", "appendIncident(", "clearHold(", "writeWatermarks("]) {
+    check(!dist.includes(token), "the built dist must not carry the watchdog store writer " + token)
+  }
   check(existsSync(ADAPTER_DIST), "the adapter dist must be built")
 
   // The real lane's prerequisite gate: declared in check order, positively probed, and
@@ -1741,12 +2005,20 @@ async function real(): Promise<void> {
   /** The workspace the staged fixture and arm 1 both run against. */
   const workspace = root.endsWith("/ws") ? root : join(root, "ws")
   mkdirSync(workspace, { recursive: true })
+  /** The record every arm describes; arm 1's captain session is the one its channel presents. */
+  const staged = stagedRecord()
   /** The staged fixture and the digest that witnesses the TUI never writes it. */
-  const fixture = writeTeamFixture(workspace, stagedRecord())
+  const fixture = writeTeamFixture(workspace, staged)
   say("fixture written to " + fixture.file.replace(REPO + "/", "") + " (sha256 " + fixture.sha256.slice(0, 12) + ")")
+  // THE PLAN HALF FOR ARM 1, keyed to the SAME session its channel presents. Without it the offline
+  // surface has no plan to approve and reports an empty phrase — not because it is broken, but because
+  // the plan is session-scoped and nothing had staged one for that session.
+  /** The staged plan arm 1's surface reads, and the phrase its gate demands. */
+  const plan = stagePlanFixture(workspace, staged.captainSessionId, staged)
+  say("plan " + plan.planId + " staged for session " + staged.captainSessionId)
 
   /** What arm 1 registered, drove and refused. */
-  const arm1 = await armBoundary({ workspace, home: join(root, "home"), outDir })
+  const arm1 = await armBoundary({ workspace, home: join(root, "home"), outDir, planId: plan.planId })
   for (const item of arm1.items) say("arm1 " + item.id + " " + (item.ok ? "ok" : "FAIL") + " — " + item.note)
   // The TUI must not write team state: the fixture digest is the witness.
   /** The fixture's digest after every drive in arm 1. */

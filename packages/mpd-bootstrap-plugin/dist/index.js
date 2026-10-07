@@ -1,12 +1,12 @@
 // packages/mpd-bootstrap-plugin/src/index.ts
-import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync as rmSync2 } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname as dirname2, join } from "node:path";
+import { dirname as dirname2, join as join2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 import { dirname } from "node:path";
@@ -17,7 +17,204 @@ function errorMessage(error) {
 function bundleRootOf(moduleUrl) {
   return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
 }
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+}
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_SKILLS = "skills";
+function dshSeamInject(...names) {
+  return [...names];
+}
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -45,11 +242,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -62,7 +271,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -70,6 +279,46 @@ function workspaceRootsOf(agents) {
   }
 }
 function noop() {}
+var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
+function goalSnapshotOf(view) {
+  if (view === null || view === undefined || typeof view !== "object")
+    return;
+  const raw = view;
+  if (typeof raw.id !== "string" || raw.id === "")
+    return;
+  const snapshot = {
+    id: raw.id,
+    revision: typeof raw.revision === "number" ? raw.revision : 0,
+    objective: typeof raw.objective === "string" ? raw.objective : "",
+    phase: raw.phase === "paused" || raw.phase === "blocked" || raw.phase === "complete" ? raw.phase : "active",
+    maxGoalRounds: typeof raw.maxGoalRounds === "number" ? raw.maxGoalRounds : 0
+  };
+  if (typeof raw.roundsStarted === "number")
+    snapshot.roundsStarted = raw.roundsStarted;
+  if (raw.activation === "armed" || raw.activation === "disarmed")
+    snapshot.activation = raw.activation;
+  const reason = raw.blockedReason;
+  if (reason !== null && typeof reason === "object") {
+    const code = reason.code;
+    const message = reason.message;
+    if (typeof code === "string" && code !== "" && typeof message === "string" && message !== "") {
+      snapshot.blockedReason = { code, message };
+    }
+  }
+  return snapshot;
+}
+function goalValueOf(value) {
+  if (value === null || value === undefined || typeof value !== "object")
+    return { goal: null };
+  const raw = value;
+  const activation = raw.activation === "armed" || raw.activation === "disarmed" ? raw.activation : undefined;
+  const goal = goalSnapshotOf(raw.goal);
+  if (goal === undefined)
+    return activation === undefined ? { goal: null } : { goal: null, activation };
+  if (activation !== undefined)
+    goal.activation = activation;
+  return activation === undefined ? { goal } : { goal, activation };
+}
 function scopeOfAgentContext(agent) {
   let context;
   try {
@@ -213,6 +462,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -238,16 +488,18 @@ function createDshAdapter(ctx, config = {}) {
     }
     return liveAgents().find((candidate) => candidate.id === id);
   }
-  const engineCache = new Map;
+  const engineCache = new WeakMap;
   function compactionEngineForAgent(agentId) {
     const id = String(agentId ?? "");
     if (id === "")
       return;
-    const cached = engineCache.get(id);
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    const cached = engineCache.get(agent);
     if (cached !== undefined)
       return cached;
-    const agent = liveAgent(id);
-    const scoped = agent?.ctx;
+    const scoped = agent.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -258,7 +510,7 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(id, engine);
+    engineCache.set(agent, engine);
     return engine;
   }
   function onEvent(event, handler) {
@@ -278,7 +530,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -369,6 +621,210 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
     return;
   }
+  const nativeMembers = new Map;
+  const officialMembers = new Map;
+  const neverAborted = () => new AbortController().signal;
+  const sessionIdOfAgent = (agent) => {
+    const session = agent?.session;
+    return typeof session?.id === "string" ? session.id : "";
+  };
+  function nativeTeamExecutor(reason, ready) {
+    const subagentsOf = () => service("subagents");
+    return {
+      kind: "native",
+      reason,
+      providers: () => {
+        try {
+          const list = subagentsOf()?.providers;
+          if (typeof list !== "function")
+            return [];
+          const names = list.call(subagentsOf());
+          return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
+        } catch {
+          return [];
+        }
+      },
+      async spawn(caller, request) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        if (typeof subagents.startContinuable !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member");
+        }
+        const spec = {
+          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          label: `${request.name} · ${request.teamId}`,
+          request: {
+            prompt: textBlock(request.prompt),
+            parent: caller,
+            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+          },
+          signal: request.signal ?? neverAborted()
+        };
+        const started = await subagents.startContinuable.call(subagents, spec);
+        const handle = String(started?.childId ?? started?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
+        return { handle, executor: "native" };
+      },
+      async send(caller, handle, content, signal) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`);
+        if (typeof subagents.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await subagents.sendMessage.call(subagents, caller, handle, textBlock(content), { signal: signal ?? neverAborted() });
+      },
+      async interrupt(caller, handle) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot interrupt team member "${handle}"`);
+        if (typeof subagents.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt() — cannot interrupt a team member");
+        }
+        subagents.interrupt.call(subagents, handle, { kind: "ancestor", agent: caller });
+      },
+      membership(agent) {
+        const id = sessionIdOfAgent(agent);
+        if (id === "")
+          return;
+        const entry = nativeMembers.get(id);
+        return entry === undefined ? undefined : { teamId: entry.teamId, role: "teammate", name: entry.name };
+      },
+      members: () => [...nativeMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function officialTeamExecutor() {
+    return {
+      kind: "official",
+      reason: "official: the native seams are unavailable, so the mounted Agent Teams service executes the team",
+      providers: () => [],
+      async spawn(caller, request) {
+        const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`);
+        if (typeof teams.spawnTeammate !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member");
+        }
+        const spawned = await teams.spawnTeammate.call(teams, caller, {
+          name: request.name,
+          description: request.description === "" ? request.name : request.description,
+          prompt: request.prompt,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+        const handle = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the official backend raised "${request.name}" but reported no id`);
+        officialMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name });
+        return { handle, executor: "official" };
+      },
+      async send(caller, handle, content, signal) {
+        const teams = requireService("agentTeams", `cannot deliver a message to team member "${handle}"`);
+        if (typeof teams.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await teams.sendMessage.call(teams, caller, { target: handle, content: textBlock(content), ...signal === undefined ? {} : { signal } });
+      },
+      async interrupt(caller, handle) {
+        const teams = requireService("agentTeams", `cannot interrupt team member "${handle}"`);
+        if (typeof teams.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no interrupt() — cannot interrupt a team member");
+        }
+        const target = officialMembers.get(handle)?.name ?? handle;
+        teams.interrupt.call(teams, caller, target);
+      },
+      membership: (agent) => {
+        const teams = service("agentTeams");
+        const tryMembership = teams?.tryMembership;
+        if (typeof tryMembership !== "function")
+          return;
+        try {
+          const membership = tryMembership.call(teams, agent);
+          if (membership === undefined || membership === null)
+            return;
+          const role = membership.role;
+          if (role !== "lead" && role !== "teammate")
+            return;
+          return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+        } catch {
+          return;
+        }
+      },
+      members: () => [...officialMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function scopedToolRegistry(agent) {
+    const scope = scopeOfAgentContext(agent);
+    if (scope === undefined)
+      return;
+    try {
+      const tools = scope.context?.tools;
+      return typeof tools?.execute === "function" ? tools : undefined;
+    } catch {
+      return;
+    }
+  }
+  function hostToolDefinition(name) {
+    try {
+      const hostView = service("tools");
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name);
+    try {
+      return scoped.get(name, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name) {
+    if (hostToolDefinition(name) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined);
+  }
+  function projectToolResult(raw) {
+    const record = raw;
+    if (record?.isError === true) {
+      const error = record.error;
+      return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
+    }
+    return { ok: true, isError: false, value: record?.value, raw };
+  }
+  async function executeToolForAgent(input) {
+    const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
+    const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
+    const scoped = input.agent === undefined ? undefined : scopedToolRegistry(input.agent);
+    if (scoped !== undefined) {
+      try {
+        const raw = await scoped.execute({
+          name: input.name,
+          arguments: input.arguments ?? {},
+          callId,
+          ...signal === undefined ? {} : { signal },
+          ...input.agent === undefined ? {} : { agent: input.agent }
+        });
+        return { result: projectToolResult(raw), via: "agent-scope" };
+      } catch (error) {
+        return { result: { ok: false, isError: true, error: errorMessage(error) }, via: "agent-scope" };
+      }
+    }
+    const result = await adapter.executeTool({
+      name: input.name,
+      arguments: input.arguments ?? {},
+      callId,
+      ...signal === undefined ? {} : { signal },
+      ...input.agent === undefined ? {} : { agent: input.agent },
+      ...input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }
+    });
+    return { result, via: "host-plane" };
+  }
   const adapter = {
     capabilities() {
       const tools = service("tools");
@@ -381,6 +837,7 @@ function createDshAdapter(ctx, config = {}) {
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
+      const goalService = service("goals");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -413,6 +870,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsRegisterHost: typeof tools?.register === "function",
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
         subagentsContinuable: typeof subagents?.startContinuable === "function",
+        teamExecutorNative: typeof subagents?.startContinuable === "function",
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -428,16 +886,84 @@ function createDshAdapter(ctx, config = {}) {
         team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
         teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
-        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function",
+        goals: typeof goalService?.get === "function",
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
       };
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
+    goalState(agent) {
+      const goals = service("goals");
+      if (goals === undefined || typeof goals.get !== "function")
+        return;
+      try {
+        const view = goals.get(agent);
+        return goalSnapshotOf(view) ?? null;
+      } catch {
+        return;
+      }
+    },
+    async goalControl(input) {
+      if (input === null || typeof input !== "object" || typeof input.action !== "string") {
+        return { ok: false, isError: true, error: "goalControl requires an action" };
+      }
+      if (input.agent === undefined)
+        return { ok: false, isError: true, error: "goal tools require a calling agent" };
+      let goalId = input.goalId;
+      let revision = input.revision;
+      const needsRef = input.action !== "create" && input.action !== "read";
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        const current = await executeToolForAgent({ name: "get_goal", agent: input.agent, callId: input.callId, signal: input.signal, timeoutMs: input.timeoutMs });
+        if (!current.result.ok)
+          return { ok: false, isError: true, error: current.result.error, via: current.via, raw: current.result.raw };
+        const read = goalValueOf(current.result.value);
+        if (read.goal === null)
+          return { ok: false, isError: true, error: "no current goal", via: current.via, raw: current.result.raw };
+        goalId = goalId ?? read.goal.id;
+        revision = revision ?? read.goal.revision;
+      }
+      const toolName = input.action === "read" ? "get_goal" : input.action === "create" ? "create_goal" : "update_goal";
+      const toolArguments = input.action === "read" ? {} : input.action === "create" ? { objective: input.objective, ...input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds } } : {
+        goal_id: goalId,
+        revision,
+        action: input.action,
+        ...input.objective === undefined ? {} : { objective: input.objective },
+        ...input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds },
+        ...input.blockedReason === undefined ? {} : { blocked_reason: input.blockedReason }
+      };
+      if (input.action === "create" && (typeof input.objective !== "string" || input.objective.trim() === "")) {
+        return { ok: false, isError: true, error: "goalControl create requires a non-empty objective" };
+      }
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        return { ok: false, isError: true, error: "goalControl " + input.action + " requires an exact goal id and revision" };
+      }
+      const call = await executeToolForAgent({
+        name: toolName,
+        arguments: toolArguments,
+        agent: input.agent,
+        callId: input.callId,
+        signal: input.signal,
+        timeoutMs: input.timeoutMs
+      });
+      if (!call.result.ok)
+        return { ok: false, isError: call.result.isError, error: call.result.error, via: call.via, raw: call.result.raw };
+      const value = goalValueOf(call.result.value);
+      return {
+        ok: true,
+        isError: false,
+        goal: value.goal,
+        ...value.activation === undefined ? {} : { activation: value.activation },
+        via: call.via,
+        raw: call.result.raw
+      };
+    },
     llmListModels(provider) {
       const llm = requireService("llm", 'cannot list the models of provider "' + provider + '"');
       if (typeof llm.listModels !== "function")
@@ -563,20 +1089,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },
@@ -595,12 +1113,7 @@ function createDshAdapter(ctx, config = {}) {
           ...signal === undefined ? {} : { signal },
           ...input.agent === undefined ? {} : { agent: input.agent }
         });
-        const isError = raw?.isError === true;
-        if (isError) {
-          const error = raw?.error;
-          return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
-        }
-        return { ok: true, isError: false, value: raw?.value, raw };
+        return projectToolResult(raw);
       } catch (error) {
         return { ok: false, isError: true, error: errorMessage(error) };
       }
@@ -668,6 +1181,22 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamExecutor() {
+      const override = (() => {
+        try {
+          const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_TEAM_EXECUTOR : undefined;
+          return typeof raw === "string" && raw.trim() !== "" ? raw.trim().toLowerCase() : undefined;
+        } catch {
+          return;
+        }
+      })();
+      const nativeReady = typeof service("subagents")?.startContinuable === "function";
+      const officialReady = service("agentTeams") !== undefined;
+      const chosen = override === "official" && officialReady ? "official" : override === "native" && nativeReady ? "native" : nativeReady ? "native" : officialReady ? "official" : "native";
+      if (chosen === "official")
+        return officialTeamExecutor();
+      return nativeTeamExecutor(nativeReady ? override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native" : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse", nativeReady);
     },
     teamService() {
       const teams = service("agentTeams");
@@ -891,7 +1420,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -910,7 +1439,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -1001,10 +1530,31 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 var SERVICE_NAME = "mpdDsh";
-function resolveDshAdapter(ctx) {
-  const get = typeof ctx?.get === "function" ? ctx.get : undefined;
-  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME);
-  return mounted ?? createDshAdapter(ctx);
+function resolveDshAdapter(ctx, options = {}) {
+  const mounted = probeMpdDsh(ctx, true);
+  if (mounted.value !== undefined)
+    return mounted.value;
+  const warn = options.warn ?? ((line) => rowLogLine("mpd-dsh-adapter", line));
+  warn(probeMpdDsh(ctx, false).missing ? adapterFallbackWarning() : adapterPendingWarning());
+  return createDshAdapter(ctx);
+}
+var ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter";
+function adapterPendingWarning() {
+  return "ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber" + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE" + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted" + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).";
+}
+function adapterFallbackWarning() {
+  return "ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided" + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter" + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)" + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working," + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the" + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).";
+}
+function probeMpdDsh(ctx, strict) {
+  const get = ctx?.get;
+  if (typeof get !== "function")
+    return { missing: true };
+  try {
+    const value = get.call(ctx, SERVICE_NAME, strict);
+    return value === undefined || value === null ? { missing: true } : { value, missing: false };
+  } catch {
+    return { missing: true };
+  }
 }
 
 // packages/mpd-ext-plugin/src/skill-frontmatter.ts
@@ -1183,24 +1733,24 @@ function parseInvocation(data) {
 
 // packages/mpd-bootstrap-plugin/src/index.ts
 var name = "mpd-bootstrap";
-var inject = ["skills"];
+var inject = dshSeamInject(DSH_SEAM_SKILLS);
 var PROVIDER_NAME = "mpd-bundle";
 var BUNDLED_SKILL_RANK = 600;
 var SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 var bundleRoot = () => bundleRootOf(import.meta.url);
 function harnessHome() {
-  return process.env.DSH_HOME || join(homedir(), ".dsh");
+  return process.env.DSH_HOME || join2(homedir(), ".dsh");
 }
 function presetsSource(root) {
-  const packed = join(root, "presets");
-  return existsSync(packed) ? packed : join(root, "packages", "mpd-bootstrap-plugin", "presets");
+  const packed = join2(root, "presets");
+  return existsSync(packed) ? packed : join2(root, "packages", "mpd-bootstrap-plugin", "presets");
 }
 function warn(ctx, message) {
   try {
     if (ctx.logger && typeof ctx.logger.warn === "function")
       ctx.logger.warn(message);
     else
-      console.log("[mpd-bootstrap] " + message);
+      rowLogLine("mpd-bootstrap", "[mpd-bootstrap] " + message);
   } catch {}
 }
 async function readSkillFile(filePath, ctx) {
@@ -1264,9 +1814,9 @@ async function listCorpus(root) {
     if (entry.name === ".system")
       continue;
     if (entry.isDirectory())
-      found.push({ entry: entry.name, locator: join(root, entry.name, "SKILL.md"), directory: join(root, entry.name) });
+      found.push({ entry: entry.name, locator: join2(root, entry.name, "SKILL.md"), directory: join2(root, entry.name) });
     else if (entry.isFile() && entry.name.endsWith(".md"))
-      found.push({ entry: entry.name, locator: join(root, entry.name), directory: root });
+      found.push({ entry: entry.name, locator: join2(root, entry.name), directory: root });
   }
   return found;
 }
@@ -1324,7 +1874,7 @@ function createProvider(root, ctx, dsh, invalidate) {
           return;
         invalidate();
       } catch (error) {
-        console.warn("[mpd-bootstrap] fs/observed invalidation failed (the observation is unaffected): " + String(error?.message ?? error));
+        rowLogLine("mpd-bootstrap", "[mpd-bootstrap] fs/observed invalidation failed (the observation is unaffected): " + String(error?.message ?? error));
       }
     });
   }
@@ -1333,22 +1883,22 @@ function createProvider(root, ctx, dsh, invalidate) {
 function removeIfPresent(target) {
   if (!existsSync(target))
     return false;
-  rmSync(target, { recursive: true, force: true });
+  rmSync2(target, { recursive: true, force: true });
   return true;
 }
 function cleanLegacyCopies(ctx, corpus, presets, config) {
   const removed = [];
-  const skillsStamp = join(harnessHome(), "skills", ".mpd-skills-version");
+  const skillsStamp = join2(harnessHome(), "skills", ".mpd-skills-version");
   if (existsSync(skillsStamp)) {
     for (const name2 of listCorpusSync(corpus)) {
-      const target = join(harnessHome(), "skills", name2);
+      const target = join2(harnessHome(), "skills", name2);
       if (removeIfPresent(target))
         removed.push(target);
     }
     removeIfPresent(skillsStamp);
   }
   if (config.skipPresets !== true) {
-    const presetsStamp = join(harnessHome(), ".agent-presets", ".mpd-presets-version");
+    const presetsStamp = join2(harnessHome(), ".agent-presets", ".mpd-presets-version");
     if (existsSync(presetsStamp)) {
       let ids = [];
       try {
@@ -1357,7 +1907,7 @@ function cleanLegacyCopies(ctx, corpus, presets, config) {
         ids = [];
       }
       for (const id of ids) {
-        const target = join(harnessHome(), ".agent-presets", id);
+        const target = join2(harnessHome(), ".agent-presets", id);
         if (removeIfPresent(target))
           removed.push(target);
       }
@@ -1380,20 +1930,20 @@ function listCorpusSync(root) {
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   const root = bundleRoot();
-  const corpus = config.skillsDir ? config.skillsDir : join(root, "skills");
+  const corpus = config.skillsDir ? config.skillsDir : join2(root, "skills");
   const presets = presetsSource(root);
   let version = "unknown";
   try {
-    version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version ?? "unknown";
+    version = JSON.parse(readFileSync(join2(root, "package.json"), "utf8")).version ?? "unknown";
   } catch {}
   if (config.skipSkills === true) {
-    console.log("[mpd-bootstrap] skill corpus provider skipped (config)");
+    rowLogLine("mpd-bootstrap", "[mpd-bootstrap] skill corpus provider skipped (config)");
   } else {
     dsh.registerSkillProvider((control) => createProvider(corpus, ctx, dsh, () => control?.invalidate?.()));
-    console.log("[mpd-bootstrap] skill corpus served from " + corpus + " (provider " + PROVIDER_NAME + ", bundle " + version + ")");
+    rowLogLine("mpd-bootstrap", "[mpd-bootstrap] skill corpus served from " + corpus + " (provider " + PROVIDER_NAME + ", bundle " + version + ")");
   }
   if (config.skipLegacyCleanup === true) {
-    console.log("[mpd-bootstrap] legacy home-copy cleanup skipped (config)");
+    rowLogLine("mpd-bootstrap", "[mpd-bootstrap] legacy home-copy cleanup skipped (config)");
     return;
   }
   try {

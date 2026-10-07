@@ -1,0 +1,100 @@
+{
+  "wave": "W5 \u2014 close-out: the TUI-plane guard's fate, the bilingual correction, and the full sweep",
+  "toolchain": {
+    "bun": "1.4.0",
+    "note": "the manifest's pinned buildToolchain, first on PATH"
+  },
+  "the_guard_decision": {
+    "question": "the approved plan said W5 removes the now-unneeded TUI-plane guard; is it unneeded?",
+    "answer": "NO \u2014 it is KEPT, with its justification RE-SCOPED. Removing it would put an activation error back on every dsh-tui boot.",
+    "reasoning": [
+      "the split removed the reason the TEAM needed that official row; it did not and cannot remove the reason the ROW cannot mount",
+      "`TeamService`'s ROOT-bound `ctx.root.sessionProjections.register` is refused by the dsh-tui host ('root.effect is unavailable from a plugin activation') \u2014 a property of the HOST's capability wrapper, measured at harness 0.2.0-rc.1 + dsh-tui 0.11.2 and identical in the 0.1.7-rc.2 copy this bundle pins (evidence/tui/team-plane-not-mountable/20260929T083309Z/)",
+      "so the guard no longer says 'the team plane would be dead here' (UNTRUE since W2) and says 'a row that cannot mount in this composition would print an activation error on every boot, and disabling it costs the TUI plane nothing' (true, and now measurable: the team works either way)"
+    ],
+    "what_the_split_did_change": "the TUI plane now HAS a working team: the mpd record plus the NATIVE executor over ctx.subagents. The boot log states it \u2014 see team-boot-lines.txt.",
+    "edit": "cordis.patch.yml: the TUI-PLANE block gained a W5 section stating the above, and the runtime warning line now tells the operator the team is unaffected and why."
+  },
+  "docs_corrected_bilingual": {
+    "docs/tui.md + docs/tui.zh-CN.md": [
+      "\u00a710 NOT-CLAIMED item 11 said 'No teammate can be spawned in a TUI session' \u2014 FALSE since W2, because the native executor spawns teammates with nothing from the official plugin. Rewritten in BOTH languages to separate what still cannot happen (the official service activating) from what now can (a teammate being spawned), and to carry the boot line that proves it.",
+      "\u00a73.2's opening claim gained the same distinction in both languages, and the W3 scene is now named there (rank columns, status colours, focus chain, rail fallback)."
+    ],
+    "AGENTS.md \u00a71": "the team bullet now names mpdTeams, the /plugins/mpd-team/state route, the TeamExecutor seam with native-as-default, both rebuilt surfaces, and that no mpd surface reads dsh.teamLiveTeams() any more. Trimmed elsewhere to stay inside the 65,536-byte instruction budget (65,244 after the edit)."
+  },
+  "gates": {
+    "tests": {
+      "cmd": "bun test packages",
+      "exit": 0,
+      "summary": "1337 pass, 3 skip, 0 fail \u2014 122 files, 13122 expect() calls"
+    },
+    "verify-dist-fresh": {
+      "cmd": "PATH=<pinned bun> node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "summary": "23/23 targets fresh"
+    },
+    "verify:comments": {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:rows": {
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "summary": "PASS \u2014 33 row ids"
+    },
+    "verify:manifest": {
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:docs": {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "summary": "PASS \u2014 41 pairs, 0 violations, 419 links, 0 dead"
+    },
+    "verify-manual-paths": {
+      "cmd": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "summary": "PASS \u2014 133 resolved, 0 unresolved"
+    },
+    "d6-no-direct-team-access": {
+      "cmd": "bun test packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts",
+      "exit": 0,
+      "summary": "PASS \u2014 0 findings"
+    },
+    "typecheck": {
+      "cmd": "bun run typecheck",
+      "summary": "4 errors, ALL pre-existing in skills/programming/scripts/typescript/check-no-excuse-rules.ts \u2014 none new"
+    },
+    "test:qa": {
+      "cmd": "bun run test:qa",
+      "summary": "all self-tests passed (incl. mpd-ext --self-test 53 checks + the example extension validating loadable)"
+    },
+    "installer": {
+      "cmd": "node scripts/install-profile.ts --dry-run",
+      "summary": "DRY-RUN done, nothing written"
+    },
+    "preset-conformance": {
+      "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts",
+      "summary": "PASS \u2014 the live mount boot"
+    },
+    "verify-vendor": {
+      "cmd": "node scripts/verify-vendor.ts",
+      "exit": 1,
+      "note": "ENVIRONMENT PREREQUISITE, NOT A REGRESSION: the gate needs an oh-my-openagent checkout at MPD_UPSTREAM_ROOT, which this environment does not have. Also not applicable: no skills/** file changed in this wave, so no VENDOR_LOCK re-pin is due."
+    }
+  },
+  "mount_boot": {
+    "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts",
+    "result": "PASS",
+    "proves": "the resolution, in a real isolated boot: 'team executor: native (native: the default backend \u2014 it needs nothing from the official plugin)'. The apply-time line reads UNAVAILABLE first, which is the measured host-plane ordering W2 deferred the report for.",
+    "source": "evidence/dsh-qa/preset-conformance/2026-09-29T10-59-10.474Z/",
+    "LIMIT": "this boot is HEADLESS and mounts no web server, so it cannot witness the /plugins/mpd-team/state route. The route is proven by its nine unit arms (including 'a composition with NO web server registers nothing')."
+  },
+  "not_claimed": [
+    "no TUI real-machine lane was run: `tui-mount` and `tui-team-surface` both SKIP in this environment for an absent dsh-tui profile fixture ('absent-fixture'), and the remedy is a heavy install. The TUI surface is proven by the 47 arms in mpd-tui-plugin (18 pure-renderer + 29 scene) rather than by a live PTY.",
+    "no live teammate was ever spawned: this environment holds no credentials, and \u00a77 forbids writing any.",
+    "no browser profile was booted: the Web side is proven by arms plus a parse check of the served client.js."
+  ]
+}

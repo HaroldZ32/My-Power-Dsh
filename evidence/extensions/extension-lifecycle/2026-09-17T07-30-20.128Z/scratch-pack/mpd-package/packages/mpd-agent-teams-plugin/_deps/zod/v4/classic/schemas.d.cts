@@ -1,7 +1,7 @@
-import * as core from "../core/index.cjs";
-import { util } from "../core/index.cjs";
-import type { StandardSchemaWithJSONProps } from "../core/standard-schema.cjs";
-import * as parse from "./parse.cjs";
+import * as core from "../core/index.cts";
+import { util } from "../core/index.cts";
+import type { StandardSchemaWithJSONProps } from "../core/standard-schema.cts";
+import * as parse from "./parse.cts";
 export type ZodStandardSchemaWithJSON<T> = StandardSchemaWithJSONProps<core.input<T>, core.output<T>>;
 export interface ZodType<out Output = unknown, out Input = unknown, out Internals extends core.$ZodTypeInternals<Output, Input> = core.$ZodTypeInternals<Output, Input>> extends core.$ZodType<Output, Input, Internals> {
     def: Internals["def"];

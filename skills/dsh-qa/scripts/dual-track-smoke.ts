@@ -50,7 +50,7 @@ const BASEURL_PREFIX = '(typeof baseUrl === "string" ? decodeURIComponent(baseUr
 /** Rewrite the committed bundle patch into a checkout-resolvable one, as the QA dev flavor does. */
 function devPatch(): string {
   // The committed bundle patch, whose packed row operands are rewritten below.
-  const t = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
+  const t = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   return t
     .split(PACKED_PRESETS_EXPR).join(JSON.stringify(join(repoRoot, "presets")))
     .split(BASEURL_PREFIX).join("")

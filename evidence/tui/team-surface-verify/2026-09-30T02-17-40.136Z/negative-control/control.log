@@ -1,0 +1,8 @@
+GREEN run (phrase typed):     pass=false no call to agent_teams_plan reached the harness boundary (calls=0)
+  message: 
+RED run (empty):          pass=false no call to agent_teams_plan reached the harness boundary (calls=0)
+  message: 
+RED run (wrong-id):          pass=false no call to agent_teams_plan reached the harness boundary (calls=0)
+  message: 
+RED run (cancelled):          pass=false no call to agent_teams_plan reached the harness boundary (calls=0)
+  message: 

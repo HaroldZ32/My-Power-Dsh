@@ -1,12 +1,12 @@
 // B4 mpd-modelchain-plugin: upstream fallback-chain resolution (DeepSeek-first) + workspace memory.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
-import { resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-modelchain"
-/** The tool registry the three `mpd_*` tools are registered into. */
-export const inject = ["tools"]
+/** The tool registry the three `mpd_*` tools are registered into, named by its adapter constant. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the row context this plugin reads: the tool registry plus the two lazily-read services. */
 type Ctx = { tools: any; get?: (k: string) => any; [k: string]: any }

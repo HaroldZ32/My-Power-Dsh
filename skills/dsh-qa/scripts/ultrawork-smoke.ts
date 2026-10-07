@@ -55,7 +55,7 @@ function selfTest(): void {
     if (!dist.includes(s)) { console.error("[ultrawork-smoke self-test] FAIL: missing " + s); process.exit(1) }
   }
   // The bundle patch, which must still carry the ulw row.
-  const bundle = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const bundle = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   if (!bundle.includes("mpd-ulw")) { console.error("[ultrawork-smoke self-test] FAIL: bundle row"); process.exit(1) }
   console.log("[ultrawork-smoke self-test] ok: engine symbols + bundle row verified")
 }

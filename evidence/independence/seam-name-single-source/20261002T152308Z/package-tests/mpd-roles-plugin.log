@@ -1,0 +1,8 @@
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: a PROJECT-plane extension's role is refused (the contract rejects it) [1.22ms]
+
+ 57 pass
+ 0 fail
+ 664 expect() calls
+Ran 57 tests across 3 files. [140.00ms]

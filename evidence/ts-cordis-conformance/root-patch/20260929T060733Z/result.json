@@ -1,0 +1,41 @@
+{
+  "change": "the bundle's host-plane patch layer moved to the standard cordis location: packages/mpd-bundle/cordis.patch.yml -> cordis.patch.yml (repository root)",
+  "request": "standard cordis form: the repository root must carry cordis.patch.yml",
+  "measuredAt": "2026-09-29T06:07:33Z",
+  "headBefore": "5e5454bb5ba449a4817b827938a9fd4b04e30936",
+  "branch": "dev",
+  "fileMovedBytesUnchanged": true,
+  "cordisPatchSha256": "823e95759b3a542b778edff18584a655137516b33663e35194ae95876670dae1",
+  "manifestAfter": {
+    "dsh.bundle.patch": ["./cordis.patch.yml", "./presets/mpd.patch.yml"],
+    "filesAllowlistAdmitsRootPatch": true
+  },
+  "whyItIsSafe": "every path-bearing value in the patch resolves through the loader's baseUrl, which is the PROFILE directory, not the patch file's own directory — so relocating the file changes no row path. Measured: install-profile --dry-run still resolves every row from the new root.",
+  "consumersUpdated": [
+    "package.json (dsh.bundle.patch[0], files allowlist)",
+    "scripts/pack-mpd.ts (devPatch, MAIN_PATCH_REL doc/comment)",
+    "scripts/install-profile.ts, scripts/install-mcp.ts, scripts/verify-pack-closure.ts, scripts/mpd-doctor.ts",
+    "skills/dsh-qa/scripts/*.ts (22 case scripts that read the bundle patch)",
+    "docker/entrypoint.sh (required-paths list, hash pin block)",
+    "AGENTS.md (§3 layout tree, §8 mounting contract), README.md + zh-CN, CONTRIBUTING.zh-CN",
+    "docs/{design,user-guide,tui,extension-adaptation-report,upstream-parity-ledger}.md + zh-CN twins",
+    "packages/{mpd-bundle,mpd-bootstrap-plugin,mpd-tui-plugin}/README pairs and their src/test references",
+    "tests/overlays/*.yml comments"
+  ],
+  "recordsDeliberatelyLeftAlone": [
+    "docs/plan-*.md (plan records describe a past revision)",
+    "docs/tui-edition-report.md (declared prior-phase report)",
+    "tests/golden/out/** (golden fixtures)",
+    "evidence/** (QA records, language as produced)"
+  ],
+  "gates": {
+    "verify-rows-parity": "PASS — 33 row ids match the 2-file bundle patch layer",
+    "verify-plugin-manifest --pack": "PASS — 2 declared patch files, 24 row module paths resolve, 27 allowlist patterns, npm pack carries every required path",
+    "verify-docs-parity": "PASS — pairs=41 failed=0 violations=0 dead=0",
+    "verify-pack-closure": "ok — 20 dist rows + 4 mcp rows resolve; packed tree skipped (dist/mpd-package absent)",
+    "verify-manual-paths": "PASS — resolved=127 (the new root cordis.patch.yml is exercised as an audited path)",
+    "verify-comment-coverage": "PASS — 350 files, 27247 declarations",
+    "install-profile --dry-run": "completes; every row resolves from the relocated patch"
+  },
+  "notRun": "no mounting boot in this environment (dsh CLI not installed); the Docker lane is the release-sweep step per AGENTS.md §4"
+}

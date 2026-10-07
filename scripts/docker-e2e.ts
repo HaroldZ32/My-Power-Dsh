@@ -244,6 +244,27 @@ export function decideExit(result: ResultBody | null | undefined): number {
 }
 
 /**
+ * The assertions an arm the caller REQUIRED came back unable to evaluate.
+ *
+ * A `null` row means "not attempted / not reached", which is the right shape for an optional arm: the
+ * credential-free run has always reported `boot.llmTurn: null` and stayed green. It is the WRONG shape
+ * for an arm the caller explicitly asked for — with `--live` (or the browser lane on by default) a
+ * null means the thing under test was never driven, and a run that greens through that is exactly how
+ * the 2026-10-03 `MALFORMED_RESPONSE` defect stayed invisible: 52 of 53 assertions passed while no
+ * model token had ever been produced. PURE, so `--self-test` exercises every arm without Docker.
+ *
+ * @param result - The result.json body, or null/undefined when none was produced.
+ * @param prefixes - Assertion-name prefixes whose `null` rows are fatal (e.g. `live.`, `ui.`).
+ * @returns The names of the unevaluated assertions inside a required arm, in report order.
+ */
+export function unmeasuredRequired(result: ResultBody | null | undefined, prefixes: readonly string[]): string[] {
+  if (result === null || result === undefined || prefixes.length === 0) return []
+  return (result.assertions ?? [])
+    .filter((assertion: ResultAssertion) => assertion.ok === null && prefixes.some((prefix) => assertion.name.startsWith(prefix)))
+    .map((assertion: ResultAssertion) => assertion.name)
+}
+
+/**
  * A one-line human summary of a result.json body.
  *
  * @param result - The result.json body, or null/undefined when none was produced.
@@ -448,6 +469,38 @@ function selfTest(): void {
   check("decideExit(null) === 2", decideExit(null) === 2)
   check("summarize names the failed assertion", summarize({ ok: false, complete: false, summary: {}, assertions: [{ name: "boot.x", ok: false }, { name: "y", ok: null }] }).includes("FAILED=[boot.x]"))
 
+  // 3b. the REQUIRED-ARM gate: an arm the caller asked for must never green by not running.
+  /** A body with one null row in each of the two optional arms, plus one unrelated null. */
+  const mixedArms: ResultBody = {
+    ok: true,
+    assertions: [
+      { name: "live.web.turnCompleted", ok: null, reason: "not attempted" },
+      { name: "ui.replyRendered", ok: null, reason: "not attempted" },
+      { name: "boot.llmTurn", ok: null, reason: "not attempted" },
+      { name: "tui.boot", ok: null, reason: "not reached" },
+      { name: "live.web.toolCallsParsed", ok: true, reason: "ok" }
+    ]
+  }
+  check("a null live row is unmeasured when --live was asked for", unmeasuredRequired(mixedArms, ["live.", "boot.llmTurn"]).join(",") === "live.web.turnCompleted,boot.llmTurn")
+  check("a null ui row is unmeasured when the browser lane is on", unmeasuredRequired(mixedArms, ["ui."]).join(",") === "ui.replyRendered")
+  check("an unrelated null is NOT a required-arm gap", !unmeasuredRequired(mixedArms, ["live."]).includes("tui.boot"))
+  check("a passed row is never an unmeasured one", unmeasuredRequired(mixedArms, ["live."]).every((name) => name !== "live.web.toolCallsParsed"))
+  check("no required arms means no gap", unmeasuredRequired(mixedArms, []).length === 0)
+  check("a missing body has no required-arm gap", unmeasuredRequired(null, ["live."]).length === 0)
+
+  // 3c. the arm-selecting flags: `--require-live` is the long spelling of `--live`, and
+  // `--require-browser` names a requirement that is ON by default (`--no-browser` is the opt-out).
+  /** The flag predicate the CLI uses, re-stated so the arms read as behaviour, not as argv plumbing. */
+  const selectsLive = (args: readonly string[]): boolean => args.includes("--live") || args.includes("--require-live")
+  /** The browser predicate, which must stay true under the explicit requirement. */
+  const selectsBrowser = (args: readonly string[]): boolean => args.includes("--require-browser") || !args.includes("--no-browser")
+  check("--live selects the live arms", selectsLive(["--live"]))
+  check("--require-live is the same switch", selectsLive(["--require-live"]))
+  check("neither flag leaves the live arms off", !selectsLive([]))
+  check("the browser lane is on with no flag at all", selectsBrowser([]))
+  check("--require-browser selects it explicitly", selectsBrowser(["--require-browser"]))
+  check("--no-browser is the only opt-out", !selectsBrowser(["--no-browser"]))
+
   // 4. the driver never stages a copy of the repository inside the repository (lead-reported
   //    defect, measured 2026-09-27: a docker/src copy poisoned `bun test`'s globs and every
   //    tree-walking gate). Nothing under docker/ may be a repository copy.
@@ -486,12 +539,17 @@ function selfTest(): void {
   check("the oneclick service selects the oneclick install mode", /MPD_E2E_INSTALL_MODE:\s*oneclick/.test(compose))
   check("the oneclick service names a git spec or the env override", /MPD_E2E_INSTALL_SPEC:/.test(compose) && /MPD_ONECLICK_SPEC/.test(compose))
 
-  // 6. Dockerfile base image + context copy
-  /** The Dockerfile text, scanned for its base image and its context COPY. */
+  // 6. Dockerfile base image + context copy. The RUNTIME image is the LAST stage, never the FIRST
+  //    `FROM` line: node arrives from the official `node:24-bookworm` image through a multi-stage COPY,
+  //    so the first FROM names the helper stage. This arm used to read the first line and reddened on a
+  //    CORRECT Dockerfile while the lane it guards was green (measured 2026-10-02, HEAD db80fe4e).
+  /** The Dockerfile text, scanned for its stages and its context COPY. */
   const dockerfile = readFileSync(DOCKERFILE, "utf8")
-  /** The first FROM line, which must be the pinned ubuntu base. */
-  const fromLine = dockerfile.split("\n").find((line: string) => /^FROM\s/.test(line))
-  check("Dockerfile FROM ubuntu:24.04", fromLine === "FROM ubuntu:24.04", String(fromLine))
+  /** Every stage's `FROM` line in file order; the LAST one is the image the lane actually runs. */
+  const fromLines = dockerfile.split("\n").filter((line: string) => /^FROM\s/.test(line))
+  check("Dockerfile's runtime stage is FROM ubuntu:24.04", fromLines[fromLines.length - 1] === "FROM ubuntu:24.04", JSON.stringify(fromLines))
+  check("Dockerfile declares exactly the node-runtime + ubuntu stages, node first", fromLines.length === 2 && fromLines[0] === "FROM node:24-bookworm AS node-runtime", JSON.stringify(fromLines))
+  check("Dockerfile hands node over with COPY --from (never a bind mount)", dockerfile.includes("COPY --from=node-runtime /usr/local /usr/local"))
   check("Dockerfile copies the context (never a bind mount)", dockerfile.includes("COPY . /src/"))
 
   // 7. the ignore file: it is what keeps host state OUT of the image, and it must not eat the
@@ -663,7 +721,35 @@ async function main(): Promise<void> {
   const argv = process.argv.slice(2)
   if (argv.includes("--self-test")) { selfTest(); return }
   if (argv.includes("--help") || argv.includes("-h")) {
-    console.log("usage: node scripts/docker-e2e.ts [--self-test] [--no-build] [--mode source|oneclick] [--spec <install-spec>] [--allow-rootful-docker] [--require-docker]")
+    console.log("usage: node scripts/docker-e2e.ts [--self-test] [--no-build] [--mode source|oneclick|all] [--spec <install-spec>] [--live|--require-live] [--require-browser|--no-browser] [--allow-rootful-docker] [--require-docker]")
+    return
+  }
+  // `--mode all` runs EVERY acceptance mode, each as its own child process, so one command answers the
+  // whole "does this run everywhere" question. Each child gets its own evidence directory and its own
+  // compose build (cached after the first), and the parent reports the WORST child exit code.
+  /** The mode operand, or `source` when the caller named none. */
+  const modeOperand = argv.includes("--mode") ? argv[argv.indexOf("--mode") + 1] : "source"
+  if (modeOperand === "all") {
+    /** This process's arguments with `--mode` and its operand removed, so each child names its own. */
+    const childArgv: string[] = []
+    for (let index = 0; index < argv.length; index++) {
+      if (argv[index] === "--mode") { index++; continue }
+      childArgv.push(argv[index])
+    }
+    /** One entry per mode actually run, in order. */
+    const outcomes: Array<{ mode: string; code: number }> = []
+    for (const mode of ["source", "oneclick"]) {
+      console.log(`\n[driver] ===== mode ${mode} =====`)
+      /** The child run; its stdio is inherited so the operator sees both lanes live. */
+      const child = spawnSync(process.execPath, [SELF, ...childArgv, "--mode", mode], { stdio: "inherit" })
+      outcomes.push({ mode, code: child.status ?? 2 })
+    }
+    /** The aggregate verdict: a missing prerequisite outranks a failure, which outranks no verdict. */
+    const worst = outcomes.some((outcome) => outcome.code === 3) ? 3
+      : outcomes.some((outcome) => outcome.code === 1) ? 1
+        : outcomes.some((outcome) => outcome.code === 2) ? 2 : 0
+    console.log(`\n[driver] --mode all: ${outcomes.map((outcome) => `${outcome.mode}=${outcome.code}`).join(" ")} -> ${worst}`)
+    process.exitCode = worst
     return
   }
 
@@ -682,10 +768,34 @@ async function main(): Promise<void> {
   const specIndex = argv.indexOf("--spec")
   /** The install spec, when the caller named one (defaults to the service's own). */
   const spec = specIndex === -1 ? undefined : argv[specIndex + 1]
+  /** Whether the caller asked for the live arms; the key is only forwarded when they did. */
+  const liveRequested = argv.includes("--live") || argv.includes("--require-live")
+  /** Whether this process actually holds a key to forward. */
+  const keyPresent = process.env.DEEPSEEK_API_KEY !== undefined && process.env.DEEPSEEK_API_KEY !== ""
+  // `--live` IS A CONTRACT, NOT A HINT. It used to print a warning and run anyway, which produced a
+  // green lane whose live rows were all `null` — the exact "verification that verifies nothing" shape
+  // this lane exists to remove. Asking for the live arms without a key now fails BEFORE the build.
+  if (liveRequested && !keyPresent) {
+    console.error("[driver] --live was passed but DEEPSEEK_API_KEY is not set in this environment; refusing to run a lane that would report the credential-free NULL. Export the key, or drop --live.")
+    process.exitCode = 3
+    return
+  }
+  // THE BROWSER LANE IS ON BY DEFAULT: the Web GUI is a shipped surface, so "is it usable in a real
+  // browser" is not an optional question. `--no-browser` skips it (and its assertions become NULL,
+  // which the required-arm check below then reports honestly). `--require-browser` is the explicit
+  // spelling of the default, kept because a caller reading the release checklist looks for a flag
+  // that NAMES the requirement rather than for the absence of an opt-out.
+  const browserEnabled = argv.includes("--require-browser") || !argv.includes("--no-browser")
   /** The environment overrides for the compose run. */
   const envOverrides = [
     ...(mode === "oneclick" ? ["-e", "MPD_E2E_INSTALL_MODE=oneclick"] : []),
     ...(spec === undefined ? [] : ["-e", `MPD_E2E_INSTALL_SPEC=${spec}`]),
+    // THE CREDENTIAL IS FORWARDED BY NAME, NEVER BY VALUE, and only when this process actually has
+    // one. `-e DEEPSEEK_API_KEY` makes compose read it from THIS process's environment, so the secret
+    // never enters the argv the driver echoes below — which is the whole reason the live turn can be
+    // run at all without violating AGENTS.md §10 ("never committed, logged, or echoed").
+    ...(liveRequested ? ["-e", "DEEPSEEK_API_KEY", "-e", "MPD_E2E_LIVE=1"] : []),
+    ...(browserEnabled ? ["-e", "MPD_E2E_BROWSER=1"] : []),
   ]
 
   /** The resolved docker toolchain, or the reason it is unusable. */
@@ -775,6 +885,18 @@ async function main(): Promise<void> {
 
   /** The process exit code this run will report (0 pass, 1 fail, 2 no verdict). */
   const exitCode = decideExit(result)
+  // THE REQUIRED-ARM GATE. An arm the caller asked for that came back unevaluated is a MISSING
+  // PREREQUISITE, not a pass — exit 3, the same code `--require-docker` uses for a skipped lane. This
+  // is what makes `--live` and the browser lane unfakeable: the run cannot green by not running them.
+  /** The assertion-name prefixes whose `null` rows are fatal for this invocation. */
+  const requiredPrefixes: string[] = [
+    ...(liveRequested ? ["live.", "boot.llmTurn"] : []),
+    ...(browserEnabled ? ["ui."] : []),
+  ]
+  /** The unevaluated assertions inside those arms. */
+  const unmeasured = unmeasuredRequired(result, requiredPrefixes)
+  /** The verdict after the requirement gate. */
+  const finalExit = unmeasured.length > 0 ? 3 : exitCode
   writeFileSync(driverLog, JSON.stringify({
     startedAt,
     finishedAt: new Date().toISOString(),
@@ -783,10 +905,14 @@ async function main(): Promise<void> {
     image: IMAGE,
     imageMiB: sizeMiB,
     buildxConfig: buildx.env.BUILDX_CONFIG,
+    liveRequested,
+    browserEnabled,
+    requiredPrefixes,
+    unmeasured,
     steps,
     containerExit: ran.status,
     verdict: summarize(result),
-    exitCode,
+    exitCode: finalExit,
   }, null, 2) + "\n")
 
   console.log("")
@@ -799,9 +925,13 @@ async function main(): Promise<void> {
   for (const assertion of (result.assertions ?? []).filter((a: ResultAssertion) => a.ok === null)) {
     console.log(`[driver] NULL ${assertion.name} — ${assertion.reason}`)
   }
+  // The required arms are named separately, because these are the ones that turn the run RED.
+  for (const name of unmeasured) {
+    console.log(`[driver] UNMEASURED ${name} — this arm was required by the flags of this invocation, so a null is a MISSING PREREQUISITE (exit 3), not a pass`)
+  }
   console.log(`[driver] evidence -> ${relative(REPO, evidence)}`)
   cleanup()
-  process.exitCode = exitCode
+  process.exitCode = finalExit
 }
 
 // A module that also exports its helpers must not run the docker stack when it is imported: the

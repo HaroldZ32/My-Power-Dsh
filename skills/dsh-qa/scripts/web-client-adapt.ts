@@ -67,7 +67,7 @@ function selfTest(): void {
   /** Every named check, kept as `[label, verdict]` so a failure names its subject. */
   const checks: Array<[string, boolean]> = []
   /** The bundle patch, which must carry the web-compat self-row. */
-  const patch = readFileSync(join(ROOT, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(ROOT, "cordis.patch.yml"), "utf8")
   checks.push(["patch web-compat self-row", patch.includes("id: mpd-web-compat") && patch.includes("name: '@mpd-dsh/mpd'")])
   /** The packer script, which must declare the bundle-plugin main and the client export. */
   const pack = readFileSync(join(ROOT, "scripts", "pack-mpd.ts"), "utf8")
@@ -97,7 +97,9 @@ function selfTest(): void {
     && !client.includes("serviceAvailable(")])
   // BOTH GUIs are sidebar-only: no MPD-OWNED source may register the removed
   // in-conversation card, the removed agent-teams overlay floater, or the removed
-  // workmate floater/footer toggle. The embedded adopted bundle still CONTAINS its own
+  // workmate floater/footer toggle. The embedded adopted bundle — its mpd-owned home is now
+  // `packages/mpd-bundle-plugin/adopted/agent-teams-client.js`, after the vendored body was deleted
+  // in wave `de-vendor-and-verify-law` — still CONTAINS its own
   // registrations (its apply() is dormant and never called — asserted by
   // packages/mpd-bundle-plugin/test/sidebar-tab.test.ts), so this pin mirrors the build
   // gate and reads the mpd sources, not the concatenated artifact. Patterns are

@@ -1,0 +1,20 @@
+Goal-bridge self-test results:
+
+**1) `mpd_goal_anchor` outcome:** `ok=true`, `created=true` (anchor succeeded; a new goal was created, not an existing one reused).
+
+**2) `mpd_goal_status` result:**
+- **Goal id:** `goal-8dfa7dba-b72a-456c-898f-611389043e73`
+- **Objective:** `ship the goal bridge`
+- **Phase:** `active`
+
+Supporting fields: revision `1`, maxGoalRounds `5`, roundsStarted `0`, activation `armed`; goal service `enabled=true`, `autoAnchor=true`.
+
+The bridge is working end-to-end: the anchor created the goal and the status read returned the same persisted record (same id, objective, and phase). Since this is a self-test, note the goal is now live and armed — say the word if you want it finished/cleared rather than continued.
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user asks a simple two-step test. Let me call mpd_goal_anchor with objective 'ship the goal bridge' and maxRounds 5, then mpd_goal_status.
+
+These are dependent, but I can call anchor first.
+dsh: reasoning:
+Now call mpd_goal_status.

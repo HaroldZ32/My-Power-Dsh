@@ -17,34 +17,79 @@ import {
   startTaskTimer,
   endTaskTimer,
 } from "./vendor/index.ts"
-import { join } from "node:path"
-import { type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { join, isAbsolute, resolve } from "node:path"
+import { existsSync } from "node:fs"
+import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+// THE ONE READING OF `boulder.dir`. Its normalization rule is shared with the session gate's signal D
+// (`mpd-roles-plugin`'s `resolveBoulderDir`), deliberately: this knob is a STATE ROOT whose ledger is
+// read at `<root>/.mpd/boulder.json`, so a `.mpd` value accepted literally as a root double-nests the
+// path (`<ws>/.mpd/.mpd/boulder.json`) and both consumers must refuse that reading the same way. The
+// import is TYPE-FREE and value-level because the two rows already declare the convention together.
+import { resolveBoulderDir } from "../../mpd-roles-plugin/src/complexity-gate.ts"
 
 /** Cordis plugin name of this row; the loader keys the mounted instance on it. */
 export const name = "mpd-boulder"
-/** Harness services required before `apply` runs: only the tool registrar. */
-export const inject = ["tools"]
+/** Harness services required before `apply` runs: only the tool registrar, named by its adapter constant. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the cordis context this plugin uses: the tool registrar plus an optional service lookup. */
 type Ctx = { tools: any; get?: (k: string) => any }
 /** Row config: `boulderDir` is an explicit state-root override that outranks workspace resolution. */
 type Config = { boulderDir?: string }
 
+/**
+ * The slice of the `mpdGoal` service this row consumes, declared STRUCTURALLY on purpose.
+ *
+ * The authoritative declaration is `packages/mpd-goal-plugin/src/index.ts` (`MpdGoalService`); a
+ * source import would add a cross-package coupling the independence inventory may only SHRINK, and
+ * the two rows talk through a SERVICE at runtime anyway. Without that row the lookup answers
+ * `undefined` and a boulder work simply has no durable goal behind it.
+ */
+type GoalBridge = {
+  /** Whether long runs anchor a goal by themselves (`goal.autoAnchor` in mpd.jsonc). */
+  autoAnchor(): boolean
+  /** Put a durable goal in place, keeping any unfinished goal already current. */
+  anchor(exec: unknown, input: { objective: string; source: string }): Promise<{ ok: boolean; created: boolean; goal?: { id?: string } | null; error?: string; note?: string }>
+  /** Finish a goal this plugin anchored; a goal it did not anchor is left to the model and the user. */
+  finish(exec: unknown, input: { outcome: "complete" | "blocked"; source: string }): Promise<{ ok: boolean; outcome: string; error?: string }>
+}
+
 /** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
 function mergedConfig(ctx: Ctx, config: Config): Config {
   // The mpdConfig service, present only when mpd-config-plugin is mounted in the same composition.
   const svc = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
   if (!svc?.get) return config
-  // Runtime-layer value for the override; only a string is accepted, anything else keeps the row config.
-  const v = svc.get("boulder.dir")
-  return typeof v === "string" ? { ...config, boulderDir: v } : config
+  // The runtime-layer value for the override; only a STRING is accepted, anything else keeps the row
+  // config — and the value is normalized by the SHARED rule (`resolveBoulderDir`), because a `.mpd`
+  // spelling means "the session workspace" here for the same measured reason it does in the gate:
+  // accepting it as a root reads and writes `<ws>/.mpd/.mpd/boulder.json` instead of the contract
+  // path `<ws>/.mpd/boulder.json`.
+  const v = resolveBoulderDir(svc.get("boulder.dir"))
+  return v === undefined ? config : { ...config, boulderDir: v }
 }
 
 
 // Explicit override (config.boulderDir / mpd.jsonc boulder.dir) wins; otherwise the
-// CALLING SESSION's workspace (adapter workspaceRoot) — never the dsh process cwd.
+// CALLING SESSION's workspace (adapter workspaceRoot) — never the dsh process cwd. The row config
+// goes through the SAME normalization as the runtime layer, so the ONE reading of this knob holds
+// however the value arrived (row option, project file, or a legacy materialized default).
 function boulderRoot(config: Config, dsh: DshAdapter, exec?: any): string {
-  return config.boulderDir ? config.boulderDir : dsh.workspaceRoot(exec)
+  return resolveBoulderDir(config.boulderDir) ?? dsh.workspaceRoot(exec)
+}
+
+/**
+ * A caller-named plan path as an absolute path: a RELATIVE one resolves against this call's state
+ * root — the same base the vendor's `resolveBoulderPlanPathForWork` uses for a recorded work — and
+ * never against the dsh process cwd, which for a session launched elsewhere resolves to a path that
+ * does not exist. The vendor's progress reader answers silent ZEROES for such a path, so resolution
+ * has to happen here, where the caller can still be told.
+ *
+ * @param dir - the session-resolved state root for this call (`boulderRoot`).
+ * @param planPath - the plan path exactly as the caller spelled it.
+ * @returns the absolute plan path to read.
+ */
+function planPathFor(dir: string, planPath: string): string {
+  return isAbsolute(planPath) ? resolve(planPath) : resolve(dir, planPath)
 }
 
 /** Register every boulder tool on the adapter; `config` is the row config, which `mpd.jsonc` may override per key. */
@@ -55,6 +100,66 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   const merged = mergedConfig(ctx, config)
   // Per-call state root: the calling session's workspace, unless an explicit override is configured.
   const root = (exec?: any): string => boulderRoot(merged, dsh, exec)
+
+  /**
+   * The durable-goal bridge provided by the `mpd-goal` row, resolved PER CALL.
+   *
+   * @returns the service, or undefined when that row is not mounted in this composition.
+   */
+  function goalBridge(): GoalBridge | undefined {
+    // Lazy on purpose: the row may be mounted after this one, and a composition without it must
+    // leave the ledger working exactly as before rather than fail this plugin's apply.
+    return ctx.get?.("mpdGoal") as GoalBridge | undefined
+  }
+
+  /**
+   * Anchor a persisted goal for a plan-bound work, so the ledger and the goal describe the same
+   * long-running objective instead of the ledger being the only durable trace of it.
+   *
+   * @param exec - the tool exec carrying the calling agent, forwarded verbatim.
+   * @param planPath - the plan this work is bound to, named in the objective.
+   * @param workId - the work the anchor belongs to, named in the objective.
+   * @returns the goal id when a goal is in place, else null; a refusal is logged, never thrown.
+   */
+  async function anchorGoal(exec: any, planPath: string, workId: string): Promise<string | null> {
+    try {
+      // The bridge probe is INSIDE the try for the same reason the call is: a half-shaped service that
+      // throws must never take the boulder work down with it.
+      /** The goal bridge, absent in a composition without the mpd-goal row. */
+      const bridge = goalBridge()
+      if (bridge === undefined || bridge.autoAnchor?.() !== true) return null
+      /** The anchor outcome; an unfinished goal already current is KEPT by the service. */
+      const outcome = await bridge.anchor(exec, { objective: "Execute the plan " + planPath + " to completion (boulder work " + workId + ") with evidence.", source: "boulder" })
+      if (outcome?.goal != null && typeof outcome.goal.id === "string") return outcome.goal.id
+      if (outcome?.ok === false) dsh.rowLog("mpd-boulder", "goal anchor refused: " + String(outcome.error ?? "unknown"))
+      return null
+    } catch (error: any) {
+      // The goal is an ADDITION to the ledger: a bridge that throws must never fail the work.
+      dsh.rowLog("mpd-boulder", "goal anchor failed: " + String(error?.message ?? error))
+      return null
+    }
+  }
+
+  /**
+   * Complete the goal this row anchored for a finished work; a goal this row did not anchor is
+   * left to the model and the user (the service enforces that, and reports the refusal).
+   *
+   * @param exec - the tool exec carrying the calling agent.
+   */
+  async function finishGoal(exec: any): Promise<void> {
+    /** The goal bridge, absent in a composition without the mpd-goal row. */
+    const bridge = goalBridge()
+    if (bridge === undefined) return
+    try {
+      /** The finish outcome, reported in the row log when the harness refused the transition. */
+      const outcome = await bridge.finish(exec, { outcome: "complete", source: "boulder" })
+      if (outcome?.ok === false && String(outcome.error ?? "").includes("not the one mpd-goal anchored") === false) {
+        dsh.rowLog("mpd-boulder", "goal finish refused: " + String(outcome.error ?? "unknown"))
+      }
+    } catch (error: any) {
+      dsh.rowLog("mpd-boulder", "goal finish failed: " + String(error?.message ?? error))
+    }
+  }
 
   dsh.registerTool({
     name: "mpd_boulder_status",
@@ -73,7 +178,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // Filled only when the caller names a plan; the schema types it `object` and does not require it.
       let planProgress: any = null
       if (args?.planPath) {
-        try { planProgress = getPlanProgress(String(args.planPath)) } catch (e: any) { planProgress = { error: String(e?.message ?? e) } }
+        // Same session resolution as the dedicated progress tool: a RELATIVE path belongs to this
+        // session's workspace, so it is no longer probed against the process cwd (which answered the
+        // same silent zeroes the progress tool used to).
+        try { planProgress = getPlanProgress(planPathFor(dir, String(args.planPath))) } catch (e: any) { planProgress = { error: String(e?.message ?? e) } }
       }
       // Response envelope: the ledger path is always reported, so a caller sees where state lives.
       const result: any = { stateFile: join(dir, ".mpd", "boulder.json"), activeWorks, resumeOptions }
@@ -115,6 +223,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const wid = next.active_work_id
       // Effective lifecycle, defaulting to `active` for a work whose status field is unset.
       const status = wid ? next.works?.[wid]?.status ?? "active" : "active"
+      // A plan-bound work is the case that OUTLIVES its turn, so it anchors a persisted goal: from
+      // here the durable goal — not this tool call — is what the harness keeps working on.
+      await anchorGoal(exec, planPath, String(wid ?? "?"))
       return { workId: wid ?? "?", status, stateFile: join(dir, ".mpd", "boulder.json") }
     }
   })
@@ -134,6 +245,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const workId = args?.workId ?? state.active_work_id ?? "?"
       // Record re-read from disk, the source of the status and elapsed_ms reported back.
       const work = getWorkById(dir, workId)
+      // The ledger is done, so the goal this row anchored for it is done too; a goal anchored by
+      // anyone else is left alone by the service, which is why this never "completes" a user's goal.
+      await finishGoal(exec)
       return { workId, status: work?.status ?? "completed", elapsedMs: work?.elapsed_ms ?? 0 }
     }
   })
@@ -171,13 +285,19 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: { planPath: { type: "string" } }, required: ["planPath"] },
     output: { schema: { type: "object", properties: { planPath: { type: "string" }, progress: { type: "object" } }, required: ["planPath", "progress"] }, render: (_a: unknown, v: any) => textBlock("plan progress " + v.planPath + ": " + JSON.stringify(v.progress, null, 1)) },
     execute: async (args: any, exec: any) => {
-      // Resolved for parity with the other tools; this one reads only the plan file the caller named.
+      // State root for this call; it is the base a RELATIVE plan path resolves against below.
       const dir = root(exec)
       // Plan file to parse; the tool schema makes it required.
       const planPath = String(args?.planPath)
-      // Checklist counts parsed from disk; a missing or checkbox-less plan yields zeroes, not an error.
-      const progress = getPlanProgress(planPath)
-      return { planPath, progress }
+      // The plan path this call actually reads: session-relative input resolved against `dir`.
+      const resolved = planPathFor(dir, planPath)
+      // REPORT an unresolvable plan rather than answering `{total: 0, completed: 0}`: zeroes are
+      // indistinguishable from a plan with no checkboxes, which is the silent-wrong-answer class this
+      // tool shared with the guard rows.
+      if (!existsSync(resolved)) throw new Error("mpd-boulder: plan not found: " + resolved + " (relative paths resolve against the state root " + dir + ")")
+      // Checklist counts parsed from disk.
+      const progress = getPlanProgress(resolved)
+      return { planPath: resolved, progress }
     }
   })
 

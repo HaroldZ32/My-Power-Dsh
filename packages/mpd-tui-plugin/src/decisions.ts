@@ -20,9 +20,8 @@
 //
 // It NEVER calls `admit`/`admitInternal`, never uses the test-only admission
 // token, and never fakes an identity.
-import type { Disposer, PluginContextLike, SeamOutcome, TuiPluginHostLike } from "./types.js"
+import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiDecisionSubscription } from "./types.js"
 import type { Log } from "./log.js"
-import { effectOn, onService } from "./host.js"
 
 /**
  * The four intercept-class decision points and the permission each one requires
@@ -58,99 +57,96 @@ export interface DecisionSeam {
 
 /**
  * Attempt the mediated DecisionEvents registration.
- * @param ctx - the plugin context.
+ *
+ * EVERY verdict is derived from the adapter's measured facts (`granted()`, `disposerReturned()`,
+ * `error()`, `supported()`) rather than from a disposer's TYPE, which is the whole point of this
+ * seam: the host answers a refusal with a no-op disposer, so a returned function is not proof.
+ * The attempts are recomputed on read, so the seam reports the truth whether the host bound before
+ * or after this row applied.
+ * @param ctx - the plugin context; the host records it as each subscription's identity.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @returns the seam handle; `attempts()` carries the per-event verdict.
  */
-export function attemptDecisionEvents(ctx: PluginContextLike, log: Log): DecisionSeam {
-  /** Per-event verdicts, filled as the loop walks the intercept points. */
-  const attempts: DecisionAttempt[] = []
-  /** The aggregate result, rewritten once every intercept point was attempted. */
-  let outcome: SeamOutcome = { state: "absent", detail: "tuiPluginHost was not injected" }
+export function attemptDecisionEvents(ctx: PluginContextLike, tui: TuiAdapter, log: Log): DecisionSeam {
+  /** One subscription attempt per intercept point, in declaration order. */
+  const subs: { event: string; permission: string; sub: TuiDecisionSubscription }[] = DECISION_EVENTS.map(({ event, permission }) => ({
+    event,
+    permission,
+    sub: tui.requestDecisionEvent(event, () => undefined, { scope: event, order: DECISION_ORDER, identity: ctx }),
+  }))
 
-  onService(ctx, "tuiPluginHost", (scoped, service) => {
-    /** The probed service as the mediated host surface, before `subscribeDecision` is trusted. */
-    const host = service as TuiPluginHostLike
-    if (typeof host?.subscribeDecision !== "function") {
-      outcome = { state: "refused", detail: "tuiPluginHost.subscribeDecision is missing" }
-      return
-    }
-    /** Handles of the subscriptions that may be called confirmed; owned for cleanup. */
-    const disposers: Disposer[] = []
-    for (const { event, permission } of DECISION_EVENTS) {
-      // The grant facade is the honest authorization state; undefined when the
-      // host does not expose it (then nothing may be reported as confirmed).
-      let granted: boolean | undefined
-      /** The caller-safe grant facade, the only honest authorization source here. */
-      const facade = host.grants
-      if (facade !== undefined && typeof facade.allows === "function") {
-        try {
-          granted = facade.allows(scoped, permission, event) === true
-        } catch {
-          granted = undefined
-        }
-      }
-      try {
-        /** The host's handle; a no-op when the grant is missing, so it is never called as a probe. */
-        const disposer = host.subscribeDecision(scoped, event, () => undefined, { scope: event, order: DECISION_ORDER })
-        if (typeof disposer !== "function") {
-          attempts.push({ event, state: "refused", reason: "subscribeDecision returned no disposer" })
-          continue
-        }
-        if (granted === true) {
-          // A grant plus a disposer is the only combination we may call confirmed.
-          const release = disposer
-          disposers.push(release)
-          effectOn(scoped, () => release(), `mpd-tui decision ${event}`)
-          attempts.push({ event, state: "confirmed", reason: `${permission} granted` })
-        } else if (granted === false) {
-          // Missing grant: the host had already returned a no-op disposer. The
-          // disposer is NOT called as a probe; it is owned for cleanup only.
-          const release = disposer
-          effectOn(scoped, () => release(), `mpd-tui decision ${event} (refused)`)
-          attempts.push({ event, state: "refused", reason: `no grant for ${permission}@${event}` })
-        } else {
-          /** This subscription's handle; owned for cleanup although its state is unknown. */
-          const release = disposer
-          effectOn(scoped, () => release(), `mpd-tui decision ${event} (unconfirmed)`)
-          attempts.push({ event, state: "requested", reason: "grant state not queryable in this composition" })
-        }
-      } catch (error) {
-        attempts.push({ event, state: "refused", reason: shortReason(error) })
-      }
-    }
+  /** The intercept point whose mediated member the host does not carry, when there is one. */
+  const unsupported = (): { event: string; permission: string; sub: TuiDecisionSubscription } | undefined =>
+    subs.find(({ sub }) => sub.outcome().state !== "absent" && !sub.supported())
 
+  /** Whether the seam never bound at all (no host composition, nothing claimed). */
+  const unbound = (): boolean => subs.every(({ sub }) => sub.outcome().state === "absent")
+
+  /** The per-event verdicts, derived from the adapter's measured facts. */
+  const attempts = (): readonly DecisionAttempt[] => {
+    if (unsupported() !== undefined || unbound()) return []
+    return subs.map(({ event, permission, sub }): DecisionAttempt => {
+      /** The adapter's measured facts for this one subscription. */
+      const thrown = sub.error()
+      if (thrown !== undefined) return { event, state: "refused", reason: thrown }
+      if (!sub.disposerReturned()) return { event, state: "refused", reason: "subscribeDecision returned no disposer" }
+      /** The grant facade's answer; undefined when the host cannot be asked. */
+      const granted = sub.granted()
+      if (granted === true) return { event, state: "confirmed", reason: `${permission} granted` }
+      if (granted === false) return { event, state: "refused", reason: `no grant for ${permission}@${event}` }
+      return { event, state: "requested", reason: "grant state not queryable in this composition" }
+    })
+  }
+
+  /** The aggregate result, as the boot diagnostic reports it. */
+  const outcome = (): SeamOutcome => {
+    /** The intercept point whose mediated member is missing, if any. */
+    const missing = unsupported()
+    if (missing !== undefined) return { id: missing.sub.outcome().id, state: "refused", detail: `${missing.sub.outcome().detail ?? "subscribeDecision is missing"}` }
+    if (unbound()) return { id: subs[0]?.sub.outcome().id ?? "", state: "absent", detail: "the mediated plugin host was not injected" }
+    /** The verdicts of this read. */
+    const measured = attempts()
     /** The intercept points that both a grant and a disposer backed. */
-    const confirmed = attempts.filter((attempt) => attempt.state === "confirmed")
+    const confirmed = measured.filter((attempt) => attempt.state === "confirmed")
     /** The intercept points the host refused, with the reason it gave. */
-    const refused = attempts.filter((attempt) => attempt.state === "refused")
+    const refused = measured.filter((attempt) => attempt.state === "refused")
     /** The refusal quoted in the aggregate detail; falls back to the first attempt. */
-    const first = refused[0] ?? attempts[0]
-    outcome =
-      confirmed.length > 0
-        ? { state: "confirmed", detail: `${confirmed.length}/${attempts.length} intercept point(s) registered` }
-        : refused.length === attempts.length
-          ? { state: "refused", detail: `${refused.length}/${attempts.length} refused — ${first?.reason ?? "unknown"}` }
-          : { state: "requested", detail: `unconfirmed — ${first?.reason ?? "unknown"}` }
+    const first = refused[0] ?? measured[0]
+    /** The service id the outcome reports on, taken from the adapter's own handle. */
+    const id = subs[0]?.sub.outcome().id ?? ""
+    if (confirmed.length > 0) return { id, state: "confirmed", detail: `${confirmed.length}/${measured.length} intercept point(s) registered` }
+    if (refused.length === measured.length) return { id, state: "refused", detail: `${refused.length}/${measured.length} refused — ${first?.reason ?? "unknown"}` }
+    return { id, state: "requested", detail: `unconfirmed — ${first?.reason ?? "unknown"}` }
+  }
 
+  /** The disclosure the seam owes a user: stated ONCE per boot, never once per event. */
+  const disclose = (): string | undefined => {
+    /** The verdicts of this read. */
+    const measured = attempts()
+    if (measured.length === 0) return undefined
+    /** The intercept points that both a grant and a disposer backed. */
+    const confirmed = measured.filter((attempt) => attempt.state === "confirmed")
     if (confirmed.length > 0) {
       log.info(`decision-event seam ACTIVE for ${confirmed.length} intercept point(s); handlers express no opinion`)
-    } else {
-      // Logged ONCE for the whole seam, not once per event: a TUI boot must not
-      // fill its log with the same expected refusal four times.
-      log.warn(
-        "decision-event seam is ready but NOT activated: tui.dsh/v1alpha1#DecisionEvents registration was refused " +
-          `(first refusal: ${first?.reason ?? "unknown"}). No input/rewind/session-switch/compact interception is claimed.`,
-      )
+      return undefined
     }
+    // Logged ONCE for the whole seam, not once per event: a TUI boot must not fill its log with
+    // the same expected refusal four times.
+    /** The refusal quoted in the disclosure. */
+    const first = measured.find((attempt) => attempt.state === "refused") ?? measured[0]
+    log.warn(
+      "decision-event seam is ready but NOT activated: tui.dsh/v1alpha1#DecisionEvents registration was refused " +
+        `(first refusal: ${first?.reason ?? "unknown"}). No input/rewind/session-switch/compact interception is claimed.`,
+    )
+    return first?.reason
+  }
+  // The disclosure is emitted when the seam BINDS (immediately, when the host was already
+  // composed), which is exactly when the original activation ran it. A seam that never binds
+  // discloses nothing, because nothing was attempted.
+  tui.whenBound("pluginHost", () => {
+    disclose()
   })
 
-  return { outcome: () => outcome, attempts: () => attempts }
-}
-
-/** One short, sanitized reason string for the record (never a stack trace). */
-function shortReason(error: unknown): string {
-  /** The error's message, or its string form when it is not an Error. */
-  const message = error instanceof Error ? error.message : String(error)
-  return message.replace(/\s+/gu, " ").trim().slice(0, 160)
+  return { outcome, attempts }
 }

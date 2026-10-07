@@ -23,8 +23,8 @@ import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 // The vendored cordis build ships no declaration file, so this module resolves to `any`; the
 // directive stays loud and self-healing rather than a blanket `@ts-ignore`.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { Context } from "../../mpd-schemastery/harness/cordis/lib/index.ts"
 import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { WatchdogEngine, type EngineContext } from "../src/engine"
 import { inFlightFor, WatchdogMachine, type SilenceCandidate } from "../src/machine"
@@ -49,10 +49,38 @@ afterEach(() => {
   previousRoot = undefined
 })
 
+/**
+ * The slice of the real vendored cordis context these arms drive.
+ *
+ * WHY AN ALIAS: `Context` is a real VALUE whose `on` / `emit` / `waterfall` / `get` members are
+ * installed by a Proxy handler (`ReflectService.handler` in the vendored module), so they are absent
+ * from the class's own type even though every runtime instance carries them. Naming the driven slice
+ * keeps each call site checked instead of widening the context to `any`.
+ */
+interface DrivenContext {
+  /** Subscribe to one bus event; returns the cordis disposer. */
+  on(event: string, handler: unknown): unknown
+  /** Emit one event through the real bus. */
+  emit(event: string, ...args: unknown[]): unknown
+  /** Run one waterfall step, exactly as the harness's own loop does. */
+  waterfall(...args: unknown[]): Promise<unknown>
+  /** Read one installed service, or undefined when it is absent. */
+  get(name: string): unknown
+}
+
+/**
+ * Create a real vendored cordis context, typed as the slice these arms drive.
+ * @returns the real context; the alias above names the members its class type omits.
+ */
+function realContext(): DrivenContext {
+  // A cast is the only way to name a runtime member the class's own type does not declare.
+  return new Context() as unknown as DrivenContext
+}
+
 /** Hold the harness's stdio listeners and the box open for the whole case. */
 interface RealEngine {
   /** The real cordis context the production wiring dispatches through. */
-  ctx: Context
+  ctx: DrivenContext
   /** The engine under test. */
   engine: WatchdogEngine
   /** The REAL adapter the engine reaches the harness through. */
@@ -74,7 +102,7 @@ function mountReal(box: Sandbox, overrides: Partial<typeof FAST> = {}): RealEngi
   process.env.DSH_WORKSPACE_ROOT = box.workspace
   // The real cordis context the production wiring uses. Its type is the vendored module's own
   // `Context` export, written down here because the module is untyped (see the import above).
-  const ctx: Context = new Context()
+  const ctx: DrivenContext = realContext()
   // The REAL adapter reaches the official plane through `ctx.get("agentTeams")` / `ctx.get("agents")`,
   // so the fixture team is installed as those services (a faithful minimal fake of the installed
   // host's — see `support.provideTeamsOn`). Without it the adapter's fold reports NO team, which is
@@ -102,18 +130,18 @@ function mountReal(box: Sandbox, overrides: Partial<typeof FAST> = {}): RealEngi
  * `session/event` is an emit dispatch; the adapter's `onEvent` registered the engine's fold as
  * a listener on this same context, so this reaches the production wiring and nothing else.
  */
-function openChannel(ctx: Context, sessionId: string, at: number): void {
+function openChannel(ctx: DrivenContext, sessionId: string, at: number): void {
   ctx.emit("session/event", { id: sessionId }, { type: "turn/start", seq: 1, time: at, data: { turn: 1 } })
   ctx.emit("session/event", { id: sessionId }, { type: "step/start", seq: 2, time: at, data: { turn: 1, step: 1 } })
 }
 
 /** Dispatch the harness's pre-execute gate exactly as `dsh-tools` does. */
-async function firePre(ctx: Context, exec: Record<string, unknown>): Promise<unknown> {
+async function firePre(ctx: DrivenContext, exec: Record<string, unknown>): Promise<unknown> {
   return ctx.waterfall(ctx, "tools/pre-execute", exec, () => Promise.resolve({ kind: "allow" }))
 }
 
 /** Dispatch the harness's post-execute waterfall exactly as `dsh-tools` does. */
-async function firePost(ctx: Context, exec: Record<string, unknown>, result: Record<string, unknown>): Promise<unknown> {
+async function firePost(ctx: DrivenContext, exec: Record<string, unknown>, result: Record<string, unknown>): Promise<unknown> {
   return ctx.waterfall(ctx, "tools/post-execute", exec, result, () => Promise.resolve({ kind: "accept" }))
 }
 
@@ -354,7 +382,7 @@ describe("r6 — the real engine, a real long command, and the durable store", (
         await firePre(real.ctx, exec)
         await sleep(350)
         // The error result the registry normalizes a throwing tool body into; it still reaches
-        // tools/post-execute (`dsh-tools/lib/index.js:3203-3207`), so the entry is cleared.
+        // tools/post-execute (`dsh-tools/lib/index.ts:3203-3207`), so the entry is cleared.
         await firePost(real.ctx, exec, { isError: true, error: { message: "tool exploded" } })
         // The first tick past the threshold after the call closed.
         const tick = await real.engine.tickOnce(Date.now() + FAST.warnSilenceMs + 1)

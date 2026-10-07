@@ -1,3 +1,3 @@
-import * as z from "./external.js";
-export * from "./external.js";
+import * as z from "./external.ts";
+export * from "./external.ts";
 export { z };

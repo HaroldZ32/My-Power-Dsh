@@ -1,0 +1,13 @@
+cmd: the closing state  [2026-10-07T10:58:25Z]
+HEAD=e183311cdebc13d3a612fa00cf0b1fe2427edf73
+tracked-change count: 0
+--- F.3 marker ---
+ABSENT (the law has not booted in the real workspace)
+--- the lock skills entry + corpus ---
+  lock skills.treeSha=4b3b68e9ef60d16f4c6b1292da93de51b17a375752e907c835601a5000936285 fileCount=331
+  working corpus: files=331
+--- settle: the clause subjects ---
+  skills/dsh-qa/scripts/verify-law.ts                  e6dc5db58db3b815b32dca06eceb3bef
+  packages/mpd-verify-plugin/qa/verify-law.ts          e6dc5db58db3b815b32dca06eceb3bef
+  skills/dsh-qa/scripts/lib/session-evidence.ts        cadf2086a2a6ba30e320f6debae23acf
+  VENDOR_LOCK.json                                     a4812d02f3b92b63b174ce24382477c0

@@ -32,7 +32,7 @@ function touch(p: string): string {
 /** The injected acceptance probe for the ast-grep cases: accept only an `ast-grep` name. */
 const okAstGrep = (p: string): boolean => p.endsWith("ast-grep")
 /** A launcher URL that is never dereferenced, because every case injects its own bundle root. */
-const launcher = "/nowhere/packages/mpd-mcp-astgrep/launch.ts"
+const launcher = "/nowhere/packages/mpd-mcp-astgrep/dist/launch.js"
 
 test("ast-grep: $MPD_AST_GREP_BIN_DIR tier wins and prefers ast-grep over sg", () => {
   /** The temp tree this case resolves inside. */
@@ -124,7 +124,7 @@ test("codegraph: <bundle>/.toolchain tier resolves the link: checkout layout", (
   /** The linker's own `.bin` entry under the installer's private toolchain prefix. */
   const bin = touch(join(s, "bundle", ".toolchain", "node_modules", ".bin", "codegraph"))
   /** The resolution that must report the toolchain tier. */
-  const r = resolveCodegraphBinary("/nowhere/packages/mpd-mcp-codegraph/launch.ts", { bundleRoot: join(s, "bundle") })
+  const r = resolveCodegraphBinary("/nowhere/packages/mpd-mcp-codegraph/dist/launch.js", { bundleRoot: join(s, "bundle") })
   expect(r).not.toBeNull()
   expect(r!.source).toBe("toolchain")
   expect(r!.binary).toBe(bin)
@@ -138,7 +138,7 @@ test("codegraph: createRequire tier reads the package's own bin entry", () => {
   touch(join(pkg, "npm-shim.js"))
   writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "@colbymchenry/codegraph", bin: { codegraph: "npm-shim.js" } }))
   /** The resolution through the injected require tier. */
-  const r = resolveCodegraphBinary("/nowhere/packages/mpd-mcp-codegraph/launch.ts", {
+  const r = resolveCodegraphBinary("/nowhere/packages/mpd-mcp-codegraph/dist/launch.js", {
     bundleRoot: join(s, "bundle"),
     requireResolve: (spec) => (spec === "@colbymchenry/codegraph/package.json" ? join(pkg, "package.json") : null),
   })
@@ -262,11 +262,37 @@ test("ast-grep: .toolchain still wins over the bundle-root tier", () => {
   expect(r!.binary).toBe(toolchain)
 })
 
-test("bundleRootFrom: <bundle>/packages/<pkg>/launch.ts -> <bundle>", () => {
-  // Platform-neutral fixture: `new URL("file:///x/y")` is not a valid file URL on
-  // Windows (no drive letter), and fileURLToPath throws "File URL path must be an
-  // absolute path". Build the URL FROM a native absolute path instead, so the two
-  // dirname hops are what is asserted on every platform.
+test("bundleRootFrom: the BUILT <bundle>/packages/<pkg>/dist/launch.js -> <bundle>", () => {
+  // THE LAYOUT THE PACKED INSTALL RUNS. `dirname` plus two hops answers `<bundle>/packages` here, so a
+  // hop-counting resolver silently returns the wrong root — measured 2026-10-03, when the launcher moved
+  // to `dist/` to escape `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`.
+  /** The temp tree this case resolves inside. */
+  const s = sandbox()
+  /** A real bundle root, marked by the manifest the walk looks for. */
+  const bundle = join(s, "bundle")
+  writeFileSync(join(bundle, "package.json"), JSON.stringify({ name: "@mpd-dsh/mpd" }))
+  /** The built launcher's own path, at the depth the packed install uses. */
+  const built = join(bundle, "packages", "mpd-mcp-astgrep", "dist", "launch.js")
+  touch(built)
+  expect(bundleRootFrom(pathToFileURL(built).href)).toBe(bundle)
+})
+
+test("bundleRootFrom: the older <bundle>/packages/<pkg>/launch.ts depth still answers <bundle>", () => {
+  // The pre-move depth, kept because a checkout that has not been rebuilt still carries it.
+  /** The temp tree this case resolves inside. */
+  const s = sandbox()
+  /** A real bundle root, marked by the manifest the walk looks for. */
+  const bundle = join(s, "bundle")
+  writeFileSync(join(bundle, "package.json"), JSON.stringify({ name: "@mpd-dsh/mpd" }))
+  /** The launcher at the deep-source depth. */
+  const source = join(bundle, "packages", "mpd-mcp-astgrep", "launch.ts")
+  touch(source)
+  expect(bundleRootFrom(pathToFileURL(source).href)).toBe(bundle)
+})
+
+test("bundleRootFrom: a launcher outside any bundle falls back to two hops", () => {
+  // Platform-neutral fixture: `new URL("file:///x/y")` is not a valid file URL on Windows (no drive
+  // letter) and fileURLToPath throws, so the URL is built FROM a native absolute path.
   /** A native absolute `<bundle>` path to build the fixture URL from. */
   const bundle = resolve("/x/y")
   expect(bundleRootFrom(pathToFileURL(join(bundle, "packages", "mpd-mcp-astgrep", "launch.ts")).href)).toBe(bundle)

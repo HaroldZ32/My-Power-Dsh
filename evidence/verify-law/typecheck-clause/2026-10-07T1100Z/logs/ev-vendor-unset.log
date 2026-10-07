@@ -1,0 +1,10 @@
+cmd: env -u MPD_UPSTREAM_ROOT node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 331 files
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS - 6 shipped asset(s) fingerprinted, upstream identity not checked
+EXIT=0

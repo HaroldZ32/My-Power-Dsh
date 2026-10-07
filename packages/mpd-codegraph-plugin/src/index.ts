@@ -8,6 +8,8 @@ import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { bundleRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { openLogSink } from "../../mpd-mcp-shared/log-sink"
+import type { LogSink } from "../../mpd-mcp-shared/log-sink"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-codegraph"
@@ -61,11 +63,32 @@ function toolchainCodegraphPath(): string | null {
   return existsSync(p) ? p : null
 }
 
+/**
+ * The first variable of `names` whose value is NON-BLANK, trimmed; undefined when every one is
+ * unset or blank.
+ *
+ * `??` is not enough for a documented alias pair (S8): an exported-but-empty
+ * `MPD_CODEGRAPH_BIN=""` IS a present value, so `a ?? b` answered the blank, the caller then
+ * filtered it out, and the alias was ignored with no miss reported. The MCP launchers already read
+ * a blank as unset (`(process.env.MPD_CODEGRAPH_BIN ?? "").trim().length === 0`), so this is that
+ * same rule, shared by every reading site here.
+ */
+function firstNonBlankEnv(names: readonly string[]): string | undefined {
+  for (const name of names) {
+    /** The variable's value, trimmed; a blank or whitespace-only value counts as unset. */
+    const value = (process.env[name] ?? "").trim()
+    if (value.length > 0) return value
+  }
+  return undefined
+}
+
 /** Resolve the codegraph executable: config override, env override, package bin, toolchain shim, then PATH. */
 function resolveBinary(config?: Config): string | null {
+  /** The env override, primary alias first, read first-NON-BLANK so a blank one cannot hide the other. */
+  const envOverride = firstNonBlankEnv(["MPD_CODEGRAPH_BIN", "MPD_DSH_CODEGRAPH_BIN"])
   /** The explicit overrides, highest priority first; blanks are dropped so an empty env var is not a candidate. */
   const candidates = [
-    config?.binary, process.env.MPD_CODEGRAPH_BIN ?? process.env.MPD_DSH_CODEGRAPH_BIN
+    config?.binary, envOverride
   ].filter((s): s is string => !!s && s.length > 0)
   for (const c of candidates) if (existsSync(c)) return c
   /** The executable the optional npm package ships, when that package is installed here. */
@@ -97,9 +120,9 @@ function resolveBinary(config?: Config): string | null {
 //      is what makes an exec-less consumer session-correct;
 //   3. `process.cwd()` — the adapter's own last tier (boot, unit tests).
 function resolveProjectRoot(dsh: WorkspacePlane, exec?: CommandInvocation): string {
-  /** The explicit project-cwd override, trimmed; an empty string means no override was configured. */
-  const override = (process.env.MPD_CODEGRAPH_PROJECT_CWD ?? process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD ?? "").trim()
-  if (override.length > 0) return resolve(override)
+  /** The explicit project-cwd override, first-NON-BLANK across the alias pair (S8), trimmed. */
+  const override = firstNonBlankEnv(["MPD_CODEGRAPH_PROJECT_CWD", "MPD_DSH_CODEGRAPH_PROJECT_CWD"])
+  if (override !== undefined) return resolve(override)
   return resolve(dsh.workspaceRoot(exec))
 }
 
@@ -145,8 +168,44 @@ function writeCooldown(dir: string, file: string): void {
 }
 
 /**
- * Resolve the project root and the codegraph binary, initialize the index when the row allows it, and
- * register the `/mpd-codegraph` command for manual re-runs.
+ * The sink opened for the most recent workspace root, reused while that root is unchanged.
+ *
+ * AGENTS.md §6 requires the workspace root to be resolved PER CALL and never cached in a module-level
+ * const, so this cache is keyed by the resolved root: a different session resolves a different root and
+ * gets a fresh sink, while repeated calls against the SAME workspace reuse one open fd. Declared bound:
+ * one fd per distinct workspace root this process has ever logged for — the same order as the number of
+ * sessions the host serves, not the number of calls.
+ */
+let openSink: { root: string; sink: LogSink } | null = null
+
+/**
+ * Append one diagnostic line to `<root>/.mpd/logs/mpd-codegraph.log`, never to a terminal.
+ *
+ * R5 (lane F): this line used to be a `console.log`, which in a TUI session prints straight into the
+ * Ink alternate screen and wrecks the rendered frame. The sink is total — an unwritable root leaves the
+ * line in its bounded in-memory ring instead of falling back to the terminal, which is the R5 contract.
+ *
+ * @param rootOf a thunk resolving the calling session's workspace root; called INSIDE the guard, so a
+ *   failing resolution drops the line instead of escaping into the row's apply path.
+ * @param text the line to record; one trailing newline is added by the sink.
+ */
+function logLine(rootOf: () => string, text: string): void {
+  try {
+    /** The workspace root this call logs against, resolved per call (AGENTS.md §6). */
+    const root = rootOf()
+    if (openSink === null || openSink.root !== root) {
+      openSink = { root, sink: openLogSink("mpd-codegraph", { roots: [root] }) }
+    }
+    openSink.sink.write(text)
+  } catch {
+    // The sink never throws by contract; this is the belt-and-braces guard for a row that must never
+    // take a boot down, and it deliberately drops the line rather than printing it.
+  }
+}
+
+/**
+ * Initialize the index when the row allows it, and register the `/mpd-codegraph` command for manual
+ * re-runs.
  *
  * @param ctx - the row context; the adapter resolves the workspace plane and the command seam from it.
  * @param config - row overrides for auto-init, the init timeout, the cooldown and the binary.
@@ -175,7 +234,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   else if (resolve(cwd) === home) { status = "skipped-home" }
   else if (cooldownFresh(cwd, cooldownMs)) { status = "cooldown" }
   else { status = initProject(cwd, binary, timeoutMs) }
-  console.log("[mpd-codegraph] init status=" + status + " binary=" + (binary ?? "-") + " cwd=" + cwd + (status === "skipped-home" ? " (workspace is the user home; start a session inside a project dir, or set MPD_DSH_CODEGRAPH_PROJECT_CWD, or run /mpd-codegraph there)" : ""))
+  // R5 (lane F): the status line goes to `<workspace>/.mpd/logs/mpd-codegraph.log` through the SHARED
+  // sink, never to `console.log`. The log root is the workspace plane (NOT the codegraph project root
+  // above, which an override can point outside the session's workspace).
+  logLine(() => dsh.workspaceRoot(), "[mpd-codegraph] init status=" + status + " binary=" + (binary ?? "-") + " cwd=" + cwd + (status === "skipped-home" ? " (workspace is the user home; start a session inside a project dir, or set MPD_DSH_CODEGRAPH_PROJECT_CWD, or run /mpd-codegraph there)" : ""))
 
   // Manual re-run command, registered THROUGH THE ADAPTER (AGENTS.md §6: no plugin
   // touches `ctx.commands` / `ctx.get("commands")` directly). The adapter returns a
@@ -185,7 +247,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // through `dsh.workspaceRoot(invocation)`, so a session whose workspace differs
   // from the dsh process cwd re-runs against its OWN project. The handler returns
   // the harness CommandResult shape (`{kind}`), which dsh-commands validates
-  // (dsh-commands/lib/index.js `normalizeResult`); the older `{success,error}`
+  // (dsh-commands/lib/index.ts `normalizeResult`); the older `{success,error}`
   // shape would have been rejected as "must return a CommandResult".
   dsh.registerCommand({
     name: "mpd-codegraph",

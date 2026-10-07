@@ -28,7 +28,7 @@ serverName `ast_grep`，stdio）包装。
     serverName: ast_grep
     transport: stdio
     command: node
-    args: [<bundle>/packages/mpd-mcp-astgrep/launch.ts]
+    args: [<bundle>/packages/mpd-mcp-astgrep/dist/launch.js]
     toolCallTimeoutMs: 60000
 ```
 

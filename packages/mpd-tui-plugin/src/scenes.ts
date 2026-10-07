@@ -27,13 +27,36 @@
 // React contract: every hook and element uses the React instance and ui kit the
 // host injects through the scene props; this file therefore never imports React
 // (it uses `props.React.createElement`, the documented always-safe form).
-import type { PluginContextLike, SeamOutcome, TuiScenePropsLike, TuiScenesLike } from "./types.js"
+import { TUI_SEAMS } from "./types.js"
+import { t } from "./i18n.js"
+import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiScenePropsLike } from "./types.js"
 import type { Log } from "./log.js"
-import { onService } from "./host.js"
-import { boardLines, readBoardState, statusLine } from "./state.js"
-import { clampCells, stripControl } from "./sanitize.js"
+import { boardLines, readBoardState, statusLine, type BoardState } from "./state.js"
+import { cellWidth, clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
-import { approvalPhrase, planProjectionLines, readTeamWorkflow, teamWorkflowLines } from "./team-state.js"
+import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines, type MpdPlanView } from "./team-state.js"
+import { hitTest, layoutGraph, layoutGraphNatural, legendLines, sliceSpans, type GraphTask } from "./graph.js"
+import { gutterCellsX, legendLinesFor, toneColor, visualTone } from "./panel-core.js"
+import { statusMarker } from "./status.js"
+import {
+  SUBAGENT_SCENE_ID,
+  SUBAGENT_SCENE_TITLE,
+  animPhase,
+  barCells,
+  chromeTitle,
+  createSubagentSceneComponent,
+  stateMarker,
+  surfaceBodyRow,
+  surfaceFrame,
+  surfaceHints,
+  surfaceRule,
+  surfaceText,
+  toneOfTally,
+  useSurfaceClock,
+  type SurfaceKit,
+  type SurfaceTone,
+} from "./subagent-scene.js"
+import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 
 /** Unique, kebab-case scene id. */
@@ -42,6 +65,15 @@ export const BOARD_SCENE_ID = "mpd-tui-board"
 export const TEAM_SCENE_ID = "mpd-tui-team"
 /** The plan-approval scene id (frozen §3.2). */
 export const PLAN_SCENE_ID = "mpd-tui-plan"
+
+/**
+ * The column count assumed before the host has measured one.
+ *
+ * 100 is a deliberate middle: wide enough that the boxed graph is drawn (so an unmeasured first
+ * render already looks like the finished surface), narrow enough that nothing is laid out for a
+ * terminal larger than the one it lands on. The host re-measures on the next render.
+ */
+const FALLBACK_COLS = 100
 
 /** Refresh cadence of the board's own state snapshot. */
 const BOARD_REFRESH_MS = 2000
@@ -94,10 +126,17 @@ export interface PlanActionOutcome {
 export interface PlanActions {
   /** Whether this composition can perform the mutations at all (never true on the 0.1.7 plane). */
   available(): boolean
-  /** Approves a staged plan once the user typed the exact phrase; never fabricates success. */
-  approve(input: { teamId: string; confirmation: string; captainSessionId?: string }): Promise<PlanActionOutcome>
+  /**
+   * Approves a staged plan once the user typed the exact phrase; never fabricates success.
+   *
+   * `sessionId` IS NOT OPTIONAL DECORATION. The tool this rides resolves its own context from the
+   * caller it is invoked with — `where(exec)` = `{ workspace: dsh.workspaceRoot(exec), sessionId:
+   * sessionIdOf(exec) }` — so a call made without one cannot find the right workspace or session. The
+   * scene acts FOR the session it belongs to, and it reads that id off its own live channel.
+   */
+  approve(input: { teamId: string; confirmation: string; captainSessionId?: string; sessionId?: string }): Promise<PlanActionOutcome>
   /** Archives a staged plan; the scene arms it with a second Ctrl+D inside the frozen window. */
-  discard(input: { captainSessionId?: string }): Promise<PlanActionOutcome>
+  discard(input: { captainSessionId?: string; sessionId?: string }): Promise<PlanActionOutcome>
 }
 
 /** The honest default: what a composition without the executor gets (never a fake success). */
@@ -127,6 +166,8 @@ export interface SceneSeam {
   openTeam(): boolean
   /** Open the plan-approval surface. */
   openPlan(options?: { teamId?: string; returnToTeam?: boolean }): boolean
+  /** Open the merged panel: the host's own subagent rows above the MPD team body. */
+  openSubagents(): boolean
 }
 
 /** A no-op store subscription, so the hook order stays stable without a channel. */
@@ -168,8 +209,23 @@ function usableKit(React: unknown, ui: any): boolean {
   return typeof ui.Box === "function" && typeof ui.Text === "function"
 }
 
+/**
+ * This file's React and ui kit, in the SHARED BUILDERS' own shape.
+ *
+ * `scenes.ts` and `subagent-scene.ts` each declare a structural shape for the host's kit, because each
+ * narrows what it calls; this is where the two meet, ONCE per render, rather than a cast at every call
+ * site. The caller has already proved the kit usable ({@link usableKit}), which is what makes the cast
+ * sound: every member the builders read (`React.createElement`, `ui.Box`, `ui.Text`) is present.
+ * @param React - the host React instance.
+ * @param ui - the host ui kit.
+ * @returns the kit as the shared surface builders take it.
+ */
+function surfaceKit(React: unknown, ui: unknown): SurfaceKit {
+  return { React, ui } as unknown as SurfaceKit
+}
+
 /** Read one workflow, never throwing: on top of `readTeamWorkflow`'s own guard this is the last net. */
-function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[], teamViews?: () => readonly DshTeamView[]): TeamWorkflow | undefined {
+function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[], teamViews?: () => readonly DshTeamView[], teamRecords?: () => readonly TeamRecord[]): TeamWorkflow | undefined {
   try {
     /** The watchdog's held team ids; empty when that read fails. */
     let holdIds: readonly string[] = []
@@ -185,6 +241,18 @@ function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[
     } catch {
       views = []
     }
+    /** The mpd-owned team records for this workspace; empty when that read fails. */
+    let records: readonly TeamRecord[] = []
+    try {
+      records = teamRecords?.() ?? []
+    } catch {
+      records = []
+    }
+    // THE PRIMARY SOURCE FIRST: the mpd record, whose review fields and lifecycle are real data.
+    // The official readout answers only when this workspace holds no record at all.
+    /** The principal record, which is the newest that has not ended. */
+    const principal = records.find((record) => record.endedAt === undefined) ?? records[0]
+    if (principal !== undefined) return readRecordWorkflow(workspaceRoot(), holdIds, principal)
     return readTeamWorkflow(workspaceRoot(), holdIds, views)
   } catch {
     return undefined
@@ -197,8 +265,33 @@ function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[
  * @param ui - the host ui kit.
  * @returns the size label and the number of body rows that fit.
  */
-function measureTerminal(ui: any): { size: string; window: number } {
-  if (typeof ui?.useTerminalSize !== "function") return { size: "", window: 20 }
+/**
+ * Wrap a line on word boundaries to a cell budget.
+ * @param value - the text to wrap.
+ * @param cols - the cells available per line.
+ * @returns the wrapped chunks; a single over-long word is left intact rather than split.
+ */
+function wrapCells(value: string, cols: number): string[] {
+  /** The wrapped chunks. */
+  const out: string[] = []
+  /** The line being assembled. */
+  let line = ""
+  for (const word of value.split(" ")) {
+    /** The line this word would produce. */
+    const next = line === "" ? word : `${line} ${word}`
+    if (cellWidth(next) > cols && line !== "") { out.push(line); line = word } else line = next
+  }
+  if (line !== "") out.push(line)
+  return out
+}
+
+/**
+ * Measure the host's terminal through its own hook, once per render.
+ * @param ui - the host ui kit.
+ * @returns the size label, the column count the graph sizes itself from, and the body row budget.
+ */
+function measureTerminal(ui: any): { size: string; cols: number; window: number } {
+  if (typeof ui?.useTerminalSize !== "function") return { size: "", cols: FALLBACK_COLS, window: 20 }
   /** The measured column count, `?` until the host hook answers. */
   let columns: unknown = "?"
   /** The measured row count, `?` until the host hook answers. */
@@ -213,9 +306,15 @@ function measureTerminal(ui: any): { size: string; window: number } {
   const terminalRows = Number(rows)
   /** The `<columns>x<rows>` size label of the scene title; empty when unmeasured. */
   const size = `${String(columns)}x${String(rows)}`
+  /** The column count as a number, for the graph's own geometry. */
+  const terminalCols = Number(columns)
   // The scene owns its chrome (title, meta, notice, footer), so the body window is
   // what is left. A sensible minimum keeps it usable before the first measurement.
-  return { size, window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20 }
+  return {
+    size,
+    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS,
+    window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20,
+  }
 }
 
 /**
@@ -234,6 +333,8 @@ function createBoardComponent(
   nav: SceneNav,
   openScene: (id: string) => boolean,
   teamViews?: () => readonly DshTeamView[],
+  teamRecords?: () => readonly TeamRecord[],
+  onHostKit?: (ui: unknown) => unknown,
 ): unknown {
   return function MpdTuiBoard(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
@@ -247,31 +348,42 @@ function createBoardComponent(
       // than crash the reconciler.
       return null
     }
+    // THE KIT IS THE ONE LIVE HOST CONTACT. A scene is the only surface the host hands its own
+    // `ui` namespace to, and that object's `useStdin` resolves the LIVE context value where an
+    // imported module's does not (measured, dsh-tui 0.12.0) — so every scene reports it once per
+    // render and the adapter keeps the newest one.
+    onHostKit?.(ui)
+    /** The host kit in the shared builders' shape; taken once per render, never per call. */
+    const surface = surfaceKit(React, ui)
 
-    /** Reads the board rows, degrading to one explicit line when the read fails. */
-    const read = (): string[] => {
+    /** Reads the board projection and the rows drawn from it, degrading to one explicit line. */
+    const read = (): { rows: string[]; state?: BoardState } => {
       try {
-        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), holds())
+        /** This read's projection, which carries the tally the surface's own tone reports. */
+        const state = readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? [])
+        return { rows: boardLines(state, holds()), state }
       } catch {
-        return ["board state unreadable"]
+        return { rows: ["board state unreadable"] }
       }
     }
 
-    /** The board rows as host state; the initial read happens in the effect below. */
-    const state = React.useState([] as string[])
-    /** The current rows, the value this render draws. */
-    const rows = state[0] as string[]
-    /** Replaces the rows: the initial read, the refresh key and the timer all use it. */
-    const setRows = state[1] as (next: string[]) => void
+    /** The board projection and its rows as host state; the initial read happens in the effect below. */
+    const state = React.useState({ rows: [] as string[] } as { rows: string[]; state?: BoardState })
+    /** The current read, the value this render draws. */
+    const board = state[0] as { rows: string[]; state?: BoardState }
+    /** The rows drawn from it. */
+    const rows = board.rows
+    /** Replaces the read: the initial read, the refresh key and the timer all use it. */
+    const setBoard = state[1] as (next: { rows: string[]; state?: BoardState }) => void
 
     React.useEffect(() => {
       // Initial read is deferred to the effect: the render path stays free of
       // synchronous I/O (scene red line).
-      setRows(read())
+      setBoard(read())
       /** The refresh timer, absent when the host refused to schedule one. */
       let timer: ReturnType<typeof setInterval> | undefined
       try {
-        timer = setInterval(() => setRows(read()), BOARD_REFRESH_MS)
+        timer = setInterval(() => setBoard(read()), BOARD_REFRESH_MS)
       } catch {
         timer = undefined
       }
@@ -286,10 +398,17 @@ function createBoardComponent(
       }
     }, [])
 
+    // The shared clock, taken at a FIXED hook position (see `subagent-scene.ts`): a host with no timer
+    // answers 0, and every animated cell then draws the frozen static frame.
+    /** The host clock and the ref the animated element must carry. */
+    const clock = useSurfaceClock(ui)
+    /** The phase the state marker breathes at. */
+    const phase = animPhase(clock.time)
+
     if (typeof ui.useInput === "function") {
       ui.useInput((input: string, key: { escape?: boolean; ctrl?: boolean } | undefined) => {
         if (key?.escape === true || input === "q") close()
-        else if (input === "r") setRows(read())
+        else if (input === "r") setBoard(read())
         // One-key hop from the board to the team workflow (frozen §5.6).
         else if (input === "a") {
           nav.planFromTeam = false
@@ -322,22 +441,46 @@ function createBoardComponent(
     /** The measured terminal size label, empty when the host could not measure. */
     const size = measured.size
 
-    /** The title row: the line count plus the measured size. */
-    const header = `MPD board — ${rows.length} line(s)${size === "" ? "" : ` · ${size}`}`
+    // THE BOARD'S OWN STATE, in the one tone vocabulary every surface reports: the team's tally when
+    // this workspace holds a team, `dim` when it holds none. The matrix is the same one the DAG page
+    // and the team scene draw, so a reader learns one signal for "this is fine / this is moving / this
+    // is broken".
+    /** The tally the surface reports, or undefined when there is no team to report. */
+    const tally = board.state?.team?.tasks
+    /** The tone the frame, the marker and the tally row all draw in. */
+    const tone: SurfaceTone = tally === undefined ? "dim" : toneOfTally(tally, [])
+    /** How many cells the progress bar may occupy on this width; never so wide that the row shears. */
+    const barWidth = Math.max(4, Math.min(24, measured.cols - 64))
+
     /** The elements handed to the host's Box, in render order. */
-    const children: unknown[] = [
-      // Title/counts chrome (the host draws NO chrome for a scene).
-      React.createElement(ui.Text, { key: "title", bold: true }, safeLine(header)),
-      React.createElement(ui.Text, { key: "meta", dimColor: true }, safeLine(`${sessionRows} transcript row(s)`)),
-    ]
+    const children: unknown[] = []
+    // Title/counts chrome (the host draws NO chrome for a scene). The marker is the surface's state
+    // and the first thing the eye lands on; the size is last because it is reference, not news.
+    children.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD board — ${rows.length} line(s)`, size]), { bold: true, tone }))
+    children.push(
+      surfaceText(
+        surface,
+        "meta",
+        chromeTitle([`${sessionRows} transcript row(s)`, tally === undefined ? undefined : `${barCells(tally.completed, tally.total, barWidth)} ${tally.completed}/${tally.total}`]),
+        { dim: true },
+      ),
+    )
+    children.push(surfaceRule(surface, "rule", undefined, tone))
     for (let index = 0; index < rows.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `line-${index}` }, safeLine(rows[index])))
+      // EVERY BODY ROW IS DRAWN BY THE SHARED BUILDER, so the board's own label vocabulary
+      // (`workspace`, `team`, `tasks`, `boulder`, `note`, …) carries the same tones here as it does in
+      // the merged panel. `tasks` is toned by the TALLY rather than by the label, because that row is
+      // the one body row whose meaning is a state.
+      children.push(surfaceBodyRow(surface, `line-${index}`, rows[index], { tasks: tone }))
     }
     // Key-hint footer, always the last row.
-    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc/q close · r refresh · a team workflow")))
+    children.push(surfaceHints(surface, "footer", ["esc/q close", "r refresh", "a team workflow"]))
 
-    // flexGrow: the scene fills the terminal it was handed.
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children)
+    // THE FRAME: the surface's own border, its title in the border line, its colour carrying the state
+    // the marker draws — the same grammar the DAG page and the merged panel use.
+    /** The border title, clamped to the measured width so it can never shear the frame. */
+    const borderTitle = clampCells(chromeTitle([stateMarker(tone, phase), "MPD board", size]), Math.max(8, measured.cols - 6))
+    return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref)
   }
 }
 
@@ -360,6 +503,8 @@ function createTeamComponent(
   nav: SceneNav,
   openScene: (id: string) => boolean,
   teamViews?: () => readonly DshTeamView[],
+  teamRecords?: () => readonly TeamRecord[],
+  onHostKit?: (ui: unknown) => unknown,
 ): unknown {
   return function MpdTuiTeam(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
@@ -369,73 +514,82 @@ function createTeamComponent(
     /** Leaves the scene; a host without the callback gets a no-op, so a key never throws. */
     const close = typeof props?.close === "function" ? props.close : () => {}
     if (!usableKit(React, ui)) return null
+    // The live host kit, reported per render (see the board factory's note).
+    onHostKit?.(ui)
+    /** The host kit in the shared builders' shape; taken once per render, never per call. */
+    const surface = surfaceKit(React, ui)
 
-    /** Reads the workflow, its subject line and the staged flag, degrading to one explicit row. */
-    const read = (): { rows: string[]; subject: string; staged: boolean; teamId?: string } => {
-      /** The projection this read produced; undefined means unreadable. */
-      let workflow: TeamWorkflow | undefined
-      /** The workspace root, read for the unreadable-state message. */
-      let root = ""
-      try {
-        root = workspaceRoot()
-      } catch {
-        root = "?"
-      }
-      try {
-        workflow = readWorkflow(workspaceRoot, holds, teamViews)
-      } catch {
-        workflow = undefined
-      }
-      if (workflow === undefined) return { rows: [`team state unreadable — ${root}/.mpd/team`], subject: "MPD team — (unreadable)", staged: false }
-      /** The title's subject: the team name, or the explicit none. */
-      const subject = workflow.team === undefined ? "MPD team — (none)" : `MPD team — ${workflow.team.name}`
-      return {
-        rows: teamWorkflowLines(workflow),
-        subject,
-        staged: workflow.team?.staged === true,
-        ...(workflow.team?.id === undefined ? {} : { teamId: workflow.team.id }),
-      }
-    }
-
-    /** The workflow rows as host state. */
-    const rowsState = React.useState([] as string[])
-    /** The current rows, the value this render draws. */
-    const rows = rowsState[0] as string[]
-    /** Replaces the rows on every read. */
-    const setRows = rowsState[1] as (next: string[]) => void
-    /** The title subject as host state. */
-    const subjectState = React.useState("MPD team")
-    /** The current subject, drawn in the title row. */
-    const subject = subjectState[0] as string
-    /** Replaces the subject on every read. */
-    const setSubject = subjectState[1] as (next: string) => void
-    /** The transient notice line as host state. */
+    /** The projection this render draws, or undefined before the first successful read. */
+    const workflowState = React.useState(undefined as TeamWorkflow | undefined)
+    /** The projection this render draws, or undefined before the first successful read. */
+    const workflow = workflowState[0] as TeamWorkflow | undefined
+    /** Publishes a freshly read projection. */
+    const setWorkflow = workflowState[1] as (next: TeamWorkflow | undefined) => void
+    /** The transient notice line. */
     const noticeState = React.useState("")
-    /** The current notice, empty when there is nothing to say. */
+    /** The transient notice line, empty when there is nothing to say. */
     const notice = noticeState[0] as string
     /** Sets the notice, e.g. when the plan surface is unavailable. */
     const setNotice = noticeState[1] as (next: string) => void
-    /** The scroll offset as host state. */
+    /** The PINNED task — what a click leaves behind when the pointer moves away. */
+    const pinnedState = React.useState(undefined as string | undefined)
+    /** The PINNED task — what a click leaves behind when the pointer moves away. */
+    const pinned = pinnedState[0] as string | undefined
+    /** Pins a task, or clears the pin with `undefined`. */
+    const setPinned = pinnedState[1] as (next: string | undefined) => void
+    /** The HOVERED task — transient, and it outranks the pin while the pointer is over a node. */
+    const hoverState = React.useState(undefined as string | undefined)
+    /** The HOVERED task — transient, and it outranks the pin while the pointer is over a node. */
+    const hover = hoverState[0] as string | undefined
+    /** Moves the hover, or clears it when the pointer leaves the graph. */
+    const setHover = hoverState[1] as (next: string | undefined) => void
+    /** The scroll offset, in rows. */
     const scrollState = React.useState(0)
-    /** The current offset, in rows. */
+    /** The scroll offset, in rows. */
     const scroll = scrollState[0] as number
-    /** Moves the offset; `r` and `p` reset it to 0. */
+    /** Moves the offset; `r` resets it to 0. */
     const setScroll = scrollState[1] as (next: number) => void
-    // The last read's facts, so a key handler answers "is this team staged?" without a
-    // second read and without reading state from a stale render closure.
+    // THE SECOND AXIS (frozen clause T5). It is the DAG DRAWING's own window and nothing else (R8): the
+    // scene's other rows — the roster, the legend, the detail pane, the footer — stay at the terminal's
+    // width and never move sideways. The purpose, said once: the pan exists so the WHOLE DAG can be seen,
+    // because a natural-width drawing is allowed to be wider than the terminal it is drawn in.
+    /** The horizontal scroll offset, in cells, over the DRAWING only. */
+    const scrollXState = React.useState(0)
+    /** The horizontal scroll offset, in cells. */
+    const scrollX = scrollXState[0] as number
+    /** Moves the horizontal offset; `r` resets it to 0. */
+    const setScrollX = scrollXState[1] as (next: number) => void
+    // The last read's facts, so a key handler answers "is this team staged?" without a second read
+    // and without reading state from a stale render closure.
     const latestRef = React.useRef?.(undefined as { staged: boolean; teamId?: string } | undefined)
+    // The drawn geometry, kept for the POINTER handlers: a click arrives with coordinates and the
+    // handler must resolve them against the very layout that produced the pixels on screen. Reading
+    // it from a ref rather than from the closure is what keeps a pointer event answered against the
+    // CURRENT drawing after a refresh moved the rows.
+    const viewRef = React.useRef?.(undefined as ReturnType<typeof layoutGraph> | undefined)
+    // The shared clock, at a FIXED hook position (see `subagent-scene.ts`): a host with no timer
+    // answers 0 and every animated cell draws the frozen static frame.
+    /** The host clock and the ref the animated element must carry. */
+    const clock = useSurfaceClock(ui)
+    /** The phase the state marker breathes at. */
+    const phase = animPhase(clock.time)
 
-    /** Re-reads the workflow and publishes its rows, subject and staged flag. */
+    /** Re-read the workflow and publish it. The render path stays free of I/O. */
     const refresh = (): void => {
-      /** The freshly read snapshot, published field by field below. */
-      const snapshot = read()
-      setRows(snapshot.rows)
-      setSubject(snapshot.subject)
-      if (latestRef !== undefined && latestRef !== null) latestRef.current = { staged: snapshot.staged, teamId: snapshot.teamId }
+      /** The freshly read projection; undefined means unreadable. */
+      let next: TeamWorkflow | undefined
+      try {
+        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords)
+      } catch {
+        next = undefined
+      }
+      setWorkflow(next)
+      if (latestRef !== undefined && latestRef !== null) {
+        latestRef.current = { staged: next?.team?.staged === true, ...(next?.team?.id === undefined ? {} : { teamId: next.team.id }) }
+      }
     }
 
     React.useEffect(() => {
-      // The initial read is deferred to the effect: the render path stays free of I/O.
       refresh()
       /** The refresh timer, absent when the host refused to schedule one. */
       let timer: ReturnType<typeof setInterval> | undefined
@@ -455,52 +609,255 @@ function createTeamComponent(
       }
     }, [])
 
+    /** The board in the graph's own vocabulary. */
+    const graphTasks: GraphTask[] = (workflow?.tasks ?? []).map((task) => ({
+      id: task.id,
+      subject: task.subject,
+      ...(task.kind === undefined ? {} : { kind: task.kind }),
+      visual: task.visual,
+      ...(task.assignee === undefined ? {} : { assignee: task.assignee }),
+      dependencies: task.dependencies,
+      depth: task.depth,
+      ...(task.attempt === undefined ? {} : { attempt: task.attempt }),
+    }))
+    /** HOVER OUTRANKS THE PIN while it lasts: the pointer is the more recent intent. */
+    const focus = hover ?? pinned
+    // The window is computed from the host's own terminal size (never assumed).
+    const measured = measureTerminal(ui)
+    /** The graph's own viewport, inside the scene's one-cell padding. */
+    const graphWidth = Math.max(20, measured.cols - 4)
+    // THE DRAWING IS LAID OUT AT ITS NATURAL WIDTH (frozen clauses T1/T2), so `view.width` may exceed
+    // `graphWidth`; the rows below are WINDOWED to the viewport instead of the drawing being squeezed to
+    // it. The vertical budget is the scene's own graph window, which is what buys the roomy box form.
+    /** The rows of the graph that fit the window. */
+    const graphWindow = Math.max(3, measured.window - 4)
+    /** The drawing for this render, at its own width. */
+    const view = layoutGraphNatural(graphTasks, focus, { rows: graphWindow })
+    /** The furthest horizontal offset that still fills the viewport; zero when the drawing fits. */
+    const scrollXMax = Math.max(0, view.width - graphWidth)
+    /** The horizontal offset for THIS render, clamped — the one value the rows and the rail both read. */
+    const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax)
+    if (viewRef !== undefined && viewRef !== null) viewRef.current = view
+    /** The tasks the focus would move through, in DRAWING order, which is what the arrow keys walk. */
+    const ordered = view.hits.map((hit) => hit.taskId)
+
+    /** Move the focus by one task in drawing order, wrapping at both ends. */
+    const moveFocus = (delta: number): void => {
+      if (ordered.length === 0) return
+      /** The current position, or -1 when nothing is focused. */
+      const at = focus === undefined ? -1 : ordered.indexOf(focus)
+      /** The next position, wrapped so the ends are reachable from either direction. */
+      const next = at < 0 ? (delta > 0 ? 0 : ordered.length - 1) : (at + delta + ordered.length) % ordered.length
+      setHover(undefined)
+      setPinned(ordered[next])
+    }
+
     if (typeof ui.useInput === "function") {
-      ui.useInput((input: string, key: { escape?: boolean; upArrow?: boolean; downArrow?: boolean } | undefined) => {
+      ui.useInput((input: string, key: { escape?: boolean; upArrow?: boolean; downArrow?: boolean; leftArrow?: boolean; rightArrow?: boolean; pageUp?: boolean; pageDown?: boolean; home?: boolean; end?: boolean; shift?: boolean } | undefined) => {
+        // `esc` UNPINS rather than closing while something is pinned: the pin is a mode, and a user
+        // who clicked a task must be able to leave that mode without leaving the scene.
+        if (key?.escape === true && pinned !== undefined) { setPinned(undefined); setHover(undefined); return }
         if (key?.escape === true || input === "q") close()
-        else if (input === "r") {
-          setScroll(0)
-          refresh()
-        } else if (key?.upArrow === true || input === "k") setScroll(scroll > 0 ? scroll - 1 : 0)
-        else if (key?.downArrow === true || input === "j") setScroll(scroll + 1)
-        else if (input === "p") {
-          nav.planFromTeam = false
-          openScene(BOARD_SCENE_ID)
-        } else if (input === "a") {
+        else if (input === "r") { setScroll(0); setScrollX(0); refresh() }
+        // THE ARROWS MOVE THE FOCUS; SHIFT MAKES THEM SCROLL (the user's own decision, clause T5). `←/→`
+        // are NEW: they walk the SAME one-dimensional drawing order `↑/↓` already walk, because a true
+        // two-dimensional neighbour walk would need a geometry contract nobody asked for.
+        else if (key?.upArrow === true || input === "k") (key?.shift === true ? setScroll(Math.max(0, scroll - 1)) : moveFocus(-1))
+        else if (key?.downArrow === true || input === "j") (key?.shift === true ? setScroll(scroll + 1) : moveFocus(1))
+        else if (key?.leftArrow === true || input === "h") (key?.shift === true ? setScrollX(Math.max(0, scrollXAt - 1)) : moveFocus(-1))
+        else if (key?.rightArrow === true || input === "l") (key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + 1)) : moveFocus(1))
+        // PAGING: `PgUp`/`PgDn` page vertically and their SHIFT forms horizontally, and `Home`/`End` are
+        // the vertical ends — the same four keys the `dag` panel answers, so the two surfaces agree.
+        else if (key?.pageUp === true) (key?.shift === true ? setScrollX(Math.max(0, scrollXAt - graphWidth)) : setScroll(Math.max(0, scroll - graphWindow)))
+        else if (key?.pageDown === true) (key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + graphWidth)) : setScroll(scroll + graphWindow))
+        else if (key?.home === true) setScroll(0)
+        else if (key?.end === true) setScroll(Number.MAX_SAFE_INTEGER)
+        else if (input === "g") { setScroll(0); setScrollX(0) }
+        else if (input === "p") { nav.planFromTeam = false; openScene(BOARD_SCENE_ID) }
+        else if (input === "a") {
           /** Whether the last read saw a staged team, which is what the `a` key needs. */
           const staged = latestRef?.current?.staged === true
-          if (!staged) {
-            setNotice("plan approval needs a staged team")
-            return
-          }
+          if (!staged) { setNotice(t("scene.planNeedsStaged")); return }
           setNotice("")
           nav.planFromTeam = true
           nav.planTeamId = latestRef?.current?.teamId
-          if (!openScene(PLAN_SCENE_ID)) setNotice("the plan approval surface is not available in this composition")
+          if (!openScene(PLAN_SCENE_ID)) setNotice(t("scene.planMissing"))
         }
       })
     }
 
-    // The window is computed from the host's own terminal size (never assumed).
-    const measured = measureTerminal(ui)
-    /** The rows inside the body window. */
-    const visible = rows.slice(scroll, scroll + measured.window)
-    /** The measured terminal size label. */
-    const size = measured.size
-
     /** The elements handed to the host's Box, in render order. */
-    const children: unknown[] = [
-      React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${subject}${size === "" ? "" : ` · ${size}`}`)),
-      React.createElement(ui.Text, { key: "meta", dimColor: true }, safeLine(`${rows.length} line(s) · scroll ${scroll}`)),
-    ]
-    for (let index = 0; index < visible.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `line-${index}` }, safeLine(visible[index])))
-    }
-    if (notice !== "") children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeLine(notice)))
+    const children: unknown[] = []
+    /** The team head, when there is one. */
+    const head = workflow?.team
+    // THE TEAM'S OWN STATE, in the one tone vocabulary every surface reports — the frame colour, the
+    // marker and the tally row all read it, exactly as the board and the merged panel do.
+    /** The tone this render reports. */
+    const tone: SurfaceTone = workflow === undefined ? "dim" : toneOfTally(workflow.counts, workflow.tasks.map((task) => task.visual))
+    /** How many cells the tally's bar may take on this width; a narrow terminal simply drops it. */
+    const barWidth = Math.max(4, Math.min(16, measured.cols - 46))
+    /** Whether this width has room for the bar beside the tally's own words. */
+    const barFits = measured.cols >= 50
+    // THE TEAM ID IS DRAWN, and it is not decoration: `approve <teamId>` is the exact phrase the
+    // plan surface demands, and the id is what tells two waves apart. Two existing arms caught its
+    // absence the moment this header was rewritten — the second of them through the CONTROL
+    // CHARACTER it carries, which is why the id is the string the render boundary is tested with.
     children.push(
-      React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc/q close · r refresh · ↑/k ↓/j scroll · a plan approval · p board")),
+      surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD team${head === undefined ? " — (none)" : ` — ${head.name} (${head.id})`}`, measured.size]), {
+        bold: true,
+        tone,
+      }),
     )
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children)
+    if (workflow === undefined) {
+      children.push(surfaceText(surface, "unreadable", "team state unreadable", { tone: "failed" }))
+    } else if (head === undefined) {
+      // The honest empty state: the workspace really holds no team, and the row says which tool
+      // fills it rather than showing an empty frame.
+      children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }))
+    } else {
+      /** The tally row, in the vocabulary the record uses. */
+      const counts = workflow.counts
+      // THE TALLY IS THE ONE ROW THAT IS A STATE, so it draws in the state's tone and carries the bar;
+      // its words are unchanged, because the record's own vocabulary is what a reader already knows.
+      children.push(
+        surfaceText(
+          surface,
+          "phase",
+          chromeTitle([
+            barFits ? `${barCells(counts.completed, counts.total, barWidth)} ${counts.completed}/${counts.total}` : undefined,
+            `${head.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${head.links} link(s)`,
+          ]),
+          { tone },
+        ),
+      )
+      /** The roster, one wrapped line, so the graph gets the room. */
+      const roster = workflow.members.length === 0
+        ? "roster  (no members)"
+        : "roster  " + workflow.members.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · ")
+      /** The wrapped roster chunks; only the first carries the `roster` label the tone table keys on. */
+      const rosterChunks = wrapCells(roster, graphWidth)
+      for (let index = 0; index < rosterChunks.length; index += 1) {
+        children.push(surfaceBodyRow(surface, `roster-${index}`, rosterChunks[index]))
+      }
+      if (workflow.holds.includes(head.id)) children.push(surfaceBodyRow(surface, "hold", `watchdog   HELD (${workflow.holds.join(", ")})`))
+      /** The graph's own header, which names the focus so the highlight is explainable. */
+      const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`
+      // THE HEADER MUST STAY EXACTLY `task dependency graph` WHEN NOTHING IS FOCUSED: the drawing
+      // begins on the very next row (the pointer geometry and the scroll arms are measured from that
+      // offset), so nothing may be inserted between this row and the first row of the drawing.
+      children.push(surfaceText(surface, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`, { dim: true }))
+      // THE GRAPH BOX OWNS THE POINTER. Its children are exactly the drawn rows, in order, so a
+      // `localRow`/`localCol` from the host's event resolves against the SAME geometry that was
+      // drawn — `hitTest` is a rectangle lookup on the layout, never a second one.
+      /** The rows of the graph that fit the window. */
+      const graphWindow = Math.max(3, measured.window - 4)
+      /** One host element per drawn graph row, each carrying its coloured spans. */
+      const graphRows: unknown[] = []
+      for (let index = scroll; index < Math.min(view.lines.length, scroll + graphWindow); index += 1) {
+        // THE HORIZONTAL WINDOW, through the ONE slicer (clause T3). It is applied HERE and nowhere
+        // else in this scene: this is the DAG's own row list, and every other row the scene draws is
+        // pushed through `surfaceText`/`surfaceBodyRow` at its full width (R8).
+        /** The spans of this row, cut to the viewport and each drawn in its own theme colour. */
+        const spans = sliceSpans(view.lines[index], scrollXAt, graphWidth).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
+        graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans))
+      }
+      children.push(React.createElement(ui.Box, {
+        key: "graph",
+        flexDirection: "column",
+        // Pointer handlers: present on every host, INERT on one without mouse tracking, so the
+        // keyboard path is untouched and nothing has to feature-detect.
+        onMouseEnter: (event: { localRow?: number; localCol?: number } | undefined) => {
+          /** The view this render drew, read back so the handler cannot answer a stale layout. */
+          const drawn = viewRef?.current
+          if (drawn === undefined) return
+          /** The task under the pointer, or none. */
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1) + scrollXAt)
+          setHover(under)
+        },
+        onMouseLeave: () => setHover(undefined),
+        onClick: (event: { localRow?: number; localCol?: number } | undefined) => {
+          /** The view this render drew. */
+          const drawn = viewRef?.current
+          if (drawn === undefined) return
+          /** The task that was clicked, or none for blank space. */
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1) + scrollXAt)
+          // Clicking the pinned task again, or blank space, UNPINS — the same gesture that pinned it.
+          setPinned(under === undefined || under === pinned ? undefined : under)
+          setHover(under)
+        },
+        onWheel: (event: { deltaY?: number; deltaX?: number } | undefined) => {
+          // EACH DELTA DRIVES ITS OWN AXIS (clause T5). The vertical one keeps the sign convention every
+          // terminal reports; the horizontal one moves the DRAWING's window, and only when there is
+          // something to pan to — a wheel that scrolled a fitting drawing would be motion with no cause.
+          /** The wheel's vertical direction; a positive delta scrolls down. */
+          const deltaY = Number(event?.deltaY ?? 0)
+          if (deltaY !== 0) setScroll(Math.max(0, scroll + (deltaY > 0 ? 1 : -1)))
+          /** The wheel's horizontal direction; a positive delta scrolls right. */
+          const deltaX = Number(event?.deltaX ?? 0)
+          if (deltaX !== 0) setScrollX(Math.max(0, Math.min(scrollXMax, scrollXAt + (deltaX > 0 ? 1 : -1))))
+        },
+      }, graphRows))
+      // THE HORIZONTAL RAIL, DIRECTLY BENEATH THE DRAWING (R8) — not beneath the scene, and driven by
+      // the SAME `scrollXAt` the rows above were cut with, so the thumb and the window can never
+      // disagree (clause T4). Drawn only while the drawing is wider than the viewport.
+      if (scrollXMax > 0) {
+        // The rail's cells come out of `panel-core.ts`'s ONE horizontal-gutter function, so the scene and
+        // the `dag` panel draw the same thumb at the same offset from the same arithmetic (clause T4).
+        /** The rail's cells, one per column of the viewport. */
+        const rail = gutterCellsX(scrollXAt, view.width, graphWidth)
+        if (rail !== "") children.push(surfaceText(surface, "hrail", rail, { dim: true }))
+      }
+      // THE LEGEND sits directly under the DAG it explains, in the SAME width budget the graph was
+      // laid out for (`graphWidth`) — the merged panel draws the same lines under its own DAG, so
+      // one legend cannot claim more cells than the drawing above it used. It is COMPOSED, not
+      // private: `graph.ts` owns the drawing's own sentences, and `panel-core.ts`'s `legendLinesFor`
+      // appends the CONTRACT's six-state key — the one that tells `○ blocked` from `○ open`, which
+      // the drawing module's own key cannot. Handing the drawing's lines to that helper is what keeps
+      // this scene's legend identical to the DAG page's.
+      /** The drawing module's own lines: its arrow/focus sentence and its own state key. */
+      let arrow: string[] = []
+      try {
+        arrow = legendLines(graphWidth)
+      } catch {
+        arrow = []
+      }
+      // THE TWO GROUPS KEEP THEIR OWNER'S KEY: the drawing's lines stay `legend-<i>` (the interface
+      // this package's own suite pins), and the contract's appended key rows are `state-key-<i>`, so a
+      // reader — and a test — can tell which owner said what. Both are DIMMED: a legend explains the
+      // drawing, it never competes with it.
+      for (let index = 0; index < arrow.length; index += 1) {
+        children.push(surfaceText(surface, `legend-${index}`, arrow[index], { dim: true }))
+      }
+      /** The composed legend: the drawing's lines followed by the contract's six-state key. */
+      let legend: string[] = []
+      try {
+        legend = legendLinesFor(graphWidth, arrow)
+      } catch {
+        legend = []
+      }
+      for (let index = arrow.length; index < legend.length; index += 1) {
+        children.push(surfaceText(surface, `state-key-${index - arrow.length}`, legend[index], { dim: true }))
+      }
+      // The detail pane: the focused task's contract, which is what a reader needs after finding it.
+      /** The focused task's row, when there is one. */
+      const detail = focus === undefined ? undefined : workflow.tasks.find((task) => task.id === focus)
+      if (detail !== undefined) {
+        // The pane draws in the FOCUSED TASK'S OWN TONE: the reader asked about this task, so the pane
+        // reports its state rather than repeating the surface's.
+        children.push(surfaceText(surface, "detail", `${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`, { bold: true, tone: visualTone(detail.visual) }))
+        children.push(surfaceText(surface, "detail-meta",
+          `${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`,
+          { dim: true }))
+      }
+      for (const problem of workflow.problems) children.push(surfaceBodyRow(surface, `problem-${problem}`, `note       ${problem}`))
+    }
+    if (notice !== "") children.push(surfaceText(surface, "notice", notice, { tone: "blocked" }))
+    children.push(surfaceHints(surface, "footer", ["esc/q close", "↑↓ focus", "click pins", "hover previews", "⇧↑↓ scroll", "r refresh", "a plan", "p board"]))
+    // THE FRAME: the surface's own border, its title in the border line and its colour carrying the
+    // state the marker draws — the grammar the DAG page and the merged panel share.
+    /** The border title, clamped to the measured width so it can never shear the frame. */
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${head === undefined ? "" : ` — ${head.name}`}`, measured.size]), Math.max(8, measured.cols - 6))
+    return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref)
   }
 }
 
@@ -511,19 +868,25 @@ function createTeamComponent(
  * @param echo - the confirmation echo line (starts EMPTY, clears on refresh).
  * @param armed - whether the discard arm is live.
  * @param message - the last tool result line (empty when there is none).
+ * @param servedPhrase - the approval phrase the SHARED projection served, or "" when this
+ *   composition exposes no plan face (the record-derived fallback then applies).
  * @returns the appended rows.
  */
-export function planActionLines(workflow: TeamWorkflow | undefined, echo: string, armed: boolean, message: string): string[] {
+export function planActionLines(workflow: TeamWorkflow | undefined, echo: string, armed: boolean, message: string, servedPhrase: string = ""): string[] {
   /** The team the action block addresses; undefined without a record. */
   const team = workflow?.team
-  /** The exact phrase the user must type to approve this team. */
-  const phrase = team === undefined ? "" : approvalPhrase(team.id)
+  // THE PHRASE IS SERVED, NOT DERIVED. It arrives from the SAME projection the Web panel renders, so
+  // the two surfaces demand the same string; a surface that computed its own would be a second
+  // implementation of the gate, free to drift. The record-based fallback below exists only for a
+  // composition that exposes no plan face at all, and it is named as such in the row it renders.
+  /** The exact phrase the user must type, or the empty marker when there is nothing to approve. */
+  const phrase = servedPhrase !== "" ? servedPhrase : (team === undefined ? "" : approvalPhrase(team.id))
   /** The action-block rows, in render order. */
   const rows: string[] = []
   rows.push("")
-  rows.push(`approval needs the exact team id typed below, then Ctrl+X`)
+  rows.push(servedPhrase !== "" ? "approval needs the exact phrase typed below, then Ctrl+X" : "approval needs the exact team id typed below, then Ctrl+X")
   rows.push(`confirm    ${echo}`)
-  rows.push(`required   ${phrase === "" ? "(no team record)" : phrase}`)
+  rows.push(`required   ${phrase === "" ? "(no staged plan)" : phrase}`)
   rows.push(`runnable   ${team?.runnable === true ? "yes" : "no"}`)
   if (armed) rows.push("DISCARD ARMED — press Ctrl+D again within 10s to archive this staged plan")
   if (message !== "") rows.push(message)
@@ -552,7 +915,11 @@ function createPlanComponent(
   nav: SceneNav,
   openScene: (id: string) => boolean,
   actions: PlanActions,
-  teamViews?: () => readonly DshTeamView[],): unknown {
+  planFor?: (sessionId: string) => MpdPlanView["plan"] | undefined,
+  teamViews?: () => readonly DshTeamView[],
+  teamRecords?: () => readonly TeamRecord[],
+  onHostKit?: (ui: unknown) => unknown,
+): unknown {
   return function MpdTuiPlan(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
     const React = props?.React
@@ -561,6 +928,31 @@ function createPlanComponent(
     /** Leaves the scene; a host without the callback gets a no-op, so a key never throws. */
     const close = typeof props?.close === "function" ? props.close : () => {}
     if (!usableKit(React, ui)) return null
+    // The live host kit, reported per render (see the board factory's note).
+    onHostKit?.(ui)
+    /** The host kit in the shared builders' shape; taken once per render, never per call. */
+    const surface = surfaceKit(React, ui)
+    // The shared clock, at a FIXED hook position (see `subagent-scene.ts`): a host with no timer
+    // answers 0 and every animated cell draws the frozen static frame.
+    /** The host clock and the ref the animated element must carry. */
+    const clock = useSurfaceClock(ui)
+    /** The phase the state marker breathes at. */
+    const phase = animPhase(clock.time)
+
+    // ── THE SESSION ID COMES FROM THE LIVE CHANNEL ────────────────────────────
+    // A staged plan is SESSION-scoped (`.mpd/team/staging/<sessionId>.json`) while every other read
+    // this row makes is workspace-scoped — the row has no session of its own. A SCENE does: the host
+    // hands it the live channel, and `sessionId` is one of that channel's published properties. That
+    // is the whole reason the plan is reachable here, and it is why nothing needs caching: the id is
+    // read per render off the props the host just passed.
+    /** The live channel's session id, or undefined before the channel has bound one. */
+    const channelSession = (): string | undefined => {
+      /** The channel, narrowed to the one property this surface reads. */
+      const live = (props as { channel?: { sessionId?: unknown } } | undefined)?.channel
+      /** The id as a string, or undefined when the host has not bound one yet. */
+      const id = typeof live?.sessionId === "string" ? live.sessionId : undefined
+      return id === undefined || id === "" ? undefined : id
+    }
 
     // The mount-time navigation target: plain in-memory state, no I/O in the render path.
     const targetState = React.useState(() => ({ teamId: nav.planTeamId, fromTeam: nav.planFromTeam }))
@@ -606,7 +998,7 @@ function createPlanComponent(
 
     /** Re-reads the record and resets the consent echo, the arm and the scroll. */
     const refresh = (): void => {
-      setView(readWorkflow(workspaceRoot, holds, teamViews))
+      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
       // Barrier 3: the echo is EMPTY on every entry and on every explicit refresh.
       setEcho("")
       setArmedAt(0)
@@ -622,7 +1014,7 @@ function createPlanComponent(
         timer = setInterval(() => {
           // The automatic re-read refreshes the FACTS only: the consent echo and the 10 s
           // discard arm are cleared by the explicit `r` key (frozen §4.2 barrier 3 / §4.3).
-          setView(readWorkflow(workspaceRoot, holds, teamViews))
+          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
         }, BOARD_REFRESH_MS)
       } catch {
         timer = undefined
@@ -661,12 +1053,25 @@ function createPlanComponent(
 
     /** The team this render addresses; undefined without a record. */
     const team = view?.team
-    /** The exact approval phrase of that team. */
-    const phrase = team === undefined ? "" : approvalPhrase(team.id)
+    // THE STAGED PLAN, THROUGH THE SHARED PROJECTION. Nothing here re-reads the staging file or
+    // re-derives the gate: `planFor` is the same function the Web panel's route calls, so both
+    // surfaces demand the same phrase. A composition with no plan face, or a session with nothing
+    // staged, yields undefined and this surface falls back to the record-derived phrase.
+    /** The plan this session has staged, or undefined when there is none to approve. */
+    /** The plan this session has staged, or undefined when there is none to approve. */
+    /** What the reader answered: the plan, or null when the session has none staged. */
+    const rawPlan = planFor === undefined ? undefined : planFor(channelSession() ?? "")
+    /** The plan to render, with the reader's own null normalised to undefined. */
+    const stagedPlan = rawPlan ?? undefined
+    /** The exact approval phrase: SERVED when there is a plan, else the record-derived fallback. */
+    const phrase = stagedPlan === undefined ? (team === undefined ? "" : approvalPhrase(team.id)) : stagedPlan.phrase
     // The precondition the Web itself enforces before it renders the editor
     // (`client.js:2437`): a STAGED team with a plan. Outside it the scene is a
     // read-only statement that accepts ONLY Esc — no chord, no mutation.
-    const usable = view !== undefined && team !== undefined && team.staged
+    // A STAGED PLAN WITH NO RECORD IS THE NORMAL PRE-APPROVAL STATE: the record is materialised AT
+    // approval, so requiring one here made the surface unusable in exactly the state it exists for —
+    // the same fact that made the Web panel show "no team yet" over a plan awaiting a decision.
+    const usable = (view !== undefined && team !== undefined && team.staged) || (stagedPlan !== undefined && stagedPlan !== null && stagedPlan.approved !== true)
 
     /** Leave the surface. Esc never mutates (frozen §3.2). */
     const leave = (): void => {
@@ -696,8 +1101,12 @@ function createPlanComponent(
       try {
         /** The executor's verdict for this approval. */
         const result = await actions.approve({
-          teamId: team.id,
+          teamId: stagedPlan?.planId ?? team.id,
           confirmation: echo,
+          // THE SESSION THE SCENE ACTS FOR, off its own live channel. The tool resolves its workspace
+          // and session from the caller it is given, so this is what makes the call land on the RIGHT
+          // plan rather than on whatever the process cwd happens to name.
+          ...(channelSession() === undefined ? {} : { sessionId: channelSession() as string }),
           ...(team.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId }),
         })
         if (result.ok) {
@@ -724,7 +1133,7 @@ function createPlanComponent(
         // Barrier 5: the record is re-read after the call settles, then keys are live again.
         // The echo is NOT cleared here: §4.5 keeps it on every refused outcome.
         setBusy(false)
-        setView(readWorkflow(workspaceRoot, holds, teamViews))
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
       }
     }
 
@@ -747,7 +1156,10 @@ function createPlanComponent(
       setMessage("working…")
       try {
         /** The executor's verdict for this discard. */
-        const result = await actions.discard(team?.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId })
+        const result = await actions.discard({
+          ...(team?.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId }),
+          ...(channelSession() === undefined ? {} : { sessionId: channelSession() as string }),
+        })
         setMessage(result.ok ? "discarded: team archived" : `discard failed: ${result.error ?? "the tool refused the call"}`)
         // Same rule as approve (§4.5): only a SUCCESSFUL call consumes the consent echo.
         if (result.ok) setEcho("")
@@ -755,7 +1167,7 @@ function createPlanComponent(
         setMessage(`discard failed: ${String((error as Error)?.message ?? error)}`)
       } finally {
         setBusy(false)
-        setView(readWorkflow(workspaceRoot, holds, teamViews))
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
       }
     }
 
@@ -833,7 +1245,7 @@ function createPlanComponent(
     if (usable && target.teamId !== undefined && team !== undefined && target.teamId !== team.id) {
       body.push(`note       team ${target.teamId} is not the newest record — showing ${team.id}`)
     }
-    if (usable) for (const row of planActionLines(view, echo, armedAt !== 0, message)) body.push(row)
+    if (usable) for (const row of planActionLines(view, echo, armedAt !== 0, message, stagedPlan?.phrase ?? "")) body.push(row)
 
     /** The terminal measurement, taken once per render. */
     const measured = measureTerminal(ui)
@@ -841,6 +1253,23 @@ function createPlanComponent(
     const visible = body.slice(scroll, scroll + measured.window)
     /** The measured terminal size label. */
     const size = measured.size
+
+    // THE SURFACE'S OWN STATE, in the one tone vocabulary every surface reports. It is read from THIS
+    // file's own action vocabulary (`approved:`/`discarded:`/`… failed` are the exact prefixes the two
+    // runners below set) plus the surface's own mode, so the frame, the marker and the verdict row can
+    // never describe a different outcome than the words beside them.
+    /** The tone this render reports. */
+    const tone: SurfaceTone = busy
+      ? "running"
+      : message.startsWith("approve failed") || message.startsWith("discard failed")
+        ? "failed"
+        : message.startsWith("approved:")
+          ? "completed"
+          : message.startsWith("discarded:")
+            ? "cancelled"
+            : usable
+              ? "focus"
+              : "dim"
 
     // t3's F1: a COMMITTED mutation must be confirmed ON SCREEN even though the record
     // has already left the staged phase by the time the verdict renders. `message` is the
@@ -858,99 +1287,122 @@ function createPlanComponent(
       ? verdict
         ? `MPD plan approval — ${team?.name ?? "(none)"}`
         : `MPD plan approval — ${team === undefined ? "(none)" : `no staged plan for team ${team.id} (phase ${team.phase})`}`
-      : `MPD plan approval — ${team.name}${busy ? " · working…" : ""}`
+      // A STAGED PLAN WITH NO RECORD still has a NAME — the plan's own — so the title addresses it
+      // instead of falling back to "(none)" over the very plan the surface is asking about.
+      : `MPD plan approval — ${team?.name ?? stagedPlan?.name ?? "(none)"}${busy ? " · working…" : ""}`
     /** The elements handed to the host's Box, in render order. */
-    const children: unknown[] = [React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${title}${size === "" ? "" : ` · ${size}`}`))]
+    const children: unknown[] = [surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} ${title}`, size]), { bold: true, tone })]
     if (!usable) {
       if (verdict) {
         // Frozen §4.5 row 1 / barrier 5: the verdict the runtime produced, rendered FIRST
         // so a committed approval can never read as "nothing to approve".
-        children.push(React.createElement(ui.Text, { key: "verdict", bold: true }, safeLine(message)))
+        children.push(surfaceText(surface, "verdict", message, { bold: true, tone }))
         children.push(
-          React.createElement(
-            ui.Text,
-            { key: "context", dimColor: true },
-            safeLine(team === undefined ? "the staged plan is no longer current" : `team ${team.id} · phase ${team.phase}`),
-          ),
+          surfaceText(surface, "context", team === undefined ? "the staged plan is no longer current" : `team ${team.id} · phase ${team.phase}`, { dim: true }),
         )
       } else {
         // The precondition failure accepts ONLY Esc: no confirmation echo, no chord.
         const detail = team === undefined ? "no staged plan for team (none)" : `no staged plan for team ${team.id} (phase ${team.phase})`
-        children.push(React.createElement(ui.Text, { key: "empty" }, safeLine(detail)))
+        children.push(surfaceText(surface, "empty", detail, { dim: true }))
       }
-      children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc back")))
-      return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children)
+      children.push(surfaceHints(surface, "footer", ["esc back"]))
+      return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref)
     }
     for (let index = 0; index < visible.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `line-${index}` }, safeLine(visible[index])))
+      // EVERY BODY ROW GOES THROUGH THE SHARED BUILDER, so the plan surface's own labels (`confirm`,
+      // `required`, `runnable`) carry the same tones here as the same labels do elsewhere. `runnable` is
+      // the one row whose tone depends on a VALUE — whether the plan can actually run — so it is
+      // overridden from the record rather than coloured by its label.
+      children.push(surfaceBodyRow(surface, `line-${index}`, visible[index], { runnable: team?.runnable === true ? "completed" : "failed" }))
     }
-    if (busy) children.push(React.createElement(ui.Text, { key: "busy", dimColor: true }, safeLine("working…")))
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children)
+    if (busy) children.push(surfaceText(surface, "busy", "working…", { tone: "running" }))
+    return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref)
   }
 }
 
 /**
  * Activate the full-screen scenes.
- * @param ctx - the plugin context.
+ * @param ctx - the plugin context; the host records it as each scene's registration identity.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @param workspaceRoot - resolves the workspace root per call.
  * @param home - resolves the home directory per call.
  * @param holds - the watchdog's held team ids; the hold row is simply omitted when unknown.
  * @param planActions - the adapter-backed approval executor.
+ * @param planReader - the shared plan reader, per session.
+ * @param teamViews - the official team readout, resolved per call.
+ * @param teamRecords - the mpd-owned team records, resolved per call.
+ * @param onHostKit - receives the host's own `ui` kit on every scene render, so the adapter can keep
+ *   the one `useStdin` that resolves the LIVE input context (see `subagent-scene.ts`); optional, and
+ *   a caller that omits it loses only the Ctrl+A take-over's ability to arm.
  * @returns the seam handle.
  */
 export function registerScene(
   ctx: PluginContextLike,
+  tui: TuiAdapter,
   log: Log,
   workspaceRoot: () => string,
   home: () => string,
   holds: () => readonly string[] = () => [],
   planActions: PlanActions = UNAVAILABLE_PLAN_ACTIONS,
+  planReader?: (sessionId: string) => MpdPlanView["plan"] | undefined,
   teamViews?: () => readonly DshTeamView[],
+  teamRecords?: () => readonly TeamRecord[],
+  onHostKit?: (ui: unknown) => unknown,
 ): SceneSeam {
-  /** The seam result, rewritten when the three scenes are registered. */
-  let outcome: SeamOutcome = { state: "absent", detail: "tuiScenes was not injected" }
-  /** The registered scene service, undefined until the deferred activation runs. */
-  let scenes: TuiScenesLike | undefined
   /** Navigation shared by the three components, mutated only by their own handlers. */
   const nav: SceneNav = { planFromTeam: false }
 
   /** Opens a registered scene by id, reporting a refusal instead of throwing. */
   const openScene = (id: string): boolean => {
-    if (scenes === undefined) {
-      log.debug(`scene open(${id}) skipped: tuiScenes was not injected`)
+    // The navigation call is the adapter's, resolved at CALL time: a scene opened before the seam
+    // bound (or after it was composed late) takes the same path.
+    if (!tui.openScene(id)) {
+      log.debug(`scene open(${id}) skipped: this composition does not serve the scene seam or the id`)
       return false
     }
-    try {
-      /** The host's answer; anything but `true` is reported as a refusal. */
-      const opened = scenes.open(id)
-      if (opened !== true) log.debug(`scene open(${id}) returned ${String(opened)}`)
-      return opened === true
-    } catch (error) {
-      log.debug(`scene open(${id}) failed: ${String((error as Error)?.message ?? error)}`)
-      return false
-    }
+    return true
   }
 
-  onService(ctx, "tuiScenes", (scoped, service) => {
-    /** The probed service as the scene registry, before `register` is trusted. */
-    const runtime = service as TuiScenesLike
+  /** The seam handle: the aggregate outcome is recorded once all three scenes were requested. */
+  const seam = tui.whenBound("scenes", (_service, _scope, handle) => {
+    /** The bound scene registry, before `register` is trusted. */
+    const runtime = tui.scenes()
     if (typeof runtime?.register !== "function") {
-      outcome = { state: "refused", detail: "tuiScenes.register is missing" }
+      handle.record({ state: "refused", detail: `${TUI_SEAMS.scenes}.register is missing` })
       return
     }
-    scenes = runtime
     try {
-      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews) }, scoped)
-      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) }, scoped)
-      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, teamViews) }, scoped)
+      // Scene TITLES have no localized contribution field on the installed host (measured: a
+      // `TuiSceneDescriptor` carries one `title` string), so they are resolved through MPD's own
+      // dictionary AT REGISTRATION. A `/lang` switch therefore reaches them at the NEXT plugin
+      // apply (a restart), not mid-session — see the limits stated in `i18n.ts`.
+      tui.registerScene({ id: BOARD_SCENE_ID, title: t("scene.board"), component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx)
+      tui.registerScene({ id: TEAM_SCENE_ID, title: t("scene.team"), component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx)
+      tui.registerScene({ id: PLAN_SCENE_ID, title: t("scene.plan"), component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit) }, ctx)
+      // The MERGED PANEL rides the SAME seam: the host's own subagent rows on top, the MPD team
+      // body below them. It gets the SAME `readWorkflow` closure the team scene uses, so the two
+      // surfaces cannot describe one team differently. MPD's own key opens it; `Ctrl+A` — the
+      // host's subagent dashboard — is never bound anywhere in this package.
+      tui.registerScene(
+        {
+          id: SUBAGENT_SCENE_ID,
+          // The descriptor's title is localized at registration; inside the scene the component
+          // renders its own body header from the same dictionary, so the two agree per render.
+          title: t("scene.subagents"),
+          component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords), onHostKit),
+        },
+        ctx,
+      )
       // `open(unknownId)` is how the host reports an unregistered scene; calling
       // it here would OPEN a scene, so it is never used as a probe. The host
       // exposes no scene read-back, hence `requested`.
-      outcome = { state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID} requested (no host read-back)` }
+      handle.record({ state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID}, ${SUBAGENT_SCENE_ID} requested (no host read-back)` })
     } catch (error) {
-      outcome = { state: "refused", detail: String((error as Error)?.message ?? error) }
-      log.debug(`scene registration refused: ${outcome.detail ?? ""}`)
+      /** The refusal reason, reported and logged once. */
+      const detail = String((error as Error)?.message ?? error)
+      handle.record({ state: "refused", detail })
+      log.debug(`scene registration refused: ${detail}`)
     }
   })
 
@@ -958,7 +1410,7 @@ export function registerScene(
   const open = (): boolean => openScene(BOARD_SCENE_ID)
 
   return {
-    outcome: () => outcome,
+    outcome: (): SeamOutcome => seam.outcome(),
     open,
     openScene,
     openTeam: () => {
@@ -971,14 +1423,28 @@ export function registerScene(
       nav.planTeamId = options?.teamId
       return openScene(PLAN_SCENE_ID)
     },
+    openSubagents: () => openScene(SUBAGENT_SCENE_ID),
   }
 }
 
-/** The status line the `/mpd status` action prints. */
-export function boardSummary(workspaceRoot: () => string, home: () => string, teamViews?: () => readonly DshTeamView[]): string {
+/**
+ * The status line the `/mpd status` action prints.
+ *
+ * The SAME sentence the keyed status row publishes (`state.ts`'s projection), signed the same way: the
+ * state mark trails the line. Nothing is inserted at the head, because the head is pinned — the command
+ * contract requires this print to START with `mpd:` (`plugin.test.ts`, the `/mpd` grammar arm).
+ * @param workspaceRoot - resolves the workspace root per call.
+ * @param home - resolves the home directory per call.
+ * @param teamViews - the official team readout, resolved per call.
+ * @param teamRecords - the mpd-owned team records, resolved per call.
+ * @returns the one-line summary, state mark last; never throws.
+ */
+export function boardSummary(workspaceRoot: () => string, home: () => string, teamViews?: () => readonly DshTeamView[], teamRecords?: () => readonly TeamRecord[]): string {
   try {
-    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []))
+    /** This call's projection, read once: the sentence and the mark must describe the same board. */
+    const state = readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? [])
+    return `${statusLine(state)} ${statusMarker(state)}`
   } catch {
-    return "mpd: state unreadable"
+    return "mpd: state unreadable ?"
   }
 }

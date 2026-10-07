@@ -1,5 +1,5 @@
-import type { ZodErrorMap } from "./ZodError.js";
-import defaultErrorMap from "./locales/en.js";
+import type { ZodErrorMap } from "./ZodError.ts";
+import defaultErrorMap from "./locales/en.ts";
 export { defaultErrorMap };
 export declare function setErrorMap(map: ZodErrorMap): void;
 export declare function getErrorMap(): ZodErrorMap;

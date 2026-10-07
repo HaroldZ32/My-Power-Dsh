@@ -1,0 +1,31 @@
+{
+  "result": "A LIVE LLM TURN RAN IN THE CONTAINER AND THIS WAVE'S TEAM PLANE COMMITTED \u2014 complete, no NULLs",
+  "report": "ok=true complete=true passed=45 failed=0 null=0",
+  "the_three_facts": {
+    "boot.llmTurn": "true \u2014 a live headless turn ran and the team plane committed: the mpd record exists with phase=active and 1/1 member(s) carrying an executor handle",
+    "live.teamRecord": "true \u2014 the mpd team record exists after a REAL approval",
+    "live.nativeExecutor": "true \u2014 a member carries an executorRef, i.e. the NATIVE executor raised it through ctx.subagents"
+  },
+  "what_the_model_actually_did": [
+    "agent_teams_plan action=create",
+    "mpd_role_persona for Reviewer \u2014 it consulted THIS BUNDLE'S roster before naming the member",
+    "agent_teams_plan action=add_member",
+    "agent_teams_plan action=create_task",
+    "agent_teams_plan action=approve",
+    "replied DONE"
+  ],
+  "WHY_THIS_IS_THE_STRONGEST_PROOF_OF_THE_WAVE": {
+    "the_claim": "W2's headline decision is that the NATIVE executor is the default, over ctx.subagents.startContinuable, and that it needs NOTHING from the official Agent Teams plugin.",
+    "the_proof": "a real model drove a real approval, the mpd RECORD materialised on disk with phase=active, and its member carries an executorRef \u2014 a handle only an executor that actually raised it can mint.",
+    "the_detail_worth_reading": "the container log ALSO carries the apply-time line `team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable()...)`. That is the host-plane ordering W2 measured and documented: at APPLY time `subagents` is not yet ACTIVE, so the line reads unavailable \u2014 and the tool call, which re-resolves the executor LAZILY, got the real backend and spawned the member. The two lines sitting beside each other in one log is the design working exactly as written, not a contradiction."
+  },
+  "the_fallback_that_made_it_possible": {
+    "problem": "the bun step fetches from GITHUB RELEASES, and this environment's route to github.com is intermittent \u2014 measured as `curl: (56)` and `curl: (28) Failed to connect ... after 135500 ms` while registry.npmjs.org answered 200 in under a second. A flake there reddened a lane whose subject is THIS BUNDLE; a retry passed, which is what an assertion measuring the network rather than the artifact looks like.",
+    "fix": "the official script stays FIRST, `npm i -g bun` is the fallback, and `fact bun` names the route (`route=official-script` this time) so a reader is never told the official script ran when it did not",
+    "second_bug_found_while_adding_it": "the first version used `run_step ... || { fallback }`, which NEVER FIRED: `run_step` returns the append's status, not the child's \u2014 its own contract is 'never abort (the verdict is the report's)'. The fallback tests the `STEP_CODE` global it sets."
+  },
+  "not_claimed": [
+    "the teammate that was raised did not itself run a turn \u2014 the assertion is that the executor minted its handle, which is precisely W2's claim",
+    "one live turn, not a suite of them"
+  ]
+}

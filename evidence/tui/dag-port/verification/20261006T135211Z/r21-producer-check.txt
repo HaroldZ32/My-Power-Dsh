@@ -1,0 +1,54 @@
+{
+  "tasks": [
+    {
+      "id": "T1",
+      "blockedBy": [],
+      "unresolvedBlockers": null
+    },
+    {
+      "id": "T2",
+      "blockedBy": [
+        "2"
+      ],
+      "unresolvedBlockers": [
+        "2"
+      ]
+    },
+    {
+      "id": "T3",
+      "blockedBy": [
+        "T1"
+      ],
+      "unresolvedBlockers": null
+    },
+    {
+      "id": "T4",
+      "blockedBy": [],
+      "unresolvedBlockers": null
+    }
+  ],
+  "depths": {
+    "T1": 0,
+    "T2": 0,
+    "T3": 1,
+    "T4": 0
+  },
+  "split": {
+    "dangling": {
+      "blockedBy": [
+        "2"
+      ],
+      "unresolved": [
+        "2"
+      ]
+    },
+    "resolvable": {
+      "blockedBy": [
+        "T1"
+      ],
+      "unresolved": []
+    }
+  },
+  "distinguishable": true
+}
+R21 PASS: the dangling reference is reported, and 'no blockers' is distinguishable from 'did not resolve'

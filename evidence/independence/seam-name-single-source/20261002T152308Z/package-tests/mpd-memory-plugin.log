@@ -1,0 +1,8 @@
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [0.61ms]
+(pass) both vcs: commits to git and svn [0.49ms]
+(pass) svn backend wiring with fake svn CLIs [10.67ms]
+
+ 4 pass
+ 0 fail
+ 16 expect() calls
+Ran 4 tests across 1 file. [42.00ms]

@@ -1,0 +1,8 @@
+T1 (UTC): 2026-10-02T16:01:10Z
+91c30070cd6a9a7414ae895e66cb6d5056008076b6859382b6ea5440c6571c0c  packages/mpd-ext-plugin/test/adapter-identity.test.ts
+78243ebcc46e4556177cd6c114df583eadc75d4fbfde46cba5f56978e64dfc3e  packages/mpd-roles-plugin/test/adapter-identity.test.ts
+9e68824641b98b646e0b554a6dfdaf77f75bed62af2028582716486bda3d1dc6  packages/mpd-mcp-shared/log-sink.ts
+T2 (UTC): 2026-10-02T16:02:02Z
+91c30070cd6a9a7414ae895e66cb6d5056008076b6859382b6ea5440c6571c0c  packages/mpd-ext-plugin/test/adapter-identity.test.ts
+78243ebcc46e4556177cd6c114df583eadc75d4fbfde46cba5f56978e64dfc3e  packages/mpd-roles-plugin/test/adapter-identity.test.ts
+9e68824641b98b646e0b554a6dfdaf77f75bed62af2028582716486bda3d1dc6  packages/mpd-mcp-shared/log-sink.ts

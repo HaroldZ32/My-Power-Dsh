@@ -1,0 +1,14 @@
+cmd: bun test packages/mpd-roles-plugin
+(pass) extension roles: an absent or broken mpdExtensions service leaves the base roster answering [1.34ms]
+(pass) extension roles do NOT enter the agent-teams `mpd` profile member list (documented limit) [1.13ms]
+(pass) the built dist carries the extension-role wiring (a src-only change would ship dead) [0.28ms]
+(pass) extension roles: a PROJECT-plane extension's role is refused (the contract rejects it) [3.27ms]
+
+1 tests failed:
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [98.61ms]
+
+ 87 pass
+ 1 fail
+ 845 expect() calls
+Ran 88 tests across 4 files. [254.00ms]
+EXIT=1

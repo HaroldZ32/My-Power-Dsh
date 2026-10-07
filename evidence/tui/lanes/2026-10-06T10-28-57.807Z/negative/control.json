@@ -1,0 +1,16 @@
+{
+  "ok": false,
+  "results": [
+    {
+      "capture": "ctrla-team",
+      "label": "negative control: an expectation that cannot appear must fail the engine",
+      "missing": [
+        "/TUI-DEPS-CTRLA-CONTROL-CANNOT-APPEAR/"
+      ],
+      "missingLines": [],
+      "forbidden": [],
+      "chars": 3621,
+      "ok": false
+    }
+  ]
+}

@@ -24,6 +24,9 @@
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+// The four host-plane seams this row needs, named by their adapter constants: the same
+// single source of truth the other rows use, so a harness rename lands in the adapter only.
+import { DSH_SEAM_SESSIONS, DSH_SEAM_TOOLS, DSH_SEAM_WEB_RUNTIME, DSH_SEAM_WEB_SERVER, dshSeamInject } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /**
  * Resolve the sidebar host: beside this package's parent first (a checkout install), then upward
@@ -80,12 +83,12 @@ export const name = "mpd-better-sidebar-host"
  * It is restated rather than imported because a static import would have to name a path that exists
  * in BOTH install layouts (the checkout ships the host under `<bundle>/node_modules`, a packed
  * install gets it in the profile's), and the dynamic import that solves that cannot produce a static
- * export. The bundle PINS the host's version (`dsh-better-sidebar@0.19.0-alpha.1`), and
+ * export. The bundle PINS the host's version (`dsh-better-sidebar@0.24.1`), and
  * `test/host-contract.test.ts` compares this list with the shipped package's own whenever that
  * package is resolvable — so a version bump that changes the list fails a test instead of starving
  * the host in silence.
  */
-export const inject: string[] = ["webServer", "sessions", "webRuntime", "tools"]
+export const inject: string[] = dshSeamInject(DSH_SEAM_WEB_SERVER, DSH_SEAM_SESSIONS, DSH_SEAM_WEB_RUNTIME, DSH_SEAM_TOOLS)
 
 /** Import the host and delegate one cordis apply to it; THROWS when it exports no apply. */
 export async function apply(ctx: unknown, config: unknown): Promise<void> {

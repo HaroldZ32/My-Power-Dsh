@@ -23,12 +23,27 @@
 // session event, and only after `registration.ts` VERIFIED that the event type is
 // known to a reachable dsh-session copy — an unregistered log-only event would
 // make the user's session unresumable (iron rule 2).
-import type { CommandsLike, PluginContextLike, SeamOutcome, SessionLike } from "./types.js"
+import type { SeamOutcome, SessionLike, TuiAdapter } from "./types.js"
 import type { Log } from "./log.js"
-import { onService } from "./host.js"
 import { scalarText } from "./sanitize.js"
 import { BOARD_OPENED_EVENT } from "./registration.js"
-import { COMMAND_ACTIONS, COMMAND_ROOT } from "./command-trees.js"
+import { COMMAND_ACTIONS, COMMAND_ROOT, MODEL_COMMAND, MODEL_COMMAND_DESCRIPTION } from "./command-trees.js"
+import type { PanelOutcome } from "./panel.js"
+import { panelStatusLine } from "./panel.js"
+import { t } from "./i18n.js"
+
+/**
+ * How one routed panel open ended, plus the id it went to.
+ *
+ * `outcome` is the panel surface's own three-state answer (see `panel.ts`), carried through the
+ * command layer unchanged so the two entry points cannot disagree about which surface opened.
+ */
+export interface PanelRoute {
+  /** The surface the routed open ended on. */
+  readonly outcome: PanelOutcome
+  /** The final host panel id, when one was discovered. */
+  readonly id: string | undefined
+}
 
 /** What the command needs from the rest of the plugin. */
 export interface CommandActions {
@@ -36,7 +51,23 @@ export interface CommandActions {
   openBoard(via: "command" | "shortcut"): boolean
   /** Open the team-workflow surface (frozen §3.1). */
   openTeam(): boolean
-  /** Open the plan-approval surface (frozen §3.2). */
+  /** Open the merged panel: the host's own subagent rows above the MPD team body. */
+  openSubagents(): boolean
+  /**
+   * Open the SIDEBAR panel, or the full-screen merged scene when this host has no usable panel seam.
+   * Returns how the routed open ended, so the printed line names the surface the user is looking at
+   * instead of claiming the panel opened when the scene did.
+   */
+  openPanel(): PanelRoute
+  /**
+   * Open the INDEPENDENT dependency-DAG page (frozen R1), routed exactly as {@link CommandActions.openPanel}
+   * routes the merged panel: the page's sidebar panel when the host serves it, its own full-screen
+   * surface otherwise. Never a silent no-op.
+   */
+  openDag(): PanelRoute
+  /** Open the INDEPENDENT workmate page (frozen R12), routed as {@link CommandActions.openDag}. */
+  openWorkmate(): PanelRoute
+  /** The plan-approval surface (frozen §3.2). */
   openPlan(): boolean
   /** The status line as text, for the `/mpd status` print path. */
   statusText(): string
@@ -44,6 +75,8 @@ export interface CommandActions {
   workmatesText(): string
   /** Picker for the bare form; undefined when no dialog seam is available. */
   pickAction(): Promise<string | undefined>
+  /** The `/mpd-model` pick-list chain; its result is the command's own rendered outcome. */
+  openModelMenu(): Promise<CommandResult>
   /** Append the log-only board-opened record when it is safe to do so. */
   recordBoardOpened(via: "command" | "shortcut", session: SessionLike | undefined): void
 }
@@ -55,53 +88,42 @@ type CommandResult = { kind: "success"; text?: string } | { kind: "error"; text:
 const USAGE = `/${COMMAND_ROOT} [${COMMAND_ACTIONS.join("|")}]`
 
 /**
- * Activate `/mpd`.
- * @param ctx - the plugin context.
- * @param log - diagnostics.
+ * Activate `/mpd` and `/mpd-model`.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param actions - the handlers.
  * @returns the seam handle.
  */
-export function registerCommands(ctx: PluginContextLike, log: Log, actions: CommandActions): { outcome(): SeamOutcome } {
-  /** The seam result, rewritten when the registration is requested or refused. */
-  let outcome: SeamOutcome = { state: "absent", detail: "commands was not injected" }
-
-  onService(ctx, "commands", (_scoped, service) => {
-    /** The probed service as the command registry, before `register` is trusted. */
-    const commands = service as CommandsLike
-    if (typeof commands?.register !== "function") {
-      outcome = { state: "refused", detail: "commands.register is missing" }
-      return
-    }
-    try {
-      commands.register({
-        name: COMMAND_ROOT,
-        description: "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
-        handler: async (invocation): Promise<CommandResult> => {
-          /** The invocation's lower-cased input, empty for the bare `/mpd` form. */
-          const raw = typeof invocation?.rawInput === "string" ? invocation.rawInput.trim().toLowerCase() : ""
-          /** The invoking session when the registry supplied one; the log-only record needs it. */
-          const session = invocation?.agent?.session
-          if (raw === "") {
-            // Bare form = picker. The host dialog supplies the localized chrome;
-            // labels stay the host's where the contract wants that.
-            const picked = await actions.pickAction()
-            return runAction(picked ?? "board", actions, session)
-          }
-          /** The first whitespace-separated token, i.e. the action to run. */
-          const head = raw.split(/\s+/u)[0] ?? ""
-          return runAction(head, actions, session)
-        },
-      })
-      // No read-back for a command registration in this composition, and a
-      // failed register throws instead of returning a sentinel: `requested`.
-      outcome = { state: "requested", detail: `/${COMMAND_ROOT} requested (no host read-back at apply time)` }
-    } catch (error) {
-      outcome = { state: "refused", detail: String((error as Error)?.message ?? error) }
-      log.debug(`/${COMMAND_ROOT} registration refused: ${outcome.detail ?? ""}`)
-    }
+export function registerCommands(tui: TuiAdapter, actions: CommandActions): { outcome(): SeamOutcome } {
+  /** The adapter's handle for this one registration; it carries the measured outcome. */
+  const handle = tui.registerCommand({
+    name: COMMAND_ROOT,
+    description: "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
+    handler: async (invocation): Promise<CommandResult> => {
+      /** The invocation's lower-cased input, empty for the bare `/mpd` form. */
+      const raw = typeof invocation?.rawInput === "string" ? invocation.rawInput.trim().toLowerCase() : ""
+      /** The invoking session when the registry supplied one; the log-only record needs it. */
+      const session = invocation?.agent?.session
+      if (raw === "") {
+        // Bare form = picker. The host dialog supplies the localized chrome;
+        // labels stay the host's where the contract wants that.
+        const picked = await actions.pickAction()
+        return runAction(picked ?? "board", actions, session)
+      }
+      /** The first whitespace-separated token, i.e. the action to run. */
+      const head = raw.split(/\s+/u)[0] ?? ""
+      return runAction(head, actions, session)
+    },
   })
-
-  return { outcome: () => outcome }
+  // The pick-list model settings menu is its OWN command (R3): `/mpd model` would collide with
+  // the `/mpd` grammar's single-value form, and a menu is an entry point a user reaches directly.
+  // Its outcome text is the chain's own sentence (see `model-menu.ts`), so nothing is reworded
+  // here — a failure to write must reach the user as the sentence that names the failure.
+  tui.registerCommand({
+    name: MODEL_COMMAND,
+    description: MODEL_COMMAND_DESCRIPTION,
+    handler: async (): Promise<CommandResult> => actions.openModelMenu(),
+  })
+  return { outcome: (): SeamOutcome => handle.outcome() }
 }
 
 /** One action of the `/mpd` grammar. */
@@ -112,23 +134,40 @@ function runAction(action: string, actions: CommandActions, session: SessionLike
     actions.recordBoardOpened("command", session)
     /** Whether the board scene opened; a refusal becomes a command error. */
     const opened = actions.openBoard("command")
-    return opened
-      ? { kind: "success" }
-      : { kind: "error", text: "mpd: the board scene is not available in this composition" }
+    return opened ? { kind: "success" } : { kind: "error", text: t("command.boardMissing") }
   }
   if (action === "workmates") return { kind: "success", text: clamp(actions.workmatesText()) }
   if (action === "status") return { kind: "success", text: clamp(actions.statusText()) }
   if (action === "team") {
     return actions.openTeam()
       ? { kind: "success" }
-      : { kind: "error", text: "mpd: the team workflow scene is not available in this composition" }
+      : { kind: "error", text: t("command.teamMissing") }
   }
+  if (action === "subagents") {
+    return actions.openSubagents()
+      ? { kind: "success" }
+      : { kind: "error", text: t("command.subagentsMissing") }
+  }
+  if (action === "panel") {
+    // `/mpd panel` always PRINTS which surface it reached (frozen clause R4 + the wave's status-line
+    // requirement): a routed open that fell back to the full-screen scene must not read as a panel
+    // that opened, and a host without the seam must say so rather than stay silent.
+    /** How the routed open ended, and the discovered host panel id. */
+    const route = actions.openPanel()
+    return { kind: "success", text: clamp(panelStatusLine(route.outcome, route.id)) }
+  }
+  // The two INDEPENDENT pages (frozen R1/R12) print the SAME four-state sentence the merged panel
+  // prints, prefixed with the page's own slug: the sentence names the surface and the final host id
+  // (`<pluginId>:dag`), so a user reading it knows WHICH page the host admitted. The slug is a proper
+  // noun (it is the host-facing panel id half), so it is not translated.
+  if (action === "dag") return { kind: "success", text: clamp(pageLine("dag", actions.openDag())) }
+  if (action === "workmate") return { kind: "success", text: clamp(pageLine("workmate", actions.openWorkmate())) }
   if (action === "plan") {
     return actions.openPlan()
       ? { kind: "success" }
-      : { kind: "error", text: "mpd: the plan approval scene is not available in this composition" }
+      : { kind: "error", text: t("command.planMissing") }
   }
-  return { kind: "error", text: `mpd: unknown action "${clamp(action, 40)}" — usage: ${USAGE}` }
+  return { kind: "error", text: t("command.unknownAction", { action: clamp(action, 40), usage: USAGE }) }
 }
 
 /**
@@ -170,4 +209,15 @@ export function appendBoardOpened(
  */
 function clamp(value: string, maxCells: number = 800): string {
   return scalarText(value, maxCells) ?? ""
+}
+
+/**
+ * The printed line of one independent page: its slug, then the SAME routed sentence the merged panel
+ * prints, so all three sidebar surfaces report their outcome in one vocabulary.
+ * @param slug - the page's slug (`dag`, `workmate`), a proper noun and therefore not translated.
+ * @param route - how the routed open ended, and the final host panel id.
+ * @returns the user-visible line.
+ */
+function pageLine(slug: string, route: PanelRoute): string {
+  return `${slug} · ${panelStatusLine(route.outcome, route.id)}`
 }

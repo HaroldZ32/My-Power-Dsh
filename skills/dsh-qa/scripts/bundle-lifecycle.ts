@@ -4,8 +4,11 @@
 // ONE command straight from the checkout (`dsh plugin add <repo>`), with no
 // separate pack/build step.
 //   1) offline self-test: the repo-root manifest IS the bundle (dsh.bundle.patch +
-//      dsh.client + exports), the patch ships the bundle-served preset root, the
-//      provisioning row registers a skill provider (no copy), pnpm is available;
+//      dsh.client + exports), the main patch carries the SHIPPED preset-selection
+//      contract (no `agent-preset-registry` id-target — a HOST-owned id — and no
+//      row on the retired preset-ROOT package) while the preset patch still ships
+//      the `mpd` composition as an ADDITIVE row, the provisioning row registers a
+//      skill provider (no copy), pnpm is available;
 //   2) real install through the OFFICIAL flow — `dsh plugin add <repo root>` into an
 //      isolated profile: the dependency lands (link:<repo>) AND the bundle joins
 //      dsh.profile.bundles; no pack-mpd run happens anywhere in this case;
@@ -89,6 +92,51 @@ interface CaseStep {
   readonly [field: string]: unknown
 }
 
+/** One leg of the shipped preset-selection contract that does not hold over the bytes it was given. */
+interface PresetContractViolation {
+  /** Which leg broke: the host-owned id-target, the retired preset-ROOT package, or the additive preset row. */
+  readonly leg: "id-target" | "retired-package" | "preset-row"
+  /** The one-line reason, printed verbatim when the leg is violated. */
+  readonly reason: string
+}
+
+/**
+ * The SHIPPED preset-selection contract, as a pure predicate over patch TEXT so the
+ * self-test can drive it with a deliberately broken copy (the three negative
+ * controls below). Pure on purpose: the check it replaced read the two files
+ * itself, so nothing could prove the check was able to fail.
+ *
+ * WHAT WOULD REDDEN IT NOW, leg by leg: (a) re-adding `- id: agent-preset-registry`
+ * at column 0 to `cordis.patch.yml`; (b) re-adding a row whose `name:` is
+ * `@deepseek-ai/dsh-agent-presets`; (c) dropping `id: preset-mpd`,
+ * `name: '@deepseek-ai/dsh-agent-preset'` or `config.id: mpd` from the preset
+ * patch. Leg (a) is the RETIRED expectation this case used to demand: `9e91beb3`
+ * ("one adapter per plane, zero host overrides", 2026-10-03) removed that
+ * id-target under the strict zero-override decision, because `agent-preset-registry`
+ * is declared by a HOST layer (`@deepseek-ai/dsh-web-app`) and an id-target would
+ * REPLACE the host's `default: standard`. Making `mpd` the deployment default is a
+ * USER action (`docs/preset-default.md`), never a shipped override — and
+ * `scripts/verify-no-host-override.ts` fails the build on any row that tries.
+ *
+ * @param mainPatch The bytes of the main bundle patch (`cordis.patch.yml`).
+ * @param presetPatch The bytes of the declared preset patch (`presets/mpd.patch.yml`).
+ * @returns One entry per violated leg, in contract order; an empty list means it holds.
+ */
+function presetContractViolations(mainPatch: string, presetPatch: string): PresetContractViolation[] {
+  /** Every leg that does not hold, in the order the contract lists them. */
+  const violations: PresetContractViolation[] = []
+  if (/^- id: agent-preset-registry$/m.test(mainPatch)) {
+    violations.push({ leg: "id-target", reason: "the main patch id-targets `agent-preset-registry` at column 0 — a HOST-owned id; this bundle is additive-only (docs/preset-default.md)" })
+  }
+  if (/^\s*name: '@deepseek-ai\/dsh-agent-presets'\s*$/m.test(mainPatch)) {
+    violations.push({ leg: "retired-package", reason: "the main patch still declares a row on the retired @deepseek-ai/dsh-agent-presets package" })
+  }
+  if (!/id: preset-mpd$/m.test(presetPatch) || !/name: '@deepseek-ai\/dsh-agent-preset'$/m.test(presetPatch) || !/^\s+id: mpd$/m.test(presetPatch)) {
+    violations.push({ leg: "preset-row", reason: "the preset patch must declare a `preset-mpd` row on '@deepseek-ai/dsh-agent-preset' with config.id: mpd" })
+  }
+  return violations
+}
+
 /** The offline arm: proves the repo-root manifest IS the bundle and that its declared assets exist. */
 function selfTest(): void {
   // The installable unit is the REPO ROOT manifest itself: no pack step is used
@@ -110,27 +158,38 @@ function selfTest(): void {
   for (const key of [".", "./packages/*", "./skills/*", "./presets/*", "./client"]) {
     if (rootManifest.exports?.[key] === undefined) fail("self-test: repo root exports missing " + key)
   }
-  /** The main bundle patch, whose rows, id-targets and provider wiring are asserted below. */
-  const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
-  // The registry row is ID-TARGETED at column 0 (it is declared by the web-app
-  // layer); the retired `@deepseek-ai/dsh-agent-presets` row must not come back.
-  if (!/^- id: agent-preset-registry$/m.test(patch) || !/^\s+default: mpd$/m.test(patch)) fail("self-test: the agent-preset-registry id-target (default: mpd) is missing from the bundle patch")
-  if (/^\s*name: '@deepseek-ai\/dsh-agent-presets'\s*$/m.test(patch)) fail("self-test: the bundle patch still declares a row on the retired @deepseek-ai/dsh-agent-presets package")
+  /** The main bundle patch, whose rows and provider wiring are asserted below. */
+  const patch = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
+  // The preset patch is the declared patch that is not the main one; it is read HERE
+  // (before the rows below) because the contract predicate takes both byte strings.
+  /** The declared patch that is not the main bundle patch: the preset patch, by elimination. */
+  const presetPatchEntry = declaredPatches.find((entry) => entry !== "./cordis.patch.yml")
+  /** The preset patch's bytes, read to prove it declares the preset ROW. */
+  const presetPatch = readFileSync(join(repoRoot, presetPatchEntry), "utf8")
+  // THE SHIPPED CONTRACT, and the reason this arm is not merely a re-statement of the
+  // patch: the same predicate is driven with three broken copies below, so a contract
+  // that stopped being checked here would show up as a control that no longer reddens.
+  /** The legs of the shipped preset-selection contract the real bytes violate; empty on a healthy tree. */
+  const contractViolations = presetContractViolations(patch, presetPatch)
+  if (contractViolations.length > 0) fail("self-test: " + contractViolations.map((entry) => "[" + entry.leg + "] " + entry.reason).join("; "))
+  // NEGATIVE CONTROLS (the falsifier): each leg must go RED on a copy that breaks
+  // exactly that leg, or the check above proves nothing.
+  /** Control A replays the RETIRED expectation, the id-target this case used to demand. */
+  const controlIdTarget = presetContractViolations("- id: agent-preset-registry\n  name: '@deepseek-ai/dsh-agent-preset-registry'\n  config:\n    default: mpd\n" + patch, presetPatch)
+  if (!controlIdTarget.some((entry) => entry.leg === "id-target")) fail("self-test control: re-adding `- id: agent-preset-registry` at column 0 must redden the contract check")
+  /** Control B brings the retired preset-ROOT package back as a ROW (a mention in a comment is not a row). */
+  const controlRetiredRow = presetContractViolations(patch + "\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n", presetPatch)
+  if (!controlRetiredRow.some((entry) => entry.leg === "retired-package")) fail("self-test control: a row on the retired @deepseek-ai/dsh-agent-presets package must redden the contract check")
+  /** Control C drops the additive row's `config.id`, the half of the contract that must SURVIVE. */
+  const controlPresetRow = presetContractViolations(patch, presetPatch.replace(/^\s+id: mpd\s*$/m, "        id: mpd-renamed"))
+  if (!controlPresetRow.some((entry) => entry.leg === "preset-row")) fail("self-test control: a preset row without `config.id: mpd` must redden the contract check")
   if (!patch.includes("id: mpd-bootstrap")) fail("self-test: mpd-bootstrap row missing from the patch")
   if (!patch.includes("id: mpd-dsh-adapter")) fail("self-test: mpd-dsh-adapter row missing from the patch")
   // The official Agent Teams rows (mpd-owned ids, official package names).
   for (const row of ["mpd-agent-team", "mpd-tool-agent-team", "mpd-ui-agent-team"]) {
     if (!patch.includes("id: " + row)) fail("self-test: official agent-team row missing from the patch: " + row)
   }
-  // The preset patch: the mpd composition is a ROW now, so it must declare a real
-  // `@deepseek-ai/dsh-agent-preset` declaration carrying `config.id: mpd`.
-  /** The declared patch that is not the main bundle patch: the preset patch, by elimination. */
-  const presetPatchEntry = declaredPatches.find((entry) => entry !== "./packages/mpd-bundle/cordis.patch.yml")
-  /** The preset patch's bytes, read to prove it declares the preset ROW. */
-  const presetPatch = readFileSync(join(repoRoot, presetPatchEntry), "utf8")
-  if (!/id: preset-mpd$/m.test(presetPatch) || !/name: '@deepseek-ai\/dsh-agent-preset'$/m.test(presetPatch) || !/^\s+id: mpd$/m.test(presetPatch)) {
-    fail("self-test: the preset patch must declare a `preset-mpd` row on '@deepseek-ai/dsh-agent-preset' with config.id: mpd (" + presetPatchEntry + ")")
-  }
+  // The preset patch also carries the inline child list the loader reads.
   if (!/^\s+plugins:$/m.test(presetPatch)) fail("self-test: the preset patch declares no inline `plugins:` child list")
   if (!existsSync(join(repoRoot, "presets", "mpd.patch.yml"))) fail("self-test: repo-root presets/mpd.patch.yml missing")
   if (!existsSync(join(repoRoot, "skills", "svn-master", "SKILL.md"))) fail("self-test: repo-root skills corpus missing")
@@ -144,7 +203,7 @@ function selfTest(): void {
   /** The resolved `pnpm` invocation, which the official install flow requires on PATH. */
   const pnpmProbe = spawnSpec("pnpm", ["--version"])
   if (spawnSync(pnpmProbe.command, pnpmProbe.args, { encoding: "utf8" }).status !== 0) fail("self-test: pnpm is required for the official install flow")
-  console.log("[bundle-lifecycle self-test] ok: repo root IS the bundle + array dsh.bundle.patch (" + declaredPatches.length + " patch files) + preset-mpd row + agent-preset-registry id-target + provider wiring + probe + pnpm")
+  console.log("[bundle-lifecycle self-test] ok: repo root IS the bundle + array dsh.bundle.patch (" + declaredPatches.length + " patch files) + preset-selection contract (NO host-owned agent-preset-registry id-target, no retired preset-ROOT row, preset-mpd row with config.id: mpd; 3 negative controls redden) + provider wiring + probe + pnpm")
 }
 
 /** Run one child synchronously with this case's defaults (ten minutes, repo-root cwd, no stdin). */

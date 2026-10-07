@@ -1,0 +1,7 @@
+$ bun evidence/tui/dag-highlight/20261007T1230Z/discriminate-click.ts .mpd/recon/tui-013-fv/ws/.mpd/team/teams/mpd-probe-team.json 80 40
+7 box(es): T1[rows 0-2 cols 0-9] T2[rows 6-8 cols 0-9] T3[rows 6-8 cols 13-22] T4[rows 12-14 cols 0-9] T5[rows 18-20 cols 0-9] T6[rows 18-20 cols 13-22] T7[rows 24-26 cols 0-9]
+shared row band: T2 cols 0-9 and T3 cols 13-22, both on rows 6-8
+hitTest(row 6, col 0)        -> T2   (the captain's stub coordinate, INSIDE the left box)
+hitTest(row 6, col 14)       -> T3   (a column inside the SECOND box)
+AFTER clicking the row that draws T3 at localCol 14: pinned marker present for T3 = true, for T2 = false
+toasts: []

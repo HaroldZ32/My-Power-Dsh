@@ -18,7 +18,7 @@
 //   mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show
 // There is deliberately NO mpd_ext_reload in v1 — the honest reload is a
 // restart (a plugin-module change is not hot-reloaded anyway).
-import { createLazyDshAdapter, dshAdapterIdentity, errorMessage as message, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SKILLS, DSH_SEAM_TOOLS, createLazyDshAdapter, dshAdapterIdentity, errorMessage as message, type AdapterIdentity, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { MPD_EXT_API_VERSION, type MpdExtLoadError, type MpdExtensionPlane } from "./sdk"
 import {
   buildExtension,
@@ -53,7 +53,11 @@ export const name = "mpd-ext"
 // own seams the same way: mpd-workmate ["tools","subagents"], mpd-bootstrap
 // ["skills"], mpd-tools ["tools"]. The `mpdDsh` service (the adapter) stays LAZY
 // via ctx.get() — only the seams this row registers through are dependencies.
-export const REQUIRED_SEAMS = ["tools", "skills"] as const
+// The two names come from the adapter's constants, and the build keeps this line's
+// `[...REQUIRED_SEAMS]` spelling below: `skills/dsh-qa/scripts/extension-lifecycle.ts`
+// mutates that exact text in the built bundle for its pre-fix negative control (T-55:
+// the anchor is the built LINE, so the spelling here is load-bearing, not stylistic).
+export const REQUIRED_SEAMS = [DSH_SEAM_TOOLS, DSH_SEAM_SKILLS] as const
 // The cordis dependency list: the declared seams above, spread so the two
 // declarations can never drift apart.
 export const inject: string[] = [...REQUIRED_SEAMS]
@@ -63,7 +67,7 @@ export const inject: string[] = [...REQUIRED_SEAMS]
  * This is the ONE place that describes it; the sites THIS FIX touched CROSS-REFERENCE it
  * instead of half-repeating it — mpd-roles (`packages/mpd-roles-plugin/src/index.ts`, its
  * identity comment) and the bundle patch's row-order bullet
- * (`packages/mpd-bundle/cordis.patch.yml`).
+ * (`cordis.patch.yml`).
  * RESIDUAL, recorded honestly: the OTHER rows that still inline
  * `ctx.get("mpdDsh") ?? createDshAdapter(ctx)` (the rest of the mpd plugin rows) resolve
  * EAGERLY at apply and stay silent about it; they are OUTSIDE this fix's scope — only mpd-ext
@@ -258,7 +262,7 @@ function toView(entry: ExtensionEntry, config: ExtensionConfig): ExtensionView {
  * the first tool generation of each reachable server is published BEFORE
  * activation completes. The `async` keyword itself matters: cordis treats a
  * non-async prototype-bearing function as a constructor, whose returned promise
- * is not startup work (H/dsh-mcp-client/lib/index.js:762-770).
+ * is not startup work (H/dsh-mcp-client/lib/index.ts:762-770).
  */
 export async function apply(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
   try {
@@ -269,7 +273,7 @@ export async function apply(ctx: any, config: MpdExtPluginConfig = {}): Promise<
     const line = "[mpd-ext] apply failed: " + message(error)
     try {
       if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(line)
-      else console.log(line)
+      else rowLogLine("mpd-ext", line)
     } catch { /* logging must never fail provisioning */ }
   }
 }
@@ -283,7 +287,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
     // Prefixed once, so every diagnostic is attributable to this row in a shared boot log.
     const text = "[mpd-ext] " + line
     try {
-      console.log(text)
+      rowLogLine("mpd-ext", text)
       if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(text)
     } catch { /* logging must never fail provisioning */ }
   }
@@ -590,7 +594,9 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
   const service = {
     apiVersion: MPD_EXT_API_VERSION,
     /** Which adapter branch THIS read reaches — read at surface time, never cached at apply (T-50). */
-    adapterIdentity: dshAdapterIdentity(ctx),
+    get adapterIdentity(): AdapterIdentity {
+      return dshAdapterIdentity(ctx)
+    },
     register,
     list: (options: { exec?: unknown } = {}) => snapshot(options?.exec),
     describe: (id: string, options: { exec?: unknown } = {}) => snapshot(options?.exec).extensions.find((entry) => entry.id === String(id ?? "")),
@@ -646,7 +652,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
    * to the skill corpus, to a user skills root or to a sibling provider is decided
    * inside `ctx.skills`, so the only honest answer is to ask it — `list()` returns
    * the merged winning summaries, each carrying the `provider` that serves it
-   * (H/dsh-skill/lib/index.js:224-226, 491-501). This runs in the TOOL path on
+   * (H/dsh-skill/lib/index.ts:224-226, 491-501). This runs in the TOOL path on
    * purpose: calling the catalog from inside our own provider would recurse
    * (`snapshot()` -> `provider.list()` -> `snapshot()`).
    *
@@ -1211,7 +1217,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
       + missingTools.join(", ") + ") — the extension interface is NOT usable in this session;"
       + " the row declares inject: " + JSON.stringify([...REQUIRED_SEAMS]) + ", so check the harness seams above")
   } else if (config.quiet !== true) {
-    console.log(
+    rowLogLine("mpd-ext", 
       "[mpd-ext] mpdExtensions provided (apiVersion " + MPD_EXT_API_VERSION + ")"
       + " | adapterIdentity=" + dshAdapterIdentity(ctx)
       + " | tools: " + registeredToolNames.join(", ")

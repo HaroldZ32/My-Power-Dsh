@@ -1,0 +1,12 @@
+# Captain cross-check — the complexity gate, before vs after the CJK fix
+# frozen tip (pre-change module): cae00e5a:packages/mpd-roles-plugin/src/complexity-gate.ts
+# after: packages/mpd-roles-plugin/src/complexity-gate.ts (working tree)
+# UTC: 20261007T103032Z   branch: feature/de-vendor-and-verify-law @ cae00e5a
+# command: node --input-type=module -e '<A/B harness>'   (both modules imported raw; no file in the repo)
+
+case                             | BEFORE (cae00e5a)      | AFTER (working tree)
+USER (Chinese, verbatim)         | no-fire []             | TRIGGER ["E"]
+simple question (en)             | no-fire []             | no-fire []
+soft complex (en)                | TRIGGER ["B","C"]      | TRIGGER ["B","C"]
+short CJK question (control)     | no-fire []             | no-fire []
+short CJK lookup (control)       | no-fire []             | no-fire []

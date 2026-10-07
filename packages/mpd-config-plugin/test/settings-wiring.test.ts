@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import { apply } from "../src/index"
 import { TEAM_MODEL_SLOT_DEFAULTS } from "../src/settings-schema"
 
@@ -44,6 +44,18 @@ afterEach(() => {
   for (const dir of temps.splice(0)) rmSync(dir, { recursive: true, force: true })
   delete process.env.MPD_DSH_TUI_SETTINGS_BRIDGE
 })
+
+/** How long a watcher case waits for the 150ms debounce plus the reload it triggers. */
+const WATCH_SETTLE_MS = 400
+
+/**
+ * Yield for `ms` milliseconds, so a watcher's debounce and its async reload can run.
+ * @param ms - the wall-clock budget to give the row's timer.
+ * @returns a promise that settles after that budget.
+ */
+function wait(ms: number): Promise<void> {
+  return new Promise((done) => setTimeout(done, ms))
+}
 
 /** The knobs a wiring case may set on the fake adapter before the row is applied. */
 interface HarnessOptions {
@@ -90,6 +102,10 @@ function harness(options: HarnessOptions = {}): {
   setUser: (section: any) => void
   /** The current raw section, so a case can assert what the bridge left behind. */
   getUser: () => unknown
+  /** Disposers the row registered through `ctx.effect`, with the label it registered them under. */
+  effects: { label: string | undefined; dispose: () => void }[]
+  /** Dispose everything the row registered in its own scope, i.e. what an unload does. */
+  unload: () => void
   /** Yields to the macrotask queue so the row's async migration/settle work runs before assertions. */
   settle: () => Promise<void>
 } {
@@ -105,6 +121,8 @@ function harness(options: HarnessOptions = {}): {
   const mutates: Array<{ ns: string; ops: any[]; expected?: number }> = []
   /** Services the row provided through the context stub (`mpdConfig` is the one under test). */
   const provided: Record<string, any> = {}
+  /** Disposers the row registered through `ctx.effect`, in registration order. */
+  const effects: { label: string | undefined; dispose: () => void }[] = []
   /** The raw settings section the reader serves; a case mutates it to emulate a front-door save. */
   let userSection = options.user
   /** Current revision of that section, bumped by every save so the row's fence can be observed. */
@@ -189,6 +207,14 @@ function harness(options: HarnessOptions = {}): {
     get: (serviceName: string) => (serviceName === "mpdDsh" ? adapter : undefined),
     provide: (serviceName: string, value: any) => { provided[serviceName] = value },
     logger: { warn: (message: string) => { logs.push(String(message)) } },
+    // The row's OWN scope. A disposer returned here runs on unload (cordis' own effect contract),
+    // which is what the watcher-lifetime case drives.
+    effect: (callback: () => unknown, label?: string) => {
+      /** Whatever the callback registered: a disposer when it returned one. */
+      const disposer = callback()
+      if (typeof disposer === "function") effects.push({ label, dispose: disposer as () => void })
+      return typeof disposer === "function" ? disposer : () => { /* nothing to dispose */ }
+    },
   }
   return {
     ctx,
@@ -202,6 +228,8 @@ function harness(options: HarnessOptions = {}): {
     emit: (source?: string) => { revision += 1; listener?.(revision, source) },
     setUser: (section: any) => { userSection = section },
     getUser: () => userSection,
+    effects,
+    unload: () => { for (const registered of effects.splice(0)) registered.dispose() },
     settle: () => new Promise((resolve) => setTimeout(resolve, 0)),
   }
 }
@@ -382,6 +410,31 @@ describe("the write-back target rules (design §A.1/§10.5)", () => {
     expect(loud).toContain("NOT written to any file")
   })
 
+  // S1: ONE target resolver. The row config's `projectFile` is a documented knob, so the write
+  // must land on the SAME file the read resolves — never on the `<root>/.mpd/mpd.jsonc` default.
+  test("S1: with a `projectFile` override the WRITE target equals the READ target", () => {
+    /** The sole live workspace; its default file is the path the pre-fix bridge wrote instead. */
+    const { root, file: defaultFile } = sandbox()
+    /** The file the row config names — deliberately NOT the default target of this root. */
+    const override = resolve(join(root, "custom", "mpd.jsonc"))
+    mkdirSync(join(root, "custom"), { recursive: true })
+    writeFileSync(override, `{ "ulw": { "maxRounds": 3 } }`)
+    /** Both files start at the pre-save value, so a wrong target is visible as a changed byte. */
+    writeFileSync(defaultFile, `{ "ulw": { "maxRounds": 3 } }`)
+    /** The fake adapter with the override-bearing row config and one live root. */
+    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    apply(h.ctx, { projectFile: override })
+    h.setUser({ ulw: { maxRounds: 11 } })
+    h.emit("update")
+    /** The bridge's own report: the file it claims it wrote. */
+    const report = h.provided.mpdConfig.states().writeback
+    // THE PIN: the write target is the configured file, identical to what `loadConfig` reads.
+    expect(report.writtenTo).toEqual([override])
+    expect(readFileSync(override, "utf8")).toContain("11")
+    // ...and the default path is byte-untouched: the pre-fix bridge wrote (and would CREATE) it.
+    expect(readFileSync(defaultFile, "utf8")).toBe(`{ "ulw": { "maxRounds": 3 } }`)
+  })
+
   test("A6 negative control: the switch disables the FILE write only, never the value", () => {
     /** Sole live workspace, whose file must stay byte-identical while the switch is off. */
     const { root, file } = sandbox()
@@ -456,6 +509,34 @@ describe("the write-back target rules (design §A.1/§10.5)", () => {
     h.emit("update") // same section, new revision
     expect(readFileSync(file, "utf8")).toBe(original)
     expect(h.provided.mpdConfig.states().writeback).toBeNull()
+  })
+})
+
+// S5: the fs watcher is a ROW-SCOPE resource. An unload must dispose it, timer included — the
+// pre-fix code stored its disposer in a map nobody drained, so the watch outlived the row.
+describe("the project-file watcher's lifetime (S5)", () => {
+  test("an unload closes the watcher: a later file edit no longer reloads the config", async () => {
+    /** Sole live workspace, whose project file the watcher observes. */
+    const { root, file } = sandbox()
+    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
+    // L3 carries a key the FILE does not, so the value read below can only have come from the
+    // file — i.e. from a reload the WATCHER performed, never from a settings-layer echo.
+    /** Fake adapter whose save establishes the watcher through a real write-back. */
+    const h = harness({ roots: [root], user: { boulder: { maxRounds: 0 } } })
+    apply(h.ctx)
+    h.setUser({ boulder: { maxRounds: 1 } })
+    h.emit("update") // the write-back is what calls watchRoot(root)
+    // POSITIVE CONTROL: while the row is mounted, a direct file edit IS observed (150ms debounce).
+    writeFileSync(file, `{ "ulw": { "maxRounds": 42 }, "boulder": { "maxRounds": 1 } }`)
+    await wait(WATCH_SETTLE_MS)
+    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(42)
+    // THE UNLOAD: every disposer the row registered in its OWN scope runs, as cordis does on teardown.
+    h.unload()
+    writeFileSync(file, `{ "ulw": { "maxRounds": 77 }, "boulder": { "maxRounds": 1 } }`)
+    await wait(WATCH_SETTLE_MS)
+    // With the watcher closed and its debounce timer cleared, nothing reloads: the resolved value
+    // still carries what the mounted row last read. (Pre-fix: 77, because the watcher survived.)
+    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(42)
   })
 })
 

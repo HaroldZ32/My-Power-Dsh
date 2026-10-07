@@ -1,0 +1,18 @@
+sweep 20261007T105354Z on e7036109 (feature/de-vendor-and-verify-law)
+verify-manual-paths        exit=0  0s
+verify-comments            exit=0  2s
+verify-no-host-override    exit=0  0s
+repin-check                exit=0  0s
+verify-gates               exit=0  5s
+typecheck                  exit=1  0s
+test-packages              exit=0  13s
+test-qa                    exit=0  6s
+verify-docs                exit=0  0s
+verify-rows                exit=0  0s
+verify-manifest            exit=0  0s
+install-profile-dry        exit=0  0s
+ext-selftest               exit=0  1s
+dist-fresh                 exit=0  0s
+pack                       exit=0  0s
+pack-closure               exit=0  1s
+pack-closure-selftest      exit=0  3s

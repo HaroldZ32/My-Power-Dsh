@@ -1,0 +1,72 @@
+=== RULING WAVE: descriptor floors lowered to the host's own 28 ===
+
+--- the three values, as registered ---
+89:export const PANEL_MIN_COLUMNS = 28
+162:export const DAG_PANEL_MIN_COLUMNS = 28
+165:export const WORKMATE_PANEL_MIN_COLUMNS = 28
+
+=== bun test packages/mpd-tui-plugin/test/panel-dag.test.ts ===
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/panel-dag.test.ts:
+(pass) the DAG page descriptor > carries the frozen shape, the one-cell icon and its own slug [0.12ms]
+(pass) the DAG page descriptor > registers through the adapter and reports the host's own read-back id [0.53ms]
+(pass) the legend > covers EVERY state the contract knows, with the glyph the contract declares [0.25ms]
+(pass) the legend > fits the width it is given, and drops a line rather than cutting one [0.46ms]
+(pass) the DAG page's layout choice > at the host's own 28-column floor the page still draws, and reads [3.97ms]
+(pass) the DAG page's layout choice > a busy narrow board reaches the dense list, which had no caller before this page [0.55ms]
+(pass) the DAG page's layout choice > EVERY drawn row fits the panel, wide glyphs included [3.26ms]
+(pass) the DAG page's layout choice > a boxed CJK line ends on its own right border column [0.26ms]
+(pass) the DAG page's layout choice > an empty board still lays out without throwing [0.16ms]
+(pass) the DAG page's layout choice > boxes are drawn ONLY when the widest label fits: a subject is never cut [0.62ms]
+(pass) the DAG page's layout choice > R18: an unresolved blocker is SURFACED, and the rank source is reported [2.90ms]
+(pass) the running-node animation and its degradation > the host timer drives the breath, and the static frame is the orbit's head [0.08ms]
+(pass) the running-node animation and its degradation > a host with NO timer draws the static frame instead of throwing [1.50ms]
+(pass) the running-node animation and its degradation > a NON-FINITE timer degrades to the static frame [1.21ms]
+(pass) the running-node animation and its degradation > no props, no kit, no snapshot: the page renders null instead of throwing [0.38ms]
+(pass) click-to-pin and the keyboard > a click pins a task and the detail body carries all ten facts [1.92ms]
+(pass) click-to-pin and the keyboard > the keymap walks the drawing and does not steal the host's own keys [1.08ms]
+(pass) the badge ladder > failed outranks blocked outranks running, and an idle board clears it [0.06ms]
+(pass) the badge ladder > the page publishes the badge through the host API, once per change [1.21ms]
+(pass) the workmate page > carries its own descriptor, with a one-cell icon [0.05ms]
+(pass) the workmate page > the EMPTY state names the call that fills the shelf [0.23ms]
+(pass) the workmate page > an unreadable home renders the empty state rather than throwing [0.18ms]
+(pass) the workmate page > a populated shelf shows the key, the base and the note [1.33ms]
+(pass) the workmate page > the reader tolerates a missing library and never throws [0.24ms]
+
+ 24 pass
+ 0 fail
+ 455 expect() calls
+Ran 24 tests across 1 file. [116.00ms]
+
+=== bun test packages/mpd-tui-plugin/test/panel.test.ts ===
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/panel.test.ts:
+(pass) the panel registration (frozen descriptor, discovered id) > registers ONE panel with the frozen descriptor and the host's own read-back id [0.70ms]
+(pass) the panel registration (frozen descriptor, discovered id) > the final id is READ BACK, not composed from the slug [0.22ms]
+(pass) the panel registration (frozen descriptor, discovered id) > a host with no panel seam degrades to absent and still reports an honest outcome [0.10ms]
+(pass) the panel registration (frozen descriptor, discovered id) > the surface can be switched off entirely by its own config [0.09ms]
+(pass) the `/mpd panel` status sentence is bilingual > every panel sentence exists in en AND zh, and carries its placeholders [0.48ms]
+(pass) the routed open on a REFUSING host (S7) > a bound seam that refused the descriptor reports `refused`, and the line says refused [0.14ms]
+(pass) the routed open on a REFUSING host (S7) > NEGATIVE CONTROL: a genuinely absent seam still reads `unavailable` [0.08ms]
+(pass) the merged-view routing (panel vs full-screen scene) > with the seam bound and an id discovered, the PANEL opens and the scene does not [0.12ms]
+(pass) the merged-view routing (panel vs full-screen scene) > with NO seam bound, the full-screen scene opens and no panel is asked [0.04ms]
+(pass) the merged-view routing (panel vs full-screen scene) > an `opened() === false` refusal FALLS BACK to the scene — never a silent no-op [0.09ms]
+(pass) the merged-view routing (panel vs full-screen scene) > a bare host without the seam reports the scene path honestly, and a refusing scene is not a success [0.06ms]
+(pass) the panel component (both sections, props kit only) > renders the host's subagent rows FIRST and the MPD dependency DAG below them [3.84ms]
+(pass) the panel component (both sections, props kit only) > renders the host's empty state instead of inventing rows, and says when there is no team [0.22ms]
+(pass) the panel component (both sections, props kit only) > survives a hostile host: no React, no kit, no snapshot — and never throws [0.61ms]
+(pass) the panel component (both sections, props kit only) > uses ONLY the props' own React and ui kit (the single-React rule) [0.36ms]
+(pass) the legacy Ctrl+A arming rule (frozen R4/R5) > the SEAM WINS: a bound panel seam forbids interception whatever the config layers say [0.02ms]
+(pass) the legacy Ctrl+A arming rule (frozen R4/R5) > without the seam the SAVED knob outranks the row config's floor
+(pass) the legacy Ctrl+A arming rule (frozen R4/R5) > without the seam and without a saved value the row config decides
+
+ 18 pass
+ 0 fail
+ 128 expect() calls
+Ran 18 tests across 1 file. [98.00ms]
+
+=== ./node_modules/.bin/tsgo --noEmit -p tsconfig.json ===
+packages/mpd-bundle-plugin/src/team-view.ts(1360,9): error TS1005: ',' expected.
+tsgo exit code: 1

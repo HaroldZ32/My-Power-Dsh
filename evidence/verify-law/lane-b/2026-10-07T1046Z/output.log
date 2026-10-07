@@ -1,0 +1,368 @@
+===================================================================
+Lane E — T13 / LANE B independent verification — OUTPUT.LOG
+recordId : lane-e-lane-b-2026-10-07T1046Z   verdict: FAIL
+revision : 97207ab8ec6f662175e843c50c40890b05656cf6 (HEAD at start)
+===================================================================
+
+--- RESIDUAL BOUND, verbatim ---
+the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).
+
+--- THE FALSIFIED CLAUSE (F1), quoted ---
+  [verify-pack-closure] self-test FAIL - scratch pack via --out (fixture build) (exit 1) :: the packer refused --out: [pack-mpd] FAIL: cordis.patch.yml mounts packages/mpd-verify-plugin/dist/index.js but the packed tree has no such file
+  [verify-pack-closure] self-test FAIL: 26/33 arms
+
+=== LOG: ev-attribution-and-docs.log
+cmd: the 1 import-shaped 'skills' match (name + line, to classify it honestly)
+  skills/dsh-qa/SKILL.md:123:| team-watchdog-notify | team watchdog (w9) | AC-12/AC-13/AC-14: BOTH front doors, from payloads and BUILT bytes only. WEB arm (reader key `web-panel`): the REAL bundle route handlers over a sandbox store + the REAL built `client.js` in the offline hook runtime with `fetch` served by the route's own payload — banner as the panel root's FIRST child, one activity record, the first poll with no user action, the acknowledge advancing ONLY its own reader key (watermark bytes before/after), the replay stopping, and a second unacknowledged incident replaying on the next start. TUI arm (reader key `mpd-tui`): the REAL `mpdWatchdog` service driven through the REAL TUI module — composed status notice, replay dialog with the acknowledge option, the acknowledge through the service advancing the `mpd-tui` watermark, replay stop, and the built-bytes wiring. Both arms state the honest fallback: without an acknowledge the replay is PERMANENT RE-DISPLAY BY DESIGN | v0.9.1/watchdog || team-watchdog-boot | team watchdog (r3, extended r5) | **HEAVY (a real `dsh` spawn + a live model call): its real run is deliberately NOT in the `--self-test` sweep — only `--self-test` is.** **r5 adds the GUI-activation assertion this wave lacked:** the boot runs in the USER'S OWN composition (their profile's bundles — `@linxin666/dsh-web-all`, `dshmarket`, `dsh-cost-meter`, `nowledge-mem-deepseek-harness`, `dsh-better-sidebar` — mirror-symlinked when their profile resolves them, each recorded as mirrored/unresolved, never silently dropped) and the lane asserts (a) the boot log carries NONE of the terminal-only activation-failure signatures (`did not activate`, `pending (waiting for service`, `failed to apply loader entry`, a `client-modules` error naming `@mpd-dsh/mpd`) — the signatures that reach the operator's terminal while the browser console stays empty, (b) the host SERVED our client for the `@mpd-dsh/mpd` entry (HTTP 200 from the index-discovered `/plugins/…client.js` URL), and (c) the served bytes carry BOTH tab ids (`mpd-agent-teams`, `mpd-workmate`) plus the adopted export bridge and the sidebar page module. **Ceiling, stated:** no browser exists here, so `registerTab` EXECUTION against the real sidebar is NOT witnessed — whether the strip then renders our tabs stays outside the lane. `--self-test` carries the r5 negative controls too (a `did not activate` log, a `pending (waiting for service` log, a `failed to apply loader entry` log, a 404 client route, served bytes missing a tab id or the bridge, and a boot outside the user's composition — each must redden its own check). The lane the wave needed and did not have: it boots a REAL dev-web `dsh` in a sandbox (bundles base + web-app + the bundle under test, the checkout linked into the sandbox profile), creates a session on `agentPreset: "mpd"`, sends one prompt, and reads the verdict from the HARNESS'S OWN session log (the concatenated-zstd store via `lib/session-evidence.ts`, never prose). It asserts the watchdog row APPLIED (its boot line, `disposers` ≥ 1, `holdService=mpdWatchdog`), that ≥ 1 `turn/end` was recorded, and that NO `turn/end` carries the pre-step veto signature `Cannot read properties of undefined (reading 'map'\|'findLastIndex'\|'length')` — the `agent/pre-step` waterfall defect that killed EVERY turn of EVERY mpd session with the row mounted, ~120 ms after `turn/start`. It distinguishes THREE outcomes and asserts the distinction: `completed` (turn/end + assistant message — the full round trip), `model-error` (the turn REACHED the model call and failed there, e.g. MISSING_CREDENTIAL — passed for THIS invariant but explicitly not a completed turn), `veto`/`no-turn` (FAIL). Sandbox home receives BOTH `.credentials.yaml` and `settings.yaml` (AGENTS.md §7 — without the gateway settings the route falls back to `deepseek-official` and dies MISSING_CREDENTIAL, which the lane must not read as a product failure). `--self-test` is offline: it drives the REAL vendored cordis waterfall (`packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.ts`) with the retired shape (a listener returning a value without `next()`) and requires the veto to be observed, plus the fixed shape composing the fallback unchanged, and it re-classifies synthesized session logs so each verdict path is falsifiable | v0.9.1/watchdog-boot |
+--- and the prose-only mentions in skills (counts) ---
+  skills/dsh-qa/scripts/workmate-library.ts
+  skills/dsh-qa/scripts/watchdog-redesign.ts
+  skills/dsh-qa/scripts/team-watchdog-boot.ts
+  skills/dsh-qa/SKILL.md
+
+cmd: docs/independence.md §5 — is the closure MEASURED or asserted?
+  129:## 5. The pinned debt: the retired body's vendored `schemastery` — CLOSED
+  130-
+  131-**STATUS: CLOSED by the `de-vendor-and-verify-law` wave (2026-10-07).** The closure measurement is the
+  132-one the follow-up named, taken on the same commit as the deletion:
+  133-
+  134-* the adopted body `packages/mpd-agent-teams-plugin/**` is **DELETED** — the measured count is
+  135-  **768 files**, `_deps/` included, and `git ls-files` reported the same 768 before removal;
+  136-* the vendored tree moved to a first-class mpd-owned home: `packages/mpd-schemastery/lib/` carries the
+  137-  validator (`index.ts`), its dependency (`cosmokit.ts`) and the declaration set
+  138-  (`types/index.d.ts`), with the MIT notices reproduced in `packages/mpd-schemastery/LICENSE`;
+  139-* the **four live importers** named below are re-pointed IN THE SAME COMMIT, from
+  140-  `../../mpd-agent-teams-plugin/_deps/schemastery` to `../../mpd-schemastery` — verified with
+  141-  `grep -rn "mpd-agent-teams-plugin" packages/*/src` returning no import, only historical comments;
+  142-* the gate's frozen set still holds exactly those four edges (they were re-pointed, not dropped), so
+  143-  the follow-up cannot grow a fifth: see
+
+cmd: the coupling inventory's Lane D couplings — real?
+  222:  // law by reading the verifier seat and its record shape out of the new `mpd-verify-plugin`, and
+  228:  "packages/mpd-roles-plugin/src/index.ts :: import { VERIFY_SERVICE } from \"../../mpd-verify-plugin/src/service.ts\"",
+  229:  "packages/mpd-roles-plugin/src/verify-guard.ts :: import type { ArmedLoopView, VerifierSeatView } from \"../../mpd-verify-plugin/src/law.ts\"",
+  230:  "packages/mpd-roles-plugin/src/verify-guard.ts :: } from \"../../mpd-verify-plugin/src/law.ts\"",
+--- do the four claimed importers actually import mpd-schemastery? (counts) ---
+  packages/mpd-team-watchdog-plugin/src/index.ts
+  packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts
+  packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts
+  packages/mpd-tui-plugin/src/index.ts
+  packages/mpd-tui-plugin/test/plugin.test.ts
+  packages/mpd-ulw-plugin/test/engine.test.ts
+  packages/mpd-config-plugin/src/index.ts
+  packages/mpd-config-plugin/src/settings-schema.ts
+  packages/mpd-dsh-adapter-plugin/test/adapter.test.ts
+
+=== LOG: ev-bun-install.log
+cmd: bun install --frozen-lockfile
+bun install v1.4.2 (744846f84)
+
+Checked 347 installs across 336 packages (no changes) [9.00ms]
+EXIT=0
+
+=== LOG: ev-comments-attribution.log
+cmd: bun run verify:comments — WHAT is red (attribution)  [2026-10-07T10:46:09Z]
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 357 TypeScript file(s) of 357 in the source set; inspected 31138 declaration(s); skipped 13781 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-verify-plugin/qa/verify-law.ts (1)
+  136: comment — registeredSha
+
+error: script "verify:comments" exited with code 1
+--- the red files, grouped by package (names only) ---
+
+=== LOG: ev-deletion-and-relocation.log
+cmd: revision + DELETED-surface probe  [2026-10-07T10:45:20Z]
+97207ab8ec6f662175e843c50c40890b05656cf6
+--- are the named paths gone? ---
+  gone           packages/mpd-agent-teams-plugin
+  gone           scripts/vendor-agent-teams.ts
+  gone           scripts/patch-agent-teams-fixes.ts
+  gone           scripts/patch-agent-teams-client.ts
+  gone           scripts/reclaim-staged-teams.ts
+  gone           scripts/lib/vendored-agent-teams.d.ts
+  gone           agent-references/agent-teams-deltas.md
+  gone           packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+  gone           packages/mpd-team-watchdog-plugin/test/fixtures/inject.ts
+--- baseline (HEAD) file counts for the deleted tree ---
+  HEAD packages/mpd-agent-teams-plugin files=768
+  working tree same path files=0
+
+cmd: TEST-COUNT DELTA accounting (captain probe 1)
+  HEAD test files under the adopted tree (*.test.ts): 51
+  HEAD test files under the adopted tree (any /test/ path): 26
+  working tree test files total now: 98
+  HEAD test files total: 355
+
+cmd: ADDED-surface probe
+  packages/mpd-schemastery files=19
+    LICENSE
+    README.md
+    README.zh-CN.md
+    harness
+    lib
+    package.json
+    harness/cordis
+    harness/dsh-llm
+    harness/dsh-scope
+    harness/dsh-session
+    harness/dsh-timeout
+    harness/dsh-tools
+  packages/mpd-schemastery/harness file count=12
+--- the relocated client bundle ---
+      196984  packages/mpd-bundle-plugin/adopted/agent-teams-client.js
+      223593  packages/mpd-bundle-plugin/adopted/agent-teams-client.js.map
+
+cmd: THE CLIENT-BUNDLE CLAIM — numstat must be exactly 1/1 and the delta only sourceMappingURL
+  numstat: 1	1	packages/mpd-bundle-plugin/client.js
+  stat:  packages/mpd-bundle-plugin/client.js | 2 +-
+  stat:  1 file changed, 1 insertion(+), 1 deletion(-)
+  sourceMappingURL occurrences: old=1 new=1
+  other added/removed lines (excluding sourceMappingURL): 0
+
+cmd: PROOF OF DELETION from the live tree (captain's grep-proof)
+  packages   matches for the dead path: 19
+  scripts    matches for the dead path: 5
+  docker     matches for the dead path: 1
+  skills     matches for the dead path: 4
+  --- and which files still name it (names only) ---
+packages/mpd-team-compact-plugin/README.md
+packages/mpd-team-compact-plugin/README.zh-CN.md
+packages/mpd-team-watchdog-plugin/src/team.ts
+packages/mpd-tui-plugin/src/index.ts
+packages/mpd-schemastery/README.md
+packages/mpd-schemastery/package.json
+packages/mpd-schemastery/README.zh-CN.md
+packages/mpd-schemastery/LICENSE
+packages/mpd-roles-plugin/src/complexity-gate.ts
+packages/mpd-workmate-plugin/README.md
+packages/mpd-workmate-plugin/README.zh-CN.md
+packages/mpd-dsh-adapter-plugin/README.md
+packages/mpd-dsh-adapter-plugin/README.zh-CN.md
+packages/mpd-dsh-adapter-plugin/src/index.ts
+packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts
+packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+packages/mpd-bundle-plugin/client.js
+packages/mpd-bundle-plugin/adopted/agent-teams-client.js
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.ts
+scripts/install-profile.ts
+
+=== LOG: ev-docs-selftest.log
+cmd: node scripts/verify-docs-parity.ts --self-test  (does the REWRITTEN arm prove the removal?)
+ok   negative: a non-exempt package directory without a README is a FAILURE — [{"id":"package-no-readme:packages/silent","detail":"package directory silent has no README (not an exempt package)"},{"id":"inverse:docs/orphan.zh-CN.md","detail":"zh-CN file has no EN twin (docs/orphan.md is missing)"}]
+ok   the exempt package (mpd-mcp-shared) is a reported note, not a violation — packages/mpd-mcp-shared stays on the exemption list
+ok   T-75 arm 1 (positive): the artifact-derived range and counts PASS and are REPORTED — [{"path":"AGENTS.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 2 id(s) — agree; adopted/b.js: registry 1 id(s), live 1 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   T-75 arm 2 (NEGATIVE CONTROL): the pre-t39 pointer A1–D26 REDDENS and NAMES the file/value — derived-value:delta-range:AGENTS.md:3 — AGENTS.md:3 carries "A1–D26" but the ARTIFACT derives "A1–D7" (3 table ids in agent-references/agent-teams-deltas.md, first A1, last D7) — the artifact wins, never the newer pointer (wave-1 L78); regenerate the range by transcribing the table
+ok   T-75 arm 2b (NEGATIVE CONTROL, SECOND instance): the stale index pointer A1–D26 REDDENS and NAMES agent-references/index.md:5 — derived-value:delta-range:agent-references/index.md:5 — agent-references/index.md:5 carries "A1–D26" but the ARTIFACT derives "A1–D7" (3 table ids in agent-references/agent-teams-deltas.md, first A1, last D7) — the artifact wins, never the newer pointer (wave-1 L78); regenerate the range by transcribing the table
+ok   T-75 arm 3 (NEGATIVE CONTROL): a stale region count REDDENS and NAMES the deltas doc — derived-value:region-count:agent-references/agent-teams-deltas.md:9 — agent-references/agent-teams-deltas.md:9 claims **65** regions across **9** adopted files but packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts derives 3 regions across 2 files — the registry is the AUTHORITY (it is what the applier heals from; regenerate it with: node scripts/patch-agent-teams-fixes.ts --write-registry), so UPDATE THIS SENTENCE to the derived pair in the same change that moves the registry
+ok   T-75 zero-subject guard: a site whose claim is GONE is a VIOLATION, not a silent pass — [{"id":"derived-value:delta-range:AGENTS.md:missing-claim","detail":"AGENTS.md carries NO \"A1–D<n>\" registry pointer while agent-references/agent-teams-deltas.md derives \"A1–D7\" (zero-subject run: refusing to report PASS with nothing compared). If the pointer was deliberately removed, update this rule in the same change."}]
+ok   T-75 bound: registry-vs-LIVE-marker drift is REPORTED (note, naming the file AND the ids), never a violation — the applier's --check owns it — [{"path":"AGENTS.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 2 id(s) — agree; adopted/b.js: registry 1 id(s), live 2 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0, mpd-delta fixture-1]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   T-57: a region NESTED inside another span counts as its OWN region and surfaces as a NAMED mismatch (the old walk counted 2, this counts 3) — [{"path":"AGENTS.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 3 id(s) — MISMATCH (registered but not on the tree: []; on the tree but unregistered: [mpd-delta fixture-extra]); adopted/b.js: registry 1 id(s), live 1 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   T-75 bound: an ABSENT site file (packed artifact, no AGENTS.md) is a NOTE while the PRESENT index site is still checked — [{"path":"AGENTS.md","reason":"site file not present in this root (packed artifact / partial copy) — delta-range claims skipped"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 2 id(s) — agree; adopted/b.js: registry 1 id(s), live 1 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   links POSITIVE: an existing relative target resolves and the checker RAN — {"files":7,"links":15,"checked":12,"resolved":12,"dead":0,"skippedProvenance":0,"absentSite":0,"external":2,"anchorOnly":1}
+ok   links IGNORED: external, protocol-relative, mailto, anchor, empty, code-span and fenced targets are counted but never resolved — {"files":8,"links":20,"checked":12,"resolved":12,"dead":0,"skippedProvenance":0,"absentSite":0,"external":5,"anchorOnly":3}
+ok   links NEGATIVE: a link to a missing file REDDENS and NAMES source + target — FAIL link-missing:docs/guide.md:./does-not-exist.md — docs/guide.md:17 links "./does-not-exist.md" but neither a file nor a directory exists at /tmp/mpd-docs-links-selftest-ypr5bp/full/docs/does-not-exist.md — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change
+ok   links PACKED: no AGENTS.md -> an absent target is a LINK NOTE (not a failure) while a present target is still checked — {"counters":{"files":7,"links":15,"checked":12,"resolved":9,"dead":0,"skippedProvenance":0,"absentSite":3,"external":2,"anchorOnly":1},"notes":[{"path":"docs/guide.md","reason":"link-absent-site:docs/guide.md:../AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved"}]}
+ok   links PROVENANCE: the retired verbatim exemption is GONE — a dead link at its old path reddens like any other package README, and the skip counter stays at zero — {"violations":["link-missing:packages/mpd-agent-teams-plugin/README.md:./docs/usage.md","link-missing:packages/mpd-fixture-pkg/README.md:./dead.md"],"counters":{"files":10,"links":24,"checked":16,"resolved":14,"dead":2,"skippedProvenance":0,"absentSite":0,"external":5,"anchorOnly":3},"provenanceNotes":[]}
+ok   links ROOT-RELATIVE: a `/`-prefixed target resolves against the REPO ROOT (existing file + directory count as RESOLVED), while a missing one still REDDENS with its id — {"resolvedBefore":14,"resolvedWithTwoLiveTargets":16,"deadBefore":2,"deadWithMissingTarget":3,"finding":"link-missing:docs/root-relative.md:/nowhere/absent.md"}
+
+[verify-docs-parity self-test] 34/34 checks passed — PASS
+EXIT=0
+
+=== LOG: ev-imports-and-testdelta.log
+cmd: IMPORT-SHAPED references to the dead path (the claim: ZERO imports/requires)  [2026-10-07T10:45:36Z]
+  packages   import/require-shaped matches: 0
+  scripts    import/require-shaped matches: 0
+  docker     import/require-shaped matches: 0
+  skills     import/require-shaped matches: 1
+  --- dynamic import() / import( with the dead path ---
+  dynamic-import matches: 0
+  --- any specifier at all mentioning the dead path ---
+  total specifier matches: 0
+
+cmd: THE EXACT REMOVED TEST-FILE SET (captain probe 1) — every removed package test file must be the adopted suite or one of the two named
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  HEAD packages test files: 147 | now: 98 | removed: 52 | added: 3
+  --- removed files NOT under the adopted tree ---
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+    packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+  --- removed files UNDER the adopted tree: ---
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+    count: 51
+  --- ADDED test files (other lanes) ---
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+    packages/mpd-team-core-plugin/test/close-and-dispatch.test.ts
+    packages/mpd-verify-plugin/test/law.test.ts
+    packages/mpd-verify-plugin/test/row.test.ts
+
+cmd: the new package's shape (the writer called it an 8-file closure)
+  60483  packages/mpd-schemastery/harness/cordis/lib/index.ts
+  1241  packages/mpd-schemastery/harness/cordis/package.json
+  71573  packages/mpd-schemastery/harness/dsh-llm/lib/index.ts
+  1748  packages/mpd-schemastery/harness/dsh-llm/package.json
+  12259  packages/mpd-schemastery/harness/dsh-scope/lib/index.ts
+  1099  packages/mpd-schemastery/harness/dsh-scope/package.json
+  79422  packages/mpd-schemastery/harness/dsh-session/lib/index.ts
+  1721  packages/mpd-schemastery/harness/dsh-session/package.json
+  5520  packages/mpd-schemastery/harness/dsh-timeout/lib/index.ts
+  1136  packages/mpd-schemastery/harness/dsh-timeout/package.json
+  150769  packages/mpd-schemastery/harness/dsh-tools/lib/index.ts
+  2053  packages/mpd-schemastery/harness/dsh-tools/package.json
+
+cmd: the writer's own grep-proof.log (cross-check)
+  ### grep: any import/export of the dead path
+  ### grep: dynamic import / require of it
+  0
+  drwxrwxr-x 2 haroldzhao haroldzhao   4096 Oct  7 18:27 .
+  drwxrwxr-x 6 haroldzhao haroldzhao   4096 Oct  7 18:27 ..
+
+=== LOG: ev-packclosure-arms.log
+cmd: which pack-closure self-test arms redden, and why
+  [verify-pack-closure] self-test FAIL - positive-control (real tree, exit 0) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test PASS - negative-control (F-T7-1 omission, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test PASS - negative-control (inverse drift, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test PASS - negative-control (two offenders, both named) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test PASS - negative-control (zero-subject degraded run, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test PASS - negative-control (ROOT_ASSET_DIRS drops templates, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test PASS - negative-control (shim list drifts from the CLI, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test FAIL - positive-control (fixture packed tree, exit 0) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (half doc pair, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 3 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (packed scaffold template manifest gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 4 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (files pattern listed but absent, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (file present but unlisted, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (packed validator entry gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (ROOT_ASSET_DIRS drops agent-references, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test PASS - negative-control (packed reference file gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 4 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (reference file absent from the source tree, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 3 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (--require-packed with no tree, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (packed root file gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 3 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (packed root file differs from its source, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (root file absent from the source tree, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+  [verify-pack-closure] self-test PASS - negative-control (packer ROOT_FILES drops the file, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test PASS - negative-control (declared package dir absent from the artifact, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 3 closure violation(s)
+  [verify-pack-closure] self-test FAIL - scratch pack via --out (fixture build) (exit 1) :: the packer refused --out: [pack-mpd] FAIL: cordis.patch.yml mounts packages/mpd-verify-plugin/dist/index.js but the packed tree has no such file
+  [verify-pack-closure] self-test PASS - control (the canonical artifact did not move across the pack) (exit null) :: files 550 -> 550, newest mtime 2026-10-07T10:43:28.179Z -> 2026-10-07T10:43:28.179Z
+  [verify-pack-closure] self-test PASS - negative-control (artifact byte drift at unchanged presence, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+  [verify-pack-closure] self-test FAIL - negative-control (post-pack source writer -> reported, exit 0) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/index.…
+  [verify-pack-closure] self-test PASS - negative-control (same drift, stamp pinned ahead of the writer, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+  [verify-pack-closure] self-test FAIL - negative-control (post-pack writer of a ROOT FILE -> expected, exit 0) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - EXTENSIONS-FOR-AGENTS.m…
+  [verify-pack-closure] self-test PASS - negative-control (source dist with no artifact counterpart, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+  [verify-pack-closure] self-test FAIL - negative-control (the one declared exemption is exercised, not a silent skip) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+  [verify-pack-closure] self-test FAIL - positive-control (byte-copy of the real artifact, exit 0) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test PASS - negative-control (real artifact copy, one byte changed -> reported, not silent) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test PASS - negative-control (same mutation, stamp pinned -> hard CONTENT-DRIFT, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md:…
+  [verify-pack-closure] self-test FAIL: 26/33 arms
+
+=== LOG: ev-pack-closure-selftest.log
+cmd: node scripts/verify-pack-closure.ts --self-test
+[verify-pack-closure] self-test PASS - negative-control (packed validator entry gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (ROOT_ASSET_DIRS drops agent-references, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md: source mtime 2026-10-07T10:44:16.721Z is AFTER the artifact stamp 2026-10-07T10:43:28.179Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (packed reference file gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 4 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (reference file absent from the source tree, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 3 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (--require-packed with no tree, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (packed root file gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 3 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (packed root file differs from its source, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (root file absent from the source tree, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (packer ROOT_FILES drops the file, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md: source mtime 2026-10-07T10:44:16.721Z is AFTER the artifact stamp 2026-10-07T10:43:28.179Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (declared package dir absent from the artifact, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 3 closure violation(s)
+[verify-pack-closure] self-test FAIL - scratch pack via --out (fixture build) (exit 1) :: the packer refused --out: [pack-mpd] FAIL: cordis.patch.yml mounts packages/mpd-verify-plugin/dist/index.js but the packed tree has no such file
+[verify-pack-closure] self-test PASS - control (the canonical artifact did not move across the pack) (exit null) :: files 550 -> 550, newest mtime 2026-10-07T10:43:28.179Z -> 2026-10-07T10:43:28.179Z
+[verify-pack-closure] self-test PASS - negative-control (artifact byte drift at unchanged presence, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test FAIL - negative-control (post-pack source writer -> reported, exit 0) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/index.md: source mtime 2026-10-07T10:45:52.380Z is AFTER the artifact stamp 2026-10-07T09:45:52.381Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (same drift, stamp pinned ahead of the writer, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test FAIL - negative-control (post-pack writer of a ROOT FILE -> expected, exit 0) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - EXTENSIONS-FOR-AGENTS.md: source mtime 2026-10-07T10:45:52.539Z is AFTER the artifact stamp 2026-10-07T09:45:52.381Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (source dist with no artifact counterpart, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test FAIL - negative-control (the one declared exemption is exercised, not a silent skip) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test FAIL - positive-control (byte-copy of the real artifact, exit 0) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md: source mtime 2026-10-07T10:44:16.721Z is AFTER the artifact stamp 2026-10-07T10:43:28.179Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (real artifact copy, one byte changed -> reported, not silent) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md: source mtime 2026-10-07T10:44:16.721Z is AFTER the artifact stamp 2026-10-07T10:43:28.179Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (same mutation, stamp pinned -> hard CONTENT-DRIFT, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md: source mtime 2026-10-07T10:44:16.721Z is AFTER the artifact stamp 2026-10-07T10:39:57.159Z (anchor: command line (--pack-stamp)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test FAIL: 26/33 arms
+EXIT=1
+
+=== LOG: ev-preconditions.log
+cmd: ruling-A preconditions (captured 2026-10-07T10:47:00Z)
+--- A2: frozen contract on disk ---
+e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610  .mpd/plans/de-vendor-and-verify-law.md
+bytes=10277 mtime=2026-10-07 18:35:14.185707077 +0800
+--- A2b: amended spec ---
+65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74  .mpd/plans/verify-law-spec.md
+--- A2c: the manual (edited repeatedly during this wave) ---
+f52338414c47c8b6c2bedb45aeaa86929f7a49e1a9ed15d68734fe94f08b6450  AGENTS.md
+bytes=65102 mtime=2026-10-07 18:44:17.304494007 +0800
+--- A3: F.3 marker re-probe ---
+ABSENT - a pre-plugin record is admissible (the exemption has not closed)
+--- settle: Lane B scope paths (START 10:45:20Z) ---
+  packages/mpd-schemastery                 files=19
+  packages/mpd-bundle-plugin/adopted       files=2
+  packages/mpd-bundle-plugin/client.js     now=e83a9713cf894134
+  docs/independence.md                     now=4bf65d393ede6ea1
+  docs/independence.zh-CN.md               now=457f91342a6aedab
+  scripts/verify-pack-closure.ts           now=68132b507730278c
+  bun.lock                                 now=e9e9f6fca5ddaa14
+  tsconfig.json                            now=532ab803c5430270
+  START was: schemastery=19 files | adopted=2 files | client.js=e83a9713cf894134 | independence.md=4bf65d393ede6ea1 | independence.zh-CN.md=457f91342a6aedab | verify-pack-closure.ts=68132b507730278c | bun.lock=e9e9f6fca5ddaa14 | tsconfig.json=532ab803c5430270
+
+=== LOG: ev-typecheck.log
+cmd: bun run typecheck
+$ tsgo --noEmit
+EXIT=0
+
+=== LOG: ev-verify-comments.log
+cmd: bun run verify:comments
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-verify-plugin/qa/verify-law.ts (1)
+  136: comment — registeredSha
+
+error: script "verify:comments" exited with code 1
+EXIT=1
+
+=== LOG: ev-verify-docs.log
+cmd: bun run verify:docs
+note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=440 checked=369 resolved=369 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=27 ignoredAnchorOnly=44 files=113
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=22 derived=3 links=440 dead=0 — PASS
+EXIT=0
+
+=== LOG: ev-verify-manifest.log
+cmd: bun run verify:manifest
+ok    version:dsh-plugin.json: version = 0.11.6
+ok    version:dsh-distribution.json: distribution.version = 0.11.6
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+EXIT=0
+
+=== LOG: ev-verify-manual-paths.log
+cmd: node scripts/verify-manual-paths.ts
+[verify-manual-paths] under-report:placeholder AGENTS.md:659 -> personas/<id>.md
+[verify-manual-paths] census bucket=under-report:elided direction=under-report count=1 reason="contains an elision mark — the path is not written out, so no literal target exists"
+[verify-manual-paths] under-report:elided AGENTS.md:12 -> [中文](./<name>.zh-CN.md) [non-ASCII/elision characters]
+[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason="a directory spelled in words rather than as a token — nothing to stat"
+[verify-manual-paths] census family=over-report direction=over-report total=77 buckets=6 (counted apart from under-report and from unresolved)
+[verify-manual-paths] census family=under-report direction=under-report total=90 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] PASS resolved=144 over-report=77 under-report=90 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+EXIT=0
+

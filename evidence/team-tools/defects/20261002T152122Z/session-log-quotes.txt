@@ -1,0 +1,24 @@
+session log frames=558 records=910
+
+== the harness's own refusals and answers (defects 1, 2, 3) ==
+seq 154 RESULT Error: tool "agent_teams_plan" returned invalid output: "value.plan" must be an object; "value.hold" must be an object
+seq 211 RESULT halted: the team watchdog holds team-20261002150828
+seq 213 RESULT Error: tool "agent_teams_plan" returned invalid output: value is not lossless JSON
+seq 218 CALL   session-watchdog-status "{\"team_id\": \"team-20261002150828\"}"
+seq 219 RESULT Error: tool "session-watchdog-status" returned invalid output: value is not lossless JSON
+seq 236 CALL   session-watchdog-resume "{\"team_id\": \"team-20261002150828\"}"
+seq 237 RESULT watchdog hold not cleared: not-held
+seq 242 CALL   agent_teams_control "{\"action\": \"resume\"}"
+seq 243 RESULT was not halted
+
+== every agent_teams_plan create_task ARGUMENT (defects 4, 5) ==
+seq 187: top-level keys=[action,task] task keys=[subject,description,owner] top owner=undefined top blocked_by=undefined nested owner="Explorer"
+seq 193: top-level keys=[action,owner,task] task keys=[description,subject] top owner="Researcher" top blocked_by=undefined nested owner=undefined
+seq 195: top-level keys=[action,owner,task] task keys=[description,subject] top owner="Architect" top blocked_by=undefined nested owner=undefined
+seq 415: top-level keys=[action,owner,task] task keys=[description,subject,write_scopes] top owner="TuiAdapter Engineer" top blocked_by=undefined nested owner=undefined
+seq 421: top-level keys=[action,owner,task] task keys=[description,subject,write_scopes] top owner="PresetDefault Engineer" top blocked_by=undefined nested owner=undefined
+seq 423: top-level keys=[action,blocked_by,owner,task] task keys=[description,subject,write_scopes] top owner="PanelScene Worker" top blocked_by=["W2-T1"] nested owner=undefined
+seq 429: top-level keys=[action,owner,task] task keys=[description,subject,write_scopes] top owner="Independence Engineer" top blocked_by=undefined nested owner=undefined
+seq 431: top-level keys=[action,owner,task] task keys=[description,subject,write_scopes] top owner="ToolDefects Engineer" top blocked_by=undefined nested owner=undefined
+seq 437: top-level keys=[action,owner,task] task keys=[description,subject] top owner="Plan Reviewer" top blocked_by=undefined nested owner=undefined
+seq 757: top-level keys=[action,owner,task] task keys=[description,subject] top owner="TerminalSilence Engineer" top blocked_by=undefined nested owner=undefined

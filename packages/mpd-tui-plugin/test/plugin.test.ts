@@ -1,3 +1,7 @@
+// This file's copy assertions are LANGUAGE-INDEPENDENT (they read `t(...)`), so no process-wide
+// language pin is needed any more: the suite passes under no variable, `en` and `zh` alike.
+
+import { t } from "../src/i18n"
 // Plugin-contract, seam-activation and honesty tests for packages/mpd-tui-plugin.
 //
 // The fakes MODEL THE HOST instead of being permissive:
@@ -12,17 +16,23 @@ import { describe, expect, test } from "bun:test"
 import * as mod from "../src/index"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 // The adopted cordis body is vendored JavaScript with no declaration file, so these two
 // constructors are untyped here; the arms below use only their runtime identity.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { Context, Service } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { Context, Service } from "../../mpd-schemastery/harness/cordis/lib/index.ts"
 import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
+import { PANEL_ICON } from "../src/panel"
+import { DAG_PANEL_ICON } from "../src/panel-dag"
+import { WORKMATE_PANEL_ICON } from "../src/panel-workmate"
+import { COMMAND_ACTIONS, MODEL_COMMAND } from "../src/command-trees"
 import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
 import { createLog } from "../src/log"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
 import { SHORTCUT_BINDINGS } from "../src/shortcuts"
 import { STATUS_KEY } from "../src/status"
+import { registerScene } from "../src/scenes"
 import { DECISION_EVENTS } from "../src/decisions"
 
 /** What a registration returns: a cleanup, or nothing at all. */
@@ -139,6 +149,10 @@ function allServices(overrides: Record<string, any> = {}): {
     namespaces: [],
     commands: [],
     decisions: [],
+    views: [],
+    // The sidebar panel seam's own log: one entry per registration, and one per open request.
+    panels: [],
+    panelOpens: [],
   }
   /** How many times a recorded disposer was called. */
   const disposed = { count: 0 }
@@ -157,6 +171,11 @@ function allServices(overrides: Record<string, any> = {}): {
       /** Records the contribution and returns the shared no-op disposer. */
       set(key: string, text: unknown): () => void {
         calls.statusSet.push({ key, text })
+        return disposer
+      },
+      /** The rich companion (host `registerView`): records the descriptor and returns the disposer. */
+      registerView(descriptor: { key: string; maxRows?: number; component: unknown }): () => void {
+        calls.views.push(descriptor)
         return disposer
       },
     },
@@ -209,6 +228,36 @@ function allServices(overrides: Record<string, any> = {}): {
         return disposer
       },
     },
+    // THE SIDEBAR PANEL SEAM (dsh-tui 0.13.0). It is present here because this double models the host
+    // the bundle targets; an arm that needs a PRE-0.13.0 host deletes it from the service map, which
+    // is exactly what makes `panelSeamBound()` false and the legacy Ctrl+A contact arm.
+    tuiPanels: (() => {
+      /** The panels this activation registered, in registration order (the host's own read-back). */
+      const owned: { id: string; title: string; source: string }[] = []
+      /** How many panels the host's own activation prefix names (a real host composes `act<N>:<slug>`). */
+      let activation = 0
+      return {
+        /** Registers one panel under the host-composed id and returns the host's own disposer. */
+        register(descriptor: { id: string; title: string }): () => void {
+          calls.panels.push(descriptor)
+          owned.push({ id: `act${activation}:${descriptor.id}`, title: descriptor.title, source: "plugin" })
+          return disposer
+        },
+        /** The host's own read-back: ONLY the calling activation's panels. */
+        list(): { id: string; title: string; source: string }[] {
+          return owned
+        },
+        /** Opens one of this activation's panels: the double always accepts. */
+        open(id: string): boolean {
+          calls.panelOpens.push(id)
+          return true
+        },
+        /** Names the activation prefix a test wants (the real host's `act<N>` fallback form). */
+        setActivation(next: number): void {
+          activation = next
+        },
+      }
+    })(),
     tuiDialogs: {
       /** No picker in this double: every dialog request resolves undefined. */
       async select(): Promise<undefined> {
@@ -280,6 +329,12 @@ describe("plugin contract", () => {
       commands: true,
       shortcuts: true,
       dialogs: true,
+      // The dsh-tui 0.13.0 sidebar panel surface: contributed by default, and routed to by
+      // `alt+a` / `/mpd panel` (with the full-screen scene as the declared fallback).
+      panel: true,
+      // The Ctrl+A takeover's FLOOR: the row config default. A saved `tui.dashboardKey` (the /settings
+      // row) outranks it per press, so this stays true for every composition that never saves one.
+      dashboardKey: true,
       sessionEvents: true,
       decisionEvents: true,
       logPrefix: "mpd-tui",
@@ -352,9 +407,54 @@ describe("full composition (every service injected)", () => {
 
     // The activation channel is inject, per seam.
     const injected = host.injections.map((entry) => entry[0])
-    for (const id of ["tuiStatus", "tuiRenderers", "tuiSettingsSections", "tuiScenes", "tuiCommandTrees", "tuiShortcuts", "tuiDialogs", "commands", "tuiPluginHost", "settings"]) {
+    for (const id of ["tuiStatus", "tuiRenderers", "tuiSettingsSections", "tuiScenes", "tuiCommandTrees", "tuiShortcuts", "tuiDialogs", "commands", "tuiPluginHost", "settings", "tuiPanels"]) {
       expect(injected).toContain(id)
     }
+
+    // tuiPanels (dsh-tui 0.13.0): THREE sidebar panels — the merged view PLUS the two independent
+    // pages (frozen R1/R12) — each with the FROZEN descriptor of its own module, and each final id
+    // DISCOVERED from the host's own `list()` read-back (never composed on this side). The host
+    // budgets a plugin at four (`MAX_PANELS_PER_PLUGIN`), so three is the composition's own ceiling
+    // and the assertion below is what keeps a fourth registration from being added unnoticed.
+    expect(calls.panels).toHaveLength(3)
+    expect(calls.panels[0].apiVersion).toBe(1)
+    expect(calls.panels[0].id).toBe("team")
+    expect(calls.panels[0].title).toBe("MPD")
+    expect(calls.panels[0].minColumns).toBe(28)
+    expect(calls.panels[0].order).toBe(10)
+    // AMENDED (wave `tui-dag-highlight`, AC8) — the merged page now DECLARES an icon instead of letting
+    // the host fall back to the letter `M`. Asserted SYMBOLICALLY (the module's own constant), so the
+    // Chrome lane's choice of glyph is its own to change.
+    expect(calls.panels[0].icon).toBe(PANEL_ICON)
+    expect(calls.panels[0].compact).toBeUndefined()
+    expect(typeof calls.panels[0].component).toBe("function")
+    expect(outcomeOf(report, "panel").state).toBe("confirmed")
+    expect(String(outcomeOf(report, "panel").detail)).toContain("act0:team")
+    // The DAG page: its own slug, its own title, a one-cell icon and the host's own 28-column floor
+    // (a floor above it would get the page's BODY replaced by the host's `panel-too-narrow` notice).
+    expect(calls.panels[1].apiVersion).toBe(1)
+    expect(calls.panels[1].id).toBe("dag")
+    expect(calls.panels[1].title).toBe("MPD DAG")
+    expect(calls.panels[1].icon).toBe(DAG_PANEL_ICON)
+    expect(calls.panels[1].minColumns).toBe(28)
+    expect(calls.panels[1].order).toBe(11)
+    expect(typeof calls.panels[1].component).toBe("function")
+    expect(outcomeOf(report, "dagPanel").state).toBe("confirmed")
+    expect(String(outcomeOf(report, "dagPanel").detail)).toContain("act0:dag")
+    // The workmate page: the third independent surface, ordered after both.
+    expect(calls.panels[2].apiVersion).toBe(1)
+    expect(calls.panels[2].id).toBe("workmate")
+    expect(calls.panels[2].title).toBe("MPD workmate")
+    // AMENDED (wave `tui-dag-highlight`, AC8) — the workmate page's icon CHANGED from the pin marker
+    // `◆` (U+25C6), which is byte-identical to the host's own `agents` tab, to its own glyph. Asserted
+    // symbolically: three panels, three glyphs, none of them borrowed from the host's panel bar.
+    expect(calls.panels[2].icon).toBe(WORKMATE_PANEL_ICON)
+    expect(new Set([calls.panels[0].icon, calls.panels[1].icon, calls.panels[2].icon]).size).toBe(3)
+    expect(calls.panels[2].minColumns).toBe(28)
+    expect(calls.panels[2].order).toBe(12)
+    expect(typeof calls.panels[2].component).toBe("function")
+    expect(outcomeOf(report, "workmatePanel").state).toBe("confirmed")
+    expect(String(outcomeOf(report, "workmatePanel").detail)).toContain("act0:workmate")
 
     // tuiStatus: one live keyed contribution under the conventions' key.
     expect(STATUS_KEY).toBe("mpd-tui")
@@ -379,11 +479,12 @@ describe("full composition (every service injected)", () => {
     // The section is keyed by the ENTRY the settings machinery serves it under, not by the retired
     // namespace name: measured on a live boot, values resolved for "mpd-config" and never for "mpd".
     expect(calls.sections[0].ns).toBe("mpd-config")
-    // 25 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
-    // thirteen original mpd knobs plus the twelve team-model slot leaves (4 slots x provider /
-    // model / reasoningEffort). The per-field assertions below are the other half of the
-    // no-drift pair.
-    expect(calls.sections[0].fields).toHaveLength(25)
+    // 26 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
+    // thirteen original mpd knobs, the twelve team-model slot leaves (4 slots x provider / model /
+    // reasoningEffort) and the TUI surface's own `tui.dashboardKey` (the Ctrl+A takeover toggle,
+    // which this section renders through the SAME declaredField path as every other row). The
+    // per-field assertions below are the other half of the no-drift pair.
+    expect(calls.sections[0].fields).toHaveLength(26)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
       // The disclosure is stated ONCE on the surface (the section's own description), never per row.
@@ -415,12 +516,26 @@ describe("full composition (every service injected)", () => {
     expect(shortcutsOutcome.state).toBe("confirmed")
     expect(shortcutsOutcome.detail).toContain("alt+m")
 
-    // tuiCommandTrees + commands: the tree root matches the registered command.
-    expect(calls.maps).toHaveLength(1)
-    expect(calls.maps[0].root).toBe("mpd")
-    expect(calls.maps[0].children(["mpd"]).map((node: { name: string }) => node.name)).toEqual(["board", "team", "plan", "workmates", "status"])
-    expect(calls.commands).toHaveLength(1)
-    expect(calls.commands[0].name).toBe("mpd")
+    // tuiCommandTrees + commands: the tree roots match the registered commands. TWO providers are
+    // expected since R3 — `/mpd` (its subcommands) and `/mpd-model` (the pick-list command, whose
+    // panel arguments are picked, never typed, so it completes nothing below its root).
+    expect(calls.maps.map((entry: { root: string }) => entry.root).sort()).toEqual([MODEL_COMMAND, "mpd"].sort())
+    /** The `/mpd` tree provider this arm asserts the subcommands of. */
+    const mpdTree = calls.maps.find((entry: { root: string }) => entry.root === "mpd")
+    expect(mpdTree.root).toBe("mpd")
+    // CONTENT-ROBUST: the completion advertises EXACTLY the declarative action list, in any order,
+    // whatever that list is. Freezing the literal here would make a grammar addition (Lane C's
+    // `subagents`) a test edit in two places; comparing against the module's own declaration keeps
+    // the invariant that matters — the tree and the grammar cannot drift apart.
+    expect([...mpdTree.children(["mpd"]).map((node: { name: string }) => node.name)].sort()).toEqual([...COMMAND_ACTIONS].sort())
+    // R4: every node carries BOTH languages, and its `en` half IS the fallback description.
+    for (const node of mpdTree.children(["mpd"])) {
+      expect(node.descriptions?.zh).toBeString()
+      expect(node.descriptions?.en).toBe(node.description)
+    }
+    expect(mpdTree.descriptions?.en).toBeString()
+    expect(calls.commands).toHaveLength(2)
+    expect(calls.commands.map((entry: { name: string }) => entry.name).sort()).toEqual(["mpd", MODEL_COMMAND].sort())
 
     // settings namespace + dialogs availability.
     expect(calls.namespaces.map((entry) => entry.ns)).toEqual(["mpd"])
@@ -656,7 +771,7 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
       inject: (_deps: readonly string[], callback: (scope: unknown) => void) => { callback(scoped); callback(scoped); return {} },
       logger: { info: () => {}, warn: () => {}, debug: () => {} },
     }
-    registerSettingsSection(ctx as never, createLog(ctx.logger, "mpd-tui"), { llmCatalog: async () => TWO_PROVIDER_CATALOG })
+    registerSettingsSection(ctx as never, createTuiAdapter(ctx as never), createLog(ctx.logger, "mpd-tui"), { llmCatalog: async () => TWO_PROVIDER_CATALOG })
     await settle()
     expect(registered).toHaveLength(1)
   })
@@ -666,7 +781,8 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
     // after the inject callback returned, so the caller must still resolve to the INJECTED
     // scope — the host's registry rejects a root or absent caller ("requires a live non-root
     // calling activation"). A MOUNTING boot is the real-host evidence and belongs to t9.
-    const root = new Context()
+    // A root context whose Proxy-installed `plugin` member the class type does not declare.
+    const root = new Context() as unknown as { plugin(plugin: unknown, config?: unknown): unknown }
     /** The `this.ctx` each registration observed. */
     const callers: unknown[] = []
     /** The service whose `register` reports its own calling context. */
@@ -732,6 +848,196 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
   })
 })
 
+/**
+ * A minimal host kit double for the scene render.
+ *
+ * It carries exactly the members a scene body touches plus `useStdin` — the one member the scene
+ * wiring exists to hand the adapter. Hooks are index-free stubs (state is not re-read in this arm)
+ * and elements are plain records, so a render is a pure function call with no reconciler.
+ * @returns the React instance and the ui kit a scene receives.
+ */
+function sceneKitDouble(): { React: Record<string, unknown>; ui: Record<string, unknown>; stdin: unknown } {
+  /** The value the kit's own `useStdin` answers; the adapter keeps whatever this kit exposes. */
+  const stdin = { internal_querier: {}, internal_eventEmitter: {} }
+  /** The React double: enough for a single render of any scene body. */
+  const React: Record<string, unknown> = {
+    /** Builds an element record instead of a real element. */
+    createElement: (type: unknown, props: Record<string, unknown> | null, ...children: unknown[]): unknown => ({ type, props: props ?? {}, children }),
+    /** A state pair whose setter is inert: no re-render happens in this arm. */
+    useState: (initial: unknown): [unknown, () => void] => [typeof initial === "function" ? (initial as () => unknown)() : initial, () => {}],
+    /** Runs the effect once and drops its cleanup. */
+    useEffect: (effect: () => unknown): void => {
+      effect()
+    },
+    /** A fresh ref object. */
+    useRef: (initial: unknown): { current: unknown } => ({ current: initial }),
+    /** Compares nothing: a fresh value per render is fine for one pass. */
+    useMemo: (factory: () => unknown): unknown => factory(),
+    /** Returns the factory as-is. */
+    useCallback: (callback: unknown): unknown => callback,
+    /** Reads the snapshot, ignoring the subscription. */
+    useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown): unknown => snapshot(),
+  }
+  /** The ui kit double: the members a scene body uses, plus the hook under test. */
+  const ui: Record<string, unknown> = {
+    /** An element record. */
+    Box: (props: Record<string, unknown>) => ({ type: "Box", props, children: [] }),
+    /** An element record. */
+    Text: (props: Record<string, unknown>) => ({ type: "Text", props, children: [] }),
+    /** Accepts the scene's key handler and drops it. */
+    useInput: () => {},
+    /** A fixed terminal size. */
+    useTerminalSize: (): { columns: number; rows: number } => ({ columns: 120, rows: 40 }),
+    /** THE MEMBER THIS ARM IS ABOUT: the host's own stdin hook travels with the kit. */
+    useStdin: (): unknown => stdin,
+  }
+  return { React, ui, stdin }
+}
+
+describe("the Ctrl+A takeover wiring (W2)", () => {
+  test("on a host WITH the panel seam the contact stays INERT (the version gate)", () => {
+    // The frozen rule (R5/R4): where the host offers `ctx.tuiPanels` (dsh-tui 0.13.0+), Ctrl+A keeps
+    // its host dashboard meaning and MPD's own key/command are the entry points — so the legacy
+    // host-input contact must register NOTHING at all.
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed — the panel seam included. */
+    const host = hostDouble(services)
+    /** The report `apply` returned. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    expect(calls.views).toHaveLength(0)
+    /** The gate's own record: skipped, with the reason a reader needs. */
+    const gated = outcomeOf(report, "dashboardKey")
+    expect(gated.state).toBe("absent")
+    expect(String(gated.detail)).toContain("panel seam")
+    // The panel itself is the surface that replaces it.
+    expect(outcomeOf(report, "panel").state).toBe("confirmed")
+    // …and the status seam (which the hook rides) still reports its own, separate outcome.
+    expect(outcomeOf(report, "tuiStatus").state).toBe("requested")
+  })
+
+  test("on a host WITHOUT the panel seam the contact arms (the legacy path)", () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    // A pre-0.13.0 host: the panel service is not composed at all.
+    delete (services as Record<string, unknown>).tuiPanels
+    /** A host double with every other service composed. */
+    const host = hostDouble(services)
+    /** The report `apply` returned. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The keyhook's own view registration, out of every rich view the host received. */
+    const hook = calls.views.find((view) => view.key === "mpd-tui-keyhook")
+    expect(hook).toBeDefined()
+    // 1 row, not 0: the host's own validator refuses 0 (it requires an integer 1..3), so the ZERO is
+    // rendered by the empty Box the component returns.
+    expect(hook?.maxRows).toBe(1)
+    expect(typeof hook?.component).toBe("function")
+    expect(outcomeOf(report, "dashboardKey").state).toBe("requested")
+    // The panel registration is attempted and settles ABSENT rather than throwing (the deferred binder
+    // degrades on a host that never offers the seam).
+    expect(outcomeOf(report, "panel").state).toBe("absent")
+  })
+})
+
+describe("the Ctrl+A takeover wiring (W2)", () => {
+  test("with the row config off, the contact stays inert on BOTH host generations", () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    // The legacy host: without this deletion the arm below would pass for the version gate's reason
+    // instead of the config's, which is exactly the confusion this arm exists to prevent.
+    delete (services as Record<string, unknown>).tuiPanels
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    /** The report of a composition that disabled the takeover. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, dashboardKey: false })
+    expect(calls.views).toHaveLength(0)
+    /** The skip's own record: `absent`, with the reason a reader needs. */
+    const skipped = outcomeOf(report, "dashboardKey")
+    expect(skipped.state).toBe("absent")
+    expect(String(skipped.detail)).toContain("dashboardKey: false")
+  })
+
+  test("with the panel surface off, no panel is registered and both entry points keep the scene path", async () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    /** The report of a composition that disabled the panel surface. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, panel: false })
+    expect(calls.panels).toHaveLength(0)
+    /** The skip's own record: `absent`, naming the knob. */
+    const skipped = outcomeOf(report, "panel")
+    expect(skipped.state).toBe("absent")
+    expect(String(skipped.detail)).toContain("panel: false")
+    // `/mpd panel` still reaches a surface: the full-screen merged scene.
+    /** The registered command handler. */
+    const handler = calls.commands[0].handler as (invocation: unknown) => Promise<{ kind: string; text?: string }>
+    expect((await handler({ rawInput: "panel" })).kind).toBe("success")
+    expect(calls.scenes.some((entry: { open?: string }) => entry.open === "mpd-tui-subagents")).toBe(true)
+  })
+
+  test("every registered SCENE reports the host kit it received (the contact's arming path)", () => {
+    // The take-over can only attach where a LIVE `useStdin` is reachable, and on dsh-tui 0.12.0 that
+    // reachable one arrives with the kit a scene render receives (the module resolved at load answers
+    // nothing). This arm therefore pins the WHOLE hand-off: `registerScene` threads the callback into
+    // every factory, and every factory reports the kit it was handed.
+    /** The kits the callback received, in call order. */
+    const reported: unknown[] = []
+    /** The scene descriptors the fake adapter captured, in registration order. */
+    const registered: { id: string; component: unknown }[] = []
+    /** The handle a registration returns; the scenes only read its `record`. */
+    const handle = { record: () => {} }
+    /** The fake adapter: only the four members `registerScene` touches. */
+    const tui = {
+      /** Fires the setup immediately, as a bound seam does, with a fake scene registry. */
+      whenBound: (_key: string, setup: (service: unknown, scope: unknown, registration: typeof handle) => void) => {
+        setup({ register: () => () => {} }, { scope: true }, handle)
+        return { ...handle, outcome: () => ({ id: "tuiScenes", state: "requested" }), bound: () => true }
+      },
+      /** The bound scene registry, whose `register` is only checked for being callable. */
+      scenes: () => ({ register: () => () => {} }),
+      /** Records the descriptor; the handle methods are never used by this arm. */
+      registerScene: (descriptor: { id: string; component: unknown }) => {
+        registered.push(descriptor)
+        return { ...handle, outcome: () => ({ id: "tuiScenes", state: "requested" }), bound: () => true, openScene: () => true, closeScene: () => false }
+      },
+      /** Scene opens are not part of this arm. */
+      openScene: () => true,
+    }
+    /** A log double: the scenes only debug-log a refused open. */
+    const log = { info: () => {}, warn: () => {}, debug: () => {} }
+    registerScene(
+      {} as never,
+      tui as never,
+      log,
+      () => "/tmp/mpd-scenes",
+      () => "/tmp/mpd-home",
+      () => [],
+      undefined,
+      undefined,
+      () => [],
+      () => [],
+      (ui: unknown) => {
+        reported.push(ui)
+        return true
+      },
+    )
+    expect(registered.map((descriptor) => descriptor.id)).toEqual(["mpd-tui-board", "mpd-tui-team", "mpd-tui-plan", "mpd-tui-subagents"])
+    /** The host kit double: identity-stable, and the hook the adapter is expected to remember. */
+    const kit = sceneKitDouble()
+    for (const descriptor of registered) {
+      /** The scene component the factory built. */
+      const component = descriptor.component as (props: unknown) => unknown
+      // Each scene renders ONCE here. The arm is about the kit hand-off, which every factory performs
+      // after the kit check and BEFORE its first read, so a body that later bails on the fake
+      // workspace cannot mask it — and the report count below is asserted against the scene count.
+      component({ React: kit.React, ui: kit.ui, close: () => {} })
+    }
+    expect(reported).toHaveLength(registered.length)
+    for (const ui of reported) expect(ui).toBe(kit.ui)
+  })
+})
+
 describe("honest outcomes (no disposer-type inference)", () => {
   test("a refused shortcut registration is reported refused, never confirmed", () => {
     /** The no-op disposer a refused registration returns. */
@@ -762,6 +1068,89 @@ describe("honest outcomes (no disposer-type inference)", () => {
     /** The report `apply` returned. */
     const report = mod.apply(host.ctx as never, {})
     expect(outcomeOf(report, "tuiRenderers").state).toBe("requested")
+  })
+
+  test("a panel host with no list() read-back is reported requested, never confirmed", () => {
+    // The id is DISCOVERED from the host's own `list()`; without that read-back nothing proves the
+    // registration, so the honest state is `requested` — exactly as the other unconfirmable seams.
+    /** A host whose panel registry takes a registration but exposes no read-back. */
+    const services = { tuiPanels: { register: () => () => {}, open: () => true } }
+    /** The host double for that service set. */
+    const host = hostDouble(services)
+    /** The report `apply` returned. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The panel's own measured outcome. */
+    const measured = outcomeOf(report, "panel")
+    expect(measured.state).toBe("requested")
+    expect(String(measured.detail)).toContain("no panel read-back")
+  })
+
+  test("a refused panel registration is reported refused, never confirmed", () => {
+    /** A host whose panel registry refuses every descriptor by throwing. */
+    const services = {
+      tuiPanels: {
+        register: () => {
+          throw new Error("duplicate panel id")
+        },
+        list: () => [],
+      },
+    }
+    /** The host double for that service set. */
+    const host = hostDouble(services)
+    /** The report `apply` returned. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The panel's own measured outcome. */
+    const measured = outcomeOf(report, "panel")
+    expect(measured.state).toBe("refused")
+    expect(String(measured.detail)).toContain("duplicate panel id")
+    /** The one aggregate diagnostic line names the refusal instead of hiding it. */
+    const aggregate = host.infos.find((line) => line.includes("mpd TUI surfaces")) ?? ""
+    expect(aggregate).toContain("tuiPanels(refused")
+  })
+
+  test("a refused panel OPEN falls back to the full-screen scene and prints the reason", async () => {
+    // The frozen clause R4: `opened() === false` means the host refused (rate-limited, an id it no
+    // longer owns, or no live panel consumer) — never a silent no-op, so the scene opens and the
+    // printed line says which surface the user is looking at.
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** The same services, with a panel registry that refuses every open request. */
+    const refusalServices = {
+      ...services,
+      tuiPanels: { ...services.tuiPanels, open: () => false },
+    }
+    /** A host double for those services. */
+    const host = hostDouble(refusalServices)
+    mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The registered command handler. */
+    const handler = calls.commands[0].handler as (invocation: unknown) => Promise<{ kind: string; text?: string }>
+    /** The `/mpd panel` answer. */
+    const result = await handler({ rawInput: "panel" })
+    expect(result.kind).toBe("success")
+    expect(String(result.text)).toBe(t("panel.fallback", { id: "act0:team" }))
+    // The refusal is not a no-op: the full-screen merged scene opened.
+    expect(calls.scenes.some((entry: { open?: string }) => entry.open === "mpd-tui-subagents")).toBe(true)
+  })
+
+  test("an accepted panel OPEN prints the panel status line with the discovered id", async () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed (its panel registry accepts every open). */
+    const host = hostDouble(services)
+    mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The registered command handler. */
+    const handler = calls.commands[0].handler as (invocation: unknown) => Promise<{ kind: string; text?: string }>
+    /** The `/mpd panel` answer. */
+    const result = await handler({ rawInput: "panel" })
+    expect(result.kind).toBe("success")
+    // The id is the HOST's own `<pluginId>:<slug>`, discovered from `list()` — never composed here.
+    expect(String(result.text)).toBe(t("panel.opened", { id: "act0:team" }))
+    expect(calls.panelOpens).toEqual(["act0:team"])
+    // …and the panel was the surface: no scene was opened for this invocation.
+    expect(calls.scenes.some((entry: { open?: string }) => entry.open === "mpd-tui-subagents")).toBe(false)
+    // `/mpd subagents` rides the same route.
+    expect((await handler({ rawInput: "subagents" })).kind).toBe("success")
+    expect(calls.panelOpens).toEqual(["act0:team", "act0:team"])
   })
 
   test("a missing decision grant with a no-op disposer is refused, and the disposer is not called as a probe", () => {
@@ -883,7 +1272,7 @@ describe("/mpd command grammar (bare = picker, value = direct, status = print)",
     /** The handler's answer for an action outside the grammar. */
     const unknown = await handler({ rawInput: "nope" })
     expect(unknown.kind).toBe("error")
-    expect(unknown.text).toContain("unknown action")
+    expect(unknown.text).toContain(t("command.unknownAction", { action: "nope", usage: `/mpd [${COMMAND_ACTIONS.join("|")}]` }).split("{")[0].trim())
   })
 })
 
@@ -927,14 +1316,55 @@ describe("settings section disclosure (t21)", () => {
       expect(field.hint!.indexOf(`mpd.jsonc ${field.path.join(".")}`)).toBeGreaterThan(String(knob?.semantics).length - 1)
       // the sentence names THIS slot's members, in the group's own order
       expect(field.hint).toContain(teamModelMembers(field.path[1] as "slot1", "en"))
+      // R4, the host's OWN pattern (captain's A2): `hint` is the ENGLISH base and
+      // `hintDescriptions` carries the zh translation — never an `en` twin of the base, which the
+      // host's `pick(field.hint, field.hintDescriptions)` would only duplicate. The zh half must
+      // carry the same dotted key, or a zh reader loses the pointer the disclosure hangs off.
+      expect(field.hintDescriptions).toBeDefined()
+      expect(Object.keys(field.hintDescriptions!)).toEqual(["zh"])
+      expect(field.hintDescriptions!.zh).toContain(`mpd.jsonc ${field.path.join(".")}`)
+      expect(field.hintDescriptions!.zh).toContain(String(knob?.semanticsZh))
+      expect(field.hintDescriptions!.zh).not.toBe(field.hint)
     }
     expect(String(slotFields[3].hint)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
     expect(String(slotFields[3].hint)).not.toContain("Architect")
     expect(String(slotFields[3].hint)).toContain("Vision Analyst")
-    // the thirteen scalar rows carry their key alone (they have no invented copy)
+    // the thirteen scalar rows carry their key alone (they have no invented copy), and — having no
+    // zh sentence to translate — no `hintDescriptions` either: the host falls back to the base.
     for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "teamModels")) {
       expect(field.hint).toBe(`mpd.jsonc ${field.path.join(".")}`)
+      expect(field.hintDescriptions).toBeUndefined()
     }
+  })
+
+  test("R4: the localized pairs are the host's OWN shape — an `en` base, never a redundant `en` twin", () => {
+    // A2: `descriptions: { zh }` with the English in the base field is the host's own declaration
+    // pattern. An `en` key duplicating the base buys nothing and doubles the surface a reviewer
+    // has to check, so its presence is asserted ABSENT rather than tolerated.
+    for (const field of SETTINGS_FIELDS) {
+      expect(field.descriptions).toBeDefined()
+      expect(Object.keys(field.descriptions!)).toEqual(["zh"])
+      // Every field's English base is present and non-empty, which is what makes the zh-only map
+      // safe: a language the map does not cover falls back to these.
+      expect(field.label.length).toBeGreaterThan(0)
+      expect(String(field.hint).length).toBeGreaterThan(0)
+    }
+    // The slot knobs' base labels carry the EN group name and their zh labels the zh one, so both
+    // languages are genuinely reachable rather than one being a copy of the other.
+    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] === "teamModels")) {
+      /** The shared declaration this row mirrors. */
+      const knob = SETTINGS_KNOBS.find((candidate) => [...candidate.path].join(".") === field.path.join("."))
+      expect(field.label).toBe(knob!.label)
+      // The two languages genuinely differ: the base is the EN sentence, the map the zh one.
+      expect(String(field.hint)).not.toBe(field.hintDescriptions!.zh)
+      expect(String(field.hint).startsWith(String(knob!.semantics))).toBe(true)
+      expect(String(field.hintDescriptions!.zh).startsWith(String(knob!.semanticsZh))).toBe(true)
+    }
+    // The SECTION's own localized text rides `descriptions` (there is no section hint field), and
+    // its English base is the title, so a language the map misses shows the title rather than a key.
+    expect(SETTINGS_SECTION.title).toBe("MPD bundle")
+    expect(Object.keys(SETTINGS_SECTION.descriptions!).sort()).toEqual(["en", "zh"])
+    expect(String(SETTINGS_SECTION.descriptions!.en).startsWith(SETTINGS_SECTION.title)).toBe(true)
   })
 
   test("the registered section's 22 rows mirror the declaration: labels, zh, and human-first hints", async () => {

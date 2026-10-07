@@ -1,0 +1,70 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013-fv",
+  "widths": [
+    120,
+    80,
+    48,
+    32
+  ],
+  "verdicts": [
+    {
+      "cols": 120,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": true,
+      "panelTitleSeen": true,
+      "widestLine": 118,
+      "panelBars": [
+        "≡ ▸ ◆ ‹ MPD › ◈ ◆",
+        "‹ 待办 › ▸ ◆ M ◈ ◆",
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "≡ ▸ ◆ M ◈ ‹ MPD workmate ›",
+        "≡ ‹ 任务 › ◆ M ◈ ◆                ⤢",
+        "≡ ▸ ‹ 代理 › M ◈ ◆                ⤢"
+      ],
+      "mpdTabSeen": true,
+      "bootPane": "evidence/tui/dag-port/verification/pty/frozen-cjk/w120/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/frozen-cjk/w120/panel.pane.txt",
+      "failures": []
+    },
+    {
+      "cols": 80,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": false,
+      "panelTitleSeen": false,
+      "widestLine": 80,
+      "panelBars": [],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/frozen-cjk/w80/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/frozen-cjk/w80/panel.pane.txt",
+      "failures": []
+    },
+    {
+      "cols": 48,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": false,
+      "panelTitleSeen": false,
+      "widestLine": 47,
+      "panelBars": [],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/frozen-cjk/w48/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/frozen-cjk/w48/panel.pane.txt",
+      "failures": []
+    },
+    {
+      "cols": 32,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": false,
+      "panelTitleSeen": false,
+      "widestLine": 32,
+      "panelBars": [],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/frozen-cjk/w32/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/frozen-cjk/w32/panel.pane.txt",
+      "failures": []
+    }
+  ]
+}

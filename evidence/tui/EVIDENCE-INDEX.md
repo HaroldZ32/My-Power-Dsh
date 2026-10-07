@@ -153,3 +153,22 @@ node evidence/tui/docs/20260915T070743Z/doc-assertion.mjs
 A claim whose command cannot run in a given environment must be reported as blocked with the exact
 reason (as AC-20 is here) — never omitted, never approximated. A claim whose evidence arrives later is
 upgraded in place with an amendment note rather than left under-stated (as AC-15 was, once R6 passed).
+
+---
+
+## 9. AMENDMENT 2026-10-06 — the 0.13.0 adaptation wave's real-PTY lanes (lane E, plan item 5)
+
+This section is APPENDED; nothing above was rewritten. The host moved `0.12.0 → 0.13.0`, the lanes in
+§2 were made 0.13.0-aware and language-robust, and three of the claims above were re-measured on the
+new host. The full report, the raw invocation logs and the 0.12.0 bound are in
+`evidence/tui/lane-repair/013-20261006T102742Z/` (`TUI-013-LANE-REPORT.md`, `raw/*.log`,
+`raw/tui-012/*`).
+
+| Claim | Artifact / observed result |
+|---|---|
+| `tui-mount` PASS on 0.13.0 (triple layer, status line, counters, `agentPreset=mpd`, `isolationOffenders=0`) | `evidence/tui/lanes/2026-10-06T10-27-42.389Z/` — `[tui-mount] PASS: third layer mounted, 12 session record(s) decoded, zero apply-crash signatures` (exit 0) |
+| `tui-panels` — **7 of 8 surfaces render**, including the NEW `tuiPanels` registration arm (`id=act1:team`) | `evidence/tui/lanes/2026-10-06T10-27-53.571Z/` — `tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiPanels=rendered tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=rendered tuiDialogs=rendered` (exit 1, on `tuiRenderers` alone) |
+| `tui-deps-ctrla` PASS — the Ctrl+A expectation FLIPPED on 0.13.0 (contact inert, host dashboard) and `/mpd panel` proves the sidebar registration | `evidence/tui/lanes/2026-10-06T10-28-57.807Z/` — `[tui-deps-ctrla] PASS: the host's Ctrl+A stayed INERT (its own dashboard opened) and /mpd panel proved the sidebar registration + accepted open` (exit 0) |
+| The status-line and settings assertions now match the plugin's OWN localized strings; the settings pane was widened 220→320 columns so the four-clause disclosure is asserted verbatim | same `tui-mount` / `tui-panels` artifacts; the 220-column truncation measurement is described in the report §2.3 |
+| **`tuiRenderers` stays NOT-CLAIMED** — now with the corrected three-way cross-check (`appended, NOT projected`: store count 4, Channel rows 0) | `…/10-27-53.571Z/result.json` (`rendererCrossCheck`), plus the pre-existing cause record `evidence/tui/live/20260915T063140Z/CORRECTION-renderer-causation.md` |
+| **BOUND: no PTY proof of the pre-0.13.0 arming path** (the `.mpd/recon/tui-012` fixture never reaches a chat screen) | `evidence/tui/lane-repair/013-20261006T102742Z/raw/tui-012/attempt{1,2,3}-*.log`; the leg rests on `panel.test.ts` (16/0), `dashboard-key.test.ts` (11/0), `adapter-hosts.test.ts` (30/0) |

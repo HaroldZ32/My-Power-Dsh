@@ -1,0 +1,37 @@
+### evidence: R18 reader side (WEB) + R19 'unlocks' half + R20 — dag-geometry, FINAL
+### captured: 2026-10-06T14:20:29Z
+
+$ bun test packages/mpd-bundle-plugin/test/
+
+ 154 pass
+ 0 fail
+ 2797 expect() calls
+Ran 154 tests across 7 files. [2.88s]
+
+$ ./node_modules/.bin/tsgo --noEmit -p tsconfig.json
+(empty above = clean, whole tree)
+
+$ node scripts/verify-comment-coverage.ts
+scanned 405 TypeScript file(s) of 405 in the source set; inspected 33872 declaration(s); skipped 16383 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+$ bun evidence/tui/dag-port/web-dag/20261006T143500Z/producer-shape.mts
+resolveBlockers(['T1','ghost-7','ghost-7']) -> blockedBy=["T1","ghost-7","ghost-7"] unresolved=["ghost-7"]
+task WITHOUT a dangling reference: {"id":"T1","subject":"a task with no blockers","kind":"work","status":"pending","blockedBy":[],"writeScopes":[],"createdAt":"2026-10-06T00:00:01.000Z","updatedAt":"2026-10-06T00:00:01.000Z","revision":1}
+task WITH a dangling reference   : {"id":"T2","subject":"a task with one dangling reference","kind":"work","status":"pending","blockedBy":["T1","ghost-7"],"writeScopes":[],"createdAt":"2026-10-06T00:00:02.000Z","updatedAt":"2026-10-06T00:00:02.000Z","revision":1,"unresolvedBlockers":["ghost-7"]}
+the first task carries the key: false
+the second task carries the key: true
+
+$ bun evidence/tui/dag-port/web-dag/20261006T143500Z/real-records.mts
+BEFORE (ordinals, as the user saw it) tasks=10 ranks=1 ranksDerived=true edges=0 unresolved=["2","3","4","5","6","7","8","9"]
+   columns: [["T1","T2","T3","T4","T5","T6","T7","T8","T9","T10"]]
+AFTER  (repaired references, live)  tasks=12 ranks=5 ranksDerived=true edges=16 unresolved=[]
+   columns: [["T1","T2","T3","T4","T5"],["T6","T11"],["T7","T9","T12"],["T8"],["T10"]]
+LIE    (live references, every depth 0) tasks=12 ranks=5 ranksDerived=true edges=16 unresolved=[]
+   columns: [["T1","T2","T3","T4","T5"],["T6","T11"],["T7","T9","T12"],["T8"],["T10"]]
+
+$ bun test ./packages   # wave suite
+ 1788 pass
+ 3 skip
+ 3 fail

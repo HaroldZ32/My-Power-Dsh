@@ -1,0 +1,73 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-adapter-plugin/test/adapter-hosts.test.ts:
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > the probe binds the plugin host, and ONLY that seam [0.54ms]
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > a probe that answers is NOT a binding channel when the ctx cannot inject [0.11ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > one inject per seam, never a batch [0.42ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > a registration made BEFORE the seam binds is queued and drained at the bind [0.19ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > every host handle goes to the injected scope's effect, and the cleanup clears the status key [0.20ms]
+(pass) host shape 3: absent (a web or headless composition) > nothing binds, nothing throws, and exactly ONE aggregate warning is printed [0.15ms]
+(pass) host shape 3: absent (a web or headless composition) > a composition with ONE seam reports the info line instead, never the warning [0.11ms]
+(pass) resolution and diagnostics > resolveTuiAdapter prefers the mounted service and falls back to a row-private adapter [0.10ms]
+(pass) resolution and diagnostics > a broken ctx.get never escapes resolveTuiAdapter [0.10ms]
+(pass) resolution and diagnostics > createLazyTuiAdapter warns exactly once per row [0.21ms]
+(pass) resolution and diagnostics > describeOutcome renders the vocabulary consumers already read [0.02ms]
+(pass) resolution and diagnostics > the file sink appends under .mpd/logs and caps its own size [0.94ms]
+(pass) host contact resolver > a host install carrying useStdin resolves, and the hook is the module's own [0.95ms]
+(pass) host contact resolver > a candidate without lib/types/ui.js is skipped, and no candidate at all reports one reason [0.45ms]
+(pass) host contact resolver > a version-skew host (no useStdin export) and a module that throws both degrade to undefined [1.12ms]
+(pass) host contact resolver > candidate roots probe the pinned root first and every installed profile [0.46ms]
+(pass) host contact on the adapter > an injected contact is reported bound and wakes a subscriber immediately [0.12ms]
+(pass) host contact on the adapter > an adapter that did not probe reports absent, and a subscriber still answers once [0.04ms]
+(pass) host contact on the adapter > a probe against a staged install binds the contact and writes ONE line [0.71ms]
+561 |       const lines: string[] = []
+562 |       await withEnv({ [HOST_ROOT_ENV]: join(sandbox, "nothing-here"), DSH_HOME: sandbox, HOME: sandbox }, async () => {
+563 |         /** The adapter whose probe must find nothing. */
+564 |         const adapter = createTuiAdapter({}, { probeHostContact: true, hostInputLog: (line) => lines.push(line) })
+565 |         await waitForHostSettle(adapter)
+566 |         expect(adapter.hostInput()).toBeUndefined()
+                                          ^
+error: expect(received).toBeUndefined()
+
+Received: {
+  useStdin: [Function: useStdin],
+}
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-adapter-plugin/test/adapter-hosts.test.ts:566:37)
+      at async withEnv (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-adapter-plugin/test/adapter-hosts.test.ts:482:18)
+      at async <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-adapter-plugin/test/adapter-hosts.test.ts:562:13)
+(fail) host contact on the adapter > a probe with no reachable host degrades to absent with ONE line and no throw [55.69ms]
+(pass) host contact on the adapter > a subscriber registered while the probe is pending runs at the settle [0.64ms]
+(pass) rich status view registration > a bound status service registers the view and reports it as requested [0.16ms]
+(pass) rich status view registration > a host refusal (undefined) and a host without registerView are both reported refused [0.07ms]
+
+packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts:
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 27 package(s), 119 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 27 package(s), 119 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+(pass) no direct DSH-TUI seam access outside the TUI adapter (A2.2) [519.00ms]
+SELF-TEST — no-direct-tui-access (negative control over a seeded fixture tree)
+  ok   the seeded band yields exactly the five seeded violations
+  ok   the comment-only mention is not a finding
+  ok   the aliased receiver is caught (an alias is not a different seam)
+  ok   the string forms are caught (get / inject / serviceOf)
+  ok   the adapter package is excluded by identity
+  ok   the non-.ts fixture file is reported out of band, never as a finding
+  ok   the scan covers the adapter package's siblings
+SELF-TEST: PASS (7/7 checks)
+(pass) the gate reddens on a seeded violation (negative control) [0.95ms]
+
+1 tests failed:
+(fail) host contact on the adapter > a probe with no reachable host degrades to absent with ONE line and no throw [55.69ms]
+
+ 24 pass
+ 1 fail
+ 118 expect() calls
+Ran 25 tests across 2 files. [1176.00ms]

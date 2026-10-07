@@ -1,15 +1,37 @@
 name: gates
 
 # The repository's static gates, run on every push and pull request against the integration and
-# release lines. They are the fast, offline half of AGENTS.md §4: no dsh boot, no credentials, no
-# network and no plugin execution — exactly the checks a reviewer can reproduce on a fresh clone.
+# release lines. They are the fast half of AGENTS.md §4: no dsh BOOT, no credentials and no plugin
+# execution — exactly the checks a reviewer can reproduce on a fresh clone. One of them reads state a
+# bare runner does not carry (the installed harness), so the setup step below provides it; nothing
+# here starts a session or applies a patch.
 #
 # WHY NODE 24 AND NOT 20: every gate is a TypeScript entry point (`scripts/*.ts`) executed directly
 # by Node's type stripping, which is on by default from Node 22.18 on. The package's own `engines`
 # field states the same floor; a runner below it cannot start the checkers at all.
 #
+# WHY THE HARNESS IS SET UP FIRST — it was MEASURED red on 2026-10-02 while the code under test was
+# correct:
+#   * `preset-conformance --self-test` FAILS outright when no `dsh` is on PATH ("dsh is not on PATH —
+#     the case cannot verify the installed harness"): it validates every row config against the
+#     INSTALLED packages' own schemastery schemas, which is the only thing that sees a required key
+#     go missing. The version is deliberately NOT written here — it is read from `package.json`'s
+#     `@deepseek-ai/dsh-experimental-agent-team` pin, the same declaration the profile mechanism
+#     installs, so the two cannot drift apart.
+# WHY THE UPSTREAM BASELINE IS *NOT* SET UP (de-vendored 2026-10-07): this job used to fetch the
+#   pinned `oh-my-openagent` checkout by SHA and export `MPD_UPSTREAM_ROOT` for the `vendor` member,
+#   whose commit and version were blockers. That baseline is now a HISTORICAL REFERENCE for
+#   attribution only: `vendor` reads `VENDOR_LOCK.json` and the working tree, resolves no checkout
+#   and reads no `MPD_UPSTREAM_ROOT`, so the fetch step is GONE (not disabled) and a run on a bare
+#   runner with no network is exactly the case the gate is now designed for.
+# WHY BUN IS PINNED TO THE RECORDED BUILD TOOLCHAIN: `verify-dist-fresh` rebuilds every
+# `packages/*/dist` entry and compares BYTES, and a different bun minor rewrites the injected helper
+# preamble. Measured 2026-10-02: bun 1.4.2 reported 21 of 23 targets STALE against the committed
+# dists that the pinned bun 1.4.0 (`buildToolchain` in `package.json`) reproduces 23/23.
+#
 # WHAT EACH STEP PROVES (`bun run verify:gates` is the aggregate over all of them):
-#   * vendor            — the pinned upstream baseline's item counts and fingerprints;
+#   * vendor            — the file count and fingerprint of every asset THIS repository ships
+#                         (`VENDOR_LOCK.json`); no upstream baseline is fetched, resolved or checked;
 #   * dist-fresh        — every committed `packages/*/dist` entry is the byte-identical rebuild of
 #                         its source, and every `dist/` file is covered by a source entry;
 #   * rows-parity       — the bundle patch and the preset patch agree with the row ids they target;
@@ -40,18 +62,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.0"
-      - name: Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)
+      # QUOTED, and the quotes are load-bearing: an unquoted step name containing `: ` is parsed as
+      # a nested mapping, which makes the WHOLE file invalid. GitHub then refuses the workflow
+      # WITHOUT creating a single job ("This run likely failed because of a workflow file issue",
+      # 0 s, no jobs) — measured on every push from 2026-09-28 until this fix.
+      - name: "Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)"
         run: bun install --frozen-lockfile
 
+      # The harness the gates validate AGAINST. Its version is READ, never restated: the pin in
+      # package.json is the same declaration the profile mechanism installs, so a bump cannot leave
+      # this job validating against the previous release.
+      - name: Install the harness the row-config gate validates against
+        run: |
+          HARNESS_VERSION="$(node -p "require('./package.json').dependencies['@deepseek-ai/dsh-experimental-agent-team']")"
+          echo "installing @deepseek-ai/dsh@${HARNESS_VERSION} (the pin this bundle declares)"
+          npm i -g "@deepseek-ai/dsh@${HARNESS_VERSION}"
+          dsh --version
+
+      # The vendor gate's subject is `VENDOR_LOCK.json` and the working tree. It resolves NO
+      # checkout and reads NO `MPD_UPSTREAM_ROOT`, so this job needs neither a fetch step nor an env
+      # block here — that pair was removed with the upstream baseline on 2026-10-07.
       - name: Static gate aggregate
         run: bun run verify:gates
 

@@ -8,10 +8,10 @@
 import { existsSync, readFileSync, watch, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
-import { textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_TOOLS, dshSeamInject, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_DEFAULTS } from "./settings-schema"
 import { markVolatile } from "./settings-schema"
-import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
+import z from "../../mpd-schemastery"
 import {
   DEFAULT_BRIDGE_OPTIONS,
   changedLeaves,
@@ -27,7 +27,7 @@ import {
 /** The cordis plugin name; the loader addresses this row and its settings entry by it. */
 export const name = "mpd-config"
 /** The one service this row consumes; every other seam rides the adapter resolved at apply(). */
-export const inject = ["tools"]
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /**
  * The cordis context as this row uses it: the tool registrar plus the service/provider seams.
@@ -313,7 +313,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // read-only/conflicting/ambiguous target produced NO diagnostic anywhere (design §9.3 F6).
   const warn = (message: string): void => {
     try {
-      console.log(message)
+      rowLogLine("mpd-config", message)
       if (ctx.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
     } catch {
       // logging must never fail the write-back
@@ -361,8 +361,18 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     retries: DEFAULT_BRIDGE_OPTIONS.retries,
   })
 
-  /** The write target for a root: the row override wins, else that root's own project file. */
-  const projectFileFor = (root: string): string => (config.projectFile ? resolve(config.projectFile) : join(root, ".mpd", "mpd.jsonc"))
+  /**
+   * The row config's `projectFile` override, resolved, or undefined when the knob is unset.
+   *
+   * ONE expression for the whole row (S1): the read (`loadConfig`), the write-back, `reconcile` and
+   * the watcher all resolve a target through it, so a configured `projectFile` can never be honoured
+   * on the read path and ignored on the write path — which would write (and on a fresh workspace
+   * CREATE) a file the config layer never reads.
+   */
+  const projectFileOverride = (): string | undefined => (config.projectFile ? resolve(config.projectFile) : undefined)
+
+  /** The target file for a root: the row override wins, else that root's own project file. */
+  const projectFileFor = (root: string): string => projectFileOverride() ?? join(root, ".mpd", "mpd.jsonc")
 
   /**
    * The root the READ-IN uses: the one live session root when exactly one root is
@@ -534,8 +544,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       warn(reportLine(disabled, "DISABLED"))
       return
     }
-    // Who the file write targets — exactly one live root, or a refusal naming why not.
-    const decision = resolveTargets(dsh.workspaceRootsAll())
+    // Who the file write targets — exactly one live root, or a refusal naming why not. The row's
+    // `projectFile` override is passed IN (S1), so this write lands on the file `loadConfig` reads.
+    const decision = resolveTargets(dsh.workspaceRootsAll(), projectFileOverride())
     if (decision.kind === "refuse") {
       // The report for a refusal: no target was written, and every candidate is named.
       const refused: BridgeReport & { source?: string; revision?: number; at?: string } = { writtenTo: [], results: [], skipped: decision.reason, candidates: decision.candidates, applies: "restart", source, revision, at: new Date().toISOString() }
@@ -595,14 +606,20 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       }
       // The underlying fs watcher, owned by the disposer stored in `watchers`.
       const watcher = watch(dir, listener)
-      watchers.set(file, () => {
+      /** Releases this watch: the pending debounce first, then the fs watcher itself. */
+      const dispose = (): void => {
         if (timer !== undefined) clearTimeout(timer)
         try {
           watcher.close()
         } catch {
           // already closed
         }
-      })
+      }
+      watchers.set(file, dispose)
+      // THE WATCH BELONGS TO THIS ROW'S OWN SCOPE (S5): a disposer parked in a local map is never
+      // drained, so an unload would leave the fs watcher — and its debounce timer — alive for the
+      // process lifetime, reloading into a disposed row.
+      if (typeof ctx.effect === "function") ctx.effect(() => dispose, "mpd-config: project-file watcher " + file)
     } catch {
       // a watch that cannot be established degrades to reconciliation on reload
     }
@@ -642,8 +659,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       bridge.migration = "already-migrated"
       return
     }
-    // Same refusal contract as the write-back: one live root, or the migration is deferred.
-    const decision = resolveTargets(dsh.workspaceRootsAll())
+    // Same refusal contract as the write-back: one live root, or the migration is deferred — and
+    // the SAME target resolver, so a migrated value lands where the config layer reads it (S1).
+    const decision = resolveTargets(dsh.workspaceRootsAll(), projectFileOverride())
     if (decision.kind === "refuse") {
       bridge.migration = decision.reason === "no-live-session" ? "deferred-no-workspace" : `deferred-${decision.reason}`
       if (decision.reason === "no-live-session") warn("[mpd-config] settings bridge: migration deferred — no live session workspace to migrate into (nothing was written to process.cwd()).")
@@ -824,7 +842,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_config_get",
-    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort.",
+    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a: unknown, v: any) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args: any, exec: any) => {

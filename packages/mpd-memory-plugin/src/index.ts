@@ -8,12 +8,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync, statSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { basename, dirname, join, resolve, sep } from "node:path"
-import { type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-memory"
-/** The tool registry the five `mpd_memory_*` tools are registered into. */
-export const inject = ["tools"]
+/** The tool registry the five `mpd_memory_*` tools are registered into, named by its adapter constant. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the row context this plugin reads: the tool registry plus the optional runtime config service. */
 type Ctx = { tools: any; get?: (k: string) => any }
@@ -315,6 +315,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     execute: async (args: any, exec: any) => {
       /** The agent's state directories, created on demand so a reflection can complete in a fresh workspace. */
       const d = ensureDirs(cfg, dsh, exec)
+      /** The reflection state as persisted, and the value this transition mutates when it is legal. */
+      const s = readReflection(d)
+      // THE PRECONDITION: `mpd_memory_reflect` reports `due` under exactly this predicate. Without it a
+      // completion ran with nothing pending: it wrote a reflection entry, bumped
+      // `reflected_completed_steps`, zeroed `steps_since_last_successful_reflection` and stamped
+      // `reservation: {status:"completed"}`, stranding the counters of a machine that never triggered.
+      if (s.triggered !== true && s.reservation?.status !== "pending") {
+        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered === true) + ", reservation=" + String(s.reservation?.status ?? "none") + ", steps_since_last_successful_reflection=" + String(s.steps_since_last_successful_reflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.")
+      }
       ensureVcs(cfg, d)
       /** The reflection entry's file stem: a fixed prefix plus a base-36 timestamp. */
       const name = "reflection-" + Date.now().toString(36)
@@ -324,8 +333,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const meta = { description: String(args?.title ?? "reflection"), kind: "reflection" }
       writeFileSync(file, "---\n" + JSON.stringify(meta) + "\n---\n" + String(args?.content) + "\n")
       commitAll(cfg, d, "memory: reflection " + name)
-      /** The reflection state, advanced by one completed transition and re-armed for the next threshold. */
-      const s = readReflection(d)
+      // The state read at the top of this call, advanced by one completed transition: the reservation
+      // is cleared and the counter re-armed for the next threshold.
       s.reflected_completed_steps = (s.reflected_completed_steps ?? 0) + 1
       s.steps_since_last_successful_reflection = 0
       s.triggered = false

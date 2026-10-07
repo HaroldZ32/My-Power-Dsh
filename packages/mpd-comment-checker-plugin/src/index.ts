@@ -11,13 +11,13 @@
 import { existsSync, readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { dirname, join, resolve } from "node:path"
-import { bundleRootOf, textBlock, workspaceRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { dirname, isAbsolute, join, resolve } from "node:path"
+import { DSH_SEAM_TOOLS, bundleRootOf, dshSeamInject, textBlock, workspaceRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis row id this plugin registers under; the bundle patch mounts it as `mpd-comment-checker`. */
 export const name = "mpd-comment-checker"
 /** Cordis service ids this row waits for; the tool seam is its only hard requirement. */
-export const inject = ["tools"]
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the cordis context this row uses: the tool seam plus the optional config service. */
 type Ctx = { tools: any; on: (ev: string, fn: (...a: any[]) => any) => void; get?: (k: string) => any }
@@ -177,6 +177,22 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   })
 
   if (cfg.autoCheck === true) {
+    /**
+     * Append one note to a decision without replacing the text it already carries.
+     *
+     * @param out - the downstream decision the waterfall received.
+     * @param result - the raw tool result, read only when the decision carries no content.
+     * @param note - the text to append.
+     * @returns a decision of the same kind whose single text block ends with `note`.
+     */
+    const appendNote = (out: any, result: any, note: string): any => {
+      /** The decision's content in whichever shape the harness produced it. */
+      const c = out.content ?? result?.content
+      /** The decision's existing text, blocks flattened, so the note appends rather than replaces. */
+      const text = typeof c === "string" ? c : (Array.isArray(c) ? c.map((b: any) => (b && b.type === "text" ? b.text : "")).join("\n") : "")
+      return { ...out, content: [{ type: "text", text: (text ? text + "\n\n" : "") + note }] }
+    }
+
     dsh.onPostToolExecute(async (exec: any, result: any, out: any) => {
       if (out.kind !== "accept") return out
       /** Whether the finished call is one that writes content; `str_replace_editor` is the legacy name. */
@@ -185,23 +201,29 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The path the edit targeted, under either argument spelling. */
       const fp = exec.arguments?.file_path ?? exec.arguments?.path
       if (typeof fp !== "string") return out
+      // Session-absolute target: the plain edit/write tools report the path as the MODEL wrote it —
+      // usually RELATIVE — so probing it against the dsh process cwd found nothing and skipped in
+      // silence, i.e. the check silently never ran for the session's own file.
+      /** The path this hook really reads: a relative `file_path` belongs to the calling session. */
+      const target = isAbsolute(fp) ? resolve(fp) : resolve(dsh.workspaceRoot(exec), fp)
       /** The resolved detector binary; absent leaves the decision untouched. */
       const binary = resolveBinary(cfg)
       if (!binary) return out
-      /** The edited file's content; an unreadable file leaves the decision untouched. */
+      /** The edited file's content, empty when the read failed. */
       let content = ""
-      try { content = readFileSync(fp, "utf8") } catch { return out }
+      /** Why the read failed, or "" when it succeeded; the failure is REPORTED below, never swallowed. */
+      let readError = ""
+      try { content = readFileSync(target, "utf8") } catch (e: any) { readError = String(e?.message ?? e) }
+      // A DECLARED miss: the degrade stays (the decision passes through), but it now says which path
+      // could not be read, so "the check found nothing" is distinguishable from "the check never ran".
+      if (readError) return appendNote(out, result, "[mpd-comment-checker] auto-check skipped " + target + ": " + readError)
       if (!content) return out
       /** The detector's verdict on the edited file. */
-      const res = runCheck(binary, hookInputFor(fp, content, dsh.workspaceRoot(exec)), timeoutMs)
+      const res = runCheck(binary, hookInputFor(target, content, dsh.workspaceRoot(exec)), timeoutMs)
       if (!res.hasComments) return out
       /** The text appended to the tool result when comments were found. */
-      const hint = "[mpd-comment-checker] comments/docstrings detected in " + fp + ":\n" + res.message.slice(0, maxMessageChars)
-      /** The decision's content in whichever shape the harness produced it. */
-      const c = out.content ?? result?.content
-      /** The decision's existing text, blocks flattened, so the hint appends rather than replaces. */
-      const text = typeof c === "string" ? c : (Array.isArray(c) ? c.map((b: any) => (b && b.type === "text" ? b.text : "")).join("\n") : "")
-      return { ...out, content: [{ type: "text", text: (text ? text + "\n\n" : "") + hint }] }
+      const hint = "[mpd-comment-checker] comments/docstrings detected in " + target + ":\n" + res.message.slice(0, maxMessageChars)
+      return appendNote(out, result, hint)
     })
   }
 }

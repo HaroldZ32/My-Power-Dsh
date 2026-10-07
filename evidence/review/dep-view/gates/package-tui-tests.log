@@ -1,0 +1,9 @@
+(pass) settings section disclosure (t21) > the marker itself says the save does not rewrite the config file [0.03ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the notice constant is the design's exact sentence and matches the exported one [0.09ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the status line publishes the notice only while the last write-back was skipped for no-live-session [0.99ms]
+
+ 138 pass
+ 0 fail
+ 2183 expect() calls
+Ran 138 tests across 8 files. [197.00ms]
+EXIT=0

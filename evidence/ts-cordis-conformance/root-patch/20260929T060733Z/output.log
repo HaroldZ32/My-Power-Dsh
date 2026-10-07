@@ -1,0 +1,287 @@
+=== root cordis.patch.yml relocation — verification, read 2026-09-29T06:07:33Z ===
+HEAD (pre-change) 5e5454bb5ba449a4817b827938a9fd4b04e30936 · branch dev · version 0.11.6
+moved: packages/mpd-bundle/cordis.patch.yml -> cordis.patch.yml (git mv, bytes unchanged)
+manifest: dsh.bundle.patch = ["./cordis.patch.yml","./presets/mpd.patch.yml"]
+files allowlist admits the root patch: true
+sha256 of the moved file: 823e95759b3a542b778edff18584a655137516b33663e35194ae95876670dae1
+
+--- gate: verify-rows-parity ---
+[verify-rows-parity] ok: 33 row ids match the 2-file bundle patch layer (agent-preset-registry, dsh-tui-agent-preset-registry, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-tools, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-ui-agent-team, mpd-ulw, mpd-web-compat, mpd-workmate, preset-mpd)
+--- gate: verify-plugin-manifest --pack ---
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+--- gate: verify-docs-parity ---
+[verify-docs-parity] root=/root/dshProj/My-Power-Dsh pairs=41 failed=0 violations=0 exempt=21 derived=3 links=419 dead=0 — PASS
+--- gate: verify-pack-closure ---
+[verify-pack-closure] ok: 20 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 21 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: skipped: /root/dshProj/My-Power-Dsh/dist/mpd-package does not exist (run `npm run pack`)
+--- gate: verify-manual-paths ---
+[verify-manual-paths] PASS resolved=127 over-report=91 under-report=93 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+--- gate: verify-comment-coverage ---
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+--- installer: install-profile --dry-run ---
+[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target
+
+--- remaining references to the retired nested path (records only) ---
+./docs/plan-d.md
+./docs/plan-e.md
+./docs/plan-team-watchdog.md
+./docs/plan-tui-edition.md
+./docs/tui-edition-report.md
+./evidence/agent-teams/adapter-wiring/requirements-contract.md
+./evidence/docs-overhaul/baseline-metrics.md
+./evidence/docs-overhaul/captain-rulings.md
+./evidence/docs-overhaul/design-doc.md
+./evidence/docs-overhaul/hash-ledger.md
+./evidence/docs-overhaul/plugin-inventory.md
+./evidence/docs-overhaul/readme.md
+./evidence/docs-overhaul/repoint.md
+./evidence/docs-overhaul/review-round1.md
+./evidence/docs-overhaul/self-review.md
+./evidence/docs-overhaul/user-guide.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/architecture.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/architecture.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/extension-adaptation-report.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/extension-adaptation-report.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/extensions.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/extensions.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/plan-d.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/plan-e.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/plan-team-watchdog.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/plan-tui-edition.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/tui-edition-report.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/tui.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/tui.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/upstream-parity-ledger.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/upstream-parity-ledger.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/user-guide.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/docs/user-guide.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/packages/mpd-bootstrap-plugin/README.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/packages/mpd-bootstrap-plugin/README.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/packages/mpd-roles-plugin/README.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/packages/mpd-roles-plugin/README.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/packages/mpd-tui-plugin/README.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/packages/mpd-tui-plugin/README.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/architecture.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/architecture.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/extension-adaptation-report.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/extension-adaptation-report.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/extensions.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/extensions.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/plan-d.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/plan-e.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/plan-team-watchdog.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/plan-tui-edition.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/tui-edition-report.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/tui.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/tui.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/upstream-parity-ledger.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/upstream-parity-ledger.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/user-guide.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/docs/user-guide.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/packages/mpd-bootstrap-plugin/README.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/packages/mpd-bootstrap-plugin/README.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/packages/mpd-roles-plugin/README.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/packages/mpd-roles-plugin/README.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/packages/mpd-tui-plugin/README.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/packages/mpd-tui-plugin/README.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/architecture.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/architecture.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/extension-adaptation-report.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/extension-adaptation-report.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/extensions.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/extensions.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/plan-d.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/plan-e.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/plan-team-watchdog.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/plan-tui-edition.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/tui-edition-report.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/tui.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/tui.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/upstream-parity-ledger.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/upstream-parity-ledger.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/user-guide.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/docs/user-guide.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/packages/mpd-bootstrap-plugin/README.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/packages/mpd-bootstrap-plugin/README.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/packages/mpd-roles-plugin/README.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/packages/mpd-roles-plugin/README.zh-CN.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/packages/mpd-tui-plugin/README.md
+./evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/packages/mpd-tui-plugin/README.zh-CN.md
+./evidence/extensions/integration-ledger/20260916T071414Z/delivery-ledger.md
+./evidence/extensions/t7-verify/20260916T045829Z/run-lanes.sh
+./evidence/extensions/t7-verify/20260916T050334Z/run-anchored.sh
+./evidence/fix/adapter-livesession-rebuild/2026-09-14T05-38-01.791Z/summary.md
+./evidence/gates/agents-budget/20260917T011651Z/oversized-control.md
+./evidence/gates/build-form/20260917T033500Z-t60/REVERSED-pre-t60.AGENTS.md
+./evidence/gates/build-form/20260917T040500Z-t66/REVERSED-pre-t66.AGENTS.md
+./evidence/gates/t75-derived-values/20260917T072029Z/after-index-fix/root/AGENTS.md
+./evidence/gates/t75-derived-values/20260917T072029Z/scratch/root/AGENTS.md
+./evidence/gates/tree-conformance/20260922T092042Z/result.md
+./evidence/install-deps/implementation/README.md
+./evidence/install-deps/implementation/SUMMARY.md
+./evidence/install-deps/integration/INTEGRATION-READINESS.md
+./evidence/install-deps/integration/RESULT.md
+./evidence/install-deps/integration/REVIEW-integration-boundary.md
+./evidence/install-deps/repair-f1/RESULT.md
+./evidence/install-deps/repair-f1/RESULT-t18.md
+./evidence/install-deps/repair-r2/RESULT.md
+./evidence/install-deps/requirements/requirements-and-inventory.md
+./evidence/install-deps/review/RESULT2.md
+./evidence/install-deps/review/RESULT3.md
+./evidence/install-deps/review/RESULT.md
+./evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/ADDENDUM.md
+./evidence/install-deps/verification/20260920T034521Z/REPORT.md
+./evidence/install-deps/verification-final/REPORT.md
+./evidence/model-slots/requirements/CONTRACT.md
+./evidence/mpd-bridge/implementation/20260915T080138Z/REPORT.md
+./evidence/mpd-bridge/web-card/report.md
+./evidence/mpd-naming/captain-rulings/rulings.md
+./evidence/mpd-naming/final-allowlist/raw/check-keep-allowlist.sh
+./evidence/mpd-naming/landing/ONE-COMMIT-PLAN.md
+./evidence/omo-align/research/skills-and-capability-gap/verdict-table.md
+./evidence/omo-align/skills-gates/gap-verdict-table.md
+./evidence/omo-align/skills-gates/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/LOCAL-ANCHOR-DRIFT.md
+./evidence/omo-align/skills-gates/revisions/fv4-2026-09-13T14-00-29-361Z/gap-verdict-table.md
+./evidence/omo-align/skills-gates/revisions/fv5.10-2026-09-13T14-49-04-505Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.11-2026-09-13T14-50-55-176Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.1-2026-09-13T14-38-15-519Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.12-2026-09-13T14-51-35-066Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.13-2026-09-13T14-51-59-794Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.14-2026-09-13T14-55-44-242Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.15-2026-09-13T15-01-51-284Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5-2026-09-13T14-35-54-840Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.2-2026-09-13T14-39-45-630Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.3-2026-09-13T14-40-57-612Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.4-2026-09-13T14-41-23-675Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.5-2026-09-13T14-41-51-190Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.6-2026-09-13T14-42-05-439Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.6-2026-09-13T14-42-38-034Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.7-2026-09-13T14-43-10-378Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.8-2026-09-13T14-43-36-449Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/revisions/fv5.9-2026-09-13T14-46-43-047Z/gap-verdict-table-r2.md
+./evidence/omo-align/skills-gates/verdict-table.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/architecture.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/architecture.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/extension-adaptation-report.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/extension-adaptation-report.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/extensions.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/extensions.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/plan-d.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/plan-e.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/plan-team-watchdog.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/plan-tui-edition.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/tui-edition-report.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/tui.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/tui.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/upstream-parity-ledger.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/upstream-parity-ledger.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/user-guide.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/docs/user-guide.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/packages/mpd-bootstrap-plugin/README.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/packages/mpd-bootstrap-plugin/README.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/packages/mpd-roles-plugin/README.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/packages/mpd-roles-plugin/README.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/packages/mpd-tui-plugin/README.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/packages/mpd-tui-plugin/README.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/architecture.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/architecture.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/extension-adaptation-report.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/extension-adaptation-report.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/extensions.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/extensions.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/plan-d.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/plan-e.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/plan-team-watchdog.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/plan-tui-edition.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/tui-edition-report.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/tui.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/tui.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/upstream-parity-ledger.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/upstream-parity-ledger.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/user-guide.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/docs/user-guide.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/packages/mpd-bootstrap-plugin/README.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/packages/mpd-bootstrap-plugin/README.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/packages/mpd-roles-plugin/README.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/packages/mpd-roles-plugin/README.zh-CN.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/packages/mpd-tui-plugin/README.md
+./evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/packages/mpd-tui-plugin/README.zh-CN.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/architecture.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/architecture.zh-CN.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/extension-adaptation-report.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/extension-adaptation-report.zh-CN.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/extensions.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/extensions.zh-CN.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/plan-d.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/plan-e.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/plan-team-watchdog.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/plan-tui-edition.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/tui-edition-report.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/tui.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/tui.zh-CN.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/upstream-parity-ledger.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/upstream-parity-ledger.zh-CN.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/user-guide.md
+./evidence/review/t17-symbol-first/20260917T074037Z/fixtures/head-docs/docs/user-guide.zh-CN.md
+./evidence/team/retier-flash-max/20260913T131604Z/README.md
+./evidence/team-watchdog/pool-guard/20260915T1745Z/ADDENDUM-2instances.md
+./evidence/team-watchdog/pool-guard/20260915T1745Z/REPORT.md
+./evidence/team-watchdog/redesign/config/20260917T011345Z/neg-control-root/packages/mpd-config-plugin/src/settings-schema.ts
+./evidence/team-watchdog/requirements/20260915T090440Z/HOST-WATCHDOG.md
+./evidence/tui/ACCEPTANCE-LEDGER.md
+./evidence/tui/composition/20260915T053445Z/R2-3-citation-repair.md
+./evidence/tui/composition/20260915T053445Z/RESULT.md
+./evidence/tui/composition/20260915T071619Z-docs-mpd-command/README.md
+./evidence/tui/composition/20260915T071619Z-docs-mpd-command/zh-6.4-snippet.md
+./evidence/tui/composition/20260915T072139Z-zh-mirror-paste/README.md
+./evidence/tui/docs-completeness/20260915T153835Z/REPORT.md
+./evidence/tui/readme-coverage/20260915T153648Z/AUDIT.md
+./evidence/ulw/l6-verification/t10-round1-review/REVIEW.md
+./evidence/ulw/requirements/20260918T001246Z/contract.md
+./evidence/wave2/adopted-tooling-repair-f4/README.md
+./evidence/wave2/adopted-tooling-repair/README.md
+./evidence/wave2/b8-binary-resolution/t1-decision-record.md
+./evidence/wave2/t10-review/20260911T063000Z/t10-REVIEW.md
+./evidence/wave2/t11-integration/20260911T072333Z/commit-plan.md
+./evidence/wave3/integration/20260911T094211Z/commit-plan.md
+./evidence/wave3/integration/20260911T094211Z/FINAL-REPORT.md
+./tests/golden/out/plans/mpd-summary-plan.md
+
+=== [convention] how the INSTALLED harness's own bundles declare their patch layer (2026-09-29T06:08:27Z) ===
+harness root: /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh
+
+=> every shipped bundle names ./cordis.patch.yml as a PACKAGE-ROOT file; dsh-web-app uses the same array shape as this bundle.
+--- (corrected path sweep) /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/*/package.json ---
+@deepseek-ai/dsh-acp-app                       "./cordis.patch.yml"
+    EXISTS at package root: cordis.patch.yml
+@deepseek-ai/dsh-base                          "./cordis.patch.yml"
+    EXISTS at package root: cordis.patch.yml
+@deepseek-ai/dsh-experimental-agent-team-profile "./cordis.patch.yml"
+    EXISTS at package root: cordis.patch.yml
+@deepseek-ai/dsh-experimental-auto-review      "./cordis.patch.yml"
+    EXISTS at package root: cordis.patch.yml
+@deepseek-ai/dsh-experimental-schedule-bundle  "./cordis.patch.yml"
+    EXISTS at package root: cordis.patch.yml
+@deepseek-ai/dsh-experimental-voice-input-bundle "./cordis.patch.yml"
+    EXISTS at package root: cordis.patch.yml
+@deepseek-ai/dsh-headless                      "./cordis.patch.yml"
+    EXISTS at package root: cordis.patch.yml
+@deepseek-ai/dsh-sdk-app                       "./cordis.patch.yml"
+    EXISTS at package root: cordis.patch.yml
+@deepseek-ai/dsh-sdk-minimal                   "./cordis.patch.yml"
+    EXISTS at package root: cordis.patch.yml
+@deepseek-ai/dsh-web-app                       ["./cordis.patch.yml","./presets/standard.patch.yml","./presets/ptc.patch.yml","./presets/minimal.patch.yml","./presets/cordis.patch.yml"]
+    EXISTS at package root: cordis.patch.yml
+    EXISTS at package root: presets/standard.patch.yml
+    EXISTS at package root: presets/ptc.patch.yml
+    EXISTS at package root: presets/minimal.patch.yml
+    EXISTS at package root: presets/cordis.patch.yml
+
+=== [6] the RELEASE packer and the packed artifact, at 2026-09-29T06:23:48Z ===
+node scripts/pack-mpd.ts -> staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+packed manifest dsh.bundle.patch = ["./cordis.patch.yml","./presets/mpd.patch.yml"]
+packed patch at its own root: PRESENT  (sha256 823e95759b3a542b778edff18584a655137516b33663e35194ae95876670dae1)
+--- gate: verify-pack-closure against the REAL packed tree ---
+[verify-pack-closure] ok: 20 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 21 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/My-Power-Dsh/dist/mpd-package (390 asset files); agent references 3/3; root files 1/1; declared packages 25/25 present in the artifact; content bytes: 1202 file(s) compared, 1202 identical, 0 drift, 0 expected-after-pack; completeness: 420 declared source file(s) compared, 419 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-29T06:23:22.439Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+--- gate: verify-plugin-manifest --pack, re-run after the pack ---
+VERDICT: PASS — the install-time rules and the packaging contract hold.

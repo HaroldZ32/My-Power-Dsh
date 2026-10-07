@@ -1,0 +1,111 @@
+cmd: per-package FILE-NAME delta, snapshot vs pristine checkout (names only)
+--- ast-grep-mcp ---
+    0a1
+    > ./AGENTS.md
+--- git-bash-mcp ---
+    0a1
+    > ./AGENTS.md
+--- lsp-daemon ---
+    0a1
+    > ./AGENTS.md
+--- lsp-core ---
+    0a1
+    > ./AGENTS.md
+--- mcp-stdio-core ---
+    0a1
+    > ./AGENTS.md
+--- omo-config-core ---
+    0a1
+    > ./AGENTS.md
+--- utils ---
+    0a1
+    > ./AGENTS.md
+
+cmd: tree hash over the COMMON file set only (isolates content drift from the missing file)
+  ast-grep-mcp     common-set snapshot=08dee2f58d87c871 upstream=08dee2f58d87c871 IDENTICAL
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  git-bash-mcp     common-set snapshot=0750f5060d38b37f upstream=0750f5060d38b37f IDENTICAL
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  lsp-daemon       common-set snapshot=ea2a8017accb0fd3 upstream=ea2a8017accb0fd3 IDENTICAL
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  lsp-core         common-set snapshot=8d16b90af157eceb upstream=8d16b90af157eceb IDENTICAL
+  mcp-stdio-core   common-set snapshot=540d7c347d24f08f upstream=540d7c347d24f08f IDENTICAL
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  omo-config-core  common-set snapshot=18462e5440f6be60 upstream=18462e5440f6be60 IDENTICAL
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  utils            common-set snapshot=64999a23ca65ab06 upstream=64999a23ca65ab06 IDENTICAL
+
+cmd: the lsp entry + package layout (names/data only)
+  bin: {"omo-lsp-daemon":"./dist/cli.js"}
+  scripts: {"build":"node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && bun build src/cli.ts src/index.ts src/client.ts --outdir dist --target node --format esm && node scripts/stamp-dist-version.mjs","smoke:client-package":"node scripts/client-package-smoke.mjs","test":"vitest --run","test:watch":"vitest","typecheck":"tsc --noEmit","lint":"biome check .","lint:fix":"biome check --write .","check":"tsc --noEmit && biome check . && npm run build"}
+  packages/mpd-mcp-lsp contents:
+    README.md
+    README.zh-CN.md
+    dist
+    overlay
+    package.json
+    src
+  packages/mpd-mcp-lsp/src exists? YES
+
+cmd: upstream LICENSE.md licence name (A3's SUL-1.0 claim)
+    # License
+    
+    Portions of this software are licensed as follows:
+    
+    - All third party components incorporated into the oh-my-opencode Software are licensed under the original license
+    SUL mentions: 1

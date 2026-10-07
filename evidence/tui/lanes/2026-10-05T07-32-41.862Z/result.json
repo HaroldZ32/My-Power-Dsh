@@ -1,0 +1,107 @@
+{
+  "slug": "tui-deps-ctrla",
+  "ok": false,
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "02a7c648c0ed5bbf6611415b7dca76ab8403bf7c27c845f31cecf9052916352e",
+    "bytes": 253773,
+    "mtimeLocal": "2026-10-05T05:20:52.522Z",
+    "mtimeUtc": "2026-10-05T05:20:52.522Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "02a7c648c0ed5bbf6611415b7dca76ab8403bf7c27c845f31cecf9052916352e",
+    "after": "02a7c648c0ed5bbf6611415b7dca76ab8403bf7c27c845f31cecf9052916352e",
+    "reason": "unchanged across the run"
+  },
+  "revisionFile": "evidence/tui/lanes/2026-10-05T07-32-41.862Z/REVISION.json",
+  "arms": [
+    {
+      "capture": "panel-baseline",
+      "label": "alt+a opened MPD's merged panel and it drew the dependency graph with its arrow",
+      "missing": [],
+      "missingLines": [
+        "/^[\\s\\u2502]*\\u25BC[\\s\\u25BC\\u2502]*$/m"
+      ],
+      "forbidden": [],
+      "chars": 2993,
+      "ok": false
+    },
+    {
+      "capture": "ctrla-team",
+      "label": "with a live team, Ctrl+A opened MPD's merged panel and it drew the dependency graph",
+      "missing": [
+        "/MPD subagents \\+ team/",
+        "/task dependency graph/"
+      ],
+      "missingLines": [
+        "/^[\\s\\u2502]*\\u25BC[\\s\\u25BC\\u2502]*$/m"
+      ],
+      "forbidden": [
+        "/\\u5B50\\u4EE3\\u7406\\u9762\\u677F|Subagent Dashboard/"
+      ],
+      "chars": 3621,
+      "ok": false
+    },
+    {
+      "capture": "ctrla-host",
+      "label": "with no team in the workspace, Ctrl+A still opened the HOST subagent dashboard",
+      "missing": [],
+      "missingLines": [],
+      "forbidden": [],
+      "chars": 3623,
+      "ok": true
+    }
+  ],
+  "teamFixture": {
+    "file": ".qa-tmp/tui-dep-lane/ws/.mpd/team/teams/mpd-fixture-1.json",
+    "sha256": "15f504645600b5fddd0d2715e6475fe02a87916c30820ec1e69796d8bb9c6c84",
+    "recordsRemoved": [
+      ".qa-tmp/tui-dep-lane/ws/.mpd/team/teams/mpd-fixture-1.json"
+    ]
+  },
+  "negativeControl": {
+    "expected": "fail",
+    "observed": false,
+    "artifact": "negative/control.json"
+  },
+  "lifecycleFailures": [],
+  "panes": [
+    {
+      "name": "boot",
+      "file": "evidence/tui/lanes/2026-10-05T07-32-41.862Z/boot.pane.txt",
+      "chars": 2520
+    },
+    {
+      "name": "settle",
+      "file": "evidence/tui/lanes/2026-10-05T07-32-41.862Z/settle.pane.txt",
+      "chars": 2527
+    },
+    {
+      "name": "panel-baseline",
+      "file": "evidence/tui/lanes/2026-10-05T07-32-41.862Z/panel-baseline.pane.txt",
+      "chars": 2993
+    },
+    {
+      "name": "close-baseline",
+      "file": "evidence/tui/lanes/2026-10-05T07-32-41.862Z/close-baseline.pane.txt",
+      "chars": 2963
+    },
+    {
+      "name": "ctrla-team",
+      "file": "evidence/tui/lanes/2026-10-05T07-32-41.862Z/ctrla-team.pane.txt",
+      "chars": 3621
+    },
+    {
+      "name": "close-panel",
+      "file": "evidence/tui/lanes/2026-10-05T07-32-41.862Z/close-panel.pane.txt",
+      "chars": 3607
+    },
+    {
+      "name": "ctrla-host",
+      "file": "evidence/tui/lanes/2026-10-05T07-32-41.862Z/ctrla-host.pane.txt",
+      "chars": 3623
+    }
+  ],
+  "sandboxRoot": ".qa-tmp/tui-dep-lane"
+}

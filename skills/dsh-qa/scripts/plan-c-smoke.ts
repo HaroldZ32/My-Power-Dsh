@@ -116,7 +116,7 @@ type PlanCSteps = {
 /** The offline arm: assert the Plan C rows are wired and the three unit suites pass. */
 function selfTest(): void {
   /** The bundle patch whose rows this case mounts. */
-  const bundle = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const bundle = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   /** The installer source this case spawns, read here only for the row-set assertion. */
   const installer = readFileSync(join(repoRoot, "scripts", "install-profile.ts"), "utf8")
   for (const id of ["mpd-hashline", "mpd-boulder", "mpd-config"]) {

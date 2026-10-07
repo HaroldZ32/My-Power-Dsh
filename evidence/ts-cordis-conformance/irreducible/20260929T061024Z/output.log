@@ -1,0 +1,21 @@
+=== why some JavaScript cannot become TypeScript — MEASURED 2026-09-29T06:10:29Z ===
+node v24.16.0 · bun 1.3.14 · package.json engines.node >=22.18
+
+--- experiment 1: import a .ts file that resolves under node_modules ---
+node:internal/modules/typescript:183
+    throw new ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING(filename);
+          ^
+
+--- control: the same bytes OUTSIDE node_modules ---
+loaded 41
+
+--- experiment 2: invoking a .ts DIRECTLY by absolute path under node_modules (the shape a skill uses) ---
+node:internal/modules/typescript:183
+    throw new ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING(filename);
+    ^
+--- control ---
+ran 7
+
+=> Node REFUSES to strip types for any file whose resolved path is under node_modules, in BOTH shapes.
+   A shipped bundle installs at <profile>/node_modules/@mpd-dsh/mpd, so any .ts the USER's machine must
+   execute with node FROM THE INSTALLED PACKAGE fails there; the same file runs fine from a checkout.

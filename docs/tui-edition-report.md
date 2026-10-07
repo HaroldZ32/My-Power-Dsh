@@ -140,18 +140,18 @@ captain's gate sweep is green on the frozen revision. What remains is the commit
 §6.4 mirror (t30's medium finding `T30-DOCS-1`) was pasted after t30 from the pre-staged snippet at
 `evidence/tui/composition/20260915T071619Z-docs-mpd-command/zh-6.4-snippet.md`, with its own evidence
 and assertion at `evidence/tui/composition/20260915T072139Z-zh-mirror-paste/`
-(`README.md`, `result.json`, `doc-assertion-captain-zh-mirror.mjs`) — named provenance, no task id,
+(`README.md`, `result.json`, `doc-assertion-captain-zh-mirror.ts`) — named provenance, no task id,
 because it closed a gap whose owner's inScope could not reach the Chinese page.
 
 **Named residual — t29's zh predicate is under-specified (a checker false negative, not a missing
 mirror).** Re-running t29's checker
-`evidence/tui/composition/20260915T071619Z-docs-mpd-command/doc-assertion-t29.mjs` gives verdict
+`evidence/tui/composition/20260915T071619Z-docs-mpd-command/doc-assertion-t29.ts` gives verdict
 `failed` at 12/13, sole failure `item3.docs/tui.zh-CN.md`, because its positive branch demands the
 service name UNBACKTICKED while both the English section and the pre-staged Chinese snippet write
 `` `commands` 服务`` / `` `commands` service`` — so the predicate is false for the payload it
 prescribes and cannot witness the mirror. The mirror itself is proven byte-exact (both fenced payloads
 are literal substrings of the page) and t27's shipped checker
-`evidence/tui/docs/20260915T070743Z/doc-assertion.mjs` is 28/28 green, exit 0. t29's evidence script
+`evidence/tui/docs/20260915T070743Z/doc-assertion.ts` is 28/28 green, exit 0. t29's evidence script
 was left untouched (a past task's measurement record) and the page was not contorted to satisfy a
 broken regex. Evidence: `evidence/tui/composition/20260915T072139Z-zh-mirror-paste/` (`result.json` →
 `t29PredicateResidual`, `raw/t27-doc-assertion.json`, `raw/t29-doc-assertion.json`).
@@ -215,7 +215,7 @@ broken regex. Evidence: `evidence/tui/composition/20260915T072139Z-zh-mirror-pas
   `evidence/tui/packaging/20260915T064658Z/{BY-DESIGN-AUDIT.md,raw/by-design-audit.json}` (the five
   by-design items re-derived on the current revision).
 - The packed-tree closure class is walked class-wide and has exactly **two** members
-  (`mpd-mcp-astgrep/launch.ts`, `mpd-mcp-codegraph/launch.ts`, both importing
+  (`mpd-mcp-astgrep/dist/launch.js`, `mpd-mcp-codegraph/dist/launch.js`, both importing
   `../mpd-mcp-shared/bin-resolve.ts`, the second also `./daemon-policy.ts`); `mpd-mcp-gitbash` and
   `mpd-mcp-lsp` ship no launcher and exec `dist/cli.js`, already shipped by `cpDist()`.
 - **Review history, unsmoothed**: t28's first round failed prematurely because the auto-created repair
@@ -352,8 +352,8 @@ carries a fourth amendment; `evidence/tui/EVIDENCE-INDEX.md` §7.1 indexes the a
 raw output. Attribution: the facts ← t34 (design), t35 (implementation), t38 (D1), t39 (final base
 ruling), t41 (card), t49 (re-review), t50 (the surrounding docs); the closure edits ← **t51** (Lead).
 
-**Gates.** `node evidence/tui/docs/20260915T070743Z/doc-assertion.mjs` and the captain's
-`cited-paths-exist.mjs` were re-run over the edited files; their verdicts and digests are recorded in
+**Gates.** `node evidence/tui/docs/20260915T070743Z/doc-assertion.ts` and the captain's
+`cited-paths-exist.ts` were re-run over the edited files; their verdicts and digests are recorded in
 `evidence/mpd-bridge/integration/t51/` and in the ledger's fourth amendment.
 
 **Gate state at t51's close (re-measured, after the captain's re-pin landed):**

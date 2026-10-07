@@ -76,7 +76,7 @@ function selfTest(): void {
   // harness derives `mcp__<serverName>__<tool>` from it. A renamed row would
   // otherwise leave the case asserting a tool that can never exist.
   /** The bundle patch whose `mcp-codegraph` row must declare the server name the tool name derives from. */
-  const patch = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   /** That row's own chunk of the patch, split on the `- id: ` separators. */
   const row = patch.split(/\n\s*- id: /).find((chunk) => chunk.startsWith("mcp-codegraph"))
   if (row === undefined) { console.error("[codegraph-smoke self-test] FAIL: no mcp-codegraph row in the bundle patch"); process.exit(1) }
@@ -148,7 +148,7 @@ function runReal(): void {
   // the 14-45-59Z session log, whose only recorded tool result is that refusal).
   /** The headless boot arguments: the staged profile, the bundle patch and the explicit-project prompt. */
   const args = ["--profile", "headless",
-    "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"),
+    "--patch", join(repoRoot, "cordis.patch.yml"),
     "--patch", join(repoRoot, "tests/overlays/codegraph-plugin.yml"),
     "Call the tool mcp__codegraph__codegraph_explore with query \"norm src/util.ts\" and projectPath \"" + PROJ + "\", then report the returned content verbatim. Do not use bash."]
   /** The resolved `dsh` launcher invocation for the headless boot, or `null` when none is on PATH. */

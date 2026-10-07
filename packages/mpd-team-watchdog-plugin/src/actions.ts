@@ -18,7 +18,8 @@ import type { HoldRegistry } from "./holds.js"
 import { heartbeatDir, holdPath, incidentsPath, watermarkPath } from "./paths.js"
 import { appendIncident, clearHold, readHold, readIncidents, readWatermarks, writeHold, type HoldRecord } from "./sidecars.js"
 import { listHeartbeatKeys, newestOverall, readHeartbeats } from "./store.js"
-import { listTeamIds, readTeam } from "./team.js"
+import { listTeamIds, readTeam, type MpdTeamsRead } from "./team.js"
+import { losslessJson } from "./lossless.js"
 
 /** The tool names this package registers (also the internal-seam names w7 calls). */
 export const HOLD_TOOL = "session-watchdog-hold"
@@ -174,6 +175,13 @@ export interface WatchdogSurfaces {
   knobs?: () => KnobDivergenceView
   /** T-17: the resolved `holdTtlMs` a hold created without an explicit `ttl_ms` inherits. */
   holdTtlMs?: () => number
+  /**
+   * The `mpdTeams` service face, resolved PER CALL (never captured at apply).
+   *
+   * The status view names the teams of the AUTHORITATIVE plane, which is the plane the dispatch
+   * gate asks about; the official fold stays the fallback inside `readTeams`.
+   */
+  mpdTeams?: () => MpdTeamsRead | undefined
 }
 
 /** Register the three actions on the adapter. */
@@ -260,7 +268,7 @@ export function registerWatchdogActions(
   dsh.registerTool({
     name: STATUS_TOOL,
     description:
-      "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and the ONE pause state per team: the watchdog's preserving hold, which is the only pause mechanism this bundle has (the official Agent Teams service exposes no halt). Team rows come from the live OFFICIAL readout (`dsh.teamLiveTeams()`), so a team appears here exactly while one of its sessions is live. Use it to inspect what a lane or a restarting process would read from disk.",
+      "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and the ONE pause state per team: the watchdog's preserving hold, which is the only pause mechanism this bundle has (the official Agent Teams service exposes no halt). Team rows come from the MPD TEAM RECORD first (`mpdTeams.list(workspace)`, the authoritative plane, so a team appears as soon as it is created and its id is the one dispatch asks about), with the live OFFICIAL readout (`dsh.teamLiveTeams()`) as the fallback for a composition that runs the official executor. Use it to inspect what a lane or a restarting process would read from disk.",
     parameters: {
       type: "object",
       properties: { team_id: { type: "string", description: "Limit to one team." } },
@@ -326,8 +334,12 @@ export function registerWatchdogActions(
       // The calling session's workspace root for this status read.
       const workspace = dsh.workspaceRoot(exec as never)
       // The team ids to report: the requested one, or every live team when it is omitted.
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id]
-      return {
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh, workspace, surfaces.mpdTeams?.()) : [args.team_id]
+      // THE VALUE IS PROJECTED AT THIS BOUNDARY (measured 2026-10-02, defect 2): the harness refuses a
+      // tool value that is not lossless JSON BEFORE it validates the output schema, and this view is
+      // assembled from every reader in the store — so one `Map`, one `undefined` or one exotic object
+      // anywhere below would take the whole diagnostics call down instead of one field.
+      return losslessJson({
         workspace,
         // §4: the status view NAMES the active predicate source.
         predicate: predicateSource?.() ?? { source: "unknown", reason: "the engine did not publish a predicate source", enrichment: false, events: 0, sessions: 0, states: {}, announced: false },
@@ -343,7 +355,7 @@ export function registerWatchdogActions(
           // The durable hold for this team, if any.
           const hold = readHold(workspace, stateDir, teamId)
           // The live OFFICIAL readout for this team, when one of its sessions is live.
-          const team = readTeam(dsh, teamId)
+          const team = readTeam(dsh, workspace, teamId, surfaces.mpdTeams?.())
           // 0.1.7: ONE pause state, and the watchdog's own preserving hold IS it — the official
           // service exposes no halt on any seam this plugin may call, so `halted` is always false
           // and the field survives only so a consumer's payload shape is unchanged.
@@ -378,7 +390,7 @@ export function registerWatchdogActions(
             isHeld: registry?.isHeld(teamId, workspace) ?? null,
           }
         }),
-      }
+      })
     },
   })
 }

@@ -1,0 +1,8 @@
+(pass) lazy mpdDsh resolution (T-50) > a clean boot never warns and reports the mounted identity [0.03ms]
+(pass) lazy mpdDsh resolution (T-50) > a provably absent provider keeps the row-order hint — and only that case does [0.05ms]
+(pass) lazy mpdDsh resolution (T-50) > REAL vendored cordis: the sibling-apply window exists and the SAME facade crosses it [1.33ms]
+
+ 168 pass
+ 0 fail
+ 800 expect() calls
+Ran 168 tests across 8 files. [1261.00ms]

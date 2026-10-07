@@ -60,9 +60,32 @@ Offline-built MCP server that serves the CodeGraph tool surface
 real MCP child with the genuinely read-only `$HOME/.mpd`: the pre-fix launcher dies
 uncaught with `ENOENT: ... mkdir '<home>/.mpd/codegraph'` and answers no MCP request,
 while the fixed launcher exits 0 and answers `initialize` / `tools/list` (0 tools).
-`evidence/mpd-defects-2/raw/codegraph-daemon-probe.mjs` is the two-sided daemon proof: arm A
+`evidence/mpd-defects-2/raw/codegraph-daemon-probe.ts` is the two-sided daemon proof: arm A
 (default) answers `initialize`/`tools/call` from its own engine with NO daemon artifacts and no
 `Shared daemon` line, while arm B (`MPD_CODEGRAPH_DAEMON=1`) takes upstream's daemon path.
+
+## Terminal output (R5)
+
+`launch.ts` calls `installTerminalSilence("mpd-mcp-codegraph")` from
+`packages/mpd-mcp-shared/log-sink.ts` as its first statement, before `dist/serve.js` is imported. The
+harness builds this row with **no `stderr` option**, and the MCP SDK then spawns the child with
+`stdio: ["pipe", "pipe", "inherit"]`, so this process's fd 2 is the dsh process's fd 2 — in a TUI
+session, the Ink alternate screen. The sink replaces `process.stderr.write` and the five `console`
+output methods with writers into `<root>/.mpd/logs/mpd-mcp-codegraph.log` (1 MiB cap, one `.1`
+rotation), and it never falls back to the terminal. `process.stdout` is never touched: it carries the
+MCP protocol.
+
+**Declared residual, measured 2026-10-02:** the adopted `dist/serve.js` bridge spawns the real
+codegraph CLI with a hardcoded `stdio: ["pipe", "pipe", "inherit"]`
+(`runBridgedCodegraphProcess`), so THAT grandchild's stderr still reaches fd 2 and bypasses the
+replacement. `dist/serve.js` is a sha-pinned prebuilt behind the blocking vendor gate, so the delta is
+not taken here. Two remedies are open: (a) the row-level fix belongs to the harness — pass
+`stderr: "pipe"` in `createTransport`'s `StdioClientTransport` options; (b) a file-descriptor-level
+wrapper can hand the bridge's child a log fd instead of an inherited one.
+
+**Hand-debugging escape hatch:** `MPD_MCP_STDERR_REBIND=0` skips ONLY the descriptor rebind, so a human
+running this launcher by hand still sees stderr on their terminal; the writer-based sink (the file)
+stays installed. `installTerminalSilence(...).stderrRebind()` then reports `"disabled"`.
 
 ## Usage
 
@@ -79,6 +102,6 @@ The bundle patch row config:
     serverName: codegraph
     transport: stdio
     command: node
-    args: [<bundle>/packages/mpd-mcp-codegraph/launch.ts]
+    args: [<bundle>/packages/mpd-mcp-codegraph/dist/launch.js]
     toolCallTimeoutMs: 60000
 ```

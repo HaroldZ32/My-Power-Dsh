@@ -1,0 +1,17 @@
+[verify-no-host-override] subject: 2 declared patch layer(s)
+[verify-no-host-override]   patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml
+[verify-no-host-override]   patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml
+[verify-no-host-override] bundle id-targets (overrides): 1 -> agent-preset-registry
+[verify-no-host-override] bundle inserted rows (additive): 32
+[verify-no-host-override] unclassified top-level entries: 0
+[verify-no-host-override] host layers found on disk: 4
+[verify-no-host-override]   host: dsh-base -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base [1 patch file(s)]
+[verify-no-host-override]   host: dsh-web-app -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app [5 patch file(s)]
+[verify-no-host-override]   host: dsh-headless -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless [1 patch file(s)]
+[verify-no-host-override]   host: dsh-tui (profile dsh-tui) -> /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui [1 patch file(s)]
+[verify-no-host-override] host-declared row ids: 204
+[verify-no-host-override] declared exemptions (0): none
+[verify-no-host-override] FAIL: 1 id-target(s) override a row a HOST layer declares:
+[verify-no-host-override]   - agent-preset-registry is declared by /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app/cordis.patch.yml
+[verify-no-host-override] policy: a shipped row may ADD a capability, never overwrite a host layer's decision. Remove the id-target, or add a DECLARED_EXEMPT entry with a reason.
+EXIT=1

@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/verify-plugin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The verification law (W4): code written by A is verified by a DIFFERENT agent B, from the documentation, with the verdict recorded before any implementation read. One row, five mpd_verify_* tools, a durable ledger under <workspace>/.mpd/verify/, a whitelisted gate runner, a content-free artifact probe and the record validator that makes the rule mechanical instead of aspirational.",
+  "scripts": {
+    "test": "bun test"
+  }
+}

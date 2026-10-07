@@ -1,0 +1,8 @@
+sandbox root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013 explicit=true warm=true fresh=false
+dsh-tui home fixture=.mpd/recon/tui-013/home/.dsh-tui/onboarding.json, .mpd/recon/tui-013/home/.dsh-tui/agent-preset.json preset=mpd
+launchpad gate DSH_TUI_NO_LAUNCHPAD=1
+profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+statusLine=true counters=true crashes=[]
+session keys created=[] inherited=["--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--"]
+preset=mpd session=4282605c-d654-464d-adf7-16716032787c isolationOffenders=0

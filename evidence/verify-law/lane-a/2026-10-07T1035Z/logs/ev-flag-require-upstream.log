@@ -1,0 +1,8 @@
+cmd: node scripts/verify-vendor.ts --require-upstream
+[verify-vendor] REFUSED - --require-upstream: this gate has NO upstream subject any more.
+[verify-vendor] the oh-my-openagent checkout is retired from the composition (de-vendored 2026-10-07):
+[verify-vendor]   * no MPD_UPSTREAM_ROOT is read, no .mpd-dsh/upstream is looked for, no fallback exists;
+[verify-vendor]   * the upstream commit/version/statistics checks were DELETED, not skipped - nothing is left to require;
+[verify-vendor]   * upstream attribution lives in LICENSE-NOTICES.md, README.md and README.zh-CN.md, where no gate owns it.
+[verify-vendor] re-run without the flag to fingerprint the assets this repository ships, or revert the de-vendoring commit.
+EXIT=1

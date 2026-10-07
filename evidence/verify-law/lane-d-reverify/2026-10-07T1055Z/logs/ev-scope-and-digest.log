@@ -1,0 +1,11 @@
+cmd: revision, tree quiescence, marker, settle  [2026-10-07T10:54:07Z]
+HEAD=e7036109120d58cfba0df8a40f325e4097e12271
+--- tracked working-tree changes (a quiesced tree shows none) ---
+  tracked-change count: 0
+--- A3: the real workspace's boot marker (F.3 re-probe) ---
+  ABSENT - the law has not booted in the real workspace
+--- settle: the clause's own artifacts ---
+  packages/mpd-verify-plugin/qa/verify-law.ts (authored) fa61eb5825ad7f21ce309ddea82edf3d
+  skills/dsh-qa/scripts/verify-law.ts (registered)     fa61eb5825ad7f21ce309ddea82edf3d
+  evidence/gates/verify-law/2026-10-07T10-52-07.173Z/result.json 1d740463d26083dfb5d4201ba81f5bb0
+  CLAIMED digest of both copies: fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb

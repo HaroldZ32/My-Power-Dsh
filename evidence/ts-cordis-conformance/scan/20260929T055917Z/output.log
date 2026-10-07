@@ -1,0 +1,65 @@
+=== audit started 2026-09-29T05:59:17Z ===
+repo: /root/dshProj/My-Power-Dsh
+HEAD: 5e5454bb5ba449a4817b827938a9fd4b04e30936
+branch: dev
+tree: 1 uncommitted path(s)
+node: v24.16.0  bun: 1.3.14  recorded buildToolchain: bun@1.4.0
+
+=== [1] ALL non-evidence JavaScript, classified (a file in NO bucket would print as UNCLASSIFIED) ===
+dist(build products)=27  _deps(adopted bytes)=290  lib(adopted+deltas)=31  upstream-fixtures(sha-pinned)=2
+ub-templates(fixture data)=2  visual-qa(build product)=1  golden-fixtures(data)=1  bundle-client(build product)=1  UNCLASSIFIED=0
+
+=== [2] owned TypeScript sources (the only source language) ===
+packages/**/*.ts          : 446
+scripts/**/*.ts           : 31
+skills path scripts/*.ts  : 76
+docker/**/*.ts            : 6
+tests/**/*.ts             : 2
+templates/**/*.ts         : 1
+
+=== [3] cordis plugin form per package entry (name / inject / apply / Config) ===
+PACKAGE                        | name  inject apply Config
+mpd-better-sidebar-host        | Y     Y      Y     -     
+mpd-bootstrap-plugin           | Y     Y      Y     -     
+mpd-boulder-plugin             | Y     Y      Y     -     
+mpd-bundle-plugin              | Y     Y      Y     -     
+mpd-codegraph-plugin           | Y     Y      Y     -     
+mpd-comment-checker-plugin     | Y     Y      Y     -     
+mpd-config-plugin              | Y     Y      Y     Y     
+mpd-dsh-adapter-plugin         | Y     Y      Y     -     
+mpd-ext-plugin                 | Y     Y      Y     -     
+mpd-hashline-plugin            | Y     Y      Y     -     
+mpd-memory-plugin              | Y     Y      Y     -     
+mpd-modelchain-plugin          | Y     Y      Y     -     
+mpd-qa-roles-probe             | Y     Y      Y     -     
+mpd-roles-plugin               | Y     Y      Y     -     
+mpd-roster-provider-plugin     | Y     Y      Y     -     
+mpd-team-compact-plugin        | Y     Y      Y     -     
+mpd-team-tools-plugin          | Y     Y      Y     -     
+mpd-team-watchdog-plugin       | Y     Y      Y     Y     
+mpd-tools-plugin               | Y     Y      Y     -     
+mpd-tui-plugin                 | Y     -      Y     Y     
+mpd-ulw-plugin                 | Y     Y      Y     -     
+mpd-workmate-plugin            | Y     Y      Y     -     
+
+=== [4] gate verdicts at HEAD, read 2026-09-29T05:59:31Z ===
+--- verify-rows-parity ---
+[verify-rows-parity] ok: 33 row ids match the 2-file bundle patch layer (agent-preset-registry, dsh-tui-agent-preset-registry, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-tools, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-ui-agent-team, mpd-ulw, mpd-web-compat, mpd-workmate, preset-mpd)
+--- verify-docs-parity ---
+
+[verify-docs-parity] root=/root/dshProj/My-Power-Dsh pairs=41 failed=0 violations=0 exempt=21 derived=3 links=419 dead=0 — PASS
+--- verify-plugin-manifest --pack ---
+ok    packed-content: npm pack --dry-run lists 883 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+--- verify-dist-fresh (environment-sensitive) ---
+[verify-dist-fresh] build toolchain: bun 1.3.14 · recorded buildToolchain bun@1.4.0 — NOTE: the recorded build toolchain (bun@1.4.0) differs from the bun rebuilding here (1.3.14): a different bun minor rewrites the injected helper preamble and minifier variable names, so the byte comparison below certifies these bytes under THIS bun only
+[verify-dist-fresh] FAIL - 23 of 23 targets not fresh (STALE: 23) — 648ms
+
+=== [5] provenance: the change that already performed this transformation ===
+7d52a06b feat(ts): TypeScript-only sources, regular cordis plugin form, and the two standing QA gates
+7d52a06b feat(ts): TypeScript-only sources, regular cordis plugin form, and the two standing QA gates
+ .github/workflows/docs-parity.yml                  |   33 -
+ .github/workflows/gates.yml                        |   62 +
+ancestor-of-HEAD: YES (5e5454bb)
+ancestor-of-origin/master: YES (f763e85f, version "version": "0.11.6")

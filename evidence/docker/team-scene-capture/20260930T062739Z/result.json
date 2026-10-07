@@ -1,0 +1,29 @@
+{
+  "change": "the container's TUI lane now OPENS THE TEAM SCENE and captures it, so the graph is drawn by a REAL terminal rather than only by a host double",
+  "why_it_mattered": "W3's dependency graph is this wave's visual centrepiece and until now every arm that drew it rendered the component through a host DOUBLE. No real terminal had produced a single box, a single junction or a single status glyph.",
+  "what_it_does": [
+    "writes a three-task, two-member team record into the sandbox workspace BEFORE the TUI boots \u2014 a scene with no team correctly renders its empty state, and proving THAT would prove nothing about the drawing",
+    "sends `/mpd team` on the real PTY, waits, and captures the pane",
+    "asserts four things about that capture: the scene OPENED (`task dependency graph`), the LAYERED BOXES were drawn (a top border, a bottom border, subjects inside them), the EDGES were drawn with box-drawing junctions, and the boxes carry the RECORD'S OWN ids and subjects (`T1`, `build the graph`)"
+  ],
+  "verification_state": {
+    "syntax": "bash -n docker/tui-lane.sh passes",
+    "exercised": "NO \u2014 THREE consecutive runs died before the TUI step, all on the same step: the node download from nodejs.org. attempt 1 `curl: (35) Recv failure: Connection reset by peer`; attempt 2 was broken BY ME (I deleted its evidence directory while it was still writing \u2014 100% my mistake, not the network); attempt 3 the same `curl: (35)`.",
+    "so": "THE FOUR NEW ASSERTIONS HAVE STILL NEVER RUN. They are committed because leaving them uncommitted loses the work, not because they are proven. THREE runs is enough to say the obstacle is this environment's outbound network rather than the change.",
+    "what_would_settle_it": "one complete `--mode source --allow-rootful-docker --live` run on a machine whose outbound network to nodejs.org and github.com is not resetting mid-transfer"
+  },
+  "the_network_is_the_obstacle_not_the_code": {
+    "measured_flakes": [
+      "`curl: (56) Failure when receiving data from the peer` \u2014 bun, from GitHub releases",
+      "`curl: (28) Failed to connect to github.com port 443 after 135500 ms` \u2014 bun, same source",
+      "`curl: (35) Recv failure: Connection reset by peer` \u2014 node, from nodejs.org"
+    ],
+    "already_mitigated": "the bun step now falls back to `npm i -g --allow-scripts=bun bun` and NAMES the route it used; the node step has NO fallback, because Ubuntu 24.04's apt node is 18.x and the harness needs >= 22",
+    "not_a_defect": "the SAME lane passed twice, 51/51 and 45/45, on the same code once the network held"
+  },
+  "not_claimed": [
+    "the four new assertions are unexercised",
+    "no run since this change has reached the TUI step"
+  ],
+  "what_would_settle_it": "one complete `--mode source --allow-rootful-docker --live` run where nodejs.org does not reset mid-transfer. The node step is the FIRST hard dependency and the only one still without a fallback: Ubuntu 24.04's apt node is 18.x and the harness needs >= 22, so there is no cheap second source the way there was for bun (npm carries it)."
+}

@@ -75,8 +75,20 @@ import { readJson } from "./lib/repo.ts"
 const HERE: string = dirname(fileURLToPath(import.meta.url))
 /** The tree verified when `--root` is absent: the repository this script is installed in. */
 const DEFAULT_ROOT: string = join(HERE, "..")
-/** The bundler every covered entry is rebuilt with; a package's own build script is never run. */
-const BUILD_BIN: string = "bun"
+/**
+ * The bundler every covered entry is rebuilt with; a package's own build script is never run.
+ *
+ * RESOLVED PER RUN, not taken from PATH (declared follow-up, closed 2026-09-30). The gate's byte
+ * comparison is only reproducible under the PINNED toolchain, and the pin lives in the root
+ * manifest's `buildToolchain` — but nothing made the two meet, so the honest way to run this gate
+ * was to remember `export PATH="$PWD/.toolchain/node_modules/.bin:$PATH"` first. Measured cost of
+ * forgetting it: one full wave reported 23/23 STALE, and the F1 arms of two other packages went red,
+ * because bun 1.3.x and 1.4.x emit a different `export {}` helper preamble. A gate whose verdict
+ * depends on the caller's shell is a gate that lies, so it now finds the pinned binary itself.
+ */
+const BUILD_BIN_DEFAULT: string = "bun"
+/** Where the repository's own pinned toolchain installs its binaries. */
+const TOOLCHAIN_BIN_DIR: string = join(".toolchain", "node_modules", ".bin")
 /** Wall-clock cap for ONE build, in milliseconds; an overrun is a TIMEOUT finding, never a skip. */
 const BUILD_TIMEOUT_MS: number = 60_000
 /** Basename prefix of the build temp dir, so a `--keep-tmp` leftover stays identifiable. */
@@ -272,6 +284,8 @@ interface RootManifest {
 interface ToolchainReport {
   /** The bundler binary this run invoked, recorded so a report names what produced the bytes. */
   readonly bin: string
+  /** How the binary was found, so the report can say whether the PINNED toolchain was used. */
+  readonly source: "toolchain" | "path"
   /** Version of the bun rebuilding here, or null when the version probe did not exit 0. */
   readonly current: string | null
   /** Version the root manifest pins, or null when it records none. */
@@ -280,6 +294,50 @@ interface ToolchainReport {
   readonly drift: boolean
   /** The reviewer-facing explanation of the pin's state; empty when there is nothing to say. */
   readonly note: string
+}
+
+/** Where the run's bundler came from, so a reader knows which bytes were certified. */
+interface BuildBinResolution {
+  /** The binary (or absolute path) every build in this run invoked. */
+  readonly bin: string
+  /** The pinned version from the root manifest, or null when it records none. */
+  readonly pinned: string | null
+  /** How the binary was found: the repository's own toolchain, or whatever PATH answers. */
+  readonly source: "toolchain" | "path"
+}
+
+/**
+ * Resolve the bundler for this run, preferring the repository's OWN pinned toolchain.
+ *
+ * The order is deliberate: a local `.toolchain/node_modules/.bin/bun` that REPORTS the pinned
+ * version wins, because that is the binary the committed bytes were produced by. Anything else —
+ * no local toolchain, or one whose version disagrees with the manifest — falls back to PATH and
+ * says so, since a silent fallback is exactly the failure this closes.
+ * @param root the tree whose root manifest records the pin.
+ * @returns the resolved binary, the pinned version and how it was found.
+ */
+function resolveBuildBin(root: string): BuildBinResolution {
+  /** The pinned version, or null when the manifest records none. */
+  let pinned: string | null = null
+  try {
+    /** The root manifest, read only for the `buildToolchain` field. */
+    const manifest = readJson<RootManifest>(join(root, "package.json"))
+    /** The `buildToolchain` field when it is a string, else the empty marker for "absent". */
+    const declared = typeof manifest.buildToolchain === "string" ? manifest.buildToolchain : ""
+    if (declared.startsWith("bun@")) pinned = declared.slice(4)
+  } catch { /* no root manifest: reported as an absent pin, never as a pass */ }
+  /** The repository's own toolchain binary, when it is installed. */
+  const local = join(root, TOOLCHAIN_BIN_DIR, "bun")
+  if (existsSync(local)) {
+    /** The local binary's own version, or null when the probe could not run it. */
+    const probe = spawnSync(local, ["--version"], { encoding: "utf8", timeout: 60_000 })
+    /** The version token the local binary printed, or null. */
+    const version = probe.status === 0 ? (String(probe.stdout ?? "").trim().split(/\s+/).pop() ?? null) : null
+    // A local binary that AGREES with the pin is the one the committed bytes came from; one that
+    // disagrees is not preferred, because preferring it would certify the bytes under the wrong bun.
+    if (version !== null && (pinned === null || version === pinned)) return { bin: local, pinned, source: "toolchain" }
+  }
+  return { bin: BUILD_BIN_DEFAULT, pinned, source: "path" }
 }
 
 /**
@@ -297,22 +355,15 @@ interface ToolchainReport {
  * @param root the tree whose root manifest records the pin.
  * @returns the observed and recorded toolchain, plus the drift note a reader needs.
  */
-function buildToolchain(root: string): ToolchainReport {
+function buildToolchain(root: string, resolution: BuildBinResolution): ToolchainReport {
   // The `bun --version` probe whose output names the toolchain doing the rebuilding.
-  const probe = spawnSync(BUILD_BIN, ["--version"], { encoding: "utf8", timeout: 60_000 })
+  const probe = spawnSync(resolution.bin, ["--version"], { encoding: "utf8", timeout: 60_000 })
   // Version of the bun rebuilding here, or null when the probe did not exit 0. `pop()` is
   // `string | undefined`; a successful `--version` always prints one token, so a missing token is
   // normalised to the declared null ("cannot tell") rather than leaving an undefined behind.
   const current = probe.status === 0 ? (String(probe.stdout ?? "").trim().split(/\s+/).pop() ?? null) : null
-  // Version the root manifest pins, or null when it records none (an absent pin is never a pass).
-  let pinned: string | null = null
-  try {
-    // The root manifest, read only for the `buildToolchain` field.
-    const manifest = readJson<RootManifest>(join(root, "package.json"))
-    // The `buildToolchain` field when it is a string, else the empty marker for "absent".
-    const declared = typeof manifest.buildToolchain === "string" ? manifest.buildToolchain : ""
-    if (declared.startsWith("bun@")) pinned = declared.slice(4)
-  } catch { /* no root manifest: reported as an absent pin, never as a pass */ }
+  // The pinned version, resolved with the binary so the two can never be read from different places.
+  const pinned = resolution.pinned
   // Whether a recorded pin disagrees with the bun actually rebuilding here.
   const drift = pinned !== null && current !== null && pinned !== current
   // The run-visible explanation of the pin's state; empty when pin and observed binary agree.
@@ -322,7 +373,7 @@ function buildToolchain(root: string): ToolchainReport {
       : drift
         ? `the recorded build toolchain (bun@${pinned}) differs from the bun rebuilding here (${current}): a different bun minor rewrites the injected helper preamble and minifier variable names, so the byte comparison below certifies these bytes under THIS bun only`
         : ""
-  return { bin: BUILD_BIN, current, pinned, drift, note }
+  return { bin: resolution.bin, source: resolution.source, current, pinned, drift, note }
 }
 
 /**
@@ -331,8 +382,7 @@ function buildToolchain(root: string): ToolchainReport {
  * through to the generic "no local source" reason and is still listed.
  */
 function uncoveredReason(root: string, pkg: string, dist: string, ctx: UncoveredContext): string {
-  if (pkg === "mpd-agent-teams-plugin") return "adopted upstream main code under lib/ (no src/, never rebuilt here)"
-  if (pkg === "mpd-bundle") return "bundle patch/config only — not a build artifact"
+  if (pkg === "mpd-bundle") return "documentation package for the root cordis.patch.yml layer — no code, not a build artifact"
   if (!dist.endsWith(".js")) return "build metadata, not a bun build artifact"
   if (ctx.declaredNoSource.has(dist)) return "declared by scripts.build but its source file is absent (no local source)"
   if (pkg === "mpd-mcp-codegraph") return "sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/"
@@ -605,11 +655,11 @@ interface BuildFailed {
 type BuildOutcome = BuildSucceeded | BuildFailed
 
 /** One bun build; a timeout, a missing binary and a non-zero exit are distinct loud outcomes. */
-function runBuild(srcAbs: string, outAbs: string, cwd: string): BuildOutcome {
+function runBuild(srcAbs: string, outAbs: string, cwd: string, bin: string): BuildOutcome {
   // Epoch milliseconds when the build was started, so its cost is measured rather than estimated.
   const started = Date.now()
   // The finished child's captured streams, exit status and spawn facts.
-  const result = spawnSync(BUILD_BIN, buildArgs(srcAbs, outAbs), {
+  const result = spawnSync(bin, buildArgs(srcAbs, outAbs), {
     cwd,
     encoding: "utf8",
     timeout: BUILD_TIMEOUT_MS,
@@ -619,7 +669,7 @@ function runBuild(srcAbs: string, outAbs: string, cwd: string): BuildOutcome {
   // The runtime error is errno-shaped; `Error` declares no `code`, so the standard errno view is used.
   const spawnError = result.error as NodeJS.ErrnoException | undefined
   if (spawnError && spawnError.code === "ENOENT") {
-    return { ok: false, kind: "BUILD_FAILED", ms, detail: `cannot spawn "${BUILD_BIN}" (${BUILD_BIN} is required to rebuild a dist)` }
+    return { ok: false, kind: "BUILD_FAILED", ms, detail: `cannot spawn "${bin}" (a bun binary is required to rebuild a dist)` }
   }
   if ((spawnError && spawnError.code === "ETIMEDOUT") || result.signal === "SIGTERM") {
     return { ok: false, kind: "TIMEOUT", ms, detail: `build exceeded ${BUILD_TIMEOUT_MS} ms and was killed` }
@@ -638,9 +688,10 @@ function runBuild(srcAbs: string, outAbs: string, cwd: string): BuildOutcome {
  * @param root the verified tree, and the cwd every build runs from.
  * @param tmpRoot the temp directory the two builds are written into.
  * @param target the `src` -> `dist` pair to rebuild and compare.
+ * @param bin the resolved bundler this run builds with.
  * @returns the target's outcome, carrying the finding it contributes (if any).
  */
-function checkTarget(root: string, tmpRoot: string, target: Target): TargetResult {
+function checkTarget(root: string, tmpRoot: string, target: Target, bin: string): TargetResult {
   // The identity fields every result of this target repeats.
   const base: TargetIdentity = { pkg: target.pkg, entry: target.entry, src: target.src, dist: target.dist }
   if (target.missing) {
@@ -677,12 +728,12 @@ function checkTarget(root: string, tmpRoot: string, target: Target): TargetResul
   // Absolute path of the second build's output (a different directory, same basename).
   const outB = join(tmpRoot, "run2", stem)
   // The first rebuild of the target's source.
-  const first = runBuild(join(root, target.src), outA, root)
+  const first = runBuild(join(root, target.src), outA, root, bin)
   if (!first.ok) {
     return { ...base, status: first.kind, committedSha256: committedSha, buildMs: first.ms, finding: { kind: first.kind, ...base, detail: first.detail } }
   }
   // The second rebuild of the same source, which must be byte-identical to the first.
-  const second = runBuild(join(root, target.src), outB, root)
+  const second = runBuild(join(root, target.src), outB, root, bin)
   if (!second.ok) {
     return { ...base, status: second.kind, committedSha256: committedSha, buildMs: second.ms, finding: { kind: second.kind, ...base, detail: `${second.detail} (second build)` } }
   }
@@ -919,6 +970,12 @@ export function verifyDistFresh(root: string, options: VerifyOptions = {}): Veri
     findings.push({ kind: "NO_TARGETS", pkg: "-", detail: `no covered target under ${root}: no packages/*/src/<entry>.ts maps to a packages/*/dist/<entry>.js — refusing to report PASS with nothing checked` })
   }
 
+  // THE BUNDLER, resolved ONCE per run and before anything builds: the repository's own pinned
+  // toolchain when it is installed, PATH otherwise. Every build below and the toolchain record
+  // itself read this one value, so a run cannot report one bun and build with another.
+  const buildBin: BuildBinResolution = resolveBuildBin(root)
+  /** The toolchain record for this run, read from the SAME resolution the builds use. */
+  const toolchain: ToolchainReport = buildToolchain(root, buildBin)
   // The fresh temp directory both builds of every target are written into.
   const tmpRoot = mkdtempSync(join(tmpdir(), TMP_PREFIX))
   // One outcome per target that was checked.
@@ -927,7 +984,7 @@ export function verifyDistFresh(root: string, options: VerifyOptions = {}): Veri
     // One covered target, in the sorted discovery order.
     for (const target of targets) {
       // This target's outcome, carrying the finding it contributes.
-      const result = checkTarget(root, tmpRoot, target)
+      const result = checkTarget(root, tmpRoot, target, buildBin.bin)
       results.push(result)
       if (result.finding !== undefined) findings.push(result.finding)
       if (!quiet) {
@@ -945,7 +1002,7 @@ export function verifyDistFresh(root: string, options: VerifyOptions = {}): Veri
   }
 
   // The toolchain that rebuilt here, against the pin the root manifest records.
-  const toolchain: ToolchainReport = buildToolchain(root)
+
   // How many checked targets were byte-identical to two fresh builds.
   const fresh = results.filter((r: TargetResult): boolean => r.status === "FRESH").length
   // Wall-clock duration of the whole run, in milliseconds.
@@ -1012,7 +1069,7 @@ function writeFixtureFile(sandbox: string, rel: string, text: string): void {
 }
 
 /** Materialize the fixture tree; every committed dist is produced by the gate's own build. */
-function buildFixture(sandbox: string): void {
+function buildFixture(sandbox: string, bin: string): void {
   // One fixture source file's relative path and its exact text.
   for (const [rel, text] of Object.entries(FIXTURE_SOURCES)) writeFixtureFile(sandbox, rel, text)
   // One fixture artifact the gate must produce for the arms to have something to compare.
@@ -1020,7 +1077,7 @@ function buildFixture(sandbox: string): void {
     // Source path the artifact's name maps to (`/dist/` -> `/src/`, `.js` -> `.ts`).
     const src = dist.replace("/dist/", "/src/").replace(/\.js$/, ".ts")
     // The fixture build's outcome; a failure invalidates every arm, so it throws instead of a record.
-    const result = runBuild(join(sandbox, src), join(sandbox, dist), sandbox)
+    const result = runBuild(join(sandbox, src), join(sandbox, dist), sandbox, bin)
     if (!result.ok) throw new Error(`fixture build failed for ${src}: ${result.detail}`)
   }
 }
@@ -1076,13 +1133,44 @@ function selfTest(scriptPath: string): void {
     arms.push({ name, ok: Boolean(ok), reason })
     console.log(`${ok ? "PASS" : "FAIL"} ${name}${reason === undefined || reason === "" ? "" : ` — ${reason}`}`)
   }
-  // The toolchain probe that decides whether ANY arm can be meaningful.
-  const probe = spawnSync(BUILD_BIN, ["--version"], { encoding: "utf8" })
+  // The toolchain probe that decides whether ANY arm can be meaningful. The SELF-TEST resolves its
+  // bundler the same way a real run does — over the SANDBOX, which has no `.toolchain` of its own, so
+  // this arm exercises the PATH fallback branch rather than a constant.
+  const probe = spawnSync(BUILD_BIN_DEFAULT, ["--version"], { encoding: "utf8" })
   if (probe.error || probe.status !== 0) {
-    record("build tool available", false, `"${BUILD_BIN}" is not runnable — the gate cannot rebuild anything, so no arm can pass`)
+    record("build tool available", false, `"${BUILD_BIN_DEFAULT}" is not runnable — the gate cannot rebuild anything, so no arm can pass`)
     console.log(`\n[verify-dist-fresh self-test] 0/${arms.length} arms passed — FAIL`)
     process.exitCode = 1
     return
+  }
+
+  // THE RESOLVER ITSELF (declared follow-up, closed 2026-09-30): the branch that matters is the one a
+  // bare-PATH run never takes, so it is asserted here rather than left to a reader's shell. A tree
+  // with `.toolchain/node_modules/.bin/bun` that reports the recorded version must WIN, and one whose
+  // local bun disagrees must FALL BACK — preferring the wrong bun would certify the bytes under it.
+  {
+    /** A sandbox shaped like a checkout with its own toolchain installed. */
+    const toolchainSandbox = mkdtempSync(join(tmpdir(), TMP_PREFIX + "bin-"))
+    /** A stand-in bundler that answers a FIXED version, so the arm does not depend on a real bun. */
+    const fakeBin = (version: string): string => {
+      /** The stand-in's path, shimmed as an executable the probe can spawn. */
+      const at = join(toolchainSandbox, TOOLCHAIN_BIN_DIR)
+      mkdirSync(at, { recursive: true })
+      /** The shim's path; a shell script is enough for a `--version` probe. */
+      const shim = join(at, "bun")
+      writeFileSync(shim, `#!/bin/sh\necho ${version}\n`, { mode: 0o755 })
+      writeFileSync(join(toolchainSandbox, "package.json"), JSON.stringify({ buildToolchain: "bun@9.9.9" }))
+      return shim
+    }
+    fakeBin("9.9.9")
+    /** The resolution over a tree whose local bun AGREES with the pin. */
+    const agreeing = resolveBuildBin(toolchainSandbox)
+    record("(h4) a local toolchain that AGREES with the pin is preferred over PATH", agreeing.source === "toolchain" && agreeing.bin.includes(TOOLCHAIN_BIN_DIR) && agreeing.pinned === "9.9.9")
+    fakeBin("1.0.0")
+    /** The resolution over the same tree with a DISAGREEING local bun. */
+    const disagreeing = resolveBuildBin(toolchainSandbox)
+    record("(h5) a local toolchain that DISAGREES with the pin falls back to PATH and says so", disagreeing.source === "path" && disagreeing.bin === BUILD_BIN_DEFAULT)
+    rmSync(toolchainSandbox, { recursive: true, force: true })
   }
 
   // The temp fixture root every arm builds its tree under.
@@ -1090,7 +1178,7 @@ function selfTest(scriptPath: string): void {
   // The alpha artifact arm (b) mutates and then restores.
   const alphaDist = join(sandbox, "packages/alpha/dist/index.js")
   try {
-    buildFixture(sandbox)
+    buildFixture(sandbox, BUILD_BIN_DEFAULT)
 
     // (a) a matching fixture is green
     const clean = verifyDistFresh(sandbox)
@@ -1285,11 +1373,13 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
 function printReport(result: VerifyResult, options: CliOptions): void {
   // The report's own sink, so every line goes through one call site.
   const log = (line: string): void => console.log(line)
-  if (!options.quiet) log(`[verify-dist-fresh] root: ${result.root}  (build: ${BUILD_BIN} build <src> --target node --format esm --outfile <tmp>/<entry>.js)`)
+  if (!options.quiet) log(`[verify-dist-fresh] root: ${result.root}  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)`)
   if (!options.quiet) {
     // The toolchain section, naming both the observed binary and the recorded pin.
     const toolchain = result.toolchain
-    log(`[verify-dist-fresh] build toolchain: ${BUILD_BIN} ${toolchain.current ?? "unavailable"} · recorded buildToolchain ${toolchain.pinned === null ? "(none)" : "bun@" + toolchain.pinned}${toolchain.note === "" ? "" : " — NOTE: " + toolchain.note}`)
+    // THE SOURCE IS PRINTED, so a reader can tell a run that used the PINNED toolchain from one that
+    // fell back to PATH — the distinction the whole resolver exists to make visible.
+    log(`[verify-dist-fresh] build toolchain: bun ${toolchain.current ?? "unavailable"} from ${toolchain.source === "toolchain" ? "the repository toolchain" : "PATH"} (${toolchain.bin}) · recorded buildToolchain ${toolchain.pinned === null ? "(none)" : "bun@" + toolchain.pinned}${toolchain.note === "" ? "" : " — NOTE: " + toolchain.note}`)
   }
   for (const finding of result.findings) log(`  ${finding.kind}: ${finding.pkg === "-" ? "" : `${finding.dist} — `}${finding.detail}`)
   log(result.notCovered.length === 0

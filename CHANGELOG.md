@@ -14,6 +14,256 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.12.0 — the product page, and one bundle on two surfaces
+
+### `README.md` becomes a product page, and the manual moves to the user guide
+
+**Changed.**
+
+- **The root README is rebuilt as a product page** in the shape the `dsh-tui` project's README uses:
+  a language switch, three short paragraphs, a hero capture of the running product, `Features`,
+  `Install`, `Quick start`, `Usage`, **`Status and known limitations`**, the documentation index, and
+  the provenance/license sections. It was 68 524 B of manual; it is 18 429 B, and the long form lives
+  where a long form belongs — [`docs/user-guide.md`](./docs/user-guide.md) (57 770 B, with its
+  `zh-CN` twin), which already existed and is why **no `docs/manual.md` was created**: a second copy
+  would have been a third overlapping document. `README.zh-CN.md` is the 简体中文 twin and is updated
+  in the SAME change, as the language policy requires.
+- **No section of the old manual was lost.** Every `##`-level section of the pre-wave README maps to
+  an existing home — a RETAINED section of the new page, or a named section of the user guide, the
+  design document or the parity ledger. The per-section table is
+  [`evidence/docs/readme-0.12.0/README-section-map.md`](./evidence/docs/readme-0.12.0/README-section-map.md),
+  and the three pieces that existed nowhere else were given a home in this wave: the **MCP
+  literal-call recipes** (user guide §13.11, new), the **two symptom rows** for a missing
+  `comment-checker` binary and a silent CodeGraph (user guide §11), and the **roster sizing
+  guidance** (user guide §4).
+- **The dual-surface story is the spine of both files.** A `Web | TUI` comparison table sits in the
+  top half of the page: one row per concrete surface — the team roster, the task graph, the watchdog
+  banner, plan approval, the workmate library, the settings card, the terminal status line — with the
+  Web column, the TUI column, and a parity column. **Every parity claim is one the existing ledger
+  already records**, and the rows that are *not* at parity are the ledger's own open deviations,
+  named in the table rather than smoothed over. [`docs/tui-parity.md`](./docs/tui-parity.md) stays
+  the authority; the README now points at it in the sentence right under the table.
+- Long-form content is reachable from the README through `docs/user-guide.md`, `docs/index.md`, the
+  design document and the parity ledger; the sections the README used to carry that had no other home
+  were moved into `docs/user-guide.md` rather than dropped (see *Content preservation* below).
+
+**Added.**
+
+- **A real screenshot set, captured on a real machine and cropped to THIS bundle's surfaces.** The
+  README's images are produced by the Docker UI lane under [`docker/ui/`](./docker/ui/):
+  - the **Web** tiles by headless Chromium driving the real app, captured as tight crops around the
+    bundle's own Team view, settings card, preset card and plugin row rather than as full-window
+    frames of the harness chrome;
+  - the **DSH-TUI** tiles by rasterizing the **ANSI byte stream the real TUI emitted on a real PTY**
+    (`tmux capture-pane -e`, which carries the TUI's own colours) at the character grid tmux computed
+    — previously the TUI was only ever captured as plain text, and the repository shipped **zero**
+    terminal images;
+  - a paired **hero** composite showing the same bundle on both surfaces side by side;
+  - both sets in **English and 简体中文**, so the Chinese README does not show an English app.
+- **The images have a stated provenance**, not just a directory: see
+  [`evidence/docs/readme-0.12.0/image-provenance.md`](./evidence/docs/readme-0.12.0/image-provenance.md).
+  It records the exact method, the fixture that makes every surface render populated, and — stated
+  rather than implied — that the terminal tiles' PAGE BACKGROUND is the lane's choice because the TUI
+  deliberately never paints one; every foreground colour comes from the byte stream.
+  It also records three dead ends a future lane must not re-pay for: this image's X server accepts a
+  connection and never answers (`import`, `xwd` and `xdpyinfo` all return exit 124 with zero bytes);
+  `xterm -sb 0` is invalid (`-sb` is a boolean, so the `0` becomes the shell argument); and
+  `pkill -f <pattern>` self-matches the calling shell.
+- `docker/ui/` gains the capture steps that produce the set, so the images are REPRODUCIBLE from the
+  tree instead of being hand-taken artifacts. The lane stays an INSPECTION harness: it holds the two
+  surfaces open and asserts nothing about the product.
+
+**Fixed — a marker that was not unique to its surface.** The terminal capture gates every scene on a
+marker read out of the live pane. The marker first chosen for the team scene — the fixture's team
+name — is ALSO printed by the chat screen's keyed status line, so one capture fired on the chat
+screen and produced an image of the wrong surface. The shipped tiles were each confirmed by looking
+at them; the lesson (a readiness marker must be unique to the surface it gates) is recorded in the
+lane's own comments so the next lane inherits it rather than rediscovering it.
+
+**Fixed — a Docker-lane assertion that had been stale for four hours, found by this wave's release
+sweep.** `node scripts/docker-e2e.ts --mode source --require-docker` failed 2 of its 94 assertions
+(`tui.teamGraphContent` and the abort it caused). It is **not** this wave's doing: the same two arms
+fail identically when the same lane is run against the PRE-wave commit, and the mechanism is that
+commit `6fdfc012` (12:39 UTC) froze clause AC1 — every node reads `<marker> <id>` and nothing else,
+with the subject moved into the pinned detail body — while the lane still asserted the OLD drawing
+shape. The last green lane run was 10:58 UTC; nobody re-ran it in between. The arm is repaired to
+assert what the contract now says, and strengthened while it was open: the expected ids are read out
+of the RECORD the lane itself wrote rather than hard-coded, each id must appear as a NODE LABEL
+(which a detail row cannot satisfy), and the record's own subject is asserted where AC1 moved it.
+The differential experiment, and the two plausible environment hypotheses it falsifies, are recorded
+in [`evidence/docker/lane-staleness/tui-teamGraphContent.md`](./evidence/docker/lane-staleness/tui-teamGraphContent.md).
+
+**A second, WORSE defect found in the same file: an assertion that proved nothing.**
+`tui.teamGraphDrawn` claimed to prove the DAG boxes were drawn, but it matched the square corners
+`┌ ┐ └ ┘` — and the boxes have been ROUNDED (`╭ ╮ ╰ ╯`) since the same wave. Measured on the lane's
+own pane: the square corners appear exactly ONCE each, on the scene FRAME, while the rounded ones
+appear three times each, one set per box. So the arm passed on frame chrome and **stayed green with
+every box deleted**. It now counts the rounded corners against the record's own task count. The
+vacuity is demonstrated rather than asserted: on one pane with the `T2` box removed, the new arm
+answers `false` (`corners=╭2 ╮2 ╰2 ╯2 tasksFromRecord=3`) while the OLD arm on that same pane still
+answers `true` — and three further mutations (frame-only, a record with one more task than the pane
+draws, a pane re-drawn with the pre-wave square corners) flip the new arm while leaving the old one
+green. Both graph arms now read their expected values out of the record the lane writes, and both
+report measured values (`corners=╭3 ╮3 ╰3 ╯3 tasksFromRecord=3`; `ids=T1,T2,T3 fromRecord=3
+labelsExpected=3 missing=[none] pinnedFocus=T1 detail=[T1 · requirement · freeze the contract]`)
+instead of the literal strings they used to carry.
+
+**Removed.**
+
+- **The five full-window `docs/assets/images/web-ui-*.png` captures are gone** (476 KB). The new set
+  supersedes them: each of the five showed the harness chrome around the part that mattered, and the
+  product page now shows the bundle's own surfaces, cropped. Nothing is lost — the raw full-window
+  frames stay tracked under `docker/ui/out/shots/` and the deleted files remain in this file's own
+  git history. `assets/images/` is a CURATED set documented by `docs/index.md`, so leaving five
+  files no table described was rot rather than a safety net.
+
+**Declared bounds (named, not silent).**
+
+- The Web tiles are Chromium at a fixed viewport; a different browser size lays out differently. The
+  terminal tiles are one terminal emulator's rendering of the same bytes. The claim is the **facts on
+  screen**, not pixel identity — and the README says so in its own *Status and known limitations*.
+- The three authored SVG diagrams (`architecture`, `ulw-loop`, `team-lifecycle`) no longer sit in the
+  README; they remain in this repository, are still rendered by `docs/index.md`, and are linked from
+  the README's documentation index through the documents that own them.
+
+### The vendored `dsh-agent-teams` body is DELETED, and what still ships has moved
+
+**Removed.**
+
+- **`packages/mpd-agent-teams-plugin/**` — 768 files, `_deps/` included — is GONE.** The body had
+  already been retired from the composition in 0.1.7 (no loader row mounted it); this wave removes the
+  code. Nothing in the tree reads, imports, patches, fingerprints or copies it any more: the whole
+  `_deps/` runtime closure, the `agent_teams_*` tools, the prebuilt client sources under `lib/client/`,
+  the `self-fix-tests/` suite and the delta registry (`agent-references/agent-teams-deltas.md`) went
+  with it, together with the three scripts that existed only to vendor, patch and reclaim it
+  (`scripts/vendor-agent-teams.ts`, `scripts/patch-agent-teams-fixes.ts`,
+  `scripts/patch-agent-teams-client.ts`, plus `scripts/reclaim-staged-teams.ts` and the ambient shim
+  `scripts/lib/vendored-agent-teams.d.ts`).
+
+**Added.**
+
+- **`packages/mpd-schemastery/` — the mpd-owned home of the two pieces the shipped product still
+  uses.** `lib/` carries the schemastery validator (the `Config` schema of four SHIPPED plugins), its
+  `cosmokit` dependency and the type declarations — including the GLOBAL `Schemastery<T>` interface
+  `export const Config: Schemastery<Config>` relies on, which is why the package ships a manifest with
+  `exports.types`. `harness/` carries the six DSH framework modules (`cordis`, `dsh-tools`, `dsh-llm`,
+  `dsh-session`, `dsh-scope`, `dsh-timeout`) that four TEST files drive directly — they need a real
+  dispatcher and a real harness validator, not a double. The eight-file closure is self-contained: no
+  network, no new npm dependency, and `cordis`-family `devDependencies` were refused because
+  `verify-plugin-manifest` forbids them by name. Both upstream MIT notices are reproduced in
+  `packages/mpd-schemastery/LICENSE`.
+- **`packages/mpd-bundle-plugin/adopted/agent-teams-client.js`** — the adopted browser bundle (the
+  0.1.14 build) and its source map, moved to the bundle package that embeds them. The committed
+  `packages/mpd-bundle-plugin/client.js` was rebuilt from the new path and differs from the previous
+  bytes by exactly one line and twelve bytes (the `sourceMappingURL` now names the relocated file).
+- `docs/independence.md` §5, the pinned-debt entry, is **CLOSED** with the measurement that closed it.
+
+**Changed.**
+
+- The migrated surfaces were re-pointed in the same commit as the deletion: `tsconfig.json` (the
+  adopted-suite `exclude` entries are gone), `bun.lock` (one workspace entry swapped),
+  `scripts/{pack-mpd,verify-pack-closure,verify-dist-fresh,verify-docs-parity,verify-comment-coverage,install-profile,build-mpd-client}.ts`,
+  `docker/**`, the cross-package coupling inventory, the no-terminal-writes band and the watchdog test
+  suite.
+- `package.json`'s description now reads *upstream reference … historical, no synchronisation owed*.
+
+**Declared bounds (named, not silent).**
+
+- The `verify-docs-parity` derived-value rule (delta range + region count) and its `EXEMPT_PROVENANCE`
+  map are VACUOUS in the live tree — they are exercised only by the gate's own `--self-test` fixtures,
+  and every run PRINTS that fact instead of passing silently.
+- The `mpd-team-watchdog-plugin` fault-injection fixture
+  (`test/fixtures/inject.ts`) was deleted with the body it drove; the QA cases reading it are retired by
+  the wave's `skills/**` writer.
+- The workmate persona-injection hook lived in the deleted body's `memberPersona()`; automatic
+  injection into team members no longer fires (see `packages/mpd-workmate-plugin/README.md`).
+
+### DSH-TUI 0.13.0: the sidebar panel seam, and a `Ctrl+A` that is now version-gated
+
+**Changed.**
+
+- **The DSH-TUI edition is adapted to `@deepseek-harness-tui/dsh-tui` 0.13.0, and the adapter adopted
+  the release's new sidebar panel seam as the FIFTEENTH `tui*` seam.** 0.13.0 adds `ctx.tuiPanels` (host
+  row `dsh-tui-panels`, export `@deepseek-harness-tui/dsh-tui/panels`) and renames the host's own
+  `dsh-ecosystem-spec/` directory to `tui-profile/`; the move touched every carrier in one wave — the
+  global package and the `dsh-tui` profile, the distribution pin (`dsh-distribution.json`'s `host-tui`
+  ref is `pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0` now) and the QA host spec (`docker/tui-lane.sh`,
+  `docker/entrypoint.sh`, `skills/dsh-qa/scripts/tui-mount.ts`'s `TUI_HOST_SPEC`,
+  `skills/dsh-qa/scripts/install-dependencies.ts`'s remedy, all defaulting to `0.13.0`).
+  `TUI_SEAMS.panels` is bound, probed and degraded like every other seam, and
+  `packages/mpd-tui-plugin/src/panel.ts` registers ONE right-sidebar panel whose body is the MERGED view
+  — the host's curated subagent snapshot rows first, then the MPD dependency DAG — under a FROZEN
+  descriptor: slug `team`, title `MPD`, `minColumns` 32, `order` 10, and **no** `compact`, because
+  0.13.0 validates and stores a descriptor's `compact` slot but does not mount its render slot, so
+  declaring one would claim a surface that cannot render. The final panel id is DISCOVERED from the
+  host's own `list()` read-back (measured `act1:team`), never composed. `alt+a` and the new `/mpd panel`
+  subcommand route through `tuiPanels.open()` while the seam is bound and FALL BACK to the existing
+  full-screen merged scene (`mpd-tui-subagents`) on any refusal — the one-open-per-plugin-per-5000 ms
+  rate limit, an id the host no longer owns, or no live panel consumer — never a silent no-op. The
+  legacy `Ctrl+A` host-input takeover is now VERSION-GATED: on a host that offers the panel seam it
+  stays INERT and `Ctrl+A` keeps the host's own dashboard meaning, while a host WITHOUT the seam keeps
+  the old arming rule (`tui.dashboardKey` on and the workspace team holding ≥1 task); `tui.dashboardKey`
+  stays in the config schema and the `/settings` row, documented as meaningful on OLD hosts only.
+  `docs/tui.md` and `docs/tui.zh-CN.md` carry all of it in both languages — including a new §11.3
+  amendment, with the 0.12.0-era sentences kept readable as history rather than silently rewritten.
+  Real-PTY evidence on 0.13.0: mount lane PASS (`evidence/tui/lanes/2026-10-06T10-27-42.389Z/`), the
+  surfaces lane with 7 of its 8 surfaces rendered — status line, `/mpd` completion, the `/mpd workmates`
+  command, the sidebar panel registration + open, the board scene, the `/settings` section with its
+  disclosure, and the managed dialog — with its negative control red as required
+  (`…/2026-10-06T10-27-53.571Z/`), and the `Ctrl+A` lane PASS (`…/2026-10-06T10-28-57.807Z/`); the full
+  lane report is `evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`. **The bounds are
+  stated, not glossed:** (a) the panel's BODY is not observable in a tmux pane capture on this host — a
+  320×50 capture was byte-identical before and after a host-ACCEPTED open, so the lane proves
+  registration + `open()` + the discovered id, NOT a render (recorded as `panelBodyBound`); (b)
+  `tuiRenderers` is still MISSING — the surfaces lane exits 1 on that required surface — a pre-existing
+  structural gap already declared in `evidence/tui/EVIDENCE-INDEX.md`, not caused by this wave; (c) no
+  0.12.0 PTY arm was obtained in this wave (a clean 0.12.0 sandbox needs `dsh plugin add`, blocked here
+  by the read-only pnpm store lock, and the fixture that exists is a mixed-version composition that
+  never reaches a chat screen), so the old-host arming path rests on unit arms — `takeoverArmed` in
+  `packages/mpd-tui-plugin/test/panel.test.ts` (16 pass / 0 fail on this revision) together with BOTH
+  version-gate arms in `packages/mpd-tui-plugin/test/plugin.test.ts` ("the contact stays INERT" and
+  "the contact arms", green in the canonical per-package run `bun test packages/mpd-tui-plugin` =
+  220 pass / 0 fail; only the explicit FILE-filtered form cannot load them, on a pre-existing vendored
+  `_deps` module-resolution error in the retired adopted plugin).
+
+**Changed.**
+
+- **The session-start complexity gate's contract is written down where the model reads it.** The gate
+  has been MECHANICAL since the plan plane landed: a trigger STAGES an APPROVABLE PLAN SHELL through
+  the `agent_teams_plan` tool (0 members, 0 tasks) and injects ONE notice naming the returned plan id —
+  NOTHING is spawned and the plan is INERT until the captain extends it (`add_member` / `create_task`)
+  and approves it — while `team.gate` in `mpd.jsonc` selects `mechanical` (the default) | `advisory` |
+  `off`. The shipped `mpd` preset, `AGENTS.md` §1, the `mpd-roles-plugin` README pair and the
+  `mpd_config_get` consumed-keys list all still described the retired advisory-only behaviour; they now
+  state the mechanical contract, the advisory fallback (the ONE notice then says `NO team was staged`),
+  and the notice marker `[AgentTeams] Session-start team rule`. The sentence that an explicit `team:` /
+  `!team` request was merely "routed to team mode" is gone — such a request now stages the shell too
+  (signal A) and has its marker CONSUMED from the goal text. A new drift guard in
+  `packages/mpd-roles-plugin/test/team-plane.test.ts` pins that preset text, so the prompt and the
+  implementation can no longer diverge silently.
+- **Signal D reads an ACTIVE boulder, not a plan file.** The retired probe ("some `.mpd/plans/*.md`
+  exists") measurably fired in EVERY session of this workspace, because one plan file outlives the work
+  that produced it. D now means an ACTIVE boulder work for the workspace (`status: "active"` in
+  `.mpd/boulder.json`), and a plan FILE alone is not a signal.
+
+**Fixed.**
+
+- **The TUI plan scene's approval path is documented as PRESENT again.** The pane has carried the
+  typed-phrase gate since W6 — type the exact phrase the pane serves (`approve plan-…`) and press
+  `Ctrl+X`, `Ctrl+D` twice within 10 s to discard, `Ctrl+R` to re-read — and it now really acts: the
+  action is an `agent_teams_plan {action:"approve"|"delete"}` call carrying the LIVE agent resolved
+  from the adapter's own registry (`liveAgent(sessionId)`, else a live entry whose own `session.id`
+  matches, else the ONE live agent when the scene carries no id). A caller that cannot be resolved
+  REFUSES before calling anything; the live hop on a real TUI host is not yet falsified.
+  `packages/mpd-tui-plugin/README.md`, `docs/tui.md` and their `*.zh-CN.md` twins said the approval
+  flow was gone; they now state what is true, refusal path included.
+- **`docs/design.md` no longer counts `dsh-better-sidebar` among the bundle's runtime
+  `dependencies`.** It is an optional peer (+ a `devDependency`) the bundle deliberately does not
+  install, and its ABSENCE is a normal, intended composition. Without it the SAME two bodies register
+  into the harness's own right sidebar (the Team tab — which lists the WORKSPACE's teams for a session
+  that has none — and the Workmate library), and that is the surface which must work; the old text
+  promised one warning and "no surface outside the sidebar".
+
 ## v0.11.6 — the gate's own comments, and the manual's budget
 
 **Fixed.**

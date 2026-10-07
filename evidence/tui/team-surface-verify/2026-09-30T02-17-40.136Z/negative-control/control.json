@@ -1,0 +1,32 @@
+{
+  "note": "the SAME drive and the SAME assertion (`assertApprovalHappened`) with the confirmation step bypassed — this run MUST fail",
+  "expected": "fail",
+  "observed": "fail",
+  "green": {
+    "mode": "typed",
+    "pass": false,
+    "reason": "no call to agent_teams_plan reached the harness boundary (calls=0)",
+    "message": ""
+  },
+  "reds": [
+    {
+      "mode": "empty",
+      "pass": false,
+      "reason": "no call to agent_teams_plan reached the harness boundary (calls=0)",
+      "message": ""
+    },
+    {
+      "mode": "wrong-id",
+      "pass": false,
+      "reason": "no call to agent_teams_plan reached the harness boundary (calls=0)",
+      "message": ""
+    },
+    {
+      "mode": "cancelled",
+      "pass": false,
+      "reason": "no call to agent_teams_plan reached the harness boundary (calls=0)",
+      "message": ""
+    }
+  ],
+  "discriminatingPower": false
+}

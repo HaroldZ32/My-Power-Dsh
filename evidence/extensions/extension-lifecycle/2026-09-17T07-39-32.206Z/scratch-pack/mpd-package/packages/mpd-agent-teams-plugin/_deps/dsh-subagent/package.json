@@ -24,7 +24,7 @@
     },
     "./client": {
       "types": "./lib/types/client.d.ts",
-      "default": "./lib/types/client.js"
+      "default": "./lib/types/client.ts"
     },
     "./src/*": "./src/*",
     "./package.json": "./package.json"

@@ -1,9 +1,10 @@
 // Independent artifact-level pins for the AgentTeams sidebar migration (added by the
 // verifier, additive only). Existing suites pin the RUNTIME behaviour through the
 // harness (sidebar-tab.test.ts / team-page.test.ts) and the bridge on the adopted
-// client (packages/mpd-agent-teams-plugin/test/export-bridge.test.ts); this file pins
-// what actually SHIPS in packages/mpd-bundle-plugin/client.js, where a stale rebuild or
-// a re-vendored adopted client would otherwise go unnoticed:
+// client — whose own suite (packages/mpd-agent-teams-plugin/test/export-bridge.test.ts)
+// was DELETED with the body by the de-vendor wave, which makes THIS file the surviving
+// pin on the bridge; it pins what actually SHIPS in packages/mpd-bundle-plugin/client.js,
+// where a stale rebuild or a re-vendored adopted client would otherwise go unnoticed:
 //   1) exactly the three loader modules, including the sidebar page module;
 //   2) the mpd export bridge present in the shipped bytes with every pinned export;
 //   3) no mpd client SOURCE registers a removed surface (registration shapes only, so

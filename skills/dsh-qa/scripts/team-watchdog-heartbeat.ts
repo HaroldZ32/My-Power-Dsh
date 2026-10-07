@@ -259,8 +259,8 @@ interface HeartbeatResult extends LaneResult {
 
 /**
  * r6's observe-only proof, in-lane (the shape of
- * `evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/observe-only-real-call.mjs`):
- * run the SAME real tool call twice — once on a plain vendored-cordis context, once with the
+ * `evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/observe-only-real-call.ts`):
+ * run the SAME real tool call twice — once on a plain context from the RELOCATED cordis
  * adapter's PRE hook installed — and compare the gate decision, the real command's outcome and
  * the post-execute decision byte for byte. The adapter under test is the REAL built dist (the
  * one the mounted row uses), and the tool body is a genuine child process.
@@ -268,8 +268,8 @@ interface HeartbeatResult extends LaneResult {
  * @returns The gate, the child's result, the POST decision and what the listener observed.
  */
 async function callOnce({ installHook, listenerThrows = false }: CallOnceOptions): Promise<CallOnceOutcome> {
-  // The vendored cordis dist, loaded by absolute URL: a runtime path whose `Context` seeds the real waterfall.
-  const { Context } = await import(pathToFileURL(join(REPO, "packages", "mpd-agent-teams-plugin", "_deps", "cordis", "lib", "index.js")).href) as { Context: new () => ProbeContext }
+  // The RELOCATED cordis lib (mpd-owned since the vendored body's deletion), by absolute URL: its `Context` seeds the real waterfall.
+  const { Context } = await import(pathToFileURL(join(REPO, "packages", "mpd-schemastery", "harness", "cordis", "lib", "index.ts")).href) as { Context: new () => ProbeContext }
   // The REAL adapter dist, loaded the same way; only the seam this probe installs is named here.
   const { createDshAdapter } = await import(pathToFileURL(PATHS.adapterDist).href) as { createDshAdapter: (ctx: unknown) => ObserveOnlyAdapter }
   // The plain cordis context both calls run on.

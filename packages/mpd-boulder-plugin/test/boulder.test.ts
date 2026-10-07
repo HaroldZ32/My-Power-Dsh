@@ -1,5 +1,6 @@
 import { test, expect } from "bun:test"
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
+import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import {
@@ -90,6 +91,111 @@ test("mpd_boulder_status omits planProgress when null (lossless JSON contract)",
     expect(JSON.parse(JSON.stringify(withPlan))).toEqual(withPlan)
     expect(withPlan.planProgress).toEqual({ total: 0, completed: 0, isComplete: false })
     expect(typeof withPlan.planProgress).toBe("object")
+  } finally {
+    if (prev === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = prev
+  }
+})
+
+// ── E7: a caller-named plan path resolves against THIS session's root ────────────────────────────
+// `mpd_boulder_plan_progress` handed the caller's path verbatim to the vendor's progress reader,
+// which answers silent ZEROES for a path it cannot resolve (`plan-progress.ts#getPlanProgress`).
+// A RELATIVE path — the spelling `mpd_boulder_start` records and every caller uses — therefore
+// reported `total: 0` while the plan sat in the session workspace, and an absent plan was
+// indistinguishable from an empty one.
+test("mpd_boulder_plan_progress resolves a relative plan path and REPORTS an unresolvable one", async () => {
+  // Saved so the sandbox workspace root is restored after the test, whatever it asserted.
+  const prev = process.env.DSH_WORKSPACE_ROOT
+  /** The session workspace this arm's tools resolve through the adapter. */
+  const ws = mkdtempSync(join(tmpdir(), "mpd-bl-progress-"))
+  process.env.DSH_WORKSPACE_ROOT = ws
+  try {
+    /** The plan path as a caller spells it: relative to the session workspace. */
+    const rel = join(".mpd", "plans", "e7-progress-fixture.md")
+    mkdirSync(join(ws, ".mpd", "plans"), { recursive: true })
+    writeFileSync(join(ws, rel), "# P\n\n## TODOs\n- [ ] 1. A\n- [x] 2. B\n\n## Final Verification Wave\n- [ ] F1. C\n")
+    /** Capture array standing in for the harness tool registry. */
+    const tools: any[] = []
+    apply({ tools: { register: (t: any) => tools.push(t) } } as any, {})
+    // The progress tool under test.
+    const progress = tools.find((t: any) => t.name === "mpd_boulder_plan_progress")
+    /** The progress of the RELATIVE path: pre-fix the reader probed it against the process cwd. */
+    const resolved = await progress.execute({ planPath: rel })
+    expect(resolved.progress).toEqual({ total: 3, completed: 1, isComplete: false })
+    // A plan that cannot be resolved at all must be REPORTED; zeroes would read as an empty plan.
+    /** The refusal text, or null when the tool answered zeroes instead of refusing. */
+    const missing = await progress.execute({ planPath: join(".mpd", "plans", "ghost.md") }).then(() => null, (e: unknown) => String(e))
+    expect(missing ?? "ANSWERED ZEROES: no error was raised").toContain(join(ws, ".mpd", "plans", "ghost.md"))
+  } finally {
+    if (prev === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = prev
+  }
+})
+
+// ── THE STATE ROOT (D4 defect, measured live 2026-10-06) ─────────────────────
+// `mpd_boulder_*` reads and writes `<root>/.mpd/boulder.json`, where `root` is the session workspace
+// unless `boulder.dir` overrides it. The knob's retired schema default resolved to `.mpd` in every
+// real boot, and that value was taken as a ROOT — so the ledger landed at
+// `<ws>/.mpd/.mpd/boulder.json`. Consistently wrong is why the unit arms stayed green while signal D
+// (the session gate's "an ACTIVE boulder work exists") could never fire. These arms pin the PATH.
+test("mpd_boulder_start writes the ledger at the CONTRACT path <ws>/.mpd/boulder.json", async () => {
+  // The sandbox workspace this arm's adapter resolves, restored whatever the assertions do.
+  const prev = process.env.DSH_WORKSPACE_ROOT
+  /** The workspace the tool resolves through the adapter's workspaceRoot(). */
+  const ws = mkdtempSync(join(tmpdir(), "mpd-bl-root-"))
+  process.env.DSH_WORKSPACE_ROOT = ws
+  try {
+    /** The registered tools, with NO mpdConfig service mounted: the knob is genuinely unset. */
+    const tools: any[] = []
+    apply({ tools: { register: (t: any) => tools.push(t) } } as any, {})
+    /** The start tool, whose `stateFile` names the root it actually used. */
+    const start = tools.find((t: any) => t.name === "mpd_boulder_start")
+    /** The plan the work is bound to; the tool only records the path, so it need not exist. */
+    const planPath = join(ws, ".mpd", "plans", "p.md")
+    /** The start call's answer, whose `stateFile` names the root it actually used. */
+    const started = await start.execute({ planPath })
+    // THE CONTRACT PATH, and the file is really there: a `stateFile` that merely LOOKS right while
+    // the bytes went elsewhere would keep the defect invisible.
+    expect(started.stateFile).toBe(join(ws, ".mpd", "boulder.json"))
+    expect(started.stateFile).not.toContain(join(".mpd", ".mpd"))
+    expect(existsSync(join(ws, ".mpd", "boulder.json"))).toBe(true)
+    expect(existsSync(join(ws, ".mpd", ".mpd", "boulder.json"))).toBe(false)
+    // The tool that READS the ledger agrees, which is the half a write-only assertion would miss.
+    /** The status tool, reading the ledger back through the same root resolution. */
+    const status = tools.find((t: any) => t.name === "mpd_boulder_status")
+    /** The status call's answer, read back through the same root resolution. */
+    const read = await status.execute({})
+    expect(read.stateFile).toBe(join(ws, ".mpd", "boulder.json"))
+    // The READ agrees with the write: the ledger the start call wrote is the one status sees.
+    expect(read.activeWorks.length).toBe(1)
+    expect(read.state?.status).toBe("active")
+  } finally {
+    if (prev === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = prev
+  }
+})
+
+test("the LEGACY `.mpd` knob value still lands on the contract path, and a real path still overrides", async () => {
+  // The two halves of the shared normalization: the retired default is NOT a root (it would double
+  // the path), while a path a user actually means keeps overriding.
+  const prev = process.env.DSH_WORKSPACE_ROOT
+  /** The workspace the tool resolves when no override applies. */
+  const ws = mkdtempSync(join(tmpdir(), "mpd-bl-norm-"))
+  process.env.DSH_WORKSPACE_ROOT = ws
+  try {
+    for (const [label, value, expected] of [
+      ["the retired default", ".mpd", join(ws, ".mpd", "boulder.json")],
+      ["the `./.mpd/` spelling", "./.mpd/", join(ws, ".mpd", "boulder.json")],
+      ["the workspace itself", ".", join(ws, ".mpd", "boulder.json")],
+      ["an explicit root", "/srv/boulder-state", join("/srv/boulder-state", ".mpd", "boulder.json")],
+    ] as Array<[string, string, string]>) {
+      /** The registered tools for this knob value. */
+      const tools: any[] = []
+      // The config service a real boot mounts; its answer is the ONLY source of the override here.
+      const mpdConfig = { get: (key: string) => (key === "boulder.dir" ? value : undefined) }
+      apply({ tools: { register: (t: any) => tools.push(t) }, get: (name: string) => (name === "mpdConfig" ? mpdConfig : undefined) } as any, {})
+      /** The status tool, whose `stateFile` is the resolve of this knob value. */
+      const status = await tools.find((t: any) => t.name === "mpd_boulder_status").execute({})
+      expect(status.stateFile, label).toBe(expected)
+      expect(status.stateFile, label).not.toContain(join(".mpd", ".mpd"))
+    }
   } finally {
     if (prev === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = prev
   }

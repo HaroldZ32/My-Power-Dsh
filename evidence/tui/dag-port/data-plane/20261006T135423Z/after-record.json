@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "teamId": "team-20261006141641",
+  "name": "r21-before-after",
+  "description": "the captain's pre-repair plan shape",
+  "leadSessionId": "sess-1",
+  "phase": "idle",
+  "createdAt": "2026-10-06T14:16:41.141Z",
+  "members": [],
+  "tasks": [
+    {
+      "id": "T1",
+      "subject": "REQUIREMENT: freeze the acceptance contract",
+      "description": "d",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [],
+      "writeScopes": [],
+      "createdAt": "2026-10-06T14:16:41.141Z",
+      "updatedAt": "2026-10-06T14:16:41.141Z",
+      "revision": 1
+    },
+    {
+      "id": "T2",
+      "subject": "WORK: the adaptive vertical DAG layout engine",
+      "description": "d",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [],
+      "writeScopes": [],
+      "createdAt": "2026-10-06T14:16:41.141Z",
+      "updatedAt": "2026-10-06T14:16:41.141Z",
+      "revision": 1
+    },
+    {
+      "id": "T3",
+      "subject": "WORK: the independent dag + workmate sidebar pages",
+      "description": "d",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [],
+      "writeScopes": [],
+      "createdAt": "2026-10-06T14:16:41.141Z",
+      "updatedAt": "2026-10-06T14:16:41.141Z",
+      "revision": 1
+    },
+    {
+      "id": "T4",
+      "subject": "WORK: redesign the whole mpd-tui surface layer",
+      "description": "d",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [],
+      "writeScopes": [],
+      "createdAt": "2026-10-06T14:16:41.141Z",
+      "updatedAt": "2026-10-06T14:16:41.141Z",
+      "revision": 1
+    },
+    {
+      "id": "T5",
+      "subject": "WORK: ROOT-CAUSE why the existing team sidebar panel was invisible",
+      "description": "d",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [],
+      "writeScopes": [],
+      "createdAt": "2026-10-06T14:16:41.141Z",
+      "updatedAt": "2026-10-06T14:16:41.141Z",
+      "revision": 1
+    },
+    {
+      "id": "T6",
+      "subject": "WORK: wire the dag + workmate panels through the adapter",
+      "description": "d",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "T2"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-06T14:16:41.141Z",
+      "updatedAt": "2026-10-06T14:16:41.142Z",
+      "revision": 2
+    },
+    {
+      "id": "T7",
+      "subject": "REVIEW: independent verification of R1..R16",
+      "description": "d",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "T2",
+        "T3",
+        "T4",
+        "T6"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-06T14:16:41.141Z",
+      "updatedAt": "2026-10-06T14:16:41.142Z",
+      "revision": 2
+    },
+    {
+      "id": "T8",
+      "subject": "REVIEW: visual fidelity of the rendered TUI",
+      "description": "d",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "T7"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-06T14:16:41.141Z",
+      "updatedAt": "2026-10-06T14:16:41.142Z",
+      "revision": 2
+    },
+    {
+      "id": "T9",
+      "subject": "WORK: bilingual docs for the new panels",
+      "description": "d",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-06T14:16:41.142Z",
+      "updatedAt": "2026-10-06T14:16:41.142Z",
+      "revision": 2
+    },
+    {
+      "id": "T10",
+      "subject": "INTEGRATION: rebuild dist, gate sweep, Docker, PR",
+      "description": "d",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "T7",
+        "T8",
+        "T9"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-06T14:16:41.142Z",
+      "updatedAt": "2026-10-06T14:16:41.142Z",
+      "revision": 2
+    }
+  ],
+  "nextMemberNumber": 1,
+  "nextTaskNumber": 11,
+  "approvedAt": "2026-10-06T14:16:41.142Z"
+}

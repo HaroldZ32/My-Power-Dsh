@@ -158,6 +158,27 @@ function writeTeamRecord(cwd: string, teamId: string, members: string[], sub: st
   writeFileSync(join(dirPath, "team.json"), JSON.stringify({ id: teamId, name: teamId, members: members.map((m, i) => ({ id: "m" + i, name: m, status: "idle" })) }, null, 2))
 }
 
+/** Write one team record in the mpd-OWNED layout (`.mpd/team/teams/<teamId>.json`), which is what a
+ * team approved through `agent_teams_plan approve` actually leaves behind. */
+function writeMpdTeamRecord(cwd: string, teamId: string, members: Array<{ name: string; status?: string }>, extra: Record<string, unknown> = {}): void {
+  /** `<cwd>/.mpd/team/teams`, created before the record is written into it. */
+  const dirPath = join(cwd, ".mpd", "team", "teams")
+  mkdirSync(dirPath, { recursive: true })
+  writeFileSync(join(dirPath, teamId + ".json"), JSON.stringify({
+    version: 1,
+    teamId,
+    name: teamId,
+    leadSessionId: "sess-1",
+    phase: "active",
+    createdAt: "2026-09-30T09:15:00.000Z",
+    members: members.map((m, i) => ({ id: "M" + (i + 1), name: m.name, description: m.name, status: m.status ?? "running", spawnedAt: "2026-09-30T09:15:00.000Z" })),
+    tasks: [],
+    nextMemberNumber: members.length + 1,
+    nextTaskNumber: 1,
+    ...extra,
+  }, null, 2))
+}
+
 /** Instantiate one workmate through the tool, which is how every arm sets up its fixture. */
 async function initOne(h: Harness, name: string, base: string = "Deep Worker"): Promise<any> {
   return h.byName("mpd_workmate_init").execute({ base, name }, h.exec)
@@ -553,6 +574,39 @@ test("busyTeams reads <cwd>/.mpd/team, skips archived teams and non-directory en
   mkdirSync(join(sb.cwd, ".mpd", "team", "broken-team"))
   writeFileSync(join(sb.cwd, ".mpd", "team", "broken-team", "team.json"), "{ not json")
   expect(busyTeams("architect")).toEqual([{ teamId: "live-team", member: "Architect" }])
+})
+
+test("the mpd-OWNED record layout is read too — a teammate spawned today is no longer invisible", () => {
+  // THE DEFECT THIS PINS: before this fix the scan read ONLY `.mpd/team/<dir>/team.json`, the layout
+  // the RETIRED vendored plugin wrote. Every team approved after the 0.1.7 rebase writes
+  // `.mpd/team/teams/<teamId>.json`, so `mpd_workmate_rename`/`_delete` could take a workmate out
+  // from under a live teammate. A record in the new layout must block exactly like the old one.
+  writeMpdTeamRecord(sb.cwd, "team-20260930091500", [{ name: "Architect" }, { name: "Reviewer" }])
+  expect(busyTeams("architect")).toEqual([{ teamId: "team-20260930091500", member: "Architect" }])
+  expect(busyTeams("reviewer")).toEqual([{ teamId: "team-20260930091500", member: "Reviewer" }])
+  expect(busyTeams("oracle")).toEqual([])
+  // BOTH layouts at once are reported, each under its own team id — a workspace mid-migration.
+  writeTeamRecord(sb.cwd, "live-team", ["Architect"])
+  expect(busyTeams("architect")).toEqual([
+    { teamId: "live-team", member: "Architect" },
+    { teamId: "team-20260930091500", member: "Architect" },
+  ])
+})
+
+test("an ENDED team or a settled member does not freeze a workmate forever", () => {
+  // A record outlives its team by design (it is the wave's history), so the gate must read the
+  // LIFECYCLE, not the file's existence: otherwise every workmate ever used stays locked.
+  writeMpdTeamRecord(sb.cwd, "team-ended", [{ name: "Architect" }], { endedAt: "2026-09-30T12:00:00.000Z", phase: "ended" })
+  expect(busyTeams("architect")).toEqual([])
+  // A member the team settled is not using the workmate either.
+  writeMpdTeamRecord(sb.cwd, "team-settled", [{ name: "Architect", status: "inactive" }])
+  expect(busyTeams("architect")).toEqual([])
+  // A member still provisioning IS: the spawn is in flight and the name is taken.
+  writeMpdTeamRecord(sb.cwd, "team-provisioning", [{ name: "Architect", status: "provisioning" }])
+  expect(busyTeams("architect")).toEqual([{ teamId: "team-provisioning", member: "Architect" }])
+  // A malformed record in the new layout is not a block, exactly as in the old one.
+  writeFileSync(join(sb.cwd, ".mpd", "team", "teams", "broken.json"), "{ not json")
+  expect(busyTeams("architect")).toEqual([{ teamId: "team-provisioning", member: "Architect" }])
 })
 
 // ── A3: the directory is the identity, never meta.name ─────────────────────────────────────────

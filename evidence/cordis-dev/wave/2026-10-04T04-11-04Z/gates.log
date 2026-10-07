@@ -1,0 +1,75 @@
+== wave: cordis-dev skill + persisted-goal bridge ==
+2026-10-04T04:11:04Z
+f9913897b303edb445d939f9b6037e332cc925a5
+feature/cordis-dev-skill
+
+== bun run verify:comments ==
+scanned 382 TypeScript file(s) of 382 in the source set; inspected 30239 declaration(s); skipped 14179 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+== node scripts/verify-dist-fresh.ts ==
+[verify-dist-fresh] ok: 29/29 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 607ms
+
+== bun run verify:rows ==
+[verify-rows-parity] ok: 33 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-web-compat, mpd-workmate, preset-mpd)
+
+== node scripts/verify-no-host-override.ts ==
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 204 host-declared row ids)
+
+== bun run verify:manifest ==
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+
+== bun run verify:docs ==
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=45 failed=0 violations=0 exempt=22 derived=3 links=439 dead=0 — PASS
+
+== node scripts/verify-manual-paths.ts ==
+[verify-manual-paths] PASS resolved=141 over-report=95 under-report=93 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+
+== node scripts/verify-pack-closure.ts ==
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/SKILL.md: source mtime 2026-10-04T04:10:56.403Z is AFTER the artifact stamp 2026-10-04T04:10:32.264Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+
+== MPD_UPSTREAM_ROOT=.mpd/ci-rehearsal/upstream node scripts/verify-vendor.ts ==
+[verify-vendor] PASS
+
+== node skills/dsh-qa/scripts/goal-bridge.ts --self-test ==
+[goal-bridge self-test] ok: row declared in both mount paths + both unit suites pass
+
+== bun test packages ==
+ 3 skip
+ 0 fail
+ 13548 expect() calls
+Ran 1414 tests across 132 files. [16.06s]
+
+== bun run typecheck (pre-existing reds only; see notes) ==
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(39,34): error TS2307: Cannot find module 'typescript/unstable/async' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(41,34): error TS2307: Cannot find module 'typescript/unstable/ast' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(265,47): error TS7006: Parameter 'm' implicitly has an 'any' type.
+error: script "typecheck" exited with code 1
+
+== node scripts/verify-pack-closure.ts (after re-pack) ==
+[verify-pack-closure] ok: 22 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 23 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (406 asset files); agent references 3/3; root files 1/1; declared packages 27/27 present in the artifact; content bytes: 1226 file(s) compared, 1226 identical, 0 drift, 0 expected-after-pack; completeness: 442 declared source file(s) compared, 441 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-04T04:11:29.290Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+
+== Docker real-machine (LAST step, AGENTS.md §4/§11) ==
+-- source: node scripts/docker-e2e.ts --mode source --require-docker
+ok=True duration=285s assertions=94 passed=66 failed=0 null=28
+NULL arms (credential-gated): live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns ...
+-- oneclick: node scripts/docker-e2e.ts --mode oneclick --require-docker --spec github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill
+ok=True duration=221s assertions=98 passed=68 failed=0 null=30
+spec: github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill
+-- the new row inside both lanes: mpd-goal is in the composed row set and packages/mpd-goal-plugin/dist/index.js rebuilt from source in-container (exit=0)
+
+== CI (GitHub Actions 'gates' workflow) ==
+-- run 37263148325: FAIL at 'bun install --frozen-lockfile' ("lockfile had changes, but lockfile is frozen")
+   CAUSE: a new workspace package (packages/mpd-goal-plugin) must be registered in bun.lock — the derived workspace row + its @mpd-dsh/goal@workspace: resolution.
+   FIX: .toolchain/bun/bin/bun install (6-line lock diff) -> commit 125f0af7.
+-- run 37263231579: PASS in 58s.
+
+== Docker real-machine WITH LIVE CREDENTIALS (--live, key forwarded BY NAME) ==
+-- source: node scripts/docker-e2e.ts --mode source --live --require-docker
+   ok=true complete=true passed=94 failed=0 null=0 scrubbed=true (every live arm ran: web/TUI/headless turns, real approval -> team record, native executor member, credential staged/removed)
+   evidence -> evidence/docker/client-install/2026-10-05T04-37-15Z
+-- oneclick: node scripts/docker-e2e.ts --mode oneclick --live --require-docker --spec github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill
+   ok=true passed=96 failed=0 null=2 (the two NULL are 'not applicable in one-click mode' BUILD arms: the published package ships its dists)
+   evidence -> evidence/docker/client-install-oneclick/2026-10-05T04-41-37Z
+-- independent scrub check: 0 token-shaped files in either evidence tree; only the KEY NAME appears (staging/scoping records)

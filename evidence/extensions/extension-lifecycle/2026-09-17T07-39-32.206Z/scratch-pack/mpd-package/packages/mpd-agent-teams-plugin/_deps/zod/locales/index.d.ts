@@ -1,1 +1,1 @@
-export * from "../v4/locales/index.js";
+export * from "../v4/locales/index.ts";

@@ -1,0 +1,13 @@
+cmd: bun run verify:comments — WHAT is red (attribution)  [2026-10-07T10:46:09Z]
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 357 TypeScript file(s) of 357 in the source set; inspected 31138 declaration(s); skipped 13781 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-verify-plugin/qa/verify-law.ts (1)
+  136: comment — registeredSha
+
+error: script "verify:comments" exited with code 1
+--- the red files, grouped by package (names only) ---

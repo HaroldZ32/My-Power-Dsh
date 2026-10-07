@@ -409,7 +409,7 @@ async function selfTest(): Promise<void> {
 
   // 6) the boot really composes the row this case drives.
   /** The bundle patch as text: the mpd-ext row must be declared there. */
-  const patch = readFileSync(join(REPO, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(REPO, "cordis.patch.yml"), "utf8")
   check(/- id: mpd-ext\b/.test(patch), "the bundle patch does not carry the mpd-ext row")
 
   if (problems.length > 0) {

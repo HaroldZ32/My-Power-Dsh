@@ -1,0 +1,43 @@
+# verify-comment-coverage
+
+scanned 357 TypeScript file(s) of 357 in the source set; inspected 31377 declaration(s); skipped 13868 inline callback(s) as out of family
+
+VERDICT: FAIL — 36 violation(s) across 3 file(s).
+
+packages/mpd-team-core-plugin/test/close-and-dispatch.test.ts (19)
+  68: comment — plan
+  78: comment — plan
+  88: comment — plan
+  99: comment — plan
+  115: comment — record
+  132: comment — record
+  133: comment — outcome
+  138: comment — record
+  139: comment — task
+  140: comment — stale
+  148: comment — record
+  149: comment — outcome
+  … 7 more
+
+packages/mpd-verify-plugin/test/law.test.ts (12)
+  137: comment — loop
+  138: comment — decision
+  149: comment — loop
+  150: comment — decision
+  161: comment — loop
+  162: comment — decision
+  173: comment — decision
+  296: comment — outcome
+  313: comment — outcome
+  320: comment — outcome
+  343: comment — outcome
+  348: comment — outcome
+
+packages/mpd-verify-plugin/test/row.test.ts (5)
+  95: comment — h
+  101: comment — previousWorkspace
+  134: comment — h
+  172: comment — h
+  186: comment — h
+
+COMMENTS_EXIT=1

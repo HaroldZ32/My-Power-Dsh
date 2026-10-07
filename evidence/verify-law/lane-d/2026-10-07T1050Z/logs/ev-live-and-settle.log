@@ -1,0 +1,65 @@
+cmd: the live arm's corrected case + the newest run, quoted  [2026-10-07T10:51:09Z]
+--- newest run result.json ---
+{
+  "ok": false,
+  "slug": "verify-law",
+  "sandbox": "/tmp/mpd-verify-law-es1wuH",
+  "workspace": "/tmp/mpd-verify-law-es1wuH/ws",
+  "realMarkerBefore": false,
+  "steps": {
+    "mounted": {
+      "ok": true,
+      "detail": "the harness recorded a write call for the code path"
+    },
+    "denied": {
+      "ok": false,
+      "detail": "the write was called and blocked (no successful result; sentence relayed: false)"
+    },
+    "codeNotWritten": {
+      "ok": true,
+      "detail": "the denied code path was never created"
+    },
+    "controlNotDenied": {
+      "ok": true,
+      "detail": "with verify.mode=off the same write was not refused"
+    },
+    "controlWritten": {
+      "ok": true,
+      "detail": "with verify.mode=off the code path really was written"
+    },
+    "docsAllowed": {
+      "ok": true,
+      "detail": "a docs/** write is allowed and exists in the sandbox"
+    },
+    "sandboxMarker": {
+      "ok": true,
+      "detail": "the law wrote its boot marker in the SANDBOX workspace"
+    },
+    "realMarkerUnchanged": {
+      "ok": true,
+      "detail": "the REAL workspace's marker is exactly as it was: before=false after=false"
+    },
+    "sessionsSandboxed": {
+      "ok": true,
+      "detail": "no real-cwd session key exists"
+    }
+  }
+}--- the correction's own evidence dirs (run 1 vs run 2 wording) ---
+  1c1
+  < {"ok":false,"detail":"the recorded write result carries the guard's denial sentence"}
+  ---
+  > {"ok":false,"detail":"the write was called and blocked (no successful result; sentence relayed: false)"}
+--- does the model transcript carry the refusal sentence? (run-a-guarded.log) ---
+  sentence occurrences: 2
+--- the control run's landing (run-b-control) ---
+  control success markers: 3
+--- F.2/F.3: the REAL workspace marker, re-probed ---
+  ABSENT (F.2/F.3 hold: the sandbox boot did not leak a real marker)
+--- settle: the law's own files + the skills manifest (Lane C re-verification subject) ---
+  packages/mpd-verify-plugin/src/law.ts            7282e71652d77857
+  packages/mpd-roles-plugin/src/verify-guard.ts    e336ba21b8095e3d
+  skills/dsh-qa/scripts/verify-law.ts              d5f1eb2f6881a699
+  cordis.patch.yml                                 28a7a2570f2d7d92
+  AGENTS.md                                        e39082509fdedce0
+  skills/dsh-qa/cases.json                         39360f57f2a6a548
+  skills/dsh-qa/SKILL.md                           c216f7f450148794

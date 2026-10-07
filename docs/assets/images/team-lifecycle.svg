@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1180" height="704" viewBox="0 0 1180 704" role="img" aria-labelledby="title desc">
   <title id="title">Team mode lifecycle and guardrails</title>
-  <desc id="desc">Pipeline of a team run: the session-start complexity gate advises only, the Lead decides the roster and task graph, teammates are spawned and tasks posted, members claim and complete tasks, the wave is compacted and the next wave starts in a new session. A guardrails band lists the read-only tool denial, the durable mailbox, the compare-and-set board and advisory write scopes.</desc>
+  <desc id="desc">Pipeline of a team run: the session-start complexity gate STAGES an approvable plan shell (0 members, 0 tasks) and spawns nothing; the captain extends that shell (add_member / create_task), approves it with agent_teams_plan and decides the roster and task graph — approval is what spawns the teammates and posts their tasks; members claim and complete tasks; the wave is compacted and the next wave starts in a new session. A guardrails band lists the read-only tool denial, the durable mailbox, the compare-and-set board and advisory write scopes.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
@@ -28,15 +28,16 @@
 
   <!-- Session-start gate band -->
   <rect class="band" x="40" y="92" width="1060" height="60" rx="12"/>
-  <text class="band-h" x="62" y="118">Session-start complexity gate — ADVISES, stages nothing</text>
-  <text class="band-s" x="62" y="138">A triggered auto-route injects one notice naming the fired signals and stating that no team was staged; an explicit team: / !team request is advice too.</text>
+  <text class="band-h" x="62" y="112">Session-start complexity gate — STAGES a shell, spawns nothing; team.gate: mechanical (default) | advisory | off</text>
+  <text class="band-s" x="62" y="130">Triggered → it stages an approvable SHELL (0 members, 0 tasks) via agent_teams_plan; ONE notice names the plan id; team: / !team stages it too.</text>
+  <text class="band-s" x="62" y="146">INERT: extend (add_member / create_task), then agent_teams_plan {action:"approve"}; approval spawns members and tasks; advisory: NO team was staged.</text>
 
   <!-- Row 1 -->
   <rect class="step" x="40" y="176" width="340" height="96" rx="12"/>
   <text class="step-h" x="60" y="204">1 · Decide</text>
   <text class="step-s" x="60" y="226">The Lead shapes the roster and the task DAG.</text>
-  <text class="step-s" x="60" y="244">Nothing is staged before this step, and the</text>
-  <text class="step-s" x="60" y="260">captain may continue solo and say so.</text>
+  <text class="step-s" x="60" y="244">An unapproved shell spawns nobody, and the</text>
+  <text class="step-s" x="60" y="260">captain may still continue solo and say so.</text>
 
   <path d="M380 224 L396 224" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
 
@@ -111,12 +112,12 @@
   <text class="chip-s" x="866" y="530">authorise a write. Bash, formatters</text>
   <text class="chip-s" x="866" y="547">and generators bypass every check.</text>
 
-  <text class="note" x="40" y="590">Roster, mailbox and board live in the LEAD's session log. The path</text>
+  <text class="note" x="40" y="590">The team record is OURS on disk. The path</text>
   <text class="mono" x="380" y="590">&lt;workspace&gt;/.mpd/team/</text>
-  <text class="note" x="510" y="590">holds legacy records only and is read by the stall detector and the workmate in-use check.</text>
+  <text class="note" x="510" y="590">holds teams/, contracts/, the staged plan, the mail log and the dispatch ledger.</text>
 
   <text class="note" x="40" y="626">Tools every member holds: spawn_teammate (Lead-only) · send_message · list_agents · wait_agent · interrupt_agent ·</text>
   <text class="mono" x="40" y="646">team_task_create · team_task_list · team_task_get · team_task_update</text>
 
-  <text class="note" x="40" y="682">The team lifetime is the session: the roster, the mailbox and the board are projected from the Lead's live session, not from a project state directory.</text>
+  <text class="note" x="40" y="682">The team lives as long as the Lead's session; its record — roster, board, mail — is on disk (.mpd/team/) and served over mpdTeams.</text>
 </svg>

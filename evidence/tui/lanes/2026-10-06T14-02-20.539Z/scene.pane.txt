@@ -1,0 +1,50 @@
+
+   MPD board — 9 line(s) · 316x48
+   0 transcript row(s)                                        
+   workspace  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws                   
+   team       mpd-tui-dep-view (mpd-probe-team) · phase active                                    
+   members    4                                                                                 
+   tasks      6 total · 0 completed · 0 in progress · 6 pending · 0 claimed · 0 failed            
+   boulder    （无工作台账）                                                                       
+   plans      0                        
+   workmates  1 · qa-tui-probe                                                                    
+   esc/q close · r refresh · a team workflow                                                  
+                                                                                                  
+                                                                                                  
+                                                                                                  
+                                                                       
+                                                                                                              
+                                                                                                                                              
+
+                             
+
+
+                                                                                            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                              
+                            
+
+

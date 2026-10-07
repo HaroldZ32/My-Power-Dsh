@@ -1,0 +1,6 @@
+seeded workmate library at .mpd/recon/tui-013/home/.mpd/workmate/qa-tui-probe
+model-echo check: checked=0 offenders=0 (must be 0)
+harness command records THIS run: []
+surfaces: tuiStatus=MISSING tuiCommandTrees=rendered commands=MISSING tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=MISSING tuiDialogs=rendered
+negative control ok=false (must be false)
+board-opened events in the sandbox store=0 scene-reported transcript rows=24

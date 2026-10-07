@@ -24,7 +24,7 @@
 //   node scripts/run-qa-lanes.ts                       # the `all` suite (what test:qa:all runs)
 //   node scripts/run-qa-lanes.ts --list                # registry + drift, per lane
 //   node scripts/run-qa-lanes.ts --check-drift         # exit 1 when the manifest and disk disagree
-//   node scripts/run-qa-lanes.ts --only mount-assert,agent-teams-adopt
+//   node scripts/run-qa-lanes.ts --only mount-assert,dual-track-smoke
 //   node scripts/run-qa-lanes.ts --help
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
@@ -89,8 +89,10 @@ interface SignatureRule {
 // not each lane — owns the unavailable-vs-failed distinction. These are the signatures a lane
 // records in its OWN stdout or in the evidence directory it printed. A 401 is deliberately NOT a
 // prerequisite absence: the service answered and refused, so the lane really ran and really failed
-// (measured: agent-teams-adopt is red on `webRoute … "status":401,"body":"{\"error\":\"unauthorized\"}"`
-// in the pre-wave control too, while a missing provider key aborts before any assertion).
+// (measured on the since-DELETED `agent-teams-adopt` lane: it was red on
+// `webRoute … "status":401,"body":"{\"error\":\"unauthorized\"}"` in the pre-wave control too, while a
+// missing provider key aborts before any assertion. The lane went with the adopted body it tested —
+// de-vendor wave; the citation is kept because the RULE it justifies is live).
 /** The signatures the runner recognises, checked in this order. */
 const SIGNATURES: readonly SignatureRule[] = [
   {
@@ -865,8 +867,10 @@ function classify({ status, signal, timedOut, log, root }: ClassifyInput): Outco
   // No marker. THE REASON LADDER (t73): (2) the lane's own structured step map names the failing
   // step; (3) failing that, a signature scan SCOPED to the failing region. The whole-log scan is
   // still computed, but only ever as `alsoDetected` — a fence a PASSING step printed must never
-  // become the reason (measured on agent-teams-adopt: `webRoute` ok=true carried the 401 fence,
-  // `archive` ok=false carried none, and the old code labelled the red `unauthorized`).
+  // become the reason (measured on the since-DELETED `agent-teams-adopt` lane: `webRoute` ok=true
+  // carried the 401 fence, `archive` ok=false carried none, and the old code labelled the red
+  // `unauthorized`. The lane was deleted with the adopted body it tested; the ladder rule it
+  // justified is live and unchanged).
   /** The whole-log signature scan, reported only under `alsoDetected` from here on. */
   const detected = detectSignatures(log, root)
   /** The failing step the lane's own evidence names, when it wrote a step map. */

@@ -1,8 +1,10 @@
 // Seam 13 — `ctx.tuiRenderers`: log-only session events -> transcript text rows.
 //
 // Registered types are the mpd bundle's own log-only vocabulary:
-//   * `agent-teams/*` — appended by packages/mpd-agent-teams-plugin for the
-//     (web-side) conversation node; in the TUI they had no projection at all.
+//   * `agent-teams/*` — appended by the adopted agent-teams client bundle for the
+//     (web-side) conversation node; in the TUI they had no projection at all. The producer
+//     package that used to be named here is DELETED (de-vendor wave); the client bundle that
+//     still emits these events ships under packages/mpd-bundle-plugin/adopted/.
 //   * `mpd-tui/board-opened` — appended by this plugin's `/mpd` command.
 // A renderer maps the payload to plain text rows, is text-only by design (the
 // host gives it no React), must never throw, and its output is clamped to the
@@ -11,11 +13,57 @@
 // HONESTY (T10-F1 class): the host answers a refused registration with a NO-OP
 // disposer, so a returned function proves nothing. This seam therefore reports
 // `requested`, never `confirmed` — the host exposes no read-back for renderers.
-import type { PluginContextLike, SeamOutcome, TuiRenderersLike, TuiRenderResult } from "./types.js"
+//
+// WHAT THIS SEAM CAN CARRY. A renderer returns `{title, lines}` of PLAIN TEXT: the transcript has no
+// colour slot and no span slot (the host draws the result as text rows). So the shared visual system
+// reaches these rows the only way it honestly can — through its MARKERS: the `kind` abbreviation a DAG
+// node label carries (`DAG_KIND_ABBREV`), and the state glyph the contract publishes for a payload's
+// own status (`DAG_TONE_GLYPH`). No glyph is invented for a status the contract does not publish, and
+// the payload's own words stay on the row beside the mark.
+import { TUI_SEAMS } from "./types.js"
+import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiRenderResult } from "./types.js"
 import type { Log } from "./log.js"
-import { effectOn, onService } from "./host.js"
 import { field, scalarLines, scalarText } from "./sanitize.js"
+import { DAG_KIND_ABBREV, DAG_TONE_GLYPH } from "./dag-theme.js"
 import { BOARD_OPENED_EVENT } from "./registration.js"
+
+/**
+ * The VISUAL state a payload's official status maps onto, for the statuses the record's own
+ * `taskVisualState` (team-state.ts) maps unconditionally.
+ *
+ * The `blocked` reading is deliberately ABSENT: the record derives it from the task's DEPENDENCIES,
+ * and a transcript payload carries none — a row that guessed `blocked` from a bare `pending` would be
+ * claiming a fact it never read.
+ */
+const STATUS_VISUAL: Readonly<Record<string, string>> = Object.freeze({
+  completed: "completed",
+  failed: "failed",
+  cancelled: "cancelled",
+  in_progress: "running",
+})
+
+/**
+ * The state glyph one payload status draws as.
+ * @param value - the payload's `status` field, of unknown shape.
+ * @returns the contract's glyph, or undefined for a status this module cannot map without inventing.
+ */
+function statusGlyph(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  /** The visual state the record maps that status to, when it maps it at all. */
+  const visual = STATUS_VISUAL[value]
+  return visual === undefined ? undefined : DAG_TONE_GLYPH[visual]
+}
+
+/**
+ * The three-letter kind abbreviation a payload kind draws as — the SAME abbreviation a DAG node label
+ * carries, so a reader learns one vocabulary in the transcript and in the drawing.
+ * @param value - the payload's `kind` field, of unknown shape.
+ * @returns the abbreviation, or undefined for a kind the contract does not carry.
+ */
+function kindAbbrev(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  return Object.prototype.hasOwnProperty.call(DAG_KIND_ABBREV, value) ? DAG_KIND_ABBREV[value] : undefined
+}
 
 /** Transcript event types this plugin renders. */
 export const TRANSCRIPT_TYPES: readonly string[] = [
@@ -68,21 +116,44 @@ export const TRANSCRIPT_RENDERERS: Record<string, (payload: unknown) => TuiRende
     title: "mpd team member removed",
     lines: [field(payload, "name", 80) ?? field(payload, "memberId", 60) ?? "?"],
   }),
-  "agent-teams/task-created": (payload) => ({
-    title: "mpd team task created",
-    lines: [
-      `${field(payload, "taskId", 40) ?? "?"} ${field(payload, "subject", 160) ?? ""}`.trim(),
-      ...bullet(payload, ["assignee", "kind", "round"]),
-    ],
-  }),
-  "agent-teams/task-updated": (payload) => ({
-    title: "mpd team task updated",
-    lines: [
-      `${field(payload, "taskId", 40) ?? "?"} -> ${field(payload, "status", 40) ?? "?"}`,
-      ...bullet(payload, ["assignee", "attempt", "verdict"]),
-      ...scalarLines(field(payload, "output", 400) ?? [], 6, 400),
-    ],
-  }),
+  "agent-teams/task-created": (payload) => {
+    /** The task id the row addresses; `?` when the payload does not name one. */
+    const id = field(payload, "taskId", 40) ?? "?"
+    /** The kind abbreviation a DAG node label would carry, when the payload's kind is a known one. */
+    const abbrev = kindAbbrev((payload as { kind?: unknown } | null)?.kind)
+    /** The subject, which is what the row is for. */
+    const subject = field(payload, "subject", 160) ?? ""
+    return {
+      title: "mpd team task created",
+      lines: [
+        // THE ROW READS LIKE A DAG NODE LABEL: the state a fresh task holds in the drawing's own
+        // vocabulary (`open`), its id, its kind abbreviation and its subject. The full kind name is not
+        // repeated below — the abbreviation IS the shared vocabulary for it, and printing both would put
+        // two spellings of one fact on one row.
+        `${DAG_TONE_GLYPH.open ?? "○"} ${`${id}${abbrev === undefined ? "" : ` ${abbrev}`} ${subject}`.trim()}`,
+        ...bullet(payload, ["assignee", "round"]),
+      ],
+    }
+  },
+  "agent-teams/task-updated": (payload) => {
+    /** The task id the row addresses; `?` when the payload does not name one. */
+    const id = field(payload, "taskId", 40) ?? "?"
+    /** The status the payload reports; `?` when it reports none. */
+    const status = field(payload, "status", 40) ?? "?"
+    /** The contract's glyph for that status, when it is one the record maps unconditionally. */
+    const glyph = statusGlyph((payload as { status?: unknown } | null)?.status)
+    return {
+      title: "mpd team task updated",
+      lines: [
+        // The transition line is FROZEN (this package's suite pins it word for word), so the state mark
+        // goes on the line BELOW it rather than in front of it.
+        `${id} -> ${status}`,
+        `${glyph === undefined ? "" : `${glyph} `}${status}`,
+        ...bullet(payload, ["assignee", "attempt", "verdict"]),
+        ...scalarLines(field(payload, "output", 400) ?? [], 6, 400),
+      ],
+    }
+  },
   "agent-teams/team-halted": (payload) => ({
     title: "mpd team halted",
     lines: [`cancelled ${field(payload, "cancelledTasks", 20) ?? "?"} task(s)`],
@@ -122,19 +193,18 @@ export const TRANSCRIPT_RENDERERS: Record<string, (payload: unknown) => TuiRende
 
 /**
  * Activate every transcript renderer.
- * @param ctx - the plugin context.
+ * @param ctx - the plugin context; the host records it as each registration's identity.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @returns the seam handle.
  */
-export function registerRenderers(ctx: PluginContextLike, log: Log): { outcome(): SeamOutcome } {
-  /** The seam result, rewritten as registrations are requested or refused. */
-  let outcome: SeamOutcome = { state: "absent", detail: "tuiRenderers was not injected" }
-
-  onService(ctx, "tuiRenderers", (scoped, service) => {
-    /** The probed service as the renderer registry, before `register` is trusted. */
-    const renderers = service as TuiRenderersLike
-    if (typeof renderers?.register !== "function") {
-      outcome = { state: "refused", detail: "tuiRenderers.register is missing" }
+export function registerRenderers(ctx: PluginContextLike, tui: TuiAdapter, log: Log): { outcome(): SeamOutcome } {
+  /** The seam handle: the aggregate outcome is recorded once every renderer was requested. */
+  const seam = tui.whenBound("renderers", (_service, _scope, handle) => {
+    /** The bound renderer registry, before any registration is trusted. */
+    const registry = tui.renderers()
+    if (typeof registry?.register !== "function") {
+      handle.record({ state: "refused", detail: `${TUI_SEAMS.renderers}.register is missing` })
       return
     }
     /** Registrations the host did not throw on; a returned disposer is all it gives back. */
@@ -145,41 +215,37 @@ export function registerRenderers(ctx: PluginContextLike, log: Log): { outcome()
       /** The renderer for this event type; types without one are skipped. */
       const render = TRANSCRIPT_RENDERERS[type]
       if (render === undefined) continue
-      try {
-        /** The host's handle for this registration; a no-op when the host refused it (see below). */
-        const disposer = renderers.register(
-          type,
-          (payload: unknown) => {
-            try {
-              /** The renderer's raw result, undefined when it declines to render this payload. */
-              const result = render(payload)
-              if (result === undefined) return undefined
-              /** The sanitized row title; an unusable title is dropped rather than rendered. */
-              const title = scalarText(result.title, 120)
-              return { ...(title === undefined ? {} : { title }), lines: scalarLines(result.lines, 100, 400) }
-            } catch {
-              return undefined
-            }
-          },
-          scoped,
-        )
-        if (typeof disposer === "function") {
-          requested += 1
-          // The host answers a refusal with a no-op disposer, so the disposer is
-          // owned for cleanup and NEVER treated as proof of registration.
-          const release = disposer
-          effectOn(scoped, () => release(), `mpd-tui renderer ${type}`)
-        }
-      } catch (error) {
+      /** The adapter's handle for this one registration; the admission call happened there. */
+      const registration = tui.registerRenderer(
+        type,
+        (payload: unknown) => {
+          try {
+            /** The renderer's raw result, undefined when it declines to render this payload. */
+            const result = render(payload)
+            if (result === undefined) return undefined
+            /** The sanitized row title; an unusable title is dropped rather than rendered. */
+            const title = scalarText(result.title, 120)
+            return { ...(title === undefined ? {} : { title }), lines: scalarLines(result.lines, 100, 400) }
+          } catch {
+            return undefined
+          }
+        },
+        ctx,
+      )
+      /** What that registration measured; a host that returned no callable handle counts as a refusal. */
+      const measured = registration.outcome()
+      if (measured.state === "requested") requested += 1
+      else if (measured.state === "refused") {
         threw += 1
-        log.debug(`transcript renderer ${type} refused: ${String((error as Error)?.message ?? error)}`)
+        log.debug(`transcript renderer ${type} refused: ${measured.detail ?? "unknown"}`)
       }
     }
-    outcome =
+    handle.record(
       requested === 0
         ? { state: "refused", detail: `every renderer registration was refused (${threw} threw)` }
-        : { state: "requested", detail: `${requested}/${TRANSCRIPT_TYPES.length} renderer(s) requested (no host read-back; a refusal also returns a disposer)` }
+        : { state: "requested", detail: `${requested}/${TRANSCRIPT_TYPES.length} renderer(s) requested (no host read-back; a refusal also returns a disposer)` },
+    )
   })
 
-  return { outcome: () => outcome }
+  return { outcome: (): SeamOutcome => seam.outcome() }
 }

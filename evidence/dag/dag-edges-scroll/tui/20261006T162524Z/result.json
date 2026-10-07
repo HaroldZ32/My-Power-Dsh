@@ -1,0 +1,173 @@
+{
+  "task": "T5 · TUI · natural width + bidirectional DAG panning + termaid boxes + ASCII labels",
+  "lane": "tui",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "feature/dag-edges-scroll",
+  "head": "52cd964f",
+  "measured_at": "2026-10-06T16:25:43Z",
+  "gates": [
+    {
+      "command": "bun test packages/mpd-tui-plugin",
+      "exit": 0,
+      "observed": [
+        "379 pass",
+        " 0 fail",
+        " 13292 expect() calls",
+        "Ran 379 tests across 18 files. [1.50s]"
+      ],
+      "baseline_before_this_lane": "332 pass / 2 fail (panel-dag.test.ts viewport block only)"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": [
+        "$ tsgo --noEmit"
+      ]
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": [
+        "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+      ]
+    }
+  ],
+  "clauses": {
+    "T1_natural_width": {
+      "probe": "pan-proof.json",
+      "naturalWidth": 108,
+      "viewPort": 34,
+      "note": "a 108-cell drawing from a 34-cell viewport: GraphView.width EXCEEDS the cells available; layoutBoxes/layoutGraph keep fit-width and their arms are untouched",
+      "boxRows": 5
+    },
+    "T2_both_surfaces_pan": {
+      "dag_panel": "panel-dag.ts: layoutBoxesNatural + sliceSpans(colOffset) + the horizontal rail; panel-dag.test.ts 39/39",
+      "team_scene": "scenes.ts: layoutGraphNatural + scrollX + sliceSpans; team-surface.test.ts 33/33",
+      "teamGraphView": "subagent-scene.ts: SWITCHED (the shared entry); subagent-scene.test.ts 23/23",
+      "merged_panel": "panel.ts: sliceSpans(viewport.colOffset); panel.test.ts 18/18"
+    },
+    "T3_cell_aware_slicer": {
+      "probe": "c1-proof.json",
+      "assertions": true,
+      "cases": 105,
+      "note": "cellWidth(sliceCells(row, offset, cols)) === cols for EVERY offset including past the end and cols === 0; sliceSpans parity with sliceCells is asserted by the reviewer's own instrument"
+    },
+    "T4_two_gutters_one_offset": {
+      "rail_lengths": [
+        34,
+        34,
+        34
+      ],
+      "note": "gutterCellsX reads the SAME colOffset the rows are cut with; rail length == viewport at every offset"
+    },
+    "T7_termaid_rendering": {
+      "glyphs": {
+        "arrowDown": "▼",
+        "corners": [
+          "╭",
+          "╮",
+          "╰",
+          "╯"
+        ]
+      },
+      "roomy_box_rows": 5,
+      "compressed_box_rows": 3,
+      "note": "rounded corners from DAG_CHARS; the roomy five-row form and the compressed three-row fallback both drawn from the vertical budget"
+    },
+    "C1_no_CJK_in_the_drawing": {
+      "probe": "c1-proof.json",
+      "per_viewport": [
+        {
+          "viewport": 120,
+          "banned": [],
+          "mode": "boxes",
+          "naturalWidth": 16
+        },
+        {
+          "viewport": 60,
+          "banned": [],
+          "mode": "boxes",
+          "naturalWidth": 16
+        },
+        {
+          "viewport": 28,
+          "banned": [],
+          "mode": "boxes",
+          "naturalWidth": 16
+        }
+      ],
+      "negative_control": {
+        "banned": [
+          "U+51BB \"冻\"",
+          "U+7ED3 \"结\"",
+          "U+9A8C \"验\"",
+          "U+6536 \"收\"",
+          "U+5951 \"契\"",
+          "U+7EA6 \"约\""
+        ],
+        "falsifiable": true
+      },
+      "note": "a board whose subjects are PURE Chinese draws zero banned codepoints at 120/60/28 columns; the same assertion over the pre-rule drawing finds them, so the check is falsifiable"
+    },
+    "C4_composer": {
+      "mixtures": [
+        {
+          "subject": "冻结验收契约",
+          "ordinal": 1,
+          "label": "#1"
+        },
+        {
+          "subject": "建立头部与进度条",
+          "ordinal": 2,
+          "label": "#2"
+        },
+        {
+          "subject": "绘制依赖图的连线",
+          "ordinal": 3,
+          "label": "#3"
+        },
+        {
+          "subject": "修复被截断的成员路由",
+          "ordinal": 4,
+          "label": "#4"
+        },
+        {
+          "subject": "T3 REV #2",
+          "ordinal": 1,
+          "label": "T3 REV #2"
+        },
+        {
+          "subject": "  a  b  ",
+          "ordinal": 2,
+          "label": "a b"
+        },
+        {
+          "subject": "冻结验收契约",
+          "ordinal": 3,
+          "label": "#3"
+        },
+        {
+          "subject": "修复被截断的成员路由 x",
+          "ordinal": 4,
+          "label": "x"
+        },
+        {
+          "subject": "a中b文c",
+          "ordinal": 5,
+          "label": "a b c"
+        },
+        {
+          "subject": "",
+          "ordinal": 6,
+          "label": "#6"
+        }
+      ],
+      "note": "runs joined by one space, whitespace collapsed, #<ordinal> fallback"
+    }
+  },
+  "uncertainties": [
+    "The horizontal rail and the pan keys are proven by unit arms and by these instruments, not by a REAL PTY capture: the wave's evidence clause asks for one and the reviewer/verifier own that capture (ruling R4 puts the PTY driver under evidence/, not skills/).",
+    "The reviewer's W6 arm in dag-fidelity.test.ts was red at my last measurement of the WEB lane and is not mine to edit; the TUI arms of that same file are green.",
+    "The scene's vertical window (`graphYAt`) is wired and typechecked but has no dedicated arm yet; the DAG panel's vertical window is covered by the panel-dag suite."
+  ]
+}

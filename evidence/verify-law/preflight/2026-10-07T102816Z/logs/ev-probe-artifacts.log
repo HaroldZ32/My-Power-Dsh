@@ -1,0 +1,12 @@
+cmd: existence probe of the wave's declared artifacts
+MISSING  packages/mpd-verify-plugin
+EXISTS   packages/mpd-schemastery
+EXISTS   vendor/mcp-src
+MISSING  packages/mpd-roles-plugin/src/verify-guard.ts
+EXISTS   packages/mpd-agent-teams-plugin
+MISSING  .mpd/verify/records
+MISSING  .mpd/verify/loops
+--- row/tool surface ---
+mpd-verify rows in presets/mpd.patch.yml: 0
+mpd-verify rows in cordis.patch.yml: 0
+verify-law QA case present: NO

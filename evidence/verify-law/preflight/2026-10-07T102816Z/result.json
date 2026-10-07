@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "recordId": "lane-e-preflight-2026-10-07T102816Z",
+  "loopId": "preflight-none",
+  "taskId": null,
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "none (pre-flight baseline: no lane output measured)",
+  "verifierId": "lane-e-verifier",
+  "basis": {
+    "kind": "unproven",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "1e580d2312221da99ffe4f7cb3853ae9c29ecc862ba0c1932b2464c87d55a3d8"
+    },
+    "docs": [
+      { "path": ".mpd/plans/verify-law-spec.md", "sha256": "a61291189327b7fdacca76827083531f42b3a55a61fee63e97df0e0fb882dcdf" },
+      { "path": "AGENTS.md", "sha256": "b3c6b4b1b1ee3df2fffd3f52a23ffd1747b64393fa714fe3593e8c57cd5f04dd" },
+      { "path": "README.md", "sha256": "4d9e2d50dcefe6e5d90a2c97fa2b67499e9d226de08d56e2a7880510dbf6af75" },
+      { "path": "README.zh-CN.md", "sha256": "90d363e72888681cdc82849bab537c28b84fb4ed916bebfb5500c7ca1f7ee744" },
+      { "path": "LICENSE-NOTICES.md", "sha256": "ca904d3e93369c861f42cf0f1e3a5dd4b00f1d3729890c3a07b4cad38228eb8d" },
+      { "path": ".github/workflows/gates.yml", "sha256": "5d1b2a86f24faf60b7046258168b4694ffda60df4c8a800c049a10acc4927200" }
+    ],
+    "probe": [
+      { "path": ".mpd/ci-rehearsal/upstream/.git/HEAD", "bytes": 41, "sha256": "a1a7211ef94f956b8fa4d93c883139a9e99b2cb9d849183a219833c2c797e4d5", "mtime": "2026-10-02T13:34:33.696Z" },
+      { "path": "VENDOR_LOCK.json", "bytes": 3434, "sha256": "1a882e481ff8131dad24dc240d8df131b7f68d6c8dcf1f0d21c4b5e313157621", "mtime": "2026-10-06T13:34:07.194Z" },
+      { "path": "skills/dsh-qa/scripts/session-start-team.ts", "bytes": 93042, "sha256": "48f4472d14c7972b7ce63a82518a8ae900db0beb6a6ff617b6faeec273907334", "mtime": "2026-10-06T09:24:28.445Z" },
+      { "path": "skills/dsh-qa/scripts/readonly-deny.ts", "bytes": 50405, "sha256": "0a503fe04491496e8c813cee1f3e6e4fd71b35f630749c6103280bf94188c4ae", "mtime": "2026-10-02T12:38:16.813Z" },
+      { "path": "presets/mpd.patch.yml", "bytes": 32893, "sha256": "0712978f085720200a74d97989bd2f1a94bee51e579ae185bd0fa2d9f4ab2328", "mtime": "2026-10-06T09:24:28.445Z" },
+      { "path": "cordis.patch.yml", "bytes": 53837, "sha256": "4bc05f0c308698c155d777a2a8eaf46b9fd970b3e6a7142bebd9979773435d7c", "mtime": "2026-10-06T13:05:05.544Z" }
+    ]
+  },
+  "sources": [
+    { "path": ".mpd/plans/de-vendor-and-verify-law.md", "sha256": "1e580d2312221da99ffe4f7cb3853ae9c29ecc862ba0c1932b2464c87d55a3d8" },
+    { "path": ".mpd/plans/verify-law-spec.md", "sha256": "a61291189327b7fdacca76827083531f42b3a55a61fee63e97df0e0fb882dcdf" },
+    { "path": "AGENTS.md", "sha256": "b3c6b4b1b1ee3df2fffd3f52a23ffd1747b64393fa714fe3593e8c57cd5f04dd" },
+    { "path": "README.md", "sha256": "4d9e2d50dcefe6e5d90a2c97fa2b67499e9d226de08d56e2a7880510dbf6af75" },
+    { "path": "README.zh-CN.md", "sha256": "90d363e72888681cdc82849bab537c28b84fb4ed916bebfb5500c7ca1f7ee744" },
+    { "path": "LICENSE-NOTICES.md", "sha256": "ca904d3e93369c861f42cf0f1e3a5dd4b00f1d3729890c3a07b4cad38228eb8d" },
+    { "path": ".github/workflows/gates.yml", "sha256": "5d1b2a86f24faf60b7046258168b4694ffda60df4c8a800c049a10acc4927200" },
+    { "path": "VENDOR_LOCK.json", "sha256": "1a882e481ff8131dad24dc240d8df131b7f68d6c8dcf1f0d21c4b5e313157621" },
+    { "path": "skills/dsh-qa/scripts/session-start-team.ts", "sha256": "48f4472d14c7972b7ce63a82518a8ae900db0beb6a6ff617b6faeec273907334" }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-state",
+      "cmd": "git rev-parse HEAD && git status --porcelain --untracked-files=no",
+      "exit": 0,
+      "logPath": "evidence/verify-law/preflight/2026-10-07T102816Z/logs/ev-state.log",
+      "logSha256": "b5b34be9b80af5c3cc82fc45ed69c33354dabe02ad43694a5fed15859bd06e3f"
+    },
+    {
+      "evidenceId": "ev-vendor-unset",
+      "cmd": "env -u MPD_UPSTREAM_ROOT node scripts/verify-vendor.ts",
+      "exit": 1,
+      "logPath": "evidence/verify-law/preflight/2026-10-07T102816Z/logs/ev-vendor-unset.log",
+      "logSha256": "46791db69bd22caacb8ec908f2b3f456133086b385d729cc79984d5d51e02f99"
+    },
+    {
+      "evidenceId": "ev-vendor-rehearsal",
+      "cmd": "MPD_UPSTREAM_ROOT=\"$PWD/.mpd/ci-rehearsal/upstream\" node scripts/verify-vendor.ts",
+      "exit": 0,
+      "logPath": "evidence/verify-law/preflight/2026-10-07T102816Z/logs/ev-vendor-rehearsal.log",
+      "logSha256": "ac7174d8ce82b12e6653d8ef1c5aaea7d62d2352df9d39ab263bd5e43fd64f36"
+    },
+    {
+      "evidenceId": "ev-probe-artifacts",
+      "cmd": "existence probe: packages/mpd-verify-plugin, packages/mpd-schemastery, vendor/mcp-src, packages/mpd-roles-plugin/src/verify-guard.ts, packages/mpd-agent-teams-plugin, .mpd/verify/{records,loops}; row counts for mpd-verify; skills/dsh-qa/scripts/verify-law.ts",
+      "exit": 0,
+      "logPath": "evidence/verify-law/preflight/2026-10-07T102816Z/logs/ev-probe-artifacts.log",
+      "logSha256": "e1df22d4ed4e133338e72782181774e6fb30c1ddf458d0a66e4b962c8b3be4f0"
+    },
+    {
+      "evidenceId": "ev-identity-surface",
+      "cmd": "git ls-files | xargs grep -l -E 'oh-my-openagent|dsh-agent-teams|mpd-dsh/upstream'  (counts only)",
+      "exit": 0,
+      "logPath": "evidence/verify-law/preflight/2026-10-07T102816Z/logs/ev-identity-surface.log",
+      "logSha256": "ddf3a5757a480ffbf915d535738e0aa64b5726fe4c7b5f6757d8d70999e14ebf"
+    }
+  ],
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "symptom": "A byte-pinned upstream checkout lives INSIDE the workspace at .mpd/ci-rehearsal/upstream (HEAD == VENDOR_LOCK.json.upstreamCommitSha 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29, 9131 tracked files, hidden from git by .gitignore:21). `env -u MPD_UPSTREAM_ROOT node scripts/verify-vendor.ts` exits 1 ('upstream checkout not found'); `MPD_UPSTREAM_ROOT=\"$PWD/.mpd/ci-rehearsal/upstream\" node scripts/verify-vendor.ts` exits 0 PASS. A local 'vendor GREEN' therefore does NOT establish AC1.",
+      "expected": "The end-state vendor evidence must be `env -u MPD_UPSTREAM_ROOT node scripts/verify-vendor.ts` with .mpd/ci-rehearsal/upstream made unreachable for the run, and the post-change gate must have NO upstream subject at all (an env-pointed root that still satisfies it is a residual dependency). State whether AC1's 'no upstream checkout' covers the in-workspace copy (as written, it does).",
+      "docSource": "contract §Acceptance criteria AC1; AGENTS.md §4 (Vendor row) + §9 (Vendor & Baseline)"
+    },
+    {
+      "id": "F2",
+      "severity": "blocker",
+      "symptom": "AC5 has no falsifier: no command in AC7's gate list asserts the law, and the artifact does not exist — probe shows packages/mpd-verify-plugin MISSING, packages/mpd-roles-plugin/src/verify-guard.ts MISSING, `mpd-verify` rows = 0 in both cordis.patch.yml and presets/mpd.patch.yml, and skills/dsh-qa/scripts/verify-law.ts absent (the spec assigns it to Lane C).",
+      "expected": "Name one agent-executable BOOT case (isolated DSH_HOME + sandbox HOME + sandbox workspace, assertSessionsSandboxed) with --self-test and a negative control that reddens when the guard is removed, reusing the existing skills/dsh-qa/scripts/readonly-deny.ts harness. Assert path classification BOTH ways: code DENIED, and docs/**, *.md, evidence/**, .mpd/** (including .mpd/verify/**) WRITABLE — an over-strict classifier makes AGENTS.md, the bilingual PR body and the evidence unwritable.",
+      "docSource": "contract §Acceptance criteria AC5; verify-law-spec §(e) QA case verify-law.ts; AGENTS.md §7 (a rule about behaviour needs a real mount)"
+    },
+    {
+      "id": "F9",
+      "severity": "blocker",
+      "symptom": "The FROZEN record format assumes the plugin is live, so three required fields have no legitimate source for a hand-written record authored during this wave: (i) basis.kind — blindness 'must be provable from the plugin's own observation log' (guardTool), which does not exist in the running process (T-21 module caching), so the honest value is 'unproven', and refusal 3 (bind-unproven) REFUSES 'unproven' + PASS; (ii) loopId — created by mpd_verify_open, which does not exist yet; (iii) evidenceId provenance — refusal 2 (forged-evidence) requires an evidenceId produced through mpd_verify_evidence for this loop, which also does not exist yet. Consequence: once the validator lands, every Lane E PASS written in this wave is structurally REFUSED, and acceptance criterion 6 has no validatable artifact.",
+      "expected": "One captain ruling defining the wave's bootstrap values BEFORE the per-lane records are written: either admit basis.kind:'blind' for wave-authored records carrying unlockedReads: [] plus an explicit absence-of-boot-line attestation, or introduce a third pre-plugin basis kind; plus a loopId convention (e.g. 'waveloop-<lane>') and the rule that evidenceId provenance is satisfied by the logPath+logSha256 pair on disk for this wave.",
+      "docSource": "verify-law-spec §(b) record fields + refusals 2/3/5 and the two-way ratchet; captain ruling 1 (record format frozen, Lane E writes by hand)"
+    },
+    {
+      "id": "F3",
+      "severity": "major",
+      "symptom": "A wave-end AC4 green would be VACUOUS: `node skills/dsh-qa/scripts/session-start-team.ts --self-test` exits 0 TODAY on the pre-wave predicate the contract convicts in W3. Its own summary names its corpus ('3 simple / 2 soft-complex / 1 explicit / 1 boulder-probe prompt') and NO CJK case; CJK presence counts are 0 lines in that QA case vs 3 in packages/mpd-roles-plugin/src/complexity-gate.ts.",
+      "expected": "The user's verbatim Chinese instruction as a NAMED corpus case, plus a negative control that REDDENS when CJK handling is removed, plus the live boot. Without the red-when-removed control, a green self-test is indistinguishable from the vacuous baseline measured here.",
+      "docSource": "contract §Acceptance criteria AC4; contract §W3 (the measured root cause); AGENTS.md §7 (provability: assert a real result)"
+    },
+    {
+      "id": "F5",
+      "severity": "major",
+      "symptom": "AC2 is fully red at baseline: .github/workflows/gates.yml still carries the step that fetches the pinned upstream baseline by SHA into $RUNNER_TEMP/upstream and still exports MPD_UPSTREAM_ROOT into the aggregate. Simultaneously, a naive 'delete the identity token' sweep would violate AC3 — attribution is PRESENT today (LICENSE-NOTICES.md: both upstreams + MIT + SUL-1.0; README.md and README.zh-CN.md: Acknowledgements/致谢 with both upstreams).",
+      "expected": "Drive the strip from the measured code+config surface (92 tracked files outside evidence/, docs/, agent-references/ of 1442 total matches), scoped to code, scripts and fingerprints — never to attribution prose, ported-corpus provenance or prior-wave evidence. Remove the baseline-fetch step and the MPD_UPSTREAM_ROOT export from the workflow.",
+      "docSource": "contract §Acceptance criteria AC2 + AC3; AGENTS.md §4 (Vendor row) + §9"
+    },
+    {
+      "id": "F8",
+      "severity": "major",
+      "symptom": "Ownership gap: affected files were in no lane's declared write scope — skills/dsh-qa/{SKILL.md,agent-teams-adopt,relocate-smoke,web-client-adapt,workmate-team-member}, packages/mpd-workmate-plugin/README*.md, packages/mpd-dsh-adapter-plugin/test/adapter-team-surface.test.ts, tests/golden/out/plans/mpd-summary-plan.md, docs/{feature-audit,upstream-parity-ledger,tui-parity}.md (+ zh twins), agent-references/{agent-teams-deltas,overview-and-provenance,troubleshooting}.md. Deleting the body can therefore redden (or silently vacuish) test:qa and verify:docs from files no lane may edit.",
+      "expected": "Extend the lane scopes or open explicit repair tasks for the unowned set, or DECLARE each residual in the bilingual PR body. Every skills/** edit must ride the wave's ONE re-pin (single-skills-writer rule) and doc edits must ship EN+zh in the same commit.",
+      "docSource": "contract §Workstreams and lanes; contract §Acceptance criteria AC2 + AC6; AGENTS.md §9 (single-skills-writer) + §4 (Doc pairs)"
+    },
+    {
+      "id": "F10",
+      "severity": "major",
+      "symptom": "Cross-clause contradiction between AC1/AC7 and the verifier envelope: the whitelisted gate runner's FIXED table offers only gates, tests, typecheck, docs, manifest, comments, rows, dist, pack — there is NO id for the vendor gate (AC1's acceptance command is `node scripts/verify-vendor.ts`) and none for the Docker lane (AC7's LAST step), while the envelope DENIES `bash` to a verifier seat. A conforming verifier therefore cannot produce AC1's named evidence.",
+      "expected": "Add a `vendor` id (node scripts/verify-vendor.ts, or the package script) to the fixed table, and decide explicitly where the Docker lane's evidence comes from (the integration task, declared in the PR body) — otherwise AC1 and the Docker clause are unverifiable under the law they ship with.",
+      "docSource": "contract §Acceptance criteria AC1 + AC7; verify-law-spec §(c) whitelisted gate runner and the DENIED list"
+    },
+    {
+      "id": "F4",
+      "severity": "minor",
+      "symptom": "AC6 has no named command: .mpd/verify did not exist before this record (`ls -d .mpd/verify` → no such file) and no gate in AC7 asserts that verification records exist or that a FAIL produced a repair task.",
+      "expected": "Name a check (a directory/naming convention plus a non-empty-sources assertion, or the record validator itself) or declare AC6 prose-only in the PR body — do not leave it implicit.",
+      "docSource": "contract §Acceptance criteria AC6; AGENTS.md §4 (no evidence on disk for a gate = the change is not complete)"
+    },
+    {
+      "id": "F6",
+      "severity": "minor",
+      "symptom": "Observation, not a defect (carried as the diff basis for AC7): `bun run verify:gates` measured exit 1 with '1/8 member gate(s) failed: vendor (exit=1)' while the other seven members passed (docs-parity pairs=45 failed=0 dead=0; preset-conformance 32 rows conform, row parity 26/25, negative controls 4/4; plugin-manifest PASS incl. npm pack --dry-run 984 files; comment-coverage PASS 407 TS files / 34747 declarations; workflows PASS). That run's log was not retained (fresh /tmp per bash call), so only these five commands carry hashed logs in this record.",
+      "expected": "End state = vendor flips to green AND the seven stay green. Any member that goes green VACUOUSLY (no subject left after the strip — the contract's own declared risk) is a finding, not a pass. The Docker lane is conditional: --require-docker makes a skip exit 3, so declare that bound rather than reporting a skip as a pass.",
+      "docSource": "contract §Acceptance criteria AC7 + §Risks (gates going vacuous); AGENTS.md §4 (Docker real-machine row)"
+    },
+    {
+      "id": "F7",
+      "severity": "minor",
+      "symptom": "AC1 names 'no .mpd-dsh/upstream' (absent, probe-confirmed) while the gate's actual subject is MPD_UPSTREAM_ROOT with a legacy sibling path also probed. A renamed escape hatch could satisfy the letter of the clause and not its purpose.",
+      "expected": "Assert that the SUBJECT was removed (the gate consults no upstream root at all), not that a path spelling disappeared.",
+      "docSource": "contract §Acceptance criteria AC1; AGENTS.md §4 (Vendor row)"
+    },
+    {
+      "id": "F11",
+      "severity": "minor",
+      "symptom": "The spec mandates stating the envelope's residual bound VERBATIM 'in the record and the PR', but the FROZEN field list has no slot for it. A record that obeys the format cannot satisfy that obligation inside result.json.",
+      "expected": "Either extend the frozen format with an explicit field for the residual bound, or accept the companion output.log as its carrier for this wave. This record carries it verbatim in output.log.",
+      "docSource": "verify-law-spec §(c) residual bound (state it verbatim in the record and the PR); §(b) record fields (FROZEN)"
+    }
+  ],
+  "unlockedReads": [],
+  "residualBound": "RESIDUAL BOUND (verify-law-spec §(c), stated verbatim): the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).",
+  "createdAt": "2026-10-07T10:28:16Z"
+}

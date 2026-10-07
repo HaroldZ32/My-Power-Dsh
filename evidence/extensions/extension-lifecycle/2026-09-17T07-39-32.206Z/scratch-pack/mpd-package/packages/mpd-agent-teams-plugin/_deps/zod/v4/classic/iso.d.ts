@@ -1,5 +1,5 @@
-import * as core from "../core/index.js";
-import * as schemas from "./schemas.js";
+import * as core from "../core/index.ts";
+import * as schemas from "./schemas.ts";
 export interface ZodISODateTime extends schemas.ZodStringFormat {
     _zod: core.$ZodISODateTimeInternals;
 }

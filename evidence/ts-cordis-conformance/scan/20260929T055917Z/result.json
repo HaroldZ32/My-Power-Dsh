@@ -1,0 +1,129 @@
+{
+  "audit": "TypeScript-only sources and regular cordis plugin form — conformance scan of the current checkout",
+  "request": "scan the project, make it conform to standard cordis form, convert all JavaScript to TypeScript",
+  "repo": "/root/dshProj/My-Power-Dsh",
+  "measuredAt": "2026-09-29T05:59:31Z",
+  "measuredAtNote": "every hash below was read at this UTC instant; the working tree was clean except this evidence directory",
+  "revision": {
+    "branch": "dev",
+    "sha": "5e5454bb5ba449a4817b827938a9fd4b04e30936",
+    "version": "0.11.6",
+    "cleanTree": true
+  },
+  "env": {
+    "node": "v24.16.0",
+    "bun": "1.3.14",
+    "recordedBuildToolchain": "bun@1.4.0",
+    "nodeModulesInstalled": false
+  },
+  "conversionProvenance": {
+    "commit": "7d52a06b",
+    "subject": "feat(ts): TypeScript-only sources, regular cordis plugin form, and the two standing QA gates",
+    "ancestorOfHead": true,
+    "ancestorOfOriginMaster": true,
+    "originMasterVersion": "0.11.6",
+    "conclusion": "the requested transformation was already performed and released; both dev and the default branch (master) carry it"
+  },
+  "ownedSourceLanguage": {
+    "verdict": "TypeScript-only",
+    "tsFiles": {
+      "packages/**": 446,
+      "scripts/**": 31,
+      "skills/**/scripts/**": 76,
+      "docker/**": 6,
+      "tests/**": 2,
+      "templates/**": 1
+    },
+    "runtime": "node <file>.ts (type stripping), erasable syntax only, explicit .ts specifiers"
+  },
+  "javascriptInventory": {
+    "totalNonEvidenceJs": 355,
+    "unclassified": 0,
+    "buckets": {
+      "packages/*/dist/**": {
+        "count": 27,
+        "class": "build products (bun build output of the .ts sources; regenerated on every build, so they can never be TypeScript)"
+      },
+      "packages/mpd-agent-teams-plugin/_deps/**": {
+        "count": 290,
+        "class": "adopted third-party bytes, fingerprinted in VENDOR_LOCK.json"
+      },
+      "packages/mpd-agent-teams-plugin/lib/**": {
+        "count": 31,
+        "class": "adopted plugin body + the mpd-delta registry regions; AGENTS.md §6 keeps this tree JavaScript on purpose"
+      },
+      "packages/mpd-agent-teams-plugin/self-fix-tests/fixtures/upstream/**": {
+        "count": 2,
+        "class": "pristine upstream fixtures pinned by sha256 in two test files — editing them reddens those tests"
+      },
+      "skills/ultimate-browsing/engine/templates/**": {
+        "count": 2,
+        "class": "fixture DATA (browser templates), not source"
+      },
+      "skills/visual-qa/scripts/visual-qa.mjs": {
+        "count": 1,
+        "class": "build product, declared exempt by AGENTS.md §6"
+      },
+      "tests/golden/fixtures/**": {
+        "count": 1,
+        "class": "fixture DATA, declared exempt by AGENTS.md §6"
+      },
+      "packages/mpd-bundle-plugin/client.js": {
+        "count": 1,
+        "class": "generated browser bundle (scripts/build-mpd-client.ts composes src/web-client.ts + the adopted agent-teams client verbatim)"
+      }
+    },
+    "frozenEvidence": "evidence/** holds historical QA records (.mjs etc.) — records, not source",
+    "conclusion": "no JavaScript outside the categories AGENTS.md §6 declares as JavaScript on purpose"
+  },
+  "cordisForm": {
+    "packagesWithSrcIndexTs": 22,
+    "exportsName": 22,
+    "exportsInject": 21,
+    "exportsApply": 22,
+    "exportsConfigSchema": 3,
+    "injectAbsent": [
+      "mpd-tui-plugin (a plugin without a declared inject list is valid cordis)"
+    ],
+    "configSchemaPackages": [
+      "mpd-config-plugin",
+      "mpd-team-watchdog-plugin",
+      "mpd-tui-plugin"
+    ],
+    "notCordisPluginsByDesign": "packages/mpd-mcp-{astgrep,codegraph,gitbash,lsp} ship launch.ts/cli.js MCP servers mounted by @deepseek-ai/dsh-mcp-client rows, not cordis plugin rows",
+    "conclusion": "every mounted row module exports the standard cordis plugin shape (name / inject / apply, plus a schemastery Config where the row takes config)"
+  },
+  "gates": {
+    "verify-rows-parity": {
+      "verdict": "PASS",
+      "detail": "33 row ids match the 2-file bundle patch layer"
+    },
+    "verify-docs-parity": {
+      "verdict": "PASS",
+      "detail": "pairs=41 failed=0 violations=0 exempt=21 derived=3 links=419 dead=0"
+    },
+    "verify-plugin-manifest --pack": {
+      "verdict": "PASS",
+      "detail": "no cordis dependency, no lifecycle script, version coherence across the three carriers, 24 row module paths resolve, npm pack --dry-run lists 883 files with 0 required paths absent"
+    },
+    "verify-dist-fresh": {
+      "verdict": "RED in THIS environment only (23/23 STALE)",
+      "cause": "local bun 1.3.14 != recorded buildToolchain bun@1.4.0 — a different bun minor rewrites the injected helper preamble and the minifier's identifier ordering; the gate prints this NOTE itself",
+      "measuredProof": "the smallest target (packages/mpd-better-sidebar-host) differs from its committed dist by 6 lines, all inside bun's `export { ... }` name ordering; the .ts source is untouched",
+      "notARegression": true
+    },
+    "notRun": {
+      "reason": "no node_modules in this checkout (dependencies not installed) and no network install attempted",
+      "gates": [
+        "bun test",
+        "bun run typecheck (tsgo)",
+        "verify:comments (needs typescript5)",
+        "verify:vendor",
+        "verify-pack-closure",
+        "preset-conformance",
+        "docker real-machine lane"
+      ]
+    }
+  },
+  "verdict": "ALREADY CONFORMANT — the checkout is TypeScript-only in its owned sources and already in regular cordis plugin form. No change is required to satisfy the request; the only remaining JavaScript is the set AGENTS.md §6 freezes on purpose, which converting would actively break (VENDOR_LOCK fingerprints, the delta registry, sha-pinned fixtures, and build products that are regenerated as JavaScript)."
+}

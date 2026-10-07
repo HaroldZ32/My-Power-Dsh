@@ -4,11 +4,12 @@
 // the bundle id "@mpd-dsh/mpd" (the loader entry name comes from the bundle patch's
 // self-row `mpd-web-compat`, and client-modules' arrive() checks the registered id
 // against the entry id). The combined file:
-//   1) embeds the adopted agent-teams client.js VERBATIM — it self-registers
+//   1) embeds the adopted agent-teams client bundle VERBATIM — it self-registers
 //      "@nanmicoder/dsh-agent-teams" and is required for its views, monitor store,
-//      locale dictionaries and CSS (reached through the additive export bridge in
-//      scripts/patch-agent-teams-client.ts). Its apply() is NOT called any more: that
-//      is what registered the removed in-conversation card and overlay floater.
+//      locale dictionaries and CSS (reached through the additive export bridge that
+//      is baked into the relocated copy at its marked region). Its apply() is NOT
+//      called any more: that is what registered the removed in-conversation card and
+//      overlay floater.
 //   2) registers "@mpd-dsh/team-page" — the mpd-owned DSH-better-sidebar page that
 //      renders those views inside a sidebar tab (src/team-page.ts), then
 //   3) registers "@mpd-dsh/mpd" with the mpd web-client factory
@@ -44,7 +45,7 @@ const repoRoot: string = repoRootFrom(import.meta.url)
  */
 const stripFactoryTypes = (source: string): string => stripTypeScriptTypes(source, { mode: "strip" })
 /** The adopted agent-teams client bundle, embedded verbatim as the first half of the client entry. */
-const agentTeamsClient: string = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "client.js"), "utf8")
+const agentTeamsClient: string = readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "adopted", "agent-teams-client.js"), "utf8")
 /** The sidebar team-page factory source, registered as its own client module. */
 const teamPageFactory: string = stripFactoryTypes(readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "src", "team-page.ts"), "utf8")).trim()
 /** The mpd web-client factory source, registered last as the bundle's own `@mpd-dsh/mpd` entry. */
@@ -53,6 +54,11 @@ const webClientFactory: string = stripFactoryTypes(readFileSync(join(repoRoot, "
 // file plus the one registration line in web-client.ts, and nothing else may reference it.
 /** The settings-card factory source, kept as its own module for the offline harness. */
 const settingsCardFactory: string = stripFactoryTypes(readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "src", "settings-card.ts"), "utf8")).trim()
+// THE TEAM VIEW (W4) is spliced the SAME way, and for the same measured reason: only the
+// `@mpd-dsh/mpd` module is APPLIED as a client plugin, so anything a sibling `load()` block defines
+// is reachable only through the module loader and never through a bare reference in the applied code.
+/** The team-view factory source, which becomes the `MPD_TEAM_VIEW` global inside the applied module. */
+const teamViewFactory: string = stripFactoryTypes(readFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "src", "team-view.ts"), "utf8")).trim()
 
 // THE SETTINGS CARD IS ALSO SPLICED INTO THE APPLIED MODULE. Its sibling `load()` block is
 // registered but never APPLIED, and `require("@mpd-dsh/settings-card")` cannot reach it — so on a
@@ -100,9 +106,53 @@ for (const [label, legacy] of LEGACY_SURFACES) {
     process.exit(1)
   }
 }
-/** The web-client factory with the settings-card IIFE spliced in before `loadSettingsCard()`. */
-const webClientWithCard: string = webClientFactory.replace(/(\n\s*function loadSettingsCard\(\) \{)/, "\n" + settingsCardIife + "$1")
-if (!webClientWithCard.includes("MPD_SETTINGS_CARD")) { console.error("[build-mpd-client] FAIL: the settings-card splice anchor moved"); process.exit(1) }
+/** The team-view IIFE: one expression, evaluated in the applied module's own scope. */
+// WRAPPED EXACTLY LIKE THE SETTINGS CARD, down to the shape of the IIFE, and that is deliberate:
+// the card's splice is the PROVEN one in this file. Two earlier attempts to splice the team view as
+// an arrow-function expression (`var X = (factory)(require)`) produced an artifact that failed to
+// parse — the factory's leading line comment and the surrounding `factory:` property interact — and
+// the same BODY-in-a-plain-IIFE form the card uses carries no such shape at all. The factory's own
+// `return { createTeamView }` becomes the global's value, so `MPD_TEAM_VIEW.createTeamView` reads the
+// same as it would have.
+/** The team-view factory source split into lines, for the line-anchored boundary search. */
+const teamViewLines: string[] = teamViewFactory.split("\n")
+/** Index of the factory's opening `=> {` line, or -1 when the boundaries moved. */
+const teamViewOpen: number = teamViewLines.findIndex((line: string): boolean => line.trimEnd().endsWith("=> {"))
+if (teamViewOpen < 0 || teamViewLines[teamViewLines.length - 1].trim() !== "}") {
+  console.error("[build-mpd-client] FAIL: the team-view factory boundaries moved")
+  process.exit(1)
+}
+/** The factory body: everything between the opening `=> {` and the file's final `}`. */
+const teamViewBody: string = teamViewLines.slice(teamViewOpen + 1, -1).join("\n") + "\n"
+/** The body wrapped in a fresh-scope IIFE, spliced into the applied client module. */
+const teamViewIife: string = "  var MPD_TEAM_VIEW = (function () {\n" + teamViewBody + "  })();\n\n"
+// THE ANCHOR IS WHITESPACE-TOLERANT, and that is a FIX, not a nicety. Type stripping replaces a
+// removed annotation with SPACES to keep offsets stable, so a source line written
+// `function loadSettingsCard(): SettingsCardModule {` arrives here as
+// `function loadSettingsCard()                     {` — 21 spaces. The previous anchor demanded
+// exactly one, so it silently matched NOTHING, and the splice was dropped from every rebuild.
+/** The anchor: the settings-card loader, whatever whitespace type stripping left behind. */
+const SPLICE_ANCHOR: RegExp = /(\n\s*function loadSettingsCard\(\)\s*\{)/
+if (!SPLICE_ANCHOR.test(webClientFactory)) {
+  console.error("[build-mpd-client] FAIL: the loadSettingsCard() splice anchor is gone from src/web-client.ts")
+  process.exit(1)
+}
+/** The web-client factory with BOTH IIFEs spliced in before `loadSettingsCard()`. */
+// THE REPLACEMENT IS A FUNCTION, and that is load-bearing. A string replacement is scanned for `$`
+// patterns (`$&`, `$1`, `` $` ``, `$'`), and the two spliced bodies contain `$` of their own — the
+// settings card's copy plus the team view's template-free but `$`-bearing text — so a `${...}`-like
+// pair spanning the two bodies was silently rewritten and the artifact stopped parsing. Measured:
+// EACH splice alone produced a valid module, BOTH together produced `Unexpected token 'const'` — the
+// signature of a mangled replacement, not of a broken brace. A function replacement disables every
+// `$` pattern, which is why the anchor arrives as an argument rather than as `$1`.
+const webClientWithCard: string = webClientFactory
+  .replace(SPLICE_ANCHOR, (_match: string, anchor: string): string => "\n" + settingsCardIife + "\n" + teamViewIife + anchor)
+// THE GUARDS CHECK THE DECLARATION, never a bare mention. Both markers appear in `web-client.ts`'s
+// OWN text (the ambient `declare const` and the call site), so `includes("MPD_SETTINGS_CARD")` was
+// true whether or not the splice happened — a guard that could not fail, which is exactly how the
+// broken anchor above went unnoticed across a whole conversion.
+if (!webClientWithCard.includes("var MPD_SETTINGS_CARD = ")) { console.error("[build-mpd-client] FAIL: the settings-card IIFE was not spliced"); process.exit(1) }
+if (!webClientWithCard.includes("var MPD_TEAM_VIEW = (function () {")) { console.error("[build-mpd-client] FAIL: the team-view IIFE was not spliced"); process.exit(1) }
 
 /** The combined client artifact: adopted bundle + team page + settings card + mpd client. */
 const out: string = agentTeamsClient

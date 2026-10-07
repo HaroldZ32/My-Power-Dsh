@@ -1,0 +1,40 @@
+{
+  "maxBytes": 65536,
+  "renderer": "/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js",
+  "results": [
+    {
+      "label": "post",
+      "path": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/AGENTS.md",
+      "eolAsRead": "lf",
+      "sourceBytes": 59551,
+      "renderedBytes": 59855,
+      "truncated": false,
+      "truncatedRecords": [],
+      "verdict": "GREEN (full content injected)"
+    },
+    {
+      "label": "control",
+      "path": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/gates/agents-budget/20261006T085805Z/AGENTS.md.before",
+      "eolAsRead": "lf",
+      "sourceBytes": 71811,
+      "renderedBytes": 65536,
+      "truncated": true,
+      "truncatedRecords": [
+        {
+          "displayPath": "AGENTS.md",
+          "originalBytes": 71811,
+          "includedBytes": 65143
+        }
+      ],
+      "verdict": "RED (truncated)"
+    }
+  ],
+  "checks": {
+    "post_renders_full_content": true,
+    "post_under_budget": true,
+    "post_eol_is_lf": true,
+    "negative_control_is_red": true
+  },
+  "verdict": "PASS",
+  "failedChecks": []
+}

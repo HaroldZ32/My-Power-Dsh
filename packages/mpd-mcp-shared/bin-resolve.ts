@@ -130,8 +130,35 @@ export function pathSpellings(name: string, env: ResolverEnv = process.env, plat
 /** ast-grep candidate names, preferred order (never `sg` before `ast-grep`). */
 export const AST_GREP_NAMES: ReadonlyArray<string> = ["ast-grep", "sg"]
 
-/** <bundle> for a launcher at <bundle>/packages/<pkg>/launch.mjs. */
+/**
+ * `<bundle>` for a launcher inside it.
+ *
+ * WALKING, NOT COUNTING HOPS, and that is a measured correction rather than a preference. The
+ * launcher used to live at `<bundle>/packages/<pkg>/launch.ts`, where `dirname` plus two hops IS the
+ * bundle root; it now ships as the BUILT `<bundle>/packages/<pkg>/dist/launch.js`, where the same two
+ * hops land on `<bundle>/packages` — a wrong root silently disables the `.toolchain` tier and the rest
+ * of the bundle-relative chain. The walk returns the first ancestor whose `package.json` names this
+ * bundle, and the old two-hop answer stays as the fallback for a launcher outside such a tree.
+ *
+ * @param launcherUrl - The running launcher's own `import.meta.url`.
+ * @returns The bundle root directory, absolute.
+ */
 export function bundleRootFrom(launcherUrl: string): string {
+  /** The launcher's own directory — where the walk starts. */
+  let dir = dirname(fileURLToPath(launcherUrl))
+  for (let hop = 0; hop < 6; hop++) {
+    try {
+      /** The candidate ancestor's manifest, parsed only for its package name. */
+      const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as { name?: unknown }
+      if (manifest.name === "@mpd-dsh/mpd") return dir
+    } catch {
+      // No manifest here, or an unreadable one: keep climbing.
+    }
+    /** The next ancestor up; equal to `dir` at the filesystem root, which ends the walk. */
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
   return resolve(dirname(fileURLToPath(launcherUrl)), "..", "..")
 }
 

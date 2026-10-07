@@ -1,0 +1,25 @@
+[record] isolation.home=true — HOME and DSH_HOME stay on the sandbox paths for every harness command
+[record] isolation.realHome=true — no harness/toolchain marker under the real home (/root)
+[record] isolation.noCredentials=true — no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)
+===== STEP 12-tui =====
+[record] tui.hostInstall=true — the TUI host installs globally and lands on PATH
+[record] tui.pluginAddHost=true — the TUI host bundle installs into the dsh-tui profile
+[record] tui.pluginAddBundle=true — THIS bundle installs into the dsh-tui profile as the third patch layer
+[record] tui.compose=true — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)
+[record] tui.presetPreference=true — the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.12.0 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd
+[record] tui.presetRow=true — the mpd preset row is composed in the TUI plane
+[record] tui.mpdTuiRow=true — the bundle's mpd-tui row is composed in the TUI plane
+[record] tui.agentTeamRows=true — all three official Agent Teams rows are composed in the TUI plane
+[record] tui.teamSceneOpened=true — the /mpd team scene opened on a real terminal
+[record] tui.teamGraphDrawn=true — the LAYERED BOXES were drawn: a top border, a bottom border, and the subjects inside them
+[record] tui.teamGraphEdges=true — the dependency EDGES were drawn with box-drawing junctions
+[record] tui.teamGraphContent=true — the boxes carry the record's own task ids and subjects
+[record] tui.boot=true — the REAL TUI booted on a real PTY and reached its chat screen
+[record] tui.noFatalSignatures=true — no fatal apply/module/preset signature in the TUI pane or log
+[record] tui.sessionPreset=true — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)
+[record] tui.laneExit=true — the TUI lane ran to completion with every assertion green
+[record] boot.llmTurn=null — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+[report] ok=true complete=false passed=54 failed=0 null=3 scrubbed=true -> /out/result.json
+[report] NULL build.bunInstall — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
+[report] NULL build.dists — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
+[report] NULL boot.llmTurn — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.

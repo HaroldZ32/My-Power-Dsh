@@ -1,0 +1,102 @@
+# WEB lane evidence — wave dag-edges-scroll (curved SVG edge layer + graph-safe labels)
+# collected 2026-10-06T15:12:34Z · branch feature/dag-edges-scroll · HEAD 52cd964f
+
+## 0 · the files this lane owns, sha256 BEFORE the gate sweep (read 15:12:34Z)
+378e15aa26a3dc1c914c3b42a03ac4b979bc10d627650d5b316681b9c6ede0fe  packages/mpd-bundle-plugin/src/team-view.ts
+b245759490d20ced40c07bb9feed2aaa952ac13052b84c4327f717cf1371ca29  packages/mpd-bundle-plugin/test/team-view.test.ts
+bdc77391f680434275381e23231d532a45625aefcebbb9a581bf750fa60ca734  docker/ui/team-fixture-records.mts
+2a38cf5bc38403948d6dfbc8009c9e5a30842c686baae9d5022f95dcec45a635  docker/ui/team-fixture.mts
+0f763247e407c385fcbb9831c631c2dcae608e939b8b8fb20db63f21724a2731  docker/ui/seed-team-fixture.sh
+9de14abb9c92bfc384e51fa62d4b478e90bb31d08c658e2de154f05f21e4874a  docker/ui/capture.mts
+
+## 1 · bun test packages/mpd-bundle-plugin
+
+ 159 pass
+ 0 fail
+ 3038 expect() calls
+Ran 159 tests across 7 files. [3.16s]
+
+## 2 · bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin
+
+ 295 pass
+ 0 fail
+ 3667 expect() calls
+Ran 295 tests across 17 files. [3.17s]
+
+## 3 · bun run typecheck
+$ tsgo --noEmit
+packages/mpd-tui-plugin/src/panel-dag.ts(261,17): error TS2304: Cannot find name 'layoutBoxesNatural'.
+packages/mpd-tui-plugin/src/panel-dag.ts(546,81): error TS2551: Property 'viewportCols' does not exist on type 'PanelViewport'. Did you mean 'viewportRows'?
+packages/mpd-tui-plugin/src/panel-dag.ts(633,23): error TS2304: Cannot find name 'sliceSpans'.
+error: script "typecheck" exited with code 1
+
+## 4 · bun run verify:comments (the lane's own files must not appear below)
+  711: comment — x
+  713: comment — y
+  934: comment — { points, d, radius }
+  1173: comment — slice
+  1196: comment — slice
+  1214: comment — slice
+  1215: comment — spans
+
+packages/mpd-tui-adapter-plugin/src/index.ts (3)
+  854: comment — observe
+  862: comment — outcome
+  865: comment — stop
+
+error: script "verify:comments" exited with code 1
+
+## 5 · W3 POSITIVE CONTROL — the route is broken on purpose, then restored
+### 5a · the break: every gutter lane is pushed 40px right, into the column it passes
+bun test v1.4.2 (744846f84)
+
+EXIT 1 (1 = the containment arm FAILED on the broken route, as required)
+### 5b · restored: the same arm passes again (sha must equal §0)
+378e15aa26a3dc1c914c3b42a03ac4b979bc10d627650d5b316681b9c6ede0fe  packages/mpd-bundle-plugin/src/team-view.ts
+b245759490d20ced40c07bb9feed2aaa952ac13052b84c4327f717cf1371ca29  packages/mpd-bundle-plugin/test/team-view.test.ts
+bdc77391f680434275381e23231d532a45625aefcebbb9a581bf750fa60ca734  docker/ui/team-fixture-records.mts
+2a38cf5bc38403948d6dfbc8009c9e5a30842c686baae9d5022f95dcec45a635  docker/ui/team-fixture.mts
+0f763247e407c385fcbb9831c631c2dcae608e939b8b8fb20db63f21724a2731  docker/ui/seed-team-fixture.sh
+9de14abb9c92bfc384e51fa62d4b478e90bb31d08c658e2de154f05f21e4874a  docker/ui/capture.mts
+ 1 pass
+ 40 filtered out
+ 0 fail
+ 87 expect() calls
+Ran 1 test across 1 file. [499.00ms]
+
+## 6 · R5 fixture smoke: the cjk board through the real CLI
+seeded team-2026-10-05T22-30-00.000Z (board=cjk) for session sess-1: 6 tasks, 5 members
+subjects: ["fix 登录页 styles","冻结验收契约","修复 login 页面的截断","完成 ✅ 收尾","构建头部与进度条","！？。"]
+labels  : ["fix styles","#2","login","#4","#5","#6"]
+subjects carry CJK: true | labels carry CJK: false
+
+## 7 · the frozen curves and the painted marks, one real edge (five-rank board)
+radius=0 | d = M 332 25 L 336 25 L 336 25 L 340 25 | points = 4 | tip = {"x":340,"y":25}
+radius=6 | d = M 332 25 L 336 25 L 336 25 L 340 25 | points = 4 | tip = {"x":340,"y":25}
+
+## 7b · THE SAME PROBE ON A BENDING ROUTE. The §7 board puts both boxes on ONE row, so its edge
+##      is a straight line at ANY radius — the degenerate case, which is itself the W6 check: no
+##      corner, no fillet, and the radius cannot invent one. A route WITH a corner carries both
+##      the Q fillet and the C sweep, and at radius = 0 it degrades to the orthogonal polyline.
+radius=0 | d = M 164 25 L 168 25 L 168 25 L 172 25
+           points=4 tip={"x":172,"y":25} segments=out/riser/in
+radius=6 | d = M 164 25 L 168 25 L 168 25 L 172 25
+           points=4 tip={"x":172,"y":25} segments=out/riser/in
+radius=6 | first sample {"x":164,"y":25} last sample {"x":172,"y":25}
+
+## 7c · THAT ROUTE WITH A REAL CORNER (the dependent one row BELOW its blocker, which is the only
+##      shape whose route bends). Printed with its radius = 0 control, in ONE process.
+radius=0 | d = M 164 77 L 168 77 L 168 25 L 172 25
+             points=4 | tip={"x":172,"y":25} | route=out/riser/in | samples=[{"x":164,"y":77},{"x":168,"y":77},{"x":168,"y":25}] ... [{"x":168,"y":25},{"x":172,"y":25}]
+radius=6 | d = M 164 77 L 166 77 Q 168 77 168 75 L 168 27 C 168 27 170 25 172 25
+             points=13 | tip={"x":172,"y":25} | route=out/riser/in | samples=[{"x":164,"y":77},{"x":166,"y":77},{"x":166.875,"y":76.875}] ... [{"x":171.00925925925924,"y":25.14814814814815},{"x":172,"y":25}]
+
+
+## 5a-detail · the control's OWN failing assertion, stdout+stderr captured in full:
+   1278 |     expect(crossings).toBe(0)
+   Expected: 0
+   Received: 470
+   (fail) team-view edge legibility (the reported tangle) > NO drawn CURVE enters any node box, on the five-rank board from the screenshot [122.12ms]
+    0 pass
+    1 fail
+   (the break was applied and REVERTED inside one process; §5b's sha256 proves the revert)

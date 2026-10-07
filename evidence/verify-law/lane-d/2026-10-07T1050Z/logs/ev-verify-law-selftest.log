@@ -1,0 +1,4 @@
+cmd: node skills/dsh-qa/scripts/verify-law.ts --self-test
+[verify-law self-test] ok: the registered copy is byte-identical (d5f1eb2f6881)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+EXIT=0

@@ -1,0 +1,16 @@
+## Reference Index (on-demand)                    1939 B
+## 1. Overview & Provenance                       8951 B
+## 2. Principles                                  1060 B
+## 3. Repository Layout                           5677 B
+## 4. Gates (binding)                             7924 B
+## 5. Git Model (dev/release/defect separation)    3502 B
+## 6. Plugin Authoring Guide                     14371 B
+## 7. QA Discipline (mirrors upstream, adapted)    6665 B
+## 8. Installer & Profiles                        5655 B
+## 9. Vendor & Baseline                           1017 B
+## 10. Security & Privacy                          277 B
+## 11. Release Process                            1626 B
+## 12. Troubleshooting (known)                    2808 B
+## 13. Glossary                                   6373 B
+-----
+TOTAL(with-line-counted) 71811 B

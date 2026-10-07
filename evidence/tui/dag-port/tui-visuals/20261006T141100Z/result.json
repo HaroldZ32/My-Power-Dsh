@@ -1,0 +1,68 @@
+{
+  "lane": "tui-visuals",
+  "wave": "tui/dag-port",
+  "requirement": "R14 (whole-surface redesign: panels + every scene + the status line share ONE visual system)",
+  "utc": "2026-10-06T14:11:00Z",
+  "files_written": [
+    "packages/mpd-tui-plugin/src/subagent-scene.ts",
+    "packages/mpd-tui-plugin/src/scenes.ts",
+    "packages/mpd-tui-plugin/src/status.ts",
+    "packages/mpd-tui-plugin/src/renderers.ts",
+    "packages/mpd-tui-plugin/test/scene-visuals.test.ts"
+  ],
+  "files_read_not_written": [
+    "packages/mpd-tui-plugin/src/dag-theme.ts (frozen contract, imported by value)",
+    "packages/mpd-tui-plugin/src/panel-core.ts (panel-surface's shared core: legendLinesFor/toneColor/textRow/visualGlyph/panelKit consumed)",
+    "packages/mpd-tui-plugin/src/graph.ts (dag-geometry's: legendLines + layoutGraph + hitTest consumed, never edited)",
+    "packages/mpd-tui-plugin/src/sanitize.ts, src/state.ts, src/team-state.ts, src/i18n.ts"
+  ],
+  "commands": [
+    {
+      "cmd": "bun test packages/mpd-tui-plugin/test/",
+      "observed": "324 tests across 17 files: 322 pass, 2 fail (both in panel-surface's own new scroll/viewport suite: 'the scrollbar and the self-windowed viewport' arms). Every pre-existing scene/surface suite passes."
+    },
+    {
+      "cmd": "bun test packages/mpd-tui-plugin/test/scene-visuals.test.ts",
+      "observed": "23 pass, 0 fail, 492 expect() calls"
+    },
+    {
+      "cmd": "./node_modules/.bin/tsgo --noEmit -p tsconfig.json",
+      "observed": "ZERO errors in packages/mpd-tui-plugin (all four files + the new suite). The one remaining tree error is packages/mpd-bundle-plugin/src/team-view.ts(688) 'Cannot find name ID_ORDER' — dag-geometry's in-flight WEB edit, not this lane's."
+    },
+    {
+      "cmd": "bun run verify:comments",
+      "observed": "no findings in scenes.ts, subagent-scene.ts, status.ts, renderers.ts, test/scene-visuals.test.ts (findings remain in other lanes' files: panel-core.ts, panel-dag.ts, panel-workmate.ts, mpd-bundle-plugin/team-view.ts)"
+    }
+  ],
+  "design": {
+    "one_visual_system": "DAG_TONE_THEME / DAG_TONE_GLYPH / DAG_KIND_ABBREV / DAG_CHROME / DAG_ANIM are the only palette, glyph, marker and animation source any surface reads; the tone->theme-key resolution, the glyph lookup, the toned text row and the legend are consumed from panel-core.ts rather than re-derived.",
+    "added_in_subagent_scene": [
+      "useSurfaceClock (the SCENE kit's useAnimationFrame pair; panel-core's useRunningPhase reads useAnimationTime, which a scene kit does not expose)",
+      "animPhase / RUNNING_FRAMES / runningMarker / stateMarker (a CELL-STABLE one-cell orbit, so a breathing mark cannot shift a row)",
+      "toneOfStatus / toneOfTally / dominantTone (a row's and a surface's dominant state)",
+      "barCells (progress bar over DAG_CHROME.barFull/barEmpty)",
+      "surfaceFrame (borderText frame whose colour carries the state; the host needs the {content,position,align} OBJECT)",
+      "surfaceRule / surfaceText / surfaceBodyRow / surfaceHints / chromeTitle / labelSplit / rowLabel / ROW_LABEL_TONE"
+    ],
+    "explicitly_not_done": [
+      "the status ROW carries no state mark: three arms pin its text (startsWith('mpd:') in plugin.test.ts; the contiguous 'mpd: ' + t('status.teamNone') in watchdog-frontdoor.test.ts; first.startsWith(third) for the appended notice). status.ts therefore contributes cell discipline (stripControl + clampCells at STATUS_MAX_CELLS) and the mark lands on /mpd status (boardSummary), which is pinned only at its head.",
+      "no behaviour change: keybindings, scene ids/titles, refresh cadences (2000ms), the data flow (readBoardState/boardLines, readWorkflow/teamWorkflowLines, planProjectionLines/planActionLines, subagentSectionRows/teamGraphView) and every exported symbol's name and signature are unchanged."
+    ]
+  },
+  "exports_preserved": {
+    "subagent-scene.ts": ["SUBAGENT_SCENE_ID", "SUBAGENT_SCENE_TITLE", "MERGED_ROW_MAX_CELLS", "subagentRowView", "subagentRowEntries", "subagentRows", "glyphOf", "subagentRowLine", "subagentDetailFacts", "subagentDetailRows", "subagentSectionRows", "teamGraphView", "interruptSubagent", "createSubagentSceneComponent"],
+    "scenes.ts": ["BOARD_SCENE_ID", "TEAM_SCENE_ID", "PLAN_SCENE_ID", "DISCARD_WINDOW_MS", "SCENE_ROW_MAX_CELLS", "PLAN_MUTATION_UNAVAILABLE", "UNAVAILABLE_PLAN_ACTIONS", "safeLine", "planActionLines", "boardSummary", "registerScene"],
+    "status.ts": ["STATUS_KEY", "registerStatus"],
+    "renderers.ts": ["TRANSCRIPT_TYPES", "TRANSCRIPT_RENDERERS", "registerRenderers"]
+  },
+  "new_exports_for_the_panel_lane": [
+    "subagent-scene.ts: SurfaceKit, SurfaceRowStyle, SurfaceTone, toneOfStatus, toneOfTally, dominantTone, barCells, animPhase, runningMarker, stateMarker, RUNNING_FRAMES, labelSplit, rowLabel, surfaceText, surfaceBodyRow, surfaceRule, surfaceFrame, surfaceHints, chromeTitle, useSurfaceClock"
+  ],
+  "legend_composition": "both scene modules draw graph.ts's own lines under 'legend-<i>' and panel-core.ts's legendLinesFor state key under 'state-key-<i>' (the drawing's lines keep the key the existing suites pin; the contract's appended six-state key tells blocked from open).",
+  "unverified": [
+    "no real PTY / Docker run was performed from this lane (that is the wave's fidelity + Docker lanes); every claim here is from the host-double suites, the typecheck and the AST comment gate.",
+    "the host's own border renderer was read (ink/render-border.js) but not executed here: the frame title is asserted as the {content,position,align} object the renderer reads.",
+    "panel-core.panelFrame passes a BARE STRING to borderText, which the host's renderer silently ignores (it reads borderText.position/.content) — reported to the captain; that file is not this lane's to edit.",
+    "the running marker is only animated where the kit exposes a timer; the scene kit's useAnimationFrame is the only path a scene has (panel-core's useRunningPhase cannot drive a scene)."
+  ]
+}

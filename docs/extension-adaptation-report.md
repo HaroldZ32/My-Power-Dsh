@@ -54,7 +54,7 @@ as load evidence anywhere (AGENTS.md §4).
 | Guarantees per item | row presence, reconnection, pagination, schema rollback, disposal | per-item validated refusal; a bad item never aborts the rest |
 
 Basis: code-read. Plane 1 is documented as first-class and non-replaced at `docs/extensions.md:24`;
-plane 2 is the in-tree row `mpd-ext` (`packages/mpd-bundle/cordis.patch.yml:262-263`) providing the
+plane 2 is the in-tree row `mpd-ext` (`cordis.patch.yml:262-263`) providing the
 service `mpdExtensions` (`packages/mpd-ext-plugin/src/index.ts:457`).
 
 **Choose the install plane** when the contribution must add a profile row, needs installation-time
@@ -198,13 +198,13 @@ Basis: code-read + evidence-on-disk.
   per call, while an `mcp`/`roles` contribution on the user/bundle plane needs a restart; both facts
   are documented, never juxtaposed.
 - **F5 (low, cosmetic) — one hazard, two half-comments.** The bundle patch warns about the
-  second-adapter hazard (`packages/mpd-bundle/cordis.patch.yml:244-260`) while the row's own comment
+  second-adapter hazard (`cordis.patch.yml:244-260`) while the row's own comment
   (`packages/mpd-ext-plugin/src/index.ts:44-54`) documents only the lazy resolution.
 - **F6 (medium) — evidence freshness.** Eight evidence directories predate the current extension code
   (`c239407`): `mcp-bridge-framing`, `mcp-bridge-gates`, `registered-tool-schemas`,
   `sanitizer-crosscheck`, `roles-wiring` (×2), `v0.9.1-defect-fixes`, `extensions-repair/t16-pins-and-plane-guard`,
   `mpd-ext-repair/roles-report`. None of them supports a current-state claim without a re-run.
-- **F7 (low) — an evidence checker over-claims.** `evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.mjs:40-49`
+- **F7 (low) — an evidence checker over-claims.** `evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.ts:40-49`
   prints that quoted doc snippets match the shipped example while probing only the skill and flow
   fields, so it green-lit the bytes that carried the §5.3/§5.4 drift (D4/D5 below).
 - **F8 (low, WAIVED this wave) — the lifecycle lane still narrates the pre-repair expectation.**
@@ -250,7 +250,7 @@ wave — this wave audits and documents.
 - **P2 — juxtapose the two liveness modes in one sentence.** Paths: `docs/extensions.md:525` + zh-CN
   twin. Rationale: removes the surprise in F4. Effort: small.
 - **P2 — cross-reference the adapter-mount hazard** between the bundle-patch comment and the row
-  comment. Paths: `packages/mpd-bundle/cordis.patch.yml:244-260`,
+  comment. Paths: `cordis.patch.yml:244-260`,
   `packages/mpd-ext-plugin/src/index.ts:44-54`. Rationale: two comments currently hold two halves of
   one fact. Effort: trivial (a comment edit, so a code task).
 - **P2 — retire or re-run the stale evidence directories** (F6) so the evidence index contains no
@@ -301,7 +301,7 @@ by t14).
   longer promise a packed arm that must be red, and the bridge lane's `schema` arm now asserts the
   shipped keep-or-drop rule. The same change carries the wave's single re-pin
   (`9e643d07… → 7a48fdad…`).
-- **Reported, not fixed** — `evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.mjs:40-49`
+- **Reported, not fixed** — `evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.ts:40-49`
   (F7): its printed claim is broader than its probe. Extending it to the `mcp`/`role` snippet fields is
   a one-function change owned by the evidence owner.
 
@@ -375,7 +375,7 @@ follow-up mapping on top of it.
 |---|---|---|---|
 | F1 — the adapter-identity fallback is silent | **fixed** | the canonical note (hint `:59-100`) plus (`dshAdapterIdentity`, `packages/mpd-ext-plugin/src/index.ts:593`), carried into the rebuilt `packages/mpd-ext-plugin/dist/index.js`; `mpd-roles-plugin` cross-references it | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
 | F5 — one hazard, two half-comments | **fixed** | the single canonical note (`"CANONICAL NOTE"`, `packages/mpd-ext-plugin/src/index.ts:62`), which `packages/mpd-roles-plugin/src/index.ts` points at instead of restating | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
-| F7 — an evidence checker over-claims | **fixed** | the corrected prober `evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs` (a NEW directory; `evidence/mpd-ext-debranding/20260915T074904Z/` is left byte-untouched as the record of the narrow probe) | `evidence/extensions/debranding-probe/20260916T061807Z/` |
+| F7 — an evidence checker over-claims | **fixed** | the corrected prober `evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.ts` (a NEW directory; `evidence/mpd-ext-debranding/20260915T074904Z/` is left byte-untouched as the record of the narrow probe) | `evidence/extensions/debranding-probe/20260916T061807Z/` |
 | F11 — the R11 class assertion has no test-suite home | **fixed** | `scripts/verify-pack-closure.ts` — it runs alone, parses the packer's real lists, and replays red on a temp fixture — wired into `package.json` `test:qa:all` | `evidence/extensions/pack-closure-check/20260916T061527Z/` |
 | F8 — the lifecycle lane still narrates the pre-repair expectation | **fixed** | `skills/dsh-qa/scripts/extension-lifecycle.ts`: the packed-arm narration states the current invariant and `greenOwner: "t11"` is gone | `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/` (the real lane run: `result.json` + `output.log`), summarised in `…/t8-skills-pass-summary.json` |
 | F9 — one row's citation is not what gates the arm | **fixed** | the arm's `ok` is now the pure predicate `packedStateOk()` in `skills/dsh-qa/scripts/extension-lifecycle.ts` (hints `:412`, used `:383`), with `packedNegativeDriver()` (`:435`) over four fixture packed trees; `skills/dsh-qa/SKILL.md` cites those anchors instead of the old "exits 0 (`:385`)" sentence | `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/` — `steps.packed.negativeControl`: `falsifiable: true`, `packerExitGated: true`, the three broken fixture trees `ok: false` |

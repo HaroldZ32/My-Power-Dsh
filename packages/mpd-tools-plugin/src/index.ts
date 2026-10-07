@@ -3,17 +3,32 @@
 // 2) tool-output truncation (post-execute, token budget protection)
 // 3) edit-error recovery guidance (post-execute)
 import { existsSync, readFileSync } from "node:fs"
-import { resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { isAbsolute, resolve } from "node:path"
+import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-tools"
-/** The tool registry this row attaches its guard and both waterfalls to. */
-export const inject = ["tools"]
+/** The tool registry this row attaches its guard and both waterfalls to, named by its adapter constant. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the row context this plugin reads: the tool registry plus the event bus the adapter resolves. */
 type Ctx = { tools: any; on: (ev: string, fn: (...args: any[]) => any) => void; [k: string]: any }
 /** The row's own config keys; every one is optional because the defaults below are the shipped behaviour. */
 type Config = { writeGuard?: boolean; truncateMaxBytes?: number; recoveryHint?: string }
+
+/**
+ * Resolve a model-supplied path the way every mpd tool does: a RELATIVE path is taken against the
+ * CALLING SESSION's workspace (`dsh.workspaceRoot(exec)`: session header cwd -> `DSH_WORKSPACE_ROOT`
+ * -> cwd), never against the dsh process cwd; an absolute path is normalized and returned unchanged.
+ *
+ * @param target - the path exactly as the model spelled it.
+ * @param dsh - the resolved adapter; its `workspaceRoot` is the ONE root source this row may use.
+ * @param exec - the tool execution carrying the calling session, or undefined on an agentless call.
+ * @returns the session-absolute target path.
+ */
+function sessionTarget(target: string, dsh: any, exec: any): string {
+  return isAbsolute(target) ? resolve(target) : resolve(dsh.workspaceRoot(exec), target)
+}
 
 /**
  * Install the three agent-safety hooks on this row's tool pipeline: the pre-execute write guard, the
@@ -42,10 +57,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The requested file body, when the call carried a string one. */
       const content = exec.arguments?.content
       if (typeof fp !== "string" || typeof content !== "string") return undefined
-      if (!existsSync(fp)) return undefined
+      // Session-absolute target: a RELATIVE file_path belongs to the calling session's workspace.
+      // Probing the process cwd instead made BOTH directions silent — a clobber of <ws>/X went
+      // through, and an honest CREATE of <ws>/X was denied when <cwd>/X happened to exist.
+      /** The path this guard probes, resolved exactly as the write tool itself will resolve it. */
+      const target = sessionTarget(fp, dsh, exec)
+      if (!existsSync(target)) return undefined
       try {
         /** The current on-disk body, read only to tell an idempotent rewrite from a clobber. */
-        const old = readFileSync(fp, "utf8")
+        const old = readFileSync(target, "utf8")
         if (old === content) return undefined // idempotent rewrite passes
       } catch { return undefined }
       return "mpd-tools guard: target file already exists with different content — use the edit tool (or read then rewrite deliberately via write with identical content) instead of overwriting."
@@ -70,10 +90,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const banner = "\n... [mpd-tools truncated " + text.length + " chars; keep " + maxBytes + " budget; tail follows] ...\n"
     /** The characters left for the head and tail once the banner is paid for. */
     const budget = Math.max(0, maxBytes - banner.length) // banner counts against the budget
+    // The tail's share, floored — but NEVER 0: `slice(-0)` is `slice(0)`, i.e. the WHOLE text, so a
+    // budget of 1..3 (where `Math.floor(budget * 0.3)` is 0) used to return an output LARGER than
+    // maxBytes and larger than the input it was meant to cap.
+    /** Characters the trailing slice keeps; at least one whenever any budget is left. */
+    const tailChars = Math.max(1, Math.floor(budget * 0.3))
     /** The leading slice, 70% of what is left after the banner (empty when the banner alone overruns). */
     const head = budget > 0 ? text.slice(0, Math.floor(budget * 0.7)) : ""
     /** The trailing slice, the remaining 30% (empty when the banner alone overruns). */
-    const tail = budget > 0 ? text.slice(-Math.floor(budget * 0.3)) : ""
+    const tail = budget > 0 ? text.slice(-tailChars) : ""
     return { ...out, content: [{ type: "text", text: head + banner + tail }] }
   })
 

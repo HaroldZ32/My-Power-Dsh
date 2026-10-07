@@ -1,0 +1,58 @@
+{
+  "lane": "D",
+  "plan": ".mpd/plans/mpd-seam-convergence.md",
+  "planItem": 4,
+  "acceptance": ["A1.3", "A2.1"],
+  "capturedAtUtc": "2026-10-02T15:23:08Z",
+  "status": "DONE_WITH_NAMED_BLOCKERS_OUTSIDE_SCOPE",
+  "deliverables": {
+    "adapterSeamConstants": {
+      "file": "packages/mpd-dsh-adapter-plugin/src/index.ts",
+      "exported": ["DSH_SEAM_TOOLS", "DSH_SEAM_SUBAGENTS", "DSH_SEAM_SKILLS", "DSH_SEAM_AGENTS", "DSH_SEAM_COMMANDS", "DSH_SEAM_SESSIONS", "DSH_SEAM_WEB_SERVER", "DSH_SEAM_WEB_RUNTIME", "DSH_SEAM_AGENT_PRESETS", "DSH_SEAM_NAMES", "DshSeamName", "dshSeamInject"]
+    },
+    "rowsConverted": 15,
+    "rowsSkippedByScope": [
+      "packages/mpd-team-core-plugin/src/index.ts (Lane E, captain scope lock)",
+      "packages/mpd-team-watchdog-plugin/src/index.ts (Lane E, captain scope lock)",
+      "packages/mpd-tui-plugin/src/** (Lane A)",
+      "packages/mpd-qa-roles-probe/src/index.ts (QA-only probe; named residual in docs/independence.md 7)"
+    ],
+    "docsPair": ["docs/independence.md", "docs/independence.zh-CN.md"],
+    "gate": "packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts",
+    "evidenceDir": "evidence/independence/seam-name-single-source/20261002T152308Z"
+  },
+  "gate": {
+    "frozenInventorySize": 14,
+    "sanctionedAdapterImports": 47,
+    "band": "packages/mpd-<name>/src/**/*.ts",
+    "packagesScanned": 26,
+    "tsFilesScanned": 114,
+    "classes": ["cross-package-import", "global-write", "harness-service-provide"],
+    "identityKey": "file :: normalized line text (never a line number)",
+    "selfTest": { "arms": 14, "passed": 14, "exit": 0 },
+    "green": { "exit": 0, "file": "gate-green.log" },
+    "redEmptyInventory": { "exit": 1, "new": 14, "file": "gate-red-empty-inventory.log" },
+    "redSeededRealBand": { "exit": 1, "new": 1, "file": "gate-red-seeded-real-band.log" },
+    "greenAfterSeedRemoval": { "exit": 0, "file": "gate-green-after-seed-removal.log" }
+  },
+  "commands": {
+    "build": "bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js (repo root; 16 packages, all exit 0)",
+    "packageTests": "cd packages/<pkg> && bun test (16 packages, 0 failures; adapter 168 pass)",
+    "typecheck": { "exit": 1, "errorsTotal": 51, "errorsInTouchedFiles": 0, "attribution": "47 in packages/mpd-tui-plugin/** (Lane A in flight), 4 pre-existing in skills/programming/scripts/typescript/check-no-excuse-rules.ts (typescript/unstable/* unresolved in this checkout)" },
+    "verifyComments": { "exit": 1, "violations": 20, "files": 1, "attribution": "all 20 in packages/mpd-tui-adapter-plugin/src/index.ts (Lane A in flight)", "scopedToOwnPackage": { "exit": 0, "verdict": "PASS" } },
+    "verifyDocs": { "exit": 1, "violations": 1, "attribution": "package-no-readme:packages/mpd-tui-adapter-plugin (Lane A in flight)", "ownPair": "ok docs/independence.md" },
+    "verifyDistFresh": { "exit": 1, "fresh": 17, "stale": 6, "attribution": "none caused by a content change from this edit; 4 carry only bun's codegen signature (bun@1.4.0 recorded vs bun 1.4.2 running), 2 are rows other lanes are editing in place" }
+  },
+  "measuredFacts": {
+    "packagesDeclaringOwnManifest": "26 of 30 package directories",
+    "interPackageNpmDependencies": 0,
+    "siblingDistImports": 0,
+    "globalWritesInPackagesSrc": 0,
+    "globalThisReadsInPackagesSrc": 1,
+    "patchExpressionWarnOnceRegistries": ["globalThis.__mpdSidebarGuardSeen", "globalThis.__mpdTuiPlaneGuard"],
+    "harnessServiceProvidesInBand": 0,
+    "adapterModuleCopiesAcrossDists": 18,
+    "schemasteryDebt": { "path": "packages/mpd-agent-teams-plugin/_deps/schemastery", "files": 6, "contentBytes": 65846, "liveImporters": 4 },
+    "rowTargetsInCordisPatch": 23
+  }
+}

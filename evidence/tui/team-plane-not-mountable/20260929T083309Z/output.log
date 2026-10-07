@@ -1,0 +1,105 @@
+# TUI-plane evidence — the official Agent Teams rows cannot activate under dsh-tui
+
+Task: the operator reported that after installing this bundle into a `dsh-tui` profile, running the
+TUI prints
+
+    mpd-agent-team (@deepseek-ai/dsh-experimental-agent-team): Error:
+      dsh-tui: root.effect is unavailable from a plugin activation
+    mpd-tool-agent-team (@deepseek-ai/dsh-experimental-tool-agent-team):
+      pending (waiting for service: agentTeams)
+
+and asked for a fix. This run reproduces it, names the mechanism, fixes what a bundle patch can fix,
+and records the arms that make the fix falsifiable.
+
+Revisions measured (see `raw/revisions.txt`):
+`cordis.patch.yml` sha256 `823e9575…` (HEAD `fcfb1e6f`, before) → `08135280…` (worktree, after);
+harness `0.2.0-rc.1`; `@deepseek-harness-tui/dsh-tui` 0.11.2; the agent-team package the TUI profile
+actually loads is the harness's own `0.2.0-rc.1` copy, not this bundle's pinned `0.1.7-rc.2` one;
+node v24.16.0.
+
+## 1. Root cause (read from the shipped sources, then measured)
+
+`@deepseek-ai/dsh-experimental-agent-team` ends `TeamService`'s constructor with
+
+    ctx.effect(() => { const dispose = ctx.root.sessionProjections.register(teamProjectionDefinition) … })
+
+The projection is reached through `ctx.root`, and Cordis binds a service call to the CALLER's
+context, so `register()` runs on the composition's ROOT context and its internal
+`this.ctx.effect(...)` (`dsh-session-projection/lib/index.js`, `SessionProjectionService.register`)
+creates an effect on the ROOT FIBER. The dsh-tui host wraps exactly that capability:
+
+* `lib/types/dsh-adapter/host-access.js` — `guardRootCapabilities` wraps the root fiber's `effect`
+  and throws `dsh-tui: root.effect is unavailable from a plugin activation` whenever the ambient
+  activation is a plugin (not the composition root);
+* `lib/types/dsh-adapter/host-access.d.ts` states the design reason: *"A plugin can read `ctx.root`,
+  but using its root-bound service proxy would attach cleanup to the host fiber and leave the effect
+  alive after the plugin unloads."*
+
+The failure is therefore a property of the HOST, not of any row value: the plugin's `Config` has no
+projection toggle, the call is unconditional, and it throws BEFORE any registration/dedup logic could
+help — so no `config`, no mount order and no `isolate` realm can make it activate. Both `ctx.root`
+call sites are byte-equivalent in the pinned `0.1.7-rc.2` copy and in the harness's `0.2.0-rc.1`
+copy, so re-pinning the dependency changes nothing.
+
+## 2. The fix (what a bundle CAN do)
+
+`cordis.patch.yml`: a `!!js` row-metadata guard (same shape as the existing `mpd-better-sidebar`
+mount guard — evaluated against the Loader context at every mount decision) disables the two rows
+that exist only to serve that service when the composition mounts the dsh-tui host:
+
+* `mpd-agent-team` (the service itself — the row that throws), and
+* `mpd-tool-agent-team` (its tools, which would wait for a service that can never arrive).
+
+The guard reads only DECLARATIONS already composed: an entry whose `name` is
+`@deepseek-harness-tui/dsh-tui` (or a subpath of it) or whose `id` starts with `dsh-tui`. It returns
+false in every other composition, and it FAILS OPEN (row stays enabled, one warning line) if it
+throws, because a false disable would silently remove the team plane from a working Web profile.
+`mpd-ui-agent-team` stays mounted: it is a Web client contribution that registers nothing the TUI
+renders and breaks nothing. The mpd team WORKFLOW rows stay mounted too — their file-backed actions
+keep working and only the service-dependent actions degrade, through the adapter, with the service
+named.
+
+## 3. Arms
+
+| Arm | What it does | Result | Artifact |
+|---|---|---|---|
+| RED BASELINE | canonical install into a sandbox `dsh-tui` profile (bundle declared as a layer), real `dsh-tui` boot in tmux, raw ANSI pane log | `root.effect is unavailable from a plugin activation` ×1, `pending (waiting for service` ×1 | `raw/red-baseline-run.log`, `raw/red-baseline-summary.json` |
+| GREEN | same sandbox, guard active | all three signatures ×0; ONE guard line naming the reason; TUI reached the chat screen (`failures: []`) | `raw/green-summary.json`, `raw/green-pane.log`, `raw/error-lines.txt` |
+| NEGATIVE CONTROL | same sandbox, same revision, the profile's OWN patch layer overrides the two rows with `disabled: false` | the error and the pending line BOTH return (×1 each) and the guard line disappears | `raw/control-summary.json`, `raw/control-pane.log` |
+| GUARD PROBE | the shipped `!!js` expressions evaluated under the loader's own `with (ctx) { return eval(expr) }` wrapper, against five contexts + a falsifiability control | 11/11 arms: dsh-tui → true; web → false; renamed host row → true; host subpath id → true; broken loader → false (fail open); always-false guard differs on the TUI context | `raw/guard-probe.json`, `probe-guard.ts` |
+| COMPOSITION | `dump-config` of the same sandbox profile | exit 0, rows composed, no new patch warning beyond the known `entry "agent-preset-registry" not found` (a TUI composition has no web-app layer) | `raw/dump-fixed.txt` |
+
+The negative control is what makes the green arm evidence rather than coincidence: the SAME bytes
+with only the guard overridden produce the SAME error.
+
+## 4. Operator-side observations (not necessary for the fix)
+
+* The operator's real profile (`/root/.dsh/profiles/dsh-tui/package.json`) declares only
+  `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui"]` — `@mpd-dsh/mpd` is NOT in
+  `dsh.profile.bundles`, while `node_modules/@mpd-dsh/mpd` exists as a link to this checkout.
+  MEASURED: with the layer removed from that manifest the bundle's rows do NOT compose at all
+  (`.mpd/recon/no-declare/dump.txt`, 0 occurrences of `mpd-agent-team`), so the failing boot that
+  produced the operator's capture necessarily had the layer mounted at that moment. The guard does
+  not depend on the route: it fires on the presence of the dsh-tui HOST row, whichever layer
+  contributed it. Recommendation for the operator: re-add the layer so install/uninstall stay
+  coherent (`dsh plugin --profile dsh-tui add <repo>`) — an orphan symlink is exactly the fragility
+  `agent-references/troubleshooting.md` names for profiles after an unrelated install.
+* The operator's own capture is filed verbatim in `raw/operator-history-error.txt`
+  (source `/root/.dsh-tui/history.jsonl`), and matches the reproduced error byte for byte.
+
+## 5. Follow-ups this change does NOT take (named, not smuggled)
+
+1. **The TUI QA lane could not see this class.** `skills/dsh-qa/scripts/lib/tui-lane.ts`
+   `APPLY_CRASH_SIGNATURES` lists five signatures and does NOT include the `Error:` a row activation
+   prints, while `docs/tui.md` §2's prose quotes `Error:` as one of the scanned signatures. A lane
+   that scanned `Error:` would have reddened on this defect. Fixing that is a `skills/**` edit — one
+   writer per wave plus the single `VENDOR_LOCK` re-pin in the same commit (§9) — so it is listed
+   here for the captain rather than taken inside a defect fix.
+2. **The upstream defect itself** is in `@deepseek-ai/dsh-experimental-agent-team`: registering a
+   composition-scoped projection through `ctx.root` is the one shape the dsh-tui admission layer
+   refuses by design. The host's own code shows the sanctioned pattern
+   (`lib/types/dsh-adapter/activity-store.js` reaches the same service through
+   `ctx.inject(['sessionProjections'], …)` and keeps its effect on the INJECTED fiber, with a comment
+   saying exactly why). Until that changes upstream, no TUI profile can host the official team plane.
+3. The TUI plan/board scenes render an empty roster in a TUI session; giving them an explicit
+   "team plane unavailable in this host" line is a surface change, deliberately not bundled here.

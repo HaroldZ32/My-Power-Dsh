@@ -136,9 +136,11 @@ describe("with DSH-better-sidebar installed", () => {
   /** The tab descriptor registered under one id, if any. */
   const tabById = (id: string): TabDescriptor | undefined => tabs.find((tab) => tab.id === id);
 
-  test("registers the AgentTeams page and the workmate library, and no legacy floater", () => {
+  test("registers the mpd TEAM view, the AgentTeams page and the workmate library, and no legacy floater", () => {
     expect(provided).toBe(true);
-    expect(tabs.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    // THREE tabs since W4: the mpd-owned TEAM view (`mpd-team`, which reads this bundle's own
+    // /plugins/mpd-team/state route) beside the adopted AgentTeams page and the workmate library.
+    expect(tabs.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
   /** Every keyed slot registration the host recorded. */
     const definitions = client.calls.slotsRegistered ?? [];
     expect(definitions.some((definition) => definition.id === "agent-teams-activity")).toBe(false);
@@ -180,10 +182,15 @@ describe("a sidebar provider REMOUNT keeps both tabs", () => {
   /** The client this arm mounts for the same-service re-fire. */
     const client = loadMpdClient({ sidebarAtApply: true });
     client.exports.apply(client.ctx);
-    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    // EVERY tab this client registers, so a fourth one is caught by this list rather than by nothing:
+    // the mpd team view (`mpd-team`, W4), the adopted AgentTeams page and the workmate library.
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
     client.refireInjections();
-    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    // The RE-FIRE is the point: `ctx.inject` re-runs on a provider remount, and the host's own
+    // `registerTab` THROWS on a duplicate id — so a missing idempotence guard reddens right here.
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
     expect(client.sidebarService.getTab("mpd-agent-teams")).toBeDefined();
+    expect(client.sidebarService.getTab("mpd-team")).toBeDefined();
     expect(client.sidebarService.getTab("mpd-workmate")).toBeDefined();
     restore(client);
   });
@@ -812,3 +819,340 @@ describe("without DSH-better-sidebar", () => {
     expect(warnings.filter((message) => message.includes("no registerTab")).length).toBe(0);
   });
 });
+
+// ── W4: the host PREFERENCE, asserted rather than assumed ────────────────────
+//
+// THE RULE (user decision, 2026-09-30): `dsh-better-sidebar` is the PREFERRED host for the mpd
+// panels, and the harness's own right sidebar is the FALLBACK — so a profile mounting BOTH must not
+// end up with the same panel in two places. The behaviour is one early return inside the official
+// registration callback, which is exactly the kind of thing a later refactor deletes without
+// noticing, so both directions are pinned here.
+describe("the harness right sidebar is the assuredly-working fallback (D1)", () => {
+  /**
+   * Apply the client and capture every console line it emits, so an arm can assert on the
+   * DIAGNOSTIC as well as on the registrations. The real console is restored in a `finally`,
+   * because a leak here would silence every later arm's output.
+   * @param client - the loaded client under test.
+   * @returns the captured lines, in emission order.
+   */
+  const applyCapturing = (client: LoadedMpdClient): string[] => {
+    /** Every console line the mount emitted. */
+    const lines: string[] = []
+    /** The two methods this file's client reports through. */
+    /** The real console method, restored in the finally block below. */
+    const originalWarn = console.warn
+    /** The info sink, captured for the preference line. */
+    const originalInfo = console.info
+    console.warn = (message) => { lines.push("warn: " + String(message)) }
+    console.info = (message) => { lines.push("info: " + String(message)) }
+    try {
+      client.exports.apply(client.ctx)
+    } finally {
+      console.warn = originalWarn
+      console.info = originalInfo
+    }
+    return lines
+  }
+
+  test("with no better-sidebar the fallback registrations are ATTEMPTED, and a missing seat is ONE loud line", () => {
+    /** The client in a profile WITHOUT the third-party sidebar and without the harness seat either. */
+    const client = loadMpdClient({ withoutSidebar: true })
+    /** Every line the mount emitted, captured on the REAL console for this arm's whole lifetime. */
+    const lines: string[] = []
+    /** The two methods this file's client reports through. */
+    /** The real console method, restored in the finally block below. */
+    const originalWarn = console.warn
+    /** The info sink, captured for the preference line. */
+    const originalInfo = console.info
+    console.warn = (message) => { lines.push("warn: " + String(message)) }
+    console.info = (message) => { lines.push("info: " + String(message)) }
+    try {
+      client.exports.apply(client.ctx)
+      // NOTHING registered — the seat is genuinely absent in this composition.
+      expect(client.calls.registerTab.length).toBe(0)
+      // THE SETTLE CHECK is what emits the line here (the seat never arrives during apply), and it is
+      // registered as an ENTRY effect — so the arm disposes that effect by its label, which is what
+      // the framework does when the entry (or the page) goes away.
+      ;(client.calls.ctxDisposers?.get("mpd: harness sidebar report") as (() => void) | undefined)?.()
+    } finally {
+      console.warn = originalWarn
+      console.info = originalInfo
+    }
+    // THE POINT OF D1: the absence is not silent. Before this, a missing seat produced no tab AND no
+    // diagnostic, which is the state a user cannot debug.
+    /** Every line that reports the missing sidebar. */
+    const reported = lines.filter((line) => line.includes("no sidebar host took the mpd panels"))
+    expect(reported.length).toBe(1)
+    expect(reported[0]).toContain("sidebarRightTabs + sidebarRight")
+    // The line names what is missing AND where the data still is, so the next check is a lookup.
+    expect(reported[0]).toContain("/plugins/mpd-team/state")
+    // And it stays ONE line however many times the entry is torn down: the report-once gate is what
+    // stops the same sentence from becoming a per-render stream.
+    ;(client.calls.ctxDisposers?.get("mpd: harness sidebar report") as (() => void) | undefined)?.()
+    expect(lines.filter((line) => line.includes("no sidebar host took the mpd panels")).length).toBe(1)
+    restore(client)
+  })
+
+  test("MID-SESSION: no seat anywhere reports ONCE after the bound, while the page is still open (F5)", async () => {
+    // THE DEFECT THIS PINS (F5): with the disposer as the ONLY reporter, a user staring at an empty
+    // right sidebar got nothing until the page went away. The bound is derived from the sidebar's own
+    // measured arrival (8 s), so this arm SHORTENS it through the exported seam instead of sleeping.
+    /** The client in a profile with NEITHER sidebar host. */
+    const client = loadMpdClient({ withoutSidebar: true })
+    client.exports.settleTimeoutMs(40)
+    /** Every line the entry emitted while this arm runs. */
+    const lines: string[] = []
+    /** The real warn, restored in the finally below. */
+    const originalWarn = console.warn
+    console.warn = (message) => { lines.push(String(message)) }
+    try {
+      client.exports.apply(client.ctx)
+      // NOTHING is reported AT APPLY TIME: the bound has not elapsed, so a late seat is still allowed.
+      expect(lines.filter((line) => line.includes("no sidebar host took the mpd panels"))).toEqual([])
+      // NO DISPOSER CALL, NO HAND-CRANKED HOOK: the arm only waits. This is the assertion the old
+      // disposer-only design could not make. The wait is 4x the bound, so a loaded machine delays the
+      // callback without turning this into a race.
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      /** The diagnostic lines after the bound elapsed. */
+      const reported = lines.filter((line) => line.includes("no sidebar host took the mpd panels"))
+      expect(reported.length).toBe(1)
+      // The line names the id it waited for AND the bound it waited, so the reader can tell a broken
+      // composition from a slow one.
+      expect(reported[0]).toContain("sidebarRightTabs + sidebarRight")
+      expect(reported[0]).toContain("within 40ms")
+      expect(reported[0]).toContain("/plugins/mpd-team/state")
+      // IT STAYS ONE LINE: the report gate is what stops a per-render stream, and the timer is not
+      // re-armed by anything.
+      await new Promise((resolve) => setTimeout(resolve, 160))
+      expect(lines.filter((line) => line.includes("no sidebar host took the mpd panels")).length).toBe(1)
+      // AND THE DISPOSER STAYS QUIET AFTERWARDS — the latch, not a second line.
+      ;(client.calls.ctxDisposers?.get("mpd: harness sidebar report") as (() => void) | undefined)?.()
+      expect(lines.filter((line) => line.includes("no sidebar host took the mpd panels")).length).toBe(1)
+      // The entry DIAGNOSTICS agree with the console: nothing took the panels.
+      expect(client.exports.sidebarDiagnostics()).toMatchObject({ reported: true, host: "", registered: 0 })
+    } finally {
+      console.warn = originalWarn
+    }
+    restore(client)
+  })
+
+  test("MID-SESSION, OTHER DIRECTION: a host that takes the panels SILENCES the bound entirely", async () => {
+    // THE NEGATIVE CONTROL. If the timer fired regardless of the outcome, the arm above would pass on
+    // a diagnostic that is pure noise — so this arm runs the SAME wait with a seat that arrives, and
+    // requires the silence to hold.
+    /** The client in a profile whose harness right sidebar exists. */
+    const client = loadMpdClient({ withoutSidebar: true })
+    client.exports.settleTimeoutMs(30)
+    /** Every line the entry emitted. */
+    const lines: string[] = []
+    /** The real console method, restored in the finally block below. */
+    const originalWarn = console.warn
+    console.warn = (message) => { lines.push(String(message)) }
+    try {
+      client.exports.apply(client.ctx)
+      // The seat arrives AFTER apply, exactly as the live host does.
+      const tabs: Array<{ id: string }> = []
+      client.provideService("sidebarRightTabs", { register: (definition: { id: string }) => { tabs.push(definition); return () => {} } })
+      client.provideService("sidebarRight", { openTab: () => () => {} })
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      // The panels registered, and the timer — which elapsed inside this wait — said NOTHING.
+      expect([...tabs.map((tab) => tab.id)].sort()).toEqual(["@mpd-dsh/team-sidebar", "@mpd-dsh/workmate-sidebar"])
+      expect(lines.filter((line) => line.includes("no sidebar host took the mpd panels"))).toEqual([])
+      expect(client.exports.sidebarDiagnostics()).toMatchObject({ reported: false, host: "the harness right sidebar", registered: 2 })
+    } finally {
+      console.warn = originalWarn
+    }
+    restore(client)
+  })
+
+  test("MID-SESSION, BOTH HOSTS: the `preferred` latch keeps the bound silent (no regression)", async () => {
+    // The guarantee the fix must not break: a profile mounting `dsh-better-sidebar` registers the
+    // panels THERE and never touches the harness seat — so the harness callback never fires and the
+    // bound would report a problem neither host has. This arm waits past the bound with both mounted.
+    /** The client with better-sidebar available at apply time. */
+    const client = loadMpdClient({ sidebarAtApply: true })
+    client.exports.settleTimeoutMs(30)
+    /** Every line the entry emitted. */
+    const lines: string[] = []
+    /** The real console method, restored in the finally block below. */
+    const originalWarn = console.warn
+    console.warn = (message) => { lines.push(String(message)) }
+    try {
+      client.exports.apply(client.ctx)
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      expect(lines.filter((line) => line.includes("no sidebar host took the mpd panels"))).toEqual([])
+      expect(client.exports.sidebarDiagnostics()).toMatchObject({ reported: false, host: "dsh-better-sidebar" })
+      // The preferred host DID get the tabs, which is what makes this a preference and not a disable.
+      expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"])
+    } finally {
+      console.warn = originalWarn
+    }
+    restore(client)
+  })
+
+  test("S9: a better-sidebar seat that arrives AFTER apply is PUBLISHED on the preference branch", () => {
+    // The case the in-callback preference branch exists for: `betterSidebar` is published by its own
+    // plugin fiber, so a bare probe at apply time answers undefined, and the callback is the FIRST
+    // moment the preference is knowable. The snapshot must not keep its apply-time values there.
+    /** The client whose better-sidebar seat arrives later (the default race fixture). */
+    const client = loadMpdClient({})
+    // The console.info the branch emits is CAPTURED, so this arm can prove the branch really ran
+    // even while the diagnostics assertion below is red for the wrong reason.
+    /** The lines the branch's own `console.info` emitted. */
+    const infoLines: string[] = []
+    /** The real console method, restored in the finally block below. */
+    const originalInfo = console.info
+    console.info = (message?: unknown) => { infoLines.push(String(message)) }
+    try {
+      client.exports.apply(client.ctx)
+      // Apply-time truth: the bare probe saw nothing, so the snapshot says "no host yet".
+      expect(client.exports.sidebarDiagnostics()).toMatchObject({ reported: false, host: "", preferred: false })
+      // The preferred host's fiber activates, and the harness seat's injection fires INSIDE that window.
+      client.provideService("betterSidebar", client.sidebarService)
+      client.provideService("sidebarRightTabs", { register: () => () => {} })
+      client.provideService("sidebarRight", { openTab: () => () => {} })
+      // The branch RAN — its own line is the proof that the state below is the branch's doing.
+      expect(infoLines.some((line) => line.includes("better-sidebar is mounted"))).toBe(true)
+      // THE PIN: the branch returned after taking the preference, and the snapshot says so.
+      expect(client.exports.sidebarDiagnostics()).toMatchObject({ reported: false, host: "dsh-better-sidebar", registered: 0, preferred: true })
+    } finally {
+      console.info = originalInfo
+    }
+    restore(client)
+  })
+
+  test("when the harness seat DOES arrive, both panels register and NOTHING is reported", () => {
+    /** The client without the third-party sidebar, in a profile whose harness sidebar exists. */
+    const client = loadMpdClient({ withoutSidebar: true })
+    /** Everything apply said. */
+    const atApply = applyCapturing(client)
+    /** The harness registries the seat publishes. */
+    const tabs: Array<{ id: string; kind: string }> = []
+    client.provideService("sidebarRightTabs", { register: (definition: { id: string; kind: string }) => { tabs.push(definition); return () => {} } })
+    client.provideService("sidebarRight", { openTab: () => () => {} })
+    // The seat was published after apply, exactly as the live host does — so the injection fired and
+    // took the fallback branch rather than reporting anything.
+    expect([...tabs.map((tab) => tab.id)].sort()).toEqual(["@mpd-dsh/team-sidebar", "@mpd-dsh/workmate-sidebar"])
+    // THE PANE BODIES TOO, and from the client's OWN declared `slots` service: the harness records
+    // every keyed registration there, which is the path a live composition takes.
+    /** The pane bodies both tabs registered, by slot key. */
+    const bodies = (client.calls.slotsRegistered ?? []).filter((slot) => slot.name === "sidebar.right.pane.tab").map((slot) => slot.key)
+    expect([...bodies].sort()).toEqual(["@mpd-dsh/team-sidebar", "@mpd-dsh/workmate-sidebar"])
+    expect(atApply.filter((line) => line.includes("no sidebar host"))).toEqual([])
+    // AND THE TEARDOWN STAYS QUIET: registrations happened, so the settle check has nothing to say.
+    ;(client.calls.ctxDisposers?.get("mpd: harness sidebar report") as (() => void) | undefined)?.()
+    client.hooks.runCleanups()
+    restore(client)
+  })
+
+  test("a missing locale seam is reported once, naming the seam that is missing", () => {
+    // THE OTHER SILENT EXIT: `apply` returns early when the ctx exposes no `ctx.inject` (a client
+    // framework without that seam). The regression this pins is that the early return is no longer
+    // invisible — one line, naming the seam.
+    /** The client under test. */
+    const client = loadMpdClient({ withoutSidebar: true })
+    /** A ctx whose `inject` is gone, as a client framework without that seam looks. */
+    const bare = { ...client.ctx, inject: undefined } as unknown as typeof client.ctx
+    /** Every line the mount emitted. */
+    const lines: string[] = []
+    /** The real warn, restored in the `finally`. */
+    const originalWarn = console.warn
+    console.warn = (message) => { lines.push(String(message)) }
+    try {
+      client.exports.apply(bare)
+    } finally {
+      console.warn = originalWarn
+    }
+    /** The report line this arm asserts on. */
+    const reported = lines.filter((line) => line.includes("no sidebar host took the mpd panels"))
+    expect(reported.length).toBe(1)
+    expect(reported[0]).toContain("no ctx.inject")
+    restore(client)
+  })
+})
+
+describe("the sidebar host preference (W4)", () => {
+  /**
+     * The registry double for the harness sidebar.
+     * @returns the tab/pane recorders and the two service objects the client injects.
+     */
+  const harnessSidebarDouble = (): {
+    /** The tab definitions the host accepted. */
+    tabs: Array<{ id: string; kind: string; title: () => string }>
+    /** The pane bodies the host accepted. */
+    bodies: Array<{ key: string; name: string; component: unknown }>
+    /** The tabs the client asked the host to open. */
+    opened: string[]
+    /** The tab-type registry the client registers into. */
+    sidebarRightTabs: { register: (definition: { id: string; kind: string; title: () => string }) => () => void }
+    /** The pane opener the client's commands call. */
+    sidebarRight: { openTab: (kind: string) => () => void }
+    /** A pane-body registry, for an arm that wants to install its own over the harness's. */
+    slots: { register: (definition: { key: string; name: string }, component: unknown) => () => void }
+  } => {
+    /** The tab definitions the host accepted. */
+    const tabs: Array<{ id: string; kind: string; title: () => string }> = [];
+    /** The pane bodies the host accepted, when an arm installs this double over the harness's own. */
+    const bodies: Array<{ key: string; name: string; component: unknown }> = [];
+    /** The tabs the client asked the host to open. */
+    const opened: string[] = [];
+    return {
+      tabs,
+      bodies,
+      opened,
+      sidebarRightTabs: {
+        register: (definition: { id: string; kind: string; title: () => string }) => { tabs.push(definition); return () => {}; },
+      },
+      sidebarRight: {
+        openTab: (kind: string) => { opened.push(kind); return () => {}; },
+      },
+      slots: {
+        register: (definition: { key: string; name: string }, component: unknown) => { bodies.push({ ...definition, component }); return () => {}; },
+      },
+    };
+  }
+
+  test("with better-sidebar MOUNTED the official right sidebar stays untouched", () => {
+    /** The client with BOTH hosts available. */
+    const client = loadMpdClient({ sidebarAtApply: true });
+    /** The harness sidebar's registry double. */
+    const harness = harnessSidebarDouble();
+    client.exports.apply(client.ctx);
+    // The official sidebar arrives after apply(), exactly as it does live.
+    client.provideService("sidebarRightTabs", harness.sidebarRightTabs);
+    client.provideService("slots", harness.slots);
+    client.provideService("sidebarRight", harness.sidebarRight);
+    // better-sidebar won, so NOTHING was registered on the fallback host — no duplicate panel.
+    expect(harness.tabs).toEqual([]);
+    expect(harness.bodies).toEqual([]);
+    // The preferred host DID get the tabs, which is what makes this a preference and not a disable.
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
+    restore(client);
+  });
+
+  test("with better-sidebar ABSENT both panels register on the official fallback", () => {
+    /** The client in a profile that has the harness sidebar and not the third-party one. */
+    const client = loadMpdClient({ withoutSidebar: true });
+    /** The harness sidebar's registry double. */
+    const harness = harnessSidebarDouble();
+    client.exports.apply(client.ctx);
+    client.provideService("slots", harness.slots);
+    client.provideService("sidebarRightTabs", harness.sidebarRightTabs);
+    client.provideService("sidebarRight", harness.sidebarRight);
+    // BOTH panels reach the fallback: the team view AND the workmate library, which used to be a
+    // better-sidebar-only surface and was therefore unreachable in exactly this profile.
+    expect(harness.tabs.map((tab) => tab.id).sort()).toEqual(["@mpd-dsh/team-sidebar", "@mpd-dsh/workmate-sidebar"]);
+    // The PANE BODIES go through the harness's own `slots` service, which is the one this client
+    // declares as a dependency — so this is the real path, not a double the arm installed.
+    /** The pane bodies both tabs registered, by the key they were registered under. */
+    // FILTERED BY SLOT NAME: `slotsRegistered` also carries the non-sidebar rows this client
+    // registers (the command view and the settings section), which are a different concern.
+    const bodies = (client.calls.slotsRegistered ?? []).filter((slot) => slot.name === "sidebar.right.pane.tab").map((slot) => slot.key).sort();
+    expect(bodies).toEqual(["@mpd-dsh/team-sidebar", "@mpd-dsh/workmate-sidebar"]);
+    // Every body is a component the host can call, not a value.
+    for (const body of client.calls.slotsRegistered ?? []) {
+      if (body.name === "sidebar.right.pane.tab") expect(typeof body.component).toBe("function");
+    }
+    restore(client);
+  });
+})

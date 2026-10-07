@@ -1,0 +1,38 @@
+### evidence: WEB DAG edge legibility + R19 ordering (dag-geometry)
+### captured: 2026-10-06T14:11:46Z
+
+$ bun test packages/mpd-bundle-plugin/test/
+
+ 146 pass
+ 0 fail
+ 2750 expect() calls
+Ran 146 tests across 7 files. [2.76s]
+
+$ bun test packages/mpd-tui-plugin/test/graph-rank.test.ts
+ 12 pass
+ 0 fail
+ 743 expect() calls
+Ran 12 tests across 1 file. [111.00ms]
+
+$ ./node_modules/.bin/tsgo --noEmit -p tsconfig.json
+(empty above = clean)
+
+$ node scripts/verify-comment-coverage.ts   # tail only; the full report lists every lane
+  664: comment — viewportRows
+  667: comment — offset
+  672: comment — max
+  677: comment — overflow
+  694: comment — sync
+
+
+$ bun evidence/tui/dag-port/web-dag/20261006T140859Z/before-after.mts
+AFTER  inset=15 gutter=30 maxLanes=9 laneOverflow=0
+AFTER  ranks=5 rank sizes=[5,3,2,1,1]
+AFTER  T2->T7 = out[153,77 12x1] riser[165,77 1x104] cross1[165,181 171x1] riser2[336,25 1x156] in[336,25 16x1]
+AFTER  run/box interior overlaps over the WHOLE graph: 0 (of 66 runs x 12 boxes)
+BEFORE T2->T7 band=[165,339] centre=252 lane=+3 riserX=255
+BEFORE T2->T7 = out[164,77 91x1] riser[255,25 1x52] in[255,25 86x1]
+BEFORE out crosses: rank1.row1
+BEFORE riser crosses: rank1.row0, rank1.row1
+BEFORE in crosses: rank1.row0
+BEFORE runs crossing a rank-1 box: 3 of 3

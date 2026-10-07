@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "recordId": "lane-e-lane-c-reverify-2026-10-07T1051Z",
+  "loopId": "waveloop-lane-c",
+  "taskId": "T14",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "lane-c-repair (the T14 blocker's repair task)",
+  "verifierId": "lane-e-verifier",
+  "basis": {
+    "kind": "pre-plugin",
+    "attestation": "no-guard-in-process",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/verify-law-spec.md",
+        "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+      },
+      {
+        "path": "AGENTS.md",
+        "sha256": "e39082509fdedce0ca22e5e147462001124cc1a36f049b8ae07520ab114d4b5b"
+      },
+      {
+        "path": "skills/dsh-qa/cases.json",
+        "sha256": "39360f57f2a6a548deadf7245c550304987b9bbb876904442c9d9cab0bd06c3f"
+      },
+      {
+        "path": "evidence/gates/complexity-gate/2026-10-07T10-32-25Z/skills-retirement-sweep.md",
+        "sha256": "50c149a1b4d7c7be31268194addaccc203b10dadae8bb18930f2b6731bfc652b"
+      }
+    ],
+    "probe": [
+      {
+        "path": "skills/dsh-qa/cases.json",
+        "bytes": 21733,
+        "sha256": "39360f57f2a6a548deadf7245c550304987b9bbb876904442c9d9cab0bd06c3f",
+        "mtime": "2026-10-07T10:46:22.563Z"
+      },
+      {
+        "path": "skills/dsh-qa/SKILL.md",
+        "bytes": 55222,
+        "sha256": "2cfd89be3b4ac695160bad4156b6b15c5dcbed784b349f5cb9ffab2a9aee030d",
+        "mtime": "2026-10-07T10:51:13.134Z"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/verify-law.ts",
+        "bytes": 22585,
+        "sha256": "fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb",
+        "mtime": "2026-10-07T10:52:01.803Z"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/goal-bridge.ts",
+        "bytes": 13295,
+        "sha256": "206c1e1bd10e41a3148d827a0d2a1eb29c93f0526aee2c36548903f9058539b9",
+        "mtime": "2026-10-05T05:20:52.525Z"
+      },
+      {
+        "path": ".mpd/verify/boot.json",
+        "exists": false
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "skills/dsh-qa/cases.json",
+      "sha256": "39360f57f2a6a548deadf7245c550304987b9bbb876904442c9d9cab0bd06c3f"
+    },
+    {
+      "path": "skills/dsh-qa/SKILL.md",
+      "sha256": "2cfd89be3b4ac695160bad4156b6b15c5dcbed784b349f5cb9ffab2a9aee030d"
+    },
+    {
+      "path": "evidence/gates/complexity-gate/2026-10-07T10-32-25Z/skills-retirement-sweep.md",
+      "sha256": "50c149a1b4d7c7be31268194addaccc203b10dadae8bb18930f2b6731bfc652b"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "cmd": "node scripts/run-qa-lanes.ts --check-drift — the clause that was red, plus the subject settle table",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-c-reverify/2026-10-07T1051Z/logs/ev-clause-green.log",
+      "logSha256": "e6e0468bbbc0cf5efd15eab6ecc30dc621c5d5d08f2e5e21821f97551af91bfe"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "minor",
+      "symptom": "The clause's SUBJECTS are now settled, but the `skills/**` band was not fully quiet at dispatch: `skills/dsh-qa/cases.json` is byte-stable across my window (`39360f57f2a6a548` at 10:51:09Z and again at 10:51:36Z), while `skills/dsh-qa/SKILL.md` MOVED inside it (`c216f7f450148794` → `2cfd89be3b4ac695`, 27 s after my opening read). SKILL.md is not a subject of `--check-drift` (which audits the manifest against the scripts on disk), so the green below stands — but the wave's stated precondition ('no verifier is dispatched until `skills/**` is CLOSED') is only satisfied for the clause's own subjects, and the final `repin-vendor` re-pin must cover the FINAL skills state, not this one.",
+      "expected": "Before the integration sweep, confirm the `skills/**` pen is CLOSED and re-derive the corpus treeSha from that final state (exactly ONE re-pin per wave). If SKILL.md was being repaired in response to T13's F3 (the stale cordis path in the case table), say so in the PR body so the move is provenance, not drift.",
+      "docSource": "AGENTS.md §9 (single-skills-writer rule; exactly ONE re-pin per wave, landing in the same commit as the change that invalidated the treeSha); AGENTS.md §7 (verify on settled hashes, quote a hash with its measurement moment)"
+    }
+  ],
+  "unlockedReads": [],
+  "notes": [
+    "RESIDUAL BOUND (verify-law-spec §(c), verbatim): the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).",
+    "DOCKER DECLARED BOUND (captain ruling D): the Docker lane's evidence is INTEGRATION-borne and declared in the PR body — a declared bound, never a hole.",
+    "THE CLAUSE THAT WAS RED IS NOW GREEN, measured: `node scripts/run-qa-lanes.ts --check-drift` → **exit 0**, '[run-qa-lanes] discovery: 42 lane script(s) discovered (42 listed, 0 unlisted, 17 outside every suite)' and '[run-qa-lanes] manifest and disk agree (48 entries, 42 lane script(s) discovered) and the immutability guard is declared'. The predecessor record's blocker (39 listed / 3 unlisted, exit 1) is closed.",
+    "ALL THREE subjects are registered in `skills/dsh-qa/cases.json` — `goal-bridge`, `tui-deps-ctrla` and `verify-law` each resolve to a real entry — so the two PRE-EXISTING unlisted lanes were repaired alongside the new one, which is what the manifest's own `driftRule` requires ('declared here with outsideSuites instead of being omitted').",
+    "THE SWEEP DOC WAS CORRECTED HONESTLY rather than left asserting a green: `skills-retirement-sweep.md`'s verification block now reads '`node scripts/run-qa-lanes.ts --check-drift` # at THIS point: exit 1, 40 listed, 2 unlisted — see the third pass below', i.e. it records the state at its own measurement moment and points forward to the final pass instead of claiming exit 0 at a moment it did not hold. That is the T14 F3 repair done the right way.",
+    "NOT RE-OPENED, per the dispatch: the live three-source agreement (row log + `notices.json` + the staged shell with 0 members/tasks/records), the revert control, the corpus calibration (`corpus-before-after.out`, exactly one verdict moving), `bun run test:qa` and `bun run typecheck` — all verified PASS in the predecessor record and unchanged in substance by this repair, whose diff is confined to the manifest, the case table, one case script's registration and the sweep doc's arithmetic.",
+    "SETTLE TABLE (the opening read was taken at 10:51:09Z, the closing read at 10:51:36Z): `cases.json` 39360f57f2a6a548 → 39360f57f2a6a548 (STABLE, and stable relative to the 10:50:5xZ drift run that returned exit 0); `SKILL.md` c216f7f450148794 → 2cfd89be3b4ac695 (MOVED — see F1). The clause's subject set is settled; the band is not.",
+    "METHOD — no implementation read: no .ts/.js source and no dist/** was opened for this record. Evidence used: the command's own output with its exit code, the manifest's entry inventory, the sweep doc as a reader, and content-free hashes for the settle table."
+  ],
+  "createdAt": "2026-10-07T10:53:00Z",
+  "predecessor": "lane-e-lane-c-2026-10-07T1042Z (result.json sha256 8d49854d7a536cf473f682c9838e2c6f5fff368f783a1081760d6d96dbbf34c9)"
+}

@@ -1,3 +1,3 @@
-import z4 from "./classic/index.js";
-export * from "./classic/index.js";
+import z4 from "./classic/index.ts";
+export * from "./classic/index.ts";
 export default z4;

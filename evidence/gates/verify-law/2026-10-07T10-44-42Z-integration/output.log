@@ -1,0 +1,46 @@
+== T16 INTEGRATION SWEEP (Lane D) ==
+utc: 2026年 10月 07日 星期三 10:44:43 UTC
+branch: feature/de-vendor-and-verify-law
+head: 97207ab8
+
+== F.2: the real workspace boot marker ==
+ABSENT (correct)
+
+== node scripts/verify-dist-fresh.ts ==
+  STALE: packages/mpd-tui-plugin/dist/index.js — committed packages/mpd-tui-plugin/dist/index.js (386256 B, 00e82b38fc37d13d…) != fresh build of packages/mpd-tui-plugin/src/index.ts (376280 B, 963572bba484d194…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+  STALE: packages/mpd-ulw-plugin/dist/index.js — committed packages/mpd-ulw-plugin/dist/index.js (106374 B, c721aa226f578356…) != fresh build of packages/mpd-ulw-plugin/src/index.ts (107185 B, eeee5bbbd60a6e2e…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+  STALE: packages/mpd-verify-plugin/dist/index.js — committed packages/mpd-verify-plugin/dist/index.js (111927 B, 2507432422168496…) != fresh build of packages/mpd-verify-plugin/src/index.ts (111940 B, 5d31bdc0f83bfb99…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-verify-plugin/src/index.ts --target node --format esm --outfile packages/mpd-verify-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-dist-fresh] FAIL - 9 of 30 targets not fresh (STALE: 9) — 632ms
+== node scripts/verify-comment-coverage.ts ==
+packages/mpd-verify-plugin/test/row.test.ts (1)
+  175: comment — h
+
+== node scripts/verify-no-host-override.ts ==
+[verify-no-host-override] declared exemptions (0): none
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 205 host-declared row ids)
+== node scripts/verify-manual-paths.ts ==
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] PASS resolved=144 over-report=77 under-report=90 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+== bun run verify:docs ==
+[verify-docs-parity] links=440 checked=369 resolved=369 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=27 ignoredAnchorOnly=44 files=113
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=22 derived=3 links=440 dead=0 — PASS
+== bun test packages ==
+1 tests failed:
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [100.55ms]
+
+ 1569 pass
+ 3 skip
+ 1 fail
+ 22706 expect() calls
+Ran 1573 tests across 98 files. [12.84s]
+== npx tsgo --noEmit ==
+tsgo exit=0

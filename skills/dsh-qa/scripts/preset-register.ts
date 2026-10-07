@@ -43,6 +43,34 @@ const FIXTURE_ROLES = "oracle,librarian,prometheus,hephaestus,sisyphus,sisyphus-
 // the operand becomes the bare checkout path and no CLI/binary pin is pre-set.
 const BASEURL_PREFIX = '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\\/\\/\\/(?=[A-Za-z]:)/, "").replace(/^file:\\/\\//, "")).replace(/\\/+$/, "") : "") + '
 
+/**
+ * The four MCP launchers a dev-flavored main patch must point at, checkout-absolute,
+ * as `<repoRoot>/packages/<entry>`.
+ *
+ * Each entry mirrors the operand the SHIPPED `cordis.patch.yml` row carries — the
+ * fixture is a hand-written expectation, never parsed out of the patch, so it can
+ * still catch a rewrite that stopped consuming the packed operand.
+ */
+const MCP_LAUNCHERS = [
+  "mpd-mcp-astgrep/dist/launch.js",
+  "mpd-mcp-gitbash/dist/launch.js",
+  "mpd-mcp-lsp/dist/launch.js",
+  "mpd-mcp-codegraph/dist/launch.js",
+]
+
+/**
+ * Which of {@link MCP_LAUNCHERS} a patch text does NOT carry as a quoted
+ * checkout-absolute operand. Pure, so the self-test can drive it with the
+ * un-rewritten patch as a negative control.
+ * @param text The patch text to inspect, in any path spelling.
+ * @returns The launcher entries whose operand is missing; empty means every one is present.
+ */
+function missingMcpOperands(text: string): string[] {
+  /** The text in the forward-slash quoting the patch uses on every platform. */
+  const normalized = text.split(sep).join("/")
+  return MCP_LAUNCHERS.filter((mcp) => !normalized.includes('"' + join(repoRoot, "packages", mcp).split(sep).join("/") + '"'))
+}
+
 /** One declared bundle patch, paired with its dev-flavored text. */
 interface DevPatch {
   /** Absolute path of the declared patch file this text came from. */
@@ -122,8 +150,11 @@ function selfTest(): void {
   // `text.includes(...)` test select the wrong file).
   /** The declared patch that really declares the preset ROW, matched on a row line rather than a mention. */
   const preset = rewrites.find((entry) => /^\s*name: '@deepseek-ai\/dsh-agent-preset'\s*$/m.test(entry.text))
-  // The MAIN patch keeps its packed-name rewrite contract.
-  if (!main.source.includes("mpd-bundle")) { console.error("[preset-register self-test] FAIL: the first declared patch is not the bundle patch (" + main.source + ")"); process.exit(1) }
+  // The MAIN patch is the repository-root `cordis.patch.yml`. The old `source.includes("mpd-bundle")`
+  // heuristic went obsolete when that file moved out of `packages/mpd-bundle/` — and a substring
+  // test on a path is not a proof anyway — so the first declared patch is pinned by PATH EQUALITY
+  // against the root the manifest's own declaration resolves to.
+  if (resolve(main.source) !== resolve(repoRoot, "cordis.patch.yml")) { console.error("[preset-register self-test] FAIL: the first declared patch is not the repository-root cordis.patch.yml (" + main.source + ")"); process.exit(1) }
   if (main.text.includes("name: '@mpd-dsh/mpd'") || !main.text.includes("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")) { console.error("[preset-register self-test] FAIL: devFlavor web-compat entry rewrite (bare '@mpd-dsh/mpd' must become the bundle-plugin main)"); process.exit(1) }
   // devFlavor must consume the packed `/node_modules/...` operand entirely: no
   // `<baseUrl>/node_modules/<abs-repo>` splice, no baseUrl concat left, and every
@@ -132,21 +163,40 @@ function selfTest(): void {
   for (const entry of rewrites) {
     if (entry.text.includes("typeof baseUrl") || entry.text.includes("@mpd-dsh/mpd/")) { console.error("[preset-register self-test] FAIL: devFlavor left the packed @mpd-dsh/mpd operand or a baseUrl concat in " + entry.source); process.exit(1) }
   }
-  for (const mcp of ["mpd-mcp-astgrep/launch.ts", "mpd-mcp-gitbash/dist/cli.js", "mpd-mcp-lsp/dist/cli.js", "mpd-mcp-codegraph/launch.ts"]) {
+  for (const mcp of MCP_LAUNCHERS) {
     /** The checkout-relative launcher the rewritten main patch must point at. */
     const target = join(repoRoot, "packages", mcp)
     if (!existsSync(target)) { console.error("[preset-register self-test] FAIL: MCP launcher missing on disk: " + mcp); process.exit(1) }
-    // The dev rewrite splices `repoRoot + "/"` onto the packed operand's tail, so on Windows the
-    // emitted operand is MIXED (`C:\\repo/packages/...`) while `join` answers a fully native path:
-    // the two spell the SAME checkout-absolute launcher. Normalizing both sides to "/" compares the
-    // path itself instead of enumerating spellings by hand — and it keeps `packages/` in the
-    // comparison, which a hand-built `repoRoot + "/" + mcp` silently dropped.
-    /** The native target path in the forward-slash quoting the patch text carries. */
-    const emitted = '"' + target.split(sep).join("/") + '"'
-    if (!main.text.split(sep).join("/").includes(emitted)) {
-      console.error("[preset-register self-test] FAIL: devFlavor MCP operand is not the checkout-absolute " + mcp)
-      process.exit(1)
-    }
+  }
+  // The dev rewrite splices `repoRoot + "/"` onto the packed operand's tail, so on Windows the
+  // emitted operand is MIXED (`C:\\repo/packages/...`) while `join` answers a fully native path:
+  // the two spell the SAME checkout-absolute launcher. Normalizing both sides to "/" compares the
+  // path itself instead of enumerating spellings by hand — and it keeps `packages/` in the
+  // comparison, which a hand-built `repoRoot + "/" + mcp` silently dropped.
+  /** The launchers the rewritten main patch does NOT carry as a checkout-absolute operand; empty on a healthy tree. */
+  const missingOperands = missingMcpOperands(main.text)
+  if (missingOperands.length > 0) {
+    // WHICH CLI ENTRY each fixture names is the SHIPPED patch's own operand, and it moved once
+    // already: `7c1076f3` ("ship the MCP launchers as built artifacts") switched the git-bash row
+    // from `mpd-mcp-gitbash/launch.ts` to `mpd-mcp-gitbash/dist/launch.js`, and this fixture kept
+    // naming the LEGACY `mpd-mcp-gitbash/dist/cli.js` that still sits in the package (which is why
+    // the stale name still passed the existsSync leg above and only failed the operand match).
+    // The fixture follows the SHIPPED operand; it is never derived from the patch, because a
+    // derived expectation would re-state the rewrite instead of checking it.
+    console.error("[preset-register self-test] FAIL: devFlavor MCP operand is not the checkout-absolute " + missingOperands.join(", "))
+    process.exit(1)
+  }
+  // NEGATIVE CONTROL: the same predicate driven with the patch as DECLARED (before the rewrite)
+  // must report all four launchers — the packed operand carries the `@mpd-dsh/mpd/...` spelling and
+  // none of the checkout-absolute ones. If the rewrite ever stopped consuming that operand, the
+  // rewritten text would look like this control and the case above would redden.
+  /** The main patch BEFORE `devFlavor`, the falsifier's input. */
+  const rawMain = readFileSync(main.source, "utf8")
+  /** The launchers missing from the UN-rewritten patch, which must be all four for the control to hold. */
+  const controlMissing = missingMcpOperands(rawMain)
+  if (controlMissing.length !== MCP_LAUNCHERS.length) {
+    console.error("[preset-register self-test] FAIL: negative control — the un-rewritten patch must carry NONE of the checkout-absolute operands, but " + (MCP_LAUNCHERS.length - controlMissing.length) + " already matched")
+    process.exit(1)
   }
   // The PRESET patch must survive the rewrite as a real preset declaration: the
   // mpd composition is a row now, so this is what a dev boot must apply.

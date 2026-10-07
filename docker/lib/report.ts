@@ -183,6 +183,7 @@ const EXPECTED: readonly string[] = [
   "boot.adapterService",
   "boot.adapterToolCall",
   "boot.mpdTools",
+  "boot.mcpTools",
   "boot.agentTeamTools",
   "boot.sessionGateListener",
   "boot.agentTeamService",
@@ -200,14 +201,65 @@ const EXPECTED: readonly string[] = [
   "tui.pluginAddHost",
   "tui.pluginAddBundle",
   "tui.compose",
-  "tui.registryDefaultMpd",
+  "tui.presetPreference",
   "tui.presetRow",
   "tui.mpdTuiRow",
   "tui.agentTeamRows",
+  // The MERGED-PANEL group (the host's own subagent rows above the MPD team body): the scene is
+  // opened by MPD's own combo (`alt+a`), its ROW ORDER is measured on the captured pane, the
+  // `Ctrl+A` SPLIT is measured in two phases (team present -> MPD's panel; team record removed ->
+  // the key no longer opens it), and the D6 seam gate runs on a byte-verified copy of the installed
+  // tree.
+  "tui.mergedPanelOpens",
+  "tui.mergedPanelOrder",
+  "tui.hostDashboardKeyIntact",
+  "tui.noDirectTuiSeam",
   "tui.boot",
   "tui.noFatalSignatures",
   "tui.sessionPreset",
+  // ── the LIVE arms: one seven-name block per plane (docker/lib/live-verdict.ts) ────────────────
+  // These are the rows that can only be produced by a REAL model turn, read from the harness's own
+  // session store. They are declared HERE so a plane whose arm did not run is reported as `null`
+  // ("not reached") instead of vanishing — the 2026-10-03 defect hid behind exactly that gap, when
+  // `boot.llmTurn` was the only live name and every recorded run reported it as null.
+  "live.credentialStaged",
+  "live.credentialScoped",
+  "live.credentialRemoved",
+  "live.web.turnStarted",
+  "live.web.turnCompleted",
+  "live.web.noErrorTurns",
+  "live.web.noMalformedToolJson",
+  "live.web.toolCallsParsed",
+  "live.web.mpdToolCalled",
+  "live.web.assistantReplied",
+  "live.tui.turnStarted",
+  "live.tui.turnCompleted",
+  "live.tui.noErrorTurns",
+  "live.tui.noMalformedToolJson",
+  "live.tui.toolCallsParsed",
+  "live.tui.mpdToolCalled",
+  "live.tui.assistantReplied",
+  "live.headless.turnStarted",
+  "live.headless.turnCompleted",
+  "live.headless.noErrorTurns",
+  "live.headless.noMalformedToolJson",
+  "live.headless.toolCallsParsed",
+  "live.headless.mpdToolCalled",
+  "live.headless.assistantReplied",
+  "live.teamRecord",
+  "live.nativeExecutor",
+  "live.headlessPresetRow",
   "boot.llmTurn",
+  // ── the REAL BROWSER (docker/lib/browser-lane.ts): the GUI a person actually uses ─────────────
+  "boot.workspaceRegistered",
+  "ui.loads",
+  "ui.workspaceSelected",
+  "ui.composerPresent",
+  "ui.promptSent",
+  "ui.replyRendered",
+  "ui.mpdSettingsSection",
+  "ui.teamPanel",
+  "ui.noConsoleErrors",
 ]
 
 /**
@@ -407,16 +459,19 @@ const result: RunResult = {
     "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
     "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
     "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
-    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition)",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition) — read from the row's own file log, <workspace>/.mpd/logs/mpd-roles.log (R5)",
     "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd",
+    "the TUI session resolves `mpd` through the DOCUMENTED USER-level preference (dsh-tui's own <HOME>/.dsh-tui/agent-preset.json), while the host preset-registry row stays untouched by the bundle",
   ],
   // COMPOSITION ONLY = row lists. Kept in its own field so nothing here can be read as a load proof
   // (AGENTS.md §4: --dump-config composes rows and never executes plugin code).
   provesCompositionOnly: [
     "the composed profile carries the mpd rows, the preset-mpd row and the three official agent-team rows",
+    "the bundle is ADDITIVE-ONLY: both shipped patch layers carry zero column-0 id-targets, so no host row is overridden (the retired `default: mpd` id-targets are the class this catches)",
   ],
   doesNotProve: [
     "any live LLM turn or model routing: no credentials are staged (AGENTS.md §10)",
+    "that mpd is the deployment default for a user who never set the preference: the bundle ships the preset but selects nothing (strict zero-override)",
     "`--dump-config` output is COMPOSITION evidence and is never cited here as a plugin load",
     "a packed/tarball install from dist/mpd-package",
     "a machine without network access: apt, nodejs.org, bun.sh, npm and the registry are all used",

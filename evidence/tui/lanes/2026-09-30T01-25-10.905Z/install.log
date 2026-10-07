@@ -1,0 +1,60 @@
+Progress: resolved 1, reused 0, downloaded 0, added 0
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 11.23.0 → 12.8.1.   │
+   │   Changelog: https://pnpm.io/v/12.8.1   │
+   │    To update, run: pnpm self-update     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+Progress: resolved 27, reused 0, downloaded 0, added 0
+Progress: resolved 29, reused 0, downloaded 0, added 0
+Progress: resolved 30, reused 0, downloaded 0, added 0
+Progress: resolved 61, reused 0, downloaded 0, added 0
+Progress: resolved 77, reused 0, downloaded 0, added 0
+Progress: resolved 86, reused 0, downloaded 0, added 0
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @deepseek-harness-tui/dsh-tui 0.11.2
+
+Packages: +77
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /root/dshProj/My-Power-Dsh/.mpd/tui-lane/pnpm-home/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 101, reused 0, downloaded 28, added 27
+Progress: resolved 101, reused 0, downloaded 45, added 44
+[WARN] Tarball download average speed 10 KiB/s (size 13 KiB) is below 50 KiB/s: https://registry.npmjs.org/signal-exit/-/signal-exit-4.1.0.tgz (GET)
+[WARN] Tarball download average speed 22 KiB/s (size 26 KiB) is below 50 KiB/s: https://registry.npmjs.org/yargs-parser/-/yargs-parser-20.2.9.tgz (GET)
+[WARN] Tarball download average speed 7 KiB/s (size 7 KiB) is below 50 KiB/s: https://registry.npmjs.org/cliui/-/cliui-7.0.4.tgz (GET)
+[WARN] Tarball download average speed 39 KiB/s (size 62 KiB) is below 50 KiB/s: https://registry.npmjs.org/parse5/-/parse5-5.1.1.tgz (GET)
+Progress: resolved 101, reused 0, downloaded 62, added 63
+[WARN] Tarball download average speed 8 KiB/s (size 8 KiB) is below 50 KiB/s: https://registry.npmjs.org/color-convert/-/color-convert-2.0.1.tgz (GET)
+[WARN] Tarball download average speed 1 KiB/s (size 2 KiB) is below 50 KiB/s: https://registry.npmjs.org/object-assign/-/object-assign-4.1.1.tgz (GET)
+[WARN] Tarball download average speed 8 KiB/s (size 9 KiB) is below 50 KiB/s: https://registry.npmjs.org/scheduler/-/scheduler-0.28.0.tgz (GET)
+Progress: resolved 101, reused 0, downloaded 72, added 74
+Progress: resolved 101, reused 0, downloaded 74, added 76
+Progress: resolved 101, reused 0, downloaded 75, added 76
+Progress: resolved 101, reused 0, downloaded 75, added 77, done
+Added 1 entry to minimumReleaseAgeExclude in pnpm-workspace.yaml (set minimumReleaseAgeStrict to true to gate these updates with a prompt):
+  @deepseek-harness-tui/dsh-tui@0.11.2
+Done in 15.1s using pnpm v11.23.0
+dsh: initialized profile dsh-tui at /root/dshProj/My-Power-Dsh/.mpd/tui-lane/dshhome/profiles/dsh-tui
+? Verifying lockfile against supply-chain policies (101 entries)...
+Progress: resolved 1, reused 0, downloaded 0, added 0
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @mpd-dsh/mpd link:/root/dshProj/My-Power-Dsh
+
+Packages: -33
+---------------------------------
+Progress: resolved 101, reused 12, downloaded 0, added 0, done
+✓ Lockfile passes supply-chain policies (101 entries in 2.2s)
+Done in 2.4s using pnpm v11.23.0
+[WARN] Tarball download average speed 39 KiB/s (size 102 KiB) is below 50 KiB/s: https://registry.npmjs.org/@img/sharp-linux-riscv64/-/sharp-linux-riscv64-0.35.4.tgz (GET)
+[WARN] Tarball download average speed 23 KiB/s (size 66 KiB) is below 50 KiB/s: https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.11.3.tgz (GET)
+[WARN] Tarball download average speed 31 KiB/s (size 107 KiB) is below 50 KiB/s: https://registry.npmjs.org/@img/sharp-darwin-arm64/-/sharp-darwin-arm64-0.35.4.tgz (GET)
+[WARN] Tarball download average speed 40 KiB/s (size 169 KiB) is below 50 KiB/s: https://registry.npmjs.org/@img/sharp-linux-arm64/-/sharp-linux-arm64-0.35.4.tgz (GET)

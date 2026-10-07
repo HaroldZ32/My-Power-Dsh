@@ -463,7 +463,7 @@ function claimItem(entry: SkillDocumentEntry): string {
  *
  * The harness keeps exactly one candidate per name within a layer: it sorts by
  * `rank`, then registration order, then local order, and WARN+DROPS every later
- * same-name candidate (H/dsh-skill/lib/index.js:314-325 with
+ * same-name candidate (H/dsh-skill/lib/index.ts:314-325 with
  * `compareIndexedCandidates` :518-520). Our providers live in the same layer as the
  * bundled corpus, so a name two contributors claim is a REAL, silent loss for one
  * of them — and `mpd_ext_list` used to list both as contributed. This annotation

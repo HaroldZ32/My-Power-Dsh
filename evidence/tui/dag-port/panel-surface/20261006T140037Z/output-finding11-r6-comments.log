@@ -1,0 +1,33 @@
+=== FINDING 11 fix + R6 title shape + comment gate ===
+
+--- FINDING 11 arms ---
+(pass) FINDING 11: every emitted row fits the frame interior > no row exceeds the interior at ANY width, and the whole page respects it [1.42ms]
+(pass) FINDING 11: every emitted row fits the frame interior > POSITIVE CONTROL: a deliberately over-long row FAILS the same check [0.03ms]
+(pass) FINDING 11: every emitted row fits the frame interior > the frame's interior helper subtracts exactly the two border cells [0.03ms]
+
+--- R6 border-title shape arms ---
+(pass) R6: the frame's border title is a structured value, not a string > every page's frame carries { content, position: 'top', align } — and a bare string FAILS [1.17ms]
+(pass) R6: the frame's border title is a structured value, not a string > POSITIVE CONTROL: a bare string is NOT acceptable, and the check can tell [0.04ms]
+
+--- the two arms that guard the OPEN offset-accumulation defect ---
+(fail) the scrollbar and the self-windowed viewport > the offset clamps to [0, max(0, content - viewport)] and never renders a blank page [15.81ms]
+(fail) the scrollbar and the self-windowed viewport > FOCUS AUTO-SCROLL: the focused task is inside the rendered window at both ends of an overflowing board [4.03ms]
+(fail) the scrollbar and the self-windowed viewport > the offset clamps to [0, max(0, content - viewport)] and never renders a blank page [15.81ms]
+(fail) the scrollbar and the self-windowed viewport > FOCUS AUTO-SCROLL: the focused task is inside the rendered window at both ends of an overflowing board [4.03ms]
+
+--- ./node_modules/.bin/tsgo --noEmit -p tsconfig.json ---
+tsgo exit: 0
+
+--- bun run verify:comments ---
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+--- panel.test.ts / panel-dag.test.ts / full package ---
+ 1 fail
+ 105 expect() calls
+Ran 18 tests across 1 file. [98.00ms]
+ 2 fail
+ 717 expect() calls
+Ran 39 tests across 1 file. [185.00ms]
+ 3 fail
+ 5242 expect() calls
+Ran 334 tests across 17 files. [836.00ms]

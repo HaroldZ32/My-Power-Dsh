@@ -27,6 +27,11 @@
 import { randomUUID } from "node:crypto"
 import { resolve } from "node:path"
 import { errorMessage } from "./shared"
+// R5: the ONE log sink every row routes its diagnostics through. The adapter is the sanctioned
+// contact surface (AGENTS.md §6) AND the owner of workspace-root resolution, so a row asks the
+// adapter instead of importing the sink itself — which keeps the coupling inventory at ONE entry.
+import { openLogSink } from "../../mpd-mcp-shared/log-sink"
+import type { LogSink } from "../../mpd-mcp-shared/log-sink"
 
 // The pure, harness-free helpers every row uses are re-exported from the ONE module
 // consumers already import, so a row needs a single specifier for both the seam
@@ -38,6 +43,81 @@ export const name = "mpd-dsh-adapter"
 // No hard service dependency: every seam is resolved lazily through ctx.get()
 // so the row mounts in any composition order and in partial installs.
 export const inject: string[] = []
+
+// ── the harness seam-name vocabulary ────────────────────────────────────────────────
+// A row's cordis `inject` array spells harness SERVICE IDS as string literals. Those
+// literals are the coupling: the harness owns the ids, so a rename there used to be an
+// edit in EVERY row that listed one. They are declared HERE — the one file AGENTS.md §6
+// makes the contact surface — and rows build their array with `dshSeamInject`.
+//
+// An id is a cordis DEPENDENCY, not a seam OBJECT: naming one only orders the row against
+// the service. Every seam is still READ through `resolveDshAdapter(ctx)`; a row that names
+// no id is simply inject-free. The values are the harness's own strings and must never be
+// "improved" here — they are compared against ids the harness declares, so a typo is a
+// silently absent dependency rather than a compile error.
+
+/** The `tools` service: the tool registry, guards and the read/execute helpers. */
+export const DSH_SEAM_TOOLS = "tools"
+/** The `subagents` service: the continuable-subagent registry and the spawn seam. */
+export const DSH_SEAM_SUBAGENTS = "subagents"
+/** The `skills` service: the skill registry a provider registers into. */
+export const DSH_SEAM_SKILLS = "skills"
+/** The `agents` service: the live-agent registry (session cwds, the watchdog's stream fold). */
+export const DSH_SEAM_AGENTS = "agents"
+/** The `commands` service: the slash-command registry. */
+export const DSH_SEAM_COMMANDS = "commands"
+/** The `sessions` service: the session store behind the web host. */
+export const DSH_SEAM_SESSIONS = "sessions"
+/** The `webServer` service: the HTTP host a web-plane row mounts its routes onto. */
+export const DSH_SEAM_WEB_SERVER = "webServer"
+/** The `webRuntime` service: the browser-runtime/asset plane of the web host. */
+export const DSH_SEAM_WEB_RUNTIME = "webRuntime"
+/** The `agentPresets` service: the named preset roster a session resolves its preset from. */
+export const DSH_SEAM_AGENT_PRESETS = "agentPresets"
+
+/** Every harness seam id above, in declaration order — one set a gate or a probe can iterate. */
+export const DSH_SEAM_NAMES: readonly string[] = [
+  DSH_SEAM_TOOLS,
+  DSH_SEAM_SUBAGENTS,
+  DSH_SEAM_SKILLS,
+  DSH_SEAM_AGENTS,
+  DSH_SEAM_COMMANDS,
+  DSH_SEAM_SESSIONS,
+  DSH_SEAM_WEB_SERVER,
+  DSH_SEAM_WEB_RUNTIME,
+  DSH_SEAM_AGENT_PRESETS,
+]
+
+/**
+ * One harness seam id: the union of the constants above.
+ *
+ * The type is what makes a row's `inject` array checkable — `dshSeamInject("tool")` is a
+ * compile error rather than a dependency that silently never activates.
+ */
+export type DshSeamName =
+  | typeof DSH_SEAM_TOOLS
+  | typeof DSH_SEAM_SUBAGENTS
+  | typeof DSH_SEAM_SKILLS
+  | typeof DSH_SEAM_AGENTS
+  | typeof DSH_SEAM_COMMANDS
+  | typeof DSH_SEAM_SESSIONS
+  | typeof DSH_SEAM_WEB_SERVER
+  | typeof DSH_SEAM_WEB_RUNTIME
+  | typeof DSH_SEAM_AGENT_PRESETS
+
+/**
+ * Build a row's `inject` array from the seam-name constants.
+ *
+ * A fresh array every call, so two rows can never end up sharing one mutable dependency
+ * list. The returned array holds exactly the ids passed in, unchanged — the bundle's
+ * contract with the loader is byte-identical to the literals this replaced.
+ *
+ * @param names the harness seam ids this row declares a dependency on, in order.
+ * @returns a new `string[]` carrying those ids verbatim.
+ */
+export function dshSeamInject(...names: readonly DshSeamName[]): string[] {
+  return [...names]
+}
 
 /** Object-rooted JSON Schema used whenever a caller omits one. */
 const OBJECT_SCHEMA: Record<string, unknown> = { type: "object", properties: {} }
@@ -91,7 +171,7 @@ export interface DshToolDef {
 /**
  * Optional input hint advertised to capable clients.
  *
- * MEASURED against the installed harness (`dsh-commands/lib/index.js`
+ * MEASURED against the installed harness (`dsh-commands/lib/index.ts`
  * `normalizeDefinition`): `hint` must be a non-empty string and `attachments`, when
  * present, must be a boolean; a definition that fails either check throws at
  * `register()` time.
@@ -199,7 +279,7 @@ export interface DshPostDecision {
 /**
  * The `tools/pre-execute` decision the harness's own gate consumes.
  *
- * Measured in the installed harness (`dsh-tools/lib/index.js:3116`,
+ * Measured in the installed harness (`dsh-tools/lib/index.ts:3116`,
  * `types/index.d.ts:38`): the pre-execute waterfall resolves to this object and the
  * registry then reads `gate.kind` (`allow` dispatches, `ask` goes through approval,
  * `deny` is turned into an error result). A listener that returns without delegating
@@ -408,6 +488,136 @@ export interface DshTeamSpawnTeammateResult {
   member: DshTeamMemberView
 }
 
+// ── THE TEAM EXECUTOR: mpd's team system behind ONE seam ─────────────────────
+//
+// WHY THIS EXISTS (the 2026-09-30 team-plane split, W2). Until now the ONLY way to
+// raise a teammate was the official service, so the bundle's team plane could not exist
+// in a composition where that service is absent or unmountable — measured in the
+// `dsh-tui` case, where `TeamService`'s ROOT-bound projection registration is refused
+// and the row never activates at all.
+//
+// A team's life is three operations, and BOTH backends can perform them:
+//   spawn a member · deliver a message to it · interrupt it.
+// Everything else a team has (the roster, the board, the dependency DAG, attempts,
+// verdicts) belongs to `mpd-team-core`'s own record, which is why this seam is
+// deliberately NARROW: the more it carries, the more the two backends must agree on,
+// and the more the official plane creeps back into being the system of record.
+//
+// The two implementations, and what each one buys:
+//   `native`   — `ctx.subagents.startContinuable` + `sendMessage` + `interrupt`, with the
+//                provider and the per-member `agentOptions` chosen BY THE CALLER. That is
+//                the whole point: a teammate's model route stops depending on the
+//                official tool row's `freshProvider` config, the read-only deny list and
+//                the persona travel as ordinary spawn arguments, and nothing here needs
+//                the official plugin to be mounted. DEFAULT.
+//   `official` — the `dsh.team*` calls the bundle already made. Kept because it is a real
+//                implementation with behaviour the native path does not reproduce
+//                (adjacency-checked delivery between peers, a host-owned roster), and
+//                because a composition that already runs it must not regress.
+//
+// Selection is a CAPABILITY decision, made once and REPORTED (`reason`), never guessed at
+// a call site. An explicit override exists for a diagnosis, not for normal operation.
+
+/** Which backend raises and drives a team's members. */
+export type DshTeamExecutorKind = "native" | "official"
+
+/** Everything a backend needs to raise ONE member, in a vocabulary both backends can serve. */
+export interface DshTeamSpawnRequest {
+  /** The mpd team this member belongs to; carried into the native registry for membership. */
+  teamId: string
+  /** The mpd member id (`M1`), which is what a caller addresses the member by. */
+  memberId: string
+  /** The member's display name; unique inside its team and what the roster shows. */
+  name: string
+  /** One-line description shown on the roster; also the identity the roster route reads. */
+  description: string
+  /** The instantiation prompt the member receives. */
+  prompt: string
+  /**
+   * The subagent provider to raise the member through (`spawn`, `fork`, `mpd-roster`, …).
+   * NATIVE only — the official backend resolves its provider from row config and has no
+   * per-call override, which is exactly the limitation this seam removes. Absent means
+   * the composition's own default (`spawn`).
+   */
+  provider?: string
+  /**
+   * Harness-shaped `AgentOptions` (provider / model / reasoningEffort) for this member.
+   * NATIVE only, for the same reason as {@link provider}: it is how a roster slot route
+   * reaches a teammate WITHOUT the official tool row's `freshProvider` indirection.
+   */
+  agentOptions?: unknown
+  /** Cancellation for the spawn and for the member's first turn. */
+  signal?: AbortSignal
+}
+
+/** What one backend reports after raising a member. */
+export interface DshTeamSpawnResult {
+  /** The backend's OWN handle for the member (a durable child session id). Never an mpd id. */
+  handle: string
+  /** Which backend produced it, so a caller can record it and a reader can see it. */
+  executor: DshTeamExecutorKind
+}
+
+/** One member a backend currently knows about, for a surface that lists them. */
+export interface DshTeamExecutorMember {
+  /** The backend's own handle. */
+  handle: string
+  /** The mpd team id this member was raised for. */
+  teamId: string
+  /** The mpd member id this handle was raised for. */
+  memberId: string
+  /** The member's display name. */
+  name: string
+}
+
+/**
+ * The ONE seam a team's execution goes through.
+ *
+ * Every method is total: an absent backend is a REFUSAL with a sentence, never a crash and
+ * never a silent success. A caller records what this seam answers; it never infers it.
+ */
+export interface DshTeamExecutor {
+  /** Which backend this is. A caller records it; a reader sees it. */
+  readonly kind: DshTeamExecutorKind
+  /** Why this backend is the active one — shown on a boot line and carried into a refusal. */
+  readonly reason: string
+  /** The subagent provider names this backend can raise a member through; `[]` for official. */
+  providers(): string[]
+  /**
+   * Raise one member.
+   * @param caller - the exact live Lead agent the member is raised under.
+   * @param request - who the member is, what it is told, and (native) how it is routed.
+   * @returns the backend's handle for the member.
+   * @throws when the member cannot be raised — a member that does not exist must be loud.
+   */
+  spawn(caller: unknown, request: DshTeamSpawnRequest): Promise<DshTeamSpawnResult>
+  /**
+   * Deliver one message to a member.
+   * @param caller - the exact live sender authorizing the delivery.
+   * @param handle - the backend handle {@link spawn} returned.
+   * @param content - the message text.
+   * @param signal - cancellation, owning the operation only until acceptance.
+   * @throws when the message was not admitted.
+   */
+  send(caller: unknown, handle: string, content: string, signal?: AbortSignal): Promise<void>
+  /**
+   * Interrupt a member's current turn. Fire-and-return, like both underlying seams.
+   * @param caller - the exact live caller authorizing the interrupt.
+   * @param handle - the backend handle {@link spawn} returned.
+   * @throws when the interrupt is refused.
+   */
+  interrupt(caller: unknown, handle: string): Promise<void>
+  /**
+   * The team identity of one live agent, in the SAME shape the official roster answers, so
+   * a consumer (the read-only discipline's tool guard) needs no knowledge of the backend.
+   * @param agent - the agent to identify.
+   * @returns the membership, or undefined when this agent is not a member of any team.
+   */
+  membership(agent: unknown): DshTeamMembership | undefined
+  /** The members this backend currently knows about; `[]` when it tracks none. */
+  members(): DshTeamExecutorMember[]
+}
+
 /** The target status sampled before a teammate interrupt. */
 export interface DshTeamInterruptResult {
   /** The member's status sampled immediately BEFORE cancellation. */
@@ -443,7 +653,7 @@ export interface DshTeamView {
 /**
  * The `agent/pre-step` payload, as much of it as an mpd listener depends on.
  *
- * MEASURED against the installed harness (`dsh-agent-loop/lib/index.js`
+ * MEASURED against the installed harness (`dsh-agent-loop/lib/index.ts`
  * `preStep()`): the waterfall is dispatched with `{messages: claimed, turn, step,
  * agent?, signal}` and its default decision is `{kind:'enter', messages}` — the
  * SAME payload `dsh-agent-instructions` and `dsh-compaction-basic` read. `messages`
@@ -634,6 +844,15 @@ export interface DshCapabilities {
   subagentsProvider: boolean
   /** `ctx.subagents.startContinuable` — the durable continuable-child seam. */
   subagentsContinuable: boolean
+  /**
+   * The NATIVE team executor is the active backend for `teamExecutor()`.
+   *
+   * The pre-flight check for a caller that must know whether a team member will be raised
+   * through mpd's own path (true) or through the mounted official service (false). It is
+   * deliberately not the only thing a caller reads: `teamExecutor().reason` carries the
+   * sentence, including the case where NEITHER backend can serve and every call will refuse.
+   */
+  teamExecutorNative: boolean
   /** `ctx.subagents.interrupt` — the parked-child interrupt seam. */
   subagentsInterrupt: boolean
   /** `ctx.llm.listModels` — the per-provider model list (the catalog seam needs its own trio). */
@@ -729,6 +948,22 @@ export interface DshCapabilities {
    * + `list`; the two are reported apart because the methods carry different contracts).
    */
   subagentsProviderRegister: boolean
+  /**
+   * `ctx.get("goals")` answered with the goal service's own `get()` — the DURABLE read
+   * {@link DshAdapter.goalState} performs. It is deliberately separate from
+   * {@link DshCapabilities.goalTools}: the service is host-plane and always there in a
+   * web/base boot, while the tools a WRITE must go through are preset-plane rows a
+   * composition can omit, and a caller must be able to tell the two halves apart.
+   */
+  goals: boolean
+  /**
+   * The three harness goal tools (`get_goal` / `create_goal` / `update_goal`) all
+   * resolve, at the host plane or inside a live agent's own scope — i.e.
+   * {@link DshAdapter.goalControl} can actually run. A preset that mounts only
+   * `tool-goal` reports true; one whose rows are disabled reports false and the caller
+   * degrades to the durable read.
+   */
+  goalTools: boolean
 }
 
 /**
@@ -750,6 +985,80 @@ export interface DshLiveAgent {
   ctx?: unknown
   /** The host's maintenance hook, when this build exposes one. */
   runMaintenance?: unknown
+}
+
+/**
+ * One persisted session goal, projected for a plugin caller.
+ *
+ * The durable half mirrors the harness `goalValue` shape (`id`, `revision`,
+ * `objective`, `phase`, `roundsStarted`, `maxGoalRounds`, optional `blockedReason`);
+ * `activation` is PROCESS-LOCAL and present only when the read came through the
+ * harness tool set, which is the only surface that observes it.
+ */
+export interface DshGoalSnapshot {
+  /** Stable goal identity — the compare-and-set id a mutation has to name. */
+  id: string
+  /** Positive revision; every durable mutation increments it. */
+  revision: number
+  /** The human-requested completion objective. */
+  objective: string
+  /** Durable lifecycle phase. */
+  phase: "active" | "paused" | "blocked" | "complete"
+  /** Highest admitted goal round; absent when the read could not see the counter. */
+  roundsStarted?: number
+  /** Total admitted automatic-continuation round cap. */
+  maxGoalRounds: number
+  /** Present exactly while `phase` is `blocked`. */
+  blockedReason?: { code: string; message: string }
+  /** Whether THIS process may auto-continue the goal; `undefined` when unobserved. */
+  activation?: "armed" | "disarmed"
+}
+
+/** One goal operation {@link DshAdapter.goalControl} can drive for one agent. */
+export interface DshGoalControlInput {
+  /**
+   * The live calling agent. `get_goal`/`create_goal`/`update_goal` authenticate it as
+   * the registry's exact instance inside an active driver, so a hand-built Agent-like
+   * object is refused by the harness — same rule as
+   * {@link DshAdapter.executeTool}'s `agent`.
+   */
+  agent?: unknown
+  /** The operation; `read` is `get_goal` and every other action mutates through the tools. */
+  action: "read" | "create" | "edit" | "pause" | "resume" | "complete" | "blocked"
+  /** Completion objective: required by `create`, optional replacement for `edit`. */
+  objective?: string
+  /** Round cap for `create` / replacement cap for `edit`; the service default applies when omitted. */
+  maxGoalRounds?: number
+  /** Exact goal id from a prior read; read on demand when a ref-taking action omits it. */
+  goalId?: string
+  /** Exact revision from a prior read; read on demand when a ref-taking action omits it. */
+  revision?: number
+  /** Required by `blocked`: the concrete condition that persisted across goal rounds. */
+  blockedReason?: string
+  /** Traceability id for the underlying tool call; one is minted when omitted. */
+  callId?: string
+  /** Cancellation forwarded to the tool call. */
+  signal?: AbortSignal
+  /** Per-call timeout in milliseconds; the adapter's configured default applies when omitted. */
+  timeoutMs?: number
+}
+
+/** What one {@link DshAdapter.goalControl} call produced. */
+export interface DshGoalControlResult {
+  /** Whether the operation was admitted; a POLICY refusal is `ok:false`, never a throw. */
+  ok: boolean
+  /** Whether the harness marked the underlying tool result an error. */
+  isError: boolean
+  /** The goal after the operation; `null` when the session has none. */
+  goal?: DshGoalSnapshot | null
+  /** The activation the tool observed after the call, when it reported one. */
+  activation?: "armed" | "disarmed"
+  /** The harness's own refusal/failure text when the call did not succeed. */
+  error?: unknown
+  /** Which registry answered: the agent's own scope, the host plane, or the service. */
+  via?: "agent-scope" | "host-plane" | "service"
+  /** The harness's raw tool result, forwarded for diagnostics. */
+  raw?: unknown
 }
 
 /**
@@ -849,6 +1158,17 @@ export interface DshAdapter {
    * the exec-less `workspaceRoot()`. For agentless surfaces (web routes) only.
    */
   workspaceRootsAll(): string[]
+  /**
+   * Append one diagnostic line to a ROW's own log file (`<root>/.mpd/logs/<name>.log`).
+   *
+   * R5: rows never print. In a TUI session the host's stdout/stderr IS the Ink alternate screen, so a
+   * row's boot line, warning or trace goes to a file. Total by contract: an unresolvable or unwritable
+   * root drops the line into the sink's bounded ring and NEVER writes to a terminal.
+   *
+   * @param name the log's base name — the row's own `[mpd-…]` prefix without brackets.
+   * @param line the diagnostic text; one newline is appended.
+   */
+  rowLog(name: string, line: string): void
   /** Every live Agent in this process (`[]` when the registry is absent). */
   liveAgents(): DshLiveAgent[]
   /** One live Agent by id, or undefined. */
@@ -864,6 +1184,30 @@ export interface DshAdapter {
   compactionEngineForAgent(agentId: string): unknown
   /** Subscribe to a harness event; returns a disposer, or undefined when unavailable. */
   onEvent(event: string, handler: (...args: unknown[]) => unknown): (() => void) | undefined
+  /**
+   * Read ONE agent's current persisted goal through the host-plane goal service.
+   *
+   * NEVER throws, and the two empty answers mean different things on purpose: `null` is
+   * "this session has no current goal", `undefined` is "this composition could not tell"
+   * (no `goals` service, or the service refused the agent because it is not the live
+   * registry instance). Reported by `capabilities().goals`.
+   */
+  goalState(agent: unknown): DshGoalSnapshot | null | undefined
+  /**
+   * Drive ONE goal operation for one agent through the HARNESS GOAL TOOLS.
+   *
+   * WHY THE TOOLS AND NOT THE SERVICE: the goal domain's authorisation lives in
+   * `@deepseek-ai/dsh-tool-goal` — `create`/`edit`/`pause`/`resume` require a direct
+   * human turn on a top-level agent, `blocked` requires the configured consecutive-round
+   * threshold, and every call requires the exact live calling agent inside its active
+   * driver. Writing `ctx.goals` directly would make this bundle a policy-free authority
+   * over goal state, so the seam deliberately cannot reach the mutating service methods:
+   * it forwards to the tools and hands their refusal back verbatim.
+   *
+   * NEVER throws and never rejects: a policy refusal is `{ok:false, error}`, and a
+   * composition without the tools reports `capabilities().goalTools === false`.
+   */
+  goalControl(input: DshGoalControlInput): Promise<DshGoalControlResult>
   /**
    * The host's live model catalog, read ONLY through `ctx.llm`
    * (`listProviders` / `listModels` / `resolveModelInfo`) and projected as
@@ -907,7 +1251,7 @@ export interface DshAdapter {
    * `bumpRevision` (=> `settings/document-updated`) BEFORE `commit`
    * (=> `settings/updated(ns,next,prev,source)`) inside one synchronous
    * `write()`/`publish()` call — MEASURED in
-   * `@deepseek-ai/dsh-settings/lib/index.js:466-467` and `:497-498` — so the
+   * `@deepseek-ai/dsh-settings/lib/index.ts:466-467` and `:497-498` — so the
    * source cannot be read at document-updated time. This seam therefore
    * COALESCES the two events per tick and calls the listener on the next
    * microtask, after both have fired, with the source of the same change.
@@ -931,7 +1275,7 @@ export interface DshAdapter {
    * returns only `{get, watch, update, replace}` and removes the namespace from an internal
    * `ctx.effect`. The design's §1.3 fallback therefore governs: the base is fixed for the process
    * lifetime and the resolved value is the authority (the host's own `installSection` does the
-   * same, `dsh-settings/lib/index.js:327-350`).
+   * same, `dsh-settings/lib/index.ts:327-350`).
    */
   settingsRegister(
     namespace: string,
@@ -999,7 +1343,7 @@ export interface DshAdapter {
    * NO-OP disposer and NEVER throws, so a plugin's `apply` cannot be taken down
    * while it degrades on `capabilities().commandsRegister`.
    *
-   * MEASURED in the installed harness (`dsh-commands/lib/index.js`): `register()`
+   * MEASURED in the installed harness (`dsh-commands/lib/index.ts`): `register()`
    * RETURNS the exact `() => void` effect disposer that unregisters the
    * definition, and that disposer is passed through verbatim when it is a
    * function — a stub registry may return anything (the codegraph test double
@@ -1019,7 +1363,7 @@ export interface DshAdapter {
    *
    * MEASURED against the installed harness
    * (`dsh-system-prompt/lib/types/index.d.ts` `SystemPrompt.section`) and its runtime
-   * (`dsh-agent/lib/index.js` `assembleContextFor`): the section's `text` provider is
+   * (`dsh-agent/lib/index.ts` `assembleContextFor`): the section's `text` provider is
    * re-evaluated at every assembly with `{agent, scope, signal?}`, and `section()`
    * returns the exact cordis effect disposer (a non-callable stub answer degrades to a
    * no-op). A DUPLICATE name throws inside the registry and that error is deliberately
@@ -1045,7 +1389,7 @@ export interface DshAdapter {
    * reports it.
    *
    * The listener runs AFTER `next()` resolves but still BEFORE the tool body dispatches
-   * (the harness awaits the whole waterfall before it executes, `dsh-tools/lib/index.js:3116`),
+   * (the harness awaits the whole waterfall before it executes, `dsh-tools/lib/index.ts:3116`),
    * so it sees the decision that will actually be used.
    *
    * @param listener - `(exec, decision)`; the decision is the harness's own
@@ -1124,18 +1468,34 @@ export interface DshAdapter {
     agent: unknown,
     listener: (payload: DshAgentPreStep, decision: DshPreStepDecision) => DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined>,
   ): () => void
-  /** Whether a tool of this name is registered right now. */
-  hasTool(name: string): boolean
+  /**
+   * Whether a tool of this name is registered right now.
+   *
+   * WITH `agent` the answer is that agent's OWN view — the view that would execute the call: it
+   * contains the host-plane globals, the preset plane mounted as the agent scope's PARENT, and
+   * the agent's own registrations, while a global this scope RESTRICTED away reads as absent.
+   * WITHOUT one the read is the host-plane GLOBAL view, and that is deliberate rather than a
+   * shortcut: an agentless caller (a TUI panel, a web route, the MCP name-clash check) acts on
+   * the host plane, so answering from some other session's scope would promise a call that site
+   * cannot make. A caller holding the live object the registry returned should pass it.
+   * @param name - the registered tool name to look for.
+   * @param agent - the calling agent, when the call site has one.
+   */
+  hasTool(name: string, agent?: unknown): boolean
   /**
    * Structural view of the tool runtime for internal tool calls.
    *
    * `execute`'s optional `agent` is forwarded verbatim as the harness execution's
-   * `exec.agent` (measured contract: `dsh-tools/lib/index.js:3025-3045` reads
+   * `exec.agent` (measured contract: `dsh-tools/lib/index.ts:3025-3045` reads
    * `exec.agent` and `:3190-3192` resolves the tool against it). It stays OPTIONAL
    * so every existing caller keeps its exact meaning: absent = no agent (the
    * pre-existing behaviour).
+   *
+   * `get` takes the same optional `agent` and resolves through the SAME two views `hasTool`
+   * documents, so a caller that probed with an agent never fetches a definition from a different
+   * plane than the one that answered it.
    */
-  toolRuntime(): { get(name: string): unknown; execute(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; agent?: unknown }): Promise<unknown> }
+  toolRuntime(): { get(name: string, agent?: unknown): unknown; execute(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; agent?: unknown }): Promise<unknown> }
   /**
    * Call one registered tool in-process and normalize the result.
    *
@@ -1204,6 +1564,37 @@ export interface DshAdapter {
    * sync. Every mpd consumer is expected to prefer the typed methods below and to read
    * this one only as an escape hatch (it is also what the team plane's own probes use).
    * It is contained: a `ctx` that cannot answer is `undefined`, never a throw.
+   */
+  /**
+   * The ACTIVE team executor — the seam mpd's own team system raises members through.
+   *
+   * NEVER throws and never returns undefined: a composition always gets a backend, and when
+   * neither can serve, the answer is an executor whose every call REFUSES with the reason.
+   * The choice is made from `capabilities()` once per call (cheap, and it keeps a late-ACTIVE
+   * service from being frozen out) and the `reason` says which way it went:
+   *
+   *   `native`   when `subagentsContinuable` is true — the default, and the one that needs
+   *              nothing from the official plugin;
+   *   `official` when the native seams are absent but `ctx.agentTeams` is mounted;
+   *   a REFUSING `native` executor when neither is available, naming both misses, so a
+   *              caller gets a sentence rather than a TypeError.
+   *
+   * `MPD_DSH_TEAM_EXECUTOR=native|official` overrides the choice. It exists for a
+   * DIAGNOSIS — "is this defect in the executor or in the record?" — and never for normal
+   * operation: the whole point of the split is that mpd owns the team, and an override that
+   * quietly handed execution back would hide exactly the regression this seam prevents.
+   */
+  teamExecutor(): DshTeamExecutor
+  /**
+   * The mounted Agent Teams service itself (`ctx.get("agentTeams")`), or `undefined` when this
+   * composition has no team row.
+   *
+   * The RAW service is handed out deliberately for the same reason
+   * {@link DshAdapter.subagentRuntime} is: a consumer may need a surface this adapter does not
+   * model yet, and re-declaring it here would be a second seam to keep in sync. Every mpd consumer
+   * is expected to prefer the typed methods — and, for a TEAM, `teamExecutor()` — and to read this
+   * one only as an escape hatch. It is contained: a `ctx` that cannot answer is `undefined`, never
+   * a throw.
    */
   teamService(): unknown | undefined
   /**
@@ -1343,7 +1734,7 @@ export interface DshAdapter {
    * Build ONE user-role message for SESSION INJECTION — the value
    * `agent.followup(message)` takes and the value a pre-step
    * `{kind:'enter', messages:[…]}` decision appends (in-tree precedent:
-   * `packages/mpd-agent-teams-plugin/lib/command.js`, the `/agent-teams`
+   * `packages/mpd-agent-teams-plugin/lib/command.ts`, the `/agent-teams`
    * handler, which is what makes a command actually RUN its objective instead of
    * only answering).
    *
@@ -1354,7 +1745,7 @@ export interface DshAdapter {
    * against the installed `dsh-llm/lib/types/message.d.ts`
    * (`Message = {id, role, content, source}`, `MessageId` is a brand-only
    * passthrough) and the vendored reference implementation
-   * (`_deps/dsh-llm/lib/index.js` `createUserMessage`): a fresh `id`, the
+   * (`_deps/dsh-llm/lib/index.ts` `createUserMessage`): a fresh `id`, the
    * `user` role, one `{type:'text', text}` block, and the producer tag
    * (`source.kind`). The message is frozen like the host's own constructors
    * freeze theirs.
@@ -1430,7 +1821,7 @@ export interface DshAdapter {
    * VERBATIM and THROWING — the same D9 discipline as {@link DshAdapter.startAgentTurn}
    * (a rejected steer must stay a throw, never a swallowed boolean).
    *
-   * Measured harness shape: `dsh-agent-loop/lib/index.js` `steer(input)` is
+   * Measured harness shape: `dsh-agent-loop/lib/index.ts` `steer(input)` is
    * `send(input, "next-step", true)` — an idle driver starts a turn, a running driver
    * consumes the item at its next step boundary (distinct from `followup`, which opens
    * its OWN turn). Adopted call sites: the approval notice and the captain-report steer.
@@ -1456,10 +1847,10 @@ export interface DshAdapter {
    * command handler needs, because the host runs a command "without sending the
    * command to the model", so returning `{kind:'success', text}` starts nothing.
    *
-   * MEASURED in the installed harness (`dsh-agent-loop/lib/index.js`):
+   * MEASURED in the installed harness (`dsh-agent-loop/lib/index.ts`):
    * `followup(input)` is `send(input, "next-turn", true)` — the item becomes the
    * sole ordinary message of its own turn and the driver wakes. The in-tree
-   * precedent is `packages/mpd-agent-teams-plugin/lib/command.js`, the
+   * precedent is `packages/mpd-agent-teams-plugin/lib/command.ts`, the
    * `/agent-teams` handler calling `invocation.agent.followup(createUserMessage(…))`.
    *
    * The agent's shape is read HERE ONLY: a caller passes whatever it holds (the
@@ -1541,6 +1932,46 @@ export function workspaceRootOf(exec?: DshToolExec): string {
 }
 
 /**
+ * One sink per ROW NAME, each remembering the root it was opened against (module scope).
+ *
+ * Keyed by name, not by root, so a host running many rows opens one file (and one fd) per row instead
+ * of reopening on every call. The stored root is re-checked on every use — AGENTS.md §6 forbids caching
+ * a workspace ROOT, so a different session's root replaces the entry. Declared bound: one fd per
+ * distinct row name this process has logged for.
+ */
+const rowLogSinks = new Map<string, { root: string; sink: LogSink }>()
+
+/**
+ * Append one diagnostic line to a ROW's own log file (`<root>/.mpd/logs/<name>.log`).
+ *
+ * R5: an MPD row must never print. In a TUI session the host's stdout/stderr IS the Ink alternate
+ * screen, so a row's boot line, warning or trace goes to a file instead. The module-level form is the
+ * ONE implementation — {@link DshAdapter.rowLog} delegates to it — because a row that has no adapter
+ * instance in scope (a module-level helper, a callback object) still needs the same destination.
+ *
+ * Totality is the contract: an unresolvable root, an unwritable directory or a failed append all DROP
+ * the line (into the sink's bounded in-memory ring) and never write to a terminal.
+ *
+ * @param name the log's base name — the row's own `[mpd-…]` prefix, without brackets.
+ * @param line the diagnostic text; the sink appends exactly one newline.
+ */
+export function rowLogLine(name: string, line: string): void {
+  try {
+    /** The workspace root for this call; an exec-less row resolves DSH_WORKSPACE_ROOT → cwd. */
+    const root = workspaceRootOf(undefined)
+    /** The cached entry for this row name, reused while its root is unchanged. */
+    let entry = rowLogSinks.get(name)
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) }
+      rowLogSinks.set(name, entry)
+    }
+    entry.sink.write(line)
+  } catch {
+    // Never throw and never print: a diagnostic must not take a boot down.
+  }
+}
+
+/**
  * Workspace roots of every live session, deduplicated, registration order.
  * `[]` when the agent registry is absent — the caller then falls back to the
  * exec-less {@link workspaceRootOf}.
@@ -1568,14 +1999,77 @@ export function workspaceRootsOf(agents: any): string[] {
 function noop(): void { /* seam absent: nothing was registered */ }
 
 /**
- * Build one {@link DshAgentScope} from the RAW `agent.ctx`, or `undefined` when that
- * context does not expose every member the scope promises.
+ * The three harness goal tools this adapter drives, in the order the goal seam reads them.
  *
- * ALL-OR-NOTHING is deliberate: a scope whose `tools.restrict` (or `on`, or `effect`)
- * would throw on use is worse than the caller's own raw-context fallback, because it
- * turns a feature-detectable absence into a runtime `TypeError` at an arbitrary later
- * moment. The probe is contained (a throwing getter or a proxy context is a miss,
- * never a crash — the adapter's never-crash-at-construction contract).
+ * Exported because they are part of the seam contract: `capabilities().goalTools` reports whether
+ * THEY resolve, and a caller that pre-flights a composition should not re-spell the list.
+ */
+export const GOAL_TOOL_NAMES: readonly string[] = ["get_goal", "create_goal", "update_goal"]
+
+/**
+ * Normalize one harness goal object into {@link DshGoalSnapshot}.
+ *
+ * Accepts BOTH shapes the harness exposes: a `GoalView` from `ctx.goals.get(agent)`
+ * (which carries `roundsStarted` and the process-local `activation`) and the cropped
+ * `goal` member of a tool value (same durable fields, activation spelled beside it).
+ * @param view - the service view, or the tool value's `goal` member.
+ * @returns the snapshot, or undefined when the object carries no usable goal identity.
+ */
+function goalSnapshotOf(view: unknown): DshGoalSnapshot | undefined {
+  if (view === null || view === undefined || typeof view !== "object") return undefined
+  /** The goal object viewed as the loose record it is at the harness boundary. */
+  const raw = view as Record<string, unknown>
+  if (typeof raw.id !== "string" || raw.id === "") return undefined
+  /** The normalized snapshot, filled field by field so no unvalidated value crosses. */
+  const snapshot: DshGoalSnapshot = {
+    id: raw.id,
+    revision: typeof raw.revision === "number" ? raw.revision : 0,
+    objective: typeof raw.objective === "string" ? raw.objective : "",
+    phase: raw.phase === "paused" || raw.phase === "blocked" || raw.phase === "complete" ? raw.phase : "active",
+    maxGoalRounds: typeof raw.maxGoalRounds === "number" ? raw.maxGoalRounds : 0,
+  }
+  if (typeof raw.roundsStarted === "number") snapshot.roundsStarted = raw.roundsStarted
+  if (raw.activation === "armed" || raw.activation === "disarmed") snapshot.activation = raw.activation
+  /** The blocking policy record, present exactly while the phase is `blocked`. */
+  const reason = raw.blockedReason
+  if (reason !== null && typeof reason === "object") {
+    /** The stable policy code, accepted only as a non-empty string. */
+    const code = (reason as { code?: unknown }).code
+    /** The human-readable explanation, accepted only as a non-empty string. */
+    const message = (reason as { message?: unknown }).message
+    if (typeof code === "string" && code !== "" && typeof message === "string" && message !== "") {
+      snapshot.blockedReason = { code, message }
+    }
+  }
+  return snapshot
+}
+
+/**
+ * Read one goal TOOL VALUE (`{ goal: {...} | null, activation }`) into a snapshot pair.
+ * @param value - the tool result value, or anything else that arrived.
+ * @returns the goal (null when the session has none) and the observed activation.
+ */
+function goalValueOf(value: unknown): { goal: DshGoalSnapshot | null; activation?: "armed" | "disarmed" } {
+  if (value === null || value === undefined || typeof value !== "object") return { goal: null }
+  /** The tool value viewed as the record it is at the harness boundary. */
+  const raw = value as Record<string, unknown>
+  /** The activation the tool reported beside the goal, or undefined when it said nothing. */
+  const activation = raw.activation === "armed" || raw.activation === "disarmed" ? raw.activation : undefined
+  /** The normalized goal; absent members mean the session has no current goal. */
+  const goal = goalSnapshotOf(raw.goal)
+  if (goal === undefined) return activation === undefined ? { goal: null } : { goal: null, activation }
+  // The tool spells activation BESIDE the goal; move it onto the snapshot so callers read one object.
+  if (activation !== undefined) goal.activation = activation
+  return activation === undefined ? { goal } : { goal, activation }
+}
+
+/**
+ * The agent-scope context probe shared by this adapter: `agent.ctx`, all-or-nothing.
+ *
+ * A cordis scope is only usable when EVERY member the adapter forwards exists, because a
+ * partially-shaped context turns a feature-detectable absence into a `TypeError` at an
+ * arbitrary later moment. The probe is contained (a throwing getter or a proxy context is a
+ * miss, never a crash — the adapter's never-crash-at-construction contract).
  *
  * The returned `context` is the SAME object (`agent.ctx`), and each member is a
  * forwarder that binds the raw receiver, so the host's own scoped cordis semantics
@@ -1816,6 +2310,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   /** The union of live session workspaces, read through the registry at call time. */
   const workspaceRootsAll = (): string[] => workspaceRootsOf(service("agents"))
 
+  /** The instance form of the module-level row logger: one implementation, two surfaces. */
+  const rowLog = (name: string, line: string): void => rowLogLine(name, line)
+
   // ── live-session plane ────────────────────────────────────────────────────
   // `agents.list()` is the ONLY handle on a member's Agent: the durable team record
   // carries member NAMES and session IDs, not Agents, and a continuable member's Agent
@@ -1861,22 +2358,24 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * Dispatching through this one memoized helper makes that mistake impossible to make
    * per-call-site.
    *
-   * The cache is keyed by agent id AND dropped when the agent leaves the live registry,
-   * so a recycled id can never inherit a previous incarnation's engine.
+   * The cache is keyed by the LIVE AGENT OBJECT, not by its id (S2): a `WeakMap` entry disappears
+   * as soon as the registry stops holding that Agent, so a finished session can never hand out its
+   * realm's engine and an id the host RECYCLES can never inherit a previous incarnation's engine.
    */
-  const engineCache = new Map<string, unknown>()
-  /** The member-scoped engine lookup described above: memoized, and re-read from the live registry. */
+  const engineCache = new WeakMap<DshLiveAgent, unknown>()
+  /** The member-scoped engine lookup described above: memoized per live Agent, re-read from the registry. */
   function compactionEngineForAgent(agentId: string): unknown {
-    /** The requested agent id, normalized into a cache key. */
+    /** The requested agent id, normalized before the registry is asked. */
     const id = String(agentId ?? "")
     if (id === "") return undefined
-    /** The memoized engine, returned only while its agent is still live. */
-    const cached = engineCache.get(id)
-    if (cached !== undefined) return cached
-    /** The live Agent whose own scope owns the engine. */
+    /** The live Agent whose own scope owns the engine; absent once its session ends. */
     const agent = liveAgent(id)
+    if (agent === undefined || agent === null) return undefined
+    /** The memoized engine, returned only while THIS Agent object is still the live one. */
+    const cached = engineCache.get(agent)
+    if (cached !== undefined) return cached
     /** The Agent's own scoped context, the only realm whose engine is correct. */
-    const scoped = agent?.ctx
+    const scoped = agent.ctx
     if (scoped === undefined || scoped === null) return undefined
     /** The engine resolved from the agent's own scope, before it is memoized. */
     let engine: unknown
@@ -1886,7 +2385,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       return undefined
     }
     if (engine === undefined || engine === null) return undefined
-    engineCache.set(id, engine)
+    engineCache.set(agent, engine)
     return engine
   }
 
@@ -1914,7 +2413,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     if (llmCatalogWarned) return
     llmCatalogWarned = true
     // A replaced/hostile console must never take a read down (the never-throw contract).
-    try { console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail) } catch { /* seam absent: nothing to report */ }
+    try { rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail) } catch { /* seam absent: nothing to report */ }
   }
 
   /** `name` with the id as fallback, so a caller never renders `undefined`. */
@@ -2022,6 +2521,380 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   }
 
   /** The assembled seam surface, provided as the row's `mpdDsh` service. */
+  // ── the two team backends ─────────────────────────────────────────────────
+  //
+  // Both registries below are created ONCE per adapter instance, not per call: the
+  // `teamExecutor()` factory is re-entered on every call (so a late-ACTIVE service is picked
+  // up), and a handle recorded by one call must still be resolvable by the next.
+  /** Native members, by the durable child session id `startContinuable` returned. */
+  const nativeMembers = new Map<string, { teamId: string; memberId: string; name: string; description: string }>()
+  /** Official members, by handle, so an interrupt can name the member the way that backend wants. */
+  const officialMembers = new Map<string, { teamId: string; memberId: string; name: string }>()
+
+  /** A signal that is never aborted, for a call that supplied none. */
+  const neverAborted = (): AbortSignal => new AbortController().signal
+
+  /** The session id of one live agent, or the empty string when it carries none. */
+  const sessionIdOfAgent = (agent: unknown): string => {
+    /** The agent's session, read defensively: a stub or a stale handle may carry none. */
+    const session = (agent as { session?: { id?: unknown } } | undefined)?.session
+    return typeof session?.id === "string" ? session.id : ""
+  }
+
+  /**
+   * Build the NATIVE executor: `ctx.subagents`, with the provider and the member's route
+   * chosen BY THE CALLER.
+   *
+   * This is the whole point of the split. The official tool row forwards only
+   * `{ prompt, parent }` to `startContinuable`, so a per-member route had to be smuggled in
+   * through row config (`freshProvider`) and a member's identity had to be encoded in its
+   * DESCRIPTION. Here the provider and `agentOptions` are ordinary arguments, which is what
+   * lets the roster's model slots, its persona and its read-only deny list apply to a
+   * teammate directly — and what makes the path independent of the official plugin.
+   * @param reason - why this backend is the active one, shown on a boot line and in a refusal.
+   * @param ready - whether `subagentsContinuable` answered true; false makes every call refuse.
+   * @returns the executor.
+   */
+  function nativeTeamExecutor(reason: string, ready: boolean): DshTeamExecutor {
+    /** The subagents service, resolved per call so a late-ACTIVE service is not frozen out. */
+    const subagentsOf = (): any => service("subagents")
+    return {
+      kind: "native",
+      reason,
+      providers: () => {
+        /** The provider names the harness itself reports, which is what a caller may name. */
+        try {
+          /** The service's own list, or undefined when it exposes none. */
+          const list = subagentsOf()?.providers
+          if (typeof list !== "function") return []
+          /** Its answer, filtered to strings so the declared `string[]` cannot leak a stub value. */
+          const names = list.call(subagentsOf())
+          return Array.isArray(names) ? names.filter((entry: unknown): entry is string => typeof entry === "string") : []
+        } catch { return [] }
+      },
+      /** Raise one member through `ctx.subagents.startContinuable`, with the caller's route. */
+      async spawn(caller: unknown, request: DshTeamSpawnRequest): Promise<DshTeamSpawnResult> {
+        if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
+        /** The subagents service, or a throw naming the action that could not happen. */
+        const subagents = requireService("subagents", `cannot raise team member "${request.name}"`)
+        if (typeof subagents.startContinuable !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member")
+        }
+        /** The continuable-start spec: the member's prompt, its parent, and its ROUTE. */
+        const spec: Record<string, unknown> = {
+          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          label: `${request.name} · ${request.teamId}`,
+          request: {
+            prompt: textBlock(request.prompt),
+            parent: caller,
+            ...(request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }),
+          },
+          signal: request.signal ?? neverAborted(),
+        }
+        /** The manager's answer, whose `childId` is the durable handle a caller records. */
+        const started: any = await subagents.startContinuable.call(subagents, spec)
+        /** The durable child id, or the empty string when the manager reported none. */
+        const handle = String(started?.childId ?? started?.id ?? "")
+        // A start that resolved WITHOUT an id is a backend contradiction, and recording it would
+        // put a member on the roster that no later call could reach. It is refused here.
+        if (handle === "") throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`)
+        nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description })
+        return { handle, executor: "native" }
+      },
+      /** Deliver one message to a member; the manager cold-resumes a child that is not live. */
+      async send(caller: unknown, handle: string, content: string, signal?: AbortSignal): Promise<void> {
+        // The SAME availability guard as `spawn`: an executor that cannot raise a member must not
+        // half-work by delivering into a team it could never have built. Refusing here is what
+        // makes "the reason" a property of the BACKEND rather than of one method.
+        if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
+        /** The subagents service, or a throw naming the action that could not happen. */
+        const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`)
+        if (typeof subagents.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member")
+        }
+        // `sendMessage` cold-resumes an absent direct child, which is why the native path does
+        // NOT need the child to be live the way a raw `agent.inject` would.
+        await subagents.sendMessage.call(subagents, caller, handle, textBlock(content), { signal: signal ?? neverAborted() })
+      },
+      /** Interrupt a member's current turn under the exact live caller's ancestry. */
+      async interrupt(caller: unknown, handle: string): Promise<void> {
+        // Same availability guard as `spawn` and `send`, for the same reason.
+        if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
+        /** The subagents service, or a throw naming the action that could not happen. */
+        const subagents = requireService("subagents", `cannot interrupt team member "${handle}"`)
+        if (typeof subagents.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt() — cannot interrupt a team member")
+        }
+        // The `ancestor` authority is the exact live caller whose lineage must contain the child,
+        // which is the form this seam can honestly present: the record carries no human address.
+        subagents.interrupt.call(subagents, handle, { kind: "ancestor", agent: caller })
+      },
+      /** Identify a member this adapter raised, by the handle its own session id carries. */
+      membership(agent: unknown): DshTeamMembership | undefined {
+        /** The agent's own session id, which is what a handle IS on this backend. */
+        const id = sessionIdOfAgent(agent)
+        if (id === "") return undefined
+        /** The member this handle was raised for, if this adapter raised it. */
+        const entry = nativeMembers.get(id)
+        // No entry is a normal negative: this is used as a FILTER, so an unknown agent is a miss.
+        return entry === undefined ? undefined : { teamId: entry.teamId, role: "teammate", name: entry.name }
+      },
+      members: () => [...nativeMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name })),
+    }
+  }
+
+  /**
+   * Build the OFFICIAL executor: the `dsh.team*` calls the bundle already made.
+   *
+   * Kept as a real implementation rather than a shim, because it does two things the native path
+   * does not: the host owns the roster (so a member raised outside this adapter is still
+   * visible), and delivery is adjacency-checked between peers. A composition that already runs
+   * it must not regress to something worse.
+   * @returns the executor.
+   */
+  function officialTeamExecutor(): DshTeamExecutor {
+    return {
+      kind: "official",
+      reason: "official: the native seams are unavailable, so the mounted Agent Teams service executes the team",
+      providers: () => [],
+      /** Raise one member through the official service, in that service's own vocabulary. */
+      async spawn(caller: unknown, request: DshTeamSpawnRequest): Promise<DshTeamSpawnResult> {
+        /** The Agent Teams service, or a throw naming the action that could not happen. */
+        const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`)
+        if (typeof teams.spawnTeammate !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member")
+        }
+        /** The host's spawn answer, whose id is read from whichever field this version fills. */
+        const spawned: any = await teams.spawnTeammate.call(teams, caller, {
+          name: request.name,
+          description: request.description === "" ? request.name : request.description,
+          prompt: request.prompt,
+          ...(request.signal === undefined ? {} : { signal: request.signal }),
+        })
+        /** The handle, read the same way the tool row reads it. */
+        const handle = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "")
+        if (handle === "") throw new Error(`mpd-dsh-adapter: the official backend raised "${request.name}" but reported no id`)
+        officialMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name })
+        return { handle, executor: "official" }
+      },
+      /** Deliver one message through the official service, which adjacency-checks the pair. */
+      async send(caller: unknown, handle: string, content: string, signal?: AbortSignal): Promise<void> {
+        /** The Agent Teams service, or a throw naming the action that could not happen. */
+        const teams = requireService("agentTeams", `cannot deliver a message to team member "${handle}"`)
+        if (typeof teams.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no sendMessage() — cannot deliver to a team member")
+        }
+        await teams.sendMessage.call(teams, caller, { target: handle, content: textBlock(content), ...(signal === undefined ? {} : { signal }) })
+      },
+      /** Interrupt one member; this backend addresses it by NAME, which is why the handle is kept. */
+      async interrupt(caller: unknown, handle: string): Promise<void> {
+        /** The Agent Teams service, or a throw naming the action that could not happen. */
+        const teams = requireService("agentTeams", `cannot interrupt team member "${handle}"`)
+        if (typeof teams.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no interrupt() — cannot interrupt a team member")
+        }
+        // This backend addresses a member by NAME, which is why the handle was recorded with one.
+        /** The recorded member name, or the handle itself when this adapter did not raise it. */
+        const target = officialMembers.get(handle)?.name ?? handle
+        teams.interrupt.call(teams, caller, target)
+      },
+      /** Ask the HOST for the identity, so a member raised by another row is still identified. */
+      membership: (agent: unknown): DshTeamMembership | undefined => {
+        // The host owns this answer, so it is asked rather than reconstructed: a member raised by
+        // ANOTHER row (the official tool plugin's own `spawn_teammate`) is still identified.
+        /** The Agent Teams service, or undefined when it is not mounted. */
+        const teams = service("agentTeams")
+        /** The identity read, probed before it is called with the service as receiver. */
+        const tryMembership = teams?.tryMembership
+        if (typeof tryMembership !== "function") return undefined
+        try {
+          /** The host's raw answer. */
+          const membership: any = tryMembership.call(teams, agent)
+          if (membership === undefined || membership === null) return undefined
+          /** The host's role, accepted only when it is one of the two declared values. */
+          const role = membership.role
+          if (role !== "lead" && role !== "teammate") return undefined
+          return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") }
+        } catch {
+          // A stale identity or a non-Team subagent is a normal negative: this is a FILTER.
+          return undefined
+        }
+      },
+      members: () => [...officialMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name })),
+    }
+  }
+
+  // ── goal plane helpers ────────────────────────────────────────────────────
+  //
+  // The goal DOMAIN (its state machine, its authorisation) is the harness's. These
+  // helpers only find the right registry and normalize what comes back.
+
+  /**
+   * The tool registry inside ONE agent's own scope, when that scope exposes one.
+   *
+   * The agent's scope is the view that resolves PRESET-plane rows (the goal trio lives
+   * there in an mpd session); the host-plane registry is a different view and may not
+   * carry them at all. All-or-nothing, contained: a throwing getter is a miss.
+   *
+   * A CALLER reading visibility through the returned handle must name this agent as the
+   * viewing scope (`get(name, agent)`), since the registry resolves a preset row only
+   * along that agent's scope chain; `execute()` needs no such argument because it reads
+   * the CALLING agent off its own input (see {@link executeToolForAgent}).
+   * @param agent - the live Agent, or anything that arrived.
+   * @returns the registry, or undefined when this agent exposes none.
+   */
+  function scopedToolRegistry(agent: unknown): any {
+    /** The agent's own scope, or undefined when it does not expose every member. */
+    const scope = scopeOfAgentContext(agent)
+    if (scope === undefined) return undefined
+    try {
+      /** That scope context's own `tools`, probed for the one method execution needs. */
+      const tools = (scope.context as { tools?: unknown } | undefined)?.tools
+      return typeof (tools as { execute?: unknown } | undefined)?.execute === "function" ? tools : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * The tool definition the HOST plane resolves for one name — the registry's GLOBAL view.
+   *
+   * This is the view an unscoped `get(name)` answers in the installed registry, and the only
+   * view a composition with no live session has; a preset-plane row is invisible here by design.
+   * Contained: a missing registry and a throwing `get` both read as "not carried".
+   * @param name - the registered tool name to look for.
+   * @returns the definition, or undefined when the global layer does not carry it.
+   */
+  function hostToolDefinition(name: string): unknown {
+    try {
+      /** The host-plane registry's own view of this name, probed for the read it is called through. */
+      const hostView = service("tools") as { get?: (toolName: string) => unknown } | undefined
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined
+    } catch { return undefined }
+  }
+
+  /**
+   * Resolve one tool definition for a member that takes an OPTIONAL agent.
+   *
+   * WITH an agent the agent's own view is the answer — it is the view that would execute the
+   * call: the registry walks that agent's scope chain (the preset plane mounted as its parent)
+   * plus the agent's own layer and the globals, so a preset-mounted tool resolves and a scoped
+   * registration shadows a global one, while a global this scope RESTRICTED away reads as
+   * absent. A THROWING scoped read is NOT retried at the host plane. WITHOUT an agent the read
+   * falls back to the host-plane global view, which is what an agentless caller (a TUI panel, a
+   * web route, the MCP name-clash check) actually acts on; see {@link DshAdapter.hasTool}.
+   * @param name - the registered tool name to look for.
+   * @param agent - the calling agent, when the call site has one.
+   * @returns the definition, or undefined when that view does not carry it.
+   */
+  function toolDefinitionFor(name: string, agent?: unknown): unknown {
+    if (agent === undefined) return hostToolDefinition(name)
+    /** The agent's own scoped registry, when it exposes one. */
+    const scoped = scopedToolRegistry(agent)
+    // A bare or foreign object that carries no scope still gets the ONE view left to ask; a real
+    // agent whose scope simply misses the name reads as absent, never as a global resurrection.
+    if (scoped === undefined) return hostToolDefinition(name)
+    try {
+      return scoped.get(name, agent)
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * Whether one tool name resolves at the HOST plane or inside any live agent's scope.
+   *
+   * The per-agent arm MUST pass the agent as the registry's VIEWING SCOPE, because a
+   * PRESET-plane row is invisible to an unscoped read: the installed registry's signature
+   * is `get(name, scope)` and an omitted scope means the GLOBAL view only (`dsh-tools`
+   * `get…view()`: "the viewing scope (the agent); omitted = the global view"). The goal
+   * trio and every other model-facing row the `mpd` preset mounts registers through the
+   * agent's ctx, and the preset's own scope is that scope's PARENT
+   * (`dsh-agent-preset-registry.join()` → `bindScopeParent(agentScope, presetScope)`), so
+   * only `view(agent)` — the ancestor chain plus the agent's own layer — carries them.
+   * The scope key IS the live Agent object itself (`dsh-agent-loop`:
+   * `this.scope = createScope(loopCtx, this)`; the harness's own execution path resolves
+   * with `this.get(name, exec.agent)`), which is why the registry's `list()` entries are
+   * the right argument verbatim.
+   * @param name - the registered tool name to look for.
+   * @returns true when some reachable registry answers with a definition.
+   */
+  function toolReachable(name: string): boolean {
+    if (hostToolDefinition(name) !== undefined) return true
+    // A scope-less live agent answers the host read again, already known to be empty here, so
+    // this stays exactly the "host plane OR some agent's own plane" question it has always been.
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined)
+  }
+
+  /**
+   * Project one raw harness tool result onto {@link DshToolCallResult}.
+   * @param raw - whatever the registry's `execute()` resolved with.
+   * @returns the normalized result; an error result carries the harness's own message.
+   */
+  function projectToolResult(raw: unknown): DshToolCallResult {
+    /** The harness result viewed as the loose record it is at that boundary. */
+    const record = raw as DshPostResult | undefined
+    if (record?.isError === true) {
+      /** The error the tool reported, read for its message. */
+      const error = record.error
+      return { ok: false, isError: true, error: (error as { message?: unknown } | undefined)?.message ?? error ?? "tool error", raw }
+    }
+    return { ok: true, isError: false, value: record?.value, raw }
+  }
+
+  /**
+   * Execute ONE tool for ONE agent, preferring that agent's own scoped registry.
+   *
+   * The order matters and is the whole reason this helper exists: an agent-scoped row's
+   * tools (the goal trio) resolve in `agent.ctx.tools`, and a host-plane registry would
+   * answer "unknown tool" for them even though the model can call them.
+   * @param input - the tool name, arguments, the calling agent and the call's call id/signal/timeout.
+   * @returns the projected result plus which registry answered.
+   */
+  async function executeToolForAgent(input: {
+    name: string
+    arguments?: unknown
+    agent?: unknown
+    callId?: string
+    signal?: AbortSignal
+    timeoutMs?: number
+  }): Promise<{ result: DshToolCallResult; via: "agent-scope" | "host-plane" }> {
+    /** A traceability id for this call, minted when the caller supplied none. */
+    const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10)
+    /** The cancellation this call runs under, defaulted to a per-call timeout. */
+    const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs)
+    /** The agent's own scoped registry, when it exposes one. */
+    const scoped = input.agent === undefined ? undefined : scopedToolRegistry(input.agent)
+    if (scoped !== undefined) {
+      try {
+        /** The harness's own result, from the agent-scoped registry. */
+        const raw = await scoped.execute({
+          name: input.name,
+          arguments: input.arguments ?? {},
+          callId,
+          ...(signal === undefined ? {} : { signal }),
+          ...(input.agent === undefined ? {} : { agent: input.agent }),
+        })
+        return { result: projectToolResult(raw), via: "agent-scope" }
+      } catch (error) {
+        // A scoped registry that throws is NOT retried at the host plane: the throw is this
+        // call's outcome, and a silent second attempt could run the same mutation twice.
+        return { result: { ok: false, isError: true, error: errorMessage(error) }, via: "agent-scope" }
+      }
+    }
+    /** The host-plane path: the same normalization `executeTool` exposes. */
+    const result = await adapter.executeTool({
+      name: input.name,
+      arguments: input.arguments ?? {},
+      callId,
+      ...(signal === undefined ? {} : { signal }),
+      ...(input.agent === undefined ? {} : { agent: input.agent }),
+      ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
+    })
+    return { result, via: "host-plane" }
+  }
+
+  /** The frozen adapter surface, assembled once from the primitives above. */
   const adapter: DshAdapter = {
     /** Probe every seam once and report one boolean per contract; see {@link DshCapabilities}. */
     capabilities(): DshCapabilities {
@@ -2045,6 +2918,8 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const systemPrompt = service("systemPrompt")
       /** The official Agent Teams service snapshot. */
       const agentTeams = service("agentTeams")
+      /** The host-plane goal service snapshot, read for the durable goal read. */
+      const goalService = service("goals")
       /** One live Agent, the sample every live-registry flag is probed against. */
       const sample = liveAgents()[0]
       /** That Agent's own scoped context, probed for the per-agent flags. */
@@ -2088,6 +2963,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // reads this flag must never hit a half-present service.
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
         subagentsContinuable: typeof subagents?.startContinuable === "function",
+        // The same predicate `teamExecutor()` uses, so a caller that pre-flights cannot disagree
+        // with the backend it is about to get.
+        teamExecutorNative: typeof subagents?.startContinuable === "function",
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -2117,12 +2995,18 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         teamTasks: TEAM_TASK_METHODS.every((method) => typeof (agentTeams as any)?.[method] === "function"),
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
         subagentsProviderRegister: typeof subagents?.registerProvider === "function",
+        // ── the goal plane (one flag per HALF, because a composition can carry the
+        // durable service without the preset-plane tools, and the read and the write
+        // then degrade differently) ──────────────────────────────────────────────
+        goals: typeof goalService?.get === "function",
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
       }
     },
 
     // ── workspace plane ─────────────────────────────────────────────────────
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
 
     // ── live-session plane ──────────────────────────────────────────────────
     liveAgents,
@@ -2130,6 +3014,93 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
+
+    // ── goal plane (AGENTS.md §6: the ONE place `ctx.goals` and the goal tools are named) ──
+    goalState(agent: unknown): DshGoalSnapshot | null | undefined {
+      // The service READ is deliberate and safe: reading a goal mutates nothing, and the
+      // service's own guard (a non-live agent makes `get` throw) is preserved as "cannot
+      // tell" rather than being papered over with a fabricated empty answer.
+      /** The host-plane goal service, absent in a composition without `@deepseek-ai/dsh-goal`. */
+      const goals = service("goals")
+      if (goals === undefined || typeof goals.get !== "function") return undefined
+      try {
+        /** The service's own view for this agent, or undefined when no goal is current. */
+        const view = goals.get(agent)
+        return goalSnapshotOf(view) ?? null
+      } catch {
+        return undefined
+      }
+    },
+
+    /** Drive one goal operation through the harness goal tools; a refusal is returned, never thrown. */
+    async goalControl(input: DshGoalControlInput): Promise<DshGoalControlResult> {
+      if (input === null || typeof input !== "object" || typeof input.action !== "string") {
+        return { ok: false, isError: true, error: "goalControl requires an action" }
+      }
+      if (input.agent === undefined) return { ok: false, isError: true, error: "goal tools require a calling agent" }
+      // A mutation names an EXACT revision, so a ref the caller did not supply is read
+      // first — through the tool, which reports the same numbers the model would see.
+      /** The ref this call will mutate, resolved below for every non-create action. */
+      let goalId = input.goalId
+      /** The revision half of that ref. */
+      let revision = input.revision
+      /** Set for the non-create actions, which all go through `update_goal`. */
+      const needsRef = input.action !== "create" && input.action !== "read"
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        /** The current goal, read on demand so a caller may pass only the action. */
+        const current = await executeToolForAgent({ name: "get_goal", agent: input.agent, callId: input.callId, signal: input.signal, timeoutMs: input.timeoutMs })
+        if (!current.result.ok) return { ok: false, isError: true, error: current.result.error, via: current.via, raw: current.result.raw }
+        /** The tool's own view of the current goal, or null when the session has none. */
+        const read = goalValueOf(current.result.value)
+        if (read.goal === null) return { ok: false, isError: true, error: "no current goal", via: current.via, raw: current.result.raw }
+        goalId = goalId ?? read.goal.id
+        revision = revision ?? read.goal.revision
+      }
+      // Argument names are the HARNESS tool contract (`max_goal_rounds`, `goal_id`,
+      // `blocked_reason`); keeping them verbatim is what lets a refusal read the same as
+      // it would for the model.
+      /** The tool to call for this action. */
+      const toolName = input.action === "read" ? "get_goal" : input.action === "create" ? "create_goal" : "update_goal"
+      /** The tool arguments for this action. */
+      const toolArguments: Record<string, unknown> = input.action === "read"
+        ? {}
+        : input.action === "create"
+          ? { objective: input.objective, ...(input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds }) }
+          : {
+              goal_id: goalId,
+              revision,
+              action: input.action,
+              ...(input.objective === undefined ? {} : { objective: input.objective }),
+              ...(input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds }),
+              ...(input.blockedReason === undefined ? {} : { blocked_reason: input.blockedReason }),
+            }
+      if (input.action === "create" && (typeof input.objective !== "string" || input.objective.trim() === "")) {
+        return { ok: false, isError: true, error: "goalControl create requires a non-empty objective" }
+      }
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        return { ok: false, isError: true, error: "goalControl " + input.action + " requires an exact goal id and revision" }
+      }
+      /** The harness's answer for this call and the registry that produced it. */
+      const call = await executeToolForAgent({
+        name: toolName,
+        arguments: toolArguments,
+        agent: input.agent,
+        callId: input.callId,
+        signal: input.signal,
+        timeoutMs: input.timeoutMs,
+      })
+      if (!call.result.ok) return { ok: false, isError: call.result.isError, error: call.result.error, via: call.via, raw: call.result.raw }
+      /** The goal the tool reported after the call (`null` when the session has none). */
+      const value = goalValueOf(call.result.value)
+      return {
+        ok: true,
+        isError: false,
+        goal: value.goal,
+        ...(value.activation === undefined ? {} : { activation: value.activation }),
+        via: call.via,
+        raw: call.result.raw,
+      }
+    },
 
     // ── llm plane: the two thin reads the agent-teams bridge forwards ───────
     // Both are THIN and both THROW synchronously on a missing seam: the raw
@@ -2358,21 +3329,21 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       return typeof off === "function" ? off : () => {}
     },
 
-    /** Whether a tool of this name is registered; false when the registry cannot answer. */
-    hasTool(toolName: string): boolean {
-      /** The tools registry, or undefined when this composition has none. */
-      const tools = service("tools")
-      if (typeof tools?.get !== "function") return false
-      try { return tools.get(toolName) !== undefined } catch { return false }
+    /**
+     * Whether a tool of this name is registered; the calling agent's view when one is given,
+     * the host-plane global view otherwise. Never throws: a registry that cannot answer reads
+     * as absent, which is the same false a genuine miss produces.
+     */
+    hasTool(toolName: string, agent?: unknown): boolean {
+      return toolDefinitionFor(toolName, agent) !== undefined
     },
 
-    /** Structural view of the tool runtime for internal tool calls. */
     /** Structural view of the tool runtime; the interface member's declared return type is reused. */
     toolRuntime(): ReturnType<DshAdapter["toolRuntime"]> {
-      /** The tools registry, or undefined when this composition has none. */
-      const tools = service("tools")
       return {
-        get: (toolName: string) => (typeof tools?.get === "function" ? tools.get(toolName) : undefined),
+        // The SAME resolution `hasTool` uses, so a probe and the definition it promised can never
+        // come from different planes (see {@link toolDefinitionFor}).
+        get: (toolName: string, agent?: unknown) => toolDefinitionFor(toolName, agent),
         execute: (input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; agent?: unknown }) =>
           adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw),
       }
@@ -2400,14 +3371,8 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           // absent stays absent, so no existing call site changes meaning.
           ...(input.agent === undefined ? {} : { agent: input.agent }),
         })
-        /** Whether the harness marked the result an error. */
-        const isError = (raw as DshPostResult | undefined)?.isError === true
-        if (isError) {
-          /** The error the tool reported, read for its message. */
-          const error = (raw as DshPostResult)?.error
-          return { ok: false, isError: true, error: (error as { message?: string })?.message ?? error ?? "tool error", raw }
-        }
-        return { ok: true, isError: false, value: (raw as DshPostResult)?.value, raw }
+        /** The normalized outcome: the shared projection keeps one error contract for both paths. */
+        return projectToolResult(raw)
       } catch (error) {
         return { ok: false, isError: true, error: errorMessage(error) }
       }
@@ -2520,6 +3485,45 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     // or a key rewrite here could only lose a field this adapter does not model — the
     // same discipline `registerHostTool` follows. Replies are PROJECTED (see the
     // module-level projections), so a consumer's declared types are truthful.
+    /**
+     * The active team executor. A FACTORY, not a field: the choice is re-made per call so a
+     * service that becomes ACTIVE later is picked up rather than frozen out, and so the
+     * native registry below is the only state this seam keeps.
+     */
+    teamExecutor(): DshTeamExecutor {
+      /** The operator's explicit override, when one was set. */
+      const override = ((): string | undefined => {
+        try {
+          /** The env value, trimmed; the harness also exposes it through the row config. */
+          const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_TEAM_EXECUTOR : undefined
+          return typeof raw === "string" && raw.trim() !== "" ? raw.trim().toLowerCase() : undefined
+        } catch {
+          return undefined
+        }
+      })()
+      // Read with the SAME expression `capabilities()` uses, rather than through it: the
+      // capabilities object is built inside the adapter literal below, and this factory must
+      // stay callable from every method without depending on construction order.
+      /** Whether the native path can raise a durable child at all. */
+      const nativeReady = typeof service("subagents")?.startContinuable === "function"
+      /** Whether the official service is mounted. */
+      const officialReady = service("agentTeams") !== undefined
+      /** The chosen backend, honouring a valid override and falling through when it cannot serve. */
+      const chosen: DshTeamExecutorKind = override === "official" && officialReady ? "official"
+        : override === "native" && nativeReady ? "native"
+          : nativeReady ? "native"
+            : officialReady ? "official"
+              : "native"
+      if (chosen === "official") return officialTeamExecutor()
+      return nativeTeamExecutor(
+        nativeReady
+          ? (override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native")
+          : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse",
+        nativeReady,
+      )
+    },
+
+    /** Hand out the raw Agent Teams service; the contained probe never throws. */
     teamService(): unknown | undefined {
       // The contained probe (never a throw): `undefined` is the whole degrade contract,
       // and `capabilities().team` is the pre-flight check a consumer reads.
@@ -2830,7 +3834,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // No deferred-inject seam: try once immediately rather than never. SAY SO: this path and
         // the deferred one fail with the SAME sentence downstream ("settings service is
         // unavailable"), and a reader cannot tell a race from a missing seam without this line.
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)")
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)")
         try {
           callback()
         } catch {
@@ -2856,7 +3860,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
               }
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27")
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27")
             }
             callback()
           } catch {
@@ -3029,13 +4033,34 @@ export const SERVICE_NAME = "mpdDsh"
  * needs the T-50 behaviour — re-probe on every use, so a transient "provider not ACTIVE
  * yet" miss is not locked in for the session — calls {@link createLazyDshAdapter}
  * instead.
+ *
+ * The fallback is LOUD (S3): a strict miss is followed by a NON-STRICT probe, and the one
+ * diagnostic line names which miss it was (registered-but-not-ACTIVE, or no adapter in this
+ * composition) before the row-private instance is built. Silently serving a second contact
+ * surface beside the mounted one is exactly what this line exists to prevent; the fallback
+ * itself is unchanged, because a composition without the service must still work.
  */
-export function resolveDshAdapter(ctx: any): DshAdapter {
-  /** The ctx's own `get`, captured so it is called with the ctx as its receiver. */
-  const get = typeof ctx?.get === "function" ? ctx.get : undefined
+export function resolveDshAdapter(ctx: any, options: EagerAdapterOptions = {}): DshAdapter {
   /** The mounted adapter when one is provided and ACTIVE, else undefined. */
-  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME)
-  return (mounted as DshAdapter | undefined) ?? createDshAdapter(ctx)
+  const mounted = probeMpdDsh(ctx, true)
+  if (mounted.value !== undefined) return mounted.value as DshAdapter
+  /** The one diagnostic sink: the caller's, or this row's own file log (never a terminal, R5). */
+  const warn = options.warn ?? ((line: string): void => rowLogLine("mpd-dsh-adapter", line))
+  // A FALLBACK IS NEVER SILENT (S3). The non-strict probe names WHICH miss this is — a provider
+  // that is registered but not ACTIVE yet, or a composition that carries no adapter at all — and
+  // both still fall back (the standalone-unit-test contract), but the second one builds a SECOND
+  // contact surface beside the mounted adapter, so it says so exactly like the lazy twin does.
+  warn(probeMpdDsh(ctx, false).missing ? adapterFallbackWarning() : adapterPendingWarning())
+  return createDshAdapter(ctx)
+}
+
+/** Options for {@link resolveDshAdapter}: where its one fallback diagnostic goes. */
+export interface EagerAdapterOptions {
+  /**
+   * Warning sink; defaults to this row's own file log (`rowLogLine`), because AGENTS.md §6's R5 rule
+   * forbids an MPD diagnostic on a terminal. A test injects a capture sink here.
+   */
+  warn?: (line: string) => void
 }
 
 /** The row is using the REAL mounted adapter (an ACTIVE strict read). */
@@ -3051,6 +4076,36 @@ export const ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter"
 
 /** Which of the three adapter resolutions a call is using; see the three constants above. */
 export type AdapterIdentity = typeof ADAPTER_IDENTITY_MOUNTED | typeof ADAPTER_IDENTITY_PENDING | typeof ADAPTER_IDENTITY_FALLBACK
+
+/**
+ * The ONE wording of the "provider registered but not ACTIVE yet" diagnostic.
+ *
+ * Shared by BOTH resolutions (eager {@link resolveDshAdapter} and {@link createLazyDshAdapter}) so
+ * the two cannot drift: a boot that resolves the adapter twice must not describe the same miss two
+ * different ways.
+ */
+function adapterPendingWarning(): string {
+  return "ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber"
+    + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE"
+    + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted"
+    + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50)."
+}
+
+/**
+ * The ONE wording of the "no adapter in this composition" diagnostic (S3).
+ *
+ * A row that reaches this branch builds its OWN adapter beside the tree's, which is exactly what the
+ * one-contact-surface rule (AGENTS.md §6) exists to prevent — so both resolutions emit THIS line
+ * rather than one of them falling back in silence.
+ */
+function adapterFallbackWarning(): string {
+  return "ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided"
+    + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter"
+    + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)"
+    + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working,"
+    + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the"
+    + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter)."
+}
 
 /** Options for {@link createLazyDshAdapter}: the row label and an optional warning sink. */
 export interface LazyAdapterOptions {
@@ -3117,7 +4172,7 @@ export function createLazyDshAdapter(ctx: unknown, options: LazyAdapterOptions):
   /** Emit one diagnostic line, contained so a hostile sink cannot take the row down. */
   const warning = (line: string): void => {
     try {
-      ;(options.warn ?? ((text: string) => console.log("[" + options.label + "] " + text)))(line)
+      ;(options.warn ?? ((text: string) => rowLogLine("mpd-dsh-adapter", "[" + options.label + "] " + text)))(line)
     } catch { /* logging must never take a row down */ }
   }
   /** The adapter cached after the first STRICT hit; a miss is never cached. */
@@ -3145,21 +4200,13 @@ export function createLazyDshAdapter(ctx: unknown, options: LazyAdapterOptions):
     if (!probeMpdDsh(ctx, false).missing) {
       if (!warnedPending) {
         warnedPending = true
-        warning("ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber"
-          + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE"
-          + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted"
-          + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).")
+        warning(adapterPendingWarning())
       }
       return temporary
     }
     if (!warnedMissing) {
       warnedMissing = true
-      warning("ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided"
-        + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter"
-        + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)"
-        + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working,"
-        + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the"
-        + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).")
+      warning(adapterFallbackWarning())
     }
     return temporary
   }
@@ -3189,6 +4236,6 @@ export function apply(ctx: any, config: { defaultTimeoutMs?: number; quiet?: boo
   // here would under-report. The row logs a stable line and callers read
   // capabilities() at use time (the QA probe prints them from a real boot).
   if (config.quiet !== true) {
-    console.log("[mpd-dsh-adapter] " + SERVICE_NAME + " provided (harness seams resolved lazily, inject-free)")
+    rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] " + SERVICE_NAME + " provided (harness seams resolved lazily, inject-free)")
   }
 }

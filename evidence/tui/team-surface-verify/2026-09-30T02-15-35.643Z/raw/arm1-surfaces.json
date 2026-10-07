@@ -1,0 +1,136 @@
+{
+  "registered": [
+    {
+      "id": "mpd-tui-board",
+      "title": "MPD board"
+    },
+    {
+      "id": "mpd-tui-team",
+      "title": "MPD team"
+    },
+    {
+      "id": "mpd-tui-plan",
+      "title": "MPD plan approval"
+    }
+  ],
+  "commands": [
+    "mpd"
+  ],
+  "installErrors": [],
+  "green": {
+    "message": "",
+    "attempts": [],
+    "facts": {
+      "titleLine": "MPD plan approval — (none) · 216x48",
+      "teamLine": "",
+      "instruction": "",
+      "requiredLine": "",
+      "requiredPhrase": "",
+      "echoLine": "",
+      "confirmEcho": "",
+      "runnableLine": "",
+      "message": "",
+      "emptyState": "no staged plan for team (none)"
+    }
+  },
+  "reds": [
+    {
+      "mode": "empty",
+      "message": "",
+      "attempts": [],
+      "facts": {
+        "titleLine": "MPD plan approval — (none) · 216x48",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team (none)"
+      }
+    },
+    {
+      "mode": "wrong-id",
+      "message": "",
+      "attempts": [],
+      "facts": {
+        "titleLine": "MPD plan approval — (none) · 216x48",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team (none)"
+      }
+    },
+    {
+      "mode": "cancelled",
+      "message": "",
+      "attempts": [],
+      "facts": {
+        "titleLine": "MPD plan approval — (none) · 216x48",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team (none)"
+      }
+    }
+  ],
+  "emptyArms": [
+    {
+      "name": "malformed-record",
+      "facts": {
+        "titleLine": "MPD plan approval — (none) · 216x48",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team (none)"
+      }
+    },
+    {
+      "name": "non-staged-record",
+      "facts": {
+        "titleLine": "MPD plan approval — (none) · 216x48",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team (none)"
+      }
+    },
+    {
+      "name": "absent-record",
+      "facts": {
+        "titleLine": "MPD plan approval — (none) · 216x48",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team (none)"
+      }
+    }
+  ]
+}

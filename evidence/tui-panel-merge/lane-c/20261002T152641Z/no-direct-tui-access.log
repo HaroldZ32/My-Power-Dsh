@@ -1,0 +1,7 @@
+# no-direct-tui-access — the D6 gate over the real band
+
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 25 package(s), 114 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)

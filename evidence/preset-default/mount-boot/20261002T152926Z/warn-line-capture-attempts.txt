@@ -1,0 +1,26 @@
+Raw byte grep over EVERY captured TUI boot in this directory (pattern -> hit count).
+The terminal stream merges stdout and stderr, so a hit would have been caught wherever the writer sent it.
+
+FILE                               PATTERN                  HITS
+arm-c-absent.log                   unavailable              0
+arm-c-absent.log                   Unknown agent preset     0
+arm-c-absent.log                   not-found                0
+arm-c-absent.log                   composing the session    0
+arm-c2.log                         unavailable              0
+arm-c2.log                         Unknown agent preset     0
+arm-c2.log                         not-found                0
+arm-c2.log                         composing the session    0
+arm-c3.log                         unavailable              0
+arm-c3.log                         Unknown agent preset     0
+arm-c3.log                         not-found                0
+arm-c3.log                         composing the session    0
+arm-b2-mpd-adapter-active.log      unavailable              0
+arm-b2-mpd-adapter-active.log      Unknown agent preset     0
+arm-b2-mpd-adapter-active.log      not-found                0
+arm-b2-mpd-adapter-active.log      composing the session    0
+
+CONTROLS (strings known to be present, proving the method and the file choice):
+arm-c-absent.log                   mpd-tui-adapter          1
+arm-c-absent.log                   did not activate         1
+
+CONCLUSION: the dsh-tui preset warning ('agent preset ... unavailable ... composing the session without a preset') was never written to the terminal stream of these four boots, and no file under the sandbox home carries it. The docs therefore state the MEASURED behaviour (session starts; record reads agentPreset: standard; no mpd composition) and label the not-found message as source-quoted, not observed.

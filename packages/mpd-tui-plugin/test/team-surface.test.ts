@@ -1,3 +1,7 @@
+// This file's copy assertions are LANGUAGE-INDEPENDENT (they read `t(...)`), so no process-wide
+// language pin is needed any more: the suite passes under no variable, `en` and `zh` alike.
+
+import { t } from "../src/i18n"
 // The team-workflow + plan-approval surfaces (frozen contract `.mpd/plans/tui-team-surface.md`).
 //
 // What these tests pin, and why each one is falsifiable:
@@ -23,6 +27,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createLog } from "../src/log"
+import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
+import { DAG_CHARS, DAG_CHROME } from "../src/dag-theme"
+import { cellWidth } from "../src/sanitize"
 import {
   BOARD_SCENE_ID,
   PLAN_MUTATION_UNAVAILABLE,
@@ -36,6 +43,7 @@ import {
   type PlanActions,
 } from "../src/scenes"
 import { approvalPhrase, mailboxKey, planProjectionLines, readTeamWorkflow, taskDepths, teamWorkflowLines } from "../src/team-state"
+import { legendLines } from "../src/graph"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index"
 import { boardLines, readBoardState } from "../src/state"
 
@@ -396,6 +404,17 @@ interface Kit {
   press(input: string, key?: Record<string, unknown>): void
   /** Flattens a rendered tree into its text. */
   text(tree: unknown): string
+  /** The last tree `text` flattened — the drawn elements, so a part of the surface is assertable. */
+  last(): unknown
+  /** How many times a rendered scene called its own `close` — the scene's exit, counted. */
+  closes: number
+  /**
+   * Fire one POINTER handler on the first element that declares it.
+   * @param handler - the prop name (`onClick`, `onMouseEnter`, `onMouseLeave`, `onWheel`).
+   * @param event - the event the host would pass, in the host's own coordinate space.
+   * @returns whether an element declared that handler.
+   */
+  pointer(handler: string, event?: Record<string, unknown>): boolean
 }
 
 /**
@@ -411,6 +430,8 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
   let index = 0
   /** Effects queued by the current render, run by `flush`. */
   let pending: (() => unknown)[] = []
+  /** The last tree `text` flattened, so a pointer event is fired at the drawing it measured. */
+  let lastTree: unknown
 
   /** The React double: index-keyed hooks, effects deferred to `flush`. */
   const React: Record<string, unknown> = {
@@ -463,6 +484,8 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
     React,
     ui,
     handlers,
+    /** The exit counter, incremented by the props every `render` hands a scene. */
+    closes: 0,
     begin: () => {
       index = 0
       handlers.length = 0
@@ -480,39 +503,80 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
       if (handler === undefined) throw new Error("no useInput handler was registered by the scene")
       handler(input, key)
     },
-    text: (tree: unknown): string => {
-      /** The text collected by the walk. */
-      const out: string[] = []
-      /** Appends one node's text, and its children's, to `out`. */
+    pointer: (handler: string, event?: Record<string, unknown>): boolean => {
+      /** Whether an element declaring the handler was found. */
+      let found = false
+      /** Depth-first walk for the first element carrying the prop. */
       const walk = (node: unknown): void => {
-        if (node === null || node === undefined) return
-        if (typeof node === "string") {
-          out.push(node)
-          return
-        }
-        if (typeof node === "number") {
-          out.push(String(node))
-          return
-        }
-        if (Array.isArray(node)) {
-          for (const child of node) walk(child)
-          return
-        }
-        /** This node as an element, the only shape left after the guards. */
+        if (found || node === null || node === undefined) return
+        if (Array.isArray(node)) { for (const child of node) walk(child); return }
+        if (typeof node !== "object") return
+        /** This node as an element. */
         const element = node as Element
-        if (element.props?.children !== undefined) walk(element.props.children)
+        /** The handler this element declares, when it declares one. */
+        const fn = element.props?.[handler]
+        if (typeof fn === "function") { found = true; (fn as (event: unknown) => void)(event); return }
         for (const child of element.children ?? []) walk(child)
       }
-      walk(tree)
+      walk(lastTree)
+      return found
+    },
+    text: (tree: unknown): string => {
+      lastTree = tree
+      // ROW-AWARE FLATTENING. A scene row may now be built from SEVERAL coloured spans, which the
+      // real host renders INLINE inside one <Text>. Joining every span with a newline — which is what
+      // this helper did while a row was always exactly one string — would turn one drawn row into
+      // five, so the walk below joins a row's own spans with nothing and separates only the rows.
+      /** The rendered lines. */
+      const out: string[] = []
+      /** Every character inside one node, spans joined with nothing. */
+      const inline = (node: unknown): string => {
+        if (node === null || node === undefined) return ""
+        if (typeof node === "string") return node
+        if (typeof node === "number") return String(node)
+        if (Array.isArray(node)) return node.map(inline).join("")
+        /** This node as an element, the only shape left after the guards. */
+        const element = node as Element
+        /** The single-child form the Text double accepts, plus the variadic form createElement passes. */
+        return inline(element.props?.children) + inline(element.children ?? [])
+      }
+      /** Walk the tree one ROW at a time: a Box is a column, so each of its children is a line. */
+      const rows = (node: unknown): void => {
+        if (node === null || node === undefined) return
+        if (Array.isArray(node)) { for (const child of node) rows(child); return }
+        if (typeof node === "string" || typeof node === "number") { out.push(String(node)); return }
+        /** This node as an element. */
+        const element = node as Element
+        if (element.type === "Box") { for (const child of element.children ?? []) rows(child); return }
+        out.push(inline(node))
+      }
+      rows(tree)
       return out.join("\n")
     },
+    last: () => lastTree,
   }
 }
 
 /** Register the real scenes against a minimal host double and return the kit + components. */
 function mountScenes(
   workspace: string,
-  options: { holds?: readonly string[]; actions?: PlanActions; terminal?: { columns: number; rows: number } } = {},
+  options: {
+    holds?: readonly string[]
+    actions?: PlanActions
+    terminal?: { columns: number; rows: number }
+    /** The shared plan reader, when an arm wants a staged plan to exist. */
+    planFor?: (sessionId: string) => {
+      planId: string
+      name: string
+      description: string
+      approval: string
+      phrase: string
+      approved: boolean
+      discarded: boolean
+      members: Array<{ name: string; description: string; role?: string }>
+      tasks: Array<{ subject: string; description: string; owner?: string; blockedBy: string[] }>
+    } | undefined
+  } = {},
 ): { kit: Kit; components: Record<string, unknown>; opened: string[]; seam: ReturnType<typeof registerScene> } {
   /** The registered scene components, by id. */
   const components: Record<string, unknown> = {}
@@ -544,6 +608,7 @@ function mountScenes(
   /** The registered scene seam. */
   const seam = registerScene(
     ctx as never,
+    createTuiAdapter(ctx as never),
     log,
     () => workspace,
     () => process.env.HOME ?? workspace,
@@ -553,6 +618,10 @@ function mountScenes(
       approve: async () => ({ ok: true, value: { status: "running" } }),
       discard: async () => ({ ok: true }),
     },
+    // The SHARED plan reader (W6): the row hands the scene the same projection the Web panel's
+    // `/plan` route serves. The fixture returns nothing staged unless an arm stages one, which is
+    // what keeps the pre-W6 arms behaving exactly as they did.
+    options.planFor ?? (() => undefined),
     // The composition root resolves the OFFICIAL readout per call (0.1.7) and hands it to the
     // scene; the fixture's views are what a host would return here.
     () => viewsOf(workspace),
@@ -565,8 +634,8 @@ function mountScenes(
 
 /** Render a scene component until its effects settle, and return the rendered text. */
 function render(kit: Kit, component: unknown): string {
-  /** The props the host would pass to a scene. */
-  const props = { React: kit.React, ui: kit.ui, close: () => {}, channel: undefined }
+  /** The props the host would pass to a scene; `close` is COUNTED, so an exit is assertable. */
+  const props = { React: kit.React, ui: kit.ui, close: () => { kit.closes += 1 }, channel: undefined }
   /** The last rendered tree. */
   let tree: unknown
   for (let pass = 0; pass < 5; pass += 1) {
@@ -612,9 +681,20 @@ describe("the two surfaces register through the existing tuiScenes seam", () => 
       get: () => undefined,
       logger: { info: () => {}, warn: () => {}, debug: () => {} },
     }
-    registerScene(ctx as never, log, () => workspace, () => workspace)
-    expect(registered.map((entry) => entry.id)).toEqual([BOARD_SCENE_ID, TEAM_SCENE_ID, PLAN_SCENE_ID])
-    expect(registered.map((entry) => entry.title)).toEqual(["MPD board", "MPD team", "MPD plan approval"])
+    registerScene(ctx as never, createTuiAdapter(ctx as never), log, () => workspace, () => workspace)
+    // CONTAINMENT, not an exact list: the scene set grows by design (each scene owns its own
+    // registration arm), so a frozen literal here reddens on the NEXT scene instead of asserting
+    // what this arm is about — that these three frozen ids are REGISTERED, with their titles.
+    /** Every scene id the host double received, in registration order. */
+    const registeredIds = registered.map((entry) => entry.id)
+    expect(registeredIds).toEqual(expect.arrayContaining([BOARD_SCENE_ID, TEAM_SCENE_ID, PLAN_SCENE_ID]))
+    // The registrations stay a SET of ids, and the three frozen titles are all present.
+    expect(new Set(registeredIds).size).toBe(registeredIds.length)
+    // The titles are LOCALIZED AT USE, so the expectation comes from the dictionary: asserting the English
+    // strings made this arm pass under one language and hide the other render (measured 2026-10-06).
+    expect(registered.map((entry) => entry.title)).toEqual(
+      expect.arrayContaining([t("scene.board"), t("scene.team"), t("scene.plan")]),
+    )
     expect(typeof components[TEAM_SCENE_ID]).toBe("function")
     expect(typeof components[PLAN_SCENE_ID]).toBe("function")
   })
@@ -641,13 +721,42 @@ describe("surface T1 — the team workflow", () => {
     const { kit, components } = mountScenes(workspace)
     /** The rendered team scene. */
     const text = render(kit, components[TEAM_SCENE_ID])
-    expect(text).toContain("MPD team — lead")
-    expect(text).toContain("mpd-fixture-1")
-    // The official plane has no team phase of its own: it is DERIVED from the roster.
-    expect(text).toContain("phase      idle")
-    expect(text).toContain("Architect · architecture review")
-    // `kind`/`attempt`/`round` have no official source, so the row carries what the board has.
-    expect(text).toContain("t2 [-] build it · pending @Architect deps=t1")
+    // THE HEADER: the team's name AND its id, because `approve <teamId>` is an exact phrase.
+    expect(text).toContain("MPD team — lead (mpd-fixture-1)")
+    // The roster, one line, so the graph gets the room; a member carries its own progress.
+    expect(text).toContain("roster")
+    expect(text).toContain("Architect 1/2")
+    // THE GRAPH replaced the indented task list: every task is a BOX carrying its state glyph and its
+    // id, and the dependency edge is DRAWN rather than described in a `deps=` suffix.
+    //
+    // AMENDED (wave `tui-dag-highlight`, AC1) — the VALUE UNDER TEST moved, the arm's claim did not.
+    // The box's label is now exactly `<marker> <id>`: the kind abbreviation and the SUBJECT are gone
+    // from the drawing, because a box is a fixed-width cell budget and a free-text subject squeezed
+    // through it is what used to render a CJK subject as `#5`. The subject is not lost — AC1 keeps it
+    // in the DETAIL PANE — so the arm asserts BOTH halves below rather than trading one for the other.
+    expect(text).toContain("task dependency graph")
+    expect(text).toContain("✓ t1")
+    expect(text).toContain("○ t2")
+    // …AND `freeze the contract` IS EXACTLY WHAT THE DRAWING NO LONGER CARRIES. Asserting its absence
+    // here is what makes the two lines below a claim about the fix rather than about a coincidence.
+    expect(text).not.toContain("freeze the contract")
+    // The subject travels with the FOCUS instead: `j` walks the drawing order and pins the first task,
+    // so the drawing swaps its state glyph for the focus marker (AC1's second marker) and the pane
+    // states the whole contract — id, kind and subject — for the task in focus.
+    /** The scene after the focus walked to the first task in drawing order. */
+    const focused = pressAndRender(kit, components[TEAM_SCENE_ID], "j")
+    // `j` landed on t1, and the drawing says so: the marker is the FOCUS marker, not the state glyph.
+    expect(focused).toContain("▶ t1")
+    // The pane's own line. The `?` is the projection's HONEST BLANK for the kind — the official team
+    // plane carries no such field (the projection arm above pins that), so the pane prints what the
+    // record holds rather than inventing a kind to sit between the id and the subject.
+    expect(focused).toContain("t1 · ? · freeze the contract")
+    // The edge between the root and its dependent is real box drawing, and the junction where it
+    // leaves the parent's bottom border is what a flat list could not express.
+    expect(text).toContain("┬")
+    expect(text).toContain("┴")
+    // The counts line is the record's own vocabulary, and the footer names the focus keys.
+    expect(text).toContain("3 task(s)")
     expect(text).toContain("esc/q close")
   })
 
@@ -659,7 +768,7 @@ describe("surface T1 — the team workflow", () => {
     render(kit, components[TEAM_SCENE_ID])
     /** The scene after the approval key was pressed. */
     const text = pressAndRender(kit, components[TEAM_SCENE_ID], "a")
-    expect(text).toContain("plan approval needs a staged team")
+    expect(text).toContain(t("scene.planNeedsStaged"))
     expect(opened).toEqual([])
   })
 
@@ -743,7 +852,10 @@ describe("surface T2 — the plan approval", () => {
     expect(rows.join("\n")).toContain("some message")
     expect(planActionLines(workflow, "", false, "").join("\n")).not.toContain("DISCARD ARMED")
     // No team record: the required phrase degrades honestly instead of inventing one.
-    expect(planActionLines(undefined, "", false, "").join("\n")).toContain("required   (no team record)")
+    // "(no staged plan)" since W6: the phrase is SERVED by the shared projection, and a surface with
+    // nothing staged has nothing to approve — which is a different sentence from "no team record",
+    // the record being materialised only AT approval.
+    expect(planActionLines(undefined, "", false, "").join("\n")).toContain("required   (no staged plan)")
   })
 })
 
@@ -859,6 +971,9 @@ describe("package invariants", () => {
     const offenders: string[] = []
     /** The write primitives this package must never contain. */
     const forbidden = ["writeFileSync", "appendFileSync", "mkdirSync", "rmSync", "unlinkSync", "cpSync", "createWriteStream", "writeFile(", "rm(", "mkdir(", "unlink("]
+    // The four files that read and render team state: the invariant is about THEM, and the list is
+    // the one this arm has always carried (extending it to every source file would also scan the
+    // watchdog front door's header, which NAMES the primitives to document the rule).
     for (const name of ["team-state.ts", "state.ts", "scenes.ts", "index.ts"]) {
       /** The source text of this file under the invariant check. */
       const source = readFileSync(join(import.meta.dir, "..", "src", name), "utf8")
@@ -867,12 +982,19 @@ describe("package invariants", () => {
     expect(offenders).toEqual([])
   })
 
-  test("the built dist carries the two scene ids and no write primitive", () => {
+  test("the built dist carries the two scene ids and no TEAM-STORE writer", () => {
     /** The built bytes of this package's entry. */
     const dist = readFileSync(join(import.meta.dir, "..", "dist", "index.js"), "utf8")
     expect(dist).toContain(TEAM_SCENE_ID)
     expect(dist).toContain(PLAN_SCENE_ID)
-    for (const token of ["writeFileSync", "appendFileSync", "mkdirSync", "rmSync", "unlinkSync", "cpSync", "createWriteStream"]) {
+    // WHAT THIS ARM GUARDS, stated precisely after requirement R5 moved the diagnostics to a FILE.
+    // The invariant this package owns is "the TUI never writes TEAM STATE directly — every store
+    // access goes through the `mpdWatchdog`/`mpdTeams` services", so the arm rejects the WATCHDOG
+    // STORE WRITERS by name. It no longer rejects every filesystem primitive: the seam adapter is
+    // INLINED into this bundle, and its declared log sink (`<workspace>/.mpd/logs/mpd-tui.log`) is
+    // the one write this plane is allowed to make. The "this package's own sources carry no writer"
+    // half of the invariant is the arm above, which scans EVERY source file of this package.
+    for (const token of ["writeHold(", "appendIncident(", "clearHold(", "writeWatermarks("]) {
       expect(dist).not.toContain(token)
     }
   })
@@ -896,5 +1018,408 @@ describe("package invariants", () => {
     expect(mailboxKey("Senior Engineer")).toBe("senior-engineer")
     expect(mailboxKey("captain")).toBe("captain")
     expect(mailboxKey("中文 名")).toBe("中文-名")
+  })
+})
+
+// ── W3: the focus, and the pointer ──────────────────────────────────────────
+//
+// WHAT THESE ARMS ARE FOR. The team scene draws a dependency graph, and a graph is only useful if
+// you can ask it about ONE task. Two input paths answer that question — the keyboard, which is the
+// primary one and must always work, and the pointer, which is additive and inert on a host without
+// mouse tracking — and they must agree about what "the focused task" means.
+//
+// WHY THE ASSERTIONS BELOW ASK `graphText`, AND NOT THE WHOLE SCENE. The DAG is followed by a LEGEND
+// that must NAME the marks it explains — including the focus marker `▶` — so a scene-wide scan for
+// `▶` answers the legend instead of the drawing and reddens while the behaviour is still correct
+// (measured: the legend landed and four of these arms failed on that alone). The arm's intent is
+// "no TASK is drawn focused", which is a question about the graph BOX, so that is what it asks.
+
+/**
+ * Visit every element of a rendered tree, parents before children — the double's own shape.
+ * @param node - the tree (or one element/child list of it), of unknown shape.
+ * @param visit - called once per element, in draw order.
+ * @returns nothing; the walk is for its side effects.
+ */
+function walkElements(node: unknown, visit: (element: Element) => void): void {
+  if (node === null || node === undefined || typeof node !== "object") return
+  if (Array.isArray(node)) {
+    for (const child of node) walkElements(child, visit)
+    return
+  }
+  /** This node as an element — every rendered node is one. */
+  const element = node as Element
+  visit(element)
+  for (const child of element.children ?? []) walkElements(child, visit)
+}
+
+/**
+ * One drawn element by its React key.
+ * @param tree - the tree the kit last flattened.
+ * @param key - the key to look for.
+ * @returns the element, or undefined when this render drew no such node.
+ */
+function elementByKey(tree: unknown, key: string): Element | undefined {
+  /** The element found, when the walk reaches it. */
+  let found: Element | undefined
+  walkElements(tree, (element) => {
+    if (found === undefined && element.props?.key === key) found = element
+  })
+  return found
+}
+
+/**
+ * Everything the DAG BOX itself drew, its spans joined — the drawing, WITHOUT the legend under it.
+ *
+ * The legend is a SIBLING row: it explains the drawing rather than being part of it, so this helper
+ * scopes a "is anything drawn focused" question to the graph Box the scene keys as `graph` (and to
+ * the exact cells the pointer geometry is resolved against).
+ * @param tree - the tree the kit last flattened.
+ * @returns the drawing's characters; empty when this render drew no graph at all.
+ */
+function graphText(tree: unknown): string {
+  /** The graph element, found by the key the scene gives it. */
+  const graph = elementByKey(tree, "graph")
+  if (graph === undefined) return ""
+  /** Every character inside one node, spans joined with nothing — the kit's own flattening rule. */
+  const inline = (node: unknown): string => {
+    if (node === null || node === undefined) return ""
+    if (typeof node === "string") return node
+    if (typeof node === "number") return String(node)
+    if (Array.isArray(node)) return node.map(inline).join("")
+    /** This node as an element, the only shape left after the guards. */
+    const element = node as Element
+    return inline(element.props?.children) + inline(element.children ?? [])
+  }
+  return inline(graph.children ?? [])
+}
+
+describe("the team scene's focus", () => {
+  /** A fixture with a three-task chain, so a focus has something to light. */
+  const chained = (): Record<string, unknown> => ({
+    id: "focus-1",
+    name: "Focus",
+    phase: "running",
+    members: [],
+    tasks: [
+      { id: "a", subject: "root", status: "completed", dependencies: [] },
+      { id: "b", subject: "middle", status: "in_progress", dependencies: ["a"] },
+      { id: "c", subject: "leaf", status: "pending", dependencies: ["b"] },
+    ],
+  })
+
+  test("↑/↓ moves the focus through the drawing, and the ▶ marker moves with it", () => {
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    // Nothing is focused on the first render, so no task carries the marker.
+    render(kit, scene)
+    expect(graphText(kit.last())).not.toContain("▶")
+    // The first ↓ focuses the FIRST task in drawing order — rank order, so `a` (a root).
+    expect(pressAndRender(kit, scene, "", { downArrow: true })).toContain("▶ a")
+    // The next walks to the following task, and ↑ walks back.
+    expect(pressAndRender(kit, scene, "", { downArrow: true })).toContain("▶ b")
+    expect(pressAndRender(kit, scene, "", { upArrow: true })).toContain("▶ a")
+    // ↑ from the first wraps to the last, so the ends are reachable from either direction.
+    expect(pressAndRender(kit, scene, "", { upArrow: true })).toContain("▶ c")
+  })
+
+  test("a focused task lights its DEPENDENCIES and names them in the graph header", () => {
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    render(kit, scene)
+    // Walk down to the last task, whose chain is the whole board above it.
+    pressAndRender(kit, scene, "", { downArrow: true })
+    pressAndRender(kit, scene, "", { downArrow: true })
+    /** The scene with the leaf focused. */
+    const text = pressAndRender(kit, scene, "", { downArrow: true })
+    expect(text).toContain("▶ c")
+    // The HEADER names the chain, which is what makes the highlight explainable rather than
+    // decorative: a reader can see WHY those boxes are lit.
+    expect(text).toContain("focus c ⇠ a,b")
+  })
+
+  test("`esc` UNPINS rather than closing, and closes once nothing is pinned", () => {
+    // A pin is a MODE, so leaving it must not also leave the scene — otherwise a user who clicked a
+    // task would lose their place by pressing the key that every other surface closes with.
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit, components and the close log. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    render(kit, scene)
+    pressAndRender(kit, scene, "", { downArrow: true })
+    expect(kit.closes).toBe(0)
+    // The first Escape clears the pin and does NOT close. The drawing is asked, not the whole scene:
+    // the legend under it names the marker on purpose.
+    pressAndRender(kit, scene, "", { escape: true })
+    expect(graphText(kit.last())).not.toContain("▶")
+    expect(kit.closes).toBe(0)
+    // The second Escape, with nothing pinned, closes as it always did.
+    pressAndRender(kit, scene, "", { escape: true })
+    expect(kit.closes).toBe(1)
+  })
+
+  test("a CLICK pins a task and hovering previews one, without the keyboard", () => {
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    render(kit, scene)
+    // The graph box declares all three pointer handlers; a host without mouse tracking simply never
+    // fires them, which is what makes this additive rather than a second code path.
+    expect(kit.pointer("onMouseEnter", { localRow: 1, localCol: 4 })).toBe(true)
+    /** The scene after the hover, which must light the task under the pointer. */
+    const hovered = render(kit, scene)
+    expect(hovered).toContain("▶ a")
+    // HOVER IS TRANSIENT: leaving the box clears it, so the drawing returns to nothing focused.
+    expect(kit.pointer("onMouseLeave", {})).toBe(true)
+    render(kit, scene)
+    expect(graphText(kit.last())).not.toContain("▶")
+    // A CLICK pins, and the pin SURVIVES the pointer leaving — that is the difference between the
+    // two gestures, and the reason both exist.
+    expect(kit.pointer("onClick", { localRow: 1, localCol: 4 })).toBe(true)
+    expect(render(kit, scene)).toContain("▶ a")
+    kit.pointer("onMouseLeave", {})
+    expect(render(kit, scene)).toContain("▶ a")
+    // Clicking the SAME task again unpins it: the gesture that pinned it releases it. The pointer
+    // is still OVER the node, so the HOVER keeps it lit — which is correct, and why the assertion
+    // moves the pointer away before asking whether anything is focused at all.
+    kit.pointer("onClick", { localRow: 1, localCol: 4 })
+    kit.pointer("onMouseLeave", {})
+    render(kit, scene)
+    expect(graphText(kit.last())).not.toContain("▶")
+  })
+
+  test("a click on BLANK space unpins rather than pinning nothing", () => {
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    render(kit, scene)
+    kit.pointer("onClick", { localRow: 1, localCol: 4 })
+    expect(render(kit, scene)).toContain("▶ a")
+    // A row far below the drawing is blank space, and clicking it clears the pin.
+    kit.pointer("onClick", { localRow: 99, localCol: 4 })
+    render(kit, scene)
+    expect(graphText(kit.last())).not.toContain("▶")
+  })
+
+  test("the wheel scrolls the graph", () => {
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    /** The scene before any scroll. */
+    const before = render(kit, scene)
+    // THE CORNERS COME FROM THE CONTRACT, never from a literal (T7/R6): the boxed drawing's corners are
+    // the ROUNDED set now, and a test that spelled `┌` itself would pin the OLD drawing while the code
+    // moved on — the drift the one glyph table exists to prevent.
+    expect(before).toContain(DAG_CHARS.cornerDownRight)
+    expect(kit.pointer("onWheel", { deltaY: 1 })).toBe(true)
+    // Scrolling moves the WINDOW over the drawing, so the FIRST row leaves the view — asserted on
+    // the graph's own first character, because later rows legitimately still draw a `┌`.
+    /** The scene after one wheel tick down. */
+    const scrolled = render(kit, scene)
+    /** Everything after the graph's header, which is the drawing itself. */
+    const drawingOf = (value: string): string => value.slice(value.indexOf("task dependency graph") + "task dependency graph".length)
+    expect(drawingOf(before).startsWith(DAG_CHARS.cornerDownRight)).toBe(true)
+    expect(drawingOf(scrolled).startsWith(DAG_CHARS.vertical)).toBe(true)
+    // Back up, and the first row returns: the offset CLAMPS at zero rather than going negative.
+    kit.pointer("onWheel", { deltaY: -1 })
+    expect(render(kit, scene)).toBe(before)
+  })
+
+  test("a NARROW terminal draws the SAME boxes and windows them rather than clipping them", () => {
+    // THE ARM'S PREMISE CHANGED WITH CLAUSE T1, so the arm is RE-POINTED rather than dropped. It used to
+    // prove that a narrow terminal makes `layoutBoxes` refuse and the rail takes over. Under NATURAL
+    // width the drawing is no longer bounded by the terminal at all, so the narrow case is answered by
+    // WINDOWING the same picture — which is the user's request — and the rail is now reached only when
+    // the BOXES themselves are impossible (more ranks than a boxed drawing stays legible in), not when
+    // the terminal is small. Both halves are asserted: the SAME drawing appears narrow and wide, every
+    // windowed row is exactly the viewport, and the horizontal rail is drawn so the reader can tell the
+    // picture continues.
+    /** This arm's fixture workspace: one rank with four parallel tasks. */
+    const workspace = teamFixture({
+      id: "wide-1",
+      name: "Wide",
+      phase: "running",
+      members: [],
+      tasks: [
+        { id: "a", subject: "one", status: "pending", dependencies: [] },
+        { id: "b", subject: "two", status: "pending", dependencies: [] },
+        { id: "c", subject: "three", status: "pending", dependencies: [] },
+        { id: "d", subject: "four", status: "pending", dependencies: [] },
+      ],
+    })
+    /** This arm's kit, narrow enough that four boxes could never have fitted. */
+    const { kit, components } = mountScenes(workspace, { terminal: { columns: 44, rows: 24 } })
+    /** The rendered scene. */
+    const text = render(kit, components[TEAM_SCENE_ID])
+    // THE DRAWING IS STILL BOXES AT 44 COLUMNS, and that is the wave's headline: the boxes are sized by
+    // their labels, so a narrow terminal windows them instead of refusing them.
+    expect(text).toContain("task dependency graph")
+    expect(text).not.toContain("(rail)")
+    for (const id of ["a", "b", "c", "d"]) expect(text).toContain(id)
+    // THE HORIZONTAL RAIL IS DRAWN, because this viewport cannot show the whole drawing — it is the one
+    // row beneath the DAG that says so, and it is the DAG's own row rather than the page's (R8).
+    // The rail's own cells are `█`/`░`; asserted through the CONTRACT's chrome constants rather than as
+    // literals, so a theme of bars is one edit and this arm follows it.
+    expect(text).toContain(DAG_CHROME.barFull)
+    // EVERY DRAWN ROW FITS THE VIEWPORT: the drawing is wider than 44 cells, so a scene that drew it
+    // whole would shear the frame. The window is what keeps that honest.
+    // THE SCENE DRAWS ONE ROW PER TERMINAL ROW and the double flattens them into ONE string, so the
+    // cell budget is stated over the whole render: 24 rows of at most 44 cells. A row that overflowed
+    // would push this past the budget, which is what makes the arm falsifiable.
+    expect(cellWidth(text)).toBeLessThanOrEqual(44 * 24)
+    // The SAME board at a comfortable width draws the SAME picture, unwindowed — so the narrow case is a
+    // property of the viewport and not a second layout.
+    /** This arm's kit at a width the whole drawing fits. */
+    const wide = mountScenes(workspace, { terminal: { columns: 120, rows: 30 } })
+    /** The drawing at the comfortable width. */
+    const wideText = render(wide.kit, wide.components[TEAM_SCENE_ID])
+    expect(wideText).toContain(DAG_CHARS.cornerDownRight)
+    expect(wideText).not.toContain(DAG_CHROME.barFull)
+  })
+})
+
+// ── W3: the legend under the DAG ────────────────────────────────────────────
+//
+// The merged panel and the team scene must draw the SAME legend under the DAG they just laid out
+// (`graph.ts`'s frozen `legendLines(cols)`), in the width the graph itself was laid out for. This arm
+// pins the team scene's half: the lines are drawn, they sit AFTER the drawing, and they are DIMMED —
+// and it is the arm that keeps the legend present at all, which the focus arms above now depend on
+// for the reason stated at their section header.
+describe("the team scene's legend", () => {
+  test("the legend is drawn under the DAG, in the width the graph was laid out for", () => {
+    /** This arm's fixture workspace: the same three-task chain the focus arms use. */
+    const workspace = teamFixture({
+      id: "focus-1",
+      name: "Focus",
+      phase: "running",
+      members: [],
+      tasks: [
+        { id: "a", subject: "root", status: "completed", dependencies: [] },
+        { id: "b", subject: "middle", status: "in_progress", dependencies: ["a"] },
+        { id: "c", subject: "leaf", status: "pending", dependencies: ["b"] },
+      ],
+    })
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The rendered scene text. */
+    const text = render(kit, components[TEAM_SCENE_ID])
+    // The scene lays the graph out for `max(20, columns - 4)`; the kit measures 100 columns.
+    /** The legend the frozen interface offers for that width. */
+    const legend = legendLines(96)
+    expect(legend.length).toBeGreaterThan(0)
+    for (const line of legend) expect(text).toContain(line)
+    /** The drawing's own characters, so the legend's position is measured against the DAG itself. */
+    const drawing = graphText(kit.last())
+    expect(drawing.length).toBeGreaterThan(0)
+    // DIRECTLY UNDER THE DAG: the legend starts where the drawing ends, and nothing of the scene's
+    // own content sits between them.
+    expect(text.indexOf(legend[0])).toBe(text.indexOf(drawing) + drawing.length)
+    expect(elementByKey(kit.last(), "legend-0")?.props?.dimColor).toBe(true)
+  })
+})
+
+// ── W6: the TUI consumes the SHARED plan projection ─────────────────────────
+//
+// THE USER'S DIRECTIVE for this work: the Web panel and the TUI scene share the infrastructure and
+// differ only in how they DRAW it. These arms pin the TUI's half of that: the phrase it demands is the
+// one the shared projection SERVED (never one it derived), and the session it read the plan with comes
+// from its own live channel — the one piece of session identity a TUI scene has, and the reason a
+// session-scoped plan is reachable from a workspace-scoped row at all.
+describe("the plan scene reads the SHARED projection", () => {
+  /**
+   * A staged plan as the shared projection serves it.
+   * @returns the plan half of the payload, with the served phrase.
+   */
+  const stagedPlan = (): {
+    /** The PRE-approval identity. */
+    planId: string
+    /** The team name the user reads. */
+    name: string
+    /** What the team is for. */
+    description: string
+    /** `required` waits for an explicit approval. */
+    approval: string
+    /** The EXACT string the gate demands, SERVED by the projection. */
+    phrase: string
+    /** Whether an approval already committed. */
+    approved: boolean
+    /** Whether it was discarded instead. */
+    discarded: boolean
+    /** The teammates it wants raised. */
+    members: Array<{ name: string; description: string; role?: string }>
+    /** The tasks it wants posted. */
+    tasks: Array<{ subject: string; description: string; owner?: string; blockedBy: string[] }>
+  } => ({
+    planId: "plan-20260930T010000",
+    name: "Shared infra",
+    description: "one projection, two surfaces",
+    approval: "required",
+    phrase: "approve plan-20260930T010000",
+    approved: false,
+    discarded: false,
+    members: [{ name: "Senior Engineer", description: "implements" }],
+    tasks: [{ subject: "build it", description: "acceptance", blockedBy: ["core"] }],
+  })
+
+  test("the phrase is the SERVED one, not a record-derived lookalike", () => {
+    // The record-based phrase would be `approve <teamId>` — a DIFFERENT string. Passing the served
+    // phrase through and asserting on it is what proves the scene renders the shared contract rather
+    // than computing its own.
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(stagedRecord())
+    /** This arm's kit, with a plan staged and a channel-bound session. */
+    const { kit, components } = mountScenes(workspace, { planFor: () => stagedPlan() })
+    /** The rendered plan scene. */
+    const text = render(kit, components[PLAN_SCENE_ID])
+    expect(text).toContain("approve plan-20260930T010000")
+    expect(text).toContain("typed below")
+    // And the record-derived spelling must NOT appear beside it.
+    expect(text).not.toContain("approve mpd-fixture-1")
+  })
+
+  test("a STAGED PLAN with no usable record still renders the gate", () => {
+    // The record is materialised AT approval, so a staged plan with no record is the NORMAL
+    // pre-approval state — the same fact that made the Web panel show 'no team yet' over a plan
+    // awaiting a decision. Requiring a record made this surface unusable exactly when it was needed.
+    /** A fixture whose record is NOT staged, so only the plan can make the surface usable. */
+    const workspace = teamFixture({ id: "run-9", name: "Running", phase: "running", members: [], tasks: [] })
+    /** This arm's kit, with a plan staged regardless of the record's phase. */
+    const { kit, components } = mountScenes(workspace, { planFor: () => stagedPlan() })
+    /** The rendered plan scene. */
+    const text = render(kit, components[PLAN_SCENE_ID])
+    expect(text).toContain("approve plan-20260930T010000")
+  })
+
+  test("with NO plan face the scene never INVENTS a plan phrase", () => {
+    // A composition exposing no `planFor` keeps its pre-W6 behaviour rather than breaking. What this
+    // arm pins is the narrow claim: with no plan face the scene cannot render a phrase it was never
+    // served — it either falls back to the record-derived one or shows its empty state, and both are
+    // honest. (The record-derived fallback itself is covered by the `planActionLines` arms.)
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(stagedRecord())
+    /** This arm's kit, with no plan reader at all. */
+    const { kit, components } = mountScenes(workspace)
+    /** The rendered plan scene. */
+    const text = render(kit, components[PLAN_SCENE_ID])
+    expect(text).not.toContain("approve plan-")
+    expect(text).toContain("MPD plan approval")
   })
 })

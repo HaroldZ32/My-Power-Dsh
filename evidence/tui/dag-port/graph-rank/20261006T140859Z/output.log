@@ -1,0 +1,36 @@
+### evidence timestamp: 20261006T140859Z
+
+$ bun test packages/mpd-tui-plugin/test/graph-rank.test.ts
+
+ 12 pass
+ 0 fail
+ 743 expect() calls
+Ran 12 tests across 1 file. [103.00ms]
+
+$ bun test packages/mpd-tui-plugin/test/graph.test.ts
+
+ 25 pass
+ 0 fail
+ 931 expect() calls
+Ran 25 tests across 1 file. [107.00ms]
+
+$ bun test packages/mpd-tui-plugin/test/
+(fail) the scrollbar and the self-windowed viewport > FOCUS AUTO-SCROLL: the focused task is inside the rendered window at both ends of an overflowing board [4.85ms]
+
+ 311 pass
+ 13 fail
+ 4705 expect() calls
+Ran 324 tests across 17 files. [465.00ms]
+
+$ ./node_modules/.bin/tsgo --noEmit -p tsconfig.json
+packages/mpd-tui-plugin/src/panel-dag.ts(777,31): error TS2339: Property 'sync' does not exist on type 'PanelViewport'.
+packages/mpd-tui-plugin/src/status.ts(54,65): error TS2304: Cannot find name 'toneOfTally'.
+packages/mpd-tui-plugin/test/scene-visuals.test.ts(560,55): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'DagThemeKey'.
+
+$ bun evidence/tui/dag-port/graph-rank/20261006T140859Z/cjk.mts
+subject          : 冻结验收契约 (codepoints 6, cells 12)
+BEFORE codepoints=34 cellWidth=40 endsWith│=true
+AFTER  codepoints=28 cellWidth=34 endsWith│=true
+box right border column = 33; AFTER row cells = 34 (equal means the row ends ON its border)

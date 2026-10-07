@@ -22,9 +22,10 @@
 // The arms below evaluate the SHIPPED `!!js` expression (never a re-typed copy), so they red
 // on the old bytes and green on the fixed ones. Every arm is hermetic: profiles are built in
 // a temp sandbox, `DSH_HOME` is pointed at that sandbox while the guard runs (so the real home
-// is never read), and the guard's own decision line is captured from `console.warn`.
+// is never read), and the guard's own decision line is read from the log file R5 moved it to,
+// `<root>/.mpd/logs/mpd-patch-guards.log`, with the root pinned to that same sandbox.
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -32,7 +33,7 @@ import { pathToFileURL } from "node:url";
 /** Repository root, three directories above this test file. */
 const ROOT = join(import.meta.dirname, "..", "..", "..");
 /** The bundle patch the sidebar row lives in. */
-const PATCH_PATH = join(ROOT, "packages", "mpd-bundle", "cordis.patch.yml");
+const PATCH_PATH = join(ROOT, "cordis.patch.yml");
 /** The patch text every arm scans for the shipped guard. */
 const PATCH = readFileSync(PATCH_PATH, "utf8");
 
@@ -62,11 +63,11 @@ interface LoaderEntry {
   options: { name: string }
 }
 
-/** The guard's decision plus the line it logged. */
+  /** The guard's decision plus the line it logged. */
 interface GuardDecision {
   /** The `disabled` value the shipped expression returned. */
   disabled: unknown
-  /** The captured console.warn lines, joined into one block. */
+  /** The lines the guard APPENDED to `mpd-patch-guards.log`, joined into one block. */
   warnings: string
 }
 
@@ -158,15 +159,35 @@ function makeProfile({ withSidebar, bundleSidebar = false, bundles = [], foreign
 /** The `baseUrl` shape the loader hands a `!!js` expression: a directory file URL + "/". */
 const baseUrlOf = (dir: string): string => pathToFileURL(dir + sep).href;
 
-/** Run the shipped guard against one profile and capture its decision line. */
+/** The log the shipped guard appends its decision line to, under the SANDBOX root this file pins. */
+const GUARD_LOG = join(SANDBOX, ".mpd", "logs", "mpd-patch-guards.log");
+
+/**
+ * The guard's own lines appended to its log since a byte offset was marked, oldest first.
+ *
+ * R5 (lane F) moved the guard's decision line OFF `console.warn` and into
+ * `<root>/.mpd/logs/mpd-patch-guards.log`, so the arms read the file a user would instead of a spy
+ * that can no longer see anything. The repository's own `.mpd/logs` is never read or written.
+ *
+ * @param offset the log's byte size marked before the guard ran.
+ * @returns the appended text; `""` when nothing was appended.
+ */
+function appendedGuardLines(offset: number): string {
+  try { return readFileSync(GUARD_LOG, "utf8").slice(offset) } catch { return "" }
+}
+
+/** Run the shipped guard against one profile and read back the decision line it appended. */
 function decide(baseUrl: string, entries: LoaderEntry[] = WEBSERVER_ENTRY): GuardDecision {
-  /** Every console.warn line the guard emitted during this run. */
-  const warnings: string[] = [];
-  /** The real console.warn, put back before the arm returns. */
-  const originalWarn = console.warn;
+  /** The log root in force before this arm, restored before it returns. */
+  const previousLogDir = process.env.MPD_MCP_LOG_DIR;
   /** The DSH_HOME value to restore once the guard has run. */
   const previousHome = process.env.DSH_HOME;
-  console.warn = (message) => { warnings.push(String(message)); };
+  // `MPD_MCP_LOG_DIR` outranks `DSH_WORKSPACE_ROOT` and the cwd in the guard's root chain, so pinning
+  // it here keeps the decision line in the sandbox rather than in the repo's own `.mpd/logs`.
+  process.env.MPD_MCP_LOG_DIR = SANDBOX;
+  /** The log's byte size BEFORE the run, so only this arm's own line is read back. */
+  let offset = 0;
+  try { offset = statSync(GUARD_LOG).size; } catch { offset = 0; }
   try {
     // The guard dedupes its decision line per process; each arm wants its own.
     // The guard reads this off globalThis, which has no declared slot for it; the cast names the
@@ -177,9 +198,10 @@ function decide(baseUrl: string, entries: LoaderEntry[] = WEBSERVER_ENTRY): Guar
     const disabled = new Function("baseUrl", "ctx", `return (${GUARD})`)(baseUrl, {
       loader: { entries: () => entries },
     });
-    return { disabled, warnings: warnings.join("\n") };
+    return { disabled, warnings: appendedGuardLines(offset) };
   } finally {
-    console.warn = originalWarn;
+    if (previousLogDir === undefined) delete process.env.MPD_MCP_LOG_DIR;
+    else process.env.MPD_MCP_LOG_DIR = previousLogDir;
     if (previousHome === undefined) delete process.env.DSH_HOME;
     else process.env.DSH_HOME = previousHome;
   }
@@ -217,6 +239,8 @@ describe("sidebar mount guard: profile-dir derivation", () => {
     // past resolvability. This arm asserts only that: whether the later clauses disable the row
     // depends on the rest of the fixture's composition, which is not what this clause decides.
     const { warnings } = decide(baseUrlOf(makeProfile({ withSidebar: false, bundleSidebar: true })));
+    // The POSITIVE half first: the line must exist, or the negative assertion below is vacuous.
+    expect(warnings).toContain("ENABLED");
     expect(warnings).not.toContain("resolvable from neither");
   });
 

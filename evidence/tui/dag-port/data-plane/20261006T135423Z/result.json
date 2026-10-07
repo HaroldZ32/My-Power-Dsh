@@ -1,0 +1,55 @@
+{
+  "lane": "seam-guard",
+  "assignment": "T7 (R21) — the data plane must stop silently flattening a DAG",
+  "status": "LANDED in src; dist STALE (captain's integration task rebuilds)",
+  "liveRecordTouched": false,
+  "liveRecordNote": ".mpd/team/teams/team-20261006135108.json was never written; every measurement ran in a throwaway sandbox (mkdtemp) and the fix affects only what a NEW approval produces.",
+  "defect": {
+    "input": "a staged plan whose blocked_by carried the plan's own POSITIONS: [\"2\"], [\"2\",\"3\",\"4\",\"6\"], [\"7\"], [\"2\",\"3\",\"4\",\"5\",\"6\"], [\"7\",\"8\",\"9\"]",
+    "mechanism": "resolveBlocker returned an unmatched reference unchanged; taskDepths filtered blockedBy with byId.has(candidate); the record stored references no reader could act on, silently",
+    "symptom": "one rank, zero edges, no warning at write time, approval time, or anywhere afterwards"
+  },
+  "changes": {
+    "packages/mpd-team-core-plugin/src/team-store.ts": [
+      "TeamTaskRecord.unresolvedBlockers?: string[] — the missing fact, with the invariant a reader needs",
+      "resolveBlockers(record, references) -> { blockedBy, unresolved } — the ONE place the split is computed",
+      "addTeamTask / updateTeamTask store the unresolved half BESIDE blockedBy (which keeps the caller's text verbatim); the report is absent when everything resolved",
+      "NewTaskInput.blockedBy documents the three accepted forms"
+    ],
+    "packages/mpd-team-core-plugin/src/plan-store.ts": [
+      "StagedTask.blockedBy documents the three forms (board id, subject, 1-based plan position) and what happens to anything else",
+      "StagedPlan.created.unresolved — the durable report in the archived plan",
+      "classifyBlocker(plan, reference) — the write-time reading (position | subject | board-id | unknown)"
+    ],
+    "packages/mpd-team-core-plugin/src/index.ts": [
+      "approval mints every staged task FIRST, then maps the plan's own namespace to the minted ids and rewrites ONLY the references the first pass could not resolve (an unchanged list is left alone, so no task's revision moves for nothing)",
+      "the approval answer and the archived plan carry created.unresolved; the tool render paints the WARNING",
+      "create_task / edit answer with the write-time blocker reading; the output schema declares blockers"
+    ],
+    "packages/mpd-team-core-plugin/test/blocker-report.test.ts": "NEW — 9 arms over the split, the record's report, the re-edit that clears it, and the four write-time forms",
+    "packages/mpd-team-core-plugin/test/team-record.test.ts": "3 arms added — the captain's position form end-to-end (ranks 0,1,2), the reported dangling reference (record + answer + archive), and the write-time reading with its rendered sentence"
+  },
+  "measured": {
+    "script": "evidence/tui/dag-port/verification/one-column-repro.ts (the REVIEWER's own), run with --record on this lane's approved record",
+    "before": { "reading": "preRepair", "tasks": 10, "distinctRanks": [0], "links": 0 },
+    "after": { "reading": "live (this lane's producer)", "tasks": 10, "distinctRanks": [0, 1, 2, 3, 4], "links": 14 },
+    "referenceVariant": { "reading": "resolvableFlatZero/FlatServed (the reviewer's hand-repaired refs)", "distinctRanks": [0, 1, 2, 3, 4], "links": 14 },
+    "writeTimeReading": "[{reference:'7',form:'position'},{reference:'8',form:'position'},{reference:'9',form:'position'},{reference:'the review task',form:'unknown'}]",
+    "approvalReport": "[{taskId:'T10',references:['the review task']}]",
+    "fullCaptainShapeApproval": "unresolved: [] — every position reference now resolves"
+  },
+  "gates": {
+    "bun test packages/mpd-team-core-plugin/test/": "136 pass / 0 fail (was 124 pass before this lane; +12 arms)",
+    "tsgo --noEmit -p tsconfig.json": "exit 0 at the moment of this run (other lanes' files have since been edited; re-run for the freeze)",
+    "verify:comments": "this lane's violation closed; the remaining findings are panel-surface's scroll work (panel-core.ts, panel.ts, panel-workmate.ts)",
+    "verify-dist-fresh": "2 STALE, both this wave's own lanes: mpd-team-core-plugin/dist/index.js (T7) and mpd-tui-plugin/dist/index.js (T6). The adapter is FRESH — no fan-out."
+  },
+  "captainCallsRecorded": {
+    "t6EdgeRepair": "The live record's T6 went [\"2\"] -> [\"T3\"] deliberately: the wiring task's semantic dependency is the PANELS task, and a mechanical position->id mapping would have written [\"T2\"]. Both are roots, so no rank moves either way. Lesson: a repair that mechanically applies a correct mapping can still be wrong.",
+    "r21IsTheRealFix": "The in-place board repair is a WORKAROUND for R21; the producer fix above is the structural one."
+  },
+  "notVerified": [
+    "the readers' own drawing of unresolvedBlockers (team-state.ts in mpd-tui-plugin and team-view.ts in mpd-bundle-plugin are outside this lane's write scope) — the record carries the fact; wiring it into a row is a follow-up",
+    "the PTY/Docker acceptance of the rebuilt dist (dist is stale by rule)"
+  ]
+}

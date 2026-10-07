@@ -76,8 +76,9 @@ test("sanitizeName / capText / autoNote / scoreMatch units", () => {
   expect(capText("x".repeat(10), 100).length).toBe(10)
   /** The truncation input: the head is what identifies the entry, the tail is what keeps it current. */
   const capped = capText("a".repeat(100) + "B".repeat(100), 80)
-  // content head+tail stays within max; the fixed truncation marker adds a small constant
-  expect(capped.length).toBeLessThanOrEqual(80 + 64)
+  // content head+tail AND the truncation marker stay within max (S6: the marker is paid for out of
+  // the cap, never appended on top of it).
+  expect(capped.length).toBeLessThanOrEqual(80)
   expect(capped.includes("truncated")).toBe(true)
   /** A never-renamed instance fixture, so `renamedFrom` is empty: the directory key is its first name. */
   const meta = { name: "alice", baseId: "hephaestus", baseName: "Deep Worker", description: "autonomous goal-driven implementation", provider: "deepseek-official", model: "deepseek-v4-flash", readonly: false, createdAt: "", updatedAt: "", uses: 1, lastTask: "implement verilog counter", renamedFrom: [] }
@@ -92,6 +93,25 @@ test("sanitizeName / capText / autoNote / scoreMatch units", () => {
   expect(implScore).toBeGreaterThan(unrelated)
   expect(MATCH_THRESHOLD).toBeGreaterThan(0)
   expect(MATCH_THRESHOLD).toBeLessThanOrEqual(1)
+})
+
+test("S6: capText honours the cap MARKER INCLUDED, at the boundary and below it", () => {
+  /** The oversized input the finding names: 9000 chars against an 8192 cap. */
+  const text = "x".repeat(9000)
+  // The exact case from the defect report, plus caps small enough that the marker itself must yield.
+  for (const max of [PERSONA_CAP, 1200, 200, 40, 31, 8]) {
+    expect(capText(text, max).length, `cap ${max} exceeded`).toBeLessThanOrEqual(max)
+  }
+  /** The 8192-byte cap the report measured: the pre-fix result was 8192 + the marker's own bytes. */
+  const capped = capText(text, PERSONA_CAP)
+  expect(capped.length).toBe(PERSONA_CAP)
+  // The marker is still reported when there is room for it, and the head/tail both survive.
+  expect(capped).toContain("[truncated")
+  expect(capped.startsWith("xxx")).toBe(true)
+  expect(capped.endsWith("xxx")).toBe(true)
+  // Unchanged contract: a text at or under the cap is returned verbatim, marker-free.
+  expect(capText("short", PERSONA_CAP)).toBe("short")
+  expect(capText(text, text.length)).toBe(text)
 })
 
 test("init → list → reflect → match lifecycle with a sandbox HOME", async () => {

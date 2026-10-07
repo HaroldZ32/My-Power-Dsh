@@ -1,0 +1,102 @@
+===================================================================
+Lane E — independent verification record OUTPUT.LOG
+recordId : lane-e-preflight-2026-10-07T102816Z
+verdict  : FAIL (PRE-FLIGHT: no lane output measured; timing state)
+revision : cae00e5a952e16daef7ad4aac99c79e373d635ff (dev tip; unchanged 10:22Z->10:27:01Z)
+note     : the individual gate logs below are hash-anchored in result.json gateEvidence[]
+           (fresh /tmp per bash call means only these retained logs are citable)
+===================================================================
+
+--- RESIDUAL BOUND (verify-law-spec (c)), stated verbatim as the spec requires ---
+the gate runner's `tail` may print source frames — controlled black-box evidence, not
+implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's
+own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed
+from observed code-path reads since session creation).
+
+--- SELF-CHECK against verify-law-spec (b) refusal list ---
+ok   same-agent (verifierId !== writerId)
+ok   no-doc-sources (PASS needs sources[])
+ok   no-gate-evidence (PASS needs gateEvidence[])
+ok   bind-unproven (unproven+PASS refused)
+ok   fail-without-findings (FAIL needs findings[])
+ok   finding-without-basis (every finding has docSource)
+ok   blind-spent (seat with unlockedReads>0 may only FAIL)
+ok   severity vocabulary is blocker|major|minor
+ok   frozen field set present
+findings: 11 (blocker=3, major=4, minor=4)
+unlockedReads: []
+
+===================================================================
+=== LOG: ev-state  (evidence/verify-law/preflight/2026-10-07T102816Z/logs/ev-state.log)
+===================================================================
+cmd: git rev-parse HEAD; git status --porcelain --untracked-files=no
+at: 2026-10-07T10:28:16Z
+cae00e5a952e16daef7ad4aac99c79e373d635ff
+--- tracked state ---
+ M packages/mpd-bundle-plugin/client.js
+ M packages/mpd-config-plugin/src/index.ts
+ M packages/mpd-config-plugin/src/settings-schema.ts
+ M packages/mpd-dsh-adapter-plugin/test/adapter.test.ts
+ M packages/mpd-mcp-astgrep/dist/BUILD.lock
+ M packages/mpd-mcp-gitbash/dist/BUILD.lock
+ M packages/mpd-roles-plugin/src/complexity-gate.ts
+ M packages/mpd-roles-plugin/src/session-gate.ts
+ M packages/mpd-team-core-plugin/src/dispatch.ts
+ M packages/mpd-team-core-plugin/src/index.ts
+ M packages/mpd-team-core-plugin/src/team-store.ts
+ M packages/mpd-team-watchdog-plugin/src/index.ts
+ M packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts
+ M packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts
+ M packages/mpd-tui-plugin/src/index.ts
+ M packages/mpd-tui-plugin/test/plugin.test.ts
+ M packages/mpd-ulw-plugin/test/engine.test.ts
+ M scripts/build-mcp.ts
+ M scripts/build-mpd-client.ts
+
+===================================================================
+=== LOG: ev-vendor-unset  (evidence/verify-law/preflight/2026-10-07T102816Z/logs/ev-vendor-unset.log)
+===================================================================
+cmd: env -u MPD_UPSTREAM_ROOT node scripts/verify-vendor.ts
+[verify-vendor] FAIL - upstream checkout not found at /home/haroldzhao
+[verify-vendor] set MPD_UPSTREAM_ROOT to the oh-my-openagent checkout pinned to 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+EXIT=1
+
+===================================================================
+=== LOG: ev-vendor-rehearsal  (evidence/verify-law/preflight/2026-10-07T102816Z/logs/ev-vendor-rehearsal.log)
+===================================================================
+cmd: MPD_UPSTREAM_ROOT=$PWD/.mpd/ci-rehearsal/upstream node scripts/verify-vendor.ts
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 335 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+EXIT=0
+
+===================================================================
+=== LOG: ev-probe-artifacts  (evidence/verify-law/preflight/2026-10-07T102816Z/logs/ev-probe-artifacts.log)
+===================================================================
+cmd: existence probe of the wave's declared artifacts
+MISSING  packages/mpd-verify-plugin
+EXISTS   packages/mpd-schemastery
+EXISTS   vendor/mcp-src
+MISSING  packages/mpd-roles-plugin/src/verify-guard.ts
+EXISTS   packages/mpd-agent-teams-plugin
+MISSING  .mpd/verify/records
+MISSING  .mpd/verify/loops
+--- row/tool surface ---
+mpd-verify rows in presets/mpd.patch.yml: 0
+mpd-verify rows in cordis.patch.yml: 0
+verify-law QA case present: NO
+
+===================================================================
+=== LOG: ev-identity-surface  (evidence/verify-law/preflight/2026-10-07T102816Z/logs/ev-identity-surface.log)
+===================================================================
+cmd: git ls-files | xargs grep -l -E 'oh-my-openagent|dsh-agent-teams|mpd-dsh/upstream'
+tracked_total=1442
+code_config_surface=92
+

@@ -1,0 +1,22 @@
+cmd: ruling-A preconditions re-probed INSIDE this record (captured 2026-10-07T10:38Z, after the verification work)
+2026-10-07T10:37:56Z
+--- A2: the frozen contract on disk ---
+e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610  .mpd/plans/de-vendor-and-verify-law.md
+bytes=10277 mtime=2026-10-07 18:35:14.185707077 +0800
+--- A2b: the amended spec on disk (docs[].sha256 copied from THIS line) ---
+65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74  .mpd/plans/verify-law-spec.md
+--- A3: the law's boot marker (F.3 re-probe) ---
+ABSENT - a pre-plugin record is admissible (the exemption has not closed)
+--- A1/A4: attestation inputs ---
+unlockedReads in this seat: 0 (no implementation read was needed; see verdict.md discipline)
+--- settle: Lane A's six scope paths, START(10:35:20Z) vs END ---
+  gates.yml      start=1466ab91096f654f end=1466ab91096f654f
+  VENDOR_LOCK    start=b2aa620dff8c8216 end=b2aa620dff8c8216
+  bootstrap.ts   start=a70fee1918a8d123 end=a70fee1918a8d123
+  build-mcp.ts   start=d996b40fad00b4b9 end=d996b40fad00b4b9
+  verify-vendor  start=93e81d6299ffc9ae end=93e81d6299ffc9ae
+  vendor/        start=6c09cadd2ee97e2f(459) end=6c09cadd2ee97e2f(459)
+--- the two MCP dists the writer claims reproduce byte-identically (mtime = rebuilt today; git = unmodified) ---
+  packages/mpd-mcp-astgrep/dist/cli.js       mtime=2026-10-07 18:32:54 git=
+  packages/mpd-mcp-gitbash/dist/cli.js       mtime=2026-10-07 18:32:54 git=
+  packages/mpd-mcp-lsp/dist/cli.js           mtime=2026-10-02 20:34:41 git=

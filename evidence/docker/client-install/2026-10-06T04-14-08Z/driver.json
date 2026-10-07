@@ -1,0 +1,31 @@
+{
+  "startedAt": "2026-10-06T04:14:08.115Z",
+  "finishedAt": "2026-10-06T04:18:40.205Z",
+  "docker": "Docker version 29.8.2, build 7fc2dff",
+  "compose": "Docker Compose version v5.5.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 420,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-SvcdLr",
+  "liveRequested": false,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "ui."
+  ],
+  "unmeasured": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_BROWSER=1 mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=63 failed=3 null=28 FAILED=[tui.mergedPanelOpens,tui.hostDashboardKeyIntact,tui.laneExit] NULL=[live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns,live.web.noMalformedToolJson,live.web.toolCallsParsed,live.web.mpdToolCalled,live.web.assistantReplied,live.tui.turnStarted,live.tui.turnCompleted,live.tui.noErrorTurns,live.tui.noMalformedToolJson,live.tui.toolCallsParsed,live.tui.mpdToolCalled,live.tui.assistantReplied,live.headless.turnStarted,live.headless.turnCompleted,live.headless.noErrorTurns,live.headless.noMalformedToolJson,live.headless.toolCallsParsed,live.headless.mpdToolCalled,live.headless.assistantReplied,live.teamRecord,live.nativeExecutor,live.headlessPresetRow,boot.llmTurn]",
+  "exitCode": 1
+}

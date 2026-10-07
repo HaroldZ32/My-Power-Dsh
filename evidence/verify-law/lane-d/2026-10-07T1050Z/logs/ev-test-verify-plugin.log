@@ -1,0 +1,59 @@
+cmd: bun test packages/mpd-verify-plugin  (the refusal arms as TEST NAMES)
+bun test v1.4.2 (744846f84)
+
+packages/mpd-verify-plugin/test/law.test.ts:
+(pass) path classification (asserted BOTH ways) > code is gated: a declared extension, an UNKNOWN extension, and no extension at all [0.30ms]
+(pass) path classification (asserted BOTH ways) > the documentation band stays WRITABLE: the manual, the PR body, docs, evidence and .mpd [0.15ms]
+(pass) path classification (asserted BOTH ways) > a path outside the workspace root is CODE whatever it looks like [0.04ms]
+(pass) path classification (asserted BOTH ways) > a non-string or absent path PASSES — the law never guesses [0.02ms]
+(pass) path classification (asserted BOTH ways) > scope matching: empty scope is the whole workspace, a prefix covers its subtree only [0.08ms]
+(pass) the captain's write rule > a code write with NO loop, NO escape and NO delegation is DENIED [0.40ms]
+(pass) the captain's write rule > the SAME write is ALLOWED once an armed self-loop covers it (the other direction) [0.42ms]
+(pass) the captain's write rule > a loop whose scope does NOT cover the path does not authorise it [0.16ms]
+(pass) the captain's write rule > a DELEGATE loop never authorises the captain — delegation is not a loophole [0.14ms]
+(pass) the captain's write rule > an EXPIRED loop authorises nothing [0.15ms]
+(pass) the captain's write rule > a CHILD session is never the captain — that is where the writes are supposed to go [0.06ms]
+(pass) the captain's write rule > a documentation path is NEVER gated, whatever the caller is [0.06ms]
+(pass) the captain's write rule > ONE escape authorises exactly ONE write, and the second is denied again [0.07ms]
+(pass) the captain's write rule > the gated tool set is exactly the write family, and a read is never gated [0.10ms]
+(pass) the verifier's envelope > a non-seat caller is untouched: the envelope binds VERIFIERS, not everybody [0.08ms]
+(pass) the verifier's envelope > bash and the source-returning tools are DENIED outright [0.03ms]
+(pass) the verifier's envelope > board and team mutations are DENIED, but the law's OWN tools are not [0.04ms]
+(pass) the verifier's envelope > while BLIND: an implementation read is denied and a documented one is allowed [0.10ms]
+(pass) the verifier's envelope > a BARE read is denied while blind: it would search the workspace, implementation included [0.06ms]
+(pass) the verifier's envelope > after a FAIL the ratchet UNLOCKS implementation reading, COUNTED [0.05ms]
+(pass) the verifier's envelope > writes are confined to .mpd/verify/**: a verifier never fixes what it found [0.03ms]
+(pass) the record validator: every refusal, and the admissible record beside it > the good record is ADMITTED (the arm every refusal is measured against) [0.15ms]
+(pass) the record validator: every refusal, and the admissible record beside it > same-agent: the verifier and the writer cannot be the same [0.02ms]
+(pass) the record validator: every refusal, and the admissible record beside it > no-doc-sources / no-gate-evidence: an empty PASS is refused [0.02ms]
+(pass) the record validator: every refusal, and the admissible record beside it > forged-evidence: an evidence id the runner never produced is refused [0.02ms]
+(pass) the record validator: every refusal, and the admissible record beside it > bind-unproven: a PASS from a seat the observation log cannot show to be blind is refused [0.01ms]
+(pass) the record validator: every refusal, and the admissible record beside it > fail-without-findings / finding-without-basis: a FAIL must be actionable AND grounded [0.05ms]
+(pass) the record validator: every refusal, and the admissible record beside it > blind-spent: a seat that already unlocked diagnosis can only FAIL [0.01ms]
+(pass) the record validator: every refusal, and the admissible record beside it > unknown-loop: a record naming a loop this workspace does not know is refused [0.01ms]
+(pass) the record validator: every refusal, and the admissible record beside it > the pre-plugin exemption: admissible only attested, unlocked-free and pre-marker [0.08ms]
+(pass) the ledger and the gates > an escape is counted from the LOG, so a restart cannot renumber it [0.38ms]
+(pass) the ledger and the gates > loops and seats round-trip through the workspace ledger [0.34ms]
+(pass) the ledger and the gates > the boot marker is written once and read back; an absent marker reads as undefined [0.15ms]
+(pass) the ledger and the gates > the gate table is a whitelist: every id resolves, an invented one does not, and `vendor` exists [0.06ms]
+(pass) the ledger and the gates > the artifact probe returns size and hash and NEVER content, and refuses an outside path [0.36ms]
+(pass) config and identity > verify.mode resolves to its three values, defaulting to hard [0.04ms]
+(pass) config and identity > a positive-int knob falls back rather than accepting nonsense [0.05ms]
+(pass) config and identity > the session-key chain is the frozen `??` order with the `workspace` fallback [0.05ms]
+(pass) the one-git-writer rule (§5, made mechanical) > a MEMBER's git write is denied; the CAPTAIN's is allowed [0.23ms]
+(pass) the one-git-writer rule (§5, made mechanical) > read-only git stays open to everyone [0.04ms]
+(pass) the one-git-writer rule (§5, made mechanical) > a command that merely MENTIONS git is NOT denied — a guard that reddens on prose is a defect [0.02ms]
+(pass) the one-git-writer rule (§5, made mechanical) > a chained invocation IS denied, and the wrapper forms are seen [0.02ms]
+
+packages/mpd-verify-plugin/test/row.test.ts:
+(pass) the mpd-verify row > apply publishes the service, registers five tools, installs the observer and marks the boot [1.15ms]
+(pass) the mpd-verify row > the ROLES-side guard, reading that service, refuses a captain write and allows it after an arm [1.09ms]
+(pass) the mpd-verify row > §5's one-git-writer rule through the INSTALLED guard: member denied, captain allowed [0.31ms]
+(pass) the mpd-verify row > a self-writer loop without a reason or without a different verifier is REFUSED [0.27ms]
+(pass) the mpd-verify row > an escape is counted, logged and buys exactly one write [0.57ms]
+
+ 47 pass
+ 0 fail
+ 195 expect() calls
+Ran 47 tests across 2 files. [114.00ms]
+EXIT=0

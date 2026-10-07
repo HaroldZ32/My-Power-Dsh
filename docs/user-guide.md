@@ -20,19 +20,23 @@ and the `exports` map live in its manifest, so this one command installs every p
 `mpd` preset, the whole skill corpus and the extension root. Nothing else to run — no pack step,
 no copy step. Restart `dsh`, then start a session on the **MPD (Main Working Agent)** preset.
 
-The bundle declares four runtime dependencies: **`dsh-better-sidebar`**, the community sidebar
-bundle that hosts the Workmates tab (§8), and the three official Agent Teams packages that provide
-team mode. A checkout install reads this repository,
+The bundle declares **three** runtime dependencies — the three official Agent Teams packages that
+provide team mode (`@deepseek-ai/dsh-experimental-agent-team`, its `-tool-agent-team` and
+`-client-ui-agent-team` siblings). **`dsh-better-sidebar`**, the community sidebar bundle that hosts
+the Workmates tab, is deliberately **not** one of them: it is an optional peer (plus a
+`devDependency`) the bundle never installs, and its absence is a normal composition, not a broken
+install (§8). A checkout install reads this repository,
 so materialize the repository's dependencies first:
 
 ```bash
 cd <repo> && bun install          # required once: materializes the declared runtime dependencies
 ```
 
-If `node-gyp` is unavailable (the sidebar's transitive `node-pty` builds with it),
-`bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` installs the dependency without build
-scripts — only the sidebar's terminal panel degrades. A packed install needs no extra step: pnpm
-installs the declared dependency for you (see *Packed package* below).
+If `node-gyp` is unavailable,
+`bun add dsh-better-sidebar@0.24.1 --ignore-scripts` installs the optional sidebar peer without build
+scripts — only the sidebar's terminal panel degrades. (The transitive `node-pty` this flag was needed
+for is gone from `0.24.1`, measured 2026-10-02.) A packed install needs no extra step: pnpm
+installs the declared dependencies for you (see *Packed package* below).
 
 `--profile` is **required on every `dsh plugin` command**, including `--help` and `remove`:
 without it the CLI stops with `error: required option '--profile <name>' not specified`. The
@@ -50,8 +54,10 @@ package: after the install `dsh.profile.bundles` is
 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`, and
 `node scripts/dump-config.ts --profile dsh-tui` (the repo wrapper, which prints the
 composition-only warning in its own output) shows our rows in a layer of their own
-(`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`) with the `mpd` preset as the
-session default. Start the TUI with the `dsh-tui` launcher (alias `dst`):
+(`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`). `mpd` is **available** after that
+install but is **not** the session default: the deployment default stays the host's, and choosing
+`mpd` is yours to make through the documented channels (see §7 and
+[preset-default.md](preset-default.md)). Start the TUI with the `dsh-tui` launcher (alias `dst`):
 
 ```bash
 dsh-tui            # boot in the current directory
@@ -75,11 +81,10 @@ dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
 
 `pack-mpd` exists for DISTRIBUTION: it assembles a self-contained `@mpd-dsh/mpd` (built plugin
-dists + the retired (unmounted) agent-teams main code + the skill corpus and the preset patch +
-the scaffold
+dists + the skill corpus and the preset patch + the scaffold
 `templates/` + the `docs/` set with its EN / `zh-CN` pairs + the on-demand `agent-references/`
-(the troubleshooting table and the adopted-plugin delta registry) + the combined web client + the
-packed-form patch) that does not depend on a checkout. Since the 2026-09-17 packaging change the
+(the troubleshooting table, the verification flow and the seam contracts) + the combined web client +
+the packed-form patch) that does not depend on a checkout. Since the 2026-09-17 packaging change the
 artifact is **author-facing** too: the extension CLI, the scaffold template and the guides all
 travel inside the package, so an installed bundle answers
 `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts validate <dir>` and its `docs/` is readable in
@@ -97,7 +102,8 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 
 The bundle installs as ONE unit and uninstalls as ONE unit, skills included: the plugin rows come
 from the bundle patch, the `mpd` preset is declared by the `preset-mpd` row in
-`presets/mpd.patch.yml` (with `agent-preset-registry` id-targeted to `default: mpd`) and the skill
+`presets/mpd.patch.yml` (shipped ADDITIVELY — the bundle id-targets no host row, so the deployment
+default stays the host's, §7) and the skill
 corpus from `<bundle>/skills` (the `mpd-bootstrap` row
 registers a `ctx.skills` provider). Nothing is copied into `$DSH_HOME`, so removal takes the
 rows, the preset and the skills with it — the stock preset roster returns and `$DSH_HOME/skills`
@@ -133,13 +139,14 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 
 | You want to… | Tools | Notes |
 |---|---|---|
-| Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (definitions, references, diagnostics, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. A fourth family, `mcp__git_bash__*`, is **not available by default**: its row ships `disabled: true` (the upstream server is native-Windows-only), so no such tool appears in a normal session — enable it by flipping that row's `disabled:` to `false` in `packages/mpd-bundle/cordis.patch.yml` and reinstalling the bundle. |
+| Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (definitions, references, diagnostics, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. A fourth family, `mcp__git_bash__*`, is **not available by default**: its row ships `disabled: true` (the upstream server is native-Windows-only), so no such tool appears in a normal session — enable it by flipping that row's `disabled:` to `false` in `cordis.patch.yml` and reinstalling the bundle. |
 | Edit safely | the write guard and output truncation (no configuration needed), `mpd_hashline_read/edit/format/restore`, `mpd_comment_check` | hash-anchored edits reject a stale anchor instead of writing to the wrong line |
 | Drive long work | `mpd_ulw` (light) / `mpd_ultrawork` (full discipline: plan gate, execution rounds, verification gate), or the equivalent `/ulw <objective>` / `/ultrawork <objective>` commands, `mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | the commands inject the ULW autonomy directive — a run asks the user nothing and stages its own team when the work warrants one; `mpd_boulder_*` tracks progress of a plan markdown file across sessions |
+| Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` (plus the host's `/goal` command and its goal round driver) | see §13.10: the **persisted goal** is the bundle's basis of continuous execution — a heavy ULW run or a plan-bound boulder work anchors one automatically (`goal.autoAnchor`), and it stays armed when the in-turn engine stops short of the objective |
 | Keep memory | `mpd_memory_write/read/reflect/reflect_complete/status`, `mpd_memory_save/recall` | the VCS-backed store can be git or svn; `mpd_memory_save/recall` is the simple key/value layer |
 | Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | one-shot subagents; read-only roles are denied write tools |
 | Keep an evolving agent | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | see §5 |
-| Run a team | `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, `team_task_create/list/get/update` + the Web Agent Teams panel | see §6 |
+| Run a team | `agent_teams_plan` (stage a plan, extend it, approve it), `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, `team_task_create/list/get/update` + the Web Agent Teams panel | see §6 |
 | Configure the bundle | `.mpd/mpd.jsonc`, `mpd_config_get`, `mpd_config_reload` | see §9 |
 | Extend the bundle | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` | see §10 |
 | Resolve a model route | `mpd_modelchain_resolve` | resolves the provider/model a specialist would use |
@@ -174,6 +181,12 @@ Use them one-shot:
   and model route; read-only roles are mechanically denied the write tools.
 - `mpd_role_persona { role }` — fetch the full persona text (e.g. to pass to a spawn surface that
   takes persona as text).
+
+Size the spawn to the work: a small mechanical change goes to a **Junior Engineer**, a bounded
+independent piece to a **Senior Engineer** or a **Deep Worker**, an evidence question to a
+**Researcher** or an **Explorer**, and a verdict to a **Reviewer**. Ask each spawn for ONE
+deliverable — a specialist returns a result, not a reasoning trace — and promote what you reuse
+into a workmate (§5).
 
 ## 5. Workmate library (durable, evolving specialists)
 
@@ -246,6 +259,7 @@ Team mode runs on the harness's **official Agent Teams plugin**, mounted by this
 spawns named teammates, opens tasks on a shared board and integrates the results.
 
 ```text
+agent_teams_plan { action }                                                # Lead only: create | add_member | create_task | edit | approve | delete | status
 spawn_teammate { name, description, prompt, context: "fresh" | "fork" }   # Lead only
 team_task_create { subject, description, blocked_by?, write_scopes? }
 team_task_get { task_id } / team_task_list { status?, owner?, ready? }
@@ -254,9 +268,16 @@ send_message { target, message } / list_agents { } / wait_agent { timeout_ms }
 interrupt_agent { target }                                                # Lead only
 ```
 
-- **There is no staged plan and no approval mode.** The old two-phase flow (stage a plan, approve it
-  in the GUI, then spawn) belonged to the retired vendored plugin. Here the captain spawns a member and
-  opens its task; the board *is* the plan, and the work starts when a teammate is spawned.
+- **Staging is a plan you approve, and it runs on OUR plane.** With `team.gate: "mechanical"` (the
+  default), the session-start complexity gate stages an **approvable plan shell** through the
+  `agent_teams_plan` tool — 0 members, 0 tasks, and INERT: nothing is spawned. The captain extends it
+  (`add_member` / `create_task`) and approves it with `agent_teams_plan {action:"approve"}`, which is
+  what spawns the members and posts the tasks; `action:"status"` reads the plan back and
+  `action:"delete"` archives it. That plan plane is OURS (`mpd-team-core`), not part of the harness's
+  official Agent Teams plugin: the official board — `spawn_teammate`, the `team_task_*` lifecycle —
+  is still what the team itself runs on. Under `team.gate: "advisory"`, or with `agent_teams_plan`
+  unmounted, the gate stages nothing and says so in one notice, and the captain stages a team itself
+  when the work warrants one.
 - **The board is compare-and-set.** `team_task_update` carries the `expected_revision` you read and
   answers a stale revision with an error instead of overwriting newer work. Actions: `claim`,
   `release`, `edit`, `set_dependencies`, `complete`, `reopen`, `reassign`, `delete`.
@@ -323,8 +344,11 @@ corpus, the MCP rows). There is no per-package `dsh plugin add`, and the TUI pac
 `cordis.patch.yml` of its own — the bundle patch owns the single `mpd-tui` row, because a second mount
 would duplicate a loader entry id, which the loader rejects outright. After that install
 `dsh.profile.bundles` is `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`
-— this bundle is the **third** patch layer — and a session created in the TUI defaults to the **mpd**
-preset. The host needs a real terminal: `dsh-tui` refuses to start when stdout is not a TTY
+— this bundle is the **third** patch layer — and `mpd` is **available** as a preset but is **not** the
+default: the deployment default stays the host's until you choose `mpd` (the TUI's `/preset mpd`, the
+Web Settings `selectedDefault`, or `node scripts/set-default-preset.ts --yes` — see
+[preset-default.md](preset-default.md)). The host needs a real terminal: `dsh-tui` refuses to start
+when stdout is not a TTY
 (`dsh-tui requires an interactive terminal (stdout must be a TTY)`), so it is never driven through a
 pipe.
 
@@ -394,9 +418,9 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   the tools in §6. Peer messages are not shown; the panel shows roster and tasks only. If the plugin
   was enabled in an already-open conversation, reload the page once to receive the projection.
 - **Workmates sidebar tab**: the workmate library is contributed as a tab to **DSH-better-sidebar**
-  (the community sidebar bundle, installed with this bundle), so it lives where that sidebar's own
-  pages do — tab strip, `+` menu, and the sidebar's own enable/disable switch. The page lists
-  `~/.mpd/workmate/` instances (base, uses, updated,
+  (the community sidebar bundle, an optional peer mounted when it is present), so it lives where that
+  sidebar's own pages do — tab strip, `+` menu, and the sidebar's own enable/disable switch. The page
+  lists `~/.mpd/workmate/` instances (base, uses, updated,
   note), filters them, opens one for its persona/memory/note, and initializes a new one from a
   roster-backed **base picker** (no id typing) plus an optional name and note. It also **renames**
   and **deletes** the selected instance — the delete flow is explicit (a confirmation step, then
@@ -406,12 +430,13 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   `POST /plugins/mpd-workmate/{init,rename,delete}`. The sidebar **tab-strip label** itself stays
   the English `Workmates` (a documented deferral: the strip label is resolved where no localized
   translator is in scope); the page body follows your language.
-- **Sidebar-only for the workmate page**: it has no fallback, and the sidebar host itself is
-  installed with the bundle — `dsh-better-sidebar` is a declared runtime dependency and the
-  `mpd-better-sidebar` patch row mounts it, so the one warning path is a **missing or broken
-  dependency**, not a missing manual install. Without a host the page logs exactly one warning and
-  registers nothing. Team work still runs through the official team tools, and the workmate library
-  is still fully usable through the `mpd_workmate_*` tools.
+- **Where the workmate page lives**: it is a sidebar page. The community host is an **optional peer**
+  the bundle never installs — the `mpd-better-sidebar` row mounts `dsh-better-sidebar` where it is
+  resolvable and disables itself otherwise — so nothing is owed as a second install step: without that
+  host the SAME page registers into the HARNESS's own right sidebar and stays reachable, and with no
+  sidebar seam at all the mpd panels report themselves once, by name. Team work still runs through the
+  official team tools, and the workmate library is still fully usable through the `mpd_workmate_*`
+  tools.
 
 ## 9. Configuration (`mpd.jsonc`)
 
@@ -427,6 +452,7 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 | `hashline.*` | mpd-hashline | guard flag, diff cap, registry file |
 | `commentChecker.*` | mpd-comment-checker | autoCheck, binary, timeouts |
 | `ulw.*` | mpd-ulw | rounds, plan/state dirs, provider/model routes |
+| `goal.enabled`, `goal.autoAnchor`, `goal.autoRounds` | mpd-goal | the persisted-goal bridge: master switch, whether long runs anchor a goal by themselves, and the round cap an auto-anchored goal is created with (defaults `true` / `true` / `32`). See §13.10 |
 | `extensions.enable`, `extensions.disable` | mpd-ext | per-id enable/disable lists for extensions (process-level: see §10) |
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
@@ -436,7 +462,7 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 `mpd-codegraph` is deliberately absent from this table: it takes `autoInit`, `initTimeoutMs`,
 `cooldownMs` and `binary` from its **bundle-patch row** options (read at apply time), and no plugin
 reads a `codegraph.*` key through `mpd.jsonc`. Its row ships `autoInit: true` and
-`initTimeoutMs: 60000` in `packages/mpd-bundle/cordis.patch.yml`.
+`initTimeoutMs: 60000` in `cordis.patch.yml`.
 
 ### 9.1 When a saved knob takes effect
 
@@ -459,6 +485,7 @@ Two things do not wait for that restart, and both are useful:
 | `hashline.*` | mpd-hashline | at mount | after a `dsh` restart |
 | `commentChecker.*` | mpd-comment-checker | at mount | after a restart |
 | `ulw.*` | mpd-ulw | at mount | after a restart |
+| `goal.*` | mpd-goal | at mount | after a restart |
 | `memory.*` | mpd-memory | at mount | after a restart |
 | `boulder.dir` | mpd-boulder | at mount | after a restart |
 | `modelchain.*` | mpd-modelchain | at mount | after a restart |
@@ -562,12 +589,11 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
   roots (`~/.mpd/extensions/`, `<bundle>/extensions/`) may contribute tools and providers. Move
   the directory, or drop the unsupported kinds from the manifest.
 - Workmates tab missing from the sidebar → rebuild the shipped client
-  (`node scripts/build-mpd-client.ts`, then reload) and confirm the profile has the sidebar host.
-  The bundle installs it itself (declared dependency + the `mpd-better-sidebar` row); if
-  `dsh-better-sidebar` is absent from the profile, the install did not materialize the dependency —
-  run `bun install` in the checkout (or
-  `bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts`) and reinstall the bundle. Without the
-  host the workmate page logs one warning and registers nothing.
+  (`node scripts/build-mpd-client.ts`, then reload) and confirm the profile has a sidebar host.
+  That host is an **optional peer** the bundle never installs; without it the mpd pages register into
+  the harness's own right sidebar, and with no sidebar seam at all they report themselves once, by
+  name. If you want the community host, run `bun install` in the checkout (or
+  `bun add dsh-better-sidebar@0.24.1 --ignore-scripts`) and reinstall the bundle.
 - The Agent Teams panel is missing from the conversation header → its row is
   `mpd-ui-agent-team` (`@deepseek-ai/dsh-experimental-client-ui-agent-team`, a declared dependency);
   reinstall the bundle and reload the page once. It appears only when the session really has a Team
@@ -585,6 +611,12 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
 - **`mcp__git_bash__*` tools are missing** → expected, not a fault: the `mcp-gitbash` row ships
   `disabled: true` (the upstream server is native-Windows-only). Use the harness's own `bash` tool,
   or enable that row (`disabled: false`) and reinstall the bundle.
+- **`mpd_comment_check` reports the binary is missing** → it is the opt-in detector: install
+  `@code-yeongyu/comment-checker` into `.toolchain` (`--with-comment-checker`), or set
+  `MPD_DSH_COMMENT_CHECKER_BIN` to an absolute path.
+- **CodeGraph tools answer nothing** → run `/mpd-codegraph` to build `.codegraph/codegraph.db`, and
+  install `@colbymchenry/codegraph` or set `MPD_DSH_CODEGRAPH_BIN` (its primary spelling
+  `MPD_CODEGRAPH_BIN` is read first).
 - **A knob you saved does not apply** → the plugins capture their configuration at mount: restart the
   session. `mpd_config_get` proving the new value is NOT proof that the running plugin acts on it
   (§9.1 says which knobs are live instead).
@@ -627,25 +659,32 @@ exact call.
 ### 13.1 Teams
 
 ```text
-# (a) creating the team: one spawn per member, one task per lane
+# (a) staging the plan: the gate already staged the shell, the captain extends it and approves it
+agent_teams_plan { "action": "create", "name": "docs-wave", "description": "Rewrite the install chapter", "approval": "required" }
+agent_teams_plan { "action": "add_member", "member": { "name": "senior-1", "description": "Owns the README pair", "prompt": "<mpd_role_persona text>" } }
+agent_teams_plan { "action": "create_task", "task": { "subject": "Rewrite the install chapter", "description": "Cover both profiles and the packed package.", "write_scopes": ["README.md"] } }
+agent_teams_plan { "action": "status" }
+agent_teams_plan { "action": "approve" }                              # ← THIS is what spawns the members and posts the tasks
+
+# (b) creating the team: one spawn per member, one task per lane
 spawn_teammate { "name": "senior-1", "description": "Owns the README pair", "prompt": "<mpd_role_persona text> + Rewrite the install chapter. A user can install from a checkout in one command; verify with bun run verify:docs.", "context": "fresh" }
 team_task_create { "subject": "Rewrite the install chapter", "description": "Cover both profiles and the packed package.", "blocked_by": [], "write_scopes": ["README.md"] }
 team_task_create { "subject": "Verify the README pair", "description": "Run the docs gate and report the raw output.", "blocked_by": ["task-1"], "write_scopes": [] }
 
-# (b) working the board (compare-and-set: re-read before every update)
+# (c) working the board (compare-and-set: re-read before every update)
 team_task_list { "ready": true }
 team_task_get { "task_id": "task-1" }                                  // → revision
 team_task_update { "task_id": "task-1", "expected_revision": 1, "action": "claim" }
 team_task_update { "task_id": "task-1", "expected_revision": 2, "action": "complete" }
 
-# (c) driving a running team
+# (d) driving a running team
 list_agents {}
 send_message { "target": "senior-1", "message": "Land the README edit before the guide." }
 team_task_update { "task_id": "task-1", "expected_revision": 2, "action": "reassign", "owner": "junior-1" }   // Lead only
 wait_agent { "timeout_ms": 60000 }
 interrupt_agent { "target": "senior-1" }                               // Lead only; the inbox is kept
 
-# (d) finishing a wave
+# (e) finishing a wave
 mpd_team_compact_run {}
 mpd_team_compact_status {}
 ```
@@ -653,8 +692,8 @@ mpd_team_compact_status {}
 Team names are permanent and are never reused. `write_scopes` are advisory (workspace-relative
 prefixes): overlapping in-progress tasks are warned about, never blocked. A task update based on an
 outdated `revision` is rejected — that rejection is the mechanism that stops a reassigned task from
-accepting a late result. There is no plan-approval step: the board is the plan, and the quality
-discipline is whatever the captain puts in the task description.
+accepting a late result. No teammate exists before the plan that names it is APPROVED, and the
+quality discipline is whatever the captain puts in the task description.
 
 ### 13.2 The ULW loop and its gates
 
@@ -786,6 +825,69 @@ and never authorize a write, so report what you changed in the task description 
 than relying on the scope list. A result is not accepted because a teammate says so: the Lead waits
 for the team (`wait_agent`, then re-read) and verifies the diff before answering.
 
+### 13.10 The persisted goal (continuous execution)
+
+A long objective outlives one turn. The harness's **goal** is how that is expressed durably: it
+lives in the session log, survives a restart, and its round driver keeps the session working in
+automatic continuation rounds until the goal is completed (or blocked, or its round cap runs out).
+The bundle adds the plugin side of that: the `mpd-goal` row.
+
+```text
+# read the goal of the current session (works with no driver running)
+mpd_goal_status {}
+
+# anchor one for a long objective: what an unfinished-goal check, a create and the
+# ownership sidecar amount to. An unfinished goal already current is KEPT, never replaced.
+mpd_goal_anchor { "objective": "ship the cordis-dev skill and its evidence", "maxRounds": 24 }
+
+# close it when the objective is actually achieved
+mpd_goal_finish { "outcome": "complete" }
+```
+
+**You rarely call these yourself.** With `goal.autoAnchor` on (the default), a heavy ULW run
+(`mpd_ultrawork` with `tier: "heavy"`, or `plan: true`) and a plan-bound `mpd_boulder_start` anchor a
+goal for their own objective before they start, so the run's objective — not the tool call — is the
+basis of continuous execution. When the run ends:
+
+- `complete` → the goal is completed and the anchor record is dropped;
+- `blocked` → a blocked transition is attempted, and the harness may refuse it before its
+  consecutive-round threshold (the refusal is logged, never fatal);
+- `max-rounds` → the goal **stays armed on purpose**: the in-turn engine stopped, and the round
+  driver carries the objective on in the next turns.
+
+Ownership is recorded per session in `<workspace>/.mpd/goal/anchors.json`, so a run only ever
+finishes a goal it anchored: a goal you created with `/goal` or `create_goal` is left alone.
+
+Two boundaries worth knowing: the harness's own rules still apply — creating, editing, pausing and
+resuming a goal need a **direct human turn** on the top-level agent, so an agent cannot invent work
+for itself and then continue it unattended; and `goal.*` is read when the row mounts, so a change to
+`.mpd/mpd.jsonc` takes effect after a `dsh` restart (§9.1).
+
+### 13.11 MCP code intelligence
+
+```text
+# Structural search — syntax shape, not text
+mcp__ast_grep__search { "pattern": "useEffect($$$)", "language": "tsx", "paths": ["src"] }
+mcp__ast_grep__rewrite { "pattern": "console.log($A)", "rewrite": "logger.info($A)", "language": "typescript", "paths": ["src"], "apply": false }
+
+# Language-server intelligence
+mcp__lsp__diagnostics { "filePath": "packages/mpd-roles-plugin/src/index.ts" }
+mcp__lsp__find_references { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9 }
+mcp__lsp__rename { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9, "newName": "resolvedConfig" }
+
+# Project graph — ask a question, get the relevant symbols plus the call path
+mcp__codegraph__codegraph_explore { "query": "how does a task get claimed and updated?" }
+
+# Remote servers: library docs and GitHub code search
+mcp__context7__resolve-library-id { "libraryName": "zod", "query": "schema parsing" }
+mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScript"] }
+```
+
+`mcp__lsp__rename` and `mcp__ast_grep__rewrite` / `mcp__ast_grep__scan` **write files**: run the
+rewrites with `apply: false` first, read the diff, then apply. `mcp__git_bash__*` ships disabled
+(native-Windows upstream, §3). The two remote rows (`context7`, `grep_app`) are public HTTP services
+and need network access; the three local servers need their binary (§11).
+
 ## 14. Where these capabilities come from
 
 The attribution facts a user needs, so it is clear which parts are this project's work and which are
@@ -794,19 +896,20 @@ other people's. The authoritative record, with the full licence texts, is
 
 | What you use | Where it comes from | Licence / version | Recorded in |
 |---|---|---|---|
-| Team mode — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, the `team_task_*` board and the Web panel | the **official** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` packages, mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows | MIT (harness package set); declared in `package.json` `dependencies` | `packages/mpd-bundle/cordis.patch.yml`; `README.md` (*What the install mounts*) |
-| The retired vendored `agent-teams` body (kept, not mounted) | **dsh-agent-teams** by 程序员阿江 (Relakkes) — adopted outright as first-class main code | MIT; adopted package version `0.1.16-rc.3-mpd` (a `0.1.14` body with the audited `0.1.16-rc.3` deltas backported); NO row mounts it since 0.1.7-rc.2 | `LICENSE-NOTICES.md`; licence text at `packages/mpd-agent-teams-plugin/LICENSE` |
+| Team mode — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, the `team_task_*` board and the Web panel | the **official** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` packages, mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows | MIT (harness package set); declared in `package.json` `dependencies` | `cordis.patch.yml`; `README.md` (*What the install mounts*) |
+| The adopted (then retired, then DELETED) vendored `agent-teams` body | **dsh-agent-teams** by 程序员阿江 (Relakkes) — adopted outright as first-class main code | MIT; adopted package version `0.1.16-rc.3-mpd` (a `0.1.14` body with the audited `0.1.16-rc.3` deltas backported); NO row mounted it since 0.1.7-rc.2, and the de-vendor wave (2026-10-07) removed `packages/mpd-agent-teams-plugin/**` — two relocated pieces survive as our own code: `packages/mpd-schemastery/**` and the adopted browser bundle at `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` | `LICENSE-NOTICES.md` §*dsh-agent-teams* |
 | The 11-specialist roster, the model-chain vocabulary, the teammate / workmate BASE templates | **oh-my-openagent** by code-yeongyu, pinned at commit `8c57e46` (v5.0.0-beta.20) | SUL-1.0 — the licence this repository inherits | `LICENSE-NOTICES.md` §1; `VENDOR_LOCK.json` |
-| The served skill corpus (18 skills, 326 fingerprinted files) | vendored from upstream oh-my-openagent | SUL-1.0 | `VENDOR_LOCK.json` `assets.skills` |
+| The served skill corpus (19 skills, incl. the repo's own `dsh-qa` and `cordis-dev`) | the upstream skills are vendored from **oh-my-openagent**; `cordis-dev` is written here, adapting the DeepSeek Harness's 创造模式 preset skills (`@deepseek-ai/dsh-agent-preset`, MIT) | SUL-1.0 for the corpus; MIT material referenced, not redistributed | `VENDOR_LOCK.json` `assets.skills`; `LICENSE-NOTICES.md` |
 | `mcp__ast_grep__*` | **ast-grep** — the optional dependency `@ast-grep/cli` | MIT; `0.45.2`; resolved at runtime, not redistributed | `package.json` `optionalDependencies`; `MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` and the `mpd-codegraph` row | **codegraph** by Yeongyu Kim — the optional dependency `@colbymchenry/codegraph` | MIT; `1.5.0`; the prebuilt server is vendored and sha256-pinned | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`; `VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; `0.8.0`; **not** redistributed — installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
 | The plugin system, the tool / skill / preset / agent seams, the model providers, the Web shell | DeepSeek Harness — the **`@deepseek-ai/*`** packages | MIT; referenced as dependencies only | `LICENSE-NOTICES.md` |
 | The Agent Teams Web panel | the official `@deepseek-ai/dsh-experimental-client-ui-agent-team` client plugin | MIT (harness package set) | §8 above; patch row `mpd-ui-agent-team` |
-| The Workmates sidebar tab | hosted by the community bundle **`dsh-better-sidebar`**, a declared runtime dependency of this bundle (installed and mounted with it) | — | §8 above; `package.json` `dependencies`; patch row `mpd-better-sidebar` |
+| The Workmates sidebar tab | hosted by the community bundle **`dsh-better-sidebar`**, an **optional peer** of this bundle (+ a `devDependency`): the bundle never installs it, and the guarded `mpd-better-sidebar` row mounts it when it is resolvable | — | §8 above; `package.json` `peerDependencies` / `peerDependenciesMeta`; patch row `mpd-better-sidebar` |
 | The DSH plumbing (adapter, runtime plugins, `mpd` preset, combined web client), the TUI edition, the QA suite, the documentation, the extension interface | written here | SUL-1.0 | `README.md` (Acknowledgements); `LICENSE.md` |
 
 Two consequences worth carrying away: a component keeps its **own** licence even inside this bundle
-(the retained `agent-teams` main code is MIT while the repository is SUL-1.0), and nothing here
+(the adopted client bundle and the relocated schemastery validator are MIT while the repository is
+SUL-1.0), and nothing here
 configures your provider credentials — a `MISSING_CREDENTIAL` error belongs to your DSH credential
 store, not to these docs.

@@ -1,0 +1,40 @@
+# LANE D changed files + settled sha256 (UTC 2026-10-02T15:27:36Z)
+
+## source + docs
+b0ab9be16b0b15814a40d1e71b2286777475108b2dab362087be8e00fc3700c6  packages/mpd-dsh-adapter-plugin/src/index.ts
+21d564158302db4e0bfacde127b3978c9d75a72968bcd9fa2ea83ceba7b4cddc  packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+20dbcd75424e92c74be02617062edbb7f8a32a8c9aa9872aedda377a09b15313  packages/mpd-boulder-plugin/src/index.ts
+64d20bd073a4e105ec33bc1dcacd1898bd4931ca197ad48d110741448c9277d7  packages/mpd-comment-checker-plugin/src/index.ts
+322f0d6f6168ad92a175f8ec6b7b3e8bd13806fe854218d20972c70f78872341  packages/mpd-config-plugin/src/index.ts
+fef8573520500824599022bc36715f24818b1993d564faa8c1806d0a2f581d0b  packages/mpd-hashline-plugin/src/index.ts
+7c312ae96803fbea399fe46f7d71c1a02dba1a6db00bec568e66ac75780856e5  packages/mpd-memory-plugin/src/index.ts
+129cd4f6b4316fe958e3c2fafb92e57929ca9169b589361384f6308a13f6c2f0  packages/mpd-modelchain-plugin/src/index.ts
+4f53e40993b6bff74d93093af5b39b5e06b1b1f282bb120dea8a07e9eb06934a  packages/mpd-team-compact-plugin/src/index.ts
+5d73dcb76b242df52b871df5de2468841a14ae89f23255843f77f13ce39f6c61  packages/mpd-tools-plugin/src/index.ts
+41b84dd1038b90507b2009d746266c068be73f40e9de8d9b4b33ea4dfd019c47  packages/mpd-roles-plugin/src/index.ts
+c0c1b76d77c7c5454cdd0c8992fb46c74d66a0f3858a1aeadd0d786d0eeb0c52  packages/mpd-ulw-plugin/src/index.ts
+e2e43b57d1725bf9fa4c0bf5c42e6715042ae46a72f937b458661844b126c5b2  packages/mpd-workmate-plugin/src/index.ts
+405294114bad29de40eab69677ad62191a0d436e14200bdfb7669346491a73d7  packages/mpd-roster-provider-plugin/src/index.ts
+8a8948820e51cd56308d4d0890c610714415a83a9aaebdafc749ff247e1aa26a  packages/mpd-bootstrap-plugin/src/index.ts
+1cc086ffc2d792495ad68a5ee7e47295d1940024f3b345e7c2c688f27d8cd1d2  packages/mpd-better-sidebar-host/src/index.ts
+eba5ed724ece162a8ad34c1461e970e6b345a70e78cfd1952f663b19d7f12f23  packages/mpd-ext-plugin/src/index.ts
+038ba609f00c52375aef1a15cdfac68fb05f3676d0ad481b349489181cd6b2bf  docs/independence.md
+aa1fb0275ec2cc8de06195ae771300f59057b09644bffacff493373541463dd6  docs/independence.zh-CN.md
+
+## rebuilt dist
+a56089af3a0ad1d163d2596f8c3ecea52907daae9f48639295b85bd72fd89f45  packages/mpd-dsh-adapter-plugin/dist/index.js
+d1c7f8f5df0affa27240b37d92ab8bfa5abd35a078576db42c6e225ed22a4adc  packages/mpd-boulder-plugin/dist/index.js
+8e241132aa72a60e3f93fc4e392330b4825f7e743a0dc0dbcabd8fffe6042cdc  packages/mpd-comment-checker-plugin/dist/index.js
+e03178c078a59a9ffc160cd312569c52f02af588e89c26af2784cb3282d13712  packages/mpd-config-plugin/dist/index.js
+59793b0e486772f63e3f1f31ddb12363279876fb05e29f0a1cf9a2a6821d4714  packages/mpd-hashline-plugin/dist/index.js
+ab84b9685ffe7f430e56dfff84fd20176e572f27b3dd8431d0d22f0895be173d  packages/mpd-memory-plugin/dist/index.js
+8f604c1d0bdfe0ea11326aa64db7085c18d1fe4d1a14de010e9f97711f982baf  packages/mpd-modelchain-plugin/dist/index.js
+71c8553ce04ea6276af59b84cca7880fe3ad6431de2ed05aab4eff35e5526490  packages/mpd-team-compact-plugin/dist/index.js
+cc31400562fca6973b87fe28be82603e5098a2b2984ca7cdb41aae7840d0545d  packages/mpd-tools-plugin/dist/index.js
+8448de0916e99f602168e14b76710ff3f3bc4c0da30d43f19170ff52676e551e  packages/mpd-roles-plugin/dist/index.js
+1e746f5e0b6e54ff3361b0e92dd6f3cdf9023c1a9ee28c6dd12c5cde475e7d1b  packages/mpd-ulw-plugin/dist/index.js
+a279976be881f7dad3ed2f2bc92f12713bcad4497f4298a32bf86ab74967a5ef  packages/mpd-workmate-plugin/dist/index.js
+26f39b833dcdf1ec9b5c84d4d9af6588187da70ab017903aeb776d7d1f4107eb  packages/mpd-roster-provider-plugin/dist/index.js
+78348f75b26e17887df497d5b05900e171e3919a7d49bf5ed813add78a40d309  packages/mpd-bootstrap-plugin/dist/index.js
+436d16d676b81227b014b15f5cbee9994c71f86a813ce1fd1641ce251c8d3e36  packages/mpd-better-sidebar-host/dist/index.js
+2be7b86682aa250396129f8047b9cbfbb332e0ad0fae874dc05f0b6980137484  packages/mpd-ext-plugin/dist/index.js

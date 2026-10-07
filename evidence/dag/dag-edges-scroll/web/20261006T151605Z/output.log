@@ -1,0 +1,133 @@
+# WEB lane evidence #2 — wave dag-edges-scroll (the GUTTER TUNE, captain's ruling)
+# collected 2026-10-06T15:16:05Z · branch feature/dag-edges-scroll · HEAD 52cd964f
+# supersedes evidence/dag/dag-edges-scroll/web/20261006T151234Z for the geometry numbers;
+# the arm list, the fixture and the merged capture step are unchanged from that record.
+
+## 0 · the files this lane owns, sha256 (read 15:16:05Z)
+d4c12cf33e2c7b42e166d40572673ee03cb28f2393588cd30de75fa9ab4c9b75  packages/mpd-bundle-plugin/src/team-view.ts
+7c8325d6aa251f38622cb14559b51b0199e0e6b87b013204ffbbfc030aeec943  packages/mpd-bundle-plugin/test/team-view.test.ts
+bdc77391f680434275381e23231d532a45625aefcebbb9a581bf750fa60ca734  docker/ui/team-fixture-records.mts
+2a38cf5bc38403948d6dfbc8009c9e5a30842c686baae9d5022f95dcec45a635  docker/ui/team-fixture.mts
+0f763247e407c385fcbb9831c631c2dcae608e939b8b8fb20db63f21724a2731  docker/ui/seed-team-fixture.sh
+9de14abb9c92bfc384e51fa62d4b478e90bb31d08c658e2de154f05f21e4874a  docker/ui/capture.mts
+
+## 1 · bun test packages/mpd-bundle-plugin
+
+ 159 pass
+ 0 fail
+ 3038 expect() calls
+Ran 159 tests across 7 files. [3.18s]
+
+## 2 · bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin
+
+ 295 pass
+ 0 fail
+ 3667 expect() calls
+Ran 295 tests across 17 files. [3.31s]
+
+## 3 · the geometry the ruling moved (measured off the LAYOUT, not restated)
+ONE-LANE BENDING FORWARD EDGE  inset=12 gutter=24px  nodeWidth=144px (was 160px)  maxLanes=1 laneOverflow=0
+   fillet actually emitted = 6px of EDGE_RADIUS=6 (was 2px)
+   d = M 156 77 L 162 77 Q 168 77 168 71 L 168 31 C 168 31 174 25 180 25
+LANE WIDENING (the busy-gutter behaviour is intact):
+   lanes= 1 -> maxLanes= 1 inset=12 gutter=24 nodeWidth=144 laneOverflow=0
+   lanes= 6 -> maxLanes= 6 inset=12 gutter=24 nodeWidth=144 laneOverflow=0
+   lanes=16 -> maxLanes=16 inset=24 gutter=48 nodeWidth=120 laneOverflow=0
+   lanes=24 -> maxLanes=24 inset=24 gutter=48 nodeWidth=120 laneOverflow=0
+
+## 4 · W3 POSITIVE CONTROL re-run on the NEW geometry (the route is broken, then restored)
+   1281 |     expect(crossings).toBe(0)
+   Expected: 0
+   Received: 470
+   (fail) team-view edge legibility (the reported tangle) > NO drawn CURVE enters any node box, on the five-rank board from the screenshot [143.46ms]
+    0 pass
+    1 fail
+   Ran 1 test across 1 file. [534.00ms]
+### restored: sha must equal §0, and the arm must pass again
+d4c12cf33e2c7b42e166d40572673ee03cb28f2393588cd30de75fa9ab4c9b75  packages/mpd-bundle-plugin/src/team-view.ts
+7c8325d6aa251f38622cb14559b51b0199e0e6b87b013204ffbbfc030aeec943  packages/mpd-bundle-plugin/test/team-view.test.ts
+bdc77391f680434275381e23231d532a45625aefcebbb9a581bf750fa60ca734  docker/ui/team-fixture-records.mts
+2a38cf5bc38403948d6dfbc8009c9e5a30842c686baae9d5022f95dcec45a635  docker/ui/team-fixture.mts
+0f763247e407c385fcbb9831c631c2dcae608e939b8b8fb20db63f21724a2731  docker/ui/seed-team-fixture.sh
+9de14abb9c92bfc384e51fa62d4b478e90bb31d08c658e2de154f05f21e4874a  docker/ui/capture.mts
+ 1 pass
+ 40 filtered out
+ 0 fail
+ 87 expect() calls
+Ran 1 test across 1 file. [506.00ms]
+
+## 5 · bun run typecheck (repo) and bun run verify:comments (repo)
+$ tsgo --noEmit
+packages/mpd-tui-plugin/src/panel-dag.ts(546,81): error TS2551: Property 'viewportCols' does not exist on type 'PanelViewport'. Did you mean 'viewportRows'?
+error: script "typecheck" exited with code 1
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 407 TypeScript file(s) of 407 in the source set; inspected 34670 declaration(s); skipped 16717 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+
+## 6 · REVIEWER FINDING 4 — the redundant waypoint, fixed with a BYTE-IDENTITY PROOF
+##     instrument: evidence/dag/dag-edges-scroll/web/20261006T151605Z/route-dump.mjs (shipped beside this log; it evaluates a GIVEN source)
+##     board: two roots (so rank 0 has two rows) + a three-deep chain over them — both the
+##            DEGENERATE (same-row) shape and the rank-skipping shape the cleanup could move.
+BEFORE = the same source with `mark` restored to the old unconditional push (mark replaced at run time)
+AFTER  = the shipped source
+route strings identical over 10 edge/radius rows: True
+REPEATED_VERTICES=3 | REPEATED_VERTICES=0
+points before -> after, per row: 4->20, 59->59, 4->3, 75->75, 4->3, 4->3, 6->6, 4->3, 8->8, 4->3
+the degenerate edge T3<-T1:
+  BEFORE r0 d = M 156 25 L 168 25 L 168 25 L 180 25
+  AFTER  r0 d = M 156 25 L 168 25 L 180 25
+  BEFORE r6 d = M 156 25 L 168 25 L 168 25 L 180 25
+  AFTER  r6 d = M 156 25 L 162 25 C 162 25 174 25 180 25
+  route (identical both sides) = 156,25,12,1;168,25,1,1;168,25,13,1|R175,21,5,8
+
+## 7 · the gate sweep AFTER the cleanup
+$ bun test packages/mpd-bundle-plugin
+   (pass) R18's reader side: the RECORD's own unresolved report, beside the view's re-derivation > the pinned detail body NAMES the record's unresolved references, beside blocked-by and dependents [37.97ms]
+    159 pass
+    0 fail
+   Ran 159 tests across 7 files. [3.16s]
+
+$ bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin
+   (pass) R18's reader side: the RECORD's own unresolved report, beside the view's re-derivation > the pinned detail body NAMES the record's unresolved references, beside blocked-by and dependents [38.48ms]
+    295 pass
+    0 fail
+   Ran 295 tests across 17 files. [3.12s]
+
+$ bun run verify:comments
+   VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+$ bun run typecheck
+   packages/mpd-tui-plugin/src/panel-dag.ts(560,81): error TS2551: Property 'viewportCols' does not exist on type 'PanelViewport'. Did you mean 'viewportRows'?
+   (all of the above are in packages/mpd-tui-plugin/**, a sibling lane's in-flight file)
+
+## 8 · the W3 arm states its own worth (captain R3): containment is STRUCTURAL — curveOf clamps every
+##     fillet to half the shorter leg, so the arm is a REGRESSION GUARD, not a live proof. Comment added
+##     above the arm; suite re-run below.
+$ bun test packages/mpd-bundle-plugin (after the comment)
+ 159 pass
+ 0 fail
+ 3068 expect() calls
+Ran 159 tests across 7 files. [3.15s]
+
+
+## 9 · THE VERIFIER'S FALSE RED — `dagDetailKeepsCjk` fixed (capture.mts, a CHECK defect)
+##     The container had /data/capture.mts baked in, so this needs a re-copy or an image rebuild
+##     (the captain owns both). Offline replay of the check's own expression over the REAL cjk
+##     fixture, by evidence/dag/dag-edges-scroll/web/20261006T151605Z/detail-pin-check.mjs:
+   walk-order pin (T6): "！？。" ideograph=false
+   chosen pins        : T1="fix 登录页 styles" ideograph=true | T6="！？。" ideograph=false
+   OLD rule (ideographs only, walk order) = false   <- the false red the verifier measured
+   NEW rule (declared set + chosen pins)  = true
+   DRAFT rule (2nd pin from the C4 branch) = false  <- also wrong: both pins landed on the ideograph branch
+      draft pins      : T1="fix 登录页 styles" ideograph=true | T2="冻结验收契约" ideograph=true
+   NEGATIVE CONTROL (subjects dropped)    = false  <- must be false
+##     WHAT CHANGED IN capture.mts: (1) CJK_RANGES hoisted to MODULE level so the drawing scan and
+##     the detail scan cannot disagree about what counts as CJK, and the detail check now uses
+##     that declared set instead of ideographs only; (2) step 08 takes its OWN pins — one subject
+##     carrying an ideograph and one carrying none — instead of inheriting step 07's walk-order
+##     pin, and the cjk board is required to yield BOTH branches; (3) report carries dagDetailPins
+##     {id,subject,ideographs,text,keeps} plus teamFixtureTasks, so the verdict is auditable.

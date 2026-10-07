@@ -1,0 +1,85 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013",
+  "widths": [
+    200,
+    120,
+    80,
+    48,
+    32
+  ],
+  "verdicts": [
+    {
+      "cols": 200,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": true,
+      "panelTitleSeen": false,
+      "widestLine": 198,
+      "panelBars": [
+        "‹ 待办 › ▸ ◆",
+        "≡ ‹ 任务 › ◆                                               ⤢",
+        "≡ ▸ ‹ 代理 ›                                               ⤢"
+      ],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/run/w200/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/run/w200/panel.pane.txt",
+      "failures": []
+    },
+    {
+      "cols": 120,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": true,
+      "panelTitleSeen": false,
+      "widestLine": 119,
+      "panelBars": [
+        "‹ 待办 › ▸ ◆",
+        "≡ ‹ 任务 › ◆                      ⤢",
+        "≡ ▸ ‹ 代理 ›                      ⤢"
+      ],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/run/w120/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/run/w120/panel.pane.txt",
+      "failures": []
+    },
+    {
+      "cols": 80,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": false,
+      "panelTitleSeen": false,
+      "widestLine": 78,
+      "panelBars": [],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/run/w80/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/run/w80/panel.pane.txt",
+      "failures": []
+    },
+    {
+      "cols": 48,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": false,
+      "panelTitleSeen": false,
+      "widestLine": 47,
+      "panelBars": [],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/run/w48/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/run/w48/panel.pane.txt",
+      "failures": []
+    },
+    {
+      "cols": 32,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": false,
+      "panelTitleSeen": false,
+      "widestLine": 32,
+      "panelBars": [],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/run/w32/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/run/w32/panel.pane.txt",
+      "failures": []
+    }
+  ]
+}

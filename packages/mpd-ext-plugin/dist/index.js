@@ -1,6 +1,6 @@
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 import { dirname } from "node:path";
@@ -14,7 +14,202 @@ function errorMessage(error) {
 function bundleRootOf(moduleUrl) {
   return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
 }
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+}
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_TOOLS = "tools";
+var DSH_SEAM_SKILLS = "skills";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -42,11 +237,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -59,7 +266,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -67,6 +274,46 @@ function workspaceRootsOf(agents) {
   }
 }
 function noop() {}
+var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
+function goalSnapshotOf(view) {
+  if (view === null || view === undefined || typeof view !== "object")
+    return;
+  const raw = view;
+  if (typeof raw.id !== "string" || raw.id === "")
+    return;
+  const snapshot = {
+    id: raw.id,
+    revision: typeof raw.revision === "number" ? raw.revision : 0,
+    objective: typeof raw.objective === "string" ? raw.objective : "",
+    phase: raw.phase === "paused" || raw.phase === "blocked" || raw.phase === "complete" ? raw.phase : "active",
+    maxGoalRounds: typeof raw.maxGoalRounds === "number" ? raw.maxGoalRounds : 0
+  };
+  if (typeof raw.roundsStarted === "number")
+    snapshot.roundsStarted = raw.roundsStarted;
+  if (raw.activation === "armed" || raw.activation === "disarmed")
+    snapshot.activation = raw.activation;
+  const reason = raw.blockedReason;
+  if (reason !== null && typeof reason === "object") {
+    const code = reason.code;
+    const message = reason.message;
+    if (typeof code === "string" && code !== "" && typeof message === "string" && message !== "") {
+      snapshot.blockedReason = { code, message };
+    }
+  }
+  return snapshot;
+}
+function goalValueOf(value) {
+  if (value === null || value === undefined || typeof value !== "object")
+    return { goal: null };
+  const raw = value;
+  const activation = raw.activation === "armed" || raw.activation === "disarmed" ? raw.activation : undefined;
+  const goal = goalSnapshotOf(raw.goal);
+  if (goal === undefined)
+    return activation === undefined ? { goal: null } : { goal: null, activation };
+  if (activation !== undefined)
+    goal.activation = activation;
+  return activation === undefined ? { goal } : { goal, activation };
+}
 function scopeOfAgentContext(agent) {
   let context;
   try {
@@ -210,6 +457,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -235,16 +483,18 @@ function createDshAdapter(ctx, config = {}) {
     }
     return liveAgents().find((candidate) => candidate.id === id);
   }
-  const engineCache = new Map;
+  const engineCache = new WeakMap;
   function compactionEngineForAgent(agentId) {
     const id = String(agentId ?? "");
     if (id === "")
       return;
-    const cached = engineCache.get(id);
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    const cached = engineCache.get(agent);
     if (cached !== undefined)
       return cached;
-    const agent = liveAgent(id);
-    const scoped = agent?.ctx;
+    const scoped = agent.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -255,7 +505,7 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(id, engine);
+    engineCache.set(agent, engine);
     return engine;
   }
   function onEvent(event, handler) {
@@ -275,7 +525,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -366,6 +616,210 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
     return;
   }
+  const nativeMembers = new Map;
+  const officialMembers = new Map;
+  const neverAborted = () => new AbortController().signal;
+  const sessionIdOfAgent = (agent) => {
+    const session = agent?.session;
+    return typeof session?.id === "string" ? session.id : "";
+  };
+  function nativeTeamExecutor(reason, ready) {
+    const subagentsOf = () => service("subagents");
+    return {
+      kind: "native",
+      reason,
+      providers: () => {
+        try {
+          const list = subagentsOf()?.providers;
+          if (typeof list !== "function")
+            return [];
+          const names = list.call(subagentsOf());
+          return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
+        } catch {
+          return [];
+        }
+      },
+      async spawn(caller, request) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        if (typeof subagents.startContinuable !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member");
+        }
+        const spec = {
+          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          label: `${request.name} · ${request.teamId}`,
+          request: {
+            prompt: textBlock(request.prompt),
+            parent: caller,
+            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+          },
+          signal: request.signal ?? neverAborted()
+        };
+        const started = await subagents.startContinuable.call(subagents, spec);
+        const handle = String(started?.childId ?? started?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
+        return { handle, executor: "native" };
+      },
+      async send(caller, handle, content, signal) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`);
+        if (typeof subagents.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await subagents.sendMessage.call(subagents, caller, handle, textBlock(content), { signal: signal ?? neverAborted() });
+      },
+      async interrupt(caller, handle) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot interrupt team member "${handle}"`);
+        if (typeof subagents.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt() — cannot interrupt a team member");
+        }
+        subagents.interrupt.call(subagents, handle, { kind: "ancestor", agent: caller });
+      },
+      membership(agent) {
+        const id = sessionIdOfAgent(agent);
+        if (id === "")
+          return;
+        const entry = nativeMembers.get(id);
+        return entry === undefined ? undefined : { teamId: entry.teamId, role: "teammate", name: entry.name };
+      },
+      members: () => [...nativeMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function officialTeamExecutor() {
+    return {
+      kind: "official",
+      reason: "official: the native seams are unavailable, so the mounted Agent Teams service executes the team",
+      providers: () => [],
+      async spawn(caller, request) {
+        const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`);
+        if (typeof teams.spawnTeammate !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member");
+        }
+        const spawned = await teams.spawnTeammate.call(teams, caller, {
+          name: request.name,
+          description: request.description === "" ? request.name : request.description,
+          prompt: request.prompt,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+        const handle = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the official backend raised "${request.name}" but reported no id`);
+        officialMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name });
+        return { handle, executor: "official" };
+      },
+      async send(caller, handle, content, signal) {
+        const teams = requireService("agentTeams", `cannot deliver a message to team member "${handle}"`);
+        if (typeof teams.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await teams.sendMessage.call(teams, caller, { target: handle, content: textBlock(content), ...signal === undefined ? {} : { signal } });
+      },
+      async interrupt(caller, handle) {
+        const teams = requireService("agentTeams", `cannot interrupt team member "${handle}"`);
+        if (typeof teams.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no interrupt() — cannot interrupt a team member");
+        }
+        const target = officialMembers.get(handle)?.name ?? handle;
+        teams.interrupt.call(teams, caller, target);
+      },
+      membership: (agent) => {
+        const teams = service("agentTeams");
+        const tryMembership = teams?.tryMembership;
+        if (typeof tryMembership !== "function")
+          return;
+        try {
+          const membership = tryMembership.call(teams, agent);
+          if (membership === undefined || membership === null)
+            return;
+          const role = membership.role;
+          if (role !== "lead" && role !== "teammate")
+            return;
+          return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+        } catch {
+          return;
+        }
+      },
+      members: () => [...officialMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function scopedToolRegistry(agent) {
+    const scope = scopeOfAgentContext(agent);
+    if (scope === undefined)
+      return;
+    try {
+      const tools = scope.context?.tools;
+      return typeof tools?.execute === "function" ? tools : undefined;
+    } catch {
+      return;
+    }
+  }
+  function hostToolDefinition(name) {
+    try {
+      const hostView = service("tools");
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name);
+    try {
+      return scoped.get(name, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name) {
+    if (hostToolDefinition(name) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined);
+  }
+  function projectToolResult(raw) {
+    const record = raw;
+    if (record?.isError === true) {
+      const error = record.error;
+      return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
+    }
+    return { ok: true, isError: false, value: record?.value, raw };
+  }
+  async function executeToolForAgent(input) {
+    const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
+    const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
+    const scoped = input.agent === undefined ? undefined : scopedToolRegistry(input.agent);
+    if (scoped !== undefined) {
+      try {
+        const raw = await scoped.execute({
+          name: input.name,
+          arguments: input.arguments ?? {},
+          callId,
+          ...signal === undefined ? {} : { signal },
+          ...input.agent === undefined ? {} : { agent: input.agent }
+        });
+        return { result: projectToolResult(raw), via: "agent-scope" };
+      } catch (error) {
+        return { result: { ok: false, isError: true, error: errorMessage(error) }, via: "agent-scope" };
+      }
+    }
+    const result = await adapter.executeTool({
+      name: input.name,
+      arguments: input.arguments ?? {},
+      callId,
+      ...signal === undefined ? {} : { signal },
+      ...input.agent === undefined ? {} : { agent: input.agent },
+      ...input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }
+    });
+    return { result, via: "host-plane" };
+  }
   const adapter = {
     capabilities() {
       const tools = service("tools");
@@ -378,6 +832,7 @@ function createDshAdapter(ctx, config = {}) {
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
+      const goalService = service("goals");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -410,6 +865,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsRegisterHost: typeof tools?.register === "function",
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
         subagentsContinuable: typeof subagents?.startContinuable === "function",
+        teamExecutorNative: typeof subagents?.startContinuable === "function",
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -425,16 +881,84 @@ function createDshAdapter(ctx, config = {}) {
         team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
         teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
-        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function",
+        goals: typeof goalService?.get === "function",
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
       };
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
+    goalState(agent) {
+      const goals = service("goals");
+      if (goals === undefined || typeof goals.get !== "function")
+        return;
+      try {
+        const view = goals.get(agent);
+        return goalSnapshotOf(view) ?? null;
+      } catch {
+        return;
+      }
+    },
+    async goalControl(input) {
+      if (input === null || typeof input !== "object" || typeof input.action !== "string") {
+        return { ok: false, isError: true, error: "goalControl requires an action" };
+      }
+      if (input.agent === undefined)
+        return { ok: false, isError: true, error: "goal tools require a calling agent" };
+      let goalId = input.goalId;
+      let revision = input.revision;
+      const needsRef = input.action !== "create" && input.action !== "read";
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        const current = await executeToolForAgent({ name: "get_goal", agent: input.agent, callId: input.callId, signal: input.signal, timeoutMs: input.timeoutMs });
+        if (!current.result.ok)
+          return { ok: false, isError: true, error: current.result.error, via: current.via, raw: current.result.raw };
+        const read = goalValueOf(current.result.value);
+        if (read.goal === null)
+          return { ok: false, isError: true, error: "no current goal", via: current.via, raw: current.result.raw };
+        goalId = goalId ?? read.goal.id;
+        revision = revision ?? read.goal.revision;
+      }
+      const toolName = input.action === "read" ? "get_goal" : input.action === "create" ? "create_goal" : "update_goal";
+      const toolArguments = input.action === "read" ? {} : input.action === "create" ? { objective: input.objective, ...input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds } } : {
+        goal_id: goalId,
+        revision,
+        action: input.action,
+        ...input.objective === undefined ? {} : { objective: input.objective },
+        ...input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds },
+        ...input.blockedReason === undefined ? {} : { blocked_reason: input.blockedReason }
+      };
+      if (input.action === "create" && (typeof input.objective !== "string" || input.objective.trim() === "")) {
+        return { ok: false, isError: true, error: "goalControl create requires a non-empty objective" };
+      }
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        return { ok: false, isError: true, error: "goalControl " + input.action + " requires an exact goal id and revision" };
+      }
+      const call = await executeToolForAgent({
+        name: toolName,
+        arguments: toolArguments,
+        agent: input.agent,
+        callId: input.callId,
+        signal: input.signal,
+        timeoutMs: input.timeoutMs
+      });
+      if (!call.result.ok)
+        return { ok: false, isError: call.result.isError, error: call.result.error, via: call.via, raw: call.result.raw };
+      const value = goalValueOf(call.result.value);
+      return {
+        ok: true,
+        isError: false,
+        goal: value.goal,
+        ...value.activation === undefined ? {} : { activation: value.activation },
+        via: call.via,
+        raw: call.result.raw
+      };
+    },
     llmListModels(provider) {
       const llm = requireService("llm", 'cannot list the models of provider "' + provider + '"');
       if (typeof llm.listModels !== "function")
@@ -560,20 +1084,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },
@@ -592,12 +1108,7 @@ function createDshAdapter(ctx, config = {}) {
           ...signal === undefined ? {} : { signal },
           ...input.agent === undefined ? {} : { agent: input.agent }
         });
-        const isError = raw?.isError === true;
-        if (isError) {
-          const error = raw?.error;
-          return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
-        }
-        return { ok: true, isError: false, value: raw?.value, raw };
+        return projectToolResult(raw);
       } catch (error) {
         return { ok: false, isError: true, error: errorMessage(error) };
       }
@@ -665,6 +1176,22 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamExecutor() {
+      const override = (() => {
+        try {
+          const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_TEAM_EXECUTOR : undefined;
+          return typeof raw === "string" && raw.trim() !== "" ? raw.trim().toLowerCase() : undefined;
+        } catch {
+          return;
+        }
+      })();
+      const nativeReady = typeof service("subagents")?.startContinuable === "function";
+      const officialReady = service("agentTeams") !== undefined;
+      const chosen = override === "official" && officialReady ? "official" : override === "native" && nativeReady ? "native" : nativeReady ? "native" : officialReady ? "official" : "native";
+      if (chosen === "official")
+        return officialTeamExecutor();
+      return nativeTeamExecutor(nativeReady ? override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native" : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse", nativeReady);
     },
     teamService() {
       const teams = service("agentTeams");
@@ -888,7 +1415,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -907,7 +1434,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -1001,6 +1528,12 @@ var SERVICE_NAME = "mpdDsh";
 var ADAPTER_IDENTITY_MOUNTED = "mounted:mpdDsh";
 var ADAPTER_IDENTITY_PENDING = "pending:provider-not-active";
 var ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter";
+function adapterPendingWarning() {
+  return "ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber" + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE" + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted" + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).";
+}
+function adapterFallbackWarning() {
+  return "ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided" + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter" + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)" + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working," + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the" + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).";
+}
 function probeMpdDsh(ctx, strict) {
   const get = ctx?.get;
   if (typeof get !== "function")
@@ -1022,14 +1555,14 @@ function dshAdapterIdentity(ctx) {
 function createLazyDshAdapter(ctx, options) {
   const warning = (line) => {
     try {
-      (options.warn ?? ((text) => console.log("[" + options.label + "] " + text)))(line);
+      (options.warn ?? ((text) => rowLogLine("mpd-dsh-adapter", "[" + options.label + "] " + text)))(line);
     } catch {}
   };
   let mounted;
   let temporary;
   let warnedPending = false;
   let warnedMissing = false;
-  const resolve2 = () => {
+  const resolve3 = () => {
     if (mounted !== undefined)
       return mounted;
     const active = probeMpdDsh(ctx, true);
@@ -1041,24 +1574,24 @@ function createLazyDshAdapter(ctx, options) {
     if (!probeMpdDsh(ctx, false).missing) {
       if (!warnedPending) {
         warnedPending = true;
-        warning("ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber" + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE" + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted" + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).");
+        warning(adapterPendingWarning());
       }
       return temporary;
     }
     if (!warnedMissing) {
       warnedMissing = true;
-      warning("ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided" + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter" + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)" + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working," + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the" + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).");
+      warning(adapterFallbackWarning());
     }
     return temporary;
   };
   return new Proxy({}, {
     get(_target, property) {
-      const impl = resolve2();
+      const impl = resolve3();
       const value = impl[property];
       return typeof value === "function" ? value.bind(impl) : value;
     },
     has(_target, property) {
-      return property in resolve2();
+      return property in resolve3();
     }
   });
 }
@@ -1103,7 +1636,7 @@ var MPD_EXT_CONTRACT = {
 
 // packages/mpd-ext-plugin/src/registry.ts
 import { existsSync, readFileSync as readFileSync3, readdirSync as readdirSync2 } from "node:fs";
-import { isAbsolute, join as join2, resolve as resolve2 } from "node:path";
+import { isAbsolute, join as join3, resolve as resolve3 } from "node:path";
 
 // packages/mpd-ext-plugin/src/skills.ts
 import { readFileSync } from "node:fs";
@@ -1499,7 +2032,7 @@ function allocateProviderName(taken, base) {
 
 // packages/mpd-ext-plugin/src/flows.ts
 import { readFileSync as readFileSync2, readdirSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, join as join2 } from "node:path";
 var FLOW_KEYS = ["id", "title", "description", "whenToUse", "steps"];
 var FLOW_STEP_KEYS = ["title", "detail", "tool", "output"];
 function unknownKeys(value, allowed) {
@@ -1618,7 +2151,7 @@ function loadFlows(directory, options) {
     return { flows, entries, errors };
   }
   for (const file of files) {
-    const path = join(directory, file);
+    const path = join2(directory, file);
     const label = `${options.itemLabel} (${basename(file)})`;
     let raw;
     try {
@@ -2116,7 +2649,7 @@ function enumerateSkillEntries(directory, options) {
     return { entries, errors };
   }
   for (const name of dirs) {
-    const skillPath = join2(directory, name, "SKILL.md");
+    const skillPath = join3(directory, name, "SKILL.md");
     if (!existsSync(skillPath))
       continue;
     const item = `${options.itemLabel}/${name}`;
@@ -2128,10 +2661,10 @@ function enumerateSkillEntries(directory, options) {
     entries.push({
       document: {
         ...parsed.document,
-        resourceBase: { kind: "directory", path: join2(directory, name) },
+        resourceBase: { kind: "directory", path: join3(directory, name) },
         path: skillPath
       },
-      locator: { kind: "skill", path: skillPath, directory: join2(directory, name) },
+      locator: { kind: "skill", path: skillPath, directory: join3(directory, name) },
       source: options.source,
       rank: options.rank
     });
@@ -2174,7 +2707,7 @@ function buildExtension(options) {
   } else {
     descriptor.contributes.skills.forEach((item, index) => {
       const label = `contributes.skills[${index}]`;
-      const directory = resolve2(options.root, item.root);
+      const directory = resolve3(options.root, item.root);
       resolvedRoots.skills.push(directory);
       const loaded = enumerateSkillEntries(directory, { source: options.source, rank: item.rank, itemLabel: label });
       skillEntries.push(...loaded.entries);
@@ -2186,7 +2719,7 @@ function buildExtension(options) {
   } else {
     descriptor.contributes.flows.forEach((item, index) => {
       const label = `contributes.flows[${index}]`;
-      const directory = resolve2(options.root, item.dir);
+      const directory = resolve3(options.root, item.dir);
       resolvedRoots.flows.push(directory);
       const loaded = loadFlows(directory, {
         rank: item.rank,
@@ -2202,7 +2735,7 @@ function buildExtension(options) {
   const roleCandidates = [];
   descriptor.contributes.roles.forEach((item, index) => {
     const label = `contributes.roles[${index}]`;
-    const persona = options.root === "" ? item.persona : resolve2(options.root, item.persona);
+    const persona = options.root === "" ? item.persona : resolve3(options.root, item.persona);
     const refuse = (reason) => {
       roleCandidates.push({ index, item: label, name: item.name, persona, usable: false, reason });
       errors.push({ item: label, reason: ROLE_REFUSAL_PREFIX + reason });
@@ -2353,19 +2886,19 @@ class MpdExtensionRegistry {
 // packages/mpd-ext-plugin/src/manifest.ts
 import { existsSync as existsSync2, readFileSync as readFileSync4, readdirSync as readdirSync3 } from "node:fs";
 import { homedir } from "node:os";
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 function bundleRoot() {
   return bundleRootOf(import.meta.url);
 }
 function projectExtensionsDir(workspaceRoot) {
-  return join3(workspaceRoot, ".mpd", "extensions");
+  return join4(workspaceRoot, ".mpd", "extensions");
 }
 function userExtensionsDir() {
   const home = typeof process.env.HOME === "string" && process.env.HOME.length > 0 ? process.env.HOME : homedir();
-  return join3(home, ".mpd", "extensions");
+  return join4(home, ".mpd", "extensions");
 }
 function bundleExtensionsDir() {
-  return join3(bundleRoot(), "extensions");
+  return join4(bundleRoot(), "extensions");
 }
 function discoverPlane(options) {
   const result = { plane: options.plane, dir: options.dir, entries: [], rejected: [], done: false };
@@ -2386,8 +2919,8 @@ function discoverPlane(options) {
     return result;
   }
   for (const name of names) {
-    const directory = join3(options.dir, name);
-    const manifestPath = join3(directory, MPD_EXT_CONTRACT.manifestFile);
+    const directory = join4(options.dir, name);
+    const manifestPath = join4(directory, MPD_EXT_CONTRACT.manifestFile);
     if (!existsSync2(manifestPath))
       continue;
     let raw;
@@ -2447,7 +2980,7 @@ function projectExtensionIds(workspaceRoot) {
     return ids;
   }
   for (const name of names) {
-    const manifestPath = join3(dir, name, MPD_EXT_CONTRACT.manifestFile);
+    const manifestPath = join4(dir, name, MPD_EXT_CONTRACT.manifestFile);
     try {
       const parsed = JSON.parse(readFileSync4(manifestPath, "utf8"));
       ids.add(typeof parsed?.id === "string" && parsed.id.length > 0 ? parsed.id : name);
@@ -2492,7 +3025,7 @@ function extensionConfig(ctx) {
 }
 
 // packages/mpd-ext-plugin/src/mcp.ts
-import { resolve as resolve3 } from "node:path";
+import { resolve as resolve4 } from "node:path";
 
 // packages/mpd-ext-plugin/src/mcp-client.ts
 import { createHash } from "node:crypto";
@@ -2561,8 +3094,8 @@ class McpProtocolError extends Error {
 var EXIT_FLUSH_MS = 25;
 async function raceWithTimer(work, ms) {
   let timer;
-  const timeout = new Promise((resolve3) => {
-    timer = setTimeout(() => resolve3({ timedOut: true }), ms);
+  const timeout = new Promise((resolve4) => {
+    timer = setTimeout(() => resolve4({ timedOut: true }), ms);
   });
   const done = await Promise.race([work.then(() => ({ timedOut: false })), timeout]);
   if (timer !== undefined)
@@ -2741,7 +3274,7 @@ class McpStdioClient {
       return Promise.reject(new Error(`mcp-client(${this.serverName}): the server process is not running`));
     }
     const id = this.nextId++;
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`mcp-client(${this.serverName}): ${method} timed out after ${timeoutMs}ms`));
@@ -2766,7 +3299,7 @@ class McpStdioClient {
         resolve: (value) => {
           if (signal !== undefined)
             signal.removeEventListener("abort", onAbort);
-          resolve3(value);
+          resolve4(value);
         },
         reject: (error) => {
           if (signal !== undefined)
@@ -3370,7 +3903,7 @@ class ServerRuntime {
     this.dsh = options.dsh;
     this.warn = options.warn;
     this.timeouts = resolveTimeouts(options.item, options.config);
-    this.cwd = options.entry.root === "" ? process.cwd() : resolve3(options.entry.root, options.item.cwd === "" ? "." : options.item.cwd);
+    this.cwd = options.entry.root === "" ? process.cwd() : resolve4(options.entry.root, options.item.cwd === "" ? "." : options.item.cwd);
     if (options.disabled === true)
       this.state = "disabled";
     this.record();
@@ -3658,7 +4191,7 @@ async function connectExtensionMcpServers(options) {
 
 // packages/mpd-ext-plugin/src/index.ts
 var name = "mpd-ext";
-var REQUIRED_SEAMS = ["tools", "skills"];
+var REQUIRED_SEAMS = [DSH_SEAM_TOOLS, DSH_SEAM_SKILLS];
 var inject = [...REQUIRED_SEAMS];
 var ERROR_SCHEMA = {
   type: "object",
@@ -3729,7 +4262,7 @@ async function apply(ctx, config = {}) {
       if (ctx?.logger && typeof ctx.logger.warn === "function")
         ctx.logger.warn(line);
       else
-        console.log(line);
+        rowLogLine("mpd-ext", line);
     } catch {}
   }
 }
@@ -3737,7 +4270,7 @@ async function mount(ctx, config = {}) {
   const warn = (line) => {
     const text2 = "[mpd-ext] " + line;
     try {
-      console.log(text2);
+      rowLogLine("mpd-ext", text2);
       if (ctx?.logger && typeof ctx.logger.warn === "function")
         ctx.logger.warn(text2);
     } catch {}
@@ -3932,7 +4465,9 @@ async function mount(ctx, config = {}) {
   };
   const service = {
     apiVersion: MPD_EXT_API_VERSION,
-    adapterIdentity: dshAdapterIdentity(ctx),
+    get adapterIdentity() {
+      return dshAdapterIdentity(ctx);
+    },
     register,
     list: (options = {}) => snapshot(options?.exec),
     describe: (id, options = {}) => snapshot(options?.exec).extensions.find((entry) => entry.id === String(id ?? "")),
@@ -4432,7 +4967,7 @@ async function mount(ctx, config = {}) {
   if (missingTools.length > 0) {
     warn("FATAL: only " + registeredToolNames.length + "/" + EXPECTED_TOOLS.length + " tools registered (missing: " + missingTools.join(", ") + ") — the extension interface is NOT usable in this session;" + " the row declares inject: " + JSON.stringify([...REQUIRED_SEAMS]) + ", so check the harness seams above");
   } else if (config.quiet !== true) {
-    console.log("[mpd-ext] mpdExtensions provided (apiVersion " + MPD_EXT_API_VERSION + ")" + " | adapterIdentity=" + dshAdapterIdentity(ctx) + " | tools: " + registeredToolNames.join(", ") + " | skill providers: " + (registeredProviderNames.length === 0 ? "(none: no extension contributes skills or flows)" : registeredProviderNames.join(", ")) + " | project plane: <session workspace>/.mpd/extensions (per call)");
+    rowLogLine("mpd-ext", "[mpd-ext] mpdExtensions provided (apiVersion " + MPD_EXT_API_VERSION + ")" + " | adapterIdentity=" + dshAdapterIdentity(ctx) + " | tools: " + registeredToolNames.join(", ") + " | skill providers: " + (registeredProviderNames.length === 0 ? "(none: no extension contributes skills or flows)" : registeredProviderNames.join(", ")) + " | project plane: <session workspace>/.mpd/extensions (per call)");
   }
 }
 export {

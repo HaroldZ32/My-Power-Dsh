@@ -1,0 +1,154 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-team-tools-plugin/test/dispatch.test.ts:
+(pass) one dispatch pass > a ready task goes to an idle member, in board order [0.66ms]
+(pass) one dispatch pass > a member already working something is NOT given a second task [0.13ms]
+(pass) one dispatch pass > THE SAME TASK IS NEVER DISPATCHED TWICE — the ledger is the reason, not the message [0.12ms]
+(pass) one dispatch pass > a running member is not idle: the roster status is the gate [0.07ms]
+(pass) one dispatch pass > no idle member is reported per task, not as a silent no-op [0.06ms]
+(pass) one dispatch pass > a blocked task waits and says what blocks it; a completed one is skipped [0.09ms]
+(pass) one dispatch pass > a HALT refuses the whole pass and names the reason — and touches nothing else [0.04ms]
+(pass) one dispatch pass > the limit caps one pass and reports the rest as capped [0.05ms]
+(pass) the ledger > assign returns a NEW ledger and never mutates the old one [0.04ms]
+(pass) the ledger > release frees a pairing and reports whether there was one [0.07ms]
+(pass) the ledger > RECONCILE forgets a task that was deleted or completed out of band — a member must not stay busy forever [0.22ms]
+(pass) the message a dispatched member receives > it names the task, carries the acceptance text, and says how to report back [0.08ms]
+
+packages/mpd-team-tools-plugin/test/mailbox-store.test.ts:
+(pass) sending > a message to a live member is recorded and starts UNDELIVERED and UNREAD [1.44ms]
+(pass) sending > a member cannot message ITSELF — the official rule, kept [0.10ms]
+(pass) sending > a message to somebody who is NOT a member is refused, naming them [0.10ms]
+(pass) sending > a member's UNDELIVERED backlog is bounded — a stalled member cannot silently accumulate [0.44ms]
+(pass) sending > DELIVERING frees the backlog: the bound is on what is not yet accepted [0.52ms]
+(pass) sending > ids are unique and ordered, so a mailbox can be cited [0.30ms]
+(pass) the state transitions > delivered and read are SEPARATE facts, and read is the one only this mailbox has [0.48ms]
+(pass) the state transitions > a REPEAT moves nothing and is not an error [0.35ms]
+(pass) the state transitions > an unknown id is ignored, so a stale citation cannot corrupt the log [0.10ms]
+(pass) durability > the log is APPEND-ONLY: a later transition never rewrites an earlier line [0.51ms]
+(pass) durability > a HALF-WRITTEN last line costs that line and nothing else [0.38ms]
+(pass) durability > a fold is order-independent for the transitions: read-then-delivered still ends both-set [0.13ms]
+(pass) durability > malformed records are SKIPPED, never fatal [0.07ms]
+(pass) the summary a status view renders > it counts total / unread / undelivered per member, and names what is oldest-unread [0.70ms]
+(pass) the summary a status view renders > an empty mailbox summarises to nothing at all [0.07ms]
+(pass) the summary a status view renders > inboxOf keeps insertion order [0.25ms]
+(pass) the legacy read path > a workspace with no mailbox yet reads as empty rather than throwing [0.07ms]
+(pass) the legacy read path > a file of only blank lines folds to empty [0.14ms]
+
+packages/mpd-team-tools-plugin/test/team-record.test.ts:
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+(pass) approval builds an mpd-owned team record > the record carries OUR ids, the review fields, and the resolved dependency edges [6.00ms]
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+(pass) approval builds an mpd-owned team record > the executor's handles are KEPT BESIDE our ids, never adopted as them [1.21ms]
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+(pass) approval builds an mpd-owned team record > the executor is told OUR dependency in ITS vocabulary, and the owner in ITS handle [1.09ms]
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+(pass) approval builds an mpd-owned team record > a spawn that fails STOPS the approval but still leaves the team on record [1.91ms]
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+(pass) approval builds an mpd-owned team record > an approval with a dry run records NOTHING [0.68ms]
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+(pass) the published service is the read surface > mpdTeams answers from the record, and reads nothing from the official plane [2.51ms]
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+(pass) the published service is the read surface > status reports the RECORD as the team, with the official readout beside it [1.42ms]
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+(pass) the published service is the read surface > the record survives a lost index: the Lead session still finds its team [1.24ms]
+
+packages/mpd-team-tools-plugin/test/tool-surface.test.ts:
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+(pass) the consolidated surface > FIVE tools and one command — not fourteen [0.08ms]
+(pass) the consolidated surface > every tool is ACTION-based, so a caller picks an action instead of a tool [0.08ms]
+(pass) the consolidated surface > the context budget holds: the whole surface stays under 5,000 characters [0.18ms]
+(pass) the consolidated surface > EVERY action of the retired hand-written surface is still reachable [0.10ms]
+(pass) the consolidated surface > the retired TOOL NAMES are gone — a re-added one would redden here [0.07ms]
+(pass) the consolidated surface > no description is a paragraph: each stays under 700 characters [0.03ms]
+
+packages/mpd-team-tools-plugin/test/team-store.test.ts:
+(pass) the team record > creating a team writes one record and binds it ACTIVE for its Lead session [0.38ms]
+(pass) the team record > a record survives a reload byte-for-byte in meaning [0.44ms]
+(pass) the team record > ids are minted locally, monotonically, and never reused after a removal [0.33ms]
+(pass) the team record > a blocker written as a SUBJECT resolves to the task id, which is how a plan writes it [0.29ms]
+(pass) the team record > updating a task bumps its revision and nothing else's [0.41ms]
+(pass) the team record > an empty owner string CLEARS the owner instead of storing a blank one [0.26ms]
+(pass) the team record > a member is addressable by NAME as well as by id, because a tool caller has the name [0.32ms]
+(pass) the derived state > phase follows the record: staged until approved, active only while something is in flight [0.39ms]
+(pass) the derived state > `blocked` is DERIVED, and a failed blocker is told apart from a waiting one [0.50ms]
+(pass) the derived state > the graph maths: rank is the longest blocker path, and a cycle is REPORTED not hung on [0.50ms]
+(pass) the derived state > the summary separates ready from blocked, and counts only REAL edges [0.60ms]
+(pass) the derived state > dispatch reads the record: only unblocked pending tasks and unowned running members [0.65ms]
+(pass) the derived state > member progress names the current task and counts what is done [0.34ms]
+(pass) the index and the files > an unknown index version reads as EMPTY rather than throwing [0.27ms]
+(pass) the index and the files > a record whose version is unknown is not a record [0.34ms]
+(pass) the index and the files > an id can never escape .mpd/team, however it was written [0.10ms]
+(pass) the index and the files > listing is newest first, and a team can be dropped [1.18ms]
+(pass) the index and the files > unbinding one session leaves every other binding alone [0.37ms]
+(pass) the index and the files > a sessionless surface is keyed `workspace`, never the empty string [0.18ms]
+
+packages/mpd-team-tools-plugin/test/plan-store.test.ts:
+(pass) the staged plan > a fresh stage writes a plan under .mpd/team/staging and nothing else [0.31ms]
+(pass) the staged plan > members and tasks append, and a duplicate member name refuses [0.43ms]
+(pass) the staged plan > a plan survives a reload: what is on disk is what a later call reads [0.28ms]
+(pass) the staged plan > staging again REPLACES an unapproved plan and archives it — the old plan is still readable [0.40ms]
+(pass) the staged plan > an APPROVED plan is not replaced by a plain stage — approval is the boundary [0.34ms]
+(pass) the staged plan > sessions do not share a staging slot [0.22ms]
+(pass) the staged plan > a corrupt staging file reads as absent instead of throwing [0.17ms]
+(pass) task contracts and attempts > the first claim is attempt 1 and freezes what the task said [0.26ms]
+(pass) task contracts and attempts > the attempt counter is monotonic ACROSS claims, and a board revision cannot stand in for it [0.34ms]
+(pass) task contracts and attempts > contracts list newest claim first, and an unclaimed task has none [0.35ms]
+(pass) task contracts and attempts > a corrupt contract reads as absent, never as a half-written claim [0.16ms]
+(pass) the halt > a halt records who and why, and resuming reports whether one was there [0.27ms]
+(pass) plan identity > a plan id is stable, sortable and derived from the clock [0.08ms]
+
+packages/mpd-workmate-plugin/test/sandbox-guard.test.ts:
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: sandbox HOME + DSH_HOME -> ALLOWED (the recipe the manual prescribes) [113.12ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: HOME unset + DSH_HOME -> REFUSED [96.57ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: real HOME + DSH_HOME -> REFUSED 403 real-home-refused [97.30ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: sandbox HOME + explicit override -> ALLOWED [97.74ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: sandbox HOME + DSH_HOME -> ALLOWED (the recipe the manual prescribes) [40.33ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: HOME unset + DSH_HOME -> REFUSED [43.89ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: real HOME + DSH_HOME -> REFUSED 403 real-home-refused [39.98ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: sandbox HOME + explicit override -> ALLOWED [31.98ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > CONTROL: a one-sided arm table is reported as HIDING the defect (the t23 failure shape) [0.25ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > FALSIFIABILITY: the same arms FAIL against the pre-fix predicate (homedir() follows $HOME) [88.26ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > the artifact under test is the package's own dist (no src/dist write from this suite) [0.11ms]
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+(pass) sanitizeName / capText / autoNote / scoreMatch units [0.86ms]
+(pass) init → list → reflect → match lifecycle with a sandbox HOME [7.08ms]
+(pass) an omo roster id is refused as a base even when roles.get(id) resolves it, and the refusal names NAMES only [0.98ms]
+(pass) the base key is case/space/hyphen insensitive and the auto name derives from the functional name (C1/C2) [1.44ms]
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [1.94ms]
+(pass) workmate library root is under HOME and not in cwd [0.38ms]
+(pass) no workmate tool advertises or returns baseId [0.79ms]
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+(pass) rename moves the evolved identity and preserves every byte of it [3.15ms]
+(pass) renamedFrom accumulates, dedupes, survives a later reflect and is capped [4.20ms]
+(pass) A5 note rule: only a LEADING autoNote prefix is rewritten, a custom note keeps its bytes [1.46ms]
+(pass) invalid names are rejected BEFORE any filesystem call, on both argument positions [1.93ms]
+(pass) same-key rename and case-only rename are refused with no side effect (M2) [0.70ms]
+(pass) the library ROOT can never be addressed as an instance (§B) [0.80ms]
+(pass) collision guard: ANY lstat hit on the target is a 409 collision and nothing is overwritten (M5) [1.21ms]
+(pass) a symlinked instance directory is refused, not resolved (§H) [0.77ms]
+(pass) unknown and orphan directories are never touched (M3), repeat delete is 404 [1.52ms]
+(pass) delete archives by default: hidden immediately, restorable, index key dropped [1.54ms]
+(pass) purge requires confirm === name, then removes the instance for good (D1) [1.42ms]
+(pass) a READONLY instance is a valid mutation target: library administration, not self-editing (M1) [0.97ms]
+(pass) delete never touches another workmate's bytes and leaves no partial instance [1.46ms]
+(pass) in-use gate: a name a team member holds blocks BOTH the rename target and the source (§E, A6) [2.49ms]
+(pass) busyTeams reads <cwd>/.mpd/team, skips archived teams and non-directory entries, fails open [0.80ms]
+(pass) the mpd-OWNED record layout is read too — a teammate spawned today is no longer invisible [0.55ms]
+(pass) an ENDED team or a settled member does not freeze a workmate forever [0.52ms]
+(pass) A3: a stale meta.name cannot shadow the directory key, and a legacy key cannot resurrect a dir [3.06ms]
+(pass) an interrupted rename is rolled back: no half-moved instance, the key stays addressable [3.43ms]
+(pass) a throwing spawn releases the in-use counter, so it cannot block a later rename [1.09ms]
+(pass) no registered output schema uses a type ARRAY, and every surface reports archived: null on purge [3.37ms]
+(pass) routes: §D status/reason matrix, headers, no path leakage [4.47ms]
+(pass) a headless profile stays tool-only: no webServer, no route work, tools still function [0.88ms]
+(pass) the mutation tools' declared output schemas accept the values they return (t15) [37.71ms]
+(pass) the OLD return shape is rejected by the harness validator, so this lock can actually fail (t15) [2.23ms]
+(pass) the workmate deny list denies bash and the write-capable MCP tools, and carries no dead name [0.89ms]
+(pass) the workmate web routes carry no id/baseId for a base or an instance [1.51ms]
+
+ 121 pass
+ 0 fail
+ 821 expect() calls
+Ran 121 tests across 9 files. [1025.00ms]

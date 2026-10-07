@@ -1,0 +1,20 @@
+{
+  "what": "a LIVE LLM turn inside the Docker lane, so this wave's changes are exercised against a real model rather than only mounted",
+  "invocation": "eval \"$(grep -E '^export DEEPSEEK_API_KEY=' ~/.bashrc | head -1)\" && node scripts/docker-e2e.ts --mode source --allow-rootful-docker --live",
+  "how_the_credential_travels": "`-e DEEPSEEK_API_KEY` WITH NO VALUE: compose reads it from the driver's own environment, so the secret never enters the argv the driver echoes. The entrypoint writes it into the SANDBOX home's credentials document (mode 0600) and DELETES it after the turn. AGENTS.md \u00a710 holds: never committed, never logged, never echoed.",
+  "implemented": [
+    "scripts/docker-e2e.ts: a `--live` flag that adds `-e DEEPSEEK_API_KEY` by NAME only, and warns when the flag is passed without a key in the environment",
+    "docker/entrypoint.sh step 13: with a key staged, write the credentials document, run ONE headless turn whose prompt drives agent_teams_plan through create -> add_member -> create_task -> approve, then assert from REAL ARTIFACTS rather than the model's prose (\u00a77): the mpd record exists, and its members carry an executorRef \u2014 a handle only the NATIVE executor can mint"
+  ],
+  "four_live_attempts_and_what_each_measured": {
+    "attempt 1": "the credentials document was rejected by name: `uses the pre-release flat layout. Add version: 1 and nest the existing 1 entry under refs:`. Every dependent row then reported `pending (waiting for service: credentials)`. FIXED.",
+    "attempt 2": "THE MODEL WAS REACHED AND LISTED ITS OWN TOOLS \u2014 bash, create_goal, edit, \u2026 read, write \u2014 and `agent_teams_plan` WAS NOT AMONG THEM. It correctly refused to invent a call rather than hallucinating one. `--profile headless` composes the harness's BASE headless tree and registers nothing of ours. FIXED by installing the bundle into that profile.",
+    "attempt 3": "a `--patch <installed bundle>` operand does NOT cross profiles: every path-bearing value resolves through the loader's baseUrl, which is the PROFILE directory, so the headless run looked for `profiles/headless/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.ts` and died MODULE_NOT_FOUND. Replaced with `dsh plugin --profile headless add <bundle>`.",
+    "attempt 4": "the environment's network to GitHub failed before any of this ran: `curl: (28) Failed to connect to github.com port 443 after 135500 ms`, fetching the bun binary at STEP 03-bun. The same flake killed an oneclick run earlier and a retry passed, so it is intermittent and not a defect."
+  },
+  "state": "THE LIVE TURN HAS NOT YET COMPLETED A RUN. Three of four attempts reached real, distinct integration findings and each was fixed; the fourth never got past the toolchain because of the network. The implementation is in place and syntax-checked, and the next attempt on a machine whose GitHub reachability holds should reach the assertion.",
+  "not_claimed": [
+    "no live teammate has been spawned yet \u2014 the assertion that would prove it has not been reached",
+    "the four attempts are kept verbatim so a reader can see exactly where each stopped rather than a summary of it"
+  ]
+}

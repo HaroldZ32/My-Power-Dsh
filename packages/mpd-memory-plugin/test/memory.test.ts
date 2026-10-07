@@ -125,6 +125,32 @@ test("git backend: write -> commit -> read -> reflection due", async () => {
   restore()
 })
 
+// The reflection transition carries a PRECONDITION: a completion with nothing pending used to write a
+// reflection entry, bump `reflected_completed_steps`, zero `steps_since_last_successful_reflection`
+// and stamp `reservation: {status: "completed"}` — stranding a state machine that never triggered.
+test("mpd_memory_reflect_complete refuses when no reflection is due or reserved", async () => {
+  /** The throwaway workspace this arm's memory store lives under. */
+  const dir = mkdtempSync(join(tmpdir(), "mpd-mem-guard-"))
+  /** The captured tools and the ambient-root restorer for this arm. */
+  const { tools, restore } = makePlugin(dir, { vcs: "git", dir: ".mpd", agentSlug: "t2", reflectionEvery: 10 })
+  try {
+    // The two tools under test, cast under the same unconditional-registration contract as above.
+    const reflect = tools.find((t) => t.name === "mpd_memory_reflect") as MemoryTool<MemoryReflectResult>
+    // The completion tool, whose refusal with nothing pending is the whole fix.
+    const complete = tools.find((t) => t.name === "mpd_memory_reflect_complete") as MemoryTool<MemoryReflectCompleteResult>
+    // Nothing was written and no threshold was crossed, so no reflection is due and none is reserved.
+    expect((await reflect.execute({}, {})).due).toBe(false)
+    /** The refusal this arm asserts on: the completion must not be recorded with nothing pending. */
+    const refusal = await complete.execute({ content: "premature reflection" }, {}).then(() => null, (e: unknown) => String(e))
+    // Pre-fix this resolved `{completed: true}` and wrote an entry, so the refusal is the whole fix.
+    expect(refusal ?? "RESOLVED: the completion was recorded").toContain("no reflection is due")
+    // The counters are untouched: still nothing pending, so a second completion is refused too.
+    expect((await reflect.execute({}, {})).due).toBe(false)
+  } finally {
+    restore()
+  }
+})
+
 test("svn backend REAL svn CLI: repo create, checkout, commit, log", async () => {
   /** The child-process module, imported here for the two real-CLI probes. */
   const { spawnSync } = await import("node:child_process")

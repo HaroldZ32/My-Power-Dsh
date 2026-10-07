@@ -1,0 +1,25 @@
+{
+  "startedAt": "2026-09-30T03:46:44.774Z",
+  "finishedAt": "2026-09-30T03:50:43.930Z",
+  "docker": "Docker version 29.8.0, build 88096ef",
+  "compose": "Docker Compose version v5.5.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 151,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-Z5Bs5i",
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /root/dshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /root/dshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e DEEPSEEK_API_KEY mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=3 failed=1 null=38 FAILED=[toolchain.bun] NULL=[toolchain.pnpm,harness.version,copy.contextFiltered,copy.repo,build.bunInstall,build.dists,install.exit,install.profileDep,install.installedTree,compose.dumpExit,compose.mpdRows,compose.presetRow,compose.agentTeamRows,boot.probeApplied,boot.adapterService,boot.adapterToolCall,boot.mpdTools,boot.agentTeamTools,boot.sessionGateListener,boot.agentTeamService,boot.servesHttp,boot.presetMount,boot.noFatalSignatures,isolation.home,isolation.realHome,isolation.noCredentials,tui.hostInstall,tui.pluginAddHost,tui.pluginAddBundle,tui.compose,tui.registryDefaultMpd,tui.presetRow,tui.mpdTuiRow,tui.agentTeamRows,tui.boot,tui.noFatalSignatures,tui.sessionPreset,boot.llmTurn]",
+  "exitCode": 1
+}

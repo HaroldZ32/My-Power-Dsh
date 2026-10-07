@@ -1,0 +1,23 @@
+=== EN: status line + command result ===
+  mpd: team webui-tui-i18n 5·2/6 · failed 1 · plans 0 · workmates 0
+
+=== EN: panel 1 (MPD model slot) ===
+    MPD model slot
+    ❯ 1. heavy members
+      the member group this slot drives: heavy members
+      2. analysis members
+      the member group this slot drives: analysis members
+      3. execution members
+      the member group this slot drives: execution members
+      4. vision member
+      the member group this slot drives: vision member
+    Enter to select · Esc to exit
+
+=== EN: panel 2 (provider) ===
+    MPD provider
+    ❯ DeepSeek
+      DeepSeek Account
+    Enter to select · Esc to exit
+
+=== EN: Esc at panel 2 -> nothing written ===
+                                                                                                                                                        mpd-model: the provider panel was cancelled — nothing was written

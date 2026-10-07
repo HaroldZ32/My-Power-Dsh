@@ -1,0 +1,237 @@
+templates/mpd-extension/README.md:119:`scaffold` (and `--self-test`'s template arm) still need this directory. **The AGENTS.md §4
+templates/mpd-extension/README.zh-CN.md:108:**所以 AGENTS.md §4 的 Extension-CLI 关卡是一个检出关卡：在打包树里它是红的。** 该结论由上游仓库
+scripts/install-profile.ts:469:// Id-target contract (AGENTS.md §8): rows whose id ALREADY EXISTS in the target
+scripts/install-profile.ts:746:  // patch are written as id-target overrides (AGENTS.md §8 contract).
+scripts/install-git-hooks.ts:5:// re-pin must land in the SAME commit as the change that invalidated it (AGENTS.md §9/§11, the
+scripts/verify-dist-fresh.ts:96:// `index` is the repo-wide entry convention (AGENTS.md §6: `bun build src/index.ts ... --outfile
+scripts/verify-dist-fresh.ts:816: * comments over 11 distinct modules, and ALL 13 differ — AGENTS.md §6). This gate rebuilds from the
+scripts/pack-mpd.ts:430:  // bundle author-facing (T-35/T-51). (AGENTS.md §4's Extension-CLI row names the
+scripts/verify-docs-parity.ts:12://     with the AGENTS.md §3 process records exempted from the missing-twin rule;
+scripts/verify-docs-parity.ts:89://   * a declared PATTERN table for the classes the AGENTS.md §3 policy names BY GLOB (the plan
+scripts/verify-docs-parity.ts:96:/** One declared exemption class: the path SHAPE the AGENTS.md §3 policy names by glob, and its reason. */
+scripts/verify-docs-parity.ts:104:/** The classes the AGENTS.md §3 policy names BY GLOB, so a policy shape is not a per-file list. */
+scripts/verify-docs-parity.ts:105:const EXEMPT_PATTERNS: readonly ExemptPattern[] = [{ pattern: /^docs\/plan-[^/]+\.md$/, reason: "process record (AGENTS.md §3: plan-*.md)" }];
+scripts/verify-docs-parity.ts:1042:    write("docs/decisions.md", "<!-- docs-parity: exempt process record (AGENTS.md §3) -->\n# Decisions\n\nno twin needed\n");
+scripts/verify-docs-parity.ts:1051:      write(rel, `<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->\n# ${rel}\n\nprocess record, no twin by policy (IN-FILE marker)\n`);
+scripts/verify-docs-parity.ts:1093:    write("docs/from-1999.md", "<!-- docs-parity: exempt historical note (AGENTS.md §3) -->\n# From 1999\n\nold\n");
+scripts/verify-manual-paths.ts:109:  { name: "anticipatory", direction: "declared", reason: "DECLARED anticipatory class: the manual names it, the repository keeps it by design and deliberately does NOT create it (AGENTS.md §3) — printed with its count so an exemption for a file that does not exist can never rot silently" },
+scripts/verify-manual-paths.ts:140:// AGENTS.md §3 declares these two in its OWN policy sentence: "the two ANTICIPATORY paths
+scripts/verify-manual-paths.ts:155:  ["docs/adder4.md", "ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.ts` as its own class, and deliberately not created yet"],
+scripts/verify-manual-paths.ts:156:  ["docs/cnt8.md", "ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.ts` as its own class, and deliberately not created yet"],
+scripts/vendor-agent-teams.ts:196:  // `VENDOR_LOCK.json` in the SAME commit (AGENTS.md §9), never a one-command refresh.
+scripts/dump-config.ts:2:// Repo wrapper around the harness's `--dump-config` flag (AGENTS.md §4, friction item T-31).
+scripts/dump-config.ts:5:// schema/apply abort that takes the whole plugin tree down is invisible to it. AGENTS.md §4
+scripts/dump-config.ts:36:// The banner is English-only and claims nothing this repo cannot back: AGENTS.md §4 and the
+scripts/dump-config.ts:59:const RECAP = `${TAG} COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).`;
+scripts/dump-config.ts:61:const QUIET_LINE = `${OPENING} A green run is NOT a plugin load (AGENTS.md §4); for a load proof run a mounting boot.`;
+scripts/dump-config.ts:74:  "  --dump-config proves COMPOSITION ONLY, never a plugin load (AGENTS.md §4).",
+scripts/dump-config.ts:254:    `${TAG} Measured (AGENTS.md §4): \`dsh --profile mpd --dump-config\` exited 0 with the mpd-workmate row`,
+scripts/dump-config.ts:403:      ["AGENTS.md §4 citation", aOut.includes("AGENTS.md §4")],
+scripts/mpd-bg.ts:4:// from AGENTS.md §12. It exists because those frictions are HARNESS behaviour we do not fight:
+scripts/docker-e2e.ts:221: * Token scrubbing for everything the driver writes (AGENTS.md §10). The container's reporter
+scripts/docker-e2e.ts:796:    // run at all without violating AGENTS.md §10 ("never committed, logged, or echoed").
+agent-references/index.md:17:| `troubleshooting.md` | the full symptom → cause/fix table (former `AGENTS.md` §12 body) |
+agent-references/index.md:18:| `agent-teams-deltas.md` | the adopted agent-teams delta registry — the A1–D42 table, registry mechanics, live region count, wave-2 driver-script warning (former `AGENTS.md` §6 body) |
+agent-references/index.md:19:| `verification-flow.md` | the ordered verification flow behind `AGENTS.md` §4/§11: what each gate is worth, why the Docker real-machine lane is the LAST step, and the measured rootless / skip / `--require-docker` policy |
+agent-references/troubleshooting.md:1:# Troubleshooting reference (the body of AGENTS.md §12)
+agent-references/troubleshooting.md:8:Provenance: moved verbatim from `AGENTS.md` §12 ("Troubleshooting (known)") on 2026-09-17 by the
+agent-references/troubleshooting.md:31:| a QA/verification run refuses to touch the workmate library (`403 real-home-refused`) | that is the T-43 guard doing its job: `~/.mpd/workmate` is the ONE state root that deliberately lives under the user's HOME, so a boot that sets `DSH_HOME` (isolated/QA shape) but not `HOME=<sandbox>` would write the REAL library. Fix the boot (sandbox `HOME` too, AGENTS.md §7); the deliberate escape hatch is `MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1`. A normal session (`DSH_HOME` unset) is never refused, and reads are never guarded — proven by two negative + one positive + one override case in `evidence/platform/harness-close/`. |
+agent-references/agent-teams-deltas.md:1:# Adopted agent-teams delta registry (the body of AGENTS.md §6)
+agent-references/agent-teams-deltas.md:6:section" means `AGENTS.md` §6 ("Plugin Authoring Guide"), and every `§N` citation refers to
+agent-references/agent-teams-deltas.md:9:Provenance: moved verbatim from `AGENTS.md` §6 on 2026-09-17 by the T-22 instruction-budget split.
+agent-references/agent-teams-deltas.md:60:**The adapter-wiring wave (`agent-teams-adapter-wiring`, 2026-09-19) — the §6 exception is CLOSED, and that is where the count moved to `151`/`13`.** The adopted plugin now reaches every harness seam THROUGH `mpd-dsh-adapter` — except the ONE counted residual, the host-handed `setup(childCtx, child)` scoped ctx (five lines in `lib/members.ts`, asserted line-by-line; the full reason is in `AGENTS.md` §6): `lib/mpd-adapter-ctx.ts` is a NEW **mpd-owned** module (name rule `lib/mpd-*.js`) holding the facade, and the SIX bridged adopted files carry their wiring inside `mpd-delta` regions only — `lib/index.ts` (`adapter-facade-import`, `adapter-facade-wiring`, `adapter-steer-approval-notice`), `lib/capabilities.ts` (`adapter-agent-scope-import`, `adapter-agent-scope`), `lib/harness-compat.ts` (`adapter-subagent-runtime-import`, `…-install`, `…-guard`, `…-agent-scope`, `…-agent-scope-setup`, `…-agent-scope-request`, `…-agent-scope-effect`, `…-agents-lookup`), `lib/members.ts` (`adapter-delivery-runtime-import`, `adapter-delivery-runtime`, `adapter-steer-captain-report`, `adapter-steer-captain-report-caller`), `lib/command.ts` (`adapter-command-turn-submit`, `adapter-command-turn-submit-profile`) and `lib/tools.ts` (`adapter-subagent-runtime-import`, `adapter-subagent-runtime-halt-drain`, `adapter-turn-submit`, `adapter-cancel-halt`, `adapter-cancel-feedback`, `adapter-cancel-discard`, `adapter-inject-staged-discard`, `adapter-steer-send-message-caller`). MEASURED at this edit (2026-09-19T15:10Z, the marker scan and the registry read recorded in `evidence/agent-teams/adapter-wiring/docs/`): the six bridged files carry **27** `adapter-*` markers holding **26** distinct ids (`adapter-subagent-runtime-import` is carried in BOTH `harness-compat.js` and `tools.js`), and with the bridge module's own `adapter-ctx-bridge` the set is **28 markers / 27 distinct ids** inside a registry of **151** entries across **13** files (the ten original registered files plus `capabilities.js`, `harness-compat.js` and the new `mpd-adapter-ctx.js`). Region ids are INTERNAL and STABLE once landed; the REGISTRY is their authority, so RE-MEASURE at read time instead of copying this list (the set may grow, never be renamed). The fourteen adapter methods the bridge calls, their capability flags, and the R1–R5 residual set are stated in `AGENTS.md` §6; the adapter's own README pair documents the methods in its Wrapped-seams table.
+agent-references/seam-adapters.md:4:this tree). `AGENTS.md` §6 carries the binding one-line rule and points here for the detail.
+agent-references/verification-flow.md:3:**Agent-facing, English-only, on-demand.** This file is the DETAIL behind the AGENTS.md §4 gate table
+skills/dsh-qa/scripts/tui-team-surface.ts:2109:    sandboxNote: "QA scratch under the lane's standard root (AGENTS.md §7: workspace state must be sandboxed; .mpd/ is gitignored so no credential or scratch byte can be committed). The frozen contract and VENDOR_LOCK.json are hard-asserted unchanged; the workspace's own LIVE team record legitimately mutates while this lane runs and is recorded as an observation only.",
+skills/dsh-qa/scripts/agent-teams-messaging.ts:33://    VENDOR_LOCK's `skills` treeSha recomputes from the working tree (AGENTS.md §9/§11).
+skills/dsh-qa/scripts/agent-teams-messaging.ts:83:/** How long the real run waits for the measured revision to settle, in ms (AGENTS.md §7). */
+skills/dsh-qa/scripts/agent-teams-messaging.ts:989:      + " tree=" + computed.fileCount + "/" + computed.treeSha.slice(0, 12) + " (re-pin in the same commit, AGENTS.md §9)")
+skills/dsh-qa/scripts/agent-teams-messaging.ts:1171:    loadEvidence: "real mount+boot of the mpd preset home; --dump-config is deliberately NOT cited (AGENTS.md §4)",
+skills/dsh-qa/scripts/extension-isolation.ts:963:/** Crash signatures the boot log must never carry (AGENTS.md §12). */
+skills/dsh-qa/scripts/mcp-call.ts:129:  // Live-LLM cases must ALSO copy settings.yaml when present (AGENTS.md §7): homes whose
+skills/dsh-qa/scripts/skill-catalog-probe.ts:154:  // and fails with MISSING_CREDENTIAL (AGENTS.md §7).
+skills/dsh-qa/scripts/skill-catalog-probe.ts:161:  // AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans
+skills/dsh-qa/scripts/workmate-team-member.ts:139:  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+skills/dsh-qa/scripts/ultrawork-smoke.ts:76:  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+skills/dsh-qa/scripts/goal-bridge.ts:16:// Isolation is THREE things (AGENTS.md §7): DSH_HOME=<sandbox>, HOME=<sandbox>, and a sandboxed
+skills/dsh-qa/scripts/goal-bridge.ts:147:  // AGENTS.md §7: a live case must ALSO stage `settings.yaml` when present, or a gateway-configured
+skills/dsh-qa/scripts/relocate-smoke.ts:132:  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+skills/dsh-qa/scripts/relocate-smoke.ts:147:  // AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans
+skills/dsh-qa/scripts/tui-mount.ts:323:  // The composition dump; COMPOSITION only, never a load proof (see AGENTS.md §4).
+skills/dsh-qa/scripts/memory-smoke.ts:61:  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+skills/dsh-qa/scripts/install-dependencies.ts:28:// CLAIM DISCIPLINE (AGENTS.md §4): the COMPOSITION claim is read from
+skills/dsh-qa/scripts/install-dependencies.ts:50:// session-store key carries this checkout (AGENTS.md §7).
+skills/dsh-qa/scripts/install-dependencies.ts:256:  /** The isolated HOME, because skill roots leak through HOME (AGENTS.md §7). */
+skills/dsh-qa/scripts/install-dependencies.ts:258:  /** The sandboxed workspace every dsh child uses as its cwd (AGENTS.md §7). */
+skills/dsh-qa/scripts/install-dependencies.ts:392:    claim: "COMPOSITION ONLY (scripts/dump-config.ts -> the harness --dump-config composes rows and never executes plugin code, AGENTS.md §4)",
+skills/dsh-qa/scripts/install-dependencies.ts:1103:      composition: "--dump-config via scripts/dump-config.ts: rows composed, no plugin code executed (AGENTS.md §4). NEVER cited as load evidence.",
+skills/dsh-qa/scripts/bundle-lifecycle.ts:185:  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+skills/dsh-qa/scripts/bundle-lifecycle.ts:286:  // the preset — AGENTS.md §4 assigns it there). What THIS case reads from the QA
+skills/dsh-qa/scripts/ulw-command.ts:15:// Evidence carrier rule (AGENTS.md §7): every assertion reads the harness's session log
+skills/dsh-qa/scripts/ulw-command.ts:54: * changed only `src` (AGENTS.md §7 T-88: a package's built `dist` belongs to the
+skills/dsh-qa/scripts/ulw-command.ts:889:  // the built `dist` belongs to the integration task, AGENTS.md §7 T-88) is replaced in
+skills/dsh-qa/scripts/session-start-team.ts:45://    (`lib/session-evidence.ts`), never from the model's prose (AGENTS.md §7).
+skills/dsh-qa/scripts/session-start-team.ts:80:/** The frozen notice marker AGENTS.md §1 pins and every notice must carry verbatim. */
+skills/dsh-qa/scripts/session-start-team.ts:1130:  // AGENTS.md §7: HOME is sandboxed too, and the workspace is passed explicitly on every
+skills/dsh-qa/scripts/session-start-team.ts:1301:  // contract places the ledger at `<ws>/.mpd/boulder.json` (AGENTS.md §1). Four boots pin it: the
+skills/dsh-qa/scripts/lib/credentials.ts:429:  // The declared settings document to copy beside it (the live-LLM prerequisite, AGENTS.md §7).
+skills/dsh-qa/scripts/lib/settings-bridge-lane.ts:482:  // (AGENTS.md §6); a lane pinning the mount-time root so the file-derived base is witnessable is
+skills/dsh-qa/scripts/lib/ulw-command-probe.ts:13:// registered and that a handler really starts a run (AGENTS.md §4/§7).
+skills/dsh-qa/scripts/lib/workspace-isolation.ts:11:// in-use gate then scans (AGENTS.md §12).
+skills/dsh-qa/scripts/preset-conformance.ts:1020: * logs are committed (AGENTS.md §10), and although the token belongs to an
+skills/dsh-qa/scripts/preset-conformance.ts:1274:        // the header frame this reads (AGENTS.md §7's concatenated-container trap).
+skills/dsh-qa/scripts/agent-teams-adopt.ts:11:// The vendored body is RETIRED from the composition (AGENTS.md §1): NO loader row mounts
+skills/dsh-qa/scripts/agent-teams-adopt.ts:25:// disk (not deleted — AGENTS.md §1 keeps it so the D6 adapter gate and the delta registry
+skills/dsh-qa/scripts/codegraph-smoke.ts:111:  // AGENTS.md §7 requires live cases to copy it when present — exactly the idiom the
+skills/dsh-qa/scripts/tool-output-validation.ts:127:  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+skills/dsh-qa/scripts/extension-lifecycle.ts:1019: * evidence. Per AGENTS.md §7 the work never touches the real `~/.dsh`.
+skills/dsh-qa/scripts/plan-c-smoke.ts:152:  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+skills/dsh-qa/scripts/preset-register.ts:189:  // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
+skills/dsh-qa/scripts/preset-register.ts:210:  // AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans
+packages/mpd-qa-roles-probe/src/index.ts:28:// The 11 stable roster ids — INTERNAL vocabulary (AGENTS.md §13): the `mpdRoles` service hands
+packages/mpd-qa-roles-probe/src/index.ts:127:  // The bundle's shared adapter (AGENTS.md §6): the preset resolve, the skill catalog and the
+packages/mpd-qa-roles-probe/src/index.ts:196:  // COMPOSES rows and never executes plugin code (AGENTS.md §4), so it cannot witness a
+packages/mpd-qa-roles-probe/src/index.ts:287:  // Neither `--dump-config` (composition only, AGENTS.md §4) nor a source-level unit test
+packages/mpd-bootstrap-plugin/src/index.ts:272:  // `mpd-dsh-adapter` (AGENTS.md §6) and reached through `dsh.onEvent`: a release that
+packages/mpd-bootstrap-plugin/src/index.ts:299: * no stamp, no ownership, no removal (AGENTS.md §7 isolation).
+packages/mpd-bootstrap-plugin/src/index.ts:378: * unstamped home is left exactly as found (AGENTS.md §7). Registration runs first so that a
+packages/mpd-team-compact-plugin/src/index.ts:726:  // (a live-registry read; `--dump-config` is blind to it — AGENTS.md §4), and the unit
+packages/mpd-team-watchdog-plugin/src/index.ts:37://   * the harness contact goes through the ADAPTER only (AGENTS.md §6).
+packages/mpd-team-watchdog-plugin/src/machine.ts:255:    // the whole row (and possibly the preset) down (AGENTS.md §12).
+packages/mpd-team-watchdog-plugin/src/engine.ts:12:// store; nothing here reaches a harness service directly (AGENTS.md §6). The
+packages/mpd-team-watchdog-plugin/src/engine.ts:252: * `mpd-dsh-adapter` rather than in every listener here (AGENTS.md §6). The adapter
+packages/mpd-team-watchdog-plugin/src/paths.ts:6:// one host serves many sessions with different workspaces (AGENTS.md §6 State).
+packages/mpd-tui-plugin/src/scenes.ts:8:// The board is the TUI-native equivalent of the web-only surfaces (AGENTS.md §6
+packages/mpd-tui-plugin/src/index.ts:194: * through this ONE object (AGENTS.md §6).
+packages/mpd-tui-plugin/src/index.ts:212: * The live session cwd is the authoritative workspace (AGENTS.md §6). This row is
+packages/mpd-tui-plugin/src/types.ts:4:// the ONE place a DSH-TUI service is named, probed or bound (AGENTS.md §6, plan
+packages/mpd-tui-plugin/src/state.ts:6:// cross-project library under `$HOME/.mpd/workmate` by design (AGENTS.md §6).
+packages/mpd-codegraph-plugin/src/index.ts:27:// command seam (AGENTS.md §6: a plugin never touches the harness command
+packages/mpd-codegraph-plugin/src/index.ts:152: * AGENTS.md §6 requires the workspace root to be resolved PER CALL and never cached in a module-level
+packages/mpd-codegraph-plugin/src/index.ts:173:    /** The workspace root this call logs against, resolved per call (AGENTS.md §6). */
+packages/mpd-codegraph-plugin/src/index.ts:221:  // Manual re-run command, registered THROUGH THE ADAPTER (AGENTS.md §6: no plugin
+packages/mpd-codegraph-plugin/src/index.test.ts:66: * The adapter double the plugin now talks to (AGENTS.md §6: the command goes
+packages/mpd-codegraph-plugin/src/index.test.ts:205:describe("command registration goes through the adapter (AGENTS.md §6)", () => {
+packages/mpd-ulw-plugin/src/index.ts:1010:  // seams come from the adapter (AGENTS.md §6) — this plugin never reaches for the
+packages/mpd-mcp-astgrep/src/launch.ts:7:// (MPD_AST_GREP_SG_PATH — never renamed, AGENTS.md §1), then starts the server.
+packages/mpd-ext-plugin/src/index.ts:75: * scoped change with its own mount proof (AGENTS.md §12).
+packages/mpd-ext-plugin/src/index.ts:82: * one-contact-surface rule, AGENTS.md §6): it does NOT inherit the adapter ROW's config
+packages/mpd-ext-plugin/src/schema-sanitize.ts:6:// tree down (AGENTS.md §12). An MCP server is a third party: its `inputSchema`
+packages/mpd-ext-plugin/src/sdk.ts:83: * (EXTENSIONS-FOR-AGENTS.md §4).
+packages/mpd-ext-plugin/src/mcp.ts:55:  /** Adapter every registration goes through (AGENTS.md §6: the one contact surface with the harness). */
+packages/mpd-roles-plugin/src/index.ts:587:  // ── the roster's TEAM plane (AGENTS.md §13 + §1) ────────────────────────────
+packages/mpd-roles-plugin/src/session-gate.ts:1:// The session-start complexity gate — the WIRING half (AGENTS.md §1).
+packages/mpd-roles-plugin/src/team-guard.ts:1:// The roster's READ-ONLY discipline for OFFICIAL Agent Teams teammates (AGENTS.md §13).
+packages/mpd-roles-plugin/src/roster-section.ts:1:// The roster as TEAMMATE TEMPLATES for the OFFICIAL Agent Teams plugin (AGENTS.md §13).
+packages/mpd-roles-plugin/src/complexity-gate.ts:1:// The session-start complexity gate — the PURE half (AGENTS.md §1). The WIRING half (per-agent
+packages/mpd-roles-plugin/src/complexity-gate.ts:28:/** The notice marker (frozen; AGENTS.md §1 and the retired implementation both carry it). */
+packages/mpd-workmate-plugin/src/index.ts:12:// exception to the workspace-scoped state rule (AGENTS.md §6); QA boots with
+packages/mpd-workmate-plugin/src/index.ts:999:    // THROUGH THE ADAPTER (AGENTS.md §6): the web server is a harness seam, and the adapter owns the
+packages/mpd-tui-adapter-plugin/src/index.ts:4:// (`packages/mpd-dsh-adapter-plugin`), and AGENTS.md §6 makes that ONE file the place a host
+packages/mpd-tui-adapter-plugin/src/index.ts:2114:        + " row-private adapter (the one-contact-surface rule, AGENTS.md §6). This boot keeps working, which is exactly why the"
+packages/mpd-dsh-adapter-plugin/src/index.ts:31:// contact surface (AGENTS.md §6) AND the owner of workspace-root resolution, so a row asks the
+packages/mpd-dsh-adapter-plugin/src/index.ts:50:// edit in EVERY row that listed one. They are declared HERE — the one file AGENTS.md §6
+packages/mpd-dsh-adapter-plugin/src/index.ts:199:   * never has to touch the host's `invocation.agent` shape itself (AGENTS.md §6).
+packages/mpd-dsh-adapter-plugin/src/index.ts:351:// specifier from this repository, and AGENTS.md §6 makes this file the ONE place
+packages/mpd-dsh-adapter-plugin/src/index.ts:1106: * same read performed HERE, so a plugin never touches `ctx.llm` (AGENTS.md §6).
+packages/mpd-dsh-adapter-plugin/src/index.ts:1338:   * sanctioned path (AGENTS.md §6: no plugin touches `ctx.commands` /
+packages/mpd-dsh-adapter-plugin/src/index.ts:1672:   * NOTE (AGENTS.md §3 of the adaptation plan): this is the path on which per-member
+packages/mpd-dsh-adapter-plugin/src/index.ts:1858:   * agent) and never touches `followup` itself (AGENTS.md §6). `steer`/`inject`
+packages/mpd-dsh-adapter-plugin/src/index.ts:1938: * of reopening on every call. The stored root is re-checked on every use — AGENTS.md §6 forbids caching
+packages/mpd-dsh-adapter-plugin/src/index.ts:2402:  // ── llm plane: the model catalog, read ONLY here (AGENTS.md §6) ───────────
+packages/mpd-dsh-adapter-plugin/src/index.ts:3016:    // ── goal plane (AGENTS.md §6: the ONE place `ctx.goals` and the goal tools are named) ──
+packages/mpd-dsh-adapter-plugin/src/index.ts:3186:          // plugin never reads `agent.followup` itself (AGENTS.md §6).
+packages/mpd-dsh-adapter-plugin/src/index.ts:4161:        + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)"
+packages/mpd-dsh-adapter-plugin/src/shared.ts:11:// `./index.ts`, which is still THE one contact surface (AGENTS.md §6). This module
+packages/mpd-bundle-plugin/src/index.ts:107:  // The adapter, resolved the way every other mpd row resolves it (AGENTS.md §6).
+docs/plan-webui-tui-i18n.md:3:Process record (AGENTS.md §3: `docs/plan-*.md` is exempt from the bilingual rule). English-only.
+docs/plan-webui-tui-i18n.md:256:## 7. What proves it (per AGENTS.md §4/§7)
+docs/plan-webui-tui-i18n.md:381:per AGENTS.md §6, the host-contact take-over "arms only after the session has rendered an MPD scene,
+docs/tui-parity.md:101:| `workmate-library/mutations` (init/rename/delete/archive) | `src/web-client.ts` (the same factory) | absent | — | — | measured: the TUI exposes no write path to the library, which is HOME-scoped (`~/.mpd/workmate`, AGENTS.md §6 State exception); the Web tab is the only mutation door |
+docs/independence.zh-CN.md:37:（AGENTS.md §8）。2026-10-02 实测：`cordis.patch.yml` 中有 **23 个不同的
+docs/independence.zh-CN.md:92:1. **行 import 适配器。** `packages/mpd-dsh-adapter-plugin` 是与宿主唯一的代码级接触面（AGENTS.md §6）；
+docs/plan-f.md:66:- Docs: AGENTS.md (layout tree, §1 subagent convention, §6 bootstrap exception,
+docs/track-a-report.md:1:<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
+docs/index.md:76:| [`feature-audit.md`](feature-audit.md) | engineers | The engineering baseline: pinned upstream `8c57e46` (v5.0.0-beta.20) spec vs port status (the capability target `AGENTS.md` §1 points at). |
+docs/index.md:137:are exempt from the bilingual rule by policy (`AGENTS.md` §3), and each carries its own exemption
+docs/omo-parity-gap.md:1:<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
+docs/design.zh-CN.md:326:| **`~/.mpd/workmate/`**（用户 HOME） | mpd-workmate | 跨工程 workmate 库（`<key>/` 实例 + `.archive/` —— 已删除实例被移出库、手动 `mv` 搬回即可恢复）—— 用户批准的对 workspace-scoped 状态规则的刻意例外（AGENTS.md §6）；QA 以 `HOME=<sandbox>` 启动 |
+docs/design.zh-CN.md:335:更名或改变某个接缝时，只需改一个文件（AGENTS.md §6）。
+docs/design.zh-CN.md:358:  `setup(childCtx, child)` 这一条**已计数**的例外除外（见 `AGENTS.md` §6：`lib/members.ts`
+docs/design.zh-CN.md:376:  `mpd-delta` 区域。该关闭状态连同其**残留清单**写在 AGENTS.md §6（R1–R5 以及 `members.js`
+docs/development.zh-CN.md:72:**Harness 接缝（约束性规则，AGENTS.md §6）：** 插件行不得直接调用 `ctx.tools`、
+docs/development.zh-CN.md:150:**QA 硬规则**（AGENTS.md §7）：沙箱 `DSH_HOME=<mktemp>`；只复制一次凭据；断言沙箱
+docs/development.zh-CN.md:161:## 5. 门禁（AGENTS.md §4）
+docs/development.zh-CN.md:170:| 启动检查（MOUNT） | 在隔离 `DSH_HOME` + 沙箱 `HOME` 中真正 apply 各行的启动：`bun skills/dsh-qa/scripts/bundle-lifecycle.ts`（host 行）/ `node skills/dsh-qa/scripts/preset-conformance.ts`（`mpd` preset 的 standing 挂载）。`node scripts/dump-config.ts --profile <p>`（仓库包装器，自身就会打印该警告）只组合行，**不是**该门禁（AGENTS.md §4） |
+docs/plan-0.1.7-adaptation.md:3:Process record (AGENTS.md §3: `docs/plan-*.md` is exempt from the bilingual rule). English-only.
+docs/plan-0.1.7-adaptation.md:72:- **Per-teammate model routing (the `teamModels.slot*` contract, AGENTS.md §13) CANNOT be applied
+docs/plan-0.1.7-adaptation.md:113:| `packages/mpd-agent-teams-plugin/test/member-readonly-deny.test.mjs` | the shipped profile marked exactly the six read-only members with `toolDeny` | `mpd-roles-plugin`'s read-only guard plus its equality test against `mpd-workmate-plugin`'s identical seven-name list (AGENTS.md §13) |
+docs/plan-0.1.7-adaptation.md:147:payload-shape mismatch; only a real boot can, which is exactly AGENTS.md §7's "assert a REAL tool
+docs/tui-parity.zh-CN.md:80:| `workmate-library/mutations`（初始化/改名/删除/归档） | `src/web-client.ts`（同一个 factory） | absent | — | — | 实测：TUI 不暴露任何写入库的路径，而该库位于用户 HOME（`~/.mpd/workmate`，AGENTS.md §6 State 例外）；Web 标签页是唯一的变更入口 |
+docs/upstream-parity-ledger.zh-CN.md:24:> AGENTS.md §1。下文其余内容是该波次的冻结记录，按历史来读 —— 包括 `D_AUTOROUTE_ADVISORY` 决策与
+docs/upstream-parity-ledger.zh-CN.md:53:| `D_SKILLS_WRITER` | 本波次 `skills/**` 的**唯一**写者是 `t5`，且仅限 `skills/dsh-qa/SKILL.md` 与 `skills/dsh-qa/scripts/session-start-team.ts`。`t9` 本波次不写入。 | AGENTS.md `§9`：每波单写者；`skills/**` 变更会使语料 `treeSha` 失效，re-pin 必须与之同提交。基线：`afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`，328 个文件。 |
+docs/upstream-parity-ledger.zh-CN.md:54:| `D_LEDGER` | 台账 = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`，同提交，标题下直接放语言切换链接。`docs/omo-parity-gap.md` 与既往报告不动。 | 用户裁决 6；AGENTS.md `§3` 双语规则及历史记录豁免。 |
+docs/upstream-parity-ledger.zh-CN.md:55:| `D_UPSTREAM_REF` | 上游参考为 beta.62（`d1557a4b4`）；仓库基线仍为 beta.20。 | 用户裁决 1；AGENTS.md `§9`（不追上游）。 |
+docs/upstream-parity-ledger.zh-CN.md:77:> 及其 `NO team was staged` 文案，作为 `team.gate: "advisory"` 的降级路径保留下来。权威来源：AGENTS.md §1、
+docs/upstream-parity-ledger.zh-CN.md:156:AGENTS.md §1 中列出。
+docs/upstream-parity-ledger.zh-CN.md:221:本台账与其记录的变更**在同一提交内更新**；无证据的通过不算通过（AGENTS.md `§2.3`、`§4`）。
+docs/decisions.md:1:<!-- docs-parity: exempt process record (AGENTS.md §3) -->
+docs/upstream-parity-ledger.md:29:> See `docs/plan-0.1.7-adaptation.md` and AGENTS.md §1. Everything else below is that wave's frozen
+docs/upstream-parity-ledger.md:59:| `D_SKILLS_WRITER` | This wave's **only** writer of `skills/**` is `t5`, limited to `skills/dsh-qa/SKILL.md` and `skills/dsh-qa/scripts/session-start-team.ts`. `t9` writes nothing this wave. | AGENTS.md `§9`: one writer per wave; a `skills/**` edit invalidates the corpus `treeSha` and the re-pin must ride the same commit. Baseline: `afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`, 328 files. |
+docs/upstream-parity-ledger.md:60:| `D_LEDGER` | Ledger = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`, same commit, language switch link directly under each title. `docs/omo-parity-gap.md` and prior wave reports stay untouched. | User ruling 6; AGENTS.md `§3` bilingual rule with the historical-record exemption. |
+docs/upstream-parity-ledger.md:61:| `D_UPSTREAM_REF` | Upstream reference is beta.62 (`d1557a4b4`); repo baseline remains beta.20. | User ruling 1; AGENTS.md `§9` (never chase upstream). |
+docs/upstream-parity-ledger.md:85:> `team.gate: "advisory"` fallback. Authority: AGENTS.md §1, `presets/mpd.patch.yml` and
+docs/upstream-parity-ledger.md:178:current landing points are named in `docs/plan-0.1.7-adaptation.md` and AGENTS.md §1.
+docs/upstream-parity-ledger.md:244:a pass (AGENTS.md `§2.3`, `§4`).
+docs/extension-adaptation-report.md:43:as load evidence anywhere (AGENTS.md §4).
+docs/extension-adaptation-report.md:188:  one-contact-surface rule (AGENTS.md §6) with no warning. The identical swallowed-error class has
+docs/extension-adaptation-report.md:300:  `treeSha` is a blocking gate (AGENTS.md §9/§11): the `skills/dsh-qa/SKILL.md` extension rows no
+docs/extension-adaptation-report.md:398:re-pin, in the same change set as the F8/F9/F10 edits (AGENTS.md §9/§11), verified by
+docs/extension-adaptation-report.md:413:entry is packed either. AGENTS.md §4's Extension-CLI gate therefore holds in a CHECKOUT (where both
+docs/extension-adaptation-report.md:415:contract's own copy of this limit is in `EXTENSIONS-FOR-AGENTS.md` §9.
+docs/feature-audit.zh-CN.md:5:本文档是移植的**当前基线/能力对照**：AGENTS.md §1 将其引用为工程目标。历史移植规划记录
+docs/bline-report.md:1:<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
+docs/index.zh-CN.md:74:| [`feature-audit.zh-CN.md`](feature-audit.zh-CN.md) | 工程师 | 工程基线：固定的上游 `8c57e46`（v5.0.0-beta.20）规格与移植状态对照（即 `AGENTS.md` §1 指向的能力目标）。 |
+docs/index.zh-CN.md:129:以及评判它的交付报告。这些文件按策略豁免双语要求（`AGENTS.md` §3），每个文件都带有自己的豁免标记，
+docs/plan-tui-team-surface.md:380:**Frozen adapter extension (the documented job of this package — AGENTS.md §6):**
+docs/plan-tui-team-surface.md:513:   and fatal in a real boot (AGENTS.md §8: a `link:` install reads the checkout's `dist/`).
+docs/plan-tui-edition.md:6:> are process records and are exempt from the bilingual-document rule (AGENTS.md §3). The evidence they
+docs/plan-tui-edition.md:311:   is already in the bundle patch must not also live in a QA overlay (AGENTS.md §6).
+docs/plan-tui-edition.md:338:   `treeSha` re-pin in `VENDOR_LOCK.json` rides in the captain's commit (AGENTS.md §9/§11).
+docs/plan-tui-edition.md:341:8. **No git writes by workers**: only the captain commits/branches (AGENTS.md §5).
+docs/ulw-deepseek-optimization.md:1:<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
+docs/plan-team-watchdog.md:83:| **[AMEND-1]** The adapter wraps BOTH tool families but exposes only a POST hook; `guardTool` is contractually read-only | `packages/mpd-dsh-adapter-plugin/src/index.ts:273`/`:529` (`guardTool`), `:274`/`:535` (`onPostToolExecute`), `:279`/`:564` (`executeTool` = the internal tool seam); `AGENTS.md` §6 |
+docs/plan-team-watchdog.md:129:  captain's commit (`AGENTS.md` §9/§11).
+docs/plan-team-watchdog.md:171:never mounts the plugin (`AGENTS.md` §4: composition is not a load).
+docs/plan-team-watchdog.md:181:| **[AMEND-1]** `packages/mpd-dsh-adapter-plugin/src/index.ts` (a mutate-shaped `tools/execute` gate so a PRE-call heartbeat stamp is possible; `guardTool` stays read-only) | adapter | edit (OUR contact surface, `AGENTS.md` §6) | N/A — an adapter change absorbs harness drift; **no delta region** |
+docs/plan-team-watchdog.md:216:impl `:535`) — the PRE gate and the POST waterfall — and `guardTool`'s contract in `AGENTS.md` §6 is
+docs/plan-team-watchdog.md:332:  settle window (`AGENTS.md` §7).
+docs/plan-team-watchdog.md:395:(`AGENTS.md` §12: a failed dependency pins its dependents forever — create new downstream tasks
+docs/extension-adaptation-report.zh-CN.md:21:**关于证据强度的诚实说明。** 所有 live 断言都完全依赖验证任务的产物（`evidence/extensions/t7-verify/20260916T045829Z/` 及其点名的两个 lane 目录）；该任务的锚点是 HEAD `8777e43` **加上** lane 对象的 sha256，因为让最后两条红色分支转绿的修复仍停留在未提交的工作树里。本波任何地方都没有把 `--dump-config` 当作加载证据（AGENTS.md §4）。
+docs/extension-adaptation-report.zh-CN.md:89:- **F1（中）—— adapter 身份回退分支是静默的。** `mpd-ext` 与 `mpd-roles` 都以 `ctx.get("mpdDsh") ?? createDshAdapter(ctx)` 解析 adapter（`packages/mpd-ext-plugin/src/index.ts:207`、`packages/mpd-roles-plugin/src/index.ts:318`）。一旦挂载查找落空，该行就会在树里已挂载的 adapter 之外**再构造一个**，违反“单一接触面”规则（AGENTS.md §6），且没有任何告警。同一类被吞掉的错误曾在同一个文件里导致四个工具根本没注册（`src/index.ts:44-51`），这正是该行现在要统计注册结果的原因（`:462-475`）——回退分支是唯一仍未埋点的分支。
+docs/extension-adaptation-report.zh-CN.md:96:- **F8（低，本波刻意豁免）—— lifecycle lane 仍叙述修复前的预期。** `skills/dsh-qa/scripts/extension-lifecycle.ts:35-42` 仍写着“This wave's expectation is a RED … THE FIX IS t11's”，其打包分支仍返回 `greenOwner: "t11"`（`:386`）。这是刻意豁免而非遗漏：技能语料库每波只有一个写入者，第二次改动 `skills/**` 会强制第二次 `VENDOR_LOCK.json` 重新钉版，而本波只保留一次（AGENTS.md §9/§11）——且这一次已经用在 mcp-bridge schema 分支的修正上（`evidence/extensions/t13-repair/20260916T045324Z/`）。此处记录，供下一波并入其唯一一次重新钉版。
+docs/extension-adaptation-report.zh-CN.md:121:- **已修复，而非推迟（t13，t14 复核 PASS）**——两项 `skills/**` 条目，任何文档任务都碰不得，因为技能语料库每波只有一个写入者，且其 `VENDOR_LOCK.json` 的 `treeSha` 是阻塞门（AGENTS.md §9/§11）：`skills/dsh-qa/SKILL.md` 的扩展行不再承诺一条“必须为红”的打包分支，桥 lane 的 `schema` 分支现在断言实际发布的 keep-or-drop 规则。同一次改动携带了本波唯一一次重新钉版（`9e643d07… → 7a48fdad…`）。
+docs/extension-adaptation-report.zh-CN.md:201:同一次改动、与 F8/F9/F10 的修改在同一变更集内（AGENTS.md §9/§11），并由 `node scripts/verify-vendor.ts`
+docs/extension-adaptation-report.zh-CN.md:214:而 `scaffold` 与 `--self-test` 仍失败，因为 `templates/` 也没有被打包。因此 AGENTS.md §4 的
+docs/extension-adaptation-report.zh-CN.md:216:直到打包器把它们一起交付。该限制在 agent 契约中的副本见 `EXTENSIONS-FOR-AGENTS.md` §9。
+docs/design.md:376:| **`~/.mpd/workmate/`** (user HOME) | mpd-workmate | the cross-project workmate library (`<key>/` instances + `.archive/` — deleted instances moved out of the library, restorable by a manual `mv` back) — deliberate user-approved exception to workspace-scoped state (§ AGENTS.md §6); QA boots with `HOME=<sandbox>` |
+docs/design.md:386:that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
+docs/design.md:414:  through this adapter — except the counted `setup(childCtx, child)` residual that AGENTS.md §6
+docs/design.md:434:  `mpd-delta` regions. The closure is stated WITH its residual set in AGENTS.md §6 (R1–R5 plus
+docs/plan-team-plane-split.md:3:<!-- docs-parity: exempt process record (AGENTS.md §3) -->
+docs/plan-team-plane-split.md:5:Process record (AGENTS.md §3: `docs/plan-*.md` is exempt from the bilingual rule). English-only.
+docs/plan-team-plane-split.md:255:EN and zh-CN and names the W3 scene. `AGENTS.md` §1 names `mpdTeams`, the route, the `TeamExecutor`
+docs/plan-ui-team-gui.md:3:Process record (AGENTS.md §3: `docs/plan-*.md` is exempt from the bilingual rule). English-only.
+docs/plan-ui-team-gui.md:291:one-shot paths already follow (AGENTS.md §13).
+docs/feature-audit.md:6:AGENTS.md §1 references it as the engineering target. Historical port-plan records
+docs/plan-team-watchdog-report.md:147:| **t54 amendment 1** (w3) | The `mpdWatchdog` hold service was published after t54 closed: the row's `provide(HOLD_SERVICE, …)` reader with `isHeld/holds/list/hydrate/hydratedRoots/gateCall` plus the front-door reads (`heldTeams/unread/acknowledge/view`). Trigger: the captain's briefing carried **AMENDMENT 2** of the frozen plan, which the first run had never read (the plan's mtime 15:49:35Z preceded the first package file at 15:57:12Z — a genuine recon miss, disclosed in the record). | t54 was already terminal; re-opening it would have pinned every dependent (`AGENTS.md` §12's failed/cancelled-dependency trap). A NEW timestamp directory was written instead, leaving the first run's evidence untouched. | `evidence/team-watchdog/plugin/20260915T162351Z/{RESULT.md,result.json}` |
+docs/plan-team-watchdog-report.md:230:  AGENTS.md §12: **every `team-watchdog-*.mjs` lane drives the built modules in-process and never spawns a
+docs/development.md:80:**Harness seams (binding, AGENTS.md §6):** a plugin row must not call `ctx.tools`,
+docs/development.md:167:**QA hard rules** (AGENTS.md §7): sandbox `DSH_HOME=<mktemp>`; copy credentials once;
+docs/development.md:180:## 5. Gates (AGENTS.md §4)
+docs/development.md:189:| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME`: `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) / `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount). `node scripts/dump-config.ts --profile <p>` (the repo wrapper, which prints that warning itself) composes rows only and is NOT this gate (AGENTS.md §4) |
+docs/tui-edition-report.md:8:> are process records and are exempt from the bilingual-document rule (AGENTS.md §3). The evidence they
+docs/tui-edition-report.md:300:> changes (AGENTS.md §9/§11). **`VENDOR_LOCK.json` and `skills/**` are outside t50's scope and were not
+docs/review-p0-p3.md:1:<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
+docs/independence.md:42:(AGENTS.md §8). Measured 2026-10-02: **23 distinct `packages/*/dist/*.js` row targets** in
+docs/independence.md:108:   surface with the harness (AGENTS.md §6); a package that starts importing an adapter is being made

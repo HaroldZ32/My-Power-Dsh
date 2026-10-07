@@ -1,0 +1,90 @@
+cmd: AC2 — does .github/workflows/gates.yml still fetch the pinned baseline? (token counts + step names)
+  MPD_UPSTREAM_ROOT    3
+  upstream             6
+  VENDOR_LOCK          3
+  checkout             5
+  RUNNER_TEMP          0
+0
+  --- step names in gates.yml ---
+    1:name: gates
+    61:    name: Static gates
+    64:      - name: Check out the repository
+    66:      - name: Set up Node.js
+    70:      - name: Set up Bun
+    78:      - name: "Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)"
+    84:      - name: Install the harness the row-config gate validates against
+    94:      - name: Static gate aggregate
+    97:      - name: Plugin manifest install-time rules and packaging contract
+    100:      - name: Declaration comments and explicit signatures
+
+cmd: AC2 — token counts in Lane A's scripts (content-free)
+  scripts/verify-vendor.ts     oh-my-openagent=3 MPD_UPSTREAM_ROOT=2 ci-rehearsal=0
+0 upstream=14 vendor/mcp-src=0
+0
+  scripts/build-mcp.ts         oh-my-openagent=1 MPD_UPSTREAM_ROOT=1 ci-rehearsal=0
+0 upstream=23 vendor/mcp-src=8
+  scripts/bootstrap.ts         oh-my-openagent=0
+0 MPD_UPSTREAM_ROOT=0
+0 ci-rehearsal=0
+0 upstream=1 vendor/mcp-src=0
+0
+  scripts/repin-vendor.ts      oh-my-openagent=0
+0 MPD_UPSTREAM_ROOT=0
+0 ci-rehearsal=0
+0 upstream=0
+0 vendor/mcp-src=0
+0
+
+cmd: identity surface recount (was 1442 tracked / 92 code+config at pre-flight)
+  tracked_total=1388
+  code_config_surface=38
+  --- which of the four Lane A identity carriers still match ---
+    scripts/verify-vendor.ts       MATCHES
+    scripts/build-mcp.ts           MATCHES
+    scripts/bootstrap.ts           clean
+    VENDOR_LOCK.json               MATCHES
+    .github/workflows/gates.yml    MATCHES
+    scripts/repin-vendor.ts        clean
+
+cmd: writer's negative-arm evidence present in its own log?
+3:[verify-vendor] FAIL - asset skills treeSha mismatch
+14:[verify-vendor] FAIL - asset skills treeSha mismatch
+23:[verify-vendor] FAIL - asset skills treeSha mismatch
+32:[verify-vendor] FAIL - asset skills treeSha mismatch
+70:[verify-vendor] FAIL - asset skills treeSha mismatch
+71:[verify-vendor] FAIL - asset vendor/mcp-src treeSha mismatch
+79:[verify-vendor] FAIL - asset skills treeSha mismatch
+80:[verify-vendor] FAIL - asset vendor/mcp-src count drifted: 460 vs 459
+81:[verify-vendor] FAIL - asset vendor/mcp-src treeSha mismatch
+89:[verify-vendor] FAIL - asset skills treeSha mismatch
+101:VERDICT: MPD_UPSTREAM_ROOT has NO effect on the gate's output - the env var is not read
+102:NOTE: all three exits are 1 for ONE reason, named in the output: 'asset skills treeSha mismatch'
+652:[verify-vendor] FAIL - asset skills treeSha mismatch
+664:[verify-vendor] FAIL - asset skills treeSha mismatch
+
+cmd: LANE-B-HANDOFF.md (cross-lane note, doc read) head
+# LANE A → LANE B HANDOFF (verbatim text to place)
+
+From: Lane A (Senior Engineer), task T4.
+To: Lane B (Deep Worker) — **relay requested from the captain**: the official team mailbox in this
+composition holds a PREVIOUS wave's members (`ToolDefects Engineer`, `Independence Engineer`,
+`TuiAdapter Engineer`, `doc-scribe`, `panel-surface`, `tui-visuals`, `Lead`) and `agent_teams_plan
+status` reports `members 0`, so Lane A cannot address "Deep Worker" by name. The captain owns the
+relay.
+
+Per the captain's write-scope correction, `README.md` / `README.zh-CN.md` / `LICENSE-NOTICES.md` /
+`docs/**` belong to Lane B this wave. **Lane A edited none of them** — verified with
+`git status --porcelain README.md README.zh-CN.md LICENSE-NOTICES.md docs/` (no Lane A modification).
+
+---
+
+## 1. A NOW-FALSE CLAIM — fix required
+
+`docs/development.md` (Gates table) and `docs/development.zh-CN.md` (same row) still say the vendor
+gate needs `MPD_UPSTREAM_ROOT`. It no longer does: the rewritten `scripts/verify-vendor.ts` reads **no
+environment variable at all**.
+
+English — replace the Vendor row:
+
+```
+| Vendor | `node scripts/verify-vendor.ts` (fingerprints the assets this repo ships; resolves NO upstream checkout) |

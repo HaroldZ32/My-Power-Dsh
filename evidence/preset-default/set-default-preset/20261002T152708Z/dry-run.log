@@ -1,0 +1,8 @@
+[set-default-preset] profile: dsh-tui (TUI plane)
+[set-default-preset] preset:  mpd
+[set-default-preset] home:    /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/set-default-preset/20261002T152708Z/sandbox-home  [sandbox/override]
+[set-default-preset] dshHome: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/set-default-preset/20261002T152708Z/sandbox-home/.dsh  (profile NOT present)
+[set-default-preset] target:  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/set-default-preset/20261002T152708Z/sandbox-home/.dsh-tui/agent-preset.json  [not the real home]
+[set-default-preset] intended bytes (21): "{\n  \"preset\": \"mpd\"\n}"
+[set-default-preset] DRY-RUN (the default): nothing was written. Re-run with --yes to apply.
+EXIT=0

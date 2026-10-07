@@ -9,7 +9,9 @@ command for manual (re)runs.
 ## What it does
 
 - Binary resolution order: `config.binary` → `MPD_CODEGRAPH_BIN` /
-  `MPD_DSH_CODEGRAPH_BIN` env (exists-checked) → the bundle's optional dependency
+  `MPD_DSH_CODEGRAPH_BIN` env (exists-checked; the alias pair is read FIRST-NON-BLANK, so
+  an exported-but-empty `MPD_CODEGRAPH_BIN=""` counts as unset and never hides the alias —
+  the launchers' own rule) → the bundle's optional dependency
   (`createRequire("@colbymchenry/codegraph")`, the packed layout) →
   `<bundle>/.toolchain/node_modules/.bin/codegraph` (B8: the checkout `link:` layout,
   which pnpm never populates with the link package's optionalDependencies — mirrors
@@ -69,6 +71,6 @@ workspace.
 
 No model tools; the MCP companion row `mcp-codegraph` exposes
 `mcp__codegraph__*`. The `codegraph` MCP row's `command` env uses
-`MPD_DSH_CODEGRAPH_CLI || <pkg>/packages/mpd-mcp-codegraph/launch.ts`; the launcher
+`MPD_DSH_CODEGRAPH_CLI || <pkg>/packages/mpd-mcp-codegraph/dist/launch.js`; the launcher
 (B8) resolves the binary itself and sets `MPD_CODEGRAPH_BIN` only when unset, so this
 plugin and the MCP row share the same resolver rules.

@@ -1,1146 +1,214 @@
-var __create = Object.create;
-var __getProtoOf = Object.getPrototypeOf;
-var __defProp = Object.defineProperty;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-function __accessProp(key) {
-  return this[key];
-}
-var __toESMCache_node;
-var __toESMCache_esm;
-var __toESM = (mod, isNodeMode, target) => {
-  var canCache = mod != null && typeof mod === "object";
-  if (canCache) {
-    var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
-    var cached = cache.get(mod);
-    if (cached)
-      return cached;
-  }
-  target = mod != null ? __create(__getProtoOf(mod)) : {};
-  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
-  if (mod && typeof mod === "object" || typeof mod === "function") {
-    for (let key of __getOwnPropNames(mod))
-      if (!__hasOwnProp.call(to, key))
-        __defProp(to, key, {
-          get: __accessProp.bind(mod, key),
-          enumerable: true
-        });
-  }
-  if (canCache)
-    cache.set(mod, to);
-  return to;
-};
-var __toCommonJS = (from) => {
-  var entry = (__moduleCache ??= new WeakMap).get(from), desc;
-  if (entry)
-    return entry;
-  entry = __defProp({}, "__esModule", { value: true });
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (var key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(entry, key))
-        __defProp(entry, key, {
-          get: __accessProp.bind(from, key),
-          enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
-        });
-  }
-  __moduleCache.set(from, entry);
-  return entry;
-};
-var __moduleCache;
-var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
-var __returnValue = (v) => v;
-function __exportSetter(name, newValue) {
-  this[name] = __returnValue.bind(null, newValue);
-}
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, {
-      get: all[name],
-      enumerable: true,
-      configurable: true,
-      set: __exportSetter.bind(all, name)
-    });
-};
-var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
-
-// packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
-var exports_lib = {};
-__export(exports_lib, {
-  Binary: () => Binary,
-  Time: () => Time,
-  arrayBufferToBase64: () => arrayBufferToBase64,
-  arrayBufferToHex: () => arrayBufferToHex,
-  base64ToArrayBuffer: () => base64ToArrayBuffer,
-  camelCase: () => camelCase,
-  camelize: () => camelize,
-  capitalize: () => capitalize,
-  clone: () => clone,
-  contain: () => contain,
-  deduplicate: () => deduplicate,
-  deepEqual: () => deepEqual,
-  defineProperty: () => defineProperty,
-  difference: () => difference,
-  filterKeys: () => filterKeys,
-  formatProperty: () => formatProperty,
-  hexToArrayBuffer: () => hexToArrayBuffer,
-  hyphenate: () => hyphenate,
-  intersection: () => intersection,
-  is: () => is,
-  isNonNullable: () => isNonNullable,
-  isNullable: () => isNullable,
-  isPlainObject: () => isPlainObject,
-  makeArray: () => makeArray,
-  mapValues: () => mapValues,
-  noop: () => noop2,
-  omit: () => omit,
-  paramCase: () => paramCase,
-  pick: () => pick,
-  remove: () => remove,
-  sanitize: () => sanitize,
-  snakeCase: () => snakeCase,
-  trimSlash: () => trimSlash,
-  uncapitalize: () => uncapitalize,
-  union: () => union,
-  valueMap: () => mapValues
-});
-function noop2() {}
-function isNullable(value) {
-  return value === null || value === undefined;
-}
-function isNonNullable(value) {
-  return !isNullable(value);
-}
-function isPlainObject(data) {
-  return data && typeof data === "object" && !Array.isArray(data);
-}
-function filterKeys(object, filter) {
-  return Object.fromEntries(Object.entries(object).filter(([key, value]) => filter(key, value)));
-}
-function mapValues(object, transform) {
-  return Object.fromEntries(Object.entries(object).map(([key, value]) => [key, transform(value, key)]));
-}
-function pick(source, keys, forced) {
-  if (!keys)
-    return { ...source };
-  const result = {};
-  for (const key of keys)
-    if (forced || source[key] !== undefined)
-      result[key] = source[key];
-  return result;
-}
-function omit(source, keys) {
-  if (!keys)
-    return { ...source };
-  const result = { ...source };
-  for (const key of keys)
-    Reflect.deleteProperty(result, key);
-  return result;
-}
-function defineProperty(object, key, value) {
-  return Object.defineProperty(object, key, {
-    writable: true,
-    value,
-    enumerable: false
-  });
-}
-function contain(array1, array2) {
-  return array2.every((item) => array1.includes(item));
-}
-function intersection(array1, array2) {
-  return array1.filter((item) => array2.includes(item));
-}
-function difference(array1, array2) {
-  return array1.filter((item) => !array2.includes(item));
-}
-function union(array1, array2) {
-  return Array.from(new Set([...array1, ...array2]));
-}
-function deduplicate(array) {
-  return [...new Set(array)];
-}
-function remove(list, item) {
-  const index = list?.indexOf(item);
-  if (index >= 0) {
-    list.splice(index, 1);
-    return true;
-  } else
-    return false;
-}
-function makeArray(source) {
-  return Array.isArray(source) ? source : isNullable(source) ? [] : [source];
-}
-function is(type, value) {
-  if (arguments.length === 1)
-    return (value2) => is(type, value2);
-  return type in globalThis && value instanceof globalThis[type] || Object.prototype.toString.call(value).slice(8, -1) === type;
-}
-function isArrayBufferLike(value) {
-  return is("ArrayBuffer", value) || is("SharedArrayBuffer", value);
-}
-function isArrayBufferSource(value) {
-  return isArrayBufferLike(value) || ArrayBuffer.isView(value);
-}
-function clone(source, refs = /* @__PURE__ */ new Map) {
-  if (!source || typeof source !== "object")
-    return source;
-  if (is("Date", source))
-    return new Date(source.valueOf());
-  if (is("RegExp", source))
-    return new RegExp(source.source, source.flags);
-  if (isArrayBufferLike(source))
-    return source.slice(0);
-  if (ArrayBuffer.isView(source))
-    return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
-  const cached = refs.get(source);
-  if (cached)
-    return cached;
-  if (Array.isArray(source)) {
-    const result2 = [];
-    refs.set(source, result2);
-    source.forEach((value, index) => {
-      result2[index] = Reflect.apply(clone, null, [value, refs]);
-    });
-    return result2;
-  }
-  const result = Object.create(Object.getPrototypeOf(source));
-  refs.set(source, result);
-  for (const key of Reflect.ownKeys(source)) {
-    const descriptor = { ...Reflect.getOwnPropertyDescriptor(source, key) };
-    if ("value" in descriptor)
-      descriptor.value = Reflect.apply(clone, null, [descriptor.value, refs]);
-    Reflect.defineProperty(result, key, descriptor);
-  }
-  return result;
-}
-function deepEqual(a, b, strict) {
-  if (a === b)
-    return true;
-  if (!strict && isNullable(a) && isNullable(b))
-    return true;
-  if (typeof a !== typeof b)
-    return false;
-  if (typeof a !== "object")
-    return false;
-  if (!a || !b)
-    return false;
-  function check(test, then) {
-    return test(a) ? test(b) ? then(a, b) : false : test(b) ? false : undefined;
-  }
-  return check(Array.isArray, (a2, b2) => a2.length === b2.length && a2.every((item, index) => deepEqual(item, b2[index]))) ?? check(is("Date"), (a2, b2) => a2.valueOf() === b2.valueOf()) ?? check(is("RegExp"), (a2, b2) => a2.source === b2.source && a2.flags === b2.flags) ?? check(isArrayBufferLike, (a2, b2) => {
-    if (a2.byteLength !== b2.byteLength)
-      return false;
-    const viewA = new Uint8Array(a2);
-    const viewB = new Uint8Array(b2);
-    for (let i = 0;i < viewA.length; i++)
-      if (viewA[i] !== viewB[i])
-        return false;
-    return true;
-  }) ?? Object.keys({
-    ...a,
-    ...b
-  }).every((key) => deepEqual(a[key], b[key], strict));
-}
-function capitalize(source) {
-  return source.charAt(0).toUpperCase() + source.slice(1);
-}
-function uncapitalize(source) {
-  return source.charAt(0).toLowerCase() + source.slice(1);
-}
-function camelCase(source) {
-  return source.replace(/[_-][a-z]/g, (str) => str.slice(1).toUpperCase());
-}
-function tokenize(source, delimiters, delimiter) {
-  const output = [];
-  let state = 0;
-  for (let i = 0;i < source.length; i++) {
-    const code = source.charCodeAt(i);
-    if (code >= 65 && code <= 90) {
-      if (state === 1) {
-        const next = source.charCodeAt(i + 1);
-        if (next >= 97 && next <= 122)
-          output.push(delimiter);
-        output.push(code + 32);
-      } else {
-        if (state !== 0)
-          output.push(delimiter);
-        output.push(code + 32);
-      }
-      state = 1;
-    } else if (code >= 97 && code <= 122) {
-      output.push(code);
-      state = 2;
-    } else if (delimiters.includes(code)) {
-      if (state !== 0)
-        output.push(delimiter);
-      state = 0;
-    } else
-      output.push(code);
-  }
-  return String.fromCharCode(...output);
-}
-function paramCase(source) {
-  return tokenize(source, [45, 95], 45);
-}
-function snakeCase(source) {
-  return tokenize(source, [45, 95], 95);
-}
-function formatProperty(key) {
-  if (typeof key !== "string")
-    return `[${key.toString()}]`;
-  return /^[a-z_$][\w$]*$/i.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
-}
-function trimSlash(source) {
-  return source.replace(/\/$/, "");
-}
-function sanitize(source) {
-  if (!source.startsWith("/"))
-    source = "/" + source;
-  return trimSlash(source);
-}
-var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, camelize, hyphenate, Time;
-var init_lib = __esm(() => {
-  (function(Binary2) {
-    Binary2.is = isArrayBufferLike;
-    Binary2.isSource = isArrayBufferSource;
-    function fromSource(source) {
-      if (ArrayBuffer.isView(source))
-        return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
-      else
-        return source;
-    }
-    Binary2.fromSource = fromSource;
-    function toBase64(source) {
-      source = fromSource(source);
-      if (typeof Buffer !== "undefined")
-        return Buffer.from(source).toString("base64");
-      let binary = "";
-      const bytes = new Uint8Array(source);
-      for (let i = 0;i < bytes.byteLength; i++)
-        binary += String.fromCharCode(bytes[i]);
-      return btoa(binary);
-    }
-    Binary2.toBase64 = toBase64;
-    function fromBase64(source) {
-      if (typeof Buffer !== "undefined")
-        return fromSource(Buffer.from(source, "base64"));
-      return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
-    }
-    Binary2.fromBase64 = fromBase64;
-    function toHex(source) {
-      source = fromSource(source);
-      if (typeof Buffer !== "undefined")
-        return Buffer.from(source).toString("hex");
-      return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
-    }
-    Binary2.toHex = toHex;
-    function fromHex(source) {
-      if (typeof Buffer !== "undefined")
-        return fromSource(Buffer.from(source, "hex"));
-      const hex = source.length % 2 === 0 ? source : source.slice(0, source.length - 1);
-      const buffer = [];
-      for (let i = 0;i < hex.length; i += 2)
-        buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
-      return Uint8Array.from(buffer).buffer;
-    }
-    Binary2.fromHex = fromHex;
-  })(Binary || (Binary = {}));
-  base64ToArrayBuffer = Binary.fromBase64;
-  arrayBufferToBase64 = Binary.toBase64;
-  hexToArrayBuffer = Binary.fromHex;
-  arrayBufferToHex = Binary.toHex;
-  camelize = camelCase;
-  hyphenate = paramCase;
-  (function(Time2) {
-    Time2.millisecond = 1;
-    Time2.second = 1000;
-    Time2.minute = Time2.second * 60;
-    Time2.hour = Time2.minute * 60;
-    Time2.day = Time2.hour * 24;
-    Time2.week = Time2.day * 7;
-    let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
-    function setTimezoneOffset(offset) {
-      timezoneOffset = offset;
-    }
-    Time2.setTimezoneOffset = setTimezoneOffset;
-    function getTimezoneOffset() {
-      return timezoneOffset;
-    }
-    Time2.getTimezoneOffset = getTimezoneOffset;
-    function getDateNumber(date = /* @__PURE__ */ new Date, offset) {
-      if (typeof date === "number")
-        date = new Date(date);
-      if (offset === undefined)
-        offset = timezoneOffset;
-      return Math.floor((date.valueOf() / Time2.minute - offset) / 1440);
-    }
-    Time2.getDateNumber = getDateNumber;
-    function fromDateNumber(value, offset) {
-      const date = new Date(value * Time2.day);
-      if (offset === undefined)
-        offset = timezoneOffset;
-      return new Date(+date + offset * Time2.minute);
-    }
-    Time2.fromDateNumber = fromDateNumber;
-    const numeric = /\d+(?:\.\d+)?/.source;
-    const timeRegExp = new RegExp(`^${[
-      "w(?:eek(?:s)?)?",
-      "d(?:ay(?:s)?)?",
-      "h(?:our(?:s)?)?",
-      "m(?:in(?:ute)?(?:s)?)?",
-      "s(?:ec(?:ond)?(?:s)?)?"
-    ].map((unit) => `(${numeric}${unit})?`).join("")}$`);
-    function parseTime(source) {
-      const capture = timeRegExp.exec(source);
-      if (!capture)
-        return 0;
-      return (parseFloat(capture[1]) * Time2.week || 0) + (parseFloat(capture[2]) * Time2.day || 0) + (parseFloat(capture[3]) * Time2.hour || 0) + (parseFloat(capture[4]) * Time2.minute || 0) + (parseFloat(capture[5]) * Time2.second || 0);
-    }
-    Time2.parseTime = parseTime;
-    function parseDate(date) {
-      const parsed = parseTime(date);
-      if (parsed)
-        date = Date.now() + parsed;
-      else if (/^\d{1,2}(:\d{1,2}){1,2}$/.test(date))
-        date = `${(/* @__PURE__ */ new Date()).toLocaleDateString()}-${date}`;
-      else if (/^\d{1,2}-\d{1,2}-\d{1,2}(:\d{1,2}){1,2}$/.test(date))
-        date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
-      return date ? new Date(date) : /* @__PURE__ */ new Date;
-    }
-    Time2.parseDate = parseDate;
-    function format(ms) {
-      const abs = Math.abs(ms);
-      if (abs >= Time2.day - Time2.hour / 2)
-        return Math.round(ms / Time2.day) + "d";
-      else if (abs >= Time2.hour - Time2.minute / 2)
-        return Math.round(ms / Time2.hour) + "h";
-      else if (abs >= Time2.minute - Time2.second / 2)
-        return Math.round(ms / Time2.minute) + "m";
-      else if (abs >= Time2.second)
-        return Math.round(ms / Time2.second) + "s";
-      return ms + "ms";
-    }
-    Time2.format = format;
-    function toDigits(source, length = 2) {
-      return source.toString().padStart(length, "0");
-    }
-    Time2.toDigits = toDigits;
-    function template(template2, time = /* @__PURE__ */ new Date) {
-      return template2.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
-    }
-    Time2.template = template;
-  })(Time || (Time = {}));
-});
-
-// packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
-var require_lib = __commonJS(function(exports, module) {
-  var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
-  var kSchema = Symbol.for("schemastery");
-  var kValidationError = Symbol.for("ValidationError");
-  globalThis.__schemastery_index__ ??= 0;
-  globalThis.__schemastery_refs__ = undefined;
-  var ValidationError = class extends TypeError {
-    options;
-    name = "ValidationError";
-    constructor(message, options) {
-      let prefix = "$";
-      for (const segment of options.path || [])
-        if (typeof segment === "string")
-          prefix += "." + segment;
-        else if (typeof segment === "number")
-          prefix += "[" + segment + "]";
-        else if (typeof segment === "symbol")
-          prefix += `[Symbol(${segment.toString()})]`;
-      if (prefix.startsWith("."))
-        prefix = prefix.slice(1);
-      super((prefix === "$" ? "" : `${prefix} `) + message);
-      this.options = options;
-    }
-    static is(error) {
-      return !!error?.[kValidationError];
-    }
-  };
-  Object.defineProperty(ValidationError.prototype, kValidationError, { value: true });
-  var Schema = function(options) {
-    const schema = function(data, options2 = {}) {
-      return Schema.resolve(data, schema, options2)[0];
-    };
-    if (options.refs) {
-      const refs = (0, _deepseek_ai_cosmokit.valueMap)(options.refs, (options2) => new Schema(options2));
-      const getRef = (uid) => refs[uid];
-      for (const key in refs) {
-        const options2 = refs[key];
-        options2.sKey = getRef(options2.sKey);
-        options2.inner = getRef(options2.inner);
-        options2.list = options2.list && options2.list.map(getRef);
-        options2.dict = options2.dict && (0, _deepseek_ai_cosmokit.valueMap)(options2.dict, getRef);
-      }
-      return refs[options.uid];
-    }
-    Object.assign(schema, options);
-    if (typeof schema.callback === "string")
-      try {
-        schema.callback = new Function("return " + schema.callback)();
-      } catch {}
-    Object.defineProperty(schema, "uid", { value: globalThis.__schemastery_index__++ });
-    Object.setPrototypeOf(schema, Schema.prototype);
-    schema.meta ||= {};
-    schema.toString = schema.toString.bind(schema);
-    return schema;
-  };
-  Schema.prototype = Object.create(Function.prototype);
-  Schema.prototype[kSchema] = true;
-  Object.defineProperty(Schema.prototype, "~standard", { get() {
-    return {
-      version: 1,
-      vendor: "schemastery",
-      validate: (value) => {
-        try {
-          return { value: Schema.resolve(value, this, {})[0] };
-        } catch (error) {
-          if (ValidationError.is(error))
-            return { issues: [{
-              message: error.message,
-              path: error.options.path
-            }] };
-          throw error;
-        }
-      }
-    };
-  } });
-  Schema.ValidationError = ValidationError;
-  Schema.prototype.toJSON = function toJSON() {
-    if (globalThis.__schemastery_refs__) {
-      globalThis.__schemastery_refs__[this.uid] ??= JSON.parse(JSON.stringify({ ...this }));
-      return this.uid;
-    }
-    globalThis.__schemastery_refs__ = { [this.uid]: { ...this } };
-    globalThis.__schemastery_refs__[this.uid] = JSON.parse(JSON.stringify({ ...this }));
-    const result = {
-      uid: this.uid,
-      refs: globalThis.__schemastery_refs__
-    };
-    globalThis.__schemastery_refs__ = undefined;
-    return result;
-  };
-  Schema.prototype.set = function set(key, value) {
-    this.dict[key] = value;
-    return this;
-  };
-  Schema.prototype.push = function push(value) {
-    this.list.push(value);
-    return this;
-  };
-  function mergeDesc(original, messages) {
-    const result = typeof original === "string" ? { "": original } : { ...original };
-    for (const locale in messages) {
-      const value = messages[locale];
-      if (value?.$description || value?.$desc)
-        result[locale] = value.$description || value.$desc;
-      else if (typeof value === "string")
-        result[locale] = value;
-    }
-    return result;
-  }
-  function getInner(value) {
-    return value?.$value ?? value?.$inner;
-  }
-  function extractKeys(data) {
-    return (0, _deepseek_ai_cosmokit.filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
-  }
-  Schema.prototype.i18n = function i18n(messages) {
-    const schema = Schema(this);
-    const desc = mergeDesc(schema.meta.description, messages);
-    if (Object.keys(desc).length)
-      schema.meta.description = desc;
-    if (schema.dict)
-      schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(schema.dict, (inner, key) => {
-        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
-      });
-    if (schema.list)
-      schema.list = schema.list.map((inner, index) => {
-        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data = {}) => {
-          if (Array.isArray(getInner(data)))
-            return getInner(data)[index];
-          if (Array.isArray(data))
-            return data[index];
-          return extractKeys(data);
-        }));
-      });
-    if (schema.inner)
-      schema.inner = schema.inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => {
-        if (getInner(data))
-          return getInner(data);
-        return extractKeys(data);
-      }));
-    if (schema.sKey)
-      schema.sKey = schema.sKey.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => data?.$key));
-    return schema;
-  };
-  Schema.prototype.extra = function extra(key, value) {
-    const schema = Schema(this);
-    schema.meta = {
-      ...schema.meta,
-      [key]: value
-    };
-    return schema;
-  };
-  for (const key of [
-    "required",
-    "disabled",
-    "collapse",
-    "hidden",
-    "loose"
-  ])
-    Object.assign(Schema.prototype, { [key](value = true) {
-      const schema = Schema(this);
-      schema.meta = {
-        ...schema.meta,
-        [key]: value
-      };
-      return schema;
-    } });
-  Schema.prototype.deprecated = function deprecated() {
-    const schema = Schema(this);
-    schema.meta.badges ||= [];
-    schema.meta.badges.push({
-      text: "deprecated",
-      type: "danger"
-    });
-    return schema;
-  };
-  Schema.prototype.experimental = function experimental() {
-    const schema = Schema(this);
-    schema.meta.badges ||= [];
-    schema.meta.badges.push({
-      text: "experimental",
-      type: "warning"
-    });
-    return schema;
-  };
-  Schema.prototype.pattern = function pattern(regexp) {
-    const schema = Schema(this);
-    const pattern2 = (0, _deepseek_ai_cosmokit.pick)(regexp, ["source", "flags"]);
-    schema.meta = {
-      ...schema.meta,
-      pattern: pattern2
-    };
-    return schema;
-  };
-  Schema.prototype.simplify = function simplify(value) {
-    if ((0, _deepseek_ai_cosmokit.deepEqual)(value, this.meta.default, this.type === "dict"))
-      return null;
-    if ((0, _deepseek_ai_cosmokit.isNullable)(value))
-      return value;
-    if (this.type === "object" || this.type === "dict") {
-      const result = {};
-      for (const key in value) {
-        const item = (this.type === "object" ? this.dict[key] : this.inner)?.simplify(value[key]);
-        if (this.type === "dict" || !(0, _deepseek_ai_cosmokit.isNullable)(item))
-          result[key] = item;
-      }
-      if ((0, _deepseek_ai_cosmokit.deepEqual)(result, this.meta.default, this.type === "dict"))
-        return null;
-      return result;
-    } else if (this.type === "array" || this.type === "tuple") {
-      const result = [];
-      value.forEach((value2, index) => {
-        const schema = this.type === "array" ? this.inner : this.list[index];
-        const item = schema ? schema.simplify(value2) : value2;
-        result.push(item);
-      });
-      return result;
-    } else if (this.type === "intersect") {
-      const result = {};
-      for (const item of this.list)
-        Object.assign(result, item.simplify(value));
-      return result;
-    } else if (this.type === "union")
-      for (const schema of this.list)
-        try {
-          Schema.resolve(value, schema, {});
-          return schema.simplify(value);
-        } catch {}
-    return value;
-  };
-  Schema.prototype.toString = function toString(inline) {
-    return formatters[this.type]?.(this, inline) ?? `Schema<${this.type}>`;
-  };
-  Schema.prototype.role = function role(role, extra) {
-    const schema = Schema(this);
-    schema.meta = {
-      ...schema.meta,
-      role,
-      extra
-    };
-    return schema;
-  };
-  for (const key of [
-    "default",
-    "link",
-    "comment",
-    "description",
-    "max",
-    "min",
-    "step"
-  ])
-    Object.assign(Schema.prototype, { [key](value) {
-      const schema = Schema(this);
-      schema.meta = {
-        ...schema.meta,
-        [key]: value
-      };
-      return schema;
-    } });
-  var resolvers = {};
-  Schema.extend = function extend(type, resolve2) {
-    resolvers[type] = resolve2;
-  };
-  Schema.resolve = function resolve2(data, schema, options = {}, strict = false) {
-    if (!schema)
-      return [data];
-    if (options.ignore?.(data, schema))
-      return [data];
-    if ((0, _deepseek_ai_cosmokit.isNullable)(data) && schema.type !== "lazy") {
-      if (schema.meta.required)
-        throw new ValidationError(`missing required value`, options);
-      let current = schema;
-      let fallback = schema.meta.default;
-      while (current?.type === "intersect" && (0, _deepseek_ai_cosmokit.isNullable)(fallback)) {
-        current = current.list[0];
-        fallback = current?.meta.default;
-      }
-      if ((0, _deepseek_ai_cosmokit.isNullable)(fallback))
-        return [data];
-      data = (0, _deepseek_ai_cosmokit.clone)(fallback);
-    }
-    const callback = resolvers[schema.type];
-    if (!callback)
-      throw new ValidationError(`unsupported type "${schema.type}"`, options);
-    try {
-      return callback(data, schema, options, strict);
-    } catch (error) {
-      if (!schema.meta.loose)
-        throw error;
-      return [schema.meta.default];
-    }
-  };
-  Schema.from = function from(source) {
-    if ((0, _deepseek_ai_cosmokit.isNullable)(source))
-      return Schema.any();
-    else if ([
-      "string",
-      "number",
-      "boolean"
-    ].includes(typeof source))
-      return Schema.const(source).required();
-    else if (source[kSchema])
-      return source;
-    else if (typeof source === "function")
-      switch (source) {
-        case String:
-          return Schema.string().required();
-        case Number:
-          return Schema.number().required();
-        case Boolean:
-          return Schema.boolean().required();
-        case Function:
-          return Schema.function().required();
-        default:
-          return Schema.is(source).required();
-      }
-    else
-      throw new TypeError(`cannot infer schema from ${source}`);
-  };
-  Schema.lazy = function lazy(builder) {
-    const toJSON = () => {
-      if (!schema.inner[kSchema]) {
-        schema.inner = schema.builder();
-        schema.inner.meta = {
-          ...schema.meta,
-          ...schema.inner.meta
-        };
-      }
-      return schema.inner.toJSON();
-    };
-    const schema = new Schema({
-      type: "lazy",
-      builder,
-      inner: { toJSON }
-    });
-    return schema;
-  };
-  Schema.natural = function natural() {
-    return Schema.number().step(1).min(0);
-  };
-  Schema.percent = function percent() {
-    return Schema.number().step(0.01).min(0).max(1).role("slider");
-  };
-  Schema.date = function date() {
-    return Schema.union([Schema.is(Date), Schema.transform(Schema.string().role("datetime"), (value, options) => {
-      const date2 = new Date(value);
-      if (isNaN(+date2))
-        throw new ValidationError(`invalid date "${value}"`, options);
-      return date2;
-    }, true)]);
-  };
-  Schema.regExp = function regExp(flag = "") {
-    return Schema.union([Schema.is(RegExp), Schema.transform(Schema.string().role("regexp", { flag }), (value, options) => {
-      try {
-        return new RegExp(value, flag);
-      } catch (e) {
-        throw new ValidationError(e.message, options);
-      }
-    }, true)]);
-  };
-  Schema.arrayBuffer = function arrayBuffer(encoding) {
-    return Schema.union([
-      Schema.is(ArrayBuffer),
-      Schema.is(SharedArrayBuffer),
-      Schema.transform(Schema.any(), (value, options) => {
-        if (_deepseek_ai_cosmokit.Binary.isSource(value))
-          return _deepseek_ai_cosmokit.Binary.fromSource(value);
-        throw new ValidationError(`expected ArrayBufferSource but got ${value}`, options);
-      }, true),
-      ...encoding ? [Schema.transform(Schema.string(), (value, options) => {
-        try {
-          return encoding === "base64" ? _deepseek_ai_cosmokit.Binary.fromBase64(value) : _deepseek_ai_cosmokit.Binary.fromHex(value);
-        } catch (e) {
-          throw new ValidationError(e.message, options);
-        }
-      }, true)] : []
-    ]);
-  };
-  Schema.extend("lazy", (data, schema, options, strict) => {
-    if (!schema.inner[kSchema]) {
-      schema.inner = schema.builder();
-      schema.inner.meta = {
-        ...schema.meta,
-        ...schema.inner.meta
-      };
-    }
-    return Schema.resolve(data, schema.inner, options, strict);
-  });
-  Schema.extend("any", (data) => {
-    return [data];
-  });
-  Schema.extend("never", (data, _, options) => {
-    throw new ValidationError(`expected nullable but got ${data}`, options);
-  });
-  Schema.extend("const", (data, { value }, options) => {
-    if ((0, _deepseek_ai_cosmokit.deepEqual)(data, value))
-      return [value];
-    throw new ValidationError(`expected ${value} but got ${data}`, options);
-  });
-  function checkWithinRange(data, meta, description, options, skipMin = false) {
-    const { max = Infinity, min = -Infinity } = meta;
-    if (data > max)
-      throw new ValidationError(`expected ${description} <= ${max} but got ${data}`, options);
-    if (data < min && !skipMin)
-      throw new ValidationError(`expected ${description} >= ${min} but got ${data}`, options);
-  }
-  Schema.extend("string", (data, { meta }, options) => {
-    if (typeof data !== "string")
-      throw new ValidationError(`expected string but got ${data}`, options);
-    if (meta.pattern) {
-      const regexp = new RegExp(meta.pattern.source, meta.pattern.flags);
-      if (!regexp.test(data))
-        throw new ValidationError(`expect string to match regexp ${regexp}`, options);
-    }
-    checkWithinRange(data.length, meta, "string length", options);
-    return [data];
-  });
-  function decimalShift(data, digits) {
-    const str = data.toString();
-    if (str.includes("e"))
-      return data * Math.pow(10, digits);
-    const index = str.indexOf(".");
-    if (index === -1)
-      return data * Math.pow(10, digits);
-    const frac = str.slice(index + 1);
-    const integer = str.slice(0, index);
-    if (frac.length <= digits)
-      return +(integer + frac.padEnd(digits, "0"));
-    return +(integer + frac.slice(0, digits) + "." + frac.slice(digits));
-  }
-  function isMultipleOf(data, min, step) {
-    step = Math.abs(step);
-    if (!/^\d+\.\d+$/.test(step.toString()))
-      return (data - min) % step === 0;
-    const index = step.toString().indexOf(".");
-    const digits = step.toString().slice(index + 1).length;
-    return Math.abs(decimalShift(data, digits) - decimalShift(min, digits)) % decimalShift(step, digits) === 0;
-  }
-  Schema.extend("number", (data, { meta }, options) => {
-    if (typeof data !== "number")
-      throw new ValidationError(`expected number but got ${data}`, options);
-    checkWithinRange(data, meta, "number", options);
-    const { step } = meta;
-    if (step && !isMultipleOf(data, meta.min ?? 0, step))
-      throw new ValidationError(`expected number multiple of ${step} but got ${data}`, options);
-    return [data];
-  });
-  Schema.extend("boolean", (data, _, options) => {
-    if (typeof data === "boolean")
-      return [data];
-    throw new ValidationError(`expected boolean but got ${data}`, options);
-  });
-  Schema.extend("bitset", (data, { bits, meta }, options) => {
-    let value = 0, keys = [];
-    if (typeof data === "number") {
-      value = data;
-      for (const key in bits)
-        if (data & bits[key])
-          keys.push(key);
-    } else if (Array.isArray(data)) {
-      keys = data;
-      for (const key of keys) {
-        if (typeof key !== "string")
-          throw new ValidationError(`expected string but got ${key}`, options);
-        if (key in bits)
-          value |= bits[key];
-      }
-    } else
-      throw new ValidationError(`expected number or array but got ${data}`, options);
-    if (value === meta.default)
-      return [value];
-    return [value, keys];
-  });
-  Schema.extend("function", (data, _, options) => {
-    if (typeof data === "function")
-      return [data];
-    throw new ValidationError(`expected function but got ${data}`, options);
-  });
-  Schema.extend("is", (data, { constructor }, options) => {
-    if (typeof constructor === "function") {
-      if (data instanceof constructor)
-        return [data];
-      throw new ValidationError(`expected ${constructor.name} but got ${data}`, options);
-    } else {
-      if ((0, _deepseek_ai_cosmokit.isNullable)(data))
-        throw new ValidationError(`expected ${constructor} but got ${data}`, options);
-      let prototype = Object.getPrototypeOf(data);
-      while (prototype) {
-        if (prototype.constructor?.name === constructor)
-          return [data];
-        prototype = Object.getPrototypeOf(prototype);
-      }
-      throw new ValidationError(`expected ${constructor} but got ${data}`, options);
-    }
-  });
-  function property(data, key, schema, options) {
-    try {
-      const [value, adapted] = Schema.resolve(data[key], schema, {
-        ...options,
-        path: [...options.path || [], key]
-      });
-      if (adapted !== undefined)
-        data[key] = adapted;
-      return value;
-    } catch (e) {
-      if (!options?.autofix)
-        throw e;
-      delete data[key];
-      return schema.meta.default;
-    }
-  }
-  Schema.extend("array", (data, { inner, meta }, options) => {
-    if (!Array.isArray(data))
-      throw new ValidationError(`expected array but got ${data}`, options);
-    checkWithinRange(data.length, meta, "array length", options, !(0, _deepseek_ai_cosmokit.isNullable)(inner.meta.default));
-    return [data.map((_, index) => property(data, index, inner, options))];
-  });
-  Schema.extend("dict", (data, { inner, sKey }, options, strict) => {
-    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
-      throw new ValidationError(`expected object but got ${data}`, options);
-    const result = {};
-    for (const key in data) {
-      let rKey;
-      try {
-        rKey = Schema.resolve(key, sKey, options)[0];
-      } catch (error) {
-        if (strict)
-          continue;
-        throw error;
-      }
-      result[rKey] = property(data, key, inner, options);
-      data[rKey] = data[key];
-      if (key !== rKey)
-        delete data[key];
-    }
-    return [result];
-  });
-  Schema.extend("tuple", (data, { list }, options, strict) => {
-    if (!Array.isArray(data))
-      throw new ValidationError(`expected array but got ${data}`, options);
-    const result = list.map((inner, index) => property(data, index, inner, options));
-    if (strict)
-      return [result];
-    result.push(...data.slice(list.length));
-    return [result];
-  });
-  function merge(result, data) {
-    for (const key in data) {
-      if (key in result)
-        continue;
-      result[key] = data[key];
-    }
-  }
-  Schema.extend("object", (data, { dict }, options, strict) => {
-    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
-      throw new ValidationError(`expected object but got ${data}`, options);
-    const result = {};
-    for (const key in dict) {
-      const value = property(data, key, dict[key], options);
-      if (!(0, _deepseek_ai_cosmokit.isNullable)(value) || key in data)
-        result[key] = value;
-    }
-    if (!strict)
-      merge(result, data);
-    return [result];
-  });
-  Schema.extend("union", (data, { list, toString }, options, strict) => {
-    const messages = [];
-    for (const inner of list)
-      try {
-        return Schema.resolve(data, inner, options, strict);
-      } catch (error) {
-        messages.push(error);
-      }
-    throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
-  });
-  Schema.extend("intersect", (data, { list, toString }, options, strict) => {
-    if (!list.length)
-      return [data];
-    let result;
-    for (const inner of list) {
-      const value = Schema.resolve(data, inner, options, true)[0];
-      if ((0, _deepseek_ai_cosmokit.isNullable)(value))
-        continue;
-      if ((0, _deepseek_ai_cosmokit.isNullable)(result))
-        result = value;
-      else if (typeof result !== typeof value)
-        throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
-      else if (typeof value === "object")
-        merge(result ??= {}, value);
-      else if (result !== value)
-        throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
-    }
-    if (!strict && (0, _deepseek_ai_cosmokit.isPlainObject)(data))
-      merge(result, data);
-    return [result];
-  });
-  Schema.extend("transform", (data, { inner, callback, preserve }, options) => {
-    const [result, adapted = data] = Schema.resolve(data, inner, options, true);
-    if (preserve)
-      return [callback(result)];
-    else
-      return [callback(result), callback(adapted)];
-  });
-  var formatters = {};
-  function defineMethod(name, keys, format) {
-    formatters[name] = format;
-    Object.assign(Schema, { [name](...args) {
-      const schema = new Schema({ type: name });
-      keys.forEach((key, index) => {
-        switch (key) {
-          case "sKey":
-            schema.sKey = args[index] ?? Schema.string();
-            break;
-          case "inner":
-            schema.inner = Schema.from(args[index]);
-            break;
-          case "list":
-            schema.list = args[index].map(Schema.from);
-            break;
-          case "dict":
-            schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(args[index], Schema.from);
-            break;
-          case "bits":
-            schema.bits = {};
-            for (const key2 in args[index]) {
-              if (typeof args[index][key2] !== "number")
-                continue;
-              schema.bits[key2] = args[index][key2];
-            }
-            break;
-          case "callback": {
-            const callback = schema.callback = args[index];
-            callback["toJSON"] ||= () => callback.toString();
-            break;
-          }
-          case "constructor": {
-            const constructor = schema.constructor = args[index];
-            if (typeof constructor === "function")
-              constructor["toJSON"] ||= () => constructor["name"];
-            break;
-          }
-          default:
-            schema[key] = args[index];
-        }
-      });
-      if (name === "object" || name === "dict")
-        schema.meta.default = {};
-      else if (name === "array" || name === "tuple")
-        schema.meta.default = [];
-      else if (name === "bitset")
-        schema.meta.default = 0;
-      return schema;
-    } });
-  }
-  defineMethod("is", ["constructor"], ({ constructor }) => {
-    if (typeof constructor === "function")
-      return constructor.name;
-    else
-      return constructor;
-  });
-  defineMethod("any", [], () => "any");
-  defineMethod("never", [], () => "never");
-  defineMethod("const", ["value"], ({ value }) => typeof value === "string" ? JSON.stringify(value) : value);
-  defineMethod("string", [], () => "string");
-  defineMethod("number", [], () => "number");
-  defineMethod("boolean", [], () => "boolean");
-  defineMethod("bitset", ["bits"], () => "bitset");
-  defineMethod("function", [], () => "function");
-  defineMethod("array", ["inner"], ({ inner }) => `${inner.toString(true)}[]`);
-  defineMethod("dict", ["inner", "sKey"], ({ inner, sKey }) => `{ [key: ${sKey.toString()}]: ${inner.toString()} }`);
-  defineMethod("tuple", ["list"], ({ list }) => `[${list.map((inner) => inner.toString()).join(", ")}]`);
-  defineMethod("object", ["dict"], ({ dict }) => {
-    if (Object.keys(dict).length === 0)
-      return "{}";
-    return `{ ${Object.entries(dict).map(([key, inner]) => {
-      return `${key}${inner.meta.required ? "" : "?"}: ${inner.toString()}`;
-    }).join(", ")} }`;
-  });
-  defineMethod("union", ["list"], ({ list }, inline) => {
-    const result = list.map(({ toString: format }) => format()).join(" | ");
-    return inline ? `(${result})` : result;
-  });
-  defineMethod("intersect", ["list"], ({ list }) => {
-    return `${list.map((inner) => inner.toString(true)).join(" & ")}`;
-  });
-  defineMethod("transform", [
-    "inner",
-    "callback",
-    "preserve"
-  ], ({ inner }, isInner) => inner.toString(isInner));
-  module.exports = Schema;
-});
-
 // packages/mpd-config-plugin/src/index.ts
 import { existsSync as existsSync2, readFileSync as readFileSync2, watch } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname as dirname2, join as join2, resolve as resolve2 } from "node:path";
+import { basename, dirname as dirname2, join as join3, resolve as resolve4 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+}
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_TOOLS = "tools";
+function dshSeamInject(...names) {
+  return [...names];
+}
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -1168,11 +236,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -1185,7 +265,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -1193,6 +273,46 @@ function workspaceRootsOf(agents) {
   }
 }
 function noop() {}
+var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
+function goalSnapshotOf(view) {
+  if (view === null || view === undefined || typeof view !== "object")
+    return;
+  const raw = view;
+  if (typeof raw.id !== "string" || raw.id === "")
+    return;
+  const snapshot = {
+    id: raw.id,
+    revision: typeof raw.revision === "number" ? raw.revision : 0,
+    objective: typeof raw.objective === "string" ? raw.objective : "",
+    phase: raw.phase === "paused" || raw.phase === "blocked" || raw.phase === "complete" ? raw.phase : "active",
+    maxGoalRounds: typeof raw.maxGoalRounds === "number" ? raw.maxGoalRounds : 0
+  };
+  if (typeof raw.roundsStarted === "number")
+    snapshot.roundsStarted = raw.roundsStarted;
+  if (raw.activation === "armed" || raw.activation === "disarmed")
+    snapshot.activation = raw.activation;
+  const reason = raw.blockedReason;
+  if (reason !== null && typeof reason === "object") {
+    const code = reason.code;
+    const message = reason.message;
+    if (typeof code === "string" && code !== "" && typeof message === "string" && message !== "") {
+      snapshot.blockedReason = { code, message };
+    }
+  }
+  return snapshot;
+}
+function goalValueOf(value) {
+  if (value === null || value === undefined || typeof value !== "object")
+    return { goal: null };
+  const raw = value;
+  const activation = raw.activation === "armed" || raw.activation === "disarmed" ? raw.activation : undefined;
+  const goal = goalSnapshotOf(raw.goal);
+  if (goal === undefined)
+    return activation === undefined ? { goal: null } : { goal: null, activation };
+  if (activation !== undefined)
+    goal.activation = activation;
+  return activation === undefined ? { goal } : { goal, activation };
+}
 function scopeOfAgentContext(agent) {
   let context;
   try {
@@ -1336,6 +456,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -1361,16 +482,18 @@ function createDshAdapter(ctx, config = {}) {
     }
     return liveAgents().find((candidate) => candidate.id === id);
   }
-  const engineCache = new Map;
+  const engineCache = new WeakMap;
   function compactionEngineForAgent(agentId) {
     const id = String(agentId ?? "");
     if (id === "")
       return;
-    const cached = engineCache.get(id);
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    const cached = engineCache.get(agent);
     if (cached !== undefined)
       return cached;
-    const agent = liveAgent(id);
-    const scoped = agent?.ctx;
+    const scoped = agent.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -1381,7 +504,7 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(id, engine);
+    engineCache.set(agent, engine);
     return engine;
   }
   function onEvent(event, handler) {
@@ -1401,7 +524,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -1492,6 +615,210 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
     return;
   }
+  const nativeMembers = new Map;
+  const officialMembers = new Map;
+  const neverAborted = () => new AbortController().signal;
+  const sessionIdOfAgent = (agent) => {
+    const session = agent?.session;
+    return typeof session?.id === "string" ? session.id : "";
+  };
+  function nativeTeamExecutor(reason, ready) {
+    const subagentsOf = () => service("subagents");
+    return {
+      kind: "native",
+      reason,
+      providers: () => {
+        try {
+          const list = subagentsOf()?.providers;
+          if (typeof list !== "function")
+            return [];
+          const names = list.call(subagentsOf());
+          return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
+        } catch {
+          return [];
+        }
+      },
+      async spawn(caller, request) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        if (typeof subagents.startContinuable !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member");
+        }
+        const spec = {
+          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          label: `${request.name} · ${request.teamId}`,
+          request: {
+            prompt: textBlock(request.prompt),
+            parent: caller,
+            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+          },
+          signal: request.signal ?? neverAborted()
+        };
+        const started = await subagents.startContinuable.call(subagents, spec);
+        const handle = String(started?.childId ?? started?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
+        return { handle, executor: "native" };
+      },
+      async send(caller, handle, content, signal) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`);
+        if (typeof subagents.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await subagents.sendMessage.call(subagents, caller, handle, textBlock(content), { signal: signal ?? neverAborted() });
+      },
+      async interrupt(caller, handle) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot interrupt team member "${handle}"`);
+        if (typeof subagents.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt() — cannot interrupt a team member");
+        }
+        subagents.interrupt.call(subagents, handle, { kind: "ancestor", agent: caller });
+      },
+      membership(agent) {
+        const id = sessionIdOfAgent(agent);
+        if (id === "")
+          return;
+        const entry = nativeMembers.get(id);
+        return entry === undefined ? undefined : { teamId: entry.teamId, role: "teammate", name: entry.name };
+      },
+      members: () => [...nativeMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function officialTeamExecutor() {
+    return {
+      kind: "official",
+      reason: "official: the native seams are unavailable, so the mounted Agent Teams service executes the team",
+      providers: () => [],
+      async spawn(caller, request) {
+        const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`);
+        if (typeof teams.spawnTeammate !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member");
+        }
+        const spawned = await teams.spawnTeammate.call(teams, caller, {
+          name: request.name,
+          description: request.description === "" ? request.name : request.description,
+          prompt: request.prompt,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+        const handle = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the official backend raised "${request.name}" but reported no id`);
+        officialMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name });
+        return { handle, executor: "official" };
+      },
+      async send(caller, handle, content, signal) {
+        const teams = requireService("agentTeams", `cannot deliver a message to team member "${handle}"`);
+        if (typeof teams.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await teams.sendMessage.call(teams, caller, { target: handle, content: textBlock(content), ...signal === undefined ? {} : { signal } });
+      },
+      async interrupt(caller, handle) {
+        const teams = requireService("agentTeams", `cannot interrupt team member "${handle}"`);
+        if (typeof teams.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no interrupt() — cannot interrupt a team member");
+        }
+        const target = officialMembers.get(handle)?.name ?? handle;
+        teams.interrupt.call(teams, caller, target);
+      },
+      membership: (agent) => {
+        const teams = service("agentTeams");
+        const tryMembership = teams?.tryMembership;
+        if (typeof tryMembership !== "function")
+          return;
+        try {
+          const membership = tryMembership.call(teams, agent);
+          if (membership === undefined || membership === null)
+            return;
+          const role = membership.role;
+          if (role !== "lead" && role !== "teammate")
+            return;
+          return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+        } catch {
+          return;
+        }
+      },
+      members: () => [...officialMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function scopedToolRegistry(agent) {
+    const scope = scopeOfAgentContext(agent);
+    if (scope === undefined)
+      return;
+    try {
+      const tools = scope.context?.tools;
+      return typeof tools?.execute === "function" ? tools : undefined;
+    } catch {
+      return;
+    }
+  }
+  function hostToolDefinition(name) {
+    try {
+      const hostView = service("tools");
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name);
+    try {
+      return scoped.get(name, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name) {
+    if (hostToolDefinition(name) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined);
+  }
+  function projectToolResult(raw) {
+    const record = raw;
+    if (record?.isError === true) {
+      const error = record.error;
+      return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
+    }
+    return { ok: true, isError: false, value: record?.value, raw };
+  }
+  async function executeToolForAgent(input) {
+    const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
+    const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
+    const scoped = input.agent === undefined ? undefined : scopedToolRegistry(input.agent);
+    if (scoped !== undefined) {
+      try {
+        const raw = await scoped.execute({
+          name: input.name,
+          arguments: input.arguments ?? {},
+          callId,
+          ...signal === undefined ? {} : { signal },
+          ...input.agent === undefined ? {} : { agent: input.agent }
+        });
+        return { result: projectToolResult(raw), via: "agent-scope" };
+      } catch (error) {
+        return { result: { ok: false, isError: true, error: errorMessage(error) }, via: "agent-scope" };
+      }
+    }
+    const result = await adapter.executeTool({
+      name: input.name,
+      arguments: input.arguments ?? {},
+      callId,
+      ...signal === undefined ? {} : { signal },
+      ...input.agent === undefined ? {} : { agent: input.agent },
+      ...input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }
+    });
+    return { result, via: "host-plane" };
+  }
   const adapter = {
     capabilities() {
       const tools = service("tools");
@@ -1504,6 +831,7 @@ function createDshAdapter(ctx, config = {}) {
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
+      const goalService = service("goals");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -1536,6 +864,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsRegisterHost: typeof tools?.register === "function",
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
         subagentsContinuable: typeof subagents?.startContinuable === "function",
+        teamExecutorNative: typeof subagents?.startContinuable === "function",
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -1551,16 +880,84 @@ function createDshAdapter(ctx, config = {}) {
         team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
         teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
-        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function",
+        goals: typeof goalService?.get === "function",
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
       };
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
+    goalState(agent) {
+      const goals = service("goals");
+      if (goals === undefined || typeof goals.get !== "function")
+        return;
+      try {
+        const view = goals.get(agent);
+        return goalSnapshotOf(view) ?? null;
+      } catch {
+        return;
+      }
+    },
+    async goalControl(input) {
+      if (input === null || typeof input !== "object" || typeof input.action !== "string") {
+        return { ok: false, isError: true, error: "goalControl requires an action" };
+      }
+      if (input.agent === undefined)
+        return { ok: false, isError: true, error: "goal tools require a calling agent" };
+      let goalId = input.goalId;
+      let revision = input.revision;
+      const needsRef = input.action !== "create" && input.action !== "read";
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        const current = await executeToolForAgent({ name: "get_goal", agent: input.agent, callId: input.callId, signal: input.signal, timeoutMs: input.timeoutMs });
+        if (!current.result.ok)
+          return { ok: false, isError: true, error: current.result.error, via: current.via, raw: current.result.raw };
+        const read = goalValueOf(current.result.value);
+        if (read.goal === null)
+          return { ok: false, isError: true, error: "no current goal", via: current.via, raw: current.result.raw };
+        goalId = goalId ?? read.goal.id;
+        revision = revision ?? read.goal.revision;
+      }
+      const toolName = input.action === "read" ? "get_goal" : input.action === "create" ? "create_goal" : "update_goal";
+      const toolArguments = input.action === "read" ? {} : input.action === "create" ? { objective: input.objective, ...input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds } } : {
+        goal_id: goalId,
+        revision,
+        action: input.action,
+        ...input.objective === undefined ? {} : { objective: input.objective },
+        ...input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds },
+        ...input.blockedReason === undefined ? {} : { blocked_reason: input.blockedReason }
+      };
+      if (input.action === "create" && (typeof input.objective !== "string" || input.objective.trim() === "")) {
+        return { ok: false, isError: true, error: "goalControl create requires a non-empty objective" };
+      }
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        return { ok: false, isError: true, error: "goalControl " + input.action + " requires an exact goal id and revision" };
+      }
+      const call = await executeToolForAgent({
+        name: toolName,
+        arguments: toolArguments,
+        agent: input.agent,
+        callId: input.callId,
+        signal: input.signal,
+        timeoutMs: input.timeoutMs
+      });
+      if (!call.result.ok)
+        return { ok: false, isError: call.result.isError, error: call.result.error, via: call.via, raw: call.result.raw };
+      const value = goalValueOf(call.result.value);
+      return {
+        ok: true,
+        isError: false,
+        goal: value.goal,
+        ...value.activation === undefined ? {} : { activation: value.activation },
+        via: call.via,
+        raw: call.result.raw
+      };
+    },
     llmListModels(provider) {
       const llm = requireService("llm", 'cannot list the models of provider "' + provider + '"');
       if (typeof llm.listModels !== "function")
@@ -1686,20 +1083,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },
@@ -1718,12 +1107,7 @@ function createDshAdapter(ctx, config = {}) {
           ...signal === undefined ? {} : { signal },
           ...input.agent === undefined ? {} : { agent: input.agent }
         });
-        const isError = raw?.isError === true;
-        if (isError) {
-          const error = raw?.error;
-          return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
-        }
-        return { ok: true, isError: false, value: raw?.value, raw };
+        return projectToolResult(raw);
       } catch (error) {
         return { ok: false, isError: true, error: errorMessage(error) };
       }
@@ -1791,6 +1175,22 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamExecutor() {
+      const override = (() => {
+        try {
+          const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_TEAM_EXECUTOR : undefined;
+          return typeof raw === "string" && raw.trim() !== "" ? raw.trim().toLowerCase() : undefined;
+        } catch {
+          return;
+        }
+      })();
+      const nativeReady = typeof service("subagents")?.startContinuable === "function";
+      const officialReady = service("agentTeams") !== undefined;
+      const chosen = override === "official" && officialReady ? "official" : override === "native" && nativeReady ? "native" : nativeReady ? "native" : officialReady ? "official" : "native";
+      if (chosen === "official")
+        return officialTeamExecutor();
+      return nativeTeamExecutor(nativeReady ? override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native" : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse", nativeReady);
     },
     teamService() {
       const teams = service("agentTeams");
@@ -2014,7 +1414,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -2033,7 +1433,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -2124,14 +1524,949 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 var SERVICE_NAME = "mpdDsh";
-function resolveDshAdapter(ctx) {
-  const get = typeof ctx?.get === "function" ? ctx.get : undefined;
-  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME);
-  return mounted ?? createDshAdapter(ctx);
+function resolveDshAdapter(ctx, options = {}) {
+  const mounted = probeMpdDsh(ctx, true);
+  if (mounted.value !== undefined)
+    return mounted.value;
+  const warn = options.warn ?? ((line) => rowLogLine("mpd-dsh-adapter", line));
+  warn(probeMpdDsh(ctx, false).missing ? adapterFallbackWarning() : adapterPendingWarning());
+  return createDshAdapter(ctx);
+}
+var ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter";
+function adapterPendingWarning() {
+  return "ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber" + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE" + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted" + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).";
+}
+function adapterFallbackWarning() {
+  return "ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided" + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter" + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)" + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working," + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the" + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).";
+}
+function probeMpdDsh(ctx, strict) {
+  const get = ctx?.get;
+  if (typeof get !== "function")
+    return { missing: true };
+  try {
+    const value = get.call(ctx, SERVICE_NAME, strict);
+    return value === undefined || value === null ? { missing: true } : { value, missing: false };
+  } catch {
+    return { missing: true };
+  }
 }
 
+// packages/mpd-schemastery/lib/cosmokit.ts
+function isNullable(value) {
+  return value === null || value === undefined;
+}
+function isPlainObject(data) {
+  return data && typeof data === "object" && !Array.isArray(data);
+}
+function filterKeys(object, filter) {
+  return Object.fromEntries(Object.entries(object).filter(([key, value]) => filter(key, value)));
+}
+function mapValues(object, transform) {
+  return Object.fromEntries(Object.entries(object).map(([key, value]) => [key, transform(value, key)]));
+}
+function pick(source, keys, forced) {
+  if (!keys)
+    return { ...source };
+  const result = {};
+  for (const key of keys)
+    if (forced || source[key] !== undefined)
+      result[key] = source[key];
+  return result;
+}
+function is(type, value) {
+  if (arguments.length === 1)
+    return (value2) => is(type, value2);
+  return type in globalThis && value instanceof globalThis[type] || Object.prototype.toString.call(value).slice(8, -1) === type;
+}
+function isArrayBufferLike(value) {
+  return is("ArrayBuffer", value) || is("SharedArrayBuffer", value);
+}
+function isArrayBufferSource(value) {
+  return isArrayBufferLike(value) || ArrayBuffer.isView(value);
+}
+var Binary;
+(function(Binary2) {
+  Binary2.is = isArrayBufferLike;
+  Binary2.isSource = isArrayBufferSource;
+  function fromSource(source) {
+    if (ArrayBuffer.isView(source))
+      return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+    else
+      return source;
+  }
+  Binary2.fromSource = fromSource;
+  function toBase64(source) {
+    source = fromSource(source);
+    if (typeof Buffer !== "undefined")
+      return Buffer.from(source).toString("base64");
+    let binary = "";
+    const bytes = new Uint8Array(source);
+    for (let i = 0;i < bytes.byteLength; i++)
+      binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+  Binary2.toBase64 = toBase64;
+  function fromBase64(source) {
+    if (typeof Buffer !== "undefined")
+      return fromSource(Buffer.from(source, "base64"));
+    return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
+  }
+  Binary2.fromBase64 = fromBase64;
+  function toHex(source) {
+    source = fromSource(source);
+    if (typeof Buffer !== "undefined")
+      return Buffer.from(source).toString("hex");
+    return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+  Binary2.toHex = toHex;
+  function fromHex(source) {
+    if (typeof Buffer !== "undefined")
+      return fromSource(Buffer.from(source, "hex"));
+    const hex = source.length % 2 === 0 ? source : source.slice(0, source.length - 1);
+    const buffer = [];
+    for (let i = 0;i < hex.length; i += 2)
+      buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
+    return Uint8Array.from(buffer).buffer;
+  }
+  Binary2.fromHex = fromHex;
+})(Binary || (Binary = {}));
+var base64ToArrayBuffer = Binary.fromBase64;
+var arrayBufferToBase64 = Binary.toBase64;
+var hexToArrayBuffer = Binary.fromHex;
+var arrayBufferToHex = Binary.toHex;
+function clone(source, refs = /* @__PURE__ */ new Map) {
+  if (!source || typeof source !== "object")
+    return source;
+  if (is("Date", source))
+    return new Date(source.valueOf());
+  if (is("RegExp", source))
+    return new RegExp(source.source, source.flags);
+  if (isArrayBufferLike(source))
+    return source.slice(0);
+  if (ArrayBuffer.isView(source))
+    return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+  const cached = refs.get(source);
+  if (cached)
+    return cached;
+  if (Array.isArray(source)) {
+    const result2 = [];
+    refs.set(source, result2);
+    source.forEach((value, index) => {
+      result2[index] = Reflect.apply(clone, null, [value, refs]);
+    });
+    return result2;
+  }
+  const result = Object.create(Object.getPrototypeOf(source));
+  refs.set(source, result);
+  for (const key of Reflect.ownKeys(source)) {
+    const descriptor = { ...Reflect.getOwnPropertyDescriptor(source, key) };
+    if ("value" in descriptor)
+      descriptor.value = Reflect.apply(clone, null, [descriptor.value, refs]);
+    Reflect.defineProperty(result, key, descriptor);
+  }
+  return result;
+}
+function deepEqual(a, b, strict) {
+  if (a === b)
+    return true;
+  if (!strict && isNullable(a) && isNullable(b))
+    return true;
+  if (typeof a !== typeof b)
+    return false;
+  if (typeof a !== "object")
+    return false;
+  if (!a || !b)
+    return false;
+  function check(test, then) {
+    return test(a) ? test(b) ? then(a, b) : false : test(b) ? false : undefined;
+  }
+  return check(Array.isArray, (a2, b2) => a2.length === b2.length && a2.every((item, index) => deepEqual(item, b2[index]))) ?? check(is("Date"), (a2, b2) => a2.valueOf() === b2.valueOf()) ?? check(is("RegExp"), (a2, b2) => a2.source === b2.source && a2.flags === b2.flags) ?? check(isArrayBufferLike, (a2, b2) => {
+    if (a2.byteLength !== b2.byteLength)
+      return false;
+    const viewA = new Uint8Array(a2);
+    const viewB = new Uint8Array(b2);
+    for (let i = 0;i < viewA.length; i++)
+      if (viewA[i] !== viewB[i])
+        return false;
+    return true;
+  }) ?? Object.keys({
+    ...a,
+    ...b
+  }).every((key) => deepEqual(a[key], b[key], strict));
+}
+var Time;
+(function(Time2) {
+  Time2.millisecond = 1;
+  Time2.second = 1000;
+  Time2.minute = Time2.second * 60;
+  Time2.hour = Time2.minute * 60;
+  Time2.day = Time2.hour * 24;
+  Time2.week = Time2.day * 7;
+  let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
+  function setTimezoneOffset(offset) {
+    timezoneOffset = offset;
+  }
+  Time2.setTimezoneOffset = setTimezoneOffset;
+  function getTimezoneOffset() {
+    return timezoneOffset;
+  }
+  Time2.getTimezoneOffset = getTimezoneOffset;
+  function getDateNumber(date = /* @__PURE__ */ new Date, offset) {
+    if (typeof date === "number")
+      date = new Date(date);
+    if (offset === undefined)
+      offset = timezoneOffset;
+    return Math.floor((date.valueOf() / Time2.minute - offset) / 1440);
+  }
+  Time2.getDateNumber = getDateNumber;
+  function fromDateNumber(value, offset) {
+    const date = new Date(value * Time2.day);
+    if (offset === undefined)
+      offset = timezoneOffset;
+    return new Date(+date + offset * Time2.minute);
+  }
+  Time2.fromDateNumber = fromDateNumber;
+  const numeric = /\d+(?:\.\d+)?/.source;
+  const timeRegExp = new RegExp(`^${[
+    "w(?:eek(?:s)?)?",
+    "d(?:ay(?:s)?)?",
+    "h(?:our(?:s)?)?",
+    "m(?:in(?:ute)?(?:s)?)?",
+    "s(?:ec(?:ond)?(?:s)?)?"
+  ].map((unit) => `(${numeric}${unit})?`).join("")}$`);
+  function parseTime(source) {
+    const capture = timeRegExp.exec(source);
+    if (!capture)
+      return 0;
+    return (parseFloat(capture[1]) * Time2.week || 0) + (parseFloat(capture[2]) * Time2.day || 0) + (parseFloat(capture[3]) * Time2.hour || 0) + (parseFloat(capture[4]) * Time2.minute || 0) + (parseFloat(capture[5]) * Time2.second || 0);
+  }
+  Time2.parseTime = parseTime;
+  function parseDate(date) {
+    const parsed = parseTime(date);
+    if (parsed)
+      date = Date.now() + parsed;
+    else if (/^\d{1,2}(:\d{1,2}){1,2}$/.test(date))
+      date = `${(/* @__PURE__ */ new Date()).toLocaleDateString()}-${date}`;
+    else if (/^\d{1,2}-\d{1,2}-\d{1,2}(:\d{1,2}){1,2}$/.test(date))
+      date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
+    return date ? new Date(date) : /* @__PURE__ */ new Date;
+  }
+  Time2.parseDate = parseDate;
+  function format(ms) {
+    const abs = Math.abs(ms);
+    if (abs >= Time2.day - Time2.hour / 2)
+      return Math.round(ms / Time2.day) + "d";
+    else if (abs >= Time2.hour - Time2.minute / 2)
+      return Math.round(ms / Time2.hour) + "h";
+    else if (abs >= Time2.minute - Time2.second / 2)
+      return Math.round(ms / Time2.minute) + "m";
+    else if (abs >= Time2.second)
+      return Math.round(ms / Time2.second) + "s";
+    return ms + "ms";
+  }
+  Time2.format = format;
+  function toDigits(source, length = 2) {
+    return source.toString().padStart(length, "0");
+  }
+  Time2.toDigits = toDigits;
+  function template(template2, time = /* @__PURE__ */ new Date) {
+    return template2.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
+  }
+  Time2.template = template;
+})(Time || (Time = {}));
+
+// packages/mpd-schemastery/lib/index.ts
+var kSchema = Symbol.for("schemastery");
+var kValidationError = Symbol.for("ValidationError");
+globalThis.__schemastery_index__ ??= 0;
+globalThis.__schemastery_refs__ = undefined;
+var ValidationError = class extends TypeError {
+  options;
+  name = "ValidationError";
+  constructor(message, options) {
+    let prefix = "$";
+    for (const segment of options.path || [])
+      if (typeof segment === "string")
+        prefix += "." + segment;
+      else if (typeof segment === "number")
+        prefix += "[" + segment + "]";
+      else if (typeof segment === "symbol")
+        prefix += `[Symbol(${segment.toString()})]`;
+    if (prefix.startsWith("."))
+      prefix = prefix.slice(1);
+    super((prefix === "$" ? "" : `${prefix} `) + message);
+    this.options = options;
+  }
+  static is(error) {
+    return !!error?.[kValidationError];
+  }
+};
+Object.defineProperty(ValidationError.prototype, kValidationError, { value: true });
+var Schema = function(options) {
+  const schema = function(data, options2 = {}) {
+    return Schema.resolve(data, schema, options2)[0];
+  };
+  if (options.refs) {
+    const refs = mapValues(options.refs, (options2) => new Schema(options2));
+    const getRef = (uid) => refs[uid];
+    for (const key in refs) {
+      const options2 = refs[key];
+      options2.sKey = getRef(options2.sKey);
+      options2.inner = getRef(options2.inner);
+      options2.list = options2.list && options2.list.map(getRef);
+      options2.dict = options2.dict && mapValues(options2.dict, getRef);
+    }
+    return refs[options.uid];
+  }
+  Object.assign(schema, options);
+  if (typeof schema.callback === "string")
+    try {
+      schema.callback = new Function("return " + schema.callback)();
+    } catch {}
+  Object.defineProperty(schema, "uid", { value: globalThis.__schemastery_index__++ });
+  Object.setPrototypeOf(schema, Schema.prototype);
+  schema.meta ||= {};
+  schema.toString = schema.toString.bind(schema);
+  return schema;
+};
+Schema.prototype = Object.create(Function.prototype);
+Schema.prototype[kSchema] = true;
+Object.defineProperty(Schema.prototype, "~standard", { get() {
+  return {
+    version: 1,
+    vendor: "schemastery",
+    validate: (value) => {
+      try {
+        return { value: Schema.resolve(value, this, {})[0] };
+      } catch (error) {
+        if (ValidationError.is(error))
+          return { issues: [{
+            message: error.message,
+            path: error.options.path
+          }] };
+        throw error;
+      }
+    }
+  };
+} });
+Schema.ValidationError = ValidationError;
+Schema.prototype.toJSON = function toJSON() {
+  if (globalThis.__schemastery_refs__) {
+    globalThis.__schemastery_refs__[this.uid] ??= JSON.parse(JSON.stringify({ ...this }));
+    return this.uid;
+  }
+  globalThis.__schemastery_refs__ = { [this.uid]: { ...this } };
+  globalThis.__schemastery_refs__[this.uid] = JSON.parse(JSON.stringify({ ...this }));
+  const result = {
+    uid: this.uid,
+    refs: globalThis.__schemastery_refs__
+  };
+  globalThis.__schemastery_refs__ = undefined;
+  return result;
+};
+Schema.prototype.set = function set(key, value) {
+  this.dict[key] = value;
+  return this;
+};
+Schema.prototype.push = function push(value) {
+  this.list.push(value);
+  return this;
+};
+function mergeDesc(original, messages) {
+  const result = typeof original === "string" ? { "": original } : { ...original };
+  for (const locale in messages) {
+    const value = messages[locale];
+    if (value?.$description || value?.$desc)
+      result[locale] = value.$description || value.$desc;
+    else if (typeof value === "string")
+      result[locale] = value;
+  }
+  return result;
+}
+function getInner(value) {
+  return value?.$value ?? value?.$inner;
+}
+function extractKeys(data) {
+  return filterKeys(data ?? {}, (key) => !key.startsWith("$"));
+}
+Schema.prototype.i18n = function i18n(messages) {
+  const schema = Schema(this);
+  const desc = mergeDesc(schema.meta.description, messages);
+  if (Object.keys(desc).length)
+    schema.meta.description = desc;
+  if (schema.dict)
+    schema.dict = mapValues(schema.dict, (inner, key) => {
+      return inner.i18n(mapValues(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
+    });
+  if (schema.list)
+    schema.list = schema.list.map((inner, index) => {
+      return inner.i18n(mapValues(messages, (data = {}) => {
+        if (Array.isArray(getInner(data)))
+          return getInner(data)[index];
+        if (Array.isArray(data))
+          return data[index];
+        return extractKeys(data);
+      }));
+    });
+  if (schema.inner)
+    schema.inner = schema.inner.i18n(mapValues(messages, (data) => {
+      if (getInner(data))
+        return getInner(data);
+      return extractKeys(data);
+    }));
+  if (schema.sKey)
+    schema.sKey = schema.sKey.i18n(mapValues(messages, (data) => data?.$key));
+  return schema;
+};
+Schema.prototype.extra = function extra(key, value) {
+  const schema = Schema(this);
+  schema.meta = {
+    ...schema.meta,
+    [key]: value
+  };
+  return schema;
+};
+for (const key of [
+  "required",
+  "disabled",
+  "collapse",
+  "hidden",
+  "loose"
+])
+  Object.assign(Schema.prototype, { [key](value = true) {
+    const schema = Schema(this);
+    schema.meta = {
+      ...schema.meta,
+      [key]: value
+    };
+    return schema;
+  } });
+Schema.prototype.deprecated = function deprecated() {
+  const schema = Schema(this);
+  schema.meta.badges ||= [];
+  schema.meta.badges.push({
+    text: "deprecated",
+    type: "danger"
+  });
+  return schema;
+};
+Schema.prototype.experimental = function experimental() {
+  const schema = Schema(this);
+  schema.meta.badges ||= [];
+  schema.meta.badges.push({
+    text: "experimental",
+    type: "warning"
+  });
+  return schema;
+};
+Schema.prototype.pattern = function pattern(regexp) {
+  const schema = Schema(this);
+  const pattern2 = pick(regexp, ["source", "flags"]);
+  schema.meta = {
+    ...schema.meta,
+    pattern: pattern2
+  };
+  return schema;
+};
+Schema.prototype.simplify = function simplify(value) {
+  if (deepEqual(value, this.meta.default, this.type === "dict"))
+    return null;
+  if (isNullable(value))
+    return value;
+  if (this.type === "object" || this.type === "dict") {
+    const result = {};
+    for (const key in value) {
+      const item = (this.type === "object" ? this.dict[key] : this.inner)?.simplify(value[key]);
+      if (this.type === "dict" || !isNullable(item))
+        result[key] = item;
+    }
+    if (deepEqual(result, this.meta.default, this.type === "dict"))
+      return null;
+    return result;
+  } else if (this.type === "array" || this.type === "tuple") {
+    const result = [];
+    value.forEach((value2, index) => {
+      const schema = this.type === "array" ? this.inner : this.list[index];
+      const item = schema ? schema.simplify(value2) : value2;
+      result.push(item);
+    });
+    return result;
+  } else if (this.type === "intersect") {
+    const result = {};
+    for (const item of this.list)
+      Object.assign(result, item.simplify(value));
+    return result;
+  } else if (this.type === "union")
+    for (const schema of this.list)
+      try {
+        Schema.resolve(value, schema, {});
+        return schema.simplify(value);
+      } catch {}
+  return value;
+};
+Schema.prototype.toString = function toString(inline) {
+  return formatters[this.type]?.(this, inline) ?? `Schema<${this.type}>`;
+};
+Schema.prototype.role = function role(role, extra2) {
+  const schema = Schema(this);
+  schema.meta = {
+    ...schema.meta,
+    role,
+    extra: extra2
+  };
+  return schema;
+};
+for (const key of [
+  "default",
+  "link",
+  "comment",
+  "description",
+  "max",
+  "min",
+  "step"
+])
+  Object.assign(Schema.prototype, { [key](value) {
+    const schema = Schema(this);
+    schema.meta = {
+      ...schema.meta,
+      [key]: value
+    };
+    return schema;
+  } });
+var resolvers = {};
+Schema.extend = function extend(type, resolve3) {
+  resolvers[type] = resolve3;
+};
+Schema.resolve = function resolve3(data, schema, options = {}, strict = false) {
+  if (!schema)
+    return [data];
+  if (options.ignore?.(data, schema))
+    return [data];
+  if (isNullable(data) && schema.type !== "lazy") {
+    if (schema.meta.required)
+      throw new ValidationError(`missing required value`, options);
+    let current = schema;
+    let fallback = schema.meta.default;
+    while (current?.type === "intersect" && isNullable(fallback)) {
+      current = current.list[0];
+      fallback = current?.meta.default;
+    }
+    if (isNullable(fallback))
+      return [data];
+    data = clone(fallback);
+  }
+  const callback = resolvers[schema.type];
+  if (!callback)
+    throw new ValidationError(`unsupported type "${schema.type}"`, options);
+  try {
+    return callback(data, schema, options, strict);
+  } catch (error) {
+    if (!schema.meta.loose)
+      throw error;
+    return [schema.meta.default];
+  }
+};
+Schema.from = function from(source) {
+  if (isNullable(source))
+    return Schema.any();
+  else if ([
+    "string",
+    "number",
+    "boolean"
+  ].includes(typeof source))
+    return Schema.const(source).required();
+  else if (source[kSchema])
+    return source;
+  else if (typeof source === "function")
+    switch (source) {
+      case String:
+        return Schema.string().required();
+      case Number:
+        return Schema.number().required();
+      case Boolean:
+        return Schema.boolean().required();
+      case Function:
+        return Schema.function().required();
+      default:
+        return Schema.is(source).required();
+    }
+  else
+    throw new TypeError(`cannot infer schema from ${source}`);
+};
+Schema.lazy = function lazy(builder) {
+  const toJSON2 = () => {
+    if (!schema.inner[kSchema]) {
+      schema.inner = schema.builder();
+      schema.inner.meta = {
+        ...schema.meta,
+        ...schema.inner.meta
+      };
+    }
+    return schema.inner.toJSON();
+  };
+  const schema = new Schema({
+    type: "lazy",
+    builder,
+    inner: { toJSON: toJSON2 }
+  });
+  return schema;
+};
+Schema.natural = function natural() {
+  return Schema.number().step(1).min(0);
+};
+Schema.percent = function percent() {
+  return Schema.number().step(0.01).min(0).max(1).role("slider");
+};
+Schema.date = function date() {
+  return Schema.union([Schema.is(Date), Schema.transform(Schema.string().role("datetime"), (value, options) => {
+    const date2 = new Date(value);
+    if (isNaN(+date2))
+      throw new ValidationError(`invalid date "${value}"`, options);
+    return date2;
+  }, true)]);
+};
+Schema.regExp = function regExp(flag = "") {
+  return Schema.union([Schema.is(RegExp), Schema.transform(Schema.string().role("regexp", { flag }), (value, options) => {
+    try {
+      return new RegExp(value, flag);
+    } catch (e) {
+      throw new ValidationError(e.message, options);
+    }
+  }, true)]);
+};
+Schema.arrayBuffer = function arrayBuffer(encoding) {
+  return Schema.union([
+    Schema.is(ArrayBuffer),
+    Schema.is(SharedArrayBuffer),
+    Schema.transform(Schema.any(), (value, options) => {
+      if (Binary.isSource(value))
+        return Binary.fromSource(value);
+      throw new ValidationError(`expected ArrayBufferSource but got ${value}`, options);
+    }, true),
+    ...encoding ? [Schema.transform(Schema.string(), (value, options) => {
+      try {
+        return encoding === "base64" ? Binary.fromBase64(value) : Binary.fromHex(value);
+      } catch (e) {
+        throw new ValidationError(e.message, options);
+      }
+    }, true)] : []
+  ]);
+};
+Schema.extend("lazy", (data, schema, options, strict) => {
+  if (!schema.inner[kSchema]) {
+    schema.inner = schema.builder();
+    schema.inner.meta = {
+      ...schema.meta,
+      ...schema.inner.meta
+    };
+  }
+  return Schema.resolve(data, schema.inner, options, strict);
+});
+Schema.extend("any", (data) => {
+  return [data];
+});
+Schema.extend("never", (data, _, options) => {
+  throw new ValidationError(`expected nullable but got ${data}`, options);
+});
+Schema.extend("const", (data, { value }, options) => {
+  if (deepEqual(data, value))
+    return [value];
+  throw new ValidationError(`expected ${value} but got ${data}`, options);
+});
+function checkWithinRange(data, meta, description, options, skipMin = false) {
+  const { max = Infinity, min = -Infinity } = meta;
+  if (data > max)
+    throw new ValidationError(`expected ${description} <= ${max} but got ${data}`, options);
+  if (data < min && !skipMin)
+    throw new ValidationError(`expected ${description} >= ${min} but got ${data}`, options);
+}
+Schema.extend("string", (data, { meta }, options) => {
+  if (typeof data !== "string")
+    throw new ValidationError(`expected string but got ${data}`, options);
+  if (meta.pattern) {
+    const regexp = new RegExp(meta.pattern.source, meta.pattern.flags);
+    if (!regexp.test(data))
+      throw new ValidationError(`expect string to match regexp ${regexp}`, options);
+  }
+  checkWithinRange(data.length, meta, "string length", options);
+  return [data];
+});
+function decimalShift(data, digits) {
+  const str = data.toString();
+  if (str.includes("e"))
+    return data * Math.pow(10, digits);
+  const index = str.indexOf(".");
+  if (index === -1)
+    return data * Math.pow(10, digits);
+  const frac = str.slice(index + 1);
+  const integer = str.slice(0, index);
+  if (frac.length <= digits)
+    return +(integer + frac.padEnd(digits, "0"));
+  return +(integer + frac.slice(0, digits) + "." + frac.slice(digits));
+}
+function isMultipleOf(data, min, step) {
+  step = Math.abs(step);
+  if (!/^\d+\.\d+$/.test(step.toString()))
+    return (data - min) % step === 0;
+  const index = step.toString().indexOf(".");
+  const digits = step.toString().slice(index + 1).length;
+  return Math.abs(decimalShift(data, digits) - decimalShift(min, digits)) % decimalShift(step, digits) === 0;
+}
+Schema.extend("number", (data, { meta }, options) => {
+  if (typeof data !== "number")
+    throw new ValidationError(`expected number but got ${data}`, options);
+  checkWithinRange(data, meta, "number", options);
+  const { step } = meta;
+  if (step && !isMultipleOf(data, meta.min ?? 0, step))
+    throw new ValidationError(`expected number multiple of ${step} but got ${data}`, options);
+  return [data];
+});
+Schema.extend("boolean", (data, _, options) => {
+  if (typeof data === "boolean")
+    return [data];
+  throw new ValidationError(`expected boolean but got ${data}`, options);
+});
+Schema.extend("bitset", (data, { bits, meta }, options) => {
+  let value = 0, keys = [];
+  if (typeof data === "number") {
+    value = data;
+    for (const key in bits)
+      if (data & bits[key])
+        keys.push(key);
+  } else if (Array.isArray(data)) {
+    keys = data;
+    for (const key of keys) {
+      if (typeof key !== "string")
+        throw new ValidationError(`expected string but got ${key}`, options);
+      if (key in bits)
+        value |= bits[key];
+    }
+  } else
+    throw new ValidationError(`expected number or array but got ${data}`, options);
+  if (value === meta.default)
+    return [value];
+  return [value, keys];
+});
+Schema.extend("function", (data, _, options) => {
+  if (typeof data === "function")
+    return [data];
+  throw new ValidationError(`expected function but got ${data}`, options);
+});
+Schema.extend("is", (data, { constructor }, options) => {
+  if (typeof constructor === "function") {
+    if (data instanceof constructor)
+      return [data];
+    throw new ValidationError(`expected ${constructor.name} but got ${data}`, options);
+  } else {
+    if (isNullable(data))
+      throw new ValidationError(`expected ${constructor} but got ${data}`, options);
+    let prototype = Object.getPrototypeOf(data);
+    while (prototype) {
+      if (prototype.constructor?.name === constructor)
+        return [data];
+      prototype = Object.getPrototypeOf(prototype);
+    }
+    throw new ValidationError(`expected ${constructor} but got ${data}`, options);
+  }
+});
+function property(data, key, schema, options) {
+  try {
+    const [value, adapted] = Schema.resolve(data[key], schema, {
+      ...options,
+      path: [...options.path || [], key]
+    });
+    if (adapted !== undefined)
+      data[key] = adapted;
+    return value;
+  } catch (e) {
+    if (!options?.autofix)
+      throw e;
+    delete data[key];
+    return schema.meta.default;
+  }
+}
+Schema.extend("array", (data, { inner, meta }, options) => {
+  if (!Array.isArray(data))
+    throw new ValidationError(`expected array but got ${data}`, options);
+  checkWithinRange(data.length, meta, "array length", options, !isNullable(inner.meta.default));
+  return [data.map((_, index) => property(data, index, inner, options))];
+});
+Schema.extend("dict", (data, { inner, sKey }, options, strict) => {
+  if (!isPlainObject(data))
+    throw new ValidationError(`expected object but got ${data}`, options);
+  const result = {};
+  for (const key in data) {
+    let rKey;
+    try {
+      rKey = Schema.resolve(key, sKey, options)[0];
+    } catch (error) {
+      if (strict)
+        continue;
+      throw error;
+    }
+    result[rKey] = property(data, key, inner, options);
+    data[rKey] = data[key];
+    if (key !== rKey)
+      delete data[key];
+  }
+  return [result];
+});
+Schema.extend("tuple", (data, { list }, options, strict) => {
+  if (!Array.isArray(data))
+    throw new ValidationError(`expected array but got ${data}`, options);
+  const result = list.map((inner, index) => property(data, index, inner, options));
+  if (strict)
+    return [result];
+  result.push(...data.slice(list.length));
+  return [result];
+});
+function merge(result, data) {
+  for (const key in data) {
+    if (key in result)
+      continue;
+    result[key] = data[key];
+  }
+}
+Schema.extend("object", (data, { dict }, options, strict) => {
+  if (!isPlainObject(data))
+    throw new ValidationError(`expected object but got ${data}`, options);
+  const result = {};
+  for (const key in dict) {
+    const value = property(data, key, dict[key], options);
+    if (!isNullable(value) || key in data)
+      result[key] = value;
+  }
+  if (!strict)
+    merge(result, data);
+  return [result];
+});
+Schema.extend("union", (data, { list, toString: toString2 }, options, strict) => {
+  const messages = [];
+  for (const inner of list)
+    try {
+      return Schema.resolve(data, inner, options, strict);
+    } catch (error) {
+      messages.push(error);
+    }
+  throw new ValidationError(`expected ${toString2()} but got ${JSON.stringify(data)}`, options);
+});
+Schema.extend("intersect", (data, { list, toString: toString2 }, options, strict) => {
+  if (!list.length)
+    return [data];
+  let result;
+  for (const inner of list) {
+    const value = Schema.resolve(data, inner, options, true)[0];
+    if (isNullable(value))
+      continue;
+    if (isNullable(result))
+      result = value;
+    else if (typeof result !== typeof value)
+      throw new ValidationError(`expected ${toString2()} but got ${JSON.stringify(data)}`, options);
+    else if (typeof value === "object")
+      merge(result ??= {}, value);
+    else if (result !== value)
+      throw new ValidationError(`expected ${toString2()} but got ${JSON.stringify(data)}`, options);
+  }
+  if (!strict && isPlainObject(data))
+    merge(result, data);
+  return [result];
+});
+Schema.extend("transform", (data, { inner, callback, preserve }, options) => {
+  const [result, adapted = data] = Schema.resolve(data, inner, options, true);
+  if (preserve)
+    return [callback(result)];
+  else
+    return [callback(result), callback(adapted)];
+});
+var formatters = {};
+function defineMethod(name, keys, format) {
+  formatters[name] = format;
+  Object.assign(Schema, { [name](...args) {
+    const schema = new Schema({ type: name });
+    keys.forEach((key, index) => {
+      switch (key) {
+        case "sKey":
+          schema.sKey = args[index] ?? Schema.string();
+          break;
+        case "inner":
+          schema.inner = Schema.from(args[index]);
+          break;
+        case "list":
+          schema.list = args[index].map(Schema.from);
+          break;
+        case "dict":
+          schema.dict = mapValues(args[index], Schema.from);
+          break;
+        case "bits":
+          schema.bits = {};
+          for (const key2 in args[index]) {
+            if (typeof args[index][key2] !== "number")
+              continue;
+            schema.bits[key2] = args[index][key2];
+          }
+          break;
+        case "callback": {
+          const callback = schema.callback = args[index];
+          callback["toJSON"] ||= () => callback.toString();
+          break;
+        }
+        case "constructor": {
+          const constructor = schema.constructor = args[index];
+          if (typeof constructor === "function")
+            constructor["toJSON"] ||= () => constructor["name"];
+          break;
+        }
+        default:
+          schema[key] = args[index];
+      }
+    });
+    if (name === "object" || name === "dict")
+      schema.meta.default = {};
+    else if (name === "array" || name === "tuple")
+      schema.meta.default = [];
+    else if (name === "bitset")
+      schema.meta.default = 0;
+    return schema;
+  } });
+}
+defineMethod("is", ["constructor"], ({ constructor }) => {
+  if (typeof constructor === "function")
+    return constructor.name;
+  else
+    return constructor;
+});
+defineMethod("any", [], () => "any");
+defineMethod("never", [], () => "never");
+defineMethod("const", ["value"], ({ value }) => typeof value === "string" ? JSON.stringify(value) : value);
+defineMethod("string", [], () => "string");
+defineMethod("number", [], () => "number");
+defineMethod("boolean", [], () => "boolean");
+defineMethod("bitset", ["bits"], () => "bitset");
+defineMethod("function", [], () => "function");
+defineMethod("array", ["inner"], ({ inner }) => `${inner.toString(true)}[]`);
+defineMethod("dict", ["inner", "sKey"], ({ inner, sKey }) => `{ [key: ${sKey.toString()}]: ${inner.toString()} }`);
+defineMethod("tuple", ["list"], ({ list }) => `[${list.map((inner) => inner.toString()).join(", ")}]`);
+defineMethod("object", ["dict"], ({ dict }) => {
+  if (Object.keys(dict).length === 0)
+    return "{}";
+  return `{ ${Object.entries(dict).map(([key, inner]) => {
+    return `${key}${inner.meta.required ? "" : "?"}: ${inner.toString()}`;
+  }).join(", ")} }`;
+});
+defineMethod("union", ["list"], ({ list }, inline) => {
+  const result = list.map(({ toString: format }) => format()).join(" | ");
+  return inline ? `(${result})` : result;
+});
+defineMethod("intersect", ["list"], ({ list }) => {
+  return `${list.map((inner) => inner.toString(true)).join(" & ")}`;
+});
+defineMethod("transform", [
+  "inner",
+  "callback",
+  "preserve"
+], ({ inner }, isInner) => inner.toString(isInner));
+
 // packages/mpd-config-plugin/src/settings-schema.ts
-var import_schemastery = __toESM(require_lib(), 1);
 var SETTINGS_NS = "mpd";
 var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3", "slot4"];
 var TEAM_MODEL_SLOT_DEFAULTS = {
@@ -2146,34 +2481,35 @@ var TEAM_MODEL_FALLBACK_OPTIONS = {
   reasoningEffort: ["off", "low", "high", "max"]
 };
 function teamModelSlotSchema(slot) {
-  return import_schemastery.default.object({
-    provider: import_schemastery.default.string().default(slot.provider),
-    model: import_schemastery.default.string().default(slot.model),
-    reasoningEffort: import_schemastery.default.string().default(slot.reasoningEffort)
+  return Schema.object({
+    provider: Schema.string().default(slot.provider),
+    model: Schema.string().default(slot.model),
+    reasoningEffort: Schema.string().default(slot.reasoningEffort)
   });
 }
-var SettingsSchema = import_schemastery.default.object({
-  hashline: import_schemastery.default.object({ maxDiffChars: import_schemastery.default.number().default(20000) }),
-  commentChecker: import_schemastery.default.object({ autoCheck: import_schemastery.default.boolean().default(true) }),
-  ulw: import_schemastery.default.object({ maxRounds: import_schemastery.default.number().default(6) }),
-  memory: import_schemastery.default.object({ vcs: import_schemastery.default.union([import_schemastery.default.const("git"), import_schemastery.default.const("svn")]).default("git") }),
-  team: import_schemastery.default.object({ stateDir: import_schemastery.default.string().default(".mpd/team") }),
-  boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().default(".mpd") }),
-  teamModels: import_schemastery.default.object({
+var SettingsSchema = Schema.object({
+  hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
+  commentChecker: Schema.object({ autoCheck: Schema.boolean().default(true) }),
+  ulw: Schema.object({ maxRounds: Schema.number().default(6) }),
+  memory: Schema.object({ vcs: Schema.union([Schema.const("git"), Schema.const("svn")]).default("git") }),
+  team: Schema.object({ stateDir: Schema.string().default(".mpd/team") }),
+  boulder: Schema.object({ dir: Schema.string().required(false) }),
+  teamModels: Schema.object({
     slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
     slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
     slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
     slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
   }),
-  watchdog: import_schemastery.default.object({
-    enabled: import_schemastery.default.boolean().default(true),
-    warnSilenceMs: import_schemastery.default.number().default(600000),
-    tickIntervalMs: import_schemastery.default.number().default(15000),
-    warnStreakToEscalate: import_schemastery.default.number().default(6),
-    actionOnEscalate: import_schemastery.default.union([import_schemastery.default.const("pause"), import_schemastery.default.const("warn-only")]).default("warn-only"),
-    toolInFlightMaxMs: import_schemastery.default.number().default(900000),
-    holdTtlMs: import_schemastery.default.number().default(900000)
-  })
+  watchdog: Schema.object({
+    enabled: Schema.boolean().default(true),
+    warnSilenceMs: Schema.number().default(600000),
+    tickIntervalMs: Schema.number().default(15000),
+    warnStreakToEscalate: Schema.number().default(6),
+    actionOnEscalate: Schema.union([Schema.const("pause"), Schema.const("warn-only")]).default("warn-only"),
+    toolInFlightMaxMs: Schema.number().default(900000),
+    holdTtlMs: Schema.number().default(900000)
+  }),
+  tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
@@ -2278,15 +2614,13 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
-  ...TEAM_MODEL_KNOBS
+  ...TEAM_MODEL_KNOBS,
+  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];
 
-// packages/mpd-config-plugin/src/index.ts
-var import_schemastery2 = __toESM(require_lib(), 1);
-
 // packages/mpd-config-plugin/src/bridge.ts
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, mkdirSync as mkdirSync2, readFileSync, renameSync as renameSync2, statSync as statSync2, unlinkSync, writeFileSync } from "node:fs";
+import { dirname, join as join2 } from "node:path";
 
 // packages/mpd-config-plugin/src/jsonc-edit.ts
 var DELETE = Symbol.for("mpd.jsonc.delete");
@@ -2661,7 +2995,7 @@ function surgicalDelete(raw, path) {
   const spans = all.entries.map((entry) => {
     const start = entry.keyStart ?? entry.valueStart;
     const end = entry.valueEnd;
-    let from = start;
+    let from2 = start;
     let to = end;
     const tail = raw.slice(end);
     const commaAfter = /^\s*,/.exec(tail);
@@ -2671,9 +3005,9 @@ function surgicalDelete(raw, path) {
       const head = raw.slice(0, start);
       const commaBefore = /,\s*$/.exec(head);
       if (commaBefore !== null)
-        from = start - commaBefore[0].length;
+        from2 = start - commaBefore[0].length;
     }
-    return { from, to };
+    return { from: from2, to };
   }).sort((a, b) => b.from - a.from);
   let text = raw;
   for (const span of spans)
@@ -2764,7 +3098,7 @@ function targetFiles(roots, projectFile) {
   const seen = new Set;
   const out = [];
   for (const root of roots) {
-    const file = projectFile !== undefined && roots.length === 1 ? projectFile : join(root, ".mpd", "mpd.jsonc");
+    const file = projectFile !== undefined && roots.length === 1 ? projectFile : join2(root, ".mpd", "mpd.jsonc");
     if (seen.has(file))
       continue;
     seen.add(file);
@@ -2778,7 +3112,7 @@ function errnoOf(error) {
 }
 function isWritableFile(file) {
   try {
-    const info = statSync(file);
+    const info = statSync2(file);
     const mode = info.mode;
     if ((mode & 146) === 0)
       return { ok: false, reason: "EACCES", detail: "the target file has no write bit set" };
@@ -2789,7 +3123,7 @@ function isWritableFile(file) {
     const dir = dirname(file);
     try {
       if (!existsSync(dir))
-        mkdirSync(dir, { recursive: true });
+        mkdirSync2(dir, { recursive: true });
       return { ok: true };
     } catch (error2) {
       return { ok: false, reason: errnoOf(error2) ?? "EACCES", detail: `cannot create ${dir}: ${String(error2?.message ?? error2)}` };
@@ -2881,7 +3215,7 @@ function writeBackLeaves(targets, leaves, options = DEFAULT_BRIDGE_OPTIONS) {
       const temp = `${target.file}.mpd-bridge-${process.pid}-${attempt}.tmp`;
       try {
         writeFileSync(temp, text, "utf8");
-        renameSync(temp, target.file);
+        renameSync2(temp, target.file);
       } catch (error) {
         try {
           if (existsSync(temp))
@@ -2908,7 +3242,7 @@ function writeBackLeaves(targets, leaves, options = DEFAULT_BRIDGE_OPTIONS) {
 
 // packages/mpd-config-plugin/src/index.ts
 var name = "mpd-config";
-var inject = ["tools"];
+var inject = dshSeamInject(DSH_SEAM_TOOLS);
 var MARKER_PATH = ["bridge", "migratedRevision"];
 function stripJsonc(src) {
   let out = "";
@@ -3028,9 +3362,9 @@ function rowKnobLayer(config) {
   return layer;
 }
 function loadConfig(config, root, settingsSection) {
-  const dshHome = process.env.DSH_HOME ?? join2(homedir(), ".dsh");
-  const userFile = config.userFile ? resolve2(config.userFile) : join2(dshHome, "mpd.jsonc");
-  const projectFile = config.projectFile ? resolve2(config.projectFile) : join2(root, ".mpd", "mpd.jsonc");
+  const dshHome = process.env.DSH_HOME ?? join3(homedir(), ".dsh");
+  const userFile = config.userFile ? resolve4(config.userFile) : join3(dshHome, "mpd.jsonc");
+  const projectFile = config.projectFile ? resolve4(config.projectFile) : join3(root, ".mpd", "mpd.jsonc");
   const files = [userFile, projectFile];
   let merged = {};
   const errors = [];
@@ -3062,11 +3396,11 @@ function withTeamModelsDefaults(config) {
   return { ...raw, teamModels };
 }
 var knobDict = SettingsSchema.dict ?? {};
-var Config = markVolatile(import_schemastery2.default.object({
-  projectFile: import_schemastery2.default.string(),
-  userFile: import_schemastery2.default.string(),
-  writeBack: import_schemastery2.default.boolean().default(true),
-  settingsBridge: import_schemastery2.default.object({ writeBack: import_schemastery2.default.boolean().default(true) }),
+var Config = markVolatile(Schema.object({
+  projectFile: Schema.string(),
+  userFile: Schema.string(),
+  writeBack: Schema.boolean().default(true),
+  settingsBridge: Schema.object({ writeBack: Schema.boolean().default(true) }),
   ...knobDict
 }));
 apply.Config = Config;
@@ -3075,7 +3409,7 @@ function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   const warn = (message) => {
     try {
-      console.log(message);
+      rowLogLine("mpd-config", message);
       if (ctx.logger && typeof ctx.logger.warn === "function")
         ctx.logger.warn(message);
     } catch {}
@@ -3100,7 +3434,8 @@ function apply(ctx, config = {}) {
     writeBack: config.writeBack !== false && config.settingsBridge?.writeBack !== false && process.env.MPD_DSH_TUI_SETTINGS_BRIDGE !== "off",
     retries: DEFAULT_BRIDGE_OPTIONS.retries
   });
-  const projectFileFor = (root) => config.projectFile ? resolve2(config.projectFile) : join2(root, ".mpd", "mpd.jsonc");
+  const projectFileOverride = () => config.projectFile ? resolve4(config.projectFile) : undefined;
+  const projectFileFor = (root) => projectFileOverride() ?? join3(root, ".mpd", "mpd.jsonc");
   const readRoot = () => {
     const roots = dsh.workspaceRootsAll();
     return roots.length === 1 ? roots[0] : dsh.workspaceRoot();
@@ -3217,7 +3552,7 @@ function apply(ctx, config = {}) {
       warn(reportLine(disabled, "DISABLED"));
       return;
     }
-    const decision = resolveTargets(dsh.workspaceRootsAll());
+    const decision = resolveTargets(dsh.workspaceRootsAll(), projectFileOverride());
     if (decision.kind === "refuse") {
       const refused = { writtenTo: [], results: [], skipped: decision.reason, candidates: decision.candidates, applies: "restart", source, revision, at: new Date().toISOString() };
       bridge.report = refused;
@@ -3264,13 +3599,16 @@ function apply(ctx, config = {}) {
           timer.unref();
       };
       const watcher = watch(dir, listener);
-      watchers.set(file, () => {
+      const dispose = () => {
         if (timer !== undefined)
           clearTimeout(timer);
         try {
           watcher.close();
         } catch {}
-      });
+      };
+      watchers.set(file, dispose);
+      if (typeof ctx.effect === "function")
+        ctx.effect(() => dispose, "mpd-config: project-file watcher " + file);
     } catch {}
   }
   const migrate = () => {
@@ -3294,7 +3632,7 @@ function apply(ctx, config = {}) {
       bridge.migration = "already-migrated";
       return;
     }
-    const decision = resolveTargets(dsh.workspaceRootsAll());
+    const decision = resolveTargets(dsh.workspaceRootsAll(), projectFileOverride());
     if (decision.kind === "refuse") {
       bridge.migration = decision.reason === "no-live-session" ? "deferred-no-workspace" : `deferred-${decision.reason}`;
       if (decision.reason === "no-live-session")
@@ -3405,7 +3743,7 @@ function apply(ctx, config = {}) {
   });
   dsh.registerTool({
     name: "mpd_config_get",
-    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort.",
+    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a, v) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args, exec) => {

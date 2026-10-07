@@ -14,7 +14,7 @@
 // so the boot happens inside tmux and this process owns the whole lifecycle; the
 // profile is WARM in the sandbox root and is never silently reinstalled.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.11.1"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -22,13 +22,14 @@
 //   bun skills/dsh-qa/scripts/tui-mount.ts --self-test
 //   bun skills/dsh-qa/scripts/tui-mount.ts [--sandbox-root <dir>] [--fresh] [--install]
 // Evidence -> evidence/tui/lanes/<timestamp>/{result.json,output.log,*.pane.txt,tui-pane.log}
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import {
   REPO, artifactRevision, classifyAdmissionPane, crashSignatures, dumpConfig, extractBundles, gateTuiPrereqs,
-  laneEvidenceDir, makeChecks, manifestDigest, parseSandboxArgs, profileState, readSessionHeaders, runInSandbox,
-  runTuiSession, sandboxProjectKey, sessionStoreKeys, sha256File, tuiPrereqs, writeLaneEvidence, writeRevisionFile,
+  laneEvidenceDir, makeChecks, manifestDigest, parseSandboxArgs, profileState, provisionTuiHome, readSessionHeaders, runInSandbox,
+  runTuiSession, sandboxEnv, sandboxProjectKey, sessionStoreKeys, sha256File, tuiPrereqs, writeLaneEvidence, writeRevisionFile,
   writeSessionExcerpt,
 } from "./lib/tui-lane.ts"
 
@@ -36,6 +37,25 @@ import {
 const SLUG = "tui-mount"
 /** The expected patch layers, in composition order: base, the TUI host, then this bundle. */
 const EXPECTED_BUNDLES: readonly string[] = ["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]
+
+/**
+ * The keyed status line, accepted in BOTH languages the plugin itself can render.
+ *
+ * The line is composed by `statusLine()` in `packages/mpd-tui-plugin/src/state.ts` as
+ * `` `mpd: ${parts.join(" · ")}` ``, and its first part is one of exactly two dictionary entries in
+ * `packages/mpd-tui-plugin/src/i18n.ts`: `status.teamRow` (`团队 {name} …` / `team {name} …`) or
+ * `status.teamNone` (`团队 -` / `team -`). This pattern therefore matches the plugin's OWN strings in
+ * BOTH languages rather than one hard-coded English copy — the sandbox host renders Chinese, so the
+ * English-only `/mpd:\s+team /` read a line that WAS there as missing (measured 2026-10-06: the pane
+ * carried `mpd: 团队 Fixture Team 2·1/2 · 计划 0 · workmate 1`, which that pattern cannot match).
+ * Every other part of the line (`计划 {n}`, `workmate {n}`, `team {name}`) is asserted where the
+ * counters are read, so widening the language here does not make the predicate vacuous: a pane with no
+ * keyed line at all still fails.
+ */
+export const STATUS_LINE: RegExp = /mpd:\s+(?:team|团队)/
+
+/** The two counter labels the chat screen prints, in either language. */
+export const COUNTERS: readonly RegExp[] = [/(Tools|工具)\s*\d+/, /(Skills|技能)\s*\d+/]
 
 /** The layering verdict of one `dsh.profile.bundles` list. */
 export interface LayeringVerdict {
@@ -112,7 +132,38 @@ export interface BootFace {
   paneEvidence?: string
   /** Set by the live arm: the artifacts holding the preset witness. */
   presetEvidence?: string
+  /** Set by the live arm: the host preference files this lane provisioned before the boot. */
+  homeFixture?: TuiHomeFixture
+  /** Set by the live arm: the launchpad env key and value the boot carried. */
+  launchpadGate?: { readonly key: string; readonly value: string }
 }
+
+import type { TuiHomeFixture } from "./lib/tui-lane.ts"
+
+/**
+ * The dsh-tui host this lane installs into the sandbox profile.
+ *
+ * MOVED 0.12.0 -> 0.13.0 (2026-10-06): 0.13.0 is the release that adds the `ctx.tuiPanels`
+ * sidebar-panel seam (host row `dsh-tui-panels`, export `./panels`), and it is the first dsh-tui
+ * release this bundle adopts a seam FROM. This lane therefore seeds its fixture from the same host
+ * the wave adapts to, not from the release the bundle used to pin.
+ *
+ * MOVED 0.11.2 -> 0.12.0 (2026-10-02), one step on and for the same reason: 0.11.2's peer lists end
+ * at `|| 0.2.0-rc.1`, so `dsh plugin --profile dsh-tui add` is REFUSED against the 0.2.0-rc.2 harness
+ * this bundle now pins, while 0.12.0's lists end with `|| 0.2.0-rc.2`.
+ *
+ * MOVED 0.11.1 -> 0.11.2 (2026-09-30), and the reason is written down in this repository already:
+ * `docker/README.md` records that 0.11.2 is "the first dsh-tui release whose peer ranges accept BOTH
+ * harness pins this lane runs (0.1.7-rc.2 and 0.2.0-rc.1; 0.11.1 stops at the former, and
+ * `dsh plugin --profile dsh-tui add` is then REFUSED on peer ranges)". The Docker lane was moved at
+ * the time; THIS lane was not, so on the current harness it could not seed its fixture at all — and
+ * the refusal surfaced as the generic `absent-fixture` SKIP, which reads as "not set up yet" rather
+ * than "this pin is incompatible". Measured: host install exit=1 with the harness's own
+ * `installation rejected: ... is incompatible with dsh 0.2.0-rc.1` in the install log.
+ *
+ * The env override matches the Docker lane's knob, so one variable moves both.
+ */
+const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.13.0")
 
 /** What the `--install` arm attempted, and where it recorded the attempt. */
 interface InstallAttempt {
@@ -157,10 +208,10 @@ export function assertBootFace({ pane, log, bundles, sessions }: BootFaceInput):
   const crashes = crashSignatures(log)
   // The bundle-layering verdict of the composed list.
   const layering = assertLayering(bundles)
-  // True when the keyed status line sits above the prompt.
-  const statusLine = /mpd:\s+team /.test(pane)
+  // True when the keyed status line sits above the prompt (either language; see {@link STATUS_LINE}).
+  const statusLine = STATUS_LINE.test(pane)
   // The TUI localizes its chrome: accept the English AND the Chinese counter labels.
-  const counters = /(Tools|工具)\s*\d+/.test(pane) && /(Skills|技能)\s*\d+/.test(pane)
+  const counters = COUNTERS.every((pattern) => pattern.test(pane))
   // True when the capture carries any non-whitespace text at all.
   const rendered = pane.trim().length > 0
   // The first session header that ran the mpd preset; the preset witness of AC-11.
@@ -209,8 +260,38 @@ function selfTest(): void {
   check(!assertBootFace({ ...good, sessions: [{ sessionId: "s", agentPreset: "standard" }] }).ok, "a NEGATIVE CONTROL failed: a non-mpd preset must fail the boot face")
   check(!assertBootFace({ ...good, pane: "no pane" }).ok, "a NEGATIVE CONTROL failed: a pane without the status line must fail")
 
+  // THE LOCALIZED ARM. The sandbox host renders Chinese, so the SAME boot face with the plugin's own
+  // zh dictionary strings must pass too — otherwise the lane reports a rendered line as MISSING, which
+  // is exactly what the English-only predicate did (2026-10-06).
+  const zh = { ...good, pane: "… DEEPSEEK HARNESS … 工具 94 技能 18\nmpd: 团队 - · 计划 0 · workmate 1\n> " }
+  check(assertBootFace(zh).ok, "the Chinese status line and counters must satisfy the boot face")
+  // …and the localized arm is still falsifiable: the same pane WITHOUT the keyed line must fail.
+  check(!assertBootFace({ ...zh, pane: "… 工具 94 技能 18\n> " }).ok, "a NEGATIVE CONTROL failed: a Chinese pane without the keyed line must fail")
+  // The counters are required in the SAME language as the chrome, and a missing one still fails.
+  check(!assertBootFace({ ...zh, pane: "… 工具 94\nmpd: 团队 - · 计划 0 · workmate 1\n> " }).ok, "a NEGATIVE CONTROL failed: a missing counter must fail the boot face")
+
+  // THE FIXTURE STEP, exercised offline: the two host preference files the boot needs are written with
+  // the exact payloads the host reads, and re-running the step is idempotent.
+  /** A throwaway root the fixture arm writes into; removed before the arm returns. */
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "tui-mount-fixture-"))
+  try {
+    /** The fixture description the lane records, produced by the very call the live arm makes. */
+    const fixture = provisionTuiHome(fixtureRoot)
+    check(fixture.preset === "mpd", "the fixture must select the mpd preset")
+    check(JSON.parse(readFileSync(join(fixtureRoot, "home", ".dsh-tui", "onboarding.json"), "utf8")).completed === true,
+      "the onboarding fixture must carry completed:true")
+    check(JSON.parse(readFileSync(join(fixtureRoot, "home", ".dsh-tui", "agent-preset.json"), "utf8")).preset === "mpd",
+      "the preset fixture must carry the mpd preset")
+    provisionTuiHome(fixtureRoot)
+    check(existsSync(join(fixtureRoot, "home", ".dsh-tui", "onboarding.json")), "re-running the fixture must be idempotent")
+    // The launchpad gate is an ENV key, so the fixture evidence names the value the boot will carry.
+    check(sandboxEnv(fixtureRoot).DSH_TUI_NO_LAUNCHPAD === "1", "the sandbox environment must neutralise the 0.13.0 launchpad gate")
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true })
+  }
+
   // True when the bundle patch the mount proof applies is present.
-  const patch = existsSync(join(REPO, "packages", "mpd-bundle", "cordis.patch.yml"))
+  const patch = existsSync(join(REPO, "cordis.patch.yml"))
   check(patch, "the bundle patch is missing")
   // True when the skill document that must list this case is present.
   const skill = existsSync(join(REPO, "skills", "dsh-qa", "SKILL.md"))
@@ -255,10 +336,12 @@ function real(): void {
   // a named reason instead of exiting green on a skip.
   // What the `--install` arm attempted, `undefined` when the caller did not ask for it.
   let installAttempt: InstallAttempt | undefined
+  /** Why the host install was refused, or undefined when it succeeded or was never attempted. */
+  let hostInstallRefusal: string | undefined
   if (wantsInstall) {
     say("installing the host into the sandbox profile (network required): " + root)
     // The host (dsh-tui) install, whose exit status the gate's verdict depends on.
-    const host = runInSandbox(root, "dsh", ["plugin", "--profile", "dsh-tui", "add", "@deepseek-harness-tui/dsh-tui@0.11.1"], { timeoutMs: 900_000 })
+    const host = runInSandbox(root, "dsh", ["plugin", "--profile", "dsh-tui", "add", TUI_HOST_SPEC], { timeoutMs: 900_000 })
     say("host install exit=" + host.status)
     // This bundle's install into the same sandbox profile.
     const bundle = runInSandbox(root, "dsh", ["plugin", "--profile", "dsh-tui", "add", REPO], { timeoutMs: 900_000 })
@@ -267,6 +350,23 @@ function real(): void {
     const installLog = join(outDir, "install.log")
     writeFileSync(installLog, host.stdout + host.stderr + bundle.stdout + bundle.stderr)
     installAttempt = { hostExit: host.status, bundleExit: bundle.status, log: installLog.replace(REPO + "/", ""), root: root.replace(REPO + "/", "") }
+    // A REFUSED host install is its OWN outcome. Without this the run fell through to the generic
+    // `absent-fixture` SKIP, which says "set this up first" about a setup that was JUST attempted and
+    // rejected — the operator then re-runs the same command and reads the same sentence.
+    if (host.status !== 0) {
+      /** The harness's own rejection sentence, when the install log carries one. */
+      let refusal = ""
+      try {
+        // The install log the attempt wrote, read for the sentence the OPERATOR needs. The refusal is
+        // kept as a REASON for the prerequisite gate rather than thrown here, so the run still reports
+        // its own marker line and the sandbox it used.
+        const text = readFileSync(join(REPO, installLog.replace(REPO + "/", "")), "utf8")
+        /** The first line naming a rejection or a peer-range refusal. */
+        const line = text.split("\n").find((l: string) => l.includes("installation rejected") || l.includes("incompatible with dsh"))
+        if (line !== undefined) refusal = line.trim().slice(0, 300)
+      } catch { /* an unreadable log leaves the exit status to carry the fact */ }
+      hostInstallRefusal = `${TUI_HOST_SPEC} exited ${host.status}${refusal === "" ? "" : " — " + refusal}`
+    }
     say("install log=" + installAttempt.log)
   }
 
@@ -274,11 +374,21 @@ function real(): void {
   const state = profileState(root)
   gateTuiPrereqs(
     SLUG,
-    tuiPrereqs({ sandboxPresent: () => state.present && state.hasHost && state.hasBundle }),
-    { requested: wantsInstall ? ["absent-fixture"] : [] },
+    tuiPrereqs({ sandboxPresent: () => state.present && state.hasHost && state.hasBundle, hostInstallRefusal: () => hostInstallRefusal }),
+    { requested: wantsInstall ? ["absent-fixture", "host-install-refused"] : [] },
   )
 
   say("sandbox root=" + root + " explicit=" + explicit + " warm=" + state.present + " fresh=" + fresh)
+  // THE FIXTURE STEP (this lane owns it, so a FRESH sandbox needs no hand-holding): the host's own
+  // preference files for the two file-shaped 0.13.0 gates — the first-run wizard's skip flag and the
+  // `mpd` agent preset. Without the second the session runs the host default preset and the MPD
+  // surfaces never mount, which would read here as "the status line is missing".
+  const homeFixture = provisionTuiHome(root)
+  say("dsh-tui home fixture=" + homeFixture.evidence.join(", ") + " preset=" + homeFixture.preset)
+  // The third 0.13.0 gate is the LAUNCHPAD, which is an env key rather than a file; the value the boot
+  // carries is recorded so a reader can see the gate was neutralised rather than assume it.
+  const launchpadGate = { key: "DSH_TUI_NO_LAUNCHPAD", value: String(sandboxEnv(root).DSH_TUI_NO_LAUNCHPAD ?? "") }
+  say("launchpad gate " + launchpadGate.key + "=" + launchpadGate.value)
   // The session-store project keys present BEFORE the boot, so the run's own delta is isolable.
   const before = sessionStoreKeys(root)
   // The composition dump; COMPOSITION only, never a load proof (see AGENTS.md §4).
@@ -328,6 +438,8 @@ function real(): void {
   // The pure boot-face verdict, enriched below with the live-arm observations.
   const face = assertBootFace({ pane: session.bootPane, log: session.log, bundles, sessions })
   face.rowComposed = rowComposed
+  face.homeFixture = homeFixture
+  face.launchpadGate = launchpadGate
   face.isolationOffenders = isolation
   face.sessionKeysCreated = created
   face.sessionKeysInherited = after.filter((key) => before.includes(key))

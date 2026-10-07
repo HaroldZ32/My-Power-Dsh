@@ -1,4 +1,4 @@
-import * as z from "./external.js";
+import * as z from "./external.ts";
 export { z };
-export * from "./external.js";
+export * from "./external.ts";
 export default z;

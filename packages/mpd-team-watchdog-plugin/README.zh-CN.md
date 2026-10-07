@@ -28,8 +28,10 @@ hold 生效的 adopted 派发闸门、以及展示它的 Web/TUI 界面，属于
 
 所有内容都位于**当前会话的工作区**之下（每次调用都通过 adapter 解析——绝不缓存，也绝不
 假设是 `process.cwd()`）。0.1.7 已让内置的 `agent-teams` 插件及其 `<stateDir>/<teamId>/team.json`
-退役，因此这条路径上**不再有任何团队文件**：花名册与任务板改为通过 adapter
-（`dsh.teamLiveTeams()`，即**官方** Agent Teams 的实时读数）**实时**读取，下面每个文件都只属于本包。
+退役，因此这条路径上**不再有那种形状的团队文件**：花名册与任务板改为**实时**读取，优先读
+**MPD 团队记录**（`mpdTeams.list(workspace)`，即 `.mpd/team/teams/<teamId>.json`——**权威**平面，
+其 `team-<stamp>` id 正是 `agent_teams_dispatch` 询问的 id），并以**官方** Agent Teams 实时读数
+（`dsh.teamLiveTeams()`）作为运行官方执行器组合的兜底。下面每个文件都只属于本包。
 
 ```
 <workspace>/<stateDir>/watchdog/heartbeat/<memberKey>.jsonl        每行一条心跳
@@ -365,8 +367,8 @@ tick 在 ESCALATE 时经由 adapter 的内部工具接缝调用 `session-watchdo
 * **这里不做真实卡死验证。** 单元测试用注入时钟与 stub adapter 驱动机器；故障注入与真实卡死
   通道属于其他任务。
 * `parkedAttempts` 是上文所述的投影；`unread` 按构造恒为 `null`（官方信箱无法经 adapter 观测）。
-* **按构造不改动团队状态。** 观察名单来自宿主自己的实时读数（`dsh.teamLiveTeams()`），本插件只**读**它；
-  它写下的每个文件都在 `<stateDir>/watchdog/` 之下。
+* **按构造不改动团队状态。** 观察名单来自 MPD 团队记录（经 `mpdTeams` 服务读取），并以宿主自己的实时
+  读数（`dsh.teamLiveTeams()`）兜底——两者都只**读**；它写下的每个文件都在 `<stateDir>/watchdog/` 之下。
 
 ## 验证
 
@@ -387,7 +389,7 @@ node skills/dsh-qa/scripts/preset-conformance.ts
 | `src/machine.ts` | 旋钮、WARN→ESCALATE 算术与 §7.2 旋钮读数 |
 | `src/channel.ts` | §1 的四态通道折叠（`session/event`） |
 | `src/store.ts` | 心跳文件、轮转与原子写入 |
-| `src/team.ts` | 对官方实时读数（`dsh.teamLiveTeams()`）的只读投影 |
+| `src/team.ts` | 对团队平面的只读投影：优先 MPD 记录（`mpdTeams`），以官方实时读数（`dsh.teamLiveTeams()`）兜底 |
 | `src/scene.ts` | 现场文档、原子写入，以及诚实的 `unread: null` |
 | `src/sidecars.ts` | hold、事件日志与读取水位 |
 | `src/actions.ts` | 三个工具动作 |

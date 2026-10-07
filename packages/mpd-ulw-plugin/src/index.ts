@@ -10,17 +10,58 @@
 import { mkdirSync, writeFileSync, appendFileSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
-import { type DshAdapter, type DshCommandInvocation, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, type DshCommandInvocation, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+// THE ONE COMPLEXITY PREDICATE AND THE ONE PLAN VOCABULARY — imported, never re-derived. The module
+// is PURE and node-resolvable by construction (`node:fs/promises` + `node:path` only, no adapter
+// import), so the `/ulw` gate and the session-start gate can never drift into two predicates, and a
+// reader sees ONE set of thresholds. The plan phrases (`agent_teams_plan`, add_member / create_task /
+// approve, "NO team was staged") come from here too, so the two gates speak one vocabulary.
+import {
+  ALREADY_STAGED_PLAN_PHRASE,
+  BOULDER_DIR_CONFIG_KEY,
+  consumeExplicitFlag,
+  evaluateComplexityGate,
+  GATE_CONFIG_KEY,
+  GATE_MODE_MECHANICAL,
+  GATE_MODE_OFF,
+  gatePlanShell,
+  INERT_PLAN_PHRASE,
+  NO_TEAM_STAGED_PHRASE,
+  PLAN_EXTEND_ACTIONS,
+  readBoulderGate,
+  resolveGateMode,
+  STAGED_PLAN_PHRASE,
+  STAGING_TOOL_NAME,
+  type GateMode,
+} from "../../mpd-roles-plugin/src/complexity-gate.ts"
 
 /** The plugin name; the bundle patch row id is `mpd-ulw`. */
 export const name = "mpd-ulw"
-/** Both seams are declared: the row registers tools and spawns round children. */
-export const inject = ["tools", "subagents"]
+/** Both seams are declared, named by their adapter constants: the row registers tools and spawns round children. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 
 /** The host context this row reads; the adapter owns the real seam surface. */
-type Ctx = { tools: any; subagents: any; get?: (k: string) => any; [k: string]: any }
+type Ctx = { tools: any; subagents: any; get?: (k: string, strict?: boolean) => any; [k: string]: any }
 /** The row config keys, all optional because the resolver defaults every one. */
-type Config = { maxRounds?: number; planDir?: string; stateDir?: string; provider?: string; model?: string; reviewerModel?: string; maxReReviews?: number }
+type Config = { maxRounds?: number; planDir?: string; stateDir?: string; provider?: string; model?: string; reviewerModel?: string; maxReReviews?: number; team?: { gate?: unknown }; boulder?: { dir?: unknown } }
+
+/**
+ * The slice of the `mpdGoal` service this row consumes, declared STRUCTURALLY on purpose.
+ *
+ * The authoritative declaration is `packages/mpd-goal-plugin/src/index.ts` (`MpdGoalService`).
+ * A source import would add a cross-package coupling the independence inventory may only SHRINK
+ * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`), and the two
+ * rows talk through a SERVICE at runtime anyway. A composition without the goal row leaves
+ * `ctx.get("mpdGoal")` undefined, and this row degrades to "no durable goal".
+ */
+type GoalBridge = {
+  /** Whether long runs anchor a goal by themselves (`goal.autoAnchor` in mpd.jsonc). */
+  autoAnchor(): boolean
+  /** Put a durable goal in place, keeping any unfinished goal already current. */
+  anchor(exec: unknown, input: { objective: string; source: string; maxRounds?: number }): Promise<{ ok: boolean; created: boolean; goal?: { id?: string } | null; error?: string; note?: string }>
+  /** Finish a goal this plugin anchored; a goal it did not anchor is left to the model and the user. */
+  finish(exec: unknown, input: { outcome: "complete" | "blocked"; source: string; reason?: string }): Promise<{ ok: boolean; outcome: string; error?: string }>
+}
 
 /** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
 function mergedConfig(ctx: Ctx, config: Config): Config {
@@ -96,21 +137,38 @@ const DIRECTIVE = [
 // child prompt would instruct a subagent to do what the platform forbids.
 //
 // ONE constant for both injection paths (the command path and the plain-text
-// gesture). The head is byte-stable across invocations and the objective — the only
-// mutable part — is appended last, which is what the DeepSeek V4 prefix cache keys on.
+// gesture). The head is byte-stable across invocations and the two mutable parts —
+// the objective and the TEAM GATE verdict — are appended AFTER it, which is what the
+// DeepSeek V4 prefix cache keys on: the head bytes are identical for every objective
+// and every verdict, so the cached prefix is never invalidated by a gate outcome.
 export const ULW_ACTIVATION_DIRECTIVE = [
   "ULTRAWORK ACTIVATION (user-invoked; execute autonomously and ask the user nothing)",
   "1. TRIAGE FIRST: when the objective is unclear, or the task is investigate-first-then-execute, run one normal-MPD investigation round BEFORE the gate, a team or the loop; never open a team on a guess.",
-  "2. GATE: then evaluate the SAME complexity predicate the session-start gate uses — an explicit `team:`/`!team` flag OR any matched signal A-D (A explicit flag; B deliverable verbs; C enumerated steps; D an existing .mpd/plans artifact). Never invent a second predicate.",
-  "3. TEAM WHEN WARRANTED: when the gate fires, or the work is complex, stage the team YOURSELF with the OFFICIAL team tools — spawn_teammate({name, description, prompt}) for each roster member, then team_task_create({subject, description, blocked_by?, write_scopes?}) for the DAG — and run it: no user confirmation and no plan review. The retired `agent_teams_*` tools do not exist on this harness; the team's state is the Lead session's own.",
+  "2. GATE: ALREADY EVALUATED MECHANICALLY — the SAME complexity predicate the session-start gate uses (an explicit `team:`/`!team` flag OR any matched signal A-E: A explicit flag, B deliverable verbs, C enumerated steps, D an active boulder work, E a CJK-scale instruction) was run by the plugin BEFORE this directive was injected, and its verdict is the TEAM GATE block below this objective. Never invent a second predicate.",
+  "3. TEAM WHEN WARRANTED: the TEAM GATE block below carries the verdict, and when the gate staged a plan that plan is YOURS — extend it with `agent_teams_plan {action:\"add_member\"}` and `agent_teams_plan {action:\"create_task\"}`, then approve it YOURSELF with `agent_teams_plan {action:\"approve\"}`: no user confirmation and no plan review. A staged plan is INERT until approval. EXACTLY five `agent_teams_*` tools exist on this harness — `agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`, `agent_teams_control` — and every OTHER `agent_teams_*` name is retired and GONE (e.g. `agent_teams_create`, `agent_teams_add_member`, `agent_teams_create_task`, `agent_teams_approve`, `agent_teams_status`): never call a retired one, and never read the shared `agent_teams_` prefix as a reason to skip `agent_teams_plan`.",
   "4. LOOP TO COMPLETION: never stop early to ask the user; keep rounds until every success criterion is clean.",
   "5. FIX ON SIGHT: a defect the run finds is fixed in the same turn — never report-and-wait and never ask the user for approval.",
   "6. CLOSE OUT ON PROOF: report done only after the verification gate and the quality-gate ledger both approve; otherwise keep working, or report the concrete blocker."
 ].join(String.fromCharCode(10))
 
-/** The activation directive for one objective: stable policy head, mutable objective tail. */
-export function activationDirective(objective: string): string {
-  return ULW_ACTIVATION_DIRECTIVE + String.fromCharCode(10, 10) + "OBJECTIVE: " + String(objective ?? "").trim()
+/**
+ * The activation directive for one objective: stable policy head, then the two mutable parts.
+ *
+ * Byte-stability of the HEAD is the DeepSeek V4 prefix-cache property this file documents: the
+ * returned text STARTS with {@link ULW_ACTIVATION_DIRECTIVE} byte-for-byte, whatever the objective
+ * and whatever the gate did. The objective comes next (the callers pass the objective with the
+ * explicit `team:` / `!team` marker already consumed) and the gate's verdict is a TRAILING block,
+ * so a verdict can never invalidate the cached head.
+ *
+ * @param objective - the run's objective, echoed verbatim after `OBJECTIVE: `.
+ * @param gate - what the ULW team gate did for this activation; omitted, the directive is head +
+ *   objective exactly as before the gate existed.
+ * @returns the directive text injected as the invoking agent's own next user turn.
+ */
+export function activationDirective(objective: string, gate?: UlwGateReport): string {
+  /** The head plus the objective, which is the whole directive when no gate verdict is passed. */
+  const base = ULW_ACTIVATION_DIRECTIVE + String.fromCharCode(10, 10) + "OBJECTIVE: " + String(objective ?? "").trim()
+  return gate === undefined ? base : base + String.fromCharCode(10, 10) + gateTrailerText(gate)
 }
 
 
@@ -179,6 +237,396 @@ function rewriteMessageText(message: any, text: string): any {
   return { ...message, content: content.map((block: any, index: number) => (index === at ? { ...block, text } : block)) }
 }
 
+// ── THE ULW TEAM GATE: the SAME predicate and the SAME modes, evaluated MECHANICALLY ────────
+//
+// WHY (user mandate, 2026-10-06): the activation directive used to ORDER THE MODEL to evaluate the
+// session-start complexity predicate and to stage a team. Both were PROSE, so "the gate" was
+// whatever the model decided. It is now mechanical, exactly like the session-start gate: THIS
+// PLUGIN evaluates the frozen predicate (imported, never re-derived) over the OBJECTIVE, once per
+// activation, and in `mechanical` mode stages the plan itself through OUR `agent_teams_plan` tool
+// with the LIVE agent. The verdict is rendered into the directive's TRAILING block.
+//
+// THE HONEST BOUND: the gate fills the plan's `name`/`description` and NOTHING else — 0 members,
+// 0 tasks. It never selects a roster (keyword->specialist guessing is the "invent a team" defect
+// the manual forbids) and it never claims a team exists: a staged plan is INERT until approved.
+//
+// The mode (`team.gate`: mechanical default / advisory / off) is resolved PER CALL from the live
+// `mpd.jsonc` layer and never cached, and EVERY degradation of the staging route is reported as
+// such in the trailing block instead of being hidden.
+
+/** The `mpd-config` service name: the live `mpd.jsonc` layer the gate reads its mode from. */
+const CONFIG_SERVICE = "mpdConfig"
+/** The `mpd-team-core` service name: the staged-plan probe reads `planFor` from it. */
+const TEAMS_SERVICE = "mpdTeams"
+/** How long ONE ULW staging call may take before the mechanical route degrades, in milliseconds. */
+const ULW_STAGING_TIMEOUT_MS = 5000
+
+/** What ONE ULW activation's gate did, in the shape the directive's trailing block renders. */
+export interface UlwGateReport {
+  /** The `team.gate` mode resolved for THIS activation, never cached across activations. */
+  mode: GateMode
+  /** Whether the frozen predicate fired; always false for `off`, which never evaluates it. */
+  trigger: boolean
+  /** The fired signal letters, in A–D order, as the predicate reported them. */
+  signals: readonly string[]
+  /** Whether an explicit `team:` / `!team` marker was consumed from the objective. */
+  explicit: boolean
+  /** Whether a plan is staged in this session as a result of this activation. */
+  staged: boolean
+  /** The plan id the staging CALL returned — never an invented one; empty when it reported none. */
+  planId: string
+  /** Whether staging was SKIPPED because this session already had a plan. */
+  alreadyStaged: boolean
+  /** Why the gate could not stage (or could not run at all), when it could not. */
+  error?: string
+}
+
+/** The outcome of ONE mechanical ULW staging attempt. */
+interface UlwStageOutcome {
+  /** Whether a plan is staged in this session as a result of the attempt. */
+  staged: boolean
+  /** The plan id the CALL returned, or the empty string when it reported none. */
+  planId: string
+  /** Whether staging was SKIPPED because this session already had a plan. */
+  alreadyStaged: boolean
+  /** Why the attempt degraded instead of staging, when it did. */
+  error?: string
+}
+
+/**
+ * The adapter slice the ULW team gate uses, declared structurally.
+ *
+ * `hasTool` takes the agent on purpose: the adapter's read is SCOPE-AWARE, so a tool registered on
+ * the agent's own plane (or its preset parent) is found for the agent that will call it. The
+ * optional `rowLog` keeps a unit double without a log sink acceptable.
+ */
+interface UlwGateAdapter {
+  /** Whether a tool is registered in this agent's own view (host-plane global when agentless). */
+  hasTool(name: string, agent?: unknown): boolean
+  /** The internal tool call, normalized by the adapter to `{ok, isError, value, error}`. */
+  executeTool(input: { name: string; arguments?: unknown; agent?: unknown; timeoutMs?: number }): Promise<{ ok?: unknown; isError?: unknown; value?: unknown; error?: unknown }>
+  /** The calling session's workspace root, resolved PER CALL. */
+  workspaceRoot(exec?: unknown): string
+  /** One-line diagnostics sink, absent in a partial double. */
+  rowLog?(name: string, line: string): void
+}
+
+/**
+ * ONE team-plane config value for ONE key, resolved PER CALL and never cached.
+ *
+ * Precedence, identical to the session-start gate's: the mounted `mpdConfig` layer (a
+ * `.mpd/mpd.jsonc` edit is therefore picked up LIVE, T-18) first, this row's own config second,
+ * `undefined` last so the caller's default applies.
+ *
+ * @param ctx - the host context; its `get` may be absent in a unit double.
+ * @param config - the row config handed to `apply`.
+ * @param key - the dot-path key, e.g. `team.gate` or `boulder.dir`.
+ * @returns the raw value, or `undefined` when neither layer declares it.
+ */
+function gateConfigValue(ctx: Ctx, config: Config, key: string): unknown {
+  try {
+    /** The live config service, absent until the `mpd-config` row has applied. */
+    const live = ctx.get?.(CONFIG_SERVICE, false) as { get?: (k: string) => unknown } | undefined
+    /** The live layer's answer, which wins whenever the key is really declared there. */
+    const value = live?.get?.(key)
+    if (value !== undefined) return value
+  } catch {
+    // A config layer that refuses the lookup reads as ABSENT, which keeps the gate's default in force.
+  }
+  if (key === GATE_CONFIG_KEY) return config.team?.gate
+  if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
+  return undefined
+}
+
+/**
+ * The session id of one live agent, or the empty string when it carries none.
+ *
+ * @param agent - the agent handle, in any of the three shapes a session id is spelled in.
+ * @returns the id, or `""` when the handle declares none.
+ */
+function sessionIdOf(agent: unknown): string {
+  /** The agent handle, narrowed to the three shapes a session id is spelled in. */
+  const handle = agent as { session?: { id?: unknown }; sessionId?: unknown; id?: unknown } | undefined
+  /** The id candidates in precedence order: the session, the flat field, then the agent id. */
+  const candidates: unknown[] = [handle?.session?.id, handle?.sessionId, handle?.id]
+  for (const candidate of candidates) if (typeof candidate === "string" && candidate !== "") return candidate
+  return ""
+}
+
+/**
+ * The plan id inside one plan-shaped payload, read defensively; empty when unreadable.
+ *
+ * TWO SHAPES reach this reader and both are documented: the TOOL RESULT wraps the plan
+ * (`{plan:{planId}}`, the `create` action's return) while the STAGED-PLAN PROBE returns the plan
+ * itself (`{planId}`, `mpdTeams.planFor(...).plan`). Neither is ever invented here — an unreadable
+ * payload reads as the empty string, which the trailing block renders as "not reported by the call".
+ *
+ * @param value - the payload to read.
+ * @returns the plan id, or `""` when the payload carries none.
+ */
+function planIdOf(value: unknown): string {
+  /** The id on the payload itself, which is what the staged-plan probe answers. */
+  const direct = (value as { planId?: unknown } | undefined)?.planId
+  if (typeof direct === "string" && direct !== "") return direct
+  /** The plan record the `create` action wrapped, when the payload carries one. */
+  const plan = (value as { plan?: { planId?: unknown } } | undefined)?.plan
+  return typeof plan?.planId === "string" ? plan.planId : ""
+}
+
+/**
+ * A thrown value reduced to printable text: its `message` when it carries one, else the value.
+ *
+ * @param error - the thrown value, of any type.
+ * @returns the printable one-line text.
+ */
+function errorText(error: unknown): string {
+  /** The thrown value's own message, read through a one-property view because it is `unknown`. */
+  const message = (error as { message?: unknown } | undefined)?.message
+  return message === undefined ? String(error) : String(message)
+}
+
+/**
+ * The session workspace the boulder probe reads and the staging call writes under, resolved PER CALL.
+ *
+ * The adapter's resolver prefers the session header's `cwd`, then `DSH_WORKSPACE_ROOT`, then the
+ * process cwd, so an agentless step (a gesture whose payload carries no agent) still resolves the
+ * documented fallback instead of being guessed at here.
+ *
+ * @param dsh - the adapter slice.
+ * @param agent - the live agent, when the caller holds one.
+ * @returns the workspace, or `""` when the resolver itself is absent (the boulder read then answers
+ *   `active:false`, the conservative reading).
+ */
+function ulwWorkspace(dsh: UlwGateAdapter, agent: unknown): string {
+  try {
+    return typeof dsh.workspaceRoot === "function" ? dsh.workspaceRoot({ agent }) : ""
+  } catch {
+    return ""
+  }
+}
+
+/**
+ * Whether a plan is ALREADY staged for one session, read PER CALL through the team record service.
+ *
+ * A non-null answer SKIPS staging: the tool's `create` ARCHIVES an existing un-approved plan, so
+ * staging twice would destroy the captain's in-progress plan. The lookup is lazy because the
+ * `mpd-team-core` row may compose AFTER this one.
+ *
+ * @param ctx - the host context; the `mpdTeams` service is absent without that row.
+ * @param workspace - the session workspace the plan belongs to.
+ * @param sessionId - the session the plan belongs to.
+ * @returns the staged plan (or `undefined`), never a throw.
+ */
+function stagedPlanOf(ctx: Ctx, workspace: string, sessionId: string): unknown {
+  try {
+    /** The team record service, absent in a composition without the `mpd-team-core` row. */
+    const teams = ctx.get?.(TEAMS_SERVICE, false) as { planFor?: (w: string, s: string) => { plan?: unknown } } | undefined
+    return teams?.planFor?.(workspace, sessionId)?.plan
+  } catch {
+    // A service that refuses the read reads as "nothing staged", which merely re-stages.
+    return undefined
+  }
+}
+
+/**
+ * Whether the staging tool is registered in this agent's own view.
+ *
+ * A missing `hasTool` seam (a partial adapter double) reads FALSE — the ladder's degrade step,
+ * never a throw. WITH an agent the read is scoped to that agent (which also resolves the PRESET
+ * plane); an agentless step keeps the deliberate host-plane global read.
+ *
+ * @param dsh - the adapter slice.
+ * @param agent - the live agent whose scope the read resolves through, when one is held.
+ * @returns true only when the adapter answered positively.
+ */
+function hasStagingTool(dsh: UlwGateAdapter, agent: unknown): boolean {
+  if (typeof dsh.hasTool !== "function") return false
+  try {
+    return agent === undefined || agent === null ? dsh.hasTool(STAGING_TOOL_NAME) === true : dsh.hasTool(STAGING_TOOL_NAME, agent) === true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Run the lazy staging ladder for ONE ULW activation — nothing is resolved at apply time, so the
+ * row order (`mpd-ulw` composing before `mpd-team-core`) stays irrelevant.
+ *
+ * Ladder, in order: an already-staged plan WINS (staging again would archive it); a tool absent
+ * from the agent's view degrades; a refused, thrown or timed-out call degrades. Every degradation
+ * is REPORTED by the caller, never silently swallowed.
+ *
+ * @param dsh - the adapter slice (`hasTool` / `executeTool` / `rowLog`).
+ * @param ctx - the host context, for the already-staged probe.
+ * @param input - the live agent, its workspace/session, the consumed objective and the verdict.
+ * @returns what happened, never a throw.
+ */
+async function stageUlwPlan(dsh: UlwGateAdapter, ctx: Ctx, input: {
+  /** The LIVE agent the call is attributed to; the tool resolves session and workspace from it. */
+  agent: unknown
+  /** The session workspace, used for the idempotence probe. */
+  workspace: string
+  /** The session the staging call is attributed to. */
+  sessionId: string
+  /** The objective with the explicit marker already consumed. */
+  objective: string
+  /** The fired signal letters, inlined into the staged shell's description. */
+  signals: readonly string[]
+  /** The active work's plan path, echoed into the description when signal D fired. */
+  planPath?: string
+}): Promise<UlwStageOutcome> {
+  // (1) A plan is ALREADY staged for this session: `create` ARCHIVES it, so this activation must not stage.
+  /** The plan already staged for this session, as the team record reports it. */
+  const existing = stagedPlanOf(ctx, input.workspace, input.sessionId)
+  if (existing !== undefined && existing !== null) return { staged: true, planId: planIdOf(existing), alreadyStaged: true }
+  // (2) The tool is not registered in this agent's view (another preset, a boot without
+  //     mpd-team-core): the mechanical route is impossible, so the caller says so honestly.
+  if (!hasStagingTool(dsh, input.agent)) return { staged: false, planId: "", alreadyStaged: false, error: "tool " + STAGING_TOOL_NAME + " is not registered" }
+  try {
+    /** The gate-filled fields — a SHELL, never a decomposed team. */
+    const shell = gatePlanShell({
+      signals: input.signals,
+      goal: input.objective,
+      ...(input.planPath === undefined ? {} : { planPath: input.planPath }),
+    })
+    /** The tool result, normalized by the adapter (`{ok, isError, value, error}`). */
+    const result = await dsh.executeTool({
+      name: STAGING_TOOL_NAME,
+      // `approval:"automatic"` is a LABEL with no consumer in this codebase (verified: the plan store
+      // records it and nothing reads it). A ULW run asks the user nothing, so the RUN approves the
+      // plan itself — that approval, not this label, is what spawns the members.
+      arguments: { action: "create", name: shell.name, description: shell.description, approval: "automatic" },
+      // THE LIVE AGENT, never a fabricated `{session:{id}}` stand-in: the tool resolves the workspace
+      // and the session FROM this handle, and a stand-in is what breaks the approval hop.
+      agent: input.agent,
+      timeoutMs: ULW_STAGING_TIMEOUT_MS,
+    })
+    if (result?.ok !== true || result.isError === true) {
+      return { staged: false, planId: "", alreadyStaged: false, error: result?.error === undefined ? "the staging call did not report ok" : String(result.error) }
+    }
+    return { staged: true, planId: planIdOf(result.value), alreadyStaged: false }
+  } catch (error) {
+    return { staged: false, planId: "", alreadyStaged: false, error: errorText(error) }
+  }
+}
+
+/**
+ * Evaluate the frozen complexity predicate ONCE for ONE activation and, in `mechanical` mode, stage
+ * the plan. The objective's explicit `team:` / `!team` marker is CONSUMED here, so both the
+ * directive and the staged shell carry the objective without it (the session gate consumes it the
+ * same way from the goal).
+ *
+ * @param dsh - the adapter slice.
+ * @param ctx - the host context, for the per-call config layer and the staged-plan probe.
+ * @param config - the row config, the second config layer.
+ * @param input - the activation's objective and the agent the command/step carries (may be absent
+ *   on a gesture step, which then degrades honestly instead of staging through a stand-in).
+ * @returns the flag-consumed objective plus what the gate did, never a throw.
+ */
+async function evaluateUlwGate(dsh: UlwGateAdapter, ctx: Ctx, config: Config, input: { objective: string; agent: unknown }): Promise<{ objective: string; report: UlwGateReport }> {
+  /** The objective with the explicit marker removed, plus whether it was there. */
+  const consumed = consumeExplicitFlag(input.objective)
+  /** The objective the directive and the staged shell carry, whitespace-trimmed. */
+  const objective = consumed.text.trim()
+  // THE MODE IS RESOLVED PER CALL (never cached): a `.mpd/mpd.jsonc` edit takes effect on the next
+  // activation, and `off` returns BEFORE the predicate is even evaluated.
+  const mode: GateMode = resolveGateMode(gateConfigValue(ctx, config, GATE_CONFIG_KEY))
+  if (mode === GATE_MODE_OFF) {
+    return { objective, report: { mode, trigger: false, signals: [], explicit: consumed.flagged, staged: false, planId: "", alreadyStaged: false } }
+  }
+  try {
+    /** The workspace the boulder probe reads and the staging call writes under. */
+    const workspace = ulwWorkspace(dsh, input.agent)
+    /** Signal D's state root, resolved PER CALL from `boulder.dir` (never cached). */
+    const boulderDir = gateConfigValue(ctx, config, BOULDER_DIR_CONFIG_KEY)
+    /** What the workspace's boulder ledger says about an ACTIVE work (never throws). */
+    const boulder = await readBoulderGate(workspace, typeof boulderDir === "string" && boulderDir !== "" ? { boulderDir } : {})
+    /** The frozen predicate's answer: whether it triggered, and which signals fired. */
+    const verdict = evaluateComplexityGate(objective, { explicitFlag: consumed.flagged, activeBoulder: boulder.active })
+    /** The report this activation renders before the mechanical route fills in its outcome. */
+    const base: UlwGateReport = { mode, trigger: verdict.trigger === true, signals: verdict.signals, explicit: consumed.flagged, staged: false, planId: "", alreadyStaged: false }
+    // NOTHING FIRED, or the gate is ADVISORY: nothing is staged, and the trailing block says so.
+    if (verdict.trigger !== true || mode !== GATE_MODE_MECHANICAL) return { objective, report: base }
+    // AN AGENTLESS STEP cannot stage: the tool resolves the workspace and the session from a LIVE
+    // agent, and a hand-built stand-in is exactly what breaks the approval hop.
+    if (input.agent === undefined || input.agent === null) {
+      dsh.rowLog?.("mpd-ulw", "team gate: the predicate fired (" + verdict.signals.join("/") + ") but this step carries no live agent to stage for")
+      return { objective, report: { ...base, error: "the step carries no live agent to stage the plan for" } }
+    }
+    /** What the mechanical route did. */
+    const outcome = await stageUlwPlan(dsh, ctx, {
+      agent: input.agent,
+      workspace,
+      sessionId: sessionIdOf(input.agent),
+      objective,
+      signals: verdict.signals,
+      ...(boulder.planPath === undefined ? {} : { planPath: boulder.planPath }),
+    })
+    if (!outcome.staged) dsh.rowLog?.("mpd-ulw", "team gate: staging degraded for \"" + objective.slice(0, 60) + "\" (" + String(outcome.error) + ") — the directive reports it")
+    else dsh.rowLog?.("mpd-ulw", "team gate: plan staged signals=" + verdict.signals.join("/") + " plan=" + (outcome.planId === "" ? "(id not reported)" : outcome.planId))
+    return { objective, report: { ...base, staged: outcome.staged, planId: outcome.planId, alreadyStaged: outcome.alreadyStaged, ...(outcome.error === undefined ? {} : { error: outcome.error }) } }
+  } catch (error) {
+    // A gate failure never breaks an activation: the directive is injected with an HONEST degraded
+    // report instead of a claimed staged plan.
+    dsh.rowLog?.("mpd-ulw", "team gate failed (" + errorText(error) + ") — the directive reports an unevaluated gate")
+    return { objective, report: { mode, trigger: false, signals: [], explicit: consumed.flagged, staged: false, planId: "", alreadyStaged: false, error: errorText(error) } }
+  }
+}
+
+/**
+ * The ULW team gate's TRAILING block — what the gate did, rendered after the objective.
+ *
+ * Kept OUT of {@link ULW_ACTIVATION_DIRECTIVE} on purpose: the head must stay a byte-stable prefix
+ * so the DeepSeek V4 prefix cache still holds, so every verdict-dependent byte lives here. Wording
+ * rules the block obeys: a staged plan is never called a team, a degraded route says the gate FIRED
+ * and nothing was staged, and the plan vocabulary (`agent_teams_plan`, add_member / create_task /
+ * approve) comes from the SAME shared constants the session-start gate uses.
+ *
+ * @param report - what the gate did for this activation.
+ * @returns the block's text, never empty, never claiming a team exists before approval.
+ */
+export function gateTrailerText(report: UlwGateReport): string {
+  /** The fired signals as a readable list, or the generic wording when none is named. */
+  const matched = report.signals.length === 0 ? "complexity signals" : "complexity signals " + report.signals.join("/")
+  /** The id sentence: the returned id, or an explicit statement that the call reported none. */
+  const id = report.planId === "" ? "(plan id not reported by the call)" : report.planId
+  /** How to extend a staged plan — the two actions, on OUR plane. */
+  const extend = "`" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`) and `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"}`"
+  /** The self-approval, which is what actually spawns the members and posts the tasks. */
+  const approve = "approve it YOURSELF with `" + STAGING_TOOL_NAME + " {action:\"approve\"}` — no user confirmation"
+  /** How to stage a plan from scratch, for the routes that could not stage one. */
+  const create = "stage the plan with `" + STAGING_TOOL_NAME + " {action:\"create\"}`, extend it with " + extend + ", then " + approve
+  if (report.mode === GATE_MODE_OFF) {
+    return "TEAM GATE: OFF (" + GATE_CONFIG_KEY + "=off) — the predicate was not evaluated and " + NO_TEAM_STAGED_PHRASE + "."
+  }
+  if (report.staged && report.alreadyStaged) {
+    return "TEAM GATE: MECHANICAL — this objective shows " + matched + ", and " + ALREADY_STAGED_PLAN_PHRASE + ": " + id + " (0 members, 0 tasks: a SHELL, not a team)."
+      + "\n- The gate did NOT stage again: a second staging would ARCHIVE the in-progress plan."
+      + "\n- Extend it with " + extend + ", then " + approve + "; approval is what spawns the members and posts the tasks."
+      + "\n- " + INERT_PLAN_PHRASE + " — never tell the user a team was created."
+  }
+  if (report.staged) {
+    return "TEAM GATE: MECHANICAL — this objective shows " + matched + ", and " + STAGED_PLAN_PHRASE + ": " + id + " (0 members, 0 tasks: a SHELL, not a team)."
+      + "\n- Extend it with " + extend + ", then " + approve + "; approval is what spawns the members and posts the tasks."
+      + "\n- " + INERT_PLAN_PHRASE + " — never tell the user a team was created."
+  }
+  if (report.trigger && report.mode === GATE_MODE_MECHANICAL) {
+    return "TEAM GATE: MECHANICAL — this objective shows " + matched + ", so the gate FIRED, but staging did NOT happen (" + String(report.error ?? "unknown reason") + "): " + NO_TEAM_STAGED_PHRASE + " and no plan exists for this run."
+      + "\n- Continue the run; if the work warrants a team, " + create + "."
+  }
+  if (report.trigger) {
+    return "TEAM GATE: ADVISORY (" + GATE_CONFIG_KEY + "=advisory) — this objective shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + ": the gate is ADVISORY and stages nothing."
+      + "\n- Continue solo; if the work genuinely warrants a team, " + create + "."
+  }
+  if (report.error !== undefined) {
+    return "TEAM GATE: UNEVALUATED — the gate could not run (" + report.error + "), so " + NO_TEAM_STAGED_PHRASE + "; do not assume one and do not invent a second predicate."
+  }
+  if (report.mode === GATE_MODE_MECHANICAL) {
+    return "TEAM GATE: MECHANICAL — no complexity signal fired for this objective, and " + NO_TEAM_STAGED_PHRASE + ". Do not invent a second predicate."
+  }
+  return "TEAM GATE: ADVISORY (" + GATE_CONFIG_KEY + "=advisory) — no complexity signal fired for this objective, and " + NO_TEAM_STAGED_PHRASE + "."
+}
+
 /** Apply the row: register both tools, both command spellings and the gesture listener. */
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
@@ -195,6 +643,70 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   const reviewerModel = cfg.reviewerModel ?? "deepseek-v4-pro"
   // How many times a rejected plan or verification may be re-reviewed.
   const maxReReviews = cfg.maxReReviews ?? 2
+
+  /**
+   * The durable-goal bridge provided by the `mpd-goal` row, resolved PER CALL.
+   *
+   * @returns the service, or undefined when that row is not mounted in this composition.
+   */
+  function goalBridge(): GoalBridge | undefined {
+    // Lazy on purpose: the row may be mounted after this one, and a composition without it must
+    // degrade to "no durable goal" rather than fail this plugin's apply.
+    return ctx.get?.("mpdGoal") as GoalBridge | undefined
+  }
+
+  /**
+   * Anchor a persisted goal for a long run, so the DURABLE GOAL — not this tool call — is the
+   * basis of continuous execution once the turn ends.
+   *
+   * @param exec - the tool exec carrying the calling agent, forwarded verbatim.
+   * @param objective - the run's objective, used as the goal objective.
+   * @returns the goal id when a goal is in place, else null; a refusal is logged, never thrown.
+   */
+  async function anchorGoal(exec: any, objective: string): Promise<string | null> {
+    try {
+      // No row, or auto-anchoring switched off in mpd.jsonc: the run proceeds without a goal. The
+      // bridge probe sits INSIDE the try because it is part of the same contract — a bridge that
+      // throws (a half-shaped service) must never take the run down.
+      const bridge = goalBridge()
+      if (bridge === undefined || bridge.autoAnchor?.() !== true) return null
+      /** The anchor outcome; an existing unfinished goal is KEPT by the service, never replaced. */
+      const outcome = await bridge.anchor(exec, { objective, source: "ulw" })
+      if (outcome?.goal != null && typeof outcome.goal.id === "string") return outcome.goal.id
+      if (outcome?.ok === false) dsh.rowLog("mpd-ulw", "goal anchor refused: " + String(outcome.error ?? "unknown"))
+      return null
+    } catch (error: any) {
+      // The goal is an ADDITION to the run: a bridge that throws must never take the run down.
+      dsh.rowLog("mpd-ulw", "goal anchor failed: " + String(error?.message ?? error))
+      return null
+    }
+  }
+
+  /**
+   * Close the durable goal this run anchored, matching the run's own outcome.
+   *
+   * `complete` completes it; `blocked` ATTEMPTS blocked and tolerates the harness's refusal before
+   * its consecutive-round threshold; anything else (`max-rounds`) leaves the goal ACTIVE on
+   * purpose — that is the case the goal exists for: the engine stopped inside this turn, the
+   * driver carries the objective on across turns.
+   *
+   * @param exec - the tool exec carrying the calling agent.
+   * @param status - the run's final status (`complete` | `blocked` | `max-rounds`).
+   * @param reason - the blocker text, for a blocked attempt.
+   */
+  async function finishGoal(exec: any, status: string, reason: string): Promise<void> {
+    if (status !== "complete" && status !== "blocked") return
+    // Same lazy resolution as the anchor; an absent row is a silent no-op here.
+    const bridge = goalBridge()
+    if (bridge === undefined) return
+    try {
+      /** The finish outcome, reported in the row log when the harness refused the transition. */
+      const outcome = await bridge.finish(exec, { outcome: status === "blocked" ? "blocked" : "complete", source: "ulw", ...(status === "blocked" ? { reason } : {}) })
+      if (outcome?.ok === false) dsh.rowLog("mpd-ulw", "goal finish (" + status + ") refused: " + String(outcome.error ?? "unknown"))
+    } catch (error: any) {
+      dsh.rowLog("mpd-ulw", "goal finish failed: " + String(error?.message ?? error))
+    }
+  }
 
   /** Spawn one child round/role through the adapter and return its result. */
   async function spawnChild(opts: { label: string; prompt: string; schema: any; persona?: string; parent: any; signal?: any; model?: string; maxDepth?: number }): Promise<any> {
@@ -289,6 +801,16 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // The durable run state, rewritten after every mutation.
       const state: any = { id, objective, tier, plan, hyperplan, strictReview, rounds, planFile: null, verdict: null, criteria: [], wave: 0, fruitlessWaves: 0 }
       writeJson(stateFile, state)
+
+      // A PLAN-BOUND RUN OUTLIVES ITS TURN, so it anchors a persisted goal (mpd-goal row): from
+      // here the durable goal — not this tool call — is the basis of continuous execution, and the
+      // harness's round driver keeps the objective going if this run stops short of it.
+      const goalId = plan ? await anchorGoal(exec, objective) : null
+      if (goalId !== null) {
+        // Recorded in the run's own state document, so a later reader sees which goal carried it.
+        state.goalId = goalId
+        writeJson(stateFile, state)
+      }
 
       // The distilled hyperplan insights, capped below.
       let insights: string[] = []
@@ -443,6 +965,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       state.status = status
       state.verdict = verdict
       writeJson(stateFile, state)
+      // The run's own outcome decides the goal's fate; see finishGoal for why `max-rounds` KEEPS it armed.
+      await finishGoal(exec, status, finalReport.trim().slice(-400))
       // `planFile` is emitted ONLY when a plan file exists. The harness's output validator
       // accepts ONE scalar `type` per property (it rejects `type: [..., "null"]` with
       // "type arrays are not supported"), and `planFile` is deliberately absent from the
@@ -461,7 +985,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     output: { schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] }, render: (_a: unknown, v: any) => textBlock("mpd_ulw status=" + v.status + " rounds=" + v.rounds + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile) },
     execute: async (args: any, exec: any) => {
       // The ultrawork tool, looked up through the adapter's internal seam.
-      const tool = dsh.hasTool("mpd_ultrawork") ? dsh.toolRuntime().get("mpd_ultrawork") : undefined
+      //
+      // THE CALLING AGENT IS PASSED ON PURPOSE (scope-aware read, Lane D): `hasTool` and
+      // `toolRuntime().get` resolve through that agent's OWN view, which also resolves the PRESET
+      // plane its scope sits under. Without the agent the read is the host-plane global one, so the
+      // alias would read false the moment the ULW rows move to the preset plane — a silent
+      // "engine not available" instead of the engine. The degrade behaviour below is unchanged.
+      const tool = dsh.hasTool("mpd_ultrawork", exec?.agent) ? dsh.toolRuntime().get("mpd_ultrawork", exec?.agent) : undefined
       if (!tool?.execute) throw new Error("mpd_ulw: engine not available")
       // The alias's fixed light-tier argument set.
       const inner = { objective: String(args?.objective), tier: "light", plan: false, hyperplan: false, strictReview: false, maxRounds: Number(args?.maxRounds ?? cfg.maxRounds ?? 3) }
@@ -485,14 +1015,25 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // entry (t9 review finding). Each name advertises the OTHER spelling.
   const ULW_COMMAND_DESCRIPTION = (alias: string): string => "Run the ULW discipline for an objective, fully autonomously (identical alias: " + alias + ")"
   // The handler shared by both command spellings.
-  const runUlwCommand = (invocation: DshCommandInvocation): { kind: "error" | "success"; text: string } => {
+  //
+  // ASYNC ON PURPOSE: the ULW team gate is MECHANICAL, so this handler evaluates the frozen
+  // predicate and may stage the plan BEFORE the directive is injected — the directive's TEAM GATE
+  // block reports what the call returned, so staging could not be deferred past the injection. The
+  // host awaits a command handler's result (`dsh-commands` normalizes `await Promise.resolve(output)`),
+  // and the staging call is bounded by `ULW_STAGING_TIMEOUT_MS`.
+  const runUlwCommand = async (invocation: DshCommandInvocation): Promise<{ kind: "error" | "success"; text: string }> => {
     // The objective from the invocation, trimmed; empty asks for the usage line.
     const objective = String(invocation?.rawInput ?? "").trim()
     if (objective === "") return { kind: "error", text: ULW_USAGE }
+    // The mechanical gate: evaluate the SAME predicate the session-start gate uses, over THIS
+    // objective, and stage the plan when it fires in `mechanical` mode. The agent the command
+    // arrived on is the one the staging call must use — the tool resolves session and workspace
+    // from it — and the objective comes back with the explicit `team:` / `!team` marker consumed.
+    const gate = await evaluateUlwGate(dsh, ctx, config, { objective, agent: invocation?.agent })
     // Whether the activation directive reached the invoking agent's own next turn.
-    const submitted = invocation.submit?.(dsh.userMessage({ text: activationDirective(objective), source: { kind: "mpd-ulw", reason: "activation-directive" } })) === true
-    if (!submitted) return { kind: "error", text: "ULW could not start: no live agent turn surface to submit the activation directive for " + JSON.stringify(objective) }
-    return { kind: "success", text: "ULW activated: " + objective }
+    const submitted = invocation.submit?.(dsh.userMessage({ text: activationDirective(gate.objective, gate.report), source: { kind: "mpd-ulw", reason: "activation-directive" } })) === true
+    if (!submitted) return { kind: "error", text: "ULW could not start: no live agent turn surface to submit the activation directive for " + JSON.stringify(gate.objective) }
+    return { kind: "success", text: "ULW activated: " + gate.objective }
   }
   // One registration per spelling, because the host throws on a duplicate command name.
   const commandDisposers = ["ulw", "ultrawork"].map((name) => dsh.registerCommand({ name, description: ULW_COMMAND_DESCRIPTION(name === "ulw" ? "/ultrawork" : "/ulw"), input: { hint: "objective" }, handler: runUlwCommand }))
@@ -523,10 +1064,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // A bare `/ulw` carries no objective to run. The command path answers usage;
       // a gesture has no reply surface, so the step is left untouched.
       if (objective === "") return decision
-      return { ...decision, messages: messages.map((message: any) => (message === claimed.message ? rewriteMessageText(message, activationDirective(objective)) : message)) }
+      // THE SAME MECHANICAL GATE as the command path, over the same objective, with the agent the
+      // harness fused into this step's payload (a surface that carries none degrades honestly: the
+      // directive then says the gate fired and nothing was staged, never that a team exists).
+      const gate = await evaluateUlwGate(dsh, ctx, config, { objective, agent: payload?.agent ?? decision?.agent })
+      return { ...decision, messages: messages.map((message: any) => (message === claimed.message ? rewriteMessageText(message, activationDirective(gate.objective, gate.report)) : message)) }
     } catch {
       // A gesture failure must never break the step: the decision composed by
-      // `next()` is returned unchanged, never a veto by accident.
+      // `next()` is returned unchanged, never a veto by accident. The gate is INSIDE this try
+      // (`evaluateUlwGate` is itself non-throwing), so a staging refusal can never eat a turn.
       return decision
     }
   })

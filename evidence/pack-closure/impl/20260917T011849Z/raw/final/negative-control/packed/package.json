@@ -7,7 +7,7 @@
   "license": "SEE LICENSE IN LICENSE.md",
   "main": "packages/mpd-bundle-plugin/dist/index.js",
   "exports": {
-    ".": "./packages/mpd-bundle-plugin/dist/index.js",
+    ".": "./packages/mpd-bundle-plugin/dist/index.ts",
     "./package.json": "./package.json",
     "./packages/*": "./packages/*",
     "./skills/*": "./skills/*",
@@ -15,7 +15,7 @@
     "./extensions/*": "./extensions/*",
     "./templates/*": "./templates/*",
     "./docs/*": "./docs/*",
-    "./client": "./packages/mpd-bundle-plugin/client.js"
+    "./client": "./packages/mpd-bundle-plugin/client.ts"
   },
   "files": [
     "packages/**",

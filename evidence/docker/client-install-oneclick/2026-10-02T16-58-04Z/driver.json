@@ -1,0 +1,25 @@
+{
+  "startedAt": "2026-10-02T16:58:04.505Z",
+  "finishedAt": "2026-10-02T17:01:38.876Z",
+  "docker": "Docker version 29.8.2, build 7fc2dff",
+  "compose": "Docker Compose version v5.5.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 416,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-U4wUvq",
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick -e MPD_E2E_INSTALL_SPEC=github:HaroldZ32/My-Power-Dsh#feature/seam-convergence mpd-oneclick",
+      "status": 0,
+      "signal": null
+    }
+  ],
+  "containerExit": 0,
+  "verdict": "ok=true complete=false passed=54 failed=0 null=3 NULL=[build.bunInstall,build.dists,boot.llmTurn]",
+  "exitCode": 0
+}

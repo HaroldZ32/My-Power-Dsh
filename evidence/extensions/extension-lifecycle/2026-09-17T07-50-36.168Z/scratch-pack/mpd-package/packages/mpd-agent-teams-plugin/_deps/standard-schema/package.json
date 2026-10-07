@@ -17,18 +17,18 @@
     "interface"
   ],
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.ts",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "standard-schema-spec": "./src/index.ts",
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+        "default": "./dist/index.ts"
       },
       "require": {
         "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
+        "default": "./dist/index.cts"
       }
     }
   },

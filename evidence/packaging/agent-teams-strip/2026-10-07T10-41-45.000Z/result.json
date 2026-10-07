@@ -1,0 +1,34 @@
+{
+  "lane": "B (W2 vendored-body strip + relocation)",
+  "wave": "de-vendor-and-verify-law",
+  "actor": "Deep Worker",
+  "deleted": {
+    "packages/mpd-agent-teams-plugin": "768 files, _deps/ included (git ls-files agreed: 768)",
+    "scripts": ["vendor-agent-teams.ts", "patch-agent-teams-fixes.ts", "patch-agent-teams-client.ts", "reclaim-staged-teams.ts", "lib/vendored-agent-teams.d.ts"],
+    "docs": ["agent-references/agent-teams-deltas.md"],
+    "tests": ["packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts", "packages/mpd-team-watchdog-plugin/test/fixtures/inject.ts"]
+  },
+  "relocated": {
+    "packages/mpd-schemastery/lib": "the schemastery validator + cosmokit + types/index.d.ts (GLOBAL Schemastery<T>)",
+    "packages/mpd-schemastery/harness": "cordis, dsh-tools, dsh-llm, dsh-session, dsh-scope, dsh-timeout (measured transitive closure of four TEST files)",
+    "packages/mpd-bundle-plugin/adopted": "agent-teams-client.js + .map (the adopted 0.1.14 browser bundle)"
+  },
+  "gates": {
+    "bun install --frozen-lockfile": 0,
+    "bun run typecheck": 0,
+    "bun run verify:docs": 0,
+    "bun run verify:manifest": 0,
+    "bun run verify:comments": 0,
+    "node scripts/verify-manual-paths.ts": 0,
+    "node scripts/verify-pack-closure.ts --self-test": 0,
+    "bun test packages": 1,
+    "node scripts/verify-dist-fresh.ts": 1,
+    "node scripts/pack-mpd.ts": 1
+  },
+  "red_not_mine": {
+    "bun test packages": "F1 shipped artifact (dist byte identity) — the pre-existing mid-wave state; dist/** is T16's derived surface",
+    "node scripts/verify-dist-fresh.ts": "9 of 30 targets STALE — dist/** staleness across lanes; T16 rebuilds",
+    "node scripts/pack-mpd.ts": "cordis.patch.yml mounts packages/mpd-verify-plugin/dist/index.js (Lane D's NEW package) but no dist exists yet — T16 builds it"
+  },
+  "log": "gates.log, gates2.log, gates3.log, grep-proof.log"
+}

@@ -14,12 +14,12 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, userInfo } from "node:os"
 import { join, resolve, sep } from "node:path"
-import { workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-workmate"
-/** The seams this row needs declared: the tool registry and the subagent spawner, both read through the adapter. */
-export const inject = ["tools", "subagents"]
+/** The seams this row needs declared: the tool registry and the subagent spawner, both named by their adapter constants. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 
 /** The slice of a cordis context this row uses: tools, subagents, the `mpdWorkmate` provision, an effect seam and a service reader. */
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any) => void; effect?: (fn: () => unknown, label?: string) => any; on?: (event: string, handler: (...args: any[]) => any) => any; get?: (k: string) => any; [k: string]: any }
@@ -204,14 +204,20 @@ export function sanitizeName(s: string): string {
   return t
 }
 
-/** Cap a text: keep head + tail with a truncation marker (bounded context). */
+/** Cap a text: keep head + tail with a truncation marker, all of it WITHIN the cap. */
 export function capText(text: string, max: number): string {
   if (text.length <= max) return text
-  /** How much of the head survives (three quarters of the cap). */
-  const head = Math.floor(max * 0.75)
-  /** How much of the tail survives; head + tail + marker stay within the cap. */
-  const tail = max - head
-  return text.slice(0, head) + `\n…[truncated ${text.length - max} chars]…\n` + text.slice(-tail)
+  /** The truncation marker, whose own bytes are paid for OUT of `max` rather than added on top (S6). */
+  const marker = `\n…[truncated ${text.length - max} chars]…\n`
+  // A cap too small to carry the marker cannot report one: the hard slice keeps the declared bound.
+  if (marker.length >= max) return text.slice(0, Math.max(0, max))
+  /** The room left for the content once the marker's own bytes are accounted for. */
+  const budget = max - marker.length
+  /** How much of the head survives (three quarters of that room). */
+  const head = Math.floor(budget * 0.75)
+  /** How much of the tail survives; head + tail + marker sum to exactly `max`. */
+  const tail = budget - head
+  return text.slice(0, head) + marker + text.slice(-tail)
 }
 
 /** An instance's on-disk metadata; `baseId` inside it is INTERNAL provenance, never published. */
@@ -485,19 +491,37 @@ function noteSpawnEnd(key: string): void {
   else inUse.set(key, left)
 }
 
-/** §E(b) in-use gate, part 2: READ-ONLY scan of the current workspace's team records. Archived teams
- * live under `.mpd/team/archive/**` (no `team.json`) and `retired-members.json` is a file, so both
- * are excluded by construction. Reading this state is permitted; WRITING it is not (that is the
- * agent-teams plugin's state). Fail-open on any read error: an unreadable record is not a block. */
+/** §E(b) in-use gate, part 2: READ-ONLY scan of the current workspace's team records.
+ *
+ * TWO layouts are read, because the bundle has had two and a workspace may hold either:
+ *  • `.mpd/team/<dir>/team.json` — the RETIRED vendored plugin's record, scanned unchanged so a
+ *    workspace that still carries one keeps working;
+ *  • `.mpd/team/teams/<teamId>.json` — the mpd-OWNED record (`mpd-team-core-plugin/src/team-store.ts`),
+ *    which is what a team approved today actually writes.
+ *
+ * The second layout is why this function was fixed: it used to read ONLY the retired one, so every
+ * teammate spawned after the 0.1.7 rebase was invisible here and a workmate could be renamed or
+ * deleted out from under a live team. Reading this state is permitted; WRITING it is not.
+ *
+ * A record counts as IN USE while the team has not ended AND the named member has not settled
+ * (`inactive`/`failed`) — a finished team must not keep a workmate frozen forever. Fail-open on any
+ * read error: an unreadable record is not a block. */
 export function busyTeams(key: string, roots?: string[]): { teamId: string; member: string }[] {
   /** Every (team, member) pair currently using this workmate's name. */
   const hits: { teamId: string; member: string }[] = []
+  /** Record one member name against a team, deduplicated, when it normalises to the workmate key. */
+  const note = (teamId: string, memberName: string): void => {
+    if (memberName === "" || sanitizeName(memberName) !== key) return
+    if (hits.some((hit) => hit.teamId === teamId && hit.member === memberName)) return
+    hits.push({ teamId, member: memberName })
+  }
   // `roots` are the WORKSPACE roots whose .mpd/team records are scanned; the team state dir itself
   // stays hardcoded (§M6). Callers pass the calling session's workspace (tool path), an explicit
   // root (service path), or the union of live session workspaces (GUI path). The default keeps
   // direct/module-level callers on the adapter's ONE resolution (env -> process.cwd()).
   const scanRoots = roots && roots.length > 0 ? roots : [workspaceRootOf()]
   for (const root of scanRoots) {
+    // ── layout 1: the retired one-directory-per-team record ──────────────────
     try {
       /** This root's team state directory; absent means the workspace has no teams to scan. */
       const teamRoot = join(root, ".mpd", "team")
@@ -512,12 +536,28 @@ export function busyTeams(key: string, roots?: string[]): { teamId: string; memb
           const team = JSON.parse(readFileSync(file, "utf8"))
           /** The team's members, or an empty list when the record carries none. */
           const members = Array.isArray(team?.members) ? team.members : []
+          for (const m of members) note(String(team?.id ?? entry.name), typeof m?.name === "string" ? m.name : "")
+        } catch { /* fail-open */ }
+      }
+    } catch { /* fail-open */ }
+    // ── layout 2: the mpd-owned one-file-per-team record ─────────────────────
+    try {
+      /** `<root>/.mpd/team/teams`, absent in a workspace that never approved an mpd team. */
+      const records = join(root, ".mpd", "team", "teams")
+      if (!existsSync(records)) continue
+      for (const name of readdirSync(records)) {
+        if (!name.endsWith(".json")) continue
+        try {
+          /** One mpd team record, read for its lifecycle stamps and its roster. */
+          const team = JSON.parse(readFileSync(join(records, name), "utf8"))
+          // An ended team holds nobody: the record outlives the team by design.
+          if (team?.endedAt !== undefined) continue
+          /** The team's members, or an empty list when the record carries none. */
+          const members = Array.isArray(team?.members) ? team.members : []
           for (const m of members) {
-            /** The member's name, compared in sanitized form so "Deep Worker" matches "deep-worker". */
-            const memberName = typeof m?.name === "string" ? m.name : ""
-            if (memberName !== "" && sanitizeName(memberName) === key && !hits.some((h) => h.teamId === String(team?.id ?? entry.name) && h.member === memberName)) {
-              hits.push({ teamId: String(team?.id ?? entry.name), member: memberName })
-            }
+            // A settled member is not using the workmate, so a finished team cannot freeze a rename.
+            if (m?.status === "inactive" || m?.status === "failed") continue
+            note(String(team?.teamId ?? name.replace(/\.json$/, "")), typeof m?.name === "string" ? m.name : "")
           }
         } catch { /* fail-open */ }
       }

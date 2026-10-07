@@ -1,0 +1,75 @@
+{
+  "wave": "W3 \u2014 the TUI team scene: the dependency graph, as previewed",
+  "toolchain": {
+    "bun": "1.4.0",
+    "note": "the manifest's pinned buildToolchain, first on PATH"
+  },
+  "delivered": [
+    "packages/mpd-tui-plugin/src/graph.ts \u2014 a PURE renderer: layoutBoxes (the layered DAG), layoutRail (the narrow fallback), layoutList (the dense fallback), layoutGraph (the choice), dependencyChain, cycleIds, hitTest",
+    "the scene draws it: coloured spans from GRAPH_THEME (dsh-tui THEME KEYS, never a colour literal), focus via arrow keys, hover/click/wheel via the host's pointer handlers",
+    "focus lights the task, its transitive DEPENDENCIES and the edges between them, and DIMS everything else \u2014 with the chain NAMED in the graph header so the highlight is explainable",
+    "esc UNPINS rather than closing while a task is pinned; the second esc closes, so the scene's exit is unchanged for a user who never clicked",
+    "the detail pane under the graph carries the focused task's kind, attempt, round, verdict, owner and blockers",
+    "the roster is now one wrapped line, which is what frees the room the graph needs"
+  ],
+  "bugs_the_arms_caught": [
+    "layoutRail RECURSED FOREVER on a cyclic board: the 'draw a task reached by no root' fallback re-entered the cycle. A visited set now makes the forest a row per task, which is both the correct output and the termination proof.",
+    "the RAIL OVERFLOWED a 24-cell viewport (31 cells) because its label floor outranked the tail. `clampSpans` now enforces 'never exceeds the width' STRUCTURALLY, in all three layouts, rather than by arithmetic in each.",
+    "untouched cells were labelled `dim`, so a drawing with NOTHING dimmed still reported the dim tone. A `blank` tone now exists and the dimming signal means what it says.",
+    "an absent `kind` left a DOUBLE SPACE in the boxes view (`\u2713 t1  freeze the contract`) and not in the rail. One `labelOf` builder now serves all three.",
+    "the scene rewrite DROPPED THE TEAM ID from the header; two existing arms caught it, the second through the control character it carries."
+  ],
+  "gates": {
+    "tests": {
+      "cmd": "bun test packages",
+      "exit": 0,
+      "summary": "1326 pass, 3 skip, 0 fail \u2014 121 files, 13065 expect() calls (18 graph arms + 29 scene arms among them)"
+    },
+    "verify-dist-fresh": {
+      "cmd": "PATH=<pinned bun> node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "summary": "23/23 targets fresh"
+    },
+    "verify:comments": {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:rows": {
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:manifest": {
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:docs": {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "d6-no-direct-team-access": {
+      "cmd": "bun test packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "typecheck": {
+      "cmd": "bun run typecheck",
+      "exit": 1,
+      "summary": "4 errors, ALL pre-existing in skills/programming/scripts/typescript/check-no-excuse-rules.ts \u2014 none new"
+    }
+  },
+  "scene_render": {
+    "artifact": "evidence/team-plane-split/w3-tui-graph/20260929T103209Z/scene-render.txt",
+    "what_it_shows": "the REAL drawing for a nine-task wave at 116 cols with T5 focused (boxes, chain T1), at 116 cols with no focus (every node in its status colour), and at 64 cols (the narrower node width, still boxes because a three-wide rank fits)"
+  },
+  "known_pre_existing": {
+    "symptom": "`bun test packages/mpd-tui-plugin` ALONE reports 2 failures + 2 errors: `require() async module .../_deps/cosmokit/lib/index.ts is unsupported` through the vendored schemastery .cts",
+    "status": "PRE-EXISTING and not from this wave \u2014 measured by stashing these changes and re-running: 57 tests, 2 fail, 2 errors. It does not occur under `bun test packages`, whose module load order differs. Recorded rather than hidden."
+  },
+  "not_claimed": [
+    "no live dsh --profile dsh-tui boot was run in this wave: the scene is proven by the real component rendered through the host's own hook shape (29 arms) and by the pure renderer (18 arms). A TUI-plane mount is W5's sweep."
+  ]
+}

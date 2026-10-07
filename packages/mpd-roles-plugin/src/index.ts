@@ -19,19 +19,27 @@ import { existsSync, readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
+import { installVerifyGuard, type VerifyLawAccess } from "./verify-guard.ts"
+import { VERIFY_SERVICE } from "../../mpd-verify-plugin/src/service.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
-import { bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, textBlock, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY } from "./complexity-gate.ts"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, textBlock, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
-/** The seams this row needs declared: the tool registry and the subagent spawner, both read through the adapter. */
-export const inject = ["tools", "subagents"]
+/** The seams this row needs declared: the tool registry and the subagent spawner, both named by their adapter constants. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 
 /** The slice of a cordis context this row uses: the two seams, the `mpdRoles` provision and a logger. */
-type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string) => any; [k: string]: any }
-/** The row config; only the persona directory is configurable. */
-type Config = { personasDir?: string }
+type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string, strict?: boolean) => any; [k: string]: any }
+/**
+ * The row config: the persona directory plus the two team-plane keys this row reads itself.
+ *
+ * `team.gate` (mechanical | advisory | off) and `boulder.dir` mirror their `.mpd/mpd.jsonc`
+ * spellings, so a composition without the config row mounted can still pin them in the patch.
+ */
+type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown } }
 
 // Every entry must be a tool this profile actually registers: the harness
 // validates the WHOLE deny list at spawn time and rejects the child when any
@@ -155,6 +163,37 @@ export function readPersona(config: Config, spec: MpdRoleSpec): string {
  *  is absent — and it would also freeze the roster at apply, when an extension registered by
  *  a later row does not exist yet. */
 const EXTENSIONS_SERVICE = "mpdExtensions"
+
+/** The cordis service `mpd-config-plugin` provides, read PER CALL for `team.gate` and `boulder.dir`. */
+const CONFIG_SERVICE = "mpdConfig"
+
+/** The cordis service `mpd-team-core-plugin` provides; the gate's staged-plan probe reads it. */
+const TEAMS_SERVICE = "mpdTeams"
+
+/**
+ * The session-start gate's staged-plan probe, resolved PER CALL from the `mpdTeams` service.
+ *
+ * THE CONTRACT IS THREE-VALUED, and the third value is the whole reason this is a named function
+ * (2026-10-07, review F4): `null` means the service POSITIVELY answered "nothing is staged"; a plan
+ * object means one IS staged; and an UNREADABLE probe THROWS. An absent service — or one whose
+ * `planFor` is not a function, which a partially-published service looks like — is UNREADABLE, never
+ * "nothing staged". Folding that case into `undefined` (the shape this replaced) let the gate
+ * re-stage in SILENCE, and the tool's `create` moves an existing un-approved plan for the session
+ * into `.mpd/team/archive/` — so a silent fold is exactly how a captain's in-progress plan
+ * disappears without a word. The gate catches the throw and reports it in ONE warning.
+ * @param ctx - the row's context; the service is read lazily because its row may compose later.
+ * @returns the probe: an answer, or a throw naming why it could not answer.
+ */
+export function stagedPlanProbe(ctx: Ctx): (workspace: string, sessionId: string) => unknown {
+  return (workspace: string, sessionId: string): unknown => {
+    /** The team record service, absent until its row has applied (and undefined for a non-ACTIVE one). */
+    const teams = ctx.get?.(TEAMS_SERVICE, false) as { planFor?: (w: string, s: string) => { plan?: unknown } } | undefined
+    if (teams === undefined || teams === null || typeof teams.planFor !== "function") {
+      throw new Error("the " + TEAMS_SERVICE + " service is not mounted, so the staged-plan probe cannot answer")
+    }
+    return teams.planFor(workspace, sessionId)?.plan ?? null
+  }
+}
 
 /** The one plane whose contributions are restricted to skills + flows (`MPD_EXT_CONTRACT.projectKinds`). */
 const PROJECT_ONLY_PLANE = "project"
@@ -389,7 +428,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const message = "[mpd-roles] " + line
     try {
       if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
-      else console.log(message)
+      else rowLogLine("mpd-roles", message)
     } catch { /* logging must never take the roster down */ }
   }
   // The adapter-identity warning must be visible in a HEADLESS boot as well:
@@ -399,7 +438,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     /** The line with this row's prefix, for the stdout-first reporter. */
     const message = "[mpd-roles] " + line
     try {
-      console.log(message)
+      rowLogLine("mpd-roles", message)
       if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
     } catch { /* logging must never take the roster down */ }
   }
@@ -554,9 +593,42 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // restored HERE, on the OFFICIAL plugin's seams, reached only through the adapter:
   //   1. a tool guard over the SAME seven names the one-shot path denies;
   //   2. an AGENT-SCOPED roster section, so an mpd Lead knows the members it can stage;
-  //   3. the advisory session-start gate (it NEVER stages a team).
+  //   3. the session-start complexity gate, which since 2026-10-07 is MECHANICAL by default: a
+  //      triggered session stages an APPROVABLE PLAN SHELL (0 members, 0 tasks) through the
+  //      `agent_teams_plan` tool — never a team, never a spawned member.
   // Each installer degrades with a warning instead of taking the row down.
   const teamMembers = (): Array<{ name: string; description: string; readonly: boolean }> => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }))
+  /**
+   * ONE team-plane config value for ONE key, resolved PER CALL and never cached.
+   *
+   * Precedence: the mounted `mpdConfig` layer first (a `.mpd/mpd.jsonc` edit is therefore picked up
+   * LIVE, T-18), this row's own config second, `undefined` last so the plugin's own default applies.
+   * @param key - the dot-path key, e.g. `team.gate` or `boulder.dir`.
+   * @returns the raw value, or `undefined` when neither layer declares it.
+   */
+  const configValue = (key: string): unknown => {
+    /** The live config service, absent until the `mpd-config` row has applied. */
+    const live = ((): { get?: (k: string) => unknown } | undefined => {
+      try {
+        return ctx.get?.(CONFIG_SERVICE, false) as { get?: (k: string) => unknown } | undefined
+      } catch {
+        // A config service that refuses the lookup reads as ABSENT, never as a boot failure.
+        return undefined
+      }
+    })()
+    /** The live layer's answer, which wins whenever the key is really declared there. */
+    const value = ((): unknown => {
+      try {
+        return live?.get?.(key)
+      } catch {
+        return undefined
+      }
+    })()
+    if (value !== undefined) return value
+    if (key === GATE_CONFIG_KEY) return config.team?.gate
+    if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
+    return undefined
+  }
   // The TEAM PLANE's boot signature: ONE line naming the three restored contracts and their
   // outcome, so an integration boot asserts the guard reached the tool registry (a
   // `[mpd-roles] team plane: readOnlyGuard=installed deny=7 …` line) instead of trusting the
@@ -576,12 +648,33 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     guardOutcome.push("readOnlyGuard=absent reason=threw")
     warnOnce("team-guard:threw", "the team-path read-only guard could not be installed (" + errText(error) + ")")
   }
+  // THE VERIFICATION LAW'S GUARD, installed at this same site: one extra `guardTool` install, decided by
+  // the pure functions of `mpd-verify-plugin/src/law.ts` and reading its state from the `mpdVerify`
+  // SERVICE per call — so the state belongs to the one verify row even though the hook lives here.
+  try {
+    /** The verify row's runtime, resolved PER CALL: `mpd-verify` applies after this row. */
+    const lawAccess = (): VerifyLawAccess | undefined => {
+      try { return (ctx.get?.(VERIFY_SERVICE, false) ?? undefined) as VerifyLawAccess | undefined } catch { return undefined }
+    }
+    /** The guard's install outcome, reported on the team-plane boot signature below. */
+    const verifyGuard = installVerifyGuard(dsh, {
+      presets: ["mpd"],
+      law: lawAccess,
+      workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
+      configValue,
+      warn: (line) => warnOnce("verify-guard:" + line, line),
+    })
+    guardOutcome.push(verifyGuard.installed ? "verifyGate=installed" : "verifyGate=absent reason=" + String(verifyGuard.reason))
+  } catch (error) {
+    guardOutcome.push("verifyGate=absent reason=threw")
+    warnOnce("verify-guard:threw", "the verification law's write guard could not be installed (" + errText(error) + ")")
+  }
   try {
     installRosterSection(dsh, {
       members: teamMembers(),
       presets: ["mpd"],
       warn: (line) => warnOnce("team-section:" + line, line),
-      log: (line) => console.log("[mpd-roles] " + line),
+      log: (line) => rowLogLine("mpd-roles", "[mpd-roles] " + line),
     })
     guardOutcome.push("rosterSection=agent-scoped order=605")
   } catch (error) {
@@ -589,24 +682,32 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     warnOnce("team-section:threw", "the roster prompt section could not be registered (" + errText(error) + ")")
   }
   try {
-    installSessionGate(dsh, {
+    /** The gate's install outcome, whose MODE the team-plane boot signature reports below. */
+    const gate = installSessionGate(dsh, {
       presets: ["mpd"],
       warn: (line) => warn(line),
-      log: (line) => console.log("[mpd-roles] " + line),
+      log: (line) => rowLogLine("mpd-roles", "[mpd-roles] " + line),
+      configValue,
+      // The idempotence probe, read through the mpd record service PER CALL so the `mpd-team-core`
+      // row may compose after this one. Its contract is THREE-VALUED and `stagedPlanProbe` keeps it
+      // that way: `null` is the POSITIVE "nothing staged" answer, while an UNREADABLE probe THROWS —
+      // the case the gate reports in ONE warning, because staging can ARCHIVE an existing
+      // un-approved plan for this session.
+      stagedPlan: stagedPlanProbe(ctx),
     })
-    guardOutcome.push("sessionGate=advisory")
+    guardOutcome.push("sessionGate=" + gate.mode)
   } catch (error) {
     guardOutcome.push("sessionGate=absent")
     warnOnce("team-gate:threw", "the session-start complexity gate could not be installed (" + errText(error) + ")")
   }
   try {
-    console.log("[mpd-roles] team plane: " + guardOutcome.join(" "))
+    rowLogLine("mpd-roles", "[mpd-roles] team plane: " + guardOutcome.join(" "))
   } catch { /* logging must never take the roster down */ }
 
   // The apply-time identity line: on the healthy path this is the row's ONLY new
   // output, and it carries the same `adapterIdentity=` field the `mpdRoles` service
   // exposes, so a mount lane can assert WHICH adapter branch this row really took.
   try {
-    console.log("[mpd-roles] mpdRoles provided (base roles: " + ROLES.length + ") | adapterIdentity=" + dshAdapterIdentity(ctx))
+    rowLogLine("mpd-roles", "[mpd-roles] mpdRoles provided (base roles: " + ROLES.length + ") | adapterIdentity=" + dshAdapterIdentity(ctx))
   } catch { /* logging must never take the roster down */ }
 }

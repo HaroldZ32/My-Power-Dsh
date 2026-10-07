@@ -1,0 +1,50 @@
+
+
+  ✦ dsh-TUI  v0.13.0
+  DeepSeek Harness
+  deepseek-flash · Max effort
+  /home/haroldzhao/MyProj/DshPr…
+  提示：偏好的推理档当前模型没…
+
+    探索未至之境！
+
+
+   ▶ （Ctrl+P 展开） 已加载上…
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  mpd: 团队 tui-dag-port 7·0/…
+
+  ╭──────────────────────────╮
+  ⌸ ❯                        ⛶
+  ╰──────────────────────────╯
+   deepseek-flash · max · ws
+
+

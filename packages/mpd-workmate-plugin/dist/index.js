@@ -1,17 +1,215 @@
 // packages/mpd-workmate-plugin/src/index.ts
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, rmSync as rmSync2, writeFileSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
-import { join, resolve as resolve2, sep } from "node:path";
+import { join as join2, resolve as resolve3, sep } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+}
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_TOOLS = "tools";
+var DSH_SEAM_SUBAGENTS = "subagents";
+function dshSeamInject(...names) {
+  return [...names];
+}
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -39,11 +237,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -56,7 +266,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -64,6 +274,46 @@ function workspaceRootsOf(agents) {
   }
 }
 function noop() {}
+var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
+function goalSnapshotOf(view) {
+  if (view === null || view === undefined || typeof view !== "object")
+    return;
+  const raw = view;
+  if (typeof raw.id !== "string" || raw.id === "")
+    return;
+  const snapshot = {
+    id: raw.id,
+    revision: typeof raw.revision === "number" ? raw.revision : 0,
+    objective: typeof raw.objective === "string" ? raw.objective : "",
+    phase: raw.phase === "paused" || raw.phase === "blocked" || raw.phase === "complete" ? raw.phase : "active",
+    maxGoalRounds: typeof raw.maxGoalRounds === "number" ? raw.maxGoalRounds : 0
+  };
+  if (typeof raw.roundsStarted === "number")
+    snapshot.roundsStarted = raw.roundsStarted;
+  if (raw.activation === "armed" || raw.activation === "disarmed")
+    snapshot.activation = raw.activation;
+  const reason = raw.blockedReason;
+  if (reason !== null && typeof reason === "object") {
+    const code = reason.code;
+    const message = reason.message;
+    if (typeof code === "string" && code !== "" && typeof message === "string" && message !== "") {
+      snapshot.blockedReason = { code, message };
+    }
+  }
+  return snapshot;
+}
+function goalValueOf(value) {
+  if (value === null || value === undefined || typeof value !== "object")
+    return { goal: null };
+  const raw = value;
+  const activation = raw.activation === "armed" || raw.activation === "disarmed" ? raw.activation : undefined;
+  const goal = goalSnapshotOf(raw.goal);
+  if (goal === undefined)
+    return activation === undefined ? { goal: null } : { goal: null, activation };
+  if (activation !== undefined)
+    goal.activation = activation;
+  return activation === undefined ? { goal } : { goal, activation };
+}
 function scopeOfAgentContext(agent) {
   let context;
   try {
@@ -207,6 +457,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -232,16 +483,18 @@ function createDshAdapter(ctx, config = {}) {
     }
     return liveAgents().find((candidate) => candidate.id === id);
   }
-  const engineCache = new Map;
+  const engineCache = new WeakMap;
   function compactionEngineForAgent(agentId) {
     const id = String(agentId ?? "");
     if (id === "")
       return;
-    const cached = engineCache.get(id);
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    const cached = engineCache.get(agent);
     if (cached !== undefined)
       return cached;
-    const agent = liveAgent(id);
-    const scoped = agent?.ctx;
+    const scoped = agent.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -252,7 +505,7 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(id, engine);
+    engineCache.set(agent, engine);
     return engine;
   }
   function onEvent(event, handler) {
@@ -272,7 +525,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -363,6 +616,210 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
     return;
   }
+  const nativeMembers = new Map;
+  const officialMembers = new Map;
+  const neverAborted = () => new AbortController().signal;
+  const sessionIdOfAgent = (agent) => {
+    const session = agent?.session;
+    return typeof session?.id === "string" ? session.id : "";
+  };
+  function nativeTeamExecutor(reason, ready) {
+    const subagentsOf = () => service("subagents");
+    return {
+      kind: "native",
+      reason,
+      providers: () => {
+        try {
+          const list = subagentsOf()?.providers;
+          if (typeof list !== "function")
+            return [];
+          const names = list.call(subagentsOf());
+          return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
+        } catch {
+          return [];
+        }
+      },
+      async spawn(caller, request) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        if (typeof subagents.startContinuable !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member");
+        }
+        const spec = {
+          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          label: `${request.name} · ${request.teamId}`,
+          request: {
+            prompt: textBlock(request.prompt),
+            parent: caller,
+            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+          },
+          signal: request.signal ?? neverAborted()
+        };
+        const started = await subagents.startContinuable.call(subagents, spec);
+        const handle = String(started?.childId ?? started?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
+        return { handle, executor: "native" };
+      },
+      async send(caller, handle, content, signal) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`);
+        if (typeof subagents.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await subagents.sendMessage.call(subagents, caller, handle, textBlock(content), { signal: signal ?? neverAborted() });
+      },
+      async interrupt(caller, handle) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot interrupt team member "${handle}"`);
+        if (typeof subagents.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt() — cannot interrupt a team member");
+        }
+        subagents.interrupt.call(subagents, handle, { kind: "ancestor", agent: caller });
+      },
+      membership(agent) {
+        const id = sessionIdOfAgent(agent);
+        if (id === "")
+          return;
+        const entry = nativeMembers.get(id);
+        return entry === undefined ? undefined : { teamId: entry.teamId, role: "teammate", name: entry.name };
+      },
+      members: () => [...nativeMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function officialTeamExecutor() {
+    return {
+      kind: "official",
+      reason: "official: the native seams are unavailable, so the mounted Agent Teams service executes the team",
+      providers: () => [],
+      async spawn(caller, request) {
+        const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`);
+        if (typeof teams.spawnTeammate !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member");
+        }
+        const spawned = await teams.spawnTeammate.call(teams, caller, {
+          name: request.name,
+          description: request.description === "" ? request.name : request.description,
+          prompt: request.prompt,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+        const handle = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the official backend raised "${request.name}" but reported no id`);
+        officialMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name });
+        return { handle, executor: "official" };
+      },
+      async send(caller, handle, content, signal) {
+        const teams = requireService("agentTeams", `cannot deliver a message to team member "${handle}"`);
+        if (typeof teams.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await teams.sendMessage.call(teams, caller, { target: handle, content: textBlock(content), ...signal === undefined ? {} : { signal } });
+      },
+      async interrupt(caller, handle) {
+        const teams = requireService("agentTeams", `cannot interrupt team member "${handle}"`);
+        if (typeof teams.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no interrupt() — cannot interrupt a team member");
+        }
+        const target = officialMembers.get(handle)?.name ?? handle;
+        teams.interrupt.call(teams, caller, target);
+      },
+      membership: (agent) => {
+        const teams = service("agentTeams");
+        const tryMembership = teams?.tryMembership;
+        if (typeof tryMembership !== "function")
+          return;
+        try {
+          const membership = tryMembership.call(teams, agent);
+          if (membership === undefined || membership === null)
+            return;
+          const role = membership.role;
+          if (role !== "lead" && role !== "teammate")
+            return;
+          return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+        } catch {
+          return;
+        }
+      },
+      members: () => [...officialMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function scopedToolRegistry(agent) {
+    const scope = scopeOfAgentContext(agent);
+    if (scope === undefined)
+      return;
+    try {
+      const tools = scope.context?.tools;
+      return typeof tools?.execute === "function" ? tools : undefined;
+    } catch {
+      return;
+    }
+  }
+  function hostToolDefinition(name) {
+    try {
+      const hostView = service("tools");
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name);
+    try {
+      return scoped.get(name, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name) {
+    if (hostToolDefinition(name) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined);
+  }
+  function projectToolResult(raw) {
+    const record = raw;
+    if (record?.isError === true) {
+      const error = record.error;
+      return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
+    }
+    return { ok: true, isError: false, value: record?.value, raw };
+  }
+  async function executeToolForAgent(input) {
+    const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
+    const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
+    const scoped = input.agent === undefined ? undefined : scopedToolRegistry(input.agent);
+    if (scoped !== undefined) {
+      try {
+        const raw = await scoped.execute({
+          name: input.name,
+          arguments: input.arguments ?? {},
+          callId,
+          ...signal === undefined ? {} : { signal },
+          ...input.agent === undefined ? {} : { agent: input.agent }
+        });
+        return { result: projectToolResult(raw), via: "agent-scope" };
+      } catch (error) {
+        return { result: { ok: false, isError: true, error: errorMessage(error) }, via: "agent-scope" };
+      }
+    }
+    const result = await adapter.executeTool({
+      name: input.name,
+      arguments: input.arguments ?? {},
+      callId,
+      ...signal === undefined ? {} : { signal },
+      ...input.agent === undefined ? {} : { agent: input.agent },
+      ...input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }
+    });
+    return { result, via: "host-plane" };
+  }
   const adapter = {
     capabilities() {
       const tools = service("tools");
@@ -375,6 +832,7 @@ function createDshAdapter(ctx, config = {}) {
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
+      const goalService = service("goals");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -407,6 +865,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsRegisterHost: typeof tools?.register === "function",
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
         subagentsContinuable: typeof subagents?.startContinuable === "function",
+        teamExecutorNative: typeof subagents?.startContinuable === "function",
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -422,16 +881,84 @@ function createDshAdapter(ctx, config = {}) {
         team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
         teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
-        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function",
+        goals: typeof goalService?.get === "function",
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
       };
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
+    goalState(agent) {
+      const goals = service("goals");
+      if (goals === undefined || typeof goals.get !== "function")
+        return;
+      try {
+        const view = goals.get(agent);
+        return goalSnapshotOf(view) ?? null;
+      } catch {
+        return;
+      }
+    },
+    async goalControl(input) {
+      if (input === null || typeof input !== "object" || typeof input.action !== "string") {
+        return { ok: false, isError: true, error: "goalControl requires an action" };
+      }
+      if (input.agent === undefined)
+        return { ok: false, isError: true, error: "goal tools require a calling agent" };
+      let goalId = input.goalId;
+      let revision = input.revision;
+      const needsRef = input.action !== "create" && input.action !== "read";
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        const current = await executeToolForAgent({ name: "get_goal", agent: input.agent, callId: input.callId, signal: input.signal, timeoutMs: input.timeoutMs });
+        if (!current.result.ok)
+          return { ok: false, isError: true, error: current.result.error, via: current.via, raw: current.result.raw };
+        const read = goalValueOf(current.result.value);
+        if (read.goal === null)
+          return { ok: false, isError: true, error: "no current goal", via: current.via, raw: current.result.raw };
+        goalId = goalId ?? read.goal.id;
+        revision = revision ?? read.goal.revision;
+      }
+      const toolName = input.action === "read" ? "get_goal" : input.action === "create" ? "create_goal" : "update_goal";
+      const toolArguments = input.action === "read" ? {} : input.action === "create" ? { objective: input.objective, ...input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds } } : {
+        goal_id: goalId,
+        revision,
+        action: input.action,
+        ...input.objective === undefined ? {} : { objective: input.objective },
+        ...input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds },
+        ...input.blockedReason === undefined ? {} : { blocked_reason: input.blockedReason }
+      };
+      if (input.action === "create" && (typeof input.objective !== "string" || input.objective.trim() === "")) {
+        return { ok: false, isError: true, error: "goalControl create requires a non-empty objective" };
+      }
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        return { ok: false, isError: true, error: "goalControl " + input.action + " requires an exact goal id and revision" };
+      }
+      const call = await executeToolForAgent({
+        name: toolName,
+        arguments: toolArguments,
+        agent: input.agent,
+        callId: input.callId,
+        signal: input.signal,
+        timeoutMs: input.timeoutMs
+      });
+      if (!call.result.ok)
+        return { ok: false, isError: call.result.isError, error: call.result.error, via: call.via, raw: call.result.raw };
+      const value = goalValueOf(call.result.value);
+      return {
+        ok: true,
+        isError: false,
+        goal: value.goal,
+        ...value.activation === undefined ? {} : { activation: value.activation },
+        via: call.via,
+        raw: call.result.raw
+      };
+    },
     llmListModels(provider) {
       const llm = requireService("llm", 'cannot list the models of provider "' + provider + '"');
       if (typeof llm.listModels !== "function")
@@ -557,20 +1084,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },
@@ -589,12 +1108,7 @@ function createDshAdapter(ctx, config = {}) {
           ...signal === undefined ? {} : { signal },
           ...input.agent === undefined ? {} : { agent: input.agent }
         });
-        const isError = raw?.isError === true;
-        if (isError) {
-          const error = raw?.error;
-          return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
-        }
-        return { ok: true, isError: false, value: raw?.value, raw };
+        return projectToolResult(raw);
       } catch (error) {
         return { ok: false, isError: true, error: errorMessage(error) };
       }
@@ -662,6 +1176,22 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamExecutor() {
+      const override = (() => {
+        try {
+          const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_TEAM_EXECUTOR : undefined;
+          return typeof raw === "string" && raw.trim() !== "" ? raw.trim().toLowerCase() : undefined;
+        } catch {
+          return;
+        }
+      })();
+      const nativeReady = typeof service("subagents")?.startContinuable === "function";
+      const officialReady = service("agentTeams") !== undefined;
+      const chosen = override === "official" && officialReady ? "official" : override === "native" && nativeReady ? "native" : nativeReady ? "native" : officialReady ? "official" : "native";
+      if (chosen === "official")
+        return officialTeamExecutor();
+      return nativeTeamExecutor(nativeReady ? override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native" : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse", nativeReady);
     },
     teamService() {
       const teams = service("agentTeams");
@@ -885,7 +1415,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -904,7 +1434,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -995,15 +1525,36 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 var SERVICE_NAME = "mpdDsh";
-function resolveDshAdapter(ctx) {
-  const get = typeof ctx?.get === "function" ? ctx.get : undefined;
-  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME);
-  return mounted ?? createDshAdapter(ctx);
+function resolveDshAdapter(ctx, options = {}) {
+  const mounted = probeMpdDsh(ctx, true);
+  if (mounted.value !== undefined)
+    return mounted.value;
+  const warn = options.warn ?? ((line) => rowLogLine("mpd-dsh-adapter", line));
+  warn(probeMpdDsh(ctx, false).missing ? adapterFallbackWarning() : adapterPendingWarning());
+  return createDshAdapter(ctx);
+}
+var ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter";
+function adapterPendingWarning() {
+  return "ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber" + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE" + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted" + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).";
+}
+function adapterFallbackWarning() {
+  return "ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided" + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter" + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)" + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working," + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the" + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).";
+}
+function probeMpdDsh(ctx, strict) {
+  const get = ctx?.get;
+  if (typeof get !== "function")
+    return { missing: true };
+  try {
+    const value = get.call(ctx, SERVICE_NAME, strict);
+    return value === undefined || value === null ? { missing: true } : { value, missing: false };
+  } catch {
+    return { missing: true };
+  }
 }
 
 // packages/mpd-workmate-plugin/src/index.ts
 var name = "mpd-workmate";
-var inject = ["tools", "subagents"];
+var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS);
 var PERSONA_CAP = 8 * 1024;
 var MEMORY_CAP = 8 * 1024;
 var NOTE_CAP = 1536;
@@ -1057,7 +1608,7 @@ function homeDir() {
   return process.env.HOME || homedir();
 }
 function workmateRoot() {
-  return join(homeDir(), ".mpd", "workmate");
+  return join2(homeDir(), ".mpd", "workmate");
 }
 var WORKMATE_ALLOW_REAL_HOME_ENV = "MPD_DSH_WORKMATE_ALLOW_REAL_HOME";
 function realUserHome() {
@@ -1078,7 +1629,7 @@ function realUserHome() {
   } catch {}
   try {
     const api = userInfo().homedir;
-    if (api !== "" && resolve2(api) !== resolve2(process.env.HOME ?? api))
+    if (api !== "" && resolve3(api) !== resolve3(process.env.HOME ?? api))
       return api;
   } catch {}
   return;
@@ -1093,7 +1644,7 @@ function assertMutationSandboxed(operation) {
   const home = process.env.HOME;
   const realHome = realUserHome();
   const inside = (h) => root === h || root.startsWith(h.endsWith(sep) ? h : h + sep);
-  if (home !== undefined && home !== "" && realHome !== undefined && resolve2(home) !== resolve2(realHome) && inside(resolve2(home)))
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve3(home) !== resolve3(realHome) && inside(resolve3(home)))
     return;
   throw new WorkmateError("real-home-refused", "mpd_workmate: refusing to " + operation + " inside the REAL library " + root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
 }
@@ -1101,7 +1652,7 @@ function wmDir(name2) {
   const key = sanitizeName(name2);
   if (key === "")
     throw new WorkmateError("invalid-name", "mpd_workmate: empty workmate name — the library root is not an instance", 400);
-  return join(workmateRoot(), key);
+  return join2(workmateRoot(), key);
 }
 function sanitizeName(s) {
   const t = String(s ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
@@ -1110,17 +1661,21 @@ function sanitizeName(s) {
 function capText(text, max) {
   if (text.length <= max)
     return text;
-  const head = Math.floor(max * 0.75);
-  const tail = max - head;
-  return text.slice(0, head) + `
+  const marker = `
 …[truncated ${text.length - max} chars]…
-` + text.slice(-tail);
+`;
+  if (marker.length >= max)
+    return text.slice(0, Math.max(0, max));
+  const budget = max - marker.length;
+  const head = Math.floor(budget * 0.75);
+  const tail = budget - head;
+  return text.slice(0, head) + marker + text.slice(-tail);
 }
 function readMeta(dir) {
   try {
-    if (!existsSync(join(dir, "meta.json")))
+    if (!existsSync(join2(dir, "meta.json")))
       return null;
-    const m = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8"));
+    const m = JSON.parse(readFileSync(join2(dir, "meta.json"), "utf8"));
     return { name: String(m.name ?? ""), baseId: String(m.baseId ?? ""), baseName: String(m.baseName ?? ""), description: String(m.description ?? ""), provider: String(m.provider ?? ""), model: String(m.model ?? ""), readonly: Boolean(m.readonly), createdAt: String(m.createdAt ?? ""), updatedAt: String(m.updatedAt ?? ""), uses: Number(m.uses ?? 0), lastTask: m.lastTask == null ? null : String(m.lastTask), renamedFrom: Array.isArray(m.renamedFrom) ? m.renamedFrom.map(String) : [] };
   } catch {
     return null;
@@ -1132,12 +1687,12 @@ function publicMeta(meta) {
   return out;
 }
 function writeJson(path, value) {
-  mkdirSync(join(path, ".."), { recursive: true });
+  mkdirSync2(join2(path, ".."), { recursive: true });
   writeFileSync(path, JSON.stringify(value, null, 2) + `
 `);
 }
 function indexPath() {
-  return join(workmateRoot(), "index.json");
+  return join2(workmateRoot(), "index.json");
 }
 function readIndex() {
   try {
@@ -1182,14 +1737,14 @@ function restoreIndexEntry(key, entry) {
 }
 function readNote(key) {
   try {
-    return readFileSync(join(wmDir(key), "note.md"), "utf8").trim();
+    return readFileSync(join2(wmDir(key), "note.md"), "utf8").trim();
   } catch {
     return "";
   }
 }
 function readMemory(key, tailBytes = MEMORY_CAP) {
   try {
-    const t = readFileSync(join(wmDir(key), "memory.md"), "utf8").trim();
+    const t = readFileSync(join2(wmDir(key), "memory.md"), "utf8").trim();
     if (t.length <= tailBytes)
       return t;
     return `…[earlier memory trimmed]…
@@ -1200,7 +1755,7 @@ function readMemory(key, tailBytes = MEMORY_CAP) {
 }
 function readPersona(key) {
   try {
-    return readFileSync(join(wmDir(key), "persona.md"), "utf8").trim();
+    return readFileSync(join2(wmDir(key), "persona.md"), "utf8").trim();
   } catch {
     return "";
   }
@@ -1215,7 +1770,7 @@ function autoNote(meta, persona, memory, previous = "") {
   return capText(`${identity} ${task}.${last ? " " + last.replace(/^##\s*/, "") : ""}`, NOTE_CAP);
 }
 function appendMemory(key, entry) {
-  const path = join(wmDir(key), "memory.md");
+  const path = join2(wmDir(key), "memory.md");
   const existing = (existsSync(path) ? readFileSync(path, "utf8") : "").trim();
   const next = (existing ? existing + `
 
@@ -1243,7 +1798,7 @@ function appendMemory(key, entry) {
   return out;
 }
 function mergePersona(key, revision) {
-  const path = join(wmDir(key), "persona.md");
+  const path = join2(wmDir(key), "persona.md");
   const existing = (existsSync(path) ? readFileSync(path, "utf8") : "").trim();
   const merged = capText(existing + (revision ? `
 
@@ -1286,9 +1841,9 @@ function listInstances() {
   const root = workmateRoot();
   if (!existsSync(root))
     return [];
-  return readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && existsSync(join(root, e.name, "meta.json"))).map((e) => {
+  return readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && existsSync(join2(root, e.name, "meta.json"))).map((e) => {
     const key = e.name;
-    const meta = readMeta(join(root, key));
+    const meta = readMeta(join2(root, key));
     return { name: key, meta, note: readNote(key) };
   }).sort((a, b) => b.meta.updatedAt.localeCompare(a.meta.updatedAt));
 }
@@ -1326,26 +1881,49 @@ function noteSpawnEnd(key) {
 }
 function busyTeams(key, roots) {
   const hits = [];
+  const note = (teamId, memberName) => {
+    if (memberName === "" || sanitizeName(memberName) !== key)
+      return;
+    if (hits.some((hit) => hit.teamId === teamId && hit.member === memberName))
+      return;
+    hits.push({ teamId, member: memberName });
+  };
   const scanRoots = roots && roots.length > 0 ? roots : [workspaceRootOf()];
   for (const root of scanRoots) {
     try {
-      const teamRoot = join(root, ".mpd", "team");
+      const teamRoot = join2(root, ".mpd", "team");
       if (!existsSync(teamRoot))
         continue;
       for (const entry of readdirSync(teamRoot, { withFileTypes: true })) {
         if (!entry.isDirectory())
           continue;
-        const file = join(teamRoot, entry.name, "team.json");
+        const file = join2(teamRoot, entry.name, "team.json");
         if (!existsSync(file))
           continue;
         try {
           const team = JSON.parse(readFileSync(file, "utf8"));
           const members = Array.isArray(team?.members) ? team.members : [];
+          for (const m of members)
+            note(String(team?.id ?? entry.name), typeof m?.name === "string" ? m.name : "");
+        } catch {}
+      }
+    } catch {}
+    try {
+      const records = join2(root, ".mpd", "team", "teams");
+      if (!existsSync(records))
+        continue;
+      for (const name2 of readdirSync(records)) {
+        if (!name2.endsWith(".json"))
+          continue;
+        try {
+          const team = JSON.parse(readFileSync(join2(records, name2), "utf8"));
+          if (team?.endedAt !== undefined)
+            continue;
+          const members = Array.isArray(team?.members) ? team.members : [];
           for (const m of members) {
-            const memberName = typeof m?.name === "string" ? m.name : "";
-            if (memberName !== "" && sanitizeName(memberName) === key && !hits.some((h) => h.teamId === String(team?.id ?? entry.name) && h.member === memberName)) {
-              hits.push({ teamId: String(team?.id ?? entry.name), member: memberName });
-            }
+            if (m?.status === "inactive" || m?.status === "failed")
+              continue;
+            note(String(team?.teamId ?? name2.replace(/\.json$/, "")), typeof m?.name === "string" ? m.name : "");
           }
         } catch {}
       }
@@ -1382,16 +1960,16 @@ function compactUtcStamp() {
   return new Date().toISOString().replace(/:/g, "").replace(/\.\d+Z$/, "Z");
 }
 function archivePathFor(key) {
-  const archiveRoot = join(workmateRoot(), ".archive");
-  mkdirSync(archiveRoot, { recursive: true });
+  const archiveRoot = join2(workmateRoot(), ".archive");
+  mkdirSync2(archiveRoot, { recursive: true });
   const stamp = compactUtcStamp();
-  let candidate = join(archiveRoot, `${key}-${stamp}`);
+  let candidate = join2(archiveRoot, `${key}-${stamp}`);
   for (let i = 2;lstatOrNull(candidate) != null && i < 1000; i++)
-    candidate = join(archiveRoot, `${key}-${stamp}-${i}`);
+    candidate = join2(archiveRoot, `${key}-${stamp}-${i}`);
   return candidate;
 }
 function rewriteNoteIdentity(dir, baseName, oldKey, newKey) {
-  const path = join(dir, "note.md");
+  const path = join2(dir, "note.md");
   let raw;
   try {
     raw = readFileSync(path, "utf8");
@@ -1416,14 +1994,14 @@ function renameWorkmate(nameArg, newNameArg, teamRoots) {
   assertNotBusy([oldKey, newKey], teamRoots);
   const renamedFrom = unique([...meta.renamedFrom, oldKey]).slice(-10);
   const nextMeta = { ...meta, name: newKey, renamedFrom, updatedAt: now() };
-  renameSync(dir, dst);
+  renameSync2(dir, dst);
   try {
-    writeFileSync(join(dst, "meta.json"), JSON.stringify(nextMeta, null, 2) + `
+    writeFileSync(join2(dst, "meta.json"), JSON.stringify(nextMeta, null, 2) + `
 `);
     renameIndexKey(oldKey, newKey, nextMeta);
   } catch (e) {
     try {
-      renameSync(dst, dir);
+      renameSync2(dst, dir);
     } catch {}
     throw new WorkmateError("internal", `mpd_workmate: rename of "${oldKey}" failed (${String(e?.code ?? "error")}) and was rolled back`, 500);
   }
@@ -1446,15 +2024,15 @@ function deleteWorkmate(nameArg, purgeArg, confirmArg, teamRoots) {
   try {
     previous = dropIndexKey(key);
     if (purge) {
-      const stash = join(workmateRoot(), ".archive", `.purging-${key}-${compactUtcStamp()}`);
-      mkdirSync(join(workmateRoot(), ".archive"), { recursive: true });
-      renameSync(dir, stash);
+      const stash = join2(workmateRoot(), ".archive", `.purging-${key}-${compactUtcStamp()}`);
+      mkdirSync2(join2(workmateRoot(), ".archive"), { recursive: true });
+      renameSync2(dir, stash);
       removed = true;
-      rmSync(stash, { recursive: true, force: true });
+      rmSync2(stash, { recursive: true, force: true });
       return { ok: true, name: key, archived: null, purged: true };
     }
     const archived = archivePathFor(key);
-    renameSync(dir, archived);
+    renameSync2(dir, archived);
     removed = true;
     return { ok: true, name: key, archived, purged: false };
   } catch (e) {
@@ -1507,15 +2085,15 @@ function apply(ctx) {
     const dir = wmDir(name2);
     if (existsSync(dir))
       throw new Error(`mpd_workmate: "${name2}" already exists — pick another name or reuse it via mpd_workmate_spawn`);
-    mkdirSync(dir, { recursive: true });
+    mkdirSync2(dir, { recursive: true });
     const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [] };
-    writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
+    writeFileSync(join2(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
-    writeFileSync(join(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + `
+    writeFileSync(join2(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + `
 `);
-    writeFileSync(join(dir, "memory.md"), "");
+    writeFileSync(join2(dir, "memory.md"), "");
     const note = capText(String(noteArg ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP);
-    writeFileSync(join(dir, "note.md"), note + `
+    writeFileSync(join2(dir, "note.md"), note + `
 `);
     writeIndexEntry(name2, meta);
     return { name: name2, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
@@ -1632,10 +2210,10 @@ ${capText(outcome, 1200)}`);
       meta.lastTask = task;
       meta.updatedAt = now();
       meta.name = key;
-      writeFileSync(join(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + `
+      writeFileSync(join2(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
       const note = capText(String(args?.note ?? "").trim() || autoNote(meta, persona, memory, readNote(key)), NOTE_CAP);
-      writeFileSync(join(wmDir(key), "note.md"), note + `
+      writeFileSync(join2(wmDir(key), "note.md"), note + `
 `);
       writeIndexEntry(key, meta);
       return { name: key, updated: true, uses: meta.uses, personaChars: persona.length, memoryChars: memory.length, noteChars: note.length };

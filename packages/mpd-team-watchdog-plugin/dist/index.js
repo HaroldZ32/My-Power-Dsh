@@ -1,115 +1,6 @@
-var __create = Object.create;
-var __getProtoOf = Object.getPrototypeOf;
-var __defProp = Object.defineProperty;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-function __accessProp(key) {
-  return this[key];
-}
-var __toESMCache_node;
-var __toESMCache_esm;
-var __toESM = (mod, isNodeMode, target) => {
-  var canCache = mod != null && typeof mod === "object";
-  if (canCache) {
-    var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
-    var cached = cache.get(mod);
-    if (cached)
-      return cached;
-  }
-  target = mod != null ? __create(__getProtoOf(mod)) : {};
-  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
-  if (mod && typeof mod === "object" || typeof mod === "function") {
-    for (let key of __getOwnPropNames(mod))
-      if (!__hasOwnProp.call(to, key))
-        __defProp(to, key, {
-          get: __accessProp.bind(mod, key),
-          enumerable: true
-        });
-  }
-  if (canCache)
-    cache.set(mod, to);
-  return to;
-};
-var __toCommonJS = (from) => {
-  var entry = (__moduleCache ??= new WeakMap).get(from), desc;
-  if (entry)
-    return entry;
-  entry = __defProp({}, "__esModule", { value: true });
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (var key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(entry, key))
-        __defProp(entry, key, {
-          get: __accessProp.bind(from, key),
-          enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
-        });
-  }
-  __moduleCache.set(from, entry);
-  return entry;
-};
-var __moduleCache;
-var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
-var __returnValue = (v) => v;
-function __exportSetter(name, newValue) {
-  this[name] = __returnValue.bind(null, newValue);
-}
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, {
-      get: all[name],
-      enumerable: true,
-      configurable: true,
-      set: __exportSetter.bind(all, name)
-    });
-};
-var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
-
-// packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
-var exports_lib = {};
-__export(exports_lib, {
-  Binary: () => Binary,
-  Time: () => Time,
-  arrayBufferToBase64: () => arrayBufferToBase64,
-  arrayBufferToHex: () => arrayBufferToHex,
-  base64ToArrayBuffer: () => base64ToArrayBuffer,
-  camelCase: () => camelCase,
-  camelize: () => camelize,
-  capitalize: () => capitalize,
-  clone: () => clone,
-  contain: () => contain,
-  deduplicate: () => deduplicate,
-  deepEqual: () => deepEqual,
-  defineProperty: () => defineProperty,
-  difference: () => difference,
-  filterKeys: () => filterKeys,
-  formatProperty: () => formatProperty,
-  hexToArrayBuffer: () => hexToArrayBuffer,
-  hyphenate: () => hyphenate,
-  intersection: () => intersection,
-  is: () => is,
-  isNonNullable: () => isNonNullable,
-  isNullable: () => isNullable,
-  isPlainObject: () => isPlainObject,
-  makeArray: () => makeArray,
-  mapValues: () => mapValues,
-  noop: () => noop,
-  omit: () => omit,
-  paramCase: () => paramCase,
-  pick: () => pick,
-  remove: () => remove,
-  sanitize: () => sanitize,
-  snakeCase: () => snakeCase,
-  trimSlash: () => trimSlash,
-  uncapitalize: () => uncapitalize,
-  union: () => union,
-  valueMap: () => mapValues
-});
-function noop() {}
+// packages/mpd-schemastery/lib/cosmokit.ts
 function isNullable(value) {
   return value === null || value === undefined;
-}
-function isNonNullable(value) {
-  return !isNullable(value);
 }
 function isPlainObject(data) {
   return data && typeof data === "object" && !Array.isArray(data);
@@ -129,47 +20,6 @@ function pick(source, keys, forced) {
       result[key] = source[key];
   return result;
 }
-function omit(source, keys) {
-  if (!keys)
-    return { ...source };
-  const result = { ...source };
-  for (const key of keys)
-    Reflect.deleteProperty(result, key);
-  return result;
-}
-function defineProperty(object, key, value) {
-  return Object.defineProperty(object, key, {
-    writable: true,
-    value,
-    enumerable: false
-  });
-}
-function contain(array1, array2) {
-  return array2.every((item) => array1.includes(item));
-}
-function intersection(array1, array2) {
-  return array1.filter((item) => array2.includes(item));
-}
-function difference(array1, array2) {
-  return array1.filter((item) => !array2.includes(item));
-}
-function union(array1, array2) {
-  return Array.from(new Set([...array1, ...array2]));
-}
-function deduplicate(array) {
-  return [...new Set(array)];
-}
-function remove(list, item) {
-  const index = list?.indexOf(item);
-  if (index >= 0) {
-    list.splice(index, 1);
-    return true;
-  } else
-    return false;
-}
-function makeArray(source) {
-  return Array.isArray(source) ? source : isNullable(source) ? [] : [source];
-}
 function is(type, value) {
   if (arguments.length === 1)
     return (value2) => is(type, value2);
@@ -181,6 +31,56 @@ function isArrayBufferLike(value) {
 function isArrayBufferSource(value) {
   return isArrayBufferLike(value) || ArrayBuffer.isView(value);
 }
+var Binary;
+(function(Binary2) {
+  Binary2.is = isArrayBufferLike;
+  Binary2.isSource = isArrayBufferSource;
+  function fromSource(source) {
+    if (ArrayBuffer.isView(source))
+      return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+    else
+      return source;
+  }
+  Binary2.fromSource = fromSource;
+  function toBase64(source) {
+    source = fromSource(source);
+    if (typeof Buffer !== "undefined")
+      return Buffer.from(source).toString("base64");
+    let binary = "";
+    const bytes = new Uint8Array(source);
+    for (let i = 0;i < bytes.byteLength; i++)
+      binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+  Binary2.toBase64 = toBase64;
+  function fromBase64(source) {
+    if (typeof Buffer !== "undefined")
+      return fromSource(Buffer.from(source, "base64"));
+    return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
+  }
+  Binary2.fromBase64 = fromBase64;
+  function toHex(source) {
+    source = fromSource(source);
+    if (typeof Buffer !== "undefined")
+      return Buffer.from(source).toString("hex");
+    return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+  Binary2.toHex = toHex;
+  function fromHex(source) {
+    if (typeof Buffer !== "undefined")
+      return fromSource(Buffer.from(source, "hex"));
+    const hex = source.length % 2 === 0 ? source : source.slice(0, source.length - 1);
+    const buffer = [];
+    for (let i = 0;i < hex.length; i += 2)
+      buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
+    return Uint8Array.from(buffer).buffer;
+  }
+  Binary2.fromHex = fromHex;
+})(Binary || (Binary = {}));
+var base64ToArrayBuffer = Binary.fromBase64;
+var arrayBufferToBase64 = Binary.toBase64;
+var hexToArrayBuffer = Binary.fromHex;
+var arrayBufferToHex = Binary.toHex;
 function clone(source, refs = /* @__PURE__ */ new Map) {
   if (!source || typeof source !== "object")
     return source;
@@ -241,577 +141,407 @@ function deepEqual(a, b, strict) {
     ...b
   }).every((key) => deepEqual(a[key], b[key], strict));
 }
-function capitalize(source) {
-  return source.charAt(0).toUpperCase() + source.slice(1);
-}
-function uncapitalize(source) {
-  return source.charAt(0).toLowerCase() + source.slice(1);
-}
-function camelCase(source) {
-  return source.replace(/[_-][a-z]/g, (str) => str.slice(1).toUpperCase());
-}
-function tokenize(source, delimiters, delimiter) {
-  const output = [];
-  let state = 0;
-  for (let i = 0;i < source.length; i++) {
-    const code = source.charCodeAt(i);
-    if (code >= 65 && code <= 90) {
-      if (state === 1) {
-        const next = source.charCodeAt(i + 1);
-        if (next >= 97 && next <= 122)
-          output.push(delimiter);
-        output.push(code + 32);
-      } else {
-        if (state !== 0)
-          output.push(delimiter);
-        output.push(code + 32);
-      }
-      state = 1;
-    } else if (code >= 97 && code <= 122) {
-      output.push(code);
-      state = 2;
-    } else if (delimiters.includes(code)) {
-      if (state !== 0)
-        output.push(delimiter);
-      state = 0;
-    } else
-      output.push(code);
+var Time;
+(function(Time2) {
+  Time2.millisecond = 1;
+  Time2.second = 1000;
+  Time2.minute = Time2.second * 60;
+  Time2.hour = Time2.minute * 60;
+  Time2.day = Time2.hour * 24;
+  Time2.week = Time2.day * 7;
+  let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
+  function setTimezoneOffset(offset) {
+    timezoneOffset = offset;
   }
-  return String.fromCharCode(...output);
-}
-function paramCase(source) {
-  return tokenize(source, [45, 95], 45);
-}
-function snakeCase(source) {
-  return tokenize(source, [45, 95], 95);
-}
-function formatProperty(key) {
-  if (typeof key !== "string")
-    return `[${key.toString()}]`;
-  return /^[a-z_$][\w$]*$/i.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
-}
-function trimSlash(source) {
-  return source.replace(/\/$/, "");
-}
-function sanitize(source) {
-  if (!source.startsWith("/"))
-    source = "/" + source;
-  return trimSlash(source);
-}
-var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, camelize, hyphenate, Time;
-var init_lib = __esm(() => {
-  (function(Binary2) {
-    Binary2.is = isArrayBufferLike;
-    Binary2.isSource = isArrayBufferSource;
-    function fromSource(source) {
-      if (ArrayBuffer.isView(source))
-        return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
-      else
-        return source;
-    }
-    Binary2.fromSource = fromSource;
-    function toBase64(source) {
-      source = fromSource(source);
-      if (typeof Buffer !== "undefined")
-        return Buffer.from(source).toString("base64");
-      let binary = "";
-      const bytes = new Uint8Array(source);
-      for (let i = 0;i < bytes.byteLength; i++)
-        binary += String.fromCharCode(bytes[i]);
-      return btoa(binary);
-    }
-    Binary2.toBase64 = toBase64;
-    function fromBase64(source) {
-      if (typeof Buffer !== "undefined")
-        return fromSource(Buffer.from(source, "base64"));
-      return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
-    }
-    Binary2.fromBase64 = fromBase64;
-    function toHex(source) {
-      source = fromSource(source);
-      if (typeof Buffer !== "undefined")
-        return Buffer.from(source).toString("hex");
-      return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
-    }
-    Binary2.toHex = toHex;
-    function fromHex(source) {
-      if (typeof Buffer !== "undefined")
-        return fromSource(Buffer.from(source, "hex"));
-      const hex = source.length % 2 === 0 ? source : source.slice(0, source.length - 1);
-      const buffer = [];
-      for (let i = 0;i < hex.length; i += 2)
-        buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
-      return Uint8Array.from(buffer).buffer;
-    }
-    Binary2.fromHex = fromHex;
-  })(Binary || (Binary = {}));
-  base64ToArrayBuffer = Binary.fromBase64;
-  arrayBufferToBase64 = Binary.toBase64;
-  hexToArrayBuffer = Binary.fromHex;
-  arrayBufferToHex = Binary.toHex;
-  camelize = camelCase;
-  hyphenate = paramCase;
-  (function(Time2) {
-    Time2.millisecond = 1;
-    Time2.second = 1000;
-    Time2.minute = Time2.second * 60;
-    Time2.hour = Time2.minute * 60;
-    Time2.day = Time2.hour * 24;
-    Time2.week = Time2.day * 7;
-    let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
-    function setTimezoneOffset(offset) {
-      timezoneOffset = offset;
-    }
-    Time2.setTimezoneOffset = setTimezoneOffset;
-    function getTimezoneOffset() {
-      return timezoneOffset;
-    }
-    Time2.getTimezoneOffset = getTimezoneOffset;
-    function getDateNumber(date = /* @__PURE__ */ new Date, offset) {
-      if (typeof date === "number")
-        date = new Date(date);
-      if (offset === undefined)
-        offset = timezoneOffset;
-      return Math.floor((date.valueOf() / Time2.minute - offset) / 1440);
-    }
-    Time2.getDateNumber = getDateNumber;
-    function fromDateNumber(value, offset) {
-      const date = new Date(value * Time2.day);
-      if (offset === undefined)
-        offset = timezoneOffset;
-      return new Date(+date + offset * Time2.minute);
-    }
-    Time2.fromDateNumber = fromDateNumber;
-    const numeric = /\d+(?:\.\d+)?/.source;
-    const timeRegExp = new RegExp(`^${[
-      "w(?:eek(?:s)?)?",
-      "d(?:ay(?:s)?)?",
-      "h(?:our(?:s)?)?",
-      "m(?:in(?:ute)?(?:s)?)?",
-      "s(?:ec(?:ond)?(?:s)?)?"
-    ].map((unit) => `(${numeric}${unit})?`).join("")}$`);
-    function parseTime(source) {
-      const capture = timeRegExp.exec(source);
-      if (!capture)
-        return 0;
-      return (parseFloat(capture[1]) * Time2.week || 0) + (parseFloat(capture[2]) * Time2.day || 0) + (parseFloat(capture[3]) * Time2.hour || 0) + (parseFloat(capture[4]) * Time2.minute || 0) + (parseFloat(capture[5]) * Time2.second || 0);
-    }
-    Time2.parseTime = parseTime;
-    function parseDate(date) {
-      const parsed = parseTime(date);
-      if (parsed)
-        date = Date.now() + parsed;
-      else if (/^\d{1,2}(:\d{1,2}){1,2}$/.test(date))
-        date = `${(/* @__PURE__ */ new Date()).toLocaleDateString()}-${date}`;
-      else if (/^\d{1,2}-\d{1,2}-\d{1,2}(:\d{1,2}){1,2}$/.test(date))
-        date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
-      return date ? new Date(date) : /* @__PURE__ */ new Date;
-    }
-    Time2.parseDate = parseDate;
-    function format(ms) {
-      const abs = Math.abs(ms);
-      if (abs >= Time2.day - Time2.hour / 2)
-        return Math.round(ms / Time2.day) + "d";
-      else if (abs >= Time2.hour - Time2.minute / 2)
-        return Math.round(ms / Time2.hour) + "h";
-      else if (abs >= Time2.minute - Time2.second / 2)
-        return Math.round(ms / Time2.minute) + "m";
-      else if (abs >= Time2.second)
-        return Math.round(ms / Time2.second) + "s";
-      return ms + "ms";
-    }
-    Time2.format = format;
-    function toDigits(source, length = 2) {
-      return source.toString().padStart(length, "0");
-    }
-    Time2.toDigits = toDigits;
-    function template(template2, time = /* @__PURE__ */ new Date) {
-      return template2.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
-    }
-    Time2.template = template;
-  })(Time || (Time = {}));
-});
+  Time2.setTimezoneOffset = setTimezoneOffset;
+  function getTimezoneOffset() {
+    return timezoneOffset;
+  }
+  Time2.getTimezoneOffset = getTimezoneOffset;
+  function getDateNumber(date = /* @__PURE__ */ new Date, offset) {
+    if (typeof date === "number")
+      date = new Date(date);
+    if (offset === undefined)
+      offset = timezoneOffset;
+    return Math.floor((date.valueOf() / Time2.minute - offset) / 1440);
+  }
+  Time2.getDateNumber = getDateNumber;
+  function fromDateNumber(value, offset) {
+    const date = new Date(value * Time2.day);
+    if (offset === undefined)
+      offset = timezoneOffset;
+    return new Date(+date + offset * Time2.minute);
+  }
+  Time2.fromDateNumber = fromDateNumber;
+  const numeric = /\d+(?:\.\d+)?/.source;
+  const timeRegExp = new RegExp(`^${[
+    "w(?:eek(?:s)?)?",
+    "d(?:ay(?:s)?)?",
+    "h(?:our(?:s)?)?",
+    "m(?:in(?:ute)?(?:s)?)?",
+    "s(?:ec(?:ond)?(?:s)?)?"
+  ].map((unit) => `(${numeric}${unit})?`).join("")}$`);
+  function parseTime(source) {
+    const capture = timeRegExp.exec(source);
+    if (!capture)
+      return 0;
+    return (parseFloat(capture[1]) * Time2.week || 0) + (parseFloat(capture[2]) * Time2.day || 0) + (parseFloat(capture[3]) * Time2.hour || 0) + (parseFloat(capture[4]) * Time2.minute || 0) + (parseFloat(capture[5]) * Time2.second || 0);
+  }
+  Time2.parseTime = parseTime;
+  function parseDate(date) {
+    const parsed = parseTime(date);
+    if (parsed)
+      date = Date.now() + parsed;
+    else if (/^\d{1,2}(:\d{1,2}){1,2}$/.test(date))
+      date = `${(/* @__PURE__ */ new Date()).toLocaleDateString()}-${date}`;
+    else if (/^\d{1,2}-\d{1,2}-\d{1,2}(:\d{1,2}){1,2}$/.test(date))
+      date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
+    return date ? new Date(date) : /* @__PURE__ */ new Date;
+  }
+  Time2.parseDate = parseDate;
+  function format(ms) {
+    const abs = Math.abs(ms);
+    if (abs >= Time2.day - Time2.hour / 2)
+      return Math.round(ms / Time2.day) + "d";
+    else if (abs >= Time2.hour - Time2.minute / 2)
+      return Math.round(ms / Time2.hour) + "h";
+    else if (abs >= Time2.minute - Time2.second / 2)
+      return Math.round(ms / Time2.minute) + "m";
+    else if (abs >= Time2.second)
+      return Math.round(ms / Time2.second) + "s";
+    return ms + "ms";
+  }
+  Time2.format = format;
+  function toDigits(source, length = 2) {
+    return source.toString().padStart(length, "0");
+  }
+  Time2.toDigits = toDigits;
+  function template(template2, time = /* @__PURE__ */ new Date) {
+    return template2.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
+  }
+  Time2.template = template;
+})(Time || (Time = {}));
 
-// packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
-var require_lib = __commonJS(function(exports, module) {
-  var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
-  var kSchema = Symbol.for("schemastery");
-  var kValidationError = Symbol.for("ValidationError");
-  globalThis.__schemastery_index__ ??= 0;
-  globalThis.__schemastery_refs__ = undefined;
-  var ValidationError = class extends TypeError {
-    options;
-    name = "ValidationError";
-    constructor(message, options) {
-      let prefix = "$";
-      for (const segment of options.path || [])
-        if (typeof segment === "string")
-          prefix += "." + segment;
-        else if (typeof segment === "number")
-          prefix += "[" + segment + "]";
-        else if (typeof segment === "symbol")
-          prefix += `[Symbol(${segment.toString()})]`;
-      if (prefix.startsWith("."))
-        prefix = prefix.slice(1);
-      super((prefix === "$" ? "" : `${prefix} `) + message);
-      this.options = options;
-    }
-    static is(error) {
-      return !!error?.[kValidationError];
-    }
+// packages/mpd-schemastery/lib/index.ts
+var kSchema = Symbol.for("schemastery");
+var kValidationError = Symbol.for("ValidationError");
+globalThis.__schemastery_index__ ??= 0;
+globalThis.__schemastery_refs__ = undefined;
+var ValidationError = class extends TypeError {
+  options;
+  name = "ValidationError";
+  constructor(message, options) {
+    let prefix = "$";
+    for (const segment of options.path || [])
+      if (typeof segment === "string")
+        prefix += "." + segment;
+      else if (typeof segment === "number")
+        prefix += "[" + segment + "]";
+      else if (typeof segment === "symbol")
+        prefix += `[Symbol(${segment.toString()})]`;
+    if (prefix.startsWith("."))
+      prefix = prefix.slice(1);
+    super((prefix === "$" ? "" : `${prefix} `) + message);
+    this.options = options;
+  }
+  static is(error) {
+    return !!error?.[kValidationError];
+  }
+};
+Object.defineProperty(ValidationError.prototype, kValidationError, { value: true });
+var Schema = function(options) {
+  const schema = function(data, options2 = {}) {
+    return Schema.resolve(data, schema, options2)[0];
   };
-  Object.defineProperty(ValidationError.prototype, kValidationError, { value: true });
-  var Schema = function(options) {
-    const schema = function(data, options2 = {}) {
-      return Schema.resolve(data, schema, options2)[0];
-    };
-    if (options.refs) {
-      const refs = (0, _deepseek_ai_cosmokit.valueMap)(options.refs, (options2) => new Schema(options2));
-      const getRef = (uid) => refs[uid];
-      for (const key in refs) {
-        const options2 = refs[key];
-        options2.sKey = getRef(options2.sKey);
-        options2.inner = getRef(options2.inner);
-        options2.list = options2.list && options2.list.map(getRef);
-        options2.dict = options2.dict && (0, _deepseek_ai_cosmokit.valueMap)(options2.dict, getRef);
-      }
-      return refs[options.uid];
+  if (options.refs) {
+    const refs = mapValues(options.refs, (options2) => new Schema(options2));
+    const getRef = (uid) => refs[uid];
+    for (const key in refs) {
+      const options2 = refs[key];
+      options2.sKey = getRef(options2.sKey);
+      options2.inner = getRef(options2.inner);
+      options2.list = options2.list && options2.list.map(getRef);
+      options2.dict = options2.dict && mapValues(options2.dict, getRef);
     }
-    Object.assign(schema, options);
-    if (typeof schema.callback === "string")
+    return refs[options.uid];
+  }
+  Object.assign(schema, options);
+  if (typeof schema.callback === "string")
+    try {
+      schema.callback = new Function("return " + schema.callback)();
+    } catch {}
+  Object.defineProperty(schema, "uid", { value: globalThis.__schemastery_index__++ });
+  Object.setPrototypeOf(schema, Schema.prototype);
+  schema.meta ||= {};
+  schema.toString = schema.toString.bind(schema);
+  return schema;
+};
+Schema.prototype = Object.create(Function.prototype);
+Schema.prototype[kSchema] = true;
+Object.defineProperty(Schema.prototype, "~standard", { get() {
+  return {
+    version: 1,
+    vendor: "schemastery",
+    validate: (value) => {
       try {
-        schema.callback = new Function("return " + schema.callback)();
-      } catch {}
-    Object.defineProperty(schema, "uid", { value: globalThis.__schemastery_index__++ });
-    Object.setPrototypeOf(schema, Schema.prototype);
-    schema.meta ||= {};
-    schema.toString = schema.toString.bind(schema);
-    return schema;
-  };
-  Schema.prototype = Object.create(Function.prototype);
-  Schema.prototype[kSchema] = true;
-  Object.defineProperty(Schema.prototype, "~standard", { get() {
-    return {
-      version: 1,
-      vendor: "schemastery",
-      validate: (value) => {
-        try {
-          return { value: Schema.resolve(value, this, {})[0] };
-        } catch (error) {
-          if (ValidationError.is(error))
-            return { issues: [{
-              message: error.message,
-              path: error.options.path
-            }] };
-          throw error;
-        }
+        return { value: Schema.resolve(value, this, {})[0] };
+      } catch (error) {
+        if (ValidationError.is(error))
+          return { issues: [{
+            message: error.message,
+            path: error.options.path
+          }] };
+        throw error;
       }
-    };
-  } });
-  Schema.ValidationError = ValidationError;
-  Schema.prototype.toJSON = function toJSON() {
-    if (globalThis.__schemastery_refs__) {
-      globalThis.__schemastery_refs__[this.uid] ??= JSON.parse(JSON.stringify({ ...this }));
-      return this.uid;
     }
-    globalThis.__schemastery_refs__ = { [this.uid]: { ...this } };
-    globalThis.__schemastery_refs__[this.uid] = JSON.parse(JSON.stringify({ ...this }));
-    const result = {
-      uid: this.uid,
-      refs: globalThis.__schemastery_refs__
-    };
-    globalThis.__schemastery_refs__ = undefined;
-    return result;
   };
-  Schema.prototype.set = function set(key, value) {
-    this.dict[key] = value;
-    return this;
+} });
+Schema.ValidationError = ValidationError;
+Schema.prototype.toJSON = function toJSON() {
+  if (globalThis.__schemastery_refs__) {
+    globalThis.__schemastery_refs__[this.uid] ??= JSON.parse(JSON.stringify({ ...this }));
+    return this.uid;
+  }
+  globalThis.__schemastery_refs__ = { [this.uid]: { ...this } };
+  globalThis.__schemastery_refs__[this.uid] = JSON.parse(JSON.stringify({ ...this }));
+  const result = {
+    uid: this.uid,
+    refs: globalThis.__schemastery_refs__
   };
-  Schema.prototype.push = function push(value) {
-    this.list.push(value);
-    return this;
-  };
-  function mergeDesc(original, messages) {
-    const result = typeof original === "string" ? { "": original } : { ...original };
-    for (const locale in messages) {
-      const value = messages[locale];
-      if (value?.$description || value?.$desc)
-        result[locale] = value.$description || value.$desc;
-      else if (typeof value === "string")
-        result[locale] = value;
-    }
-    return result;
+  globalThis.__schemastery_refs__ = undefined;
+  return result;
+};
+Schema.prototype.set = function set(key, value) {
+  this.dict[key] = value;
+  return this;
+};
+Schema.prototype.push = function push(value) {
+  this.list.push(value);
+  return this;
+};
+function mergeDesc(original, messages) {
+  const result = typeof original === "string" ? { "": original } : { ...original };
+  for (const locale in messages) {
+    const value = messages[locale];
+    if (value?.$description || value?.$desc)
+      result[locale] = value.$description || value.$desc;
+    else if (typeof value === "string")
+      result[locale] = value;
   }
-  function getInner(value) {
-    return value?.$value ?? value?.$inner;
-  }
-  function extractKeys(data) {
-    return (0, _deepseek_ai_cosmokit.filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
-  }
-  Schema.prototype.i18n = function i18n(messages) {
-    const schema = Schema(this);
-    const desc = mergeDesc(schema.meta.description, messages);
-    if (Object.keys(desc).length)
-      schema.meta.description = desc;
-    if (schema.dict)
-      schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(schema.dict, (inner, key) => {
-        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
-      });
-    if (schema.list)
-      schema.list = schema.list.map((inner, index) => {
-        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data = {}) => {
-          if (Array.isArray(getInner(data)))
-            return getInner(data)[index];
-          if (Array.isArray(data))
-            return data[index];
-          return extractKeys(data);
-        }));
-      });
-    if (schema.inner)
-      schema.inner = schema.inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => {
-        if (getInner(data))
-          return getInner(data);
+  return result;
+}
+function getInner(value) {
+  return value?.$value ?? value?.$inner;
+}
+function extractKeys(data) {
+  return filterKeys(data ?? {}, (key) => !key.startsWith("$"));
+}
+Schema.prototype.i18n = function i18n(messages) {
+  const schema = Schema(this);
+  const desc = mergeDesc(schema.meta.description, messages);
+  if (Object.keys(desc).length)
+    schema.meta.description = desc;
+  if (schema.dict)
+    schema.dict = mapValues(schema.dict, (inner, key) => {
+      return inner.i18n(mapValues(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
+    });
+  if (schema.list)
+    schema.list = schema.list.map((inner, index) => {
+      return inner.i18n(mapValues(messages, (data = {}) => {
+        if (Array.isArray(getInner(data)))
+          return getInner(data)[index];
+        if (Array.isArray(data))
+          return data[index];
         return extractKeys(data);
       }));
-    if (schema.sKey)
-      schema.sKey = schema.sKey.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => data?.$key));
-    return schema;
+    });
+  if (schema.inner)
+    schema.inner = schema.inner.i18n(mapValues(messages, (data) => {
+      if (getInner(data))
+        return getInner(data);
+      return extractKeys(data);
+    }));
+  if (schema.sKey)
+    schema.sKey = schema.sKey.i18n(mapValues(messages, (data) => data?.$key));
+  return schema;
+};
+Schema.prototype.extra = function extra(key, value) {
+  const schema = Schema(this);
+  schema.meta = {
+    ...schema.meta,
+    [key]: value
   };
-  Schema.prototype.extra = function extra(key, value) {
+  return schema;
+};
+for (const key of [
+  "required",
+  "disabled",
+  "collapse",
+  "hidden",
+  "loose"
+])
+  Object.assign(Schema.prototype, { [key](value = true) {
     const schema = Schema(this);
     schema.meta = {
       ...schema.meta,
       [key]: value
     };
     return schema;
+  } });
+Schema.prototype.deprecated = function deprecated() {
+  const schema = Schema(this);
+  schema.meta.badges ||= [];
+  schema.meta.badges.push({
+    text: "deprecated",
+    type: "danger"
+  });
+  return schema;
+};
+Schema.prototype.experimental = function experimental() {
+  const schema = Schema(this);
+  schema.meta.badges ||= [];
+  schema.meta.badges.push({
+    text: "experimental",
+    type: "warning"
+  });
+  return schema;
+};
+Schema.prototype.pattern = function pattern(regexp) {
+  const schema = Schema(this);
+  const pattern2 = pick(regexp, ["source", "flags"]);
+  schema.meta = {
+    ...schema.meta,
+    pattern: pattern2
   };
-  for (const key of [
-    "required",
-    "disabled",
-    "collapse",
-    "hidden",
-    "loose"
-  ])
-    Object.assign(Schema.prototype, { [key](value = true) {
-      const schema = Schema(this);
-      schema.meta = {
-        ...schema.meta,
-        [key]: value
-      };
-      return schema;
-    } });
-  Schema.prototype.deprecated = function deprecated() {
-    const schema = Schema(this);
-    schema.meta.badges ||= [];
-    schema.meta.badges.push({
-      text: "deprecated",
-      type: "danger"
-    });
-    return schema;
-  };
-  Schema.prototype.experimental = function experimental() {
-    const schema = Schema(this);
-    schema.meta.badges ||= [];
-    schema.meta.badges.push({
-      text: "experimental",
-      type: "warning"
-    });
-    return schema;
-  };
-  Schema.prototype.pattern = function pattern(regexp) {
-    const schema = Schema(this);
-    const pattern2 = (0, _deepseek_ai_cosmokit.pick)(regexp, ["source", "flags"]);
-    schema.meta = {
-      ...schema.meta,
-      pattern: pattern2
-    };
-    return schema;
-  };
-  Schema.prototype.simplify = function simplify(value) {
-    if ((0, _deepseek_ai_cosmokit.deepEqual)(value, this.meta.default, this.type === "dict"))
-      return null;
-    if ((0, _deepseek_ai_cosmokit.isNullable)(value))
-      return value;
-    if (this.type === "object" || this.type === "dict") {
-      const result = {};
-      for (const key in value) {
-        const item = (this.type === "object" ? this.dict[key] : this.inner)?.simplify(value[key]);
-        if (this.type === "dict" || !(0, _deepseek_ai_cosmokit.isNullable)(item))
-          result[key] = item;
-      }
-      if ((0, _deepseek_ai_cosmokit.deepEqual)(result, this.meta.default, this.type === "dict"))
-        return null;
-      return result;
-    } else if (this.type === "array" || this.type === "tuple") {
-      const result = [];
-      value.forEach((value2, index) => {
-        const schema = this.type === "array" ? this.inner : this.list[index];
-        const item = schema ? schema.simplify(value2) : value2;
-        result.push(item);
-      });
-      return result;
-    } else if (this.type === "intersect") {
-      const result = {};
-      for (const item of this.list)
-        Object.assign(result, item.simplify(value));
-      return result;
-    } else if (this.type === "union")
-      for (const schema of this.list)
-        try {
-          Schema.resolve(value, schema, {});
-          return schema.simplify(value);
-        } catch {}
+  return schema;
+};
+Schema.prototype.simplify = function simplify(value) {
+  if (deepEqual(value, this.meta.default, this.type === "dict"))
+    return null;
+  if (isNullable(value))
     return value;
+  if (this.type === "object" || this.type === "dict") {
+    const result = {};
+    for (const key in value) {
+      const item = (this.type === "object" ? this.dict[key] : this.inner)?.simplify(value[key]);
+      if (this.type === "dict" || !isNullable(item))
+        result[key] = item;
+    }
+    if (deepEqual(result, this.meta.default, this.type === "dict"))
+      return null;
+    return result;
+  } else if (this.type === "array" || this.type === "tuple") {
+    const result = [];
+    value.forEach((value2, index) => {
+      const schema = this.type === "array" ? this.inner : this.list[index];
+      const item = schema ? schema.simplify(value2) : value2;
+      result.push(item);
+    });
+    return result;
+  } else if (this.type === "intersect") {
+    const result = {};
+    for (const item of this.list)
+      Object.assign(result, item.simplify(value));
+    return result;
+  } else if (this.type === "union")
+    for (const schema of this.list)
+      try {
+        Schema.resolve(value, schema, {});
+        return schema.simplify(value);
+      } catch {}
+  return value;
+};
+Schema.prototype.toString = function toString(inline) {
+  return formatters[this.type]?.(this, inline) ?? `Schema<${this.type}>`;
+};
+Schema.prototype.role = function role(role, extra2) {
+  const schema = Schema(this);
+  schema.meta = {
+    ...schema.meta,
+    role,
+    extra: extra2
   };
-  Schema.prototype.toString = function toString(inline) {
-    return formatters[this.type]?.(this, inline) ?? `Schema<${this.type}>`;
-  };
-  Schema.prototype.role = function role(role, extra) {
+  return schema;
+};
+for (const key of [
+  "default",
+  "link",
+  "comment",
+  "description",
+  "max",
+  "min",
+  "step"
+])
+  Object.assign(Schema.prototype, { [key](value) {
     const schema = Schema(this);
     schema.meta = {
       ...schema.meta,
-      role,
-      extra
+      [key]: value
     };
     return schema;
-  };
-  for (const key of [
-    "default",
-    "link",
-    "comment",
-    "description",
-    "max",
-    "min",
-    "step"
-  ])
-    Object.assign(Schema.prototype, { [key](value) {
-      const schema = Schema(this);
-      schema.meta = {
-        ...schema.meta,
-        [key]: value
-      };
-      return schema;
-    } });
-  var resolvers = {};
-  Schema.extend = function extend(type, resolve) {
-    resolvers[type] = resolve;
-  };
-  Schema.resolve = function resolve(data, schema, options = {}, strict = false) {
-    if (!schema)
-      return [data];
-    if (options.ignore?.(data, schema))
-      return [data];
-    if ((0, _deepseek_ai_cosmokit.isNullable)(data) && schema.type !== "lazy") {
-      if (schema.meta.required)
-        throw new ValidationError(`missing required value`, options);
-      let current = schema;
-      let fallback = schema.meta.default;
-      while (current?.type === "intersect" && (0, _deepseek_ai_cosmokit.isNullable)(fallback)) {
-        current = current.list[0];
-        fallback = current?.meta.default;
-      }
-      if ((0, _deepseek_ai_cosmokit.isNullable)(fallback))
-        return [data];
-      data = (0, _deepseek_ai_cosmokit.clone)(fallback);
+  } });
+var resolvers = {};
+Schema.extend = function extend(type, resolve) {
+  resolvers[type] = resolve;
+};
+Schema.resolve = function resolve(data, schema, options = {}, strict = false) {
+  if (!schema)
+    return [data];
+  if (options.ignore?.(data, schema))
+    return [data];
+  if (isNullable(data) && schema.type !== "lazy") {
+    if (schema.meta.required)
+      throw new ValidationError(`missing required value`, options);
+    let current = schema;
+    let fallback = schema.meta.default;
+    while (current?.type === "intersect" && isNullable(fallback)) {
+      current = current.list[0];
+      fallback = current?.meta.default;
     }
-    const callback = resolvers[schema.type];
-    if (!callback)
-      throw new ValidationError(`unsupported type "${schema.type}"`, options);
-    try {
-      return callback(data, schema, options, strict);
-    } catch (error) {
-      if (!schema.meta.loose)
-        throw error;
-      return [schema.meta.default];
+    if (isNullable(fallback))
+      return [data];
+    data = clone(fallback);
+  }
+  const callback = resolvers[schema.type];
+  if (!callback)
+    throw new ValidationError(`unsupported type "${schema.type}"`, options);
+  try {
+    return callback(data, schema, options, strict);
+  } catch (error) {
+    if (!schema.meta.loose)
+      throw error;
+    return [schema.meta.default];
+  }
+};
+Schema.from = function from(source) {
+  if (isNullable(source))
+    return Schema.any();
+  else if ([
+    "string",
+    "number",
+    "boolean"
+  ].includes(typeof source))
+    return Schema.const(source).required();
+  else if (source[kSchema])
+    return source;
+  else if (typeof source === "function")
+    switch (source) {
+      case String:
+        return Schema.string().required();
+      case Number:
+        return Schema.number().required();
+      case Boolean:
+        return Schema.boolean().required();
+      case Function:
+        return Schema.function().required();
+      default:
+        return Schema.is(source).required();
     }
-  };
-  Schema.from = function from(source) {
-    if ((0, _deepseek_ai_cosmokit.isNullable)(source))
-      return Schema.any();
-    else if ([
-      "string",
-      "number",
-      "boolean"
-    ].includes(typeof source))
-      return Schema.const(source).required();
-    else if (source[kSchema])
-      return source;
-    else if (typeof source === "function")
-      switch (source) {
-        case String:
-          return Schema.string().required();
-        case Number:
-          return Schema.number().required();
-        case Boolean:
-          return Schema.boolean().required();
-        case Function:
-          return Schema.function().required();
-        default:
-          return Schema.is(source).required();
-      }
-    else
-      throw new TypeError(`cannot infer schema from ${source}`);
-  };
-  Schema.lazy = function lazy(builder) {
-    const toJSON = () => {
-      if (!schema.inner[kSchema]) {
-        schema.inner = schema.builder();
-        schema.inner.meta = {
-          ...schema.meta,
-          ...schema.inner.meta
-        };
-      }
-      return schema.inner.toJSON();
-    };
-    const schema = new Schema({
-      type: "lazy",
-      builder,
-      inner: { toJSON }
-    });
-    return schema;
-  };
-  Schema.natural = function natural() {
-    return Schema.number().step(1).min(0);
-  };
-  Schema.percent = function percent() {
-    return Schema.number().step(0.01).min(0).max(1).role("slider");
-  };
-  Schema.date = function date() {
-    return Schema.union([Schema.is(Date), Schema.transform(Schema.string().role("datetime"), (value, options) => {
-      const date2 = new Date(value);
-      if (isNaN(+date2))
-        throw new ValidationError(`invalid date "${value}"`, options);
-      return date2;
-    }, true)]);
-  };
-  Schema.regExp = function regExp(flag = "") {
-    return Schema.union([Schema.is(RegExp), Schema.transform(Schema.string().role("regexp", { flag }), (value, options) => {
-      try {
-        return new RegExp(value, flag);
-      } catch (e) {
-        throw new ValidationError(e.message, options);
-      }
-    }, true)]);
-  };
-  Schema.arrayBuffer = function arrayBuffer(encoding) {
-    return Schema.union([
-      Schema.is(ArrayBuffer),
-      Schema.is(SharedArrayBuffer),
-      Schema.transform(Schema.any(), (value, options) => {
-        if (_deepseek_ai_cosmokit.Binary.isSource(value))
-          return _deepseek_ai_cosmokit.Binary.fromSource(value);
-        throw new ValidationError(`expected ArrayBufferSource but got ${value}`, options);
-      }, true),
-      ...encoding ? [Schema.transform(Schema.string(), (value, options) => {
-        try {
-          return encoding === "base64" ? _deepseek_ai_cosmokit.Binary.fromBase64(value) : _deepseek_ai_cosmokit.Binary.fromHex(value);
-        } catch (e) {
-          throw new ValidationError(e.message, options);
-        }
-      }, true)] : []
-    ]);
-  };
-  Schema.extend("lazy", (data, schema, options, strict) => {
+  else
+    throw new TypeError(`cannot infer schema from ${source}`);
+};
+Schema.lazy = function lazy(builder) {
+  const toJSON2 = () => {
     if (!schema.inner[kSchema]) {
       schema.inner = schema.builder();
       schema.inner.meta = {
@@ -819,326 +549,577 @@ var require_lib = __commonJS(function(exports, module) {
         ...schema.inner.meta
       };
     }
-    return Schema.resolve(data, schema.inner, options, strict);
+    return schema.inner.toJSON();
+  };
+  const schema = new Schema({
+    type: "lazy",
+    builder,
+    inner: { toJSON: toJSON2 }
   });
-  Schema.extend("any", (data) => {
-    return [data];
-  });
-  Schema.extend("never", (data, _, options) => {
-    throw new ValidationError(`expected nullable but got ${data}`, options);
-  });
-  Schema.extend("const", (data, { value }, options) => {
-    if ((0, _deepseek_ai_cosmokit.deepEqual)(data, value))
-      return [value];
-    throw new ValidationError(`expected ${value} but got ${data}`, options);
-  });
-  function checkWithinRange(data, meta, description, options, skipMin = false) {
-    const { max = Infinity, min = -Infinity } = meta;
-    if (data > max)
-      throw new ValidationError(`expected ${description} <= ${max} but got ${data}`, options);
-    if (data < min && !skipMin)
-      throw new ValidationError(`expected ${description} >= ${min} but got ${data}`, options);
-  }
-  Schema.extend("string", (data, { meta }, options) => {
-    if (typeof data !== "string")
-      throw new ValidationError(`expected string but got ${data}`, options);
-    if (meta.pattern) {
-      const regexp = new RegExp(meta.pattern.source, meta.pattern.flags);
-      if (!regexp.test(data))
-        throw new ValidationError(`expect string to match regexp ${regexp}`, options);
-    }
-    checkWithinRange(data.length, meta, "string length", options);
-    return [data];
-  });
-  function decimalShift(data, digits) {
-    const str = data.toString();
-    if (str.includes("e"))
-      return data * Math.pow(10, digits);
-    const index = str.indexOf(".");
-    if (index === -1)
-      return data * Math.pow(10, digits);
-    const frac = str.slice(index + 1);
-    const integer = str.slice(0, index);
-    if (frac.length <= digits)
-      return +(integer + frac.padEnd(digits, "0"));
-    return +(integer + frac.slice(0, digits) + "." + frac.slice(digits));
-  }
-  function isMultipleOf(data, min, step) {
-    step = Math.abs(step);
-    if (!/^\d+\.\d+$/.test(step.toString()))
-      return (data - min) % step === 0;
-    const index = step.toString().indexOf(".");
-    const digits = step.toString().slice(index + 1).length;
-    return Math.abs(decimalShift(data, digits) - decimalShift(min, digits)) % decimalShift(step, digits) === 0;
-  }
-  Schema.extend("number", (data, { meta }, options) => {
-    if (typeof data !== "number")
-      throw new ValidationError(`expected number but got ${data}`, options);
-    checkWithinRange(data, meta, "number", options);
-    const { step } = meta;
-    if (step && !isMultipleOf(data, meta.min ?? 0, step))
-      throw new ValidationError(`expected number multiple of ${step} but got ${data}`, options);
-    return [data];
-  });
-  Schema.extend("boolean", (data, _, options) => {
-    if (typeof data === "boolean")
-      return [data];
-    throw new ValidationError(`expected boolean but got ${data}`, options);
-  });
-  Schema.extend("bitset", (data, { bits, meta }, options) => {
-    let value = 0, keys = [];
-    if (typeof data === "number") {
-      value = data;
-      for (const key in bits)
-        if (data & bits[key])
-          keys.push(key);
-    } else if (Array.isArray(data)) {
-      keys = data;
-      for (const key of keys) {
-        if (typeof key !== "string")
-          throw new ValidationError(`expected string but got ${key}`, options);
-        if (key in bits)
-          value |= bits[key];
-      }
-    } else
-      throw new ValidationError(`expected number or array but got ${data}`, options);
-    if (value === meta.default)
-      return [value];
-    return [value, keys];
-  });
-  Schema.extend("function", (data, _, options) => {
-    if (typeof data === "function")
-      return [data];
-    throw new ValidationError(`expected function but got ${data}`, options);
-  });
-  Schema.extend("is", (data, { constructor }, options) => {
-    if (typeof constructor === "function") {
-      if (data instanceof constructor)
-        return [data];
-      throw new ValidationError(`expected ${constructor.name} but got ${data}`, options);
-    } else {
-      if ((0, _deepseek_ai_cosmokit.isNullable)(data))
-        throw new ValidationError(`expected ${constructor} but got ${data}`, options);
-      let prototype = Object.getPrototypeOf(data);
-      while (prototype) {
-        if (prototype.constructor?.name === constructor)
-          return [data];
-        prototype = Object.getPrototypeOf(prototype);
-      }
-      throw new ValidationError(`expected ${constructor} but got ${data}`, options);
-    }
-  });
-  function property(data, key, schema, options) {
+  return schema;
+};
+Schema.natural = function natural() {
+  return Schema.number().step(1).min(0);
+};
+Schema.percent = function percent() {
+  return Schema.number().step(0.01).min(0).max(1).role("slider");
+};
+Schema.date = function date() {
+  return Schema.union([Schema.is(Date), Schema.transform(Schema.string().role("datetime"), (value, options) => {
+    const date2 = new Date(value);
+    if (isNaN(+date2))
+      throw new ValidationError(`invalid date "${value}"`, options);
+    return date2;
+  }, true)]);
+};
+Schema.regExp = function regExp(flag = "") {
+  return Schema.union([Schema.is(RegExp), Schema.transform(Schema.string().role("regexp", { flag }), (value, options) => {
     try {
-      const [value, adapted] = Schema.resolve(data[key], schema, {
-        ...options,
-        path: [...options.path || [], key]
-      });
-      if (adapted !== undefined)
-        data[key] = adapted;
-      return value;
+      return new RegExp(value, flag);
     } catch (e) {
-      if (!options?.autofix)
-        throw e;
-      delete data[key];
-      return schema.meta.default;
+      throw new ValidationError(e.message, options);
     }
-  }
-  Schema.extend("array", (data, { inner, meta }, options) => {
-    if (!Array.isArray(data))
-      throw new ValidationError(`expected array but got ${data}`, options);
-    checkWithinRange(data.length, meta, "array length", options, !(0, _deepseek_ai_cosmokit.isNullable)(inner.meta.default));
-    return [data.map((_, index) => property(data, index, inner, options))];
-  });
-  Schema.extend("dict", (data, { inner, sKey }, options, strict) => {
-    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
-      throw new ValidationError(`expected object but got ${data}`, options);
-    const result = {};
-    for (const key in data) {
-      let rKey;
+  }, true)]);
+};
+Schema.arrayBuffer = function arrayBuffer(encoding) {
+  return Schema.union([
+    Schema.is(ArrayBuffer),
+    Schema.is(SharedArrayBuffer),
+    Schema.transform(Schema.any(), (value, options) => {
+      if (Binary.isSource(value))
+        return Binary.fromSource(value);
+      throw new ValidationError(`expected ArrayBufferSource but got ${value}`, options);
+    }, true),
+    ...encoding ? [Schema.transform(Schema.string(), (value, options) => {
       try {
-        rKey = Schema.resolve(key, sKey, options)[0];
-      } catch (error) {
-        if (strict)
-          continue;
-        throw error;
+        return encoding === "base64" ? Binary.fromBase64(value) : Binary.fromHex(value);
+      } catch (e) {
+        throw new ValidationError(e.message, options);
       }
-      result[rKey] = property(data, key, inner, options);
-      data[rKey] = data[key];
-      if (key !== rKey)
-        delete data[key];
-    }
-    return [result];
-  });
-  Schema.extend("tuple", (data, { list }, options, strict) => {
-    if (!Array.isArray(data))
-      throw new ValidationError(`expected array but got ${data}`, options);
-    const result = list.map((inner, index) => property(data, index, inner, options));
-    if (strict)
-      return [result];
-    result.push(...data.slice(list.length));
-    return [result];
-  });
-  function merge(result, data) {
-    for (const key in data) {
-      if (key in result)
-        continue;
-      result[key] = data[key];
-    }
+    }, true)] : []
+  ]);
+};
+Schema.extend("lazy", (data, schema, options, strict) => {
+  if (!schema.inner[kSchema]) {
+    schema.inner = schema.builder();
+    schema.inner.meta = {
+      ...schema.meta,
+      ...schema.inner.meta
+    };
   }
-  Schema.extend("object", (data, { dict }, options, strict) => {
-    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
-      throw new ValidationError(`expected object but got ${data}`, options);
-    const result = {};
-    for (const key in dict) {
-      const value = property(data, key, dict[key], options);
-      if (!(0, _deepseek_ai_cosmokit.isNullable)(value) || key in data)
-        result[key] = value;
-    }
-    if (!strict)
-      merge(result, data);
-    return [result];
-  });
-  Schema.extend("union", (data, { list, toString }, options, strict) => {
-    const messages = [];
-    for (const inner of list)
-      try {
-        return Schema.resolve(data, inner, options, strict);
-      } catch (error) {
-        messages.push(error);
-      }
-    throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
-  });
-  Schema.extend("intersect", (data, { list, toString }, options, strict) => {
-    if (!list.length)
-      return [data];
-    let result;
-    for (const inner of list) {
-      const value = Schema.resolve(data, inner, options, true)[0];
-      if ((0, _deepseek_ai_cosmokit.isNullable)(value))
-        continue;
-      if ((0, _deepseek_ai_cosmokit.isNullable)(result))
-        result = value;
-      else if (typeof result !== typeof value)
-        throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
-      else if (typeof value === "object")
-        merge(result ??= {}, value);
-      else if (result !== value)
-        throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
-    }
-    if (!strict && (0, _deepseek_ai_cosmokit.isPlainObject)(data))
-      merge(result, data);
-    return [result];
-  });
-  Schema.extend("transform", (data, { inner, callback, preserve }, options) => {
-    const [result, adapted = data] = Schema.resolve(data, inner, options, true);
-    if (preserve)
-      return [callback(result)];
-    else
-      return [callback(result), callback(adapted)];
-  });
-  var formatters = {};
-  function defineMethod(name, keys, format) {
-    formatters[name] = format;
-    Object.assign(Schema, { [name](...args) {
-      const schema = new Schema({ type: name });
-      keys.forEach((key, index) => {
-        switch (key) {
-          case "sKey":
-            schema.sKey = args[index] ?? Schema.string();
-            break;
-          case "inner":
-            schema.inner = Schema.from(args[index]);
-            break;
-          case "list":
-            schema.list = args[index].map(Schema.from);
-            break;
-          case "dict":
-            schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(args[index], Schema.from);
-            break;
-          case "bits":
-            schema.bits = {};
-            for (const key2 in args[index]) {
-              if (typeof args[index][key2] !== "number")
-                continue;
-              schema.bits[key2] = args[index][key2];
-            }
-            break;
-          case "callback": {
-            const callback = schema.callback = args[index];
-            callback["toJSON"] ||= () => callback.toString();
-            break;
-          }
-          case "constructor": {
-            const constructor = schema.constructor = args[index];
-            if (typeof constructor === "function")
-              constructor["toJSON"] ||= () => constructor["name"];
-            break;
-          }
-          default:
-            schema[key] = args[index];
-        }
-      });
-      if (name === "object" || name === "dict")
-        schema.meta.default = {};
-      else if (name === "array" || name === "tuple")
-        schema.meta.default = [];
-      else if (name === "bitset")
-        schema.meta.default = 0;
-      return schema;
-    } });
-  }
-  defineMethod("is", ["constructor"], ({ constructor }) => {
-    if (typeof constructor === "function")
-      return constructor.name;
-    else
-      return constructor;
-  });
-  defineMethod("any", [], () => "any");
-  defineMethod("never", [], () => "never");
-  defineMethod("const", ["value"], ({ value }) => typeof value === "string" ? JSON.stringify(value) : value);
-  defineMethod("string", [], () => "string");
-  defineMethod("number", [], () => "number");
-  defineMethod("boolean", [], () => "boolean");
-  defineMethod("bitset", ["bits"], () => "bitset");
-  defineMethod("function", [], () => "function");
-  defineMethod("array", ["inner"], ({ inner }) => `${inner.toString(true)}[]`);
-  defineMethod("dict", ["inner", "sKey"], ({ inner, sKey }) => `{ [key: ${sKey.toString()}]: ${inner.toString()} }`);
-  defineMethod("tuple", ["list"], ({ list }) => `[${list.map((inner) => inner.toString()).join(", ")}]`);
-  defineMethod("object", ["dict"], ({ dict }) => {
-    if (Object.keys(dict).length === 0)
-      return "{}";
-    return `{ ${Object.entries(dict).map(([key, inner]) => {
-      return `${key}${inner.meta.required ? "" : "?"}: ${inner.toString()}`;
-    }).join(", ")} }`;
-  });
-  defineMethod("union", ["list"], ({ list }, inline) => {
-    const result = list.map(({ toString: format }) => format()).join(" | ");
-    return inline ? `(${result})` : result;
-  });
-  defineMethod("intersect", ["list"], ({ list }) => {
-    return `${list.map((inner) => inner.toString(true)).join(" & ")}`;
-  });
-  defineMethod("transform", [
-    "inner",
-    "callback",
-    "preserve"
-  ], ({ inner }, isInner) => inner.toString(isInner));
-  module.exports = Schema;
+  return Schema.resolve(data, schema.inner, options, strict);
 });
-
-// packages/mpd-team-watchdog-plugin/src/index.ts
-var import_schemastery = __toESM(require_lib(), 1);
+Schema.extend("any", (data) => {
+  return [data];
+});
+Schema.extend("never", (data, _, options) => {
+  throw new ValidationError(`expected nullable but got ${data}`, options);
+});
+Schema.extend("const", (data, { value }, options) => {
+  if (deepEqual(data, value))
+    return [value];
+  throw new ValidationError(`expected ${value} but got ${data}`, options);
+});
+function checkWithinRange(data, meta, description, options, skipMin = false) {
+  const { max = Infinity, min = -Infinity } = meta;
+  if (data > max)
+    throw new ValidationError(`expected ${description} <= ${max} but got ${data}`, options);
+  if (data < min && !skipMin)
+    throw new ValidationError(`expected ${description} >= ${min} but got ${data}`, options);
+}
+Schema.extend("string", (data, { meta }, options) => {
+  if (typeof data !== "string")
+    throw new ValidationError(`expected string but got ${data}`, options);
+  if (meta.pattern) {
+    const regexp = new RegExp(meta.pattern.source, meta.pattern.flags);
+    if (!regexp.test(data))
+      throw new ValidationError(`expect string to match regexp ${regexp}`, options);
+  }
+  checkWithinRange(data.length, meta, "string length", options);
+  return [data];
+});
+function decimalShift(data, digits) {
+  const str = data.toString();
+  if (str.includes("e"))
+    return data * Math.pow(10, digits);
+  const index = str.indexOf(".");
+  if (index === -1)
+    return data * Math.pow(10, digits);
+  const frac = str.slice(index + 1);
+  const integer = str.slice(0, index);
+  if (frac.length <= digits)
+    return +(integer + frac.padEnd(digits, "0"));
+  return +(integer + frac.slice(0, digits) + "." + frac.slice(digits));
+}
+function isMultipleOf(data, min, step) {
+  step = Math.abs(step);
+  if (!/^\d+\.\d+$/.test(step.toString()))
+    return (data - min) % step === 0;
+  const index = step.toString().indexOf(".");
+  const digits = step.toString().slice(index + 1).length;
+  return Math.abs(decimalShift(data, digits) - decimalShift(min, digits)) % decimalShift(step, digits) === 0;
+}
+Schema.extend("number", (data, { meta }, options) => {
+  if (typeof data !== "number")
+    throw new ValidationError(`expected number but got ${data}`, options);
+  checkWithinRange(data, meta, "number", options);
+  const { step } = meta;
+  if (step && !isMultipleOf(data, meta.min ?? 0, step))
+    throw new ValidationError(`expected number multiple of ${step} but got ${data}`, options);
+  return [data];
+});
+Schema.extend("boolean", (data, _, options) => {
+  if (typeof data === "boolean")
+    return [data];
+  throw new ValidationError(`expected boolean but got ${data}`, options);
+});
+Schema.extend("bitset", (data, { bits, meta }, options) => {
+  let value = 0, keys = [];
+  if (typeof data === "number") {
+    value = data;
+    for (const key in bits)
+      if (data & bits[key])
+        keys.push(key);
+  } else if (Array.isArray(data)) {
+    keys = data;
+    for (const key of keys) {
+      if (typeof key !== "string")
+        throw new ValidationError(`expected string but got ${key}`, options);
+      if (key in bits)
+        value |= bits[key];
+    }
+  } else
+    throw new ValidationError(`expected number or array but got ${data}`, options);
+  if (value === meta.default)
+    return [value];
+  return [value, keys];
+});
+Schema.extend("function", (data, _, options) => {
+  if (typeof data === "function")
+    return [data];
+  throw new ValidationError(`expected function but got ${data}`, options);
+});
+Schema.extend("is", (data, { constructor }, options) => {
+  if (typeof constructor === "function") {
+    if (data instanceof constructor)
+      return [data];
+    throw new ValidationError(`expected ${constructor.name} but got ${data}`, options);
+  } else {
+    if (isNullable(data))
+      throw new ValidationError(`expected ${constructor} but got ${data}`, options);
+    let prototype = Object.getPrototypeOf(data);
+    while (prototype) {
+      if (prototype.constructor?.name === constructor)
+        return [data];
+      prototype = Object.getPrototypeOf(prototype);
+    }
+    throw new ValidationError(`expected ${constructor} but got ${data}`, options);
+  }
+});
+function property(data, key, schema, options) {
+  try {
+    const [value, adapted] = Schema.resolve(data[key], schema, {
+      ...options,
+      path: [...options.path || [], key]
+    });
+    if (adapted !== undefined)
+      data[key] = adapted;
+    return value;
+  } catch (e) {
+    if (!options?.autofix)
+      throw e;
+    delete data[key];
+    return schema.meta.default;
+  }
+}
+Schema.extend("array", (data, { inner, meta }, options) => {
+  if (!Array.isArray(data))
+    throw new ValidationError(`expected array but got ${data}`, options);
+  checkWithinRange(data.length, meta, "array length", options, !isNullable(inner.meta.default));
+  return [data.map((_, index) => property(data, index, inner, options))];
+});
+Schema.extend("dict", (data, { inner, sKey }, options, strict) => {
+  if (!isPlainObject(data))
+    throw new ValidationError(`expected object but got ${data}`, options);
+  const result = {};
+  for (const key in data) {
+    let rKey;
+    try {
+      rKey = Schema.resolve(key, sKey, options)[0];
+    } catch (error) {
+      if (strict)
+        continue;
+      throw error;
+    }
+    result[rKey] = property(data, key, inner, options);
+    data[rKey] = data[key];
+    if (key !== rKey)
+      delete data[key];
+  }
+  return [result];
+});
+Schema.extend("tuple", (data, { list }, options, strict) => {
+  if (!Array.isArray(data))
+    throw new ValidationError(`expected array but got ${data}`, options);
+  const result = list.map((inner, index) => property(data, index, inner, options));
+  if (strict)
+    return [result];
+  result.push(...data.slice(list.length));
+  return [result];
+});
+function merge(result, data) {
+  for (const key in data) {
+    if (key in result)
+      continue;
+    result[key] = data[key];
+  }
+}
+Schema.extend("object", (data, { dict }, options, strict) => {
+  if (!isPlainObject(data))
+    throw new ValidationError(`expected object but got ${data}`, options);
+  const result = {};
+  for (const key in dict) {
+    const value = property(data, key, dict[key], options);
+    if (!isNullable(value) || key in data)
+      result[key] = value;
+  }
+  if (!strict)
+    merge(result, data);
+  return [result];
+});
+Schema.extend("union", (data, { list, toString: toString2 }, options, strict) => {
+  const messages = [];
+  for (const inner of list)
+    try {
+      return Schema.resolve(data, inner, options, strict);
+    } catch (error) {
+      messages.push(error);
+    }
+  throw new ValidationError(`expected ${toString2()} but got ${JSON.stringify(data)}`, options);
+});
+Schema.extend("intersect", (data, { list, toString: toString2 }, options, strict) => {
+  if (!list.length)
+    return [data];
+  let result;
+  for (const inner of list) {
+    const value = Schema.resolve(data, inner, options, true)[0];
+    if (isNullable(value))
+      continue;
+    if (isNullable(result))
+      result = value;
+    else if (typeof result !== typeof value)
+      throw new ValidationError(`expected ${toString2()} but got ${JSON.stringify(data)}`, options);
+    else if (typeof value === "object")
+      merge(result ??= {}, value);
+    else if (result !== value)
+      throw new ValidationError(`expected ${toString2()} but got ${JSON.stringify(data)}`, options);
+  }
+  if (!strict && isPlainObject(data))
+    merge(result, data);
+  return [result];
+});
+Schema.extend("transform", (data, { inner, callback, preserve }, options) => {
+  const [result, adapted = data] = Schema.resolve(data, inner, options, true);
+  if (preserve)
+    return [callback(result)];
+  else
+    return [callback(result), callback(adapted)];
+});
+var formatters = {};
+function defineMethod(name, keys, format) {
+  formatters[name] = format;
+  Object.assign(Schema, { [name](...args) {
+    const schema = new Schema({ type: name });
+    keys.forEach((key, index) => {
+      switch (key) {
+        case "sKey":
+          schema.sKey = args[index] ?? Schema.string();
+          break;
+        case "inner":
+          schema.inner = Schema.from(args[index]);
+          break;
+        case "list":
+          schema.list = args[index].map(Schema.from);
+          break;
+        case "dict":
+          schema.dict = mapValues(args[index], Schema.from);
+          break;
+        case "bits":
+          schema.bits = {};
+          for (const key2 in args[index]) {
+            if (typeof args[index][key2] !== "number")
+              continue;
+            schema.bits[key2] = args[index][key2];
+          }
+          break;
+        case "callback": {
+          const callback = schema.callback = args[index];
+          callback["toJSON"] ||= () => callback.toString();
+          break;
+        }
+        case "constructor": {
+          const constructor = schema.constructor = args[index];
+          if (typeof constructor === "function")
+            constructor["toJSON"] ||= () => constructor["name"];
+          break;
+        }
+        default:
+          schema[key] = args[index];
+      }
+    });
+    if (name === "object" || name === "dict")
+      schema.meta.default = {};
+    else if (name === "array" || name === "tuple")
+      schema.meta.default = [];
+    else if (name === "bitset")
+      schema.meta.default = 0;
+    return schema;
+  } });
+}
+defineMethod("is", ["constructor"], ({ constructor }) => {
+  if (typeof constructor === "function")
+    return constructor.name;
+  else
+    return constructor;
+});
+defineMethod("any", [], () => "any");
+defineMethod("never", [], () => "never");
+defineMethod("const", ["value"], ({ value }) => typeof value === "string" ? JSON.stringify(value) : value);
+defineMethod("string", [], () => "string");
+defineMethod("number", [], () => "number");
+defineMethod("boolean", [], () => "boolean");
+defineMethod("bitset", ["bits"], () => "bitset");
+defineMethod("function", [], () => "function");
+defineMethod("array", ["inner"], ({ inner }) => `${inner.toString(true)}[]`);
+defineMethod("dict", ["inner", "sKey"], ({ inner, sKey }) => `{ [key: ${sKey.toString()}]: ${inner.toString()} }`);
+defineMethod("tuple", ["list"], ({ list }) => `[${list.map((inner) => inner.toString()).join(", ")}]`);
+defineMethod("object", ["dict"], ({ dict }) => {
+  if (Object.keys(dict).length === 0)
+    return "{}";
+  return `{ ${Object.entries(dict).map(([key, inner]) => {
+    return `${key}${inner.meta.required ? "" : "?"}: ${inner.toString()}`;
+  }).join(", ")} }`;
+});
+defineMethod("union", ["list"], ({ list }, inline) => {
+  const result = list.map(({ toString: format }) => format()).join(" | ");
+  return inline ? `(${result})` : result;
+});
+defineMethod("intersect", ["list"], ({ list }) => {
+  return `${list.map((inner) => inner.toString(true)).join(" & ")}`;
+});
+defineMethod("transform", [
+  "inner",
+  "callback",
+  "preserve"
+], ({ inner }, isInner) => inner.toString(isInner));
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve as resolve2 } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve2(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+}
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_TOOLS = "tools";
+var DSH_SEAM_AGENTS = "agents";
+function dshSeamInject(...names) {
+  return [...names];
+}
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -1166,11 +1147,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve3(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -1183,14 +1176,54 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
     return [];
   }
 }
-function noop2() {}
+function noop() {}
+var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
+function goalSnapshotOf(view) {
+  if (view === null || view === undefined || typeof view !== "object")
+    return;
+  const raw = view;
+  if (typeof raw.id !== "string" || raw.id === "")
+    return;
+  const snapshot = {
+    id: raw.id,
+    revision: typeof raw.revision === "number" ? raw.revision : 0,
+    objective: typeof raw.objective === "string" ? raw.objective : "",
+    phase: raw.phase === "paused" || raw.phase === "blocked" || raw.phase === "complete" ? raw.phase : "active",
+    maxGoalRounds: typeof raw.maxGoalRounds === "number" ? raw.maxGoalRounds : 0
+  };
+  if (typeof raw.roundsStarted === "number")
+    snapshot.roundsStarted = raw.roundsStarted;
+  if (raw.activation === "armed" || raw.activation === "disarmed")
+    snapshot.activation = raw.activation;
+  const reason = raw.blockedReason;
+  if (reason !== null && typeof reason === "object") {
+    const code = reason.code;
+    const message = reason.message;
+    if (typeof code === "string" && code !== "" && typeof message === "string" && message !== "") {
+      snapshot.blockedReason = { code, message };
+    }
+  }
+  return snapshot;
+}
+function goalValueOf(value) {
+  if (value === null || value === undefined || typeof value !== "object")
+    return { goal: null };
+  const raw = value;
+  const activation = raw.activation === "armed" || raw.activation === "disarmed" ? raw.activation : undefined;
+  const goal = goalSnapshotOf(raw.goal);
+  if (goal === undefined)
+    return activation === undefined ? { goal: null } : { goal: null, activation };
+  if (activation !== undefined)
+    goal.activation = activation;
+  return activation === undefined ? { goal } : { goal, activation };
+}
 function scopeOfAgentContext(agent) {
   let context;
   try {
@@ -1334,6 +1367,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -1359,16 +1393,18 @@ function createDshAdapter(ctx, config = {}) {
     }
     return liveAgents().find((candidate) => candidate.id === id);
   }
-  const engineCache = new Map;
+  const engineCache = new WeakMap;
   function compactionEngineForAgent(agentId) {
     const id = String(agentId ?? "");
     if (id === "")
       return;
-    const cached = engineCache.get(id);
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    const cached = engineCache.get(agent);
     if (cached !== undefined)
       return cached;
-    const agent = liveAgent(id);
-    const scoped = agent?.ctx;
+    const scoped = agent.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -1379,7 +1415,7 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(id, engine);
+    engineCache.set(agent, engine);
     return engine;
   }
   function onEvent(event, handler) {
@@ -1399,7 +1435,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -1490,6 +1526,210 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
     return;
   }
+  const nativeMembers = new Map;
+  const officialMembers = new Map;
+  const neverAborted = () => new AbortController().signal;
+  const sessionIdOfAgent = (agent) => {
+    const session = agent?.session;
+    return typeof session?.id === "string" ? session.id : "";
+  };
+  function nativeTeamExecutor(reason, ready) {
+    const subagentsOf = () => service("subagents");
+    return {
+      kind: "native",
+      reason,
+      providers: () => {
+        try {
+          const list = subagentsOf()?.providers;
+          if (typeof list !== "function")
+            return [];
+          const names = list.call(subagentsOf());
+          return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
+        } catch {
+          return [];
+        }
+      },
+      async spawn(caller, request) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        if (typeof subagents.startContinuable !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member");
+        }
+        const spec = {
+          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          label: `${request.name} · ${request.teamId}`,
+          request: {
+            prompt: textBlock(request.prompt),
+            parent: caller,
+            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+          },
+          signal: request.signal ?? neverAborted()
+        };
+        const started = await subagents.startContinuable.call(subagents, spec);
+        const handle = String(started?.childId ?? started?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
+        return { handle, executor: "native" };
+      },
+      async send(caller, handle, content, signal) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`);
+        if (typeof subagents.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await subagents.sendMessage.call(subagents, caller, handle, textBlock(content), { signal: signal ?? neverAborted() });
+      },
+      async interrupt(caller, handle) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot interrupt team member "${handle}"`);
+        if (typeof subagents.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt() — cannot interrupt a team member");
+        }
+        subagents.interrupt.call(subagents, handle, { kind: "ancestor", agent: caller });
+      },
+      membership(agent) {
+        const id = sessionIdOfAgent(agent);
+        if (id === "")
+          return;
+        const entry = nativeMembers.get(id);
+        return entry === undefined ? undefined : { teamId: entry.teamId, role: "teammate", name: entry.name };
+      },
+      members: () => [...nativeMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function officialTeamExecutor() {
+    return {
+      kind: "official",
+      reason: "official: the native seams are unavailable, so the mounted Agent Teams service executes the team",
+      providers: () => [],
+      async spawn(caller, request) {
+        const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`);
+        if (typeof teams.spawnTeammate !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member");
+        }
+        const spawned = await teams.spawnTeammate.call(teams, caller, {
+          name: request.name,
+          description: request.description === "" ? request.name : request.description,
+          prompt: request.prompt,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+        const handle = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the official backend raised "${request.name}" but reported no id`);
+        officialMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name });
+        return { handle, executor: "official" };
+      },
+      async send(caller, handle, content, signal) {
+        const teams = requireService("agentTeams", `cannot deliver a message to team member "${handle}"`);
+        if (typeof teams.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await teams.sendMessage.call(teams, caller, { target: handle, content: textBlock(content), ...signal === undefined ? {} : { signal } });
+      },
+      async interrupt(caller, handle) {
+        const teams = requireService("agentTeams", `cannot interrupt team member "${handle}"`);
+        if (typeof teams.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no interrupt() — cannot interrupt a team member");
+        }
+        const target = officialMembers.get(handle)?.name ?? handle;
+        teams.interrupt.call(teams, caller, target);
+      },
+      membership: (agent) => {
+        const teams = service("agentTeams");
+        const tryMembership = teams?.tryMembership;
+        if (typeof tryMembership !== "function")
+          return;
+        try {
+          const membership = tryMembership.call(teams, agent);
+          if (membership === undefined || membership === null)
+            return;
+          const role2 = membership.role;
+          if (role2 !== "lead" && role2 !== "teammate")
+            return;
+          return { teamId: String(membership.id ?? ""), role: role2, name: String(membership.name ?? "") };
+        } catch {
+          return;
+        }
+      },
+      members: () => [...officialMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function scopedToolRegistry(agent) {
+    const scope = scopeOfAgentContext(agent);
+    if (scope === undefined)
+      return;
+    try {
+      const tools = scope.context?.tools;
+      return typeof tools?.execute === "function" ? tools : undefined;
+    } catch {
+      return;
+    }
+  }
+  function hostToolDefinition(name) {
+    try {
+      const hostView = service("tools");
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name);
+    try {
+      return scoped.get(name, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name) {
+    if (hostToolDefinition(name) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined);
+  }
+  function projectToolResult(raw) {
+    const record = raw;
+    if (record?.isError === true) {
+      const error = record.error;
+      return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
+    }
+    return { ok: true, isError: false, value: record?.value, raw };
+  }
+  async function executeToolForAgent(input) {
+    const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
+    const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
+    const scoped = input.agent === undefined ? undefined : scopedToolRegistry(input.agent);
+    if (scoped !== undefined) {
+      try {
+        const raw = await scoped.execute({
+          name: input.name,
+          arguments: input.arguments ?? {},
+          callId,
+          ...signal === undefined ? {} : { signal },
+          ...input.agent === undefined ? {} : { agent: input.agent }
+        });
+        return { result: projectToolResult(raw), via: "agent-scope" };
+      } catch (error) {
+        return { result: { ok: false, isError: true, error: errorMessage(error) }, via: "agent-scope" };
+      }
+    }
+    const result = await adapter.executeTool({
+      name: input.name,
+      arguments: input.arguments ?? {},
+      callId,
+      ...signal === undefined ? {} : { signal },
+      ...input.agent === undefined ? {} : { agent: input.agent },
+      ...input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }
+    });
+    return { result, via: "host-plane" };
+  }
   const adapter = {
     capabilities() {
       const tools = service("tools");
@@ -1502,6 +1742,7 @@ function createDshAdapter(ctx, config = {}) {
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
+      const goalService = service("goals");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -1534,6 +1775,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsRegisterHost: typeof tools?.register === "function",
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
         subagentsContinuable: typeof subagents?.startContinuable === "function",
+        teamExecutorNative: typeof subagents?.startContinuable === "function",
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -1549,16 +1791,84 @@ function createDshAdapter(ctx, config = {}) {
         team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
         teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
-        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function",
+        goals: typeof goalService?.get === "function",
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
       };
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
+    goalState(agent) {
+      const goals = service("goals");
+      if (goals === undefined || typeof goals.get !== "function")
+        return;
+      try {
+        const view = goals.get(agent);
+        return goalSnapshotOf(view) ?? null;
+      } catch {
+        return;
+      }
+    },
+    async goalControl(input) {
+      if (input === null || typeof input !== "object" || typeof input.action !== "string") {
+        return { ok: false, isError: true, error: "goalControl requires an action" };
+      }
+      if (input.agent === undefined)
+        return { ok: false, isError: true, error: "goal tools require a calling agent" };
+      let goalId = input.goalId;
+      let revision = input.revision;
+      const needsRef = input.action !== "create" && input.action !== "read";
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        const current = await executeToolForAgent({ name: "get_goal", agent: input.agent, callId: input.callId, signal: input.signal, timeoutMs: input.timeoutMs });
+        if (!current.result.ok)
+          return { ok: false, isError: true, error: current.result.error, via: current.via, raw: current.result.raw };
+        const read = goalValueOf(current.result.value);
+        if (read.goal === null)
+          return { ok: false, isError: true, error: "no current goal", via: current.via, raw: current.result.raw };
+        goalId = goalId ?? read.goal.id;
+        revision = revision ?? read.goal.revision;
+      }
+      const toolName = input.action === "read" ? "get_goal" : input.action === "create" ? "create_goal" : "update_goal";
+      const toolArguments = input.action === "read" ? {} : input.action === "create" ? { objective: input.objective, ...input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds } } : {
+        goal_id: goalId,
+        revision,
+        action: input.action,
+        ...input.objective === undefined ? {} : { objective: input.objective },
+        ...input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds },
+        ...input.blockedReason === undefined ? {} : { blocked_reason: input.blockedReason }
+      };
+      if (input.action === "create" && (typeof input.objective !== "string" || input.objective.trim() === "")) {
+        return { ok: false, isError: true, error: "goalControl create requires a non-empty objective" };
+      }
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        return { ok: false, isError: true, error: "goalControl " + input.action + " requires an exact goal id and revision" };
+      }
+      const call = await executeToolForAgent({
+        name: toolName,
+        arguments: toolArguments,
+        agent: input.agent,
+        callId: input.callId,
+        signal: input.signal,
+        timeoutMs: input.timeoutMs
+      });
+      if (!call.result.ok)
+        return { ok: false, isError: call.result.isError, error: call.result.error, via: call.via, raw: call.result.raw };
+      const value = goalValueOf(call.result.value);
+      return {
+        ok: true,
+        isError: false,
+        goal: value.goal,
+        ...value.activation === undefined ? {} : { activation: value.activation },
+        via: call.via,
+        raw: call.result.raw
+      };
+    },
     llmListModels(provider) {
       const llm = requireService("llm", 'cannot list the models of provider "' + provider + '"');
       if (typeof llm.listModels !== "function")
@@ -1576,7 +1886,7 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof tools.register !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
       const registered = tools.register(definition);
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
@@ -1604,7 +1914,7 @@ function createDshAdapter(ctx, config = {}) {
     registerCommand(definition) {
       const commands = service("commands");
       if (commands === undefined || commands === null || typeof commands.register !== "function")
-        return noop2;
+        return noop;
       const registered = commands.register({
         name: definition?.name,
         description: definition?.description,
@@ -1617,14 +1927,14 @@ function createDshAdapter(ctx, config = {}) {
           });
         }
       });
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     registerPromptSection(section) {
       const systemPrompt = requireService("systemPrompt", 'cannot register prompt section "' + String(section?.name) + '"');
       if (typeof systemPrompt.section !== "function")
         throw new Error("mpd-dsh-adapter: the harness systemPrompt service exposes no section()");
       const registered = systemPrompt.section(section);
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
@@ -1634,7 +1944,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     onPreToolExecute(listener) {
       if (typeof ctx?.on !== "function")
-        return noop2;
+        return noop;
       return ctx.on("tools/pre-execute", async (exec, next) => {
         const downstream = typeof next === "function" ? await next() : undefined;
         try {
@@ -1645,7 +1955,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
-        return noop2;
+        return noop;
       return ctx.on("tools/post-execute", async (exec, result, next) => {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
@@ -1654,7 +1964,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     onAgentPreStep(listener) {
       if (typeof ctx?.on !== "function")
-        return noop2;
+        return noop;
       return ctx.on("agent/pre-step", preStepWrapper(listener));
     },
     registerAgentPreStep(agent, listener) {
@@ -1684,20 +1994,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },
@@ -1716,12 +2018,7 @@ function createDshAdapter(ctx, config = {}) {
           ...signal === undefined ? {} : { signal },
           ...input.agent === undefined ? {} : { agent: input.agent }
         });
-        const isError = raw?.isError === true;
-        if (isError) {
-          const error = raw?.error;
-          return { ok: false, isError: true, error: error?.message ?? error ?? "tool error", raw };
-        }
-        return { ok: true, isError: false, value: raw?.value, raw };
+        return projectToolResult(raw);
       } catch (error) {
         return { ok: false, isError: true, error: errorMessage(error) };
       }
@@ -1782,13 +2079,29 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof subagents.registerProvider !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()");
       const registered = subagents.registerProvider(provider);
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     interruptAgent(targetSessionId, authority) {
       const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamExecutor() {
+      const override = (() => {
+        try {
+          const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_TEAM_EXECUTOR : undefined;
+          return typeof raw === "string" && raw.trim() !== "" ? raw.trim().toLowerCase() : undefined;
+        } catch {
+          return;
+        }
+      })();
+      const nativeReady = typeof service("subagents")?.startContinuable === "function";
+      const officialReady = service("agentTeams") !== undefined;
+      const chosen = override === "official" && officialReady ? "official" : override === "native" && nativeReady ? "native" : nativeReady ? "native" : officialReady ? "official" : "native";
+      if (chosen === "official")
+        return officialTeamExecutor();
+      return nativeTeamExecutor(nativeReady ? override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native" : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse", nativeReady);
     },
     teamService() {
       const teams = service("agentTeams");
@@ -1807,10 +2120,10 @@ function createDshAdapter(ctx, config = {}) {
       }
       if (membership === undefined || membership === null)
         return;
-      const role = membership.role;
-      if (role !== "lead" && role !== "teammate")
+      const role2 = membership.role;
+      if (role2 !== "lead" && role2 !== "teammate")
         return;
-      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+      return { teamId: String(membership.id ?? ""), role: role2, name: String(membership.name ?? "") };
     },
     teamListMembers(agent) {
       const teams = requireService("agentTeams", "cannot list the team roster of an agent");
@@ -1984,10 +2297,10 @@ function createDshAdapter(ctx, config = {}) {
           listener(revision, source);
         } catch {}
       };
-      const offUpdated = adapter.onEvent("settings/updated", (ns, _next, _prev, from) => {
+      const offUpdated = adapter.onEvent("settings/updated", (ns, _next, _prev, from2) => {
         if (String(ns) !== namespace)
           return;
-        pendingSource = from === undefined ? undefined : String(from);
+        pendingSource = from2 === undefined ? undefined : String(from2);
         return;
       });
       const offDocument = adapter.onEvent("settings/document-updated", (ns, revision) => {
@@ -2012,7 +2325,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -2031,7 +2344,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -2081,7 +2394,7 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
       }
       const registered = systemPrompt.section(section);
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     startAgentTurn(agent, message) {
       const followup = agent?.followup;
@@ -2124,12 +2437,12 @@ function createDshAdapter(ctx, config = {}) {
 
 // packages/mpd-team-watchdog-plugin/src/actions.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 
 // packages/mpd-team-watchdog-plugin/src/paths.ts
 import { createHash } from "node:crypto";
-import { join } from "node:path";
-var DEFAULT_STATE_DIR = join(".mpd", "team");
+import { join as join2 } from "node:path";
+var DEFAULT_STATE_DIR = join2(".mpd", "team");
 var WATCHDOG_DIR = "watchdog";
 var DEFAULT_KEEP_GENERATIONS = 3;
 function safeSegment(value) {
@@ -2146,44 +2459,44 @@ function digest(text) {
   return createHash("sha256").update(text).digest("hex").slice(0, 8);
 }
 function stateRoot(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(workspace, stateDir);
+  return join2(workspace, stateDir);
 }
 function watchdogRoot(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(stateRoot(workspace, stateDir), WATCHDOG_DIR);
+  return join2(stateRoot(workspace, stateDir), WATCHDOG_DIR);
 }
 function heartbeatDir(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(watchdogRoot(workspace, stateDir), "heartbeat");
+  return join2(watchdogRoot(workspace, stateDir), "heartbeat");
 }
 function heartbeatPath(workspace, stateDir, memberKey) {
-  return join(heartbeatDir(workspace, stateDir), safeSegment(memberKey) + ".jsonl");
+  return join2(heartbeatDir(workspace, stateDir), safeSegment(memberKey) + ".jsonl");
 }
 function sceneDir(workspace, stateDir, teamId) {
-  return join(watchdogRoot(workspace, stateDir), "scene", safeSegment(teamId));
+  return join2(watchdogRoot(workspace, stateDir), "scene", safeSegment(teamId));
 }
 function holdDir(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(watchdogRoot(workspace, stateDir), "hold");
+  return join2(watchdogRoot(workspace, stateDir), "hold");
 }
 function holdPath(workspace, stateDir, teamId) {
-  return join(holdDir(workspace, stateDir), safeSegment(teamId) + ".json");
+  return join2(holdDir(workspace, stateDir), safeSegment(teamId) + ".json");
 }
 function incidentsPath(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(watchdogRoot(workspace, stateDir), "incidents.jsonl");
+  return join2(watchdogRoot(workspace, stateDir), "incidents.jsonl");
 }
 function watermarkPath(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(watchdogRoot(workspace, stateDir), "read-watermark.json");
+  return join2(watchdogRoot(workspace, stateDir), "read-watermark.json");
 }
 
 // packages/mpd-team-watchdog-plugin/src/sidecars.ts
-import { appendFileSync as appendFileSync2, existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, rmSync } from "node:fs";
+import { appendFileSync as appendFileSync2, existsSync as existsSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync2, rmSync as rmSync2 } from "node:fs";
 import { dirname as dirname2 } from "node:path";
 
 // packages/mpd-team-watchdog-plugin/src/store.ts
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
-import { basename, dirname, join as join2 } from "node:path";
+import { appendFileSync, existsSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, writeFileSync } from "node:fs";
+import { basename, dirname, join as join3 } from "node:path";
 function appendHeartbeat(workspace, stateDir, memberKey, stamp) {
   const path = heartbeatPath(workspace, stateDir, memberKey);
   try {
-    mkdirSync(dirname(path), { recursive: true });
+    mkdirSync2(dirname(path), { recursive: true });
     appendFileSync(path, JSON.stringify(stamp) + `
 `, "utf8");
     return { ok: true, path };
@@ -2300,10 +2613,10 @@ function writeFileAtomic(path, text) {
       if (current === text)
         return { changed: false, path };
     }
-    mkdirSync(dirname(path), { recursive: true });
-    const temp = join2(dirname(path), "." + basename(path) + ".tmp-" + process.pid);
+    mkdirSync2(dirname(path), { recursive: true });
+    const temp = join3(dirname(path), "." + basename(path) + ".tmp-" + process.pid);
     writeFileSync(temp, text, "utf8");
-    renameSync(temp, path);
+    renameSync2(temp, path);
     return { changed: true, path };
   } catch (error) {
     return { changed: false, path, error: errorMessage(error) };
@@ -2340,7 +2653,7 @@ function clearHold(workspace, stateDir, teamId) {
   let cleared = false;
   try {
     if (existsSync2(path)) {
-      rmSync(path);
+      rmSync2(path);
       cleared = true;
     }
   } catch {}
@@ -2349,7 +2662,7 @@ function clearHold(workspace, stateDir, teamId) {
 function appendIncident(workspace, stateDir, incident) {
   const path = incidentsPath(workspace, stateDir);
   try {
-    mkdirSync2(dirname2(path), { recursive: true });
+    mkdirSync3(dirname2(path), { recursive: true });
     appendFileSync2(path, JSON.stringify(incident) + `
 `, "utf8");
     return { ok: true, path };
@@ -2400,8 +2713,11 @@ function readWatermarks(workspace, stateDir) {
 }
 function ackIncidents(workspace, stateDir, reader, upTo) {
   const current = readWatermarks(workspace, stateDir);
-  const next = Math.max(current[reader] ?? 0, upTo);
   const path = watermarkPath(workspace, stateDir);
+  if (typeof upTo !== "number" || !Number.isFinite(upTo)) {
+    return { ok: false, watermark: current[reader] ?? 0, path, error: `the watermark to acknowledge must be a finite number, got ${String(upTo)}` };
+  }
+  const next = Math.max(current[reader] ?? 0, upTo);
   const written = writeFileAtomic(path, JSON.stringify({ ...current, [reader]: next }, null, 2) + `
 `);
   if (written.error !== undefined)
@@ -2469,7 +2785,55 @@ function projectTeamView(view) {
     raw: view
   };
 }
-function readTeams(dsh) {
+function isWatchedMpdRecord(record) {
+  const members = Array.isArray(record.members) ? record.members : [];
+  if (members.length > 0)
+    return true;
+  return Array.isArray(record.tasks) && record.tasks.length > 0;
+}
+function epochOf(iso) {
+  const parsed = typeof iso === "string" ? Date.parse(iso) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+function projectMpdTeam(record) {
+  const members = (Array.isArray(record.members) ? record.members : []).map((member) => ({
+    id: typeof member.executorRef === "string" ? member.executorRef : "",
+    name: String(member.name ?? ""),
+    ...typeof member.status === "string" ? { status: member.status } : {}
+  }));
+  const tasks = (Array.isArray(record.tasks) ? record.tasks : []).map((task) => {
+    const revision = typeof task.revision === "number" && Number.isFinite(task.revision) ? task.revision : undefined;
+    const owner = typeof task.owner === "string" && task.owner !== "" ? task.owner : undefined;
+    return {
+      id: String(task.id ?? ""),
+      status: String(task.status ?? ""),
+      ...owner === undefined ? {} : { assignee: owner, dispatched: true },
+      ...revision === undefined ? {} : { attempt: revision, attemptId: String(revision) },
+      ...Array.isArray(task.blockedBy) ? { dependencies: task.blockedBy.filter((id) => typeof id === "string") } : {}
+    };
+  });
+  return {
+    id: String(record.teamId ?? ""),
+    name: String(record.name ?? ""),
+    ...typeof record.phase === "string" ? { phase: record.phase } : {},
+    ...typeof record.leadSessionId === "string" && record.leadSessionId !== "" ? { captainSessionId: record.leadSessionId } : {},
+    members,
+    tasks,
+    activityAt: null,
+    createdAt: epochOf(record.createdAt),
+    approvedAt: epochOf(record.approvedAt),
+    raw: record
+  };
+}
+function readTeams(dsh, workspace, mpdTeams) {
+  if (mpdTeams !== undefined) {
+    try {
+      const records = mpdTeams.list(workspace);
+      if (Array.isArray(records) && records.length > 0) {
+        return records.filter(isWatchedMpdRecord).map(projectMpdTeam);
+      }
+    } catch {}
+  }
   let views;
   try {
     views = dsh.teamLiveTeams() ?? [];
@@ -2478,12 +2842,12 @@ function readTeams(dsh) {
   }
   return views.filter(isWatchedTeam).map(projectTeamView);
 }
-function readTeam(dsh, teamId) {
+function readTeam(dsh, workspace, teamId, mpdTeams) {
   const wanted = String(teamId);
-  return readTeams(dsh).find((team) => team.id === wanted);
+  return readTeams(dsh, workspace, mpdTeams).find((team) => team.id === wanted);
 }
-function listTeamIds(dsh) {
-  return readTeams(dsh).map((team) => team.id).sort();
+function listTeamIds(dsh, workspace, mpdTeams) {
+  return readTeams(dsh, workspace, mpdTeams).map((team) => team.id).sort();
 }
 function liveTasks(team) {
   return team.tasks.filter((task) => !TERMINAL_STATUSES.includes(task.status));
@@ -2534,6 +2898,69 @@ function teamOf(teams, agent) {
       return team;
   }
   return;
+}
+
+// packages/mpd-team-watchdog-plugin/src/lossless.ts
+function losslessJson(value, seen = new Set) {
+  if (value === null)
+    return null;
+  switch (typeof value) {
+    case "boolean":
+    case "string":
+      return value;
+    case "number":
+      if (!Number.isFinite(value))
+        return null;
+      return Object.is(value, -0) ? 0 : value;
+    case "bigint":
+      return value.toString();
+    case "undefined":
+    case "function":
+    case "symbol":
+      return null;
+    default:
+      break;
+  }
+  const node = value;
+  if (seen.has(node))
+    return null;
+  if (node instanceof Map) {
+    const next2 = new Set(seen);
+    next2.add(node);
+    const out2 = {};
+    for (const [key, entry] of node.entries())
+      out2[String(key)] = losslessJson(entry, next2);
+    return out2;
+  }
+  if (node instanceof Set) {
+    const next2 = new Set(seen);
+    next2.add(node);
+    return [...node.values()].map((entry) => losslessJson(entry, next2));
+  }
+  if (node instanceof Date) {
+    return Number.isNaN(node.getTime()) ? null : node.toISOString();
+  }
+  const next = new Set(seen);
+  next.add(node);
+  if (Array.isArray(node)) {
+    const out2 = [];
+    for (let index = 0;index < node.length; index += 1)
+      out2.push(losslessJson(node[index], next));
+    return out2;
+  }
+  const out = {};
+  for (const key of Object.keys(node)) {
+    let raw;
+    try {
+      raw = node[key];
+    } catch {
+      raw = null;
+    }
+    if (raw === undefined || typeof raw === "function" || typeof raw === "symbol")
+      continue;
+    out[key] = losslessJson(raw, next);
+  }
+  return out;
 }
 
 // packages/mpd-team-watchdog-plugin/src/actions.ts
@@ -2638,7 +3065,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
   });
   dsh.registerTool({
     name: STATUS_TOOL,
-    description: "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and the ONE pause state per team: the watchdog's preserving hold, which is the only pause mechanism this bundle has (the official Agent Teams service exposes no halt). Team rows come from the live OFFICIAL readout (`dsh.teamLiveTeams()`), so a team appears here exactly while one of its sessions is live. Use it to inspect what a lane or a restarting process would read from disk.",
+    description: "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and the ONE pause state per team: the watchdog's preserving hold, which is the only pause mechanism this bundle has (the official Agent Teams service exposes no halt). Team rows come from the MPD TEAM RECORD first (`mpdTeams.list(workspace)`, the authoritative plane, so a team appears as soon as it is created and its id is the one dispatch asks about), with the live OFFICIAL readout (`dsh.teamLiveTeams()`) as the fallback for a composition that runs the official executor. Use it to inspect what a lane or a restarting process would read from disk.",
     parameters: {
       type: "object",
       properties: { team_id: { type: "string", description: "Limit to one team." } },
@@ -2677,20 +3104,20 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
     },
     execute: (args, exec) => {
       const workspace = dsh.workspaceRoot(exec);
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id];
-      return {
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh, workspace, surfaces.mpdTeams?.()) : [args.team_id];
+      return losslessJson({
         workspace,
         predicate: predicateSource?.() ?? { source: "unknown", reason: "the engine did not publish a predicate source", enrichment: false, events: 0, sessions: 0, states: {}, announced: false },
         knobs: surfaces.knobs?.() ?? { readings: [], divergent: [], restartRequired: false, file: null, fileFound: false, fileApplied: false, liveLayer: "namespace" },
         paths: {
           heartbeat: heartbeatDir(workspace, stateDir),
-          hold: join3(workspace, stateDir, "watchdog", "hold"),
+          hold: join4(workspace, stateDir, "watchdog", "hold"),
           incidents: incidentsPath(workspace, stateDir),
           watermark: watermarkPath(workspace, stateDir)
         },
         teams: ids.map((teamId) => {
           const hold = readHold(workspace, stateDir, teamId);
-          const team = readTeam(dsh, teamId);
+          const team = readTeam(dsh, workspace, teamId, surfaces.mpdTeams?.());
           const held = hold !== undefined;
           const pause = {
             paused: held,
@@ -2717,7 +3144,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
             isHeld: registry?.isHeld(teamId, workspace) ?? null
           };
         })
-      };
+      });
     }
   });
 }
@@ -2961,8 +3388,8 @@ class ChannelFold {
 
 // packages/mpd-team-watchdog-plugin/src/config-file.ts
 import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join4 } from "node:path";
-var PROJECT_CONFIG_FILE = join4(".mpd", "mpd.jsonc");
+import { join as join5 } from "node:path";
+var PROJECT_CONFIG_FILE = join5(".mpd", "mpd.jsonc");
 function stripJsonComments(text) {
   let out = "";
   let inString = false;
@@ -3008,7 +3435,7 @@ function stripTrailingCommas(text) {
   return text.replace(/,(\s*[}\]])/g, "$1");
 }
 function readWatchdogSection(workspace) {
-  const path = join4(workspace, PROJECT_CONFIG_FILE);
+  const path = join5(workspace, PROJECT_CONFIG_FILE);
   let text;
   try {
     text = readFileSync3(path, "utf8");
@@ -3030,8 +3457,8 @@ function readWatchdogSection(workspace) {
 }
 
 // packages/mpd-team-watchdog-plugin/src/holds.ts
-import { existsSync as existsSync3, readFileSync as readFileSync4, readdirSync as readdirSync2, statSync } from "node:fs";
-import { join as join5, resolve as resolve2 } from "node:path";
+import { existsSync as existsSync3, readFileSync as readFileSync4, readdirSync as readdirSync2, statSync as statSync2 } from "node:fs";
+import { join as join6, resolve as resolve4 } from "node:path";
 var HOLD_SERVICE = "mpdWatchdog";
 function readHoldFile(workspace, stateDir, teamId) {
   let text;
@@ -3057,17 +3484,17 @@ class HoldRegistry {
   fallbackWorkspace = null;
   constructor(stateDir, fallbackWorkspace = null) {
     this.stateDir = stateDir;
-    this.fallbackWorkspace = fallbackWorkspace === null ? null : resolve2(fallbackWorkspace);
+    this.fallbackWorkspace = fallbackWorkspace === null ? null : resolve4(fallbackWorkspace);
   }
   key(workspace, teamId) {
-    return resolve2(workspace) + "\x00" + teamId;
+    return resolve4(workspace) + "\x00" + teamId;
   }
   hydrate(roots) {
     let loaded = 0;
     for (const root of roots) {
       if (typeof root !== "string" || root === "")
         continue;
-      const workspace = resolve2(root);
+      const workspace = resolve4(root);
       if (this.fallbackWorkspace === null)
         this.fallbackWorkspace = workspace;
       if (this.hydrated.has(workspace))
@@ -3094,14 +3521,14 @@ class HoldRegistry {
   }
   record(workspace, hold) {
     this.entries.set(this.key(workspace, hold.teamId), hold);
-    this.hydrated.add(resolve2(workspace));
+    this.hydrated.add(resolve4(workspace));
   }
   forget(workspace, teamId) {
     this.entries.delete(this.key(workspace, teamId));
   }
   isHeld(teamId, workspace) {
     const id = String(teamId ?? "");
-    const notHeld = (from, where2 = null) => ({
+    const notHeld = (from2, where2 = null) => ({
       held: false,
       holdId: null,
       at: null,
@@ -3109,7 +3536,7 @@ class HoldRegistry {
       taskId: null,
       attemptId: null,
       workspace: where2,
-      source: from
+      source: from2
     });
     if (id === "")
       return notHeld("none");
@@ -3127,7 +3554,7 @@ class HoldRegistry {
       } catch {
         return notHeld("none");
       }
-      return notHeld("none", resolve2(where));
+      return notHeld("none", resolve4(where));
     }
     for (const [key, hold] of this.entries) {
       const [root, team] = key.split("\x00");
@@ -3201,7 +3628,7 @@ class HoldRegistry {
   }
   workspaceOf(workspace) {
     if (typeof workspace === "string" && workspace !== "")
-      return resolve2(workspace);
+      return resolve4(workspace);
     return this.fallbackWorkspace;
   }
   holdView(hold, workspace, source) {
@@ -3556,7 +3983,7 @@ function candidateFor(team, stampSource, memberKeyOf) {
 
 // packages/mpd-team-watchdog-plugin/src/scene.ts
 import { existsSync as existsSync4, readFileSync as readFileSync5 } from "node:fs";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 var SCENE_SCHEMA_VERSION = 1;
 function newestForTask(stamps, taskId, attemptId, teamId) {
   let newest = null;
@@ -3644,12 +4071,12 @@ function isoBasic(at) {
 function writeScene(workspace, stateDir, teamId, scene, at) {
   const dir = sceneDir(workspace, stateDir, teamId);
   const base = isoBasic(at) + "-" + scene.reason;
-  let path = join6(dir, base + ".json");
+  let path = join7(dir, base + ".json");
   let suffix = 1;
   try {
     while (existsSync4(path)) {
       suffix += 1;
-      path = join6(dir, base + "-" + suffix + ".json");
+      path = join7(dir, base + "-" + suffix + ".json");
       if (suffix > 1000)
         break;
     }
@@ -3660,7 +4087,7 @@ function writeScene(workspace, stateDir, teamId, scene, at) {
   if (written.error !== undefined) {
     return { ok: false, path: null, latestPath: null, bytes: 0, error: written.error };
   }
-  const latest = writeFileAtomic(join6(dir, "latest.json"), text);
+  const latest = writeFileAtomic(join7(dir, "latest.json"), text);
   if (latest.error !== undefined) {
     return { ok: false, path, latestPath: null, bytes: Buffer.byteLength(text), error: latest.error };
   }
@@ -3714,7 +4141,7 @@ function sessionIdOf(value) {
 }
 function report(text) {
   try {
-    console.warn("[mpd-team-watchdog] " + text);
+    rowLogLine("mpd-team-watchdog", "[mpd-team-watchdog] " + text);
   } catch {}
 }
 function subscribe(dsh, event, handler) {
@@ -3923,14 +4350,27 @@ class WatchdogEngine {
     const cached = this.teamCache.get(key);
     if (this.config.teamCacheMs > 0 && cached !== undefined && now - cached.at < this.config.teamCacheMs)
       return cached.teams;
-    const teams = readTeams(this.dsh);
+    const teams = readTeams(this.dsh, workspace, this.mpdTeams());
     this.teamCache.set(key, { at: now, teams });
     return teams;
+  }
+  mpdTeams() {
+    try {
+      const get = this.ctx.get;
+      if (typeof get !== "function")
+        return;
+      const service = get.call(this.ctx, "mpdTeams", false);
+      if (service === null || typeof service !== "object")
+        return;
+      return typeof service.list === "function" ? service : undefined;
+    } catch {
+      return;
+    }
   }
   workspaceOf(agent) {
     return this.dsh.workspaceRoot(agent === undefined ? undefined : { agent });
   }
-  stamp(kind, agent, extra = {}) {
+  stamp(kind, agent, extra2 = {}) {
     const ids = agentIds(agent);
     const workspace = this.workspaceOf(ids.cwd !== undefined ? agent : undefined);
     this.remember(workspace);
@@ -3950,9 +4390,9 @@ class WatchdogEngine {
       taskId: task?.id ?? null,
       attemptId: task?.attemptId ?? null,
       turnId: memberKey + "#" + String(this.turnSeq),
-      ...extra.tool === undefined ? {} : { tool: extra.tool },
-      ...extra.callId === undefined ? {} : { callId: extra.callId },
-      ...extra.ok === undefined ? {} : { ok: extra.ok },
+      ...extra2.tool === undefined ? {} : { tool: extra2.tool },
+      ...extra2.callId === undefined ? {} : { callId: extra2.callId },
+      ...extra2.ok === undefined ? {} : { ok: extra2.ok },
       workspace
     };
     const written = appendHeartbeat(workspace, this.config.stateDir, memberKey, stamp);
@@ -4273,7 +4713,7 @@ class WatchdogEngine {
     } catch {}
     if (this.config.verboseSkips) {
       try {
-        console.log("[" + this.config.logPrefix + "] skipped " + reason);
+        rowLogLine("mpd-team-watchdog", "[" + this.config.logPrefix + "] skipped " + reason);
       } catch {}
     }
   }
@@ -4492,30 +4932,30 @@ class WatchdogEngine {
     } catch {}
     try {
       if (level === "warn")
-        console.warn(line);
+        rowLogLine("mpd-team-watchdog", line);
       else
-        console.log(line);
+        rowLogLine("mpd-team-watchdog", line);
     } catch {}
   }
 }
 
 // packages/mpd-team-watchdog-plugin/src/index.ts
 var name = "mpd-team-watchdog";
-var inject = ["tools", "agents"];
-var Config = import_schemastery.default.object({
-  enabled: import_schemastery.default.boolean().default(true),
-  warnSilenceMs: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.warnSilenceMs),
-  tickIntervalMs: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.tickIntervalMs),
-  warnStreakToEscalate: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.warnStreakToEscalate),
-  actionOnEscalate: import_schemastery.default.string().default(WATCHDOG_DEFAULTS.actionOnEscalate),
-  stateDir: import_schemastery.default.string().default(DEFAULT_STATE_DIR),
-  teamCacheMs: import_schemastery.default.number().default(2000),
-  keepGenerations: import_schemastery.default.number().default(3),
-  deadTeamGraceMs: import_schemastery.default.number().default(86400000),
-  toolInFlightMaxMs: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
-  holdTtlMs: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.holdTtlMs),
-  verboseSkips: import_schemastery.default.boolean().default(false),
-  logPrefix: import_schemastery.default.string().default("mpd-team-watchdog")
+var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_AGENTS);
+var Config = Schema.object({
+  enabled: Schema.boolean().default(true),
+  warnSilenceMs: Schema.number().default(WATCHDOG_DEFAULTS.warnSilenceMs),
+  tickIntervalMs: Schema.number().default(WATCHDOG_DEFAULTS.tickIntervalMs),
+  warnStreakToEscalate: Schema.number().default(WATCHDOG_DEFAULTS.warnStreakToEscalate),
+  actionOnEscalate: Schema.string().default(WATCHDOG_DEFAULTS.actionOnEscalate),
+  stateDir: Schema.string().default(DEFAULT_STATE_DIR),
+  teamCacheMs: Schema.number().default(2000),
+  keepGenerations: Schema.number().default(3),
+  deadTeamGraceMs: Schema.number().default(86400000),
+  toolInFlightMaxMs: Schema.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
+  holdTtlMs: Schema.number().default(WATCHDOG_DEFAULTS.holdTtlMs),
+  verboseSkips: Schema.boolean().default(false),
+  logPrefix: Schema.string().default("mpd-team-watchdog")
 });
 function resolveConfig(config = {}) {
   const bool = (value, fallback) => typeof value === "boolean" ? value : fallback;
@@ -4536,9 +4976,22 @@ function resolveConfig(config = {}) {
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog"
   };
 }
+function mpdTeamsOf(ctx) {
+  try {
+    const get = ctx?.get;
+    if (typeof get !== "function")
+      return;
+    const service = get.call(ctx, "mpdTeams", false);
+    if (service === null || typeof service !== "object")
+      return;
+    return typeof service.list === "function" ? service : undefined;
+  } catch {
+    return;
+  }
+}
 function warn(prefix, text) {
   try {
-    console.warn("[" + prefix + "] " + text);
+    rowLogLine("mpd-team-watchdog", "[" + prefix + "] " + text);
   } catch {}
 }
 function apply(ctx, config = {}) {
@@ -4601,7 +5054,8 @@ function apply(ctx, config = {}) {
     registerWatchdogActions(dsh, resolved.stateDir, registry, {
       predicate: () => engine.predicateStatus(),
       knobs: () => engine.knobDivergence(),
-      holdTtlMs: () => engine.getKnobs().holdTtlMs
+      holdTtlMs: () => engine.getKnobs().holdTtlMs,
+      mpdTeams: () => mpdTeamsOf(context)
     });
     disposers = engine.install();
   } catch (error) {
@@ -4657,7 +5111,7 @@ function apply(ctx, config = {}) {
   for (const issue of issues)
     warn(resolved.logPrefix, "knob " + issue.path + ": " + issue.problem + " — using " + JSON.stringify(issue.fallback));
   try {
-    console.log("[mpd-team-watchdog] applied: enabled=" + engine.getKnobs().enabled + " warnSilenceMs=" + engine.getKnobs().warnSilenceMs + " tickIntervalMs=" + intervalMs + " warnStreakToEscalate=" + engine.getKnobs().warnStreakToEscalate + " actionOnEscalate=" + engine.getKnobs().actionOnEscalate + " stateDir=" + resolved.stateDir + " disposers=" + disposers.length + " holdService=" + (holdService ?? "none") + " hydratedHolds=" + hydratedHolds + " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs) + " toolInFlightMaxMs=" + (resolved.toolInFlightMaxMs === 0 ? "off" : resolved.toolInFlightMaxMs) + " holdTtlMs=" + (resolved.holdTtlMs === 0 ? "off" : resolved.holdTtlMs) + " predicate=" + engine.predicateStatus().source + " enrichment=" + (engine.predicateStatus().enrichment ? "on" : "off"));
+    rowLogLine("mpd-team-watchdog", "[mpd-team-watchdog] applied: enabled=" + engine.getKnobs().enabled + " warnSilenceMs=" + engine.getKnobs().warnSilenceMs + " tickIntervalMs=" + intervalMs + " warnStreakToEscalate=" + engine.getKnobs().warnStreakToEscalate + " actionOnEscalate=" + engine.getKnobs().actionOnEscalate + " stateDir=" + resolved.stateDir + " disposers=" + disposers.length + " holdService=" + (holdService ?? "none") + " hydratedHolds=" + hydratedHolds + " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs) + " toolInFlightMaxMs=" + (resolved.toolInFlightMaxMs === 0 ? "off" : resolved.toolInFlightMaxMs) + " holdTtlMs=" + (resolved.holdTtlMs === 0 ? "off" : resolved.holdTtlMs) + " predicate=" + engine.predicateStatus().source + " enrichment=" + (engine.predicateStatus().enrichment ? "on" : "off"));
   } catch {}
   return { applied: true, engine, knobs: engine.getKnobs(), intervalMs, disposers: disposers.length, holdService, hydratedHolds };
 }

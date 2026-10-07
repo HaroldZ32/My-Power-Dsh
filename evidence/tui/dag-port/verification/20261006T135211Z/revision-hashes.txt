@@ -1,0 +1,12 @@
+# hashes read at 2026-10-06T14:03:12Z
+a9c509e943207399  8047  packages/mpd-tui-plugin/src/dag-theme.ts
+071f8543b8c78fff  48046  packages/mpd-tui-plugin/src/graph.ts
+40eb4ce2944daed0  27955  packages/mpd-tui-plugin/src/panel.ts
+7c4de123309ffa6f  41650  packages/mpd-tui-plugin/src/panel-dag.ts
+87dedfa6b15648a8  24554  packages/mpd-tui-plugin/src/panel-workmate.ts
+284655c52d0a878d  34661  packages/mpd-tui-plugin/src/panel-core.ts
+61774b70565c275a  84279  packages/mpd-bundle-plugin/src/team-view.ts
+00117a63d61c0adf  40126  packages/mpd-team-core-plugin/src/team-store.ts
+4aed27eb8ceea5c3  30662  packages/mpd-tui-plugin/test/dag-fidelity.test.ts
+5af176a58602573f  10547  packages/mpd-tui-plugin/test/panel-visibility.test.ts
+c2902ca2d261b115  31667  .mpd/team/teams/team-20261006135108.json

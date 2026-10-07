@@ -1,0 +1,108 @@
+# store=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/goal/goal-bridge/2026-10-06T08-50-27.922Z/raw/sessions/--tmp-mpd-goal-yXJxyN-ws--/session-41ea0c1f-529f-44ea-b15c-a7d21de0e08a/session.v4.jsonl.zstd records=38
+---- tool/call seq=19 time=1791276635302 ----
+{
+  "type": "tool/call",
+  "seq": 19,
+  "time": 1791276635302,
+  "data": {
+    "turn": 1,
+    "step": 1,
+    "callId": "call_00_U6M2xLPHR8kPBF1amNO26163",
+    "name": "mpd_goal_anchor",
+    "arguments": "{\"objective\": \"ship the goal bridge\", \"maxRounds\": 5}"
+  }
+}
+---- goal/change seq=20 time=1791276635309 ----
+{
+  "type": "goal/change",
+  "seq": 20,
+  "time": 1791276635309,
+  "data": {
+    "kind": "goal/change",
+    "version": 1,
+    "operation": "create",
+    "goal": {
+      "id": "goal-8012f0be-7a38-453f-9942-f9e1369a54e6",
+      "revision": 1,
+      "objective": "ship the goal bridge",
+      "phase": "active",
+      "maxGoalRounds": 5
+    },
+    "roundsStarted": 0,
+    "createdAt": 1791276635309,
+    "updatedAt": 1791276635309
+  }
+}
+---- tool/result seq=21 time=1791276635312 ----
+{
+  "type": "tool/result",
+  "seq": 21,
+  "time": 1791276635312,
+  "data": {
+    "turn": 1,
+    "step": 1,
+    "message": {
+      "role": "tool",
+      "source": {
+        "kind": "tool",
+        "callId": "call_00_U6M2xLPHR8kPBF1amNO26163"
+      },
+      "toolCallId": "call_00_U6M2xLPHR8kPBF1amNO26163",
+      "content": [
+        {
+          "type": "text",
+          "text": "mpd goal anchor: ok=true created=true goal={\"id\":\"goal-8012f0be-7a38-453f-9942-f9e1369a54e6\",\"revision\":1,\"objective\":\"ship the goal bridge\",\"phase\":\"active\",\"maxGoalRounds\":5,\"roundsStarted\":0,\"activation\":\"armed\"}"
+        }
+      ],
+      "isError": false,
+      "id": "a13b4b19-468f-4820-8a87-6b35aca75fa4"
+    }
+  },
+  "sourceEventSeqs": [
+    19
+  ],
+  "surfaceOp": "append"
+}
+---- tool/call seq=26 time=1791276636268 ----
+{
+  "type": "tool/call",
+  "seq": 26,
+  "time": 1791276636268,
+  "data": {
+    "turn": 1,
+    "step": 2,
+    "callId": "call_00_3hif1V4FgHis1q2yD0dy0040",
+    "name": "mpd_goal_status",
+    "arguments": "{}"
+  }
+}
+---- tool/result seq=27 time=1791276636272 ----
+{
+  "type": "tool/result",
+  "seq": 27,
+  "time": 1791276636272,
+  "data": {
+    "turn": 1,
+    "step": 2,
+    "message": {
+      "role": "tool",
+      "source": {
+        "kind": "tool",
+        "callId": "call_00_3hif1V4FgHis1q2yD0dy0040"
+      },
+      "toolCallId": "call_00_3hif1V4FgHis1q2yD0dy0040",
+      "content": [
+        {
+          "type": "text",
+          "text": "mpd goal: {\"id\":\"goal-8012f0be-7a38-453f-9942-f9e1369a54e6\",\"revision\":1,\"objective\":\"ship the goal bridge\",\"phase\":\"active\",\"maxGoalRounds\":5,\"roundsStarted\":0,\"activation\":\"armed\"} (enabled=true, autoAnchor=true)"
+        }
+      ],
+      "isError": false,
+      "id": "4dea2c50-d99e-45e2-ad53-bb5f29ee28b9"
+    }
+  },
+  "sourceEventSeqs": [
+    26
+  ],
+  "surfaceOp": "append"
+}

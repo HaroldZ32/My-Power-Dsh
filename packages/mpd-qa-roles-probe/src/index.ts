@@ -8,7 +8,7 @@
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_AGENT_PRESETS, DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 // The cordis plugin's own name (loader registry/diagnostics). NOT the row id: the QA overlay
 // inserts this probe as `roles-probe` (tests/overlays/roles-probe.yml), so a boot log naming
@@ -18,7 +18,9 @@ export const name = "mpd-dsh-qa-roles-probe"
 // agent-scoped cordis ctx throws on any property not in `inject`, so reading
 // `ctx.tools` without declaring it reports `cannot get property "tools" without inject`
 // (measured, t52 mount proof) and the instrumentation silently reports nothing useful.
-export const inject = ["agentPresets", "tools"]
+// The names come from the adapter's ONE seam vocabulary (`dshSeamInject`), so a harness rename
+// lands there instead of in this declaration; the runtime strings are unchanged.
+export const inject = dshSeamInject(DSH_SEAM_AGENT_PRESETS, DSH_SEAM_TOOLS)
 /** The part of the `mpdRoles` service this probe reads: `list()` is the roster, `get(key)` the
  *  key-to-role resolution. `get` stays OPTIONAL so a service that cannot resolve a key still
  *  prints its roster and fails the name assertion, instead of taking the probe down. */

@@ -2,6 +2,13 @@
 
 **中文** | [English](./feature-audit.md)
 
+> **状态已重新定位（de-vendor-and-verify-law，2026-10-07）。** oh-my-openagent 是一份**早期参考**，
+> 而不是一致性目标。曾用它衡量本仓库的身份校验已被**删除**，没有任何关卡会去读取上游 checkout，也不
+> 欠任何同步义务 —— 名册、十一个角色描述与模型链术语来自那个项目，其归属记录在
+> [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) 与根 README 中。因此下文全部内容都是对某项能力面的
+> **历史测量**，保留下来是因为这份对照仍有信息量；请把 ✅ 读作“这曾经发布”，绝不读作“至今仍与上游
+> 一致”，也不要把这里任何一句读成“逐版本跟随上游”的承诺。
+
 本文档是移植的**当前基线/能力对照**：AGENTS.md §1 将其引用为工程目标。历史移植规划记录
 位于 `docs/plan-*`，属于 process 记录，不属于本审计范围。
 
@@ -19,7 +26,7 @@
 | plan mode | 仅规划模式 | ✅ | DSH 原生 plan-mode |
 | delegate / multi-model | delegate-task 带 fallback chains | 🟡 | subagent 工具 + mpd_modelchain_resolve（11 roles，2-3 层 DeepSeek chains）。上游 model-core 更丰富的 variant/effort 映射未移植 |
 | 后台 agent | 并行后台任务 | ✅ | DSH jobs + tool-jobs |
-| Skills 语料 | 上游 skill corpus | ✅ | 已移植（2026-08-27）：语料随仓库发布于 `skills/`（18 个目录，含 `svn-master` 与本仓库自有的 `dsh-qa`），并以**引用**方式服务 —— `mpd-bootstrap` 通过 adapter 把 `<bundle>/skills` 注册为 `bundled` skill provider，因此不会复制进 `$DSH_HOME`；见 `docs/omo-parity-gap.md` 的 §Content gaps |
+| Skills 语料 | 上游 skill corpus | ✅ | 已移植（2026-08-27）：语料随仓库发布于 `skills/`（19 个目录，含 `svn-master`、本仓库自有的 `dsh-qa` 与 `cordis-dev` —— 后者改写自 DeepSeek Harness 的创造模式 preset skills，MIT，见 `LICENSE-NOTICES.md`），并以**引用**方式服务 —— `mpd-bootstrap` 通过 adapter 把 `<bundle>/skills` 注册为 `bundled` skill provider，因此不会复制进 `$DSH_HOME`；见 `docs/omo-parity-gap.md` 的 §Content gaps |
 | Rules / AGENTS.md | 嵌套规则发现与注入 | ✅ | DSH agent-instructions（baseline + nested + change tracking） |
 | 内置 MCPs（5） | git_bash, lsp, codegraph, context7, grep_app | ✅ | git_bash（win-gated）、lsp（8 工具）、codegraph（plugin+init）、context7、grep_app（远程行）+ 额外 ast_grep |
 | Slash commands | /goal /ultrawork /team /hyperplan … | 🟡 | DSH 原生命令 + `/mpd-codegraph`、ULW 命令对 `/ulw` + `/ultrawork`（等价；目标即参数）+ TUI 的 `/mpd` 命令树；ULW 引擎同时以工具交付（`mpd_ultrawork`、`mpd_ulw` 轻量别名）。没有 `/team`，也没有 `/agent-teams` —— 团队工作由官方工具驱动 |
@@ -55,16 +62,16 @@
 Agent Teams 插件取代（见上文团队模式行与 `docs/plan-0.1.7-adaptation.md`）。
 
 保留版本为 `0.1.16-rc.3-mpd`：**0.1.14 本体** + 该宿主世代所需的上游 **0.1.16-rc.3** 增量 ——
-`lib/harness-compat.js`（在 harness **0.1.5-rc.2+** 上经公开的
+`lib/harness-compat.ts`（在 harness **0.1.5-rc.2+** 上经公开的
 `ctx.subagents.prompt(request, signal)` 可续投递面进行团队投递，Alpha.2 的 `followup` 与
 Alpha.5…0.1.2-rc.1 的符号键控 FIFO 队列 `Symbol.for('dsh.subagent.queuePrompt')` 仅作为
 旧世代回退保留；`agent/session-start` 上的同步成员初始化从事件负载中取得 live Agent
 （`setup(agent.ctx, agent)`），而不再读 `childCtx.agent` —— agent 作用域的 Cordis ctx 是代理，
 读取会抛 `cannot get property "agent" without inject`（不存在 `agent` 服务；宿主注入的是复数
 `agents`），且该监听器对队长自身会话同样触发，旧读法会全队中止成员初始化、使 0.1.5 团队模式
-不可用；所有投递面上的退役守卫）、`lib/capabilities.js`
-（按 agent 作用域的成员指令 + 禁用队长专属工具）、`lib/tool-names.js`、
-`lib/web-routes.js`（浏览器鉴权闸门 + 有界 JSON body）、成员回合失败处理
+不可用；所有投递面上的退役守卫）、`lib/capabilities.ts`
+（按 agent 作用域的成员指令 + 禁用队长专属工具）、`lib/tool-names.ts`、
+`lib/web-routes.ts`（浏览器鉴权闸门 + 有界 JSON body）、成员回合失败处理
 （`failMemberOpenAttempt`），以及持久性修复（settled 队伍锁释放、可选任务字段空白归一化、
 队长 `claim_task` 守卫、parked attempt 恢复幂等）。证据：`evidence/agent-teams/scheduler-wakeup-fix/`。
 

@@ -256,6 +256,8 @@ export interface HarnessCalls {
   localeDictionaries?: Array<{ namespace: string; dictionaries: Record<string, Record<string, string>> }>
   /** Dependency lists of every injection callback that fired. */
   injected?: string[][]
+  /** Every effect DISPOSER the client registered, keyed by its label. */
+  ctxDisposers?: Map<string, Function>
   /** Set when the ADOPTED client half's own apply ran, which must never happen. */
   agentTeamsApplied?: boolean
 }
@@ -283,6 +285,15 @@ export interface HarnessCtx {
   locale: {
     /** Register one namespace's dictionaries. */
     register: (ns: string, dictionaries: Record<string, Record<string, string>>) => () => void
+    /**
+     * Bind a translator to one namespace.
+     *
+     * PART OF THE CONTRACT, not a convenience: the official right sidebar's mount is guarded by
+     * `typeof ctx.locale?.bind !== "function"` and returns early without it. The double used to omit
+     * it, which meant NO harness arm ever reached that registration — and a preference arm written
+     * against it passed for the wrong reason.
+     */
+    bind: (ns: string) => (key: string) => string
   }
 }
 
@@ -542,6 +553,10 @@ export interface MpdClientExports {
   SIDEBAR_TAB_ID: string
   /** The registrar the sidebar mounts the page through. */
   registerTeamSidebarTab: Function
+  /** Read or set the settled-sidebar bound (`ms` omitted reads it); the offline seam a timed arm needs. */
+  settleTimeoutMs: (ms?: number) => number
+  /** What the last mount settled on: whether it reported, which host won, and the two tallies. */
+  sidebarDiagnostics: () => { reported: boolean; host: string; registered: number; preferred: boolean }
   /** Any other export the artifact carries. */
   [field: string]: unknown
 }
@@ -811,9 +826,10 @@ export function createSidebarStore(initial: Record<string, unknown> = {}): Sideb
 
 /**
  * Fake "@nanmicoder/dsh-agent-teams" module: the adopted views/store/locale surface the
- * sidebar page composes. The REAL adopted bundle is proven separately
- * (packages/mpd-agent-teams-plugin/test/export-bridge.test.ts), so this stub only has to
- * be faithful about the contract the page relies on.
+ * sidebar page composes. The REAL adopted bundle is proven separately, at artifact level, by
+ * packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.ts (the export-bridge suite that
+ * used to live beside the adopted body was deleted WITH that body), so this stub only has to be
+ * faithful about the contract the page relies on.
  */
 export function createAdoptedStub(calls: HarnessCalls): AdoptedStub {
   /** Snapshot subscribers the stub notifies on a real change. */
@@ -978,17 +994,28 @@ export function createHarness(options: HarnessOptions = {}): Harness {
    */
   const hidden = new Map(Object.entries(options.hiddenServices ?? {}));
   /** A ctx scoped to one caller's inject list, as cordis scopes a resolved service. */
-  const scopedCtx = (deps: string[]): HarnessCtx => ({
-    ...ctx,
-    // CALLER SCOPING: a service handed to this ctx is bound to THIS ctx's inject list, so a
-    // caller-scoped method reading a seam the caller never declared throws (the measured live
-    // failure — see `callerScopedService`). A visible registry service is bound the same way, so a
-    // fixture can also prove the chain on a probe-visible service.
-    get: (name) => {
-      if (registry.has(name)) return bindCallerScoped(registry.get(name), deps);
-      return deps.includes(name) && hidden.has(name) ? bindCallerScoped(hidden.get(name), deps) : undefined;
-    },
-  });
+  const scopedCtx = (deps: string[]): HarnessCtx => {
+    /** The scoped view, built from the root ctx before the deps are attached. */
+    const scoped: HarnessCtx = {
+      ...ctx,
+      // CALLER SCOPING: a service handed to this ctx is bound to THIS ctx's inject list, so a
+      // caller-scoped method reading a seam the caller never declared throws (the measured live
+      // failure — see `callerScopedService`). A visible registry service is bound the same way, so a
+      // fixture can also prove the chain on a probe-visible service.
+      get: (name) => {
+        if (registry.has(name)) return bindCallerScoped(registry.get(name), deps);
+        return deps.includes(name) && hidden.has(name) ? bindCallerScoped(hidden.get(name), deps) : undefined;
+      },
+    };
+    // A DECLARED DEP IS ALSO A PROPERTY, which is cordis' own rule and was the harness's blind spot:
+    // an injection callback reads its services off the ctx object (`sidebar.sidebarRightTabs`), not
+    // through `get`. Without this the official right sidebar's registration threw
+    // `undefined is not an object` inside every arm that reached it — which is why no arm had.
+    // The cast goes through `unknown` because HarnessCtx declares its OWN members and TS refuses a
+    // direct index-signature conversion; the write is a property attach, which is exactly the point.
+    for (const dep of deps) (scoped as unknown as Record<string, unknown>)[dep] = scoped.get(dep);
+    return scoped;
+  };
   /** Run every parked injection whose dependencies are satisfied. */
   const runInjections = (): void => {
     for (const entry of [...pendingInjections]) {
@@ -1028,7 +1055,18 @@ export function createHarness(options: HarnessOptions = {}): Harness {
       calls.effects.push(label ?? "effect");
       /** Whatever the effect returned, when it returned a disposer. */
       const disposer = fn();
-      return typeof disposer === "function" ? disposer : () => {};
+      // THE DISPOSER IS KEPT, keyed by its label. In cordis an effect's returned function runs when
+      // the fiber is disposed — teardown of a client entry, or a page unload — and a client surface
+      // that reports on the way out can only be driven offline if the double hands that disposer
+      // back. The label is the key because that is the identifier the caller passes and an arm can
+      // name (`mpd: harness sidebar report`); a repeated label keeps the LAST registration, which is
+      // also what the live framework would dispose last.
+      if (typeof disposer === "function") {
+        calls.ctxDisposers = calls.ctxDisposers ?? new Map<string, Function>();
+        calls.ctxDisposers.set(label ?? "effect", disposer);
+        return disposer;
+      }
+      return () => {};
     },
     on: () => () => {},
     provide: (name, value) => { registry.set(name, value); runInjections(); return () => registry.delete(name); },
@@ -1078,6 +1116,22 @@ export function createHarness(options: HarnessOptions = {}): Harness {
         calls.localeDictionaries = calls.localeDictionaries ?? [];
         calls.localeDictionaries.push({ namespace: ns, dictionaries });
         return () => {};
+      },
+      // `bind` IS PART OF THE CONTRACT, and its absence was hiding an entire surface: the official
+      // right sidebar's mount is guarded by `typeof ctx.locale?.bind !== "function"` and returns
+      // early without it, so NO harness arm ever reached that registration — and a preference arm
+      // written against it passed for the wrong reason (nothing registered because nothing ran).
+      // The bound translator resolves against the dictionaries registered for that namespace, which
+      // is what the real host does, so a key MISS is visible here instead of silently empty.
+      bind: (ns) => (key) => {
+        /** The dictionaries registered for this namespace so far. */
+        const registered = (calls.localeDictionaries ?? []).filter((entry) => entry.namespace === ns);
+        for (const entry of registered) {
+          for (const dictionary of Object.values(entry.dictionaries)) {
+            if (typeof dictionary?.[key] === "string") return dictionary[key];
+          }
+        }
+        return key;
       },
     },
   };

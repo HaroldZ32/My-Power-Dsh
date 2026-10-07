@@ -9,9 +9,9 @@
 //
 // Conventions (t3 brief §c / §6): dialog copy stays minimal and labels are left
 // EMPTY where the host should supply its localized defaults.
-import type { PluginContextLike, SeamOutcome, TuiDialogsLike } from "./types.js"
+import { TUI_SEAMS } from "./types.js"
+import type { SeamOutcome, TuiAdapter, TuiDialogsLike } from "./types.js"
 import type { Log } from "./log.js"
-import { onService } from "./host.js"
 
 /** The dialog seam facade. */
 export interface DialogSeam {
@@ -27,20 +27,21 @@ export interface DialogSeam {
 
 /**
  * Activate the dialog facade.
- * @param ctx - the plugin context.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @param defaultTimeoutMs - fuse for a composition that has the service but no
  *   UI consumer (headless embedder) so the caller's `await` always settles.
  * @returns the facade.
  */
-export function createDialogs(ctx: PluginContextLike, log: Log, defaultTimeoutMs: number = 30_000): DialogSeam {
-  /** The composed dialog service, undefined until the deferred activation runs. */
+export function createDialogs(tui: TuiAdapter, log: Log, defaultTimeoutMs: number = 30_000): DialogSeam {
+  /** The composed dialog service, undefined until the deferred binding runs. */
   let dialogs: TuiDialogsLike | undefined
-  /** The activation result, kept so the boot line can state it. */
-  let outcome: SeamOutcome = { state: "absent", detail: "tuiDialogs was not injected" }
 
-  onService(ctx, "tuiDialogs", (_scoped, service) => {
-    /** The probed service as the dialog surface, before any of its methods is trusted. */
+  // The seam's own handle carries the outcome the boot line reports; the adapter records `absent`
+  // until the service binds, which is exactly the honest default this facade always had.
+  /** The seam handle, whose outcome the facade exposes. */
+  const seam = tui.whenBound("dialogs", (service, _scope, handle) => {
+    /** The bound service as the dialog surface, before any of its methods is trusted. */
     const runtime = service as TuiDialogsLike
     /** Whether the service carries all three request methods this facade forwards. */
     const usable =
@@ -50,11 +51,11 @@ export function createDialogs(ctx: PluginContextLike, log: Log, defaultTimeoutMs
       typeof runtime.confirm === "function" &&
       typeof runtime.input === "function"
     if (!usable) {
-      outcome = { state: "refused", detail: "tuiDialogs is missing select/confirm/input" }
+      handle.record({ state: "refused", detail: `${TUI_SEAMS.dialogs} is missing select/confirm/input` })
       return
     }
     dialogs = runtime
-    outcome = { state: "available", detail: "request-based seam; nothing to register" }
+    handle.record({ state: "available", detail: "request-based seam; nothing to register" })
   })
 
   /** Whether the dialog service is composed, i.e. whether a picker can be offered at all. */
@@ -82,5 +83,5 @@ export function createDialogs(ctx: PluginContextLike, log: Log, defaultTimeoutMs
     }
   }
 
-  return { available, outcome: () => outcome, select, confirm }
+  return { available, outcome: (): SeamOutcome => seam.outcome(), select, confirm }
 }

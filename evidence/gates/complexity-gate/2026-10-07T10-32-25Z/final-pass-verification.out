@@ -1,0 +1,21 @@
+== FINAL PASS (skills closure), 2026-10-07T10:51:18Z ==
+
+ITEM A — verify-law re-copied
+d5f1eb2f6881a6994b88f9db1c06b96d9b6831409cfccf5bf69184de4eac21ab  packages/mpd-verify-plugin/qa/verify-law.ts
+d5f1eb2f6881a6994b88f9db1c06b96d9b6831409cfccf5bf69184de4eac21ab  skills/dsh-qa/scripts/verify-law.ts
+[verify-law self-test] ok: the registered copy is byte-identical (d5f1eb2f6881)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+
+ITEM B — the two dead constants gone
+0
+0 (no deleted path remains)
+[self-test] PASS — watchdog-redesign (15 checks, 0 failed)
+
+ITEM C — the rotted SKILL.md row
+0
+0 (row names the real subject)
+
+DRIFT
+[run-qa-lanes] immutability required=8: team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=34
+[run-qa-lanes] manifest and disk agree (48 entries, 42 lane script(s) discovered) and the immutability guard is declared
+DRIFT_EXIT=0

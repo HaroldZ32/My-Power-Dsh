@@ -1,0 +1,21 @@
+cmd: ruling-A preconditions (captured 2026-10-07T10:47:00Z)
+--- A2: frozen contract on disk ---
+e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610  .mpd/plans/de-vendor-and-verify-law.md
+bytes=10277 mtime=2026-10-07 18:35:14.185707077 +0800
+--- A2b: amended spec ---
+65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74  .mpd/plans/verify-law-spec.md
+--- A2c: the manual (edited repeatedly during this wave) ---
+f52338414c47c8b6c2bedb45aeaa86929f7a49e1a9ed15d68734fe94f08b6450  AGENTS.md
+bytes=65102 mtime=2026-10-07 18:44:17.304494007 +0800
+--- A3: F.3 marker re-probe ---
+ABSENT - a pre-plugin record is admissible (the exemption has not closed)
+--- settle: Lane B scope paths (START 10:45:20Z) ---
+  packages/mpd-schemastery                 files=19
+  packages/mpd-bundle-plugin/adopted       files=2
+  packages/mpd-bundle-plugin/client.js     now=e83a9713cf894134
+  docs/independence.md                     now=4bf65d393ede6ea1
+  docs/independence.zh-CN.md               now=457f91342a6aedab
+  scripts/verify-pack-closure.ts           now=68132b507730278c
+  bun.lock                                 now=e9e9f6fca5ddaa14
+  tsconfig.json                            now=532ab803c5430270
+  START was: schemastery=19 files | adopted=2 files | client.js=e83a9713cf894134 | independence.md=4bf65d393ede6ea1 | independence.zh-CN.md=457f91342a6aedab | verify-pack-closure.ts=68132b507730278c | bun.lock=e9e9f6fca5ddaa14 | tsconfig.json=532ab803c5430270

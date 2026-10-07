@@ -3,7 +3,7 @@
 //
 // CONNECT-AT-APPLY, NOT LAZY. A lazy connect cannot register `mcp__…` tool names,
 // because the raw names only exist after `tools/list`. The corrected design
-// copies the harness's own posture (H/dsh-mcp-client/lib/index.js:762-789):
+// copies the harness's own posture (H/dsh-mcp-client/lib/index.ts:762-789):
 //   · declared servers connect IN PARALLEL, time-boxed by `connectTimeoutMs`;
 //   · each server's first tool generation is published BEFORE activation
 //     completes (this module's promise resolves only once every server settled);
@@ -448,7 +448,7 @@ class ServerRuntime {
 
     // output.schema — KEEP-OR-DROP on the SCHEMA, never on the tool (this is the
     // harness's own posture: `supportedOutputSchema` drops a foreign schema to `{}`
-    // and keeps the tool, H/dsh-mcp-client/lib/index.js:186-196,231-244). A schema
+    // and keeps the tool, H/dsh-mcp-client/lib/index.ts:186-196,231-244). A schema
     // is never rewritten: a rewritten one would no longer describe what the server
     // returns, so the honest downgrade is "no structuredContent, loud note".
     let structuredSchema: Record<string, unknown> | undefined

@@ -6,7 +6,7 @@
 // plugin. Both therefore read the schema and the field list from HERE, so the two front doors
 // cannot drift and the twenty-five knobs (thirteen mpd knobs + twelve team-model slot leaves) stay
 // one declaration.
-import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
+import z from "../../mpd-schemastery"
 
 /** The settings namespace the section and the Web card both edit. */
 export const SETTINGS_NS = "mpd"
@@ -70,7 +70,23 @@ export const SettingsSchema = z.object({
   ulw: z.object({ maxRounds: z.number().default(6) }),
   memory: z.object({ vcs: z.union([z.const("git"), z.const("svn")]).default("git") }),
   team: z.object({ stateDir: z.string().default(".mpd/team") }),
-  boulder: z.object({ dir: z.string().default(".mpd") }),
+  // NO DEFAULT — and that absence is the contract, not an oversight. The two consumers of this knob
+  // (`readBoulderGate`, and the boulder row's own state root) treat the value as the directory whose
+  // `.mpd/boulder.json` they read, and BOTH fall back to the calling session's workspace when it is
+  // unset. A `.default(".mpd")` here therefore did NOT mean "the conventional state dir": the loader
+  // materialises it into the ROW CONFIG, `rowKnobLayer` copies row knobs LAST, and the value then
+  // WON over `.mpd/mpd.jsonc` — so the resolved root became `<ws>/.mpd` and both consumers joined
+  // `.mpd/boulder.json` onto it, reading `<ws>/.mpd/.mpd/boulder.json` (MEASURED 2026-10-06: the
+  // ledger at the contract path `<ws>/.mpd/boulder.json` read `active:false`, the same bytes at the
+  // doubled path fired the gate, and `{"boulder":{"dir":"."}}` in the project file could not win).
+  // Left optional, an unset knob resolves to `undefined` and the consumers' own workspace fallback
+  // produces the contract path — while an explicitly set value still overrides both.
+  // `required(false)` IS THE "UNSET" SPELLING of the vendored schemastery: a bare `z.string()` and
+  // this form both leave the leaf ABSENT from the resolved row config (`{}`), which is what the two
+  // consumers need to fall back to the session workspace; the explicit form is kept because this
+  // leaf's whole point is that it has NO default, and `.default('')` would have materialised an
+  // empty string that the consumers' guards would then read as a REAL root.
+  boulder: z.object({ dir: z.string().required(false) }),
   // The four team-model slots (§3.1 of the plan of record): each is the DEFAULT route of one
   // member class — slot1 Architect/Planner/Reviewer/Lead/Senior Engineer, slot2 the analysts
   // Researcher/Explorer/Plan Reviewer, slot3 the executors Deep Worker/Junior Engineer, slot4 the
@@ -85,7 +101,7 @@ export const SettingsSchema = z.object({
   }),
   // The watchdog block is the §3 defaults table of the frozen contract and MUST stay byte-equal in
   // value to `packages/mpd-team-watchdog-plugin/src/machine.ts` `WATCHDOG_DEFAULTS` and to the
-  // `mpd-team-watchdog` row config in `packages/mpd-bundle/cordis.patch.yml` — those are the three
+  // `mpd-team-watchdog` row config in `cordis.patch.yml` — those are the three
   // declaration layers, and the T-18 cross-layer check reads them side by side. `warnSilenceMs`
   // moved 90 s -> 10 min and `actionOnEscalate` defaults to `warn-only` because the redesign's
   // predicate (not wall-clock silence) owns the WARN, and a hold must not latch by default;
@@ -99,6 +115,14 @@ export const SettingsSchema = z.object({
     toolInFlightMaxMs: z.number().default(900000),
     holdTtlMs: z.number().default(900000),
   }),
+  // The DSH-TUI surface's own knob. It lives in THIS schema because this file is the single source
+  // for the namespace schema and for the knob list both front doors render — a knob declared only
+  // inside the TUI section would be drift. `dashboardKey` is the L0 default of the Ctrl+A takeover:
+  // ON, i.e. the takeover applies whenever MPD's team projection has a team with at least one task,
+  // and with no team the key keeps its host behaviour. IT IS MEANINGFUL ON OLD dsh-tui BUILDS ONLY:
+  // a host that offers the sidebar panel seam (0.13.0+) keeps Ctrl+A for its own dashboard and opens
+  // MPD's merged view through `alt+a` / `/mpd panel`, so the contact is never armed there.
+  tui: z.object({ dashboardKey: z.boolean().default(true) }),
 })
 
 /** The two-part disclosure every surface must be able to show (§D.2, and the "not lost" clause). */
@@ -370,7 +394,7 @@ export interface SettingsKnob {
   readonly hint?: string
 }
 
-/** The twenty-five knobs, in display order: the original thirteen, then the twelve team-model slot leaves. */
+/** The twenty-six knobs, in display order: the original thirteen, the twelve team-model slot leaves, then the TUI surface's own knob. */
 export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -386,4 +410,8 @@ export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
+  // The TUI surface's own knob, LAST so every index-keyed assertion over the original thirteen and
+  // the twelve slot leaves keeps its meaning. Its `hint` is the semantics sentence only — the
+  // bridge/restart disclosure is appended by each front door's own hint builder, never hand-written.
+  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" },
 ]

@@ -1,0 +1,9 @@
+{
+  "failures": [],
+  "logBytes": 45020,
+  "counts": {
+    "root.effect is unavailable from a plugin activation": 1,
+    "pending (waiting for service": 1,
+    "[mpd-agent-team] DISABLED in a dsh-tui composition": 0
+  }
+}

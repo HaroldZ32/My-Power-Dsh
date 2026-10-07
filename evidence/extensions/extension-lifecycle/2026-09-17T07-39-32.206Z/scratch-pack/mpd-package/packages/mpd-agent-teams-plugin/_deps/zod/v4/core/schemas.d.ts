@@ -1,11 +1,11 @@
-import * as checks from "./checks.js";
-import * as core from "./core.js";
-import type * as errors from "./errors.js";
-import type * as JSONSchema from "./json-schema.js";
-import type { StandardSchemaV1 } from "./standard-schema.js";
-import type { ProcessParams, ToJSONSchemaContext } from "./to-json-schema.js";
-import * as util from "./util.js";
-import { version } from "./versions.js";
+import * as checks from "./checks.ts";
+import * as core from "./core.ts";
+import type * as errors from "./errors.ts";
+import type * as JSONSchema from "./json-schema.ts";
+import type { StandardSchemaV1 } from "./standard-schema.ts";
+import type { ProcessParams, ToJSONSchemaContext } from "./to-json-schema.ts";
+import * as util from "./util.ts";
+import { version } from "./versions.ts";
 export interface ParseContext<T extends errors.$ZodIssueBase = never> {
     /** Customize error messages. */
     readonly error?: errors.$ZodErrorMap<T>;
@@ -101,7 +101,7 @@ export interface $ZodType<O = unknown, I = unknown, Internals extends $ZodTypeIn
 export interface _$ZodType<T extends $ZodTypeInternals = $ZodTypeInternals> extends $ZodType<T["output"], T["input"], T> {
 }
 export declare const $ZodType: core.$constructor<$ZodType>;
-export { clone } from "./util.js";
+export { clone } from "./util.ts";
 export interface $ZodStringDef extends $ZodTypeDef {
     type: "string";
     coerce?: boolean;

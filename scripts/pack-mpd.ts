@@ -154,7 +154,7 @@ const OUT: OutDir = parseOutDir(process.argv.slice(2))
 /** Absolute staging directory: the one path every copy and write below targets. */
 const outDir: string = OUT.dir
 /** The checkout's main bundle patch path, kept as the packer's visible source-path contract. */
-const devPatch: string = join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml")
+const devPatch: string = join(repoRoot, "cordis.patch.yml")
 /** The packed package name, i.e. the specifier every decoupled row resolves through. */
 const PKG_NAME: string = "@mpd-dsh/mpd"
 /** The JS expression a packed path-bearing value is built from: the loader's own `baseUrl`. */
@@ -171,13 +171,14 @@ const BP: string = "(typeof baseUrl === \"string\" ? baseUrl.replace(/^file:\\/\
  * at all while `npm run pack` still exits 0 — the same silent-omission class the
  * PLUGIN_PKGS / ROOT_ASSET_DIRS comments below record.
  *
- * The MAIN patch keeps its historical packed location (`<packed>/cordis.patch.yml`)
- * so every existing packed-path consumer is untouched; an ADDITIONAL patch is
- * staged at its own repo-relative path, which is also where ROOT_ASSET_DIRS'
- * `presets` copy already puts it.
+ * The MAIN patch lives at the repository ROOT (`cordis.patch.yml`, the standard bundle
+ * layout), so its repo-relative path and its packed path are the SAME string — every
+ * packed-path consumer that used to read `<packed>/cordis.patch.yml` still does; an
+ * ADDITIONAL patch is staged at its own repo-relative path, which is also where
+ * ROOT_ASSET_DIRS' `presets` copy already puts it.
  */
-/** Repo-relative location of the main bundle patch, which keeps its historical packed name. */
-const MAIN_PATCH_REL: string = "packages/mpd-bundle/cordis.patch.yml"
+/** Repo-relative location of the main bundle patch; it coincides with its packed location. */
+const MAIN_PATCH_REL: string = "cordis.patch.yml"
 
 /**
  * Read every patch this bundle declares, from the ONE declaration the loader reads.
@@ -197,8 +198,8 @@ function declaredPatches(): DeclaredPatches {
 }
 /** The root manifest's patch declaration, read ONCE so every staging step agrees on the same set. */
 const PATCHES: DeclaredPatches = declaredPatches()
-/** Packed-relative path of one declared patch (the main patch keeps its root name). */
-function packedPatchRel(entry: DeclaredPatch): string { return entry.rel === MAIN_PATCH_REL ? "cordis.patch.yml" : entry.rel }
+/** Packed-relative path of one declared patch: the main patch's repo-relative path IS its packed path. */
+function packedPatchRel(entry: DeclaredPatch): string { return entry.rel === MAIN_PATCH_REL ? MAIN_PATCH_REL : entry.rel }
 
 /** Wrap a JS expression as a YAML `!!js` scalar, the one tag the loader evaluates. */
 function jsVal(expr: string): string { return "!!js '" + expr + "'" }
@@ -212,8 +213,13 @@ const PLUGIN_PKGS: readonly string[] = [
   "mpd-codegraph-plugin", "mpd-hashline-plugin", "mpd-boulder-plugin",
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
   "mpd-roles-plugin", "mpd-bootstrap-plugin", "mpd-workmate-plugin",
+  // mpd-verify-plugin is MOUNTED by the bundle patch (row `mpd-verify`): the verification law — the
+  // guard, the ledger under `<workspace>/.mpd/verify/`, the five `mpd_verify_*` tools and the record
+  // validator. Omitted from this list, `npm run pack` FAILS with "the packed tree has no counterpart"
+  // for its `dist/index.js` (measured 2026-10-07 at T16).
+  "mpd-verify-plugin",
   // mpd-team-compact-plugin is MOUNTED by the bundle patch
-  // (packages/mpd-bundle/cordis.patch.yml, loader entry `mpd-team-compact`) and was
+  // (cordis.patch.yml, loader entry `mpd-team-compact`) and was
   // missing from this list, so `npm run pack` exited 0 while the packed tree omitted
   // the package and the boot died with ERR_MODULE_NOT_FOUND on that entry (measured
   // 2026-09-14 by a teammate's QA case; a checkout install was unaffected, which is
@@ -221,9 +227,9 @@ const PLUGIN_PKGS: readonly string[] = [
   // listed here: `mpd-qa-roles-probe` is deliberately absent because it is QA-only
   // and mounted by an overlay, never by the shipped patch.
   "mpd-team-compact-plugin",
-  // mpd-team-tools-plugin is MOUNTED by the bundle patch (row `mpd-team-tools`): the
+  // mpd-team-core-plugin is MOUNTED by the bundle patch (row `mpd-team-core`): the
   // staged-plan / task-contract / halt workflow around the official team runtime.
-  "mpd-team-tools-plugin",
+  "mpd-team-core-plugin",
   // mpd-roster-provider-plugin is MOUNTED by the bundle patch (row `mpd-roster-provider`):
   // the per-member subagent provider the official team tool is pointed at.
   "mpd-roster-provider-plugin",
@@ -247,7 +253,7 @@ const PLUGIN_PKGS: readonly string[] = [
   // `@mpd-dsh/mpd/packages/<pkg>/dist/index.js` row of the bundle patch is listed here.
   "mpd-tui-plugin",
   // mpd-team-watchdog-plugin is MOUNTED by the bundle patch (row `mpd-team-watchdog`,
-  // packages/mpd-bundle/cordis.patch.yml:227-228, which landed AFTER this list was last
+  // cordis.patch.yml:227-228, which landed AFTER this list was last
   // touched) and was missing from it — the FOURTH occurrence of the silent-omission
   // class the comments above record for mpd-team-compact-plugin, mpd-ext-plugin and
   // mpd-tui-plugin. Unlike those three it never reached a shipped tree: the positive
@@ -257,6 +263,20 @@ const PLUGIN_PKGS: readonly string[] = [
   // evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/output.log:97).
   // Adding the entry is the whole fix; R11 (see above) covers the class.
   "mpd-team-watchdog-plugin",
+  // mpd-tui-adapter-plugin is MOUNTED by the bundle patch (row `mpd-tui-adapter`, the ONE contact
+  // surface with the DSH-TUI seams) and was absent from this list on `dev` — found 2026-10-04 by
+  // `node scripts/pack-mpd.ts --out <tmp>` while wiring the `mpd-goal` row, i.e. a PRE-EXISTING
+  // instance of the same silent-omission class, not something the goal wave introduced. The packed
+  // tree omitted the package while the pack exited 0 until the positive closure check below was
+  // reached; adding the entry is the whole fix.
+  "mpd-tui-adapter-plugin",
+  // mpd-goal-plugin is MOUNTED by the bundle patch (row `mpd-goal`): the persisted-goal bridge
+  // (`mpd_goal_*` plus the `mpdGoal` service ULW/boulder consume). The FIFTH occurrence of the
+  // silent-omission class this list keeps recording, caught by the positive closure check below the
+  // moment the row landed — `[pack-mpd] FAIL: cordis.patch.yml mounts
+  // packages/mpd-goal-plugin/dist/index.js but the packed tree has no such file` (measured
+  // 2026-10-04 while wiring the row). Adding the entry is the whole fix.
+  "mpd-goal-plugin",
   "mpd-bundle-plugin"
 ]
 /** The MCP server packages whose launcher modules and assets ship in the packed tree. */
@@ -290,12 +310,27 @@ const ROOT_ASSET_DIRS: readonly string[] = [
   // who install the bundle get the guides, not just the code
   "docs",
   // the ON-DEMAND agent references (t16 moved the manual's bulk there; captain's t11 addition):
-  // troubleshooting.md (the symptom -> cause/fix table), agent-teams-deltas.md (the adopted
-  // plugin's delta registry) and index.md. AGENTS.md itself deliberately stays out of the
-  // artifact (it is the repository's contributor manual), but an EXTERNAL AUTHOR needs these
-  // three when a boot misbehaves or when they touch the adopted plugin. English-only and
-  // OUTSIDE the bilingual gate's discovery on purpose: no *.zh-CN.md twin belongs here.
+  // troubleshooting.md (the symptom -> cause/fix table) and index.md. AGENTS.md itself deliberately
+  // stays out of the artifact (it is the repository's contributor manual), but an EXTERNAL AUTHOR
+  // needs these when a boot misbehaves. English-only and OUTSIDE the bilingual gate's discovery on
+  // purpose: no *.zh-CN.md twin belongs here. The adopted-plugin delta registry that used to ship
+  // alongside them is DELETED with the body it described (de-vendor wave).
   "agent-references",
+]
+
+/**
+ * Package SOURCE trees a packed bundle must carry although they own no `dist/` of their own.
+ *
+ * Same contract as `ROOT_ASSET_DIRS`, for the same measured reason: the table IS the declaration, a
+ * missing entry is a hard FAIL, and the reason each one ships is written beside it. A package that
+ * DOES own a `dist/` belongs to `PLUGIN_PKGS`/`MCP_PKGS` instead and must never appear here.
+ */
+const SOURCE_PKGS: readonly string[] = [
+  // The relocated schemastery validator plus the DSH runtime modules the suite drives. Four
+  // SHIPPED plugin sources import it by a relative path that climbs out of their own package
+  // (`../../mpd-schemastery`), so a packed tree without this directory cannot load a single row —
+  // and the failure is a boot abort, not a lint error (the T-38 silent-omission class).
+  "mpd-schemastery",
 ]
 
 // Root-level FILES the packed tree carries by name (not by directory). Same contract shape as
@@ -388,12 +423,37 @@ function cpAssets(): void {
   if (existsSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"))) {
     cpSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"), join(outDir, "packages", "mpd-roles-plugin", "personas"), { recursive: true })
   }
-  // the adopted agent-teams plugin is FIRST-CLASS MAIN CODE under
-  // packages/mpd-agent-teams-plugin: copy its whole body (lib + _deps + assets +
-  // LICENSE + READMEs) so the bundle is self-contained under any install layout.
-  // Exclude test/self-fix-tests dirs: they are dev-only and must not ship in the
-  // bundle (avoids packing bloat AND the dist test-sweep duplication).
-  cpSync(join(repoRoot, "packages", "mpd-agent-teams-plugin"), join(outDir, "packages", "mpd-agent-teams-plugin"), { recursive: true, filter: (s: string): boolean => !/(^|\/)(test|self-fix-tests)(\/|$)/.test(s) })
+  // NOTE (de-vendor wave): the adopted `packages/mpd-agent-teams-plugin` used to be copied
+  // wholesale here (lib + _deps + assets + LICENSE + READMEs). The body is DELETED, and the two
+  // pieces the shipped product still uses now travel through the ordinary package tables: the
+  // schemastery validator as `packages/mpd-schemastery/**` (a PLUGIN-PKGS-less plain package the
+  // `packages/**` files entry admits) and the adopted browser bundle as
+  // `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` (copied just below, because the
+  // rebuilt `client.js` cannot be regenerated after the pack without it).
+  // Packages that ship SOURCE and own no dist/: the table is the declaration and a missing tree
+  // aborts the pack (see SOURCE_PKGS).
+  for (const p of SOURCE_PKGS) {
+    /** Absolute source path of this package directory in the checkout. */
+    const src = join(repoRoot, "packages", p)
+    if (!existsSync(src)) {
+      console.error("[pack-mpd] FAIL: missing " + src + " — the packed tree must carry <root>/packages/" + p + " (see SOURCE_PKGS); a bundle must never silently drop a shipped asset (T-38 class)")
+      process.exit(1)
+    }
+    cpSync(src, join(outDir, "packages", p), { recursive: true })
+  }
+  // The adopted browser client bundle, the SOURCE half of the committed
+  // `packages/mpd-bundle-plugin/client.js`: it ships because `docker/ui/entrypoint.sh` and
+  // `scripts/build-mpd-client.ts` regenerate that artifact inside a tree, and a pack without it
+  // could never be recomposed. Same hard-FAIL discipline as SOURCE_PKGS.
+  {
+    /** Absolute path of the adopted client bundle directory in the checkout. */
+    const adopted = join(repoRoot, "packages", "mpd-bundle-plugin", "adopted")
+    if (!existsSync(adopted)) {
+      console.error("[pack-mpd] FAIL: missing " + adopted + " — packages/mpd-bundle-plugin/client.js is composed from it by scripts/build-mpd-client.ts")
+      process.exit(1)
+    }
+    cpSync(adopted, join(outDir, "packages", "mpd-bundle-plugin", "adopted"), { recursive: true })
+  }
   // the bundle's combined web client (adopted agent-teams panel + workmate library),
   // composed by scripts/build-mpd-client.ts — served as @mpd-dsh/mpd's ./client
   cpSync(join(repoRoot, "packages", "mpd-bundle-plugin", "client.js"), join(outDir, "packages", "mpd-bundle-plugin", "client.js"))
@@ -445,7 +505,8 @@ function cpAssets(): void {
     }
   }
   // Per-package bilingual README pair for every shipped plugin/MCP package
-  // (the adopted mpd-agent-teams-plugin is copied wholesale above, READMEs included).
+  // (the adopted agent-teams body is DELETED; the schemastery home it left behind ships
+  // through the ordinary `packages/**` entry, READMEs included).
   for (const p of [...PLUGIN_PKGS, ...MCP_PKGS]) {
     for (const f of ["README.md", "README.zh-CN.md"]) {
       /** Absolute source path of this package's README (either language). */
@@ -457,7 +518,7 @@ function cpAssets(): void {
   // binary bundle-relatively and hands it to the adopted server. A packed bundle
   // that omits a launcher — OR any module the launcher imports statically — ships a
   // row that cannot start while `npm run pack` still exits 0 (measured: the packed
-  // `mpd-mcp-codegraph/launch.ts:36` imports `./daemon-policy.ts`, which the packed
+  // `mpd-mcp-codegraph/src/launch.ts` imports `../daemon-policy.ts`, which the packed
   // tree lacked; `node --input-type=module -e "import('…/launch.ts')"` then failed
   // ERR_MODULE_NOT_FOUND while pack had exited 0). So the closure is walked, not
   // guessed: every statically imported RELATIVE module comes along, recursively, and
@@ -633,11 +694,10 @@ function writeManifest(): void {
       // graph-row inject stays empty, mirroring @linxin666/dsh-web-ui-all.
       client: { inject: [], platform: "web" }
     },
-    // The adopted agent-teams plugin (MIT provenance, upstream @nanmicoder/
-    // dsh-agent-teams 0.1.16-rc.3-mpd) is FIRST-CLASS MAIN CODE under
-    // packages/mpd-agent-teams-plugin and is copied wholesale into the bundle
-    // (lib + _deps + assets), loaded through the exports map above — it is NOT an
-    // npm dependency and must not become one.
+    // The adopted agent-teams client bundle (MIT provenance, upstream @nanmicoder/
+    // dsh-agent-teams) is no longer a package: the body was DELETED by the de-vendor wave and the
+    // one piece the web client still embeds lives at packages/mpd-bundle-plugin/adopted/, inside
+    // the bundle's OWN package — it is NOT an npm dependency and must not become one.
     //
     // `dependencies` carries the bundle's THIRD-PARTY RUNTIME PLUGIN dependencies —
     // packages a loader row mounts and nothing in the dsh installation provides.
@@ -659,7 +719,7 @@ function writeManifest(): void {
     // repro is a manifest/relocation check (version: null, min 0.1.13), not a
     // proof about pnpm's linking, and the boot-time fallback above is the missing
     // half. A dependency declared only here, with no row, mounts nothing.
-    dependencies: { "dsh-better-sidebar": "0.19.0-alpha.1" },
+    dependencies: { "dsh-better-sidebar": "0.24.1" },
     // Toolchain binaries stay as optionalDependencies (installed separately):
     //  - @ast-grep/cli / @colbymchenry/codegraph / @code-yeongyu/comment-checker
     optionalDependencies: { "@ast-grep/cli": "0.45.2", "@colbymchenry/codegraph": "1.5.0", "@code-yeongyu/comment-checker": "0.8.0" }

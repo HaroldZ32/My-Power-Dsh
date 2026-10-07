@@ -1,0 +1,9 @@
+scanned 30 session container(s)
+malformed tool input: 1
+  [session-2ad7e148-b3c1-47d5-b596-5afb3b51da8b] seq=359 turn=1 step=52 tool=ask_user_question
+    bytes=3416 offset=586 :: Expected ',' or '}' after property value in JSON at position 586 (line 1 column 587)
+    window: "/dim）\", \"description\": \"焦点链上的箭头用 accent 高亮，链外压暗 —— 让\\\"这条依赖链\"与非链边\"一眼可分。\"}]}, {\"id\": \"placement\", \"header\": \"Ctrl+A 嵌入位置\","
+terminal turn failures: 3
+  [e54b22b6-7c56-4e93-a46e-17fbc4d64054] seq=25 MISSING_CREDENTIAL :: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
+  [e54b22b6-7c56-4e93-a46e-17fbc4d64054] seq=36 MISSING_CREDENTIAL :: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
+  [session-2ad7e148-b3c1-47d5-b596-5afb3b51da8b] seq=361 MALFORMED_RESPONSE :: DeepSeek Messages stream: tool input is invalid JSON

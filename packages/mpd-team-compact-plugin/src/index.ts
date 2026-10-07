@@ -3,11 +3,15 @@
 // The user's request: "after every task is done and the team is about to be archived,
 // compact the context of all members of the current (not yet archived) team."
 //
-// 0.1.7 REBASE: the vendor team plugin and its `<workspace>/.mpd/team/<teamId>/team.json` are
-// retired. The roster and the board now come from the OFFICIAL Agent Teams service through the
-// adapter (`dsh.teamLiveTeams()`), and the service exposes NO "finished team" predicate, so the
-// trigger is DERIVED from both halves of that readout: every task terminal (the BOARD) AND every
-// member inactive (the ROSTER).
+// THE TEAM PLANE (2026-09-30 split, rebased 2026-10-06): the roster and the board come from the
+// MPD TEAM RECORD first (`mpdTeams.list(workspace)`, `.mpd/team/teams/<id>.json`), with the
+// OFFICIAL Agent Teams readout (`dsh.teamLiveTeams()`) as the FALLBACK for a composition that runs
+// the official executor. The mpd record is the AUTHORITATIVE plane, and it is the only plane a
+// native-executor composition has: reading the official readout alone made this tool answer
+// "no finished team" forever in the DEFAULT composition.
+//
+// NEITHER plane exposes a "finished team" predicate, so the trigger is DERIVED from both halves:
+// every task terminal (the BOARD) AND every member inactive (the ROSTER).
 //
 // Frozen semantics (evidence/omo-align/requirements/team-compaction-contract.json):
 //   trigger   a team whose EVERY task is terminal AND whose members are ALL idle
@@ -34,7 +38,7 @@
 //     `not-live` rather than silently ignored.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { createDshAdapter, type DshAdapter, type DshLiveAgent, type DshTeamView, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, createDshAdapter, dshSeamInject, type DshAdapter, type DshLiveAgent, type DshTeamView, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-team-compact"
@@ -60,10 +64,10 @@ export const name = "mpd-team-compact"
 //    same thing (`mpd-workmate`: inject ["tools","subagents"]), so this is the established
 //    pattern rather than a new one. `tools` is registered by the harness itself, so unlike
 //    `compaction` it is always satisfiable and cannot park the row.
-export const inject: string[] = ["tools"]
+export const inject: string[] = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The narrow slice of a cordis context this row uses: event seam, service reader and logger, all optional so a host lacking one still applies. */
-type Ctx = { on?: (e: string, h: (...a: any[]) => any) => any; get?: (k: string) => any; logger?: any; [k: string]: any }
+type Ctx = { on?: (e: string, h: (...a: any[]) => any) => any; get?: (k: string, strict?: boolean) => any; logger?: any; [k: string]: any }
 
 /** This plugin's OWN audit namespace. Never `.mpd/team`. */
 const COMPACT_STATE_DIR = join(".mpd", "team-compact")
@@ -227,6 +231,80 @@ export interface TeamRecord {
   tasks: TeamTaskRecord[]
 }
 
+/**
+ * The FACE of one MPD TEAM RECORD this plugin reads: the authoritative team plane's persisted shape
+ * (`<workspace>/.mpd/team/teams/<teamId>.json`, owned by `mpd-team-core-plugin`).
+ *
+ * It is a NARROWED FACE rather than an import of that package's own `TeamRecord`, deliberately: the
+ * two rows are separate packages and this bundle's cross-package coupling inventory
+ * (`mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`) is FROZEN and may only
+ * shrink. Every field below is one this module actually reads, and the test suite still types its
+ * fixture with the RECORD's own type so the two are checked to agree.
+ */
+export interface MpdTeamRecord {
+  /** mpd's own team identity (`team-<stamp>`), which is the id a caller asks about. */
+  teamId?: string
+  /** The team name the user reads. */
+  name?: string
+  /** The Lead session this team belongs to; the captain is never compacted. */
+  leadSessionId?: string
+  /** The lifecycle word (`staged` | `active` | `idle` | `ended`), carried for audit readability. */
+  phase?: string
+  /** The roster, as far as this module reads it. */
+  members?: ReadonlyArray<{ id?: string; name?: string; status?: string; executorRef?: string }>
+  /** The board, as far as this module reads it. */
+  tasks?: ReadonlyArray<{ id?: string; status?: string; owner?: string }>
+}
+
+/**
+ * The structural face of the `mpdTeams` service — the AUTHORITATIVE team plane (AGENTS.md §1).
+ *
+ * Resolved PER CALL by the caller (`ctx.get("mpdTeams", false)`), never captured at apply: the row
+ * that provides it may mount after this one, and a composition without it must read exactly as it
+ * did before.
+ */
+export interface MpdTeamsRead {
+  /** Every mpd team record in one workspace. */
+  list(workspace: string): readonly MpdTeamRecord[]
+}
+
+/**
+ * Project one MPD TEAM RECORD onto this plugin's {@link TeamRecord}.
+ *
+ * WHY THIS IS THE PRIMARY READ (T4): the mpd record is the authoritative plane and the one a
+ * NATIVE-executor composition actually runs on, so reading only the official readout left
+ * `mpd_team_compact_run` answering "no finished team" forever in the default composition. The
+ * projection is field-for-field onto the same three things the pass reads — identity, roster, board:
+ * a member's `id` is the EXECUTOR's handle (the session id `dsh.liveAgent` resolves), never mpd's
+ * short `M1`, and a member with no handle reads as the empty string, the same "staged member"
+ * convention {@link isStagedMember} already refuses to drive.
+ *
+ * @param record - one `mpdTeams.list(workspace)` row.
+ * @returns the projected team, or undefined when the record carries no identity.
+ */
+export function projectMpdTeam(record: MpdTeamRecord): TeamRecord | undefined {
+  /** The record's own id, or the empty string when it carries none. */
+  const id = String(record?.teamId ?? "")
+  if (id === "") return undefined
+  return {
+    id,
+    name: String(record.name ?? ""),
+    captainSessionId: String(record.leadSessionId ?? ""),
+    ...(typeof record.phase === "string" ? { phase: record.phase } : {}),
+    members: (Array.isArray(record.members) ? record.members : []).map((member) => ({
+      // The executor's handle IS the session id; a member nothing has spawned yet has none.
+      id: typeof member.executorRef === "string" ? member.executorRef : "",
+      name: String(member.name ?? ""),
+      ...(typeof member.status === "string" ? { status: member.status } : {}),
+    })),
+    tasks: (Array.isArray(record.tasks) ? record.tasks : []).map((task) => ({
+      id: String(task.id ?? ""),
+      status: String(task.status ?? ""),
+      ...(typeof task.owner === "string" && task.owner !== "" ? { assignee: task.owner } : {}),
+    })),
+  }
+}
+
 /** One view of the official readout, projected. `undefined` for a view with no team identity. */
 function projectTeam(view: DshTeamView): TeamRecord | undefined {
   /** The team id this readout carries, or the empty string for a view with no team identity. */
@@ -258,8 +336,34 @@ function projectTeam(view: DshTeamView): TeamRecord | undefined {
   }
 }
 
-/** Every LIVE team the adapter reports, projected. `[]` when the seam is absent (never throws). */
-export function readTeams(dsh: DshAdapter): TeamRecord[] {
+/** Every Team the bundle watches for one workspace, the MPD RECORD first. `[]` when nothing answers. */
+export function readTeams(dsh: DshAdapter, workspace: string, mpdTeams?: MpdTeamsRead | undefined): TeamRecord[] {
+  // THE MPD RECORD FIRST (T4). It is the AUTHORITATIVE team plane (AGENTS.md §1) and the plane a
+  // native-executor composition actually runs on: the official readout only reports teams whose
+  // Lead is registered with the official service, so reading it alone made this tool answer
+  // "no finished team" forever in the DEFAULT composition. A missing service, a throwing read or an
+  // empty answer falls through to the official fold rather than reporting nothing.
+  if (mpdTeams !== undefined) {
+    try {
+      // The mpd readout for this workspace; a half-mounted service that throws falls through.
+      const records = mpdTeams.list(workspace)
+      if (Array.isArray(records) && records.length > 0) {
+        /** The records projected, with an unwatchable shell skipped exactly as on the official plane. */
+        const teams: TeamRecord[] = []
+        for (const record of records) {
+          /** The current record projected; a record with no identity is skipped entirely. */
+          const team = projectMpdTeam(record)
+          if (team === undefined) continue
+          // The SAME rule the official half applies below: a staged shell has nothing to compact.
+          if (team.members.length === 0 && team.tasks.length === 0) continue
+          teams.push(team)
+        }
+        return teams
+      }
+    } catch {
+      // fall through to the official fold: an unreadable mpd plane must not blind the pass
+    }
+  }
   /** The live readout; a missing or throwing seam answers an empty list below, so a caller never sees an exception. */
   let views: DshTeamView[]
   try {
@@ -282,16 +386,30 @@ export function readTeams(dsh: DshAdapter): TeamRecord[] {
   return teams
 }
 
-/** Read one LIVE team by id. Returns undefined when the readout does not carry it. */
-export function readTeamRecord(dsh: DshAdapter, teamId: string): TeamRecord | undefined {
+/**
+ * Read one team by id from the SAME universe `readTeams` reads.
+ *
+ * @param dsh - the adapter (the ONE harness contact surface).
+ * @param workspace - the workspace whose mpd records are read; resolved per call by the caller.
+ * @param teamId - the id asked about (an mpd `team-<stamp>`, or an official Lead Session id).
+ * @param mpdTeams - the `mpdTeams` service face, or undefined when this composition has none.
+ * @returns the projected team, or undefined when the readout does not carry it.
+ */
+export function readTeamRecord(dsh: DshAdapter, workspace: string, teamId: string, mpdTeams?: MpdTeamsRead | undefined): TeamRecord | undefined {
   /** The requested id stringified, so a non-string argument cannot silently miss its match. */
   const wanted = String(teamId)
-  return readTeams(dsh).find((team) => team.id === wanted)
+  return readTeams(dsh, workspace, mpdTeams).find((team) => team.id === wanted)
 }
 
-/** Every live team id in this process (sorted), i.e. the teams a pass may consider. */
-export function listTeamIds(dsh: DshAdapter): string[] {
-  return readTeams(dsh).map((team) => team.id).sort()
+/**
+ * Every team id a pass may consider (sorted), from the SAME universe `readTeams` reads.
+ * @param dsh - the adapter.
+ * @param workspace - the workspace whose mpd records are read.
+ * @param mpdTeams - the `mpdTeams` service face, or undefined.
+ * @returns the sorted team ids.
+ */
+export function listTeamIds(dsh: DshAdapter, workspace: string, mpdTeams?: MpdTeamsRead | undefined): string[] {
+  return readTeams(dsh, workspace, mpdTeams).map((team) => team.id).sort()
 }
 
 /**
@@ -582,6 +700,27 @@ export async function compactTeamPass(
 
 // ── plugin ───────────────────────────────────────────────────────────────────
 
+/**
+ * Resolve the `mpdTeams` service face for ONE call.
+ *
+ * Resolved at the point of use and never captured at apply — the service is provided by another
+ * row, which may mount later, and a composition without it must read exactly as it did before. The
+ * soft probe (`ctx.get(id, false)`) is what keeps an unmounted service from throwing in a trigger.
+ *
+ * @param ctx - the row's cordis context.
+ * @returns the service face, or undefined when it is absent or of the wrong shape.
+ */
+function mpdTeamsOf(ctx: Ctx): MpdTeamsRead | undefined {
+  try {
+    /** The service as the composition answers it, or undefined when it is not mounted. */
+    const service = ctx.get?.("mpdTeams", false)
+    if (service === null || typeof service !== "object") return undefined
+    return typeof (service as MpdTeamsRead).list === "function" ? (service as MpdTeamsRead) : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** Row entry point: resolve the adapter, then register the two tools and the two automatic triggers. */
 export function apply(ctx: Ctx): void {
   /** The adapter facade — the ONLY contact surface this row has with the harness seams. */
@@ -630,7 +769,7 @@ export function apply(ctx: Ctx): void {
   /** Run one pass for one team and persist its audit (write-on-change). Returns the audit. */
   async function runPass(workspace: string, teamId: string, caller?: CompactAudit["caller"], force: boolean = false): Promise<CompactAudit> {
     /** The live team record, re-read here so a stale caller cannot drive a team that has moved on. */
-    const team = readTeamRecord(dsh, teamId)
+    const team = readTeamRecord(dsh, workspace, teamId, mpdTeamsOf(ctx))
     if (team === undefined) {
       return writeOrSkip(workspace, teamId, {
         schema: "mpd/team-compact@1", teamId, teamName: "", at: Date.now(),
@@ -651,9 +790,9 @@ export function apply(ctx: Ctx): void {
       /** The workspace this pass would be recorded under; an absent one leaves nowhere to record, so nothing runs. */
       const workspace = dsh.workspaceRoot()
       if (workspace === undefined || workspace === "") return
-      for (const teamId of listTeamIds(dsh)) {
+      for (const teamId of listTeamIds(dsh, workspace, mpdTeamsOf(ctx))) {
         /** The current team re-read: the status edge fires for every agent, so most ids no longer qualify. */
-        const team = readTeamRecord(dsh, teamId)
+        const team = readTeamRecord(dsh, workspace, teamId, mpdTeamsOf(ctx))
         if (team === undefined) continue
         if (!teamIsFinished(team, terminalStatuses())) continue
         await runPass(workspace, teamId, { via: "status" })
@@ -694,9 +833,9 @@ export function apply(ctx: Ctx): void {
       if (workspace === undefined || workspace === "") return undefined
       void (async () => {
         try {
-          for (const teamId of listTeamIds(dsh)) {
+          for (const teamId of listTeamIds(dsh, workspace, mpdTeamsOf(ctx))) {
             /** The team re-read here; only the one holding the settling member is considered. */
-            const team = readTeamRecord(dsh, teamId)
+            const team = readTeamRecord(dsh, workspace, teamId, mpdTeamsOf(ctx))
             if (team === undefined) continue
             if (!compactableMembers(team).some((member) => member.id === sessionId)) continue
             if (!teamIsFinished(team, terminalStatuses())) continue
@@ -750,7 +889,7 @@ export function apply(ctx: Ctx): void {
       /** The workspace the audits are written under, resolved from the CALLING session. */
       const workspace = dsh.workspaceRoot(exec as never)
       /** The team ids to consider: the named one, or every live team when none was named. */
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id]
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh, workspace, mpdTeamsOf(ctx)) : [args.team_id]
       /** The calling session, recorded on each audit so a pass is attributable after the fact. */
       const sessionId = String(exec?.agent?.session?.id ?? "")
       /** Provenance stamped on every audit this call writes. */
@@ -792,7 +931,7 @@ export function apply(ctx: Ctx): void {
       /** The workspace whose ledger is read, resolved from the CALLING session. */
       const workspace = dsh.workspaceRoot(exec as never)
       /** The team ids to report: the named one, or every live team when none was named. */
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id]
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh, workspace, mpdTeamsOf(ctx)) : [args.team_id]
       return { teams: ids.map((teamId) => ({ teamId, passes: readAudits(workspace, teamId) })) }
     },
   })

@@ -1,3 +1,7 @@
+// This file's copy assertions are LANGUAGE-INDEPENDENT (they read `t(...)`), so no process-wide
+// language pin is needed any more: the suite passes under no variable, `en` and `zh` alike.
+
+import { t } from "../src/i18n"
 // w6/w6b — the TUI front door for the team watchdog (notice composition, dialog, unread replay).
 //
 // The fakes model the host: a service is reachable ONLY inside `ctx.inject([id], …)` (the measured
@@ -17,6 +21,7 @@ import { createDialogs } from "../src/dialogs"
 import { createLog } from "../src/log"
 import { STATUS_KEY, registerStatus } from "../src/status"
 import { readBoardState } from "../src/state"
+import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import {
   ACKNOWLEDGE_OPTION,
   EMPTY_WATCHDOG_VIEW,
@@ -33,6 +38,8 @@ import {
 interface Harness {
   /** The context double, in which services are reachable only through `inject`. */
   ctx: Record<string, any>
+  /** The DSH-TUI seam adapter over that same context. */
+  tui: ReturnType<typeof createTuiAdapter>
   /** Every contribution the status double received. */
   statusSet: { key: string; text: string }[]
   /** Every request the dialog double was asked to show. */
@@ -110,8 +117,13 @@ function harness(options: { withDialogs?: boolean; withService?: boolean } = {})
       return {}
     },
   })
+  /** The context double shared by this arm's adapter and its seam calls. */
+  const ctx = build()
   return {
-    ctx: build(),
+    ctx,
+    // The seam adapter the migrated call sites take: it binds through the SAME ctx, so the
+    // double's inject-free invisibility stays what the arms exercise.
+    tui: createTuiAdapter(ctx as never),
     statusSet,
     dialogRequests,
     warnings,
@@ -165,9 +177,9 @@ describe("watchdog front door — notice composition", () => {
       /** A silent logger: this arm asserts the published text and the bytes, not logs. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       /** The front door under test. */
-      const door = attachWatchdogFrontDoor(h.ctx, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.ctx, log) })
+      const door = attachWatchdogFrontDoor(h.ctx, h.tui, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.tui, log) })
       /** The status seam, publishing the composed notice. */
-      const status = registerStatus(h.ctx, log, () => h.workspace, () => h.workspace, 0, () =>
+      const status = registerStatus(h.ctx, h.tui, log, () => h.workspace, () => h.workspace, 0, () =>
         composeNotices(undefined, door.notice()),
       )
       expect(door.available()).toBe(true)
@@ -175,11 +187,14 @@ describe("watchdog front door — notice composition", () => {
       /** The contribution published while the team is held and an incident is unread. */
       const first = h.statusSet.at(-1)
       expect(first?.key).toBe(STATUS_KEY)
-      expect(first?.text).toContain("watchdog: held mpd-default-1")
-      expect(first?.text).toContain("1 unread incident")
+      // The two halves are JOINED by the notice composer, so the arm asserts each localized part
+      // rather than re-deriving the join in the expectation (which is how the language dependency was
+      // hiding here): the held-team clause and the unread clause both have to reach the published text.
+      expect(first?.text).toContain(t("watchdog.held", { teams: "mpd-default-1" }))
+      expect(first?.text).toContain(t("watchdog.unreadOne", { n: 1 }))
       // The notice is APPENDED to the real board line, not substituted for it.
-      expect(first?.text).toContain("mpd: team -")
-      expect(first?.text).toContain("plans ")
+      expect(first?.text).toContain("mpd: " + t("status.teamNone"))
+      expect(first?.text).toContain(t("status.plans", { n: 0 }))
 
       // Resume the team: the live half of the notice must vanish on the next publish...
       clearHold(h.workspace, DEFAULT_STATE_DIR, "mpd-default-1")
@@ -187,15 +202,19 @@ describe("watchdog front door — notice composition", () => {
       /** The contribution after the hold was cleared: the live half must be gone. */
       const second = h.statusSet.at(-1)
       expect(second?.text).not.toContain("held mpd-default-1")
-      expect(second?.text).toContain("1 unread incident")
+      expect(second?.text).toContain(t("watchdog.unreadOne", { n: 1 }))
 
       // ...and the replay half too, once it is acknowledged (through the service).
       expect(door.acknowledge(1000).ok).toBe(true)
       status.refresh()
       /** The contribution after the acknowledge: no watchdog text at all. */
       const third = h.statusSet.at(-1)
+      // The language-independent form: the acknowledged publish drops the notice and leaves the BOARD
+      // line untouched, so the assertion is "the notice's own text is gone", not a regex over a literal
+      // English prefix (which silently pinned this arm to one language).
       expect(third?.text).not.toContain("watchdog:")
-      expect(third?.text).toBe(String(first?.text).replace(/ · watchdog:.*$/, ""))
+      expect(third?.text).not.toContain(t("watchdog.held", { teams: "mpd-default-1" }))
+      expect(String(first?.text).startsWith(String(third?.text))).toBe(true)
     } finally {
       h.cleanup()
     }
@@ -203,10 +222,10 @@ describe("watchdog front door — notice composition", () => {
 
   test("watchdogNotice states the live condition and the replay separately; composeNotices joins providers", () => {
     expect(watchdogNotice({ holds: [], unread: [] })).toBeUndefined()
-    expect(watchdogNotice({ holds: ["a"], unread: [] })).toBe("watchdog: held a")
-    expect(watchdogNotice({ holds: [], unread: [incident(1)] })).toBe("watchdog: 1 unread incident")
+    expect(watchdogNotice({ holds: ["a"], unread: [] })).toBe(t("watchdog.notice", { parts: t("watchdog.held", { teams: "a" }) }))
+    expect(watchdogNotice({ holds: [], unread: [incident(1)] })).toBe(t("watchdog.notice", { parts: t("watchdog.unreadOne", { n: 1 }) }))
     expect(watchdogNotice({ holds: ["a", "b"], unread: [incident(1), incident(2)] })).toBe(
-      "watchdog: held a, b · 2 unread incidents",
+      t("watchdog.notice", { parts: t("watchdog.held", { teams: "a, b" }) + " · " + t("watchdog.unread", { n: 2 }) }),
     )
     expect(composeNotices(undefined, "watchdog: held a")).toBe("watchdog: held a")
     expect(composeNotices("saved to settings — no live session", "watchdog: held a")).toBe(
@@ -245,9 +264,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       /** How many times the post-acknowledge hook ran. */
       let acknowledged = 0
       /** The front door under test. */
-      const door = attachWatchdogFrontDoor(h.ctx, log, {
+      const door = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         onAcknowledged: () => {
           acknowledged += 1
         },
@@ -268,9 +287,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       expect(h.dialogRequests).toHaveLength(1)
       /** The one request the host was asked to show. */
       const request = h.dialogRequests[0]
-      expect(request.title).toContain("watchdog: 2 unread incidents")
+      expect(request.title).toContain(t("watchdog.notice", { parts: t("watchdog.unread", { n: 2 }) }))
       expect(request.options.map((option) => option.id)).toEqual([ACKNOWLEDGE_OPTION, "later"])
-      expect(request.options[0].label).toBe("Acknowledge")
+      expect(request.options[0].label).toBe(t("watchdog.acknowledge"))
 
       // Byte-level proof: the per-reader watermark advanced to the newest incident.
       const after = JSON.parse(readFileSync(watermarkFile, "utf8"))
@@ -290,9 +309,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       /** The front door of the first start. */
-      const first = attachWatchdogFrontDoor(h.ctx, log, {
+      const first = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         replayOnAttach: false,
       })
       expect(first.view().unread).toHaveLength(1)
@@ -302,9 +321,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       // A SECOND start: a fresh front door over the same workspace. Nothing unread, no dialog.
       h.dialogRequests.length = 0
       /** The front door of a SECOND start over the same workspace. */
-      const second = attachWatchdogFrontDoor(h.ctx, log, {
+      const second = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         replayOnAttach: false,
       })
       expect(second.view().unread).toEqual([])
@@ -323,9 +342,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       /** The front door under test. */
-      const door = attachWatchdogFrontDoor(h.ctx, log, {
+      const door = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         replayOnAttach: false,
       })
       h.answer("later")
@@ -333,13 +352,13 @@ describe("watchdog front door — dialog and acknowledge", () => {
       expect(existsSync(watermarkPath(h.workspace, DEFAULT_STATE_DIR))).toBe(false)
       expect(readWatermarks(h.workspace, DEFAULT_STATE_DIR)).toEqual({})
       /** A fresh front door over the same workspace, i.e. a restart. */
-      const restarted = attachWatchdogFrontDoor(h.ctx, log, {
+      const restarted = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         replayOnAttach: false,
       })
       expect(restarted.view().unread).toHaveLength(1)
-      expect(watchdogDialog(restarted.view()).title).toContain("1 unread incident")
+      expect(watchdogDialog(restarted.view()).title).toContain(t("watchdog.unreadOne", { n: 1 }))
     } finally {
       h.cleanup()
     }
@@ -353,11 +372,11 @@ describe("watchdog front door — dialog and acknowledge", () => {
       /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       h.answer("later")
-      attachWatchdogFrontDoor(h.ctx, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.ctx, log) })
+      attachWatchdogFrontDoor(h.ctx, h.tui, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.tui, log) })
       await Promise.resolve()
       await Promise.resolve()
       expect(h.dialogRequests).toHaveLength(1)
-      expect(h.dialogRequests[0].title).toContain("1 unread incident")
+      expect(h.dialogRequests[0].title).toContain(t("watchdog.unreadOne", { n: 1 }))
     } finally {
       h.cleanup()
     }
@@ -370,9 +389,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       /** The front door under test. */
-      const door = attachWatchdogFrontDoor(h.ctx, log, {
+      const door = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         replayOnAttach: false,
       })
       expect(await door.offer()).toBeUndefined()
@@ -417,14 +436,14 @@ describe("watchdog front door — the absent-service path", () => {
       /** The front door, when the attach returned one at all. */
       let door: ReturnType<typeof attachWatchdogFrontDoor> | undefined
       try {
-        door = attachWatchdogFrontDoor(h.ctx, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.ctx, log) })
+        door = attachWatchdogFrontDoor(h.ctx, h.tui, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.tui, log) })
       } catch {
         threw = true
       }
       expect(threw).toBe(false)
       expect(door?.available()).toBe(false)
       // The status line stays the plain board line: no watchdog text.
-      const status = registerStatus(h.ctx, log, () => h.workspace, () => h.workspace, 0, () =>
+      const status = registerStatus(h.ctx, h.tui, log, () => h.workspace, () => h.workspace, 0, () =>
         composeNotices(undefined, door?.notice()),
       )
       expect(status).toBeDefined()

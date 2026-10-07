@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-goal-9eOXPQ",
+  "ws": "/tmp/mpd-goal-9eOXPQ/ws",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "rows": {
+      "ok": true
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "mount": {
+      "ok": true,
+      "line": "[2026-10-04T04:10:38.064Z] mounted: enabled=true autoAnchor=true autoRounds=32"
+    },
+    "tools": {
+      "ok": true,
+      "anchor": {
+        "called": true,
+        "succeeded": true,
+        "reason": ""
+      },
+      "status": {
+        "called": true,
+        "succeeded": true,
+        "reason": ""
+      },
+      "offered": true
+    },
+    "anchors": {
+      "ok": true,
+      "file": "/tmp/mpd-goal-9eOXPQ/ws/.mpd/goal/anchors.json",
+      "goalId": "goal-e6b672bb-191b-42c4-b5bf-3665012e063b"
+    },
+    "isolation": {
+      "ok": true,
+      "keys": 1
+    }
+  }
+}

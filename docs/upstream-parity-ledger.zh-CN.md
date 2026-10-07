@@ -1,6 +1,13 @@
 # 上游对齐台账 —— my-power-dsh 专家体系与钉定基线的对齐
 [English](./upstream-parity-ledger.md) | **中文**
 
+> **状态已重新定位（de-vendor-and-verify-law，2026-10-07）。** oh-my-openagent 是一份**早期参考**，
+> 而不是一致性目标。曾用它衡量本仓库的身份校验已被**删除**，没有任何关卡会去读取上游 checkout，也不
+> 欠任何同步义务 —— 名册、十一个角色描述与模型链术语来自那个项目，其归属记录在
+> [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) 与根 README 中。因此下文全部内容都是对某项能力面的
+> **历史测量**，保留下来是因为这份对照仍有信息量；请把 ✅ 读作“这曾经发布”，绝不读作“至今仍与上游
+> 一致”，也不要把这里任何一句读成“逐版本跟随上游”的承诺。
+
 > 波次：`omo-parity-align`。状态：**已验证 —— 取值已冻结、实现已落地、门禁全绿（§8）。**
 > 本文件是本次功能对齐波次的持久人类面向台账，对齐对象为上游
 > `/root/dshProj/oh-my-openagent` @ `v5.0.0-beta.62`（HEAD `d1557a4b4`）。本仓库基线仍钉在
@@ -14,10 +21,15 @@
 > （`sessionTeamPolicy.mode`、`sessionTeamPolicy.autoRoute`）、它的团队
 > 工具与它的 staged 团队流程都不再存在于随包会话中。迁移中**存活下来**、也是读者应当带走的东西，是**门禁
 > 语义**：同一个冻结谓词 `trigger = explicit flag OR (matchedSignals >= 1)` 仍在会话第一个
-> pre-step 求值，其通知仍带标记 `[AgentTeams] Session-start team rule`，而且它依然**只咨询 ——
-> 不预建任何团队**；变的只是实现位置（迁入 `mpd-roles-plugin`，架在官方插件的接缝上），captain
-> 现在用 `spawn_teammate` + `team_task_create` 建队。见 `docs/plan-0.1.7-adaptation.md` 与
-> AGENTS.md §1。下文其余内容是该波次的冻结记录，按历史来读。
+> pre-step 求值，其通知仍带标记 `[AgentTeams] Session-start team rule`。门现在是**默认机械执行**
+> （实现已迁入 `mpd-roles-plugin`，架在官方插件的接缝上）：一旦触发，它会 **stage** 一个可批准的
+> plan shell —— 0 成员、0 任务，经本 bundle **自己**的 `agent_teams_plan` 工具 —— 并注入**一条**
+> 通知，点名该调用返回的 plan id；此时**没有 spawn 任何东西**，该 shell 在 captain 用
+> `add_member` / `create_task` 扩展并用 `agent_teams_plan {action:"approve"}` 批准之前保持**惰性**。
+> `mpd.jsonc` 的 `team.gate` 选择 `mechanical`（默认）| `advisory` | `off`；在 `advisory` 下（或该工具
+> 未挂载时），那**一条**通知改为建议式并声明 `NO team was staged`。见 `docs/plan-0.1.7-adaptation.md` 与
+> AGENTS.md §1。下文其余内容是该波次的冻结记录，按历史来读 —— 包括 `D_AUTOROUTE_ADVISORY` 决策与
+> `D_planArtifact` 信号行，二者均已于 2026-10-07 被取代（见信号表下方的日期注记）。
 
 冻结取值的唯一真源：`evidence/omo-align/requirements/frozen-contract.json`（由队长维护）。
 研究输入：`evidence/omo-align/research/team-vs-mass-ulw/gap.json`（t2）与
@@ -63,6 +75,15 @@
 | `C_enumeratedSteps` | 软 | **三取二**即命中：`C1` 编号/项目符号行（`^\s*(\d+[.)]\|[-*])\s`）≥ 3 行；`C2` 去重动作动词 ≥ 3 个；`C3` 动作子句（动词带宾语，编号与否皆可）≥ 3 个 |
 | `D_planArtifact` | 软 | 首个 pre-step 时，会话工作区存在 `.mpd/plans/*.md` |
 
+> **已于 2026-10-07 被取代 —— 信号 `D`，以及随之而来的"仅咨询"决策。** 上表 `D_planArtifact` 行是本
+> 波次的冻结记录，**原样保留**作为历史；实际发布的谓词不再探测 plan 文件。**`D` 是该工作区存在正在进行
+> 的 boulder 工作** —— `.mpd/boulder.json` 中的 `status: "active"` —— 因为按文件探测在本工作区的**每个**
+> 会话都会触发：一个 plan 文件会比产生它的工作活得更久。仅有 plan **文件**不再构成信号。
+> 同一天也取代了 `D_AUTOROUTE_ADVISORY`（见上）：触发不再只是建议 —— 默认模式会通过
+> `agent_teams_plan` **stage** 一个可批准且惰性的 plan shell，由 captain 批准；而那**一条**建议式通知
+> 及其 `NO team was staged` 文案，作为 `team.gate: "advisory"` 的降级路径保留下来。权威来源：AGENTS.md §1、
+> `presets/mpd.patch.yml` 与 `packages/mpd-roles-plugin/README.md`。
+
 **动词表已和谐化（行为变更，R3）。** `C2` 与 `C3` 现共用**同一**动词集：英文 14 个 —— `add, align,
 audit, build, change, check, consolidate, implement, migrate, overhaul, port, refactor, rewrite,
 verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 重构, 迁移, 审计, 移植, 梳理, 全量`。两者只差
@@ -76,6 +97,9 @@ verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 
 代价：** 形如「Check the test, build the package, verify the output.」的多子句请求会满足 C（C2+C3）
 从而**确实**进入建队路径；仅凭 C 上的任何规则都无法把它与冻结的 complex #1 区分开。详见 §7 `O1`
 与 §8 的误触发实测。
+
+*冻结波次记录。已于 2026-10-07 被取代 —— 默认模式现在会通过 `agent_teams_plan` **stage** 一个可批准的
+plan shell，由 captain 批准；见信号表下方的日期注记。*
 
 命中后门现在只**咨询**（`D_AUTOROUTE_ADVISORY`）：不建任何团队，只注入一条咨询通知
 （标记 `[AgentTeams] Session-start team rule`），点名命中的信号并明确说明**没有团队被
@@ -125,7 +149,7 @@ staged**；captain 只在工作确实需要团队时自行用官方
 当时禁止重命名下列名称；**允许新增**。下面的团队条目描述的是已退役的插件，作为该波次的记录保留。
 
 - 斜杠指令：`/agent-teams`、`/agent-teams-mpd`（来自 `AGENT_TEAMS_COMMAND = 'agent-teams'`
-  与 `profileCommandName('mpd')`，`lib/command.js:3,24-34,95-111`）—— **随插件退役；随包会话中
+  与 `profileCommandName('mpd')`，`lib/command.ts:3,24-34,95-111`）—— **随插件退役；随包会话中
   不存在 `/agent-teams` 命令**
 - 工具：团队工具全套 —— **随插件退役；团队工作跑在官方的 `spawn_teammate` / `team_*`
   工具上**
@@ -140,8 +164,8 @@ AGENTS.md §1 中列出。
 
 | Id | 文件 | 区域 |
 |---|---|---|
-| `L1` | `packages/mpd-bundle/cordis.patch.yml` | agent-teams row `sessionTeamPolicy` 块及其注释（已退役 —— 不存在该行） |
-| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` 谓词 + `advisoryNotice` / `provisionedNotice` / `instructNotice` 文本（保留代码，未挂载） |
+| `L1` | `cordis.patch.yml` | agent-teams row `sessionTeamPolicy` 块及其注释（已退役 —— 不存在该行） |
+| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.ts` | `policyQualifies` 谓词 + `advisoryNotice` / `provisionedNotice` / `instructNotice` 文本（保留代码，未挂载） |
 | `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` 段与 sizing doctrine 的位置（已退役路径；预设现在位于 `presets/mpd.patch.yml`） |
 | `L4` | `packages/mpd-bundle/README.md` | 整个 `Session-start team gate (binding)` 节 |
 | `L5` | `packages/mpd-bundle/README.zh-CN.md` | 整个 `会话启动团队门（强制）` 节（与 `L4` 同提交） |
@@ -151,7 +175,7 @@ AGENTS.md §1 中列出。
 | `L9` | `AGENTS.md` | 启动规则段与描述旧行为的 delta 表行 |
 
 冻结契约的 `changeLocations.items` 为准，共列 **10** 项：上表之外还有
-`packages/mpd-agent-teams-plugin/lib/index.js`（config schema 与解析后的默认值）与
+`packages/mpd-agent-teams-plugin/lib/index.ts`（config schema 与解析后的默认值）与
 `packages/mpd-agent-teams-plugin/self-fix-tests/**`（仅当 lib 行为体在已注册的 `mpd-delta`
 区域内改动时）。bundle 的 EN/ZH 两个 README 在该列表中计为两项。
 
@@ -184,9 +208,10 @@ AGENTS.md §1 中列出。
 | 锚点 | sha256 |
 |---|---|
 | `evidence/omo-align/requirements/frozen-contract.json` | `09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41` |
-| `packages/mpd-agent-teams-plugin/lib/session-start.js` | `8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6` |
-| `packages/mpd-agent-teams-plugin/lib/state.js` | `751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825` |
+| `packages/mpd-agent-teams-plugin/lib/session-start.ts` | `8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6` |
+| `packages/mpd-agent-teams-plugin/lib/state.ts` | `751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825` |
 | `evidence/omo-parity-rate/raw/prompts.jsonl` | `123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5` |
+| （历史）`packages/mpd-agent-teams-plugin/lib/{session-start,state}.ts` | 上面两行 pin 是**历史锚点**，不是当前值：TypeScript 转换波次把这两个文件由 `.js` 改名为 `.ts`，并为 adopted body 加了首行 `@ts-nocheck`，因此今天的字节**有意**不同。当前值：`session-start.ts` `f6f73d0b4248141bf5c2e8305b0b26a935460fbfd2dc909d552ba39dad82d920`，`state.ts` `f8c0cb5d8945cd73f92f47fdff977ba58ac0ddc6f36142a7c3e4a5b74878fe4d`（`evidence/ts-cordis-conformance/`）。 |
 
 | 门禁 | 命令 | 状态 |
 |---|---|---|

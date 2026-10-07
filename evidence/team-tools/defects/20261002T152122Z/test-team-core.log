@@ -1,0 +1,165 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/team-record.test.ts:
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) approval builds an mpd-owned team record > the record carries OUR ids, the review fields, and the resolved dependency edges [3.56ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) approval builds an mpd-owned team record > the executor's handles are KEPT BESIDE our ids, never adopted as them [0.70ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) approval builds an mpd-owned team record > NO BOARD IS MIRRORED: the mpd record IS the board, so a task keeps our id and only our id [0.67ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) approval builds an mpd-owned team record > the member's ROUTE reaches the executor as an ordinary argument [0.65ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) approval builds an mpd-owned team record > a spawn that fails STOPS the approval but still leaves the team on record [0.90ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) approval builds an mpd-owned team record > an approval with a dry run records NOTHING [0.39ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) the published service is the read surface > mpdTeams answers from the record, and reads nothing from the official plane [1.10ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) the published service is the read surface > status reports the RECORD as the team, with the official readout beside it [0.75ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) the published service is the read surface > the record survives a lost index: the Lead session still finds its team [0.65ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) the watchdog hold stops a dispatch pass > a team the watchdog holds is NOT dispatched, and the refusal names the team [1.22ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) the watchdog hold stops a dispatch pass > with the watchdog's hold LIFTED the same pass dispatches [0.95ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) the watchdog hold stops a dispatch pass > with NO watchdog service at all the pass dispatches — the read fails OPEN [0.74ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+(pass) the watchdog hold stops a dispatch pass > a hold that CANNOT be read is REPORTED as not-readable, never as a hold [0.79ms]
+
+packages/mpd-team-core-plugin/test/team-store.test.ts:
+(pass) the team record > creating a team writes one record and binds it ACTIVE for its Lead session [0.20ms]
+(pass) the team record > a record survives a reload byte-for-byte in meaning [0.24ms]
+(pass) the team record > ids are minted locally, monotonically, and never reused after a removal [0.21ms]
+(pass) the team record > a blocker written as a SUBJECT resolves to the task id, which is how a plan writes it [0.18ms]
+(pass) the team record > updating a task bumps its revision and nothing else's [0.20ms]
+(pass) the team record > an empty owner string CLEARS the owner instead of storing a blank one [0.19ms]
+(pass) the team record > a member is addressable by NAME as well as by id, because a tool caller has the name [0.19ms]
+(pass) the derived state > phase follows the record: staged until approved, active only while something is in flight [0.22ms]
+(pass) the derived state > `blocked` is DERIVED, and OPT-1 releases a task whose blocker FAILED — counted apart [0.26ms]
+(pass) the derived state > the graph maths: rank is the longest blocker path, and a cycle is REPORTED not hung on [0.24ms]
+(pass) the derived state > the summary separates ready from blocked, and counts only REAL edges [0.24ms]
+(pass) the derived state > dispatch reads the record: only unblocked pending tasks and unowned running members [0.23ms]
+(pass) the derived state > member progress names the current task and counts what is done [0.18ms]
+(pass) the index and the files > an unknown index version reads as EMPTY rather than throwing [0.13ms]
+(pass) the index and the files > a record whose version is unknown is not a record [0.21ms]
+(pass) the index and the files > an id can never escape .mpd/team, however it was written [0.07ms]
+(pass) the index and the files > listing is newest first, and a team can be dropped [0.61ms]
+(pass) the index and the files > unbinding one session leaves every other binding alone [0.17ms]
+(pass) the index and the files > a sessionless surface is keyed `workspace`, never the empty string [0.12ms]
+
+packages/mpd-team-core-plugin/test/tool-output-schema.test.ts:
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (stub)
+(pass) every action's value satisfies its declared output contract > status answers null plan/hold, the record and a LOSSLESS summary — and the harness accepts it [1.45ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (stub)
+(pass) every action's value satisfies its declared output contract > EVERY plan action answers a value its own schema accepts [1.74ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (stub)
+(pass) create_task carries owner and blocked_by from BOTH spellings > owner nested under `task` and the member IDLE: the owner reaches the plan AND the board [0.75ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (stub)
+(pass) create_task carries owner and blocked_by from BOTH spellings > owner given while the member is already BUSY: the owner still lands, and is not reassigned [1.03ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (stub)
+(pass) create_task carries owner and blocked_by from BOTH spellings > no owner given: the task is created WITHOUT an owner key (never a null owner) [0.63ms]
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (stub)
+(pass) create_task carries owner and blocked_by from BOTH spellings > the MEASURED spelling — owner and blocked_by BESIDE `task` — reaches the plan and the board [0.93ms]
+
+packages/mpd-team-core-plugin/test/mailbox-store.test.ts:
+(pass) sending > a message to a live member is recorded and starts UNDELIVERED and UNREAD [0.34ms]
+(pass) sending > a member cannot message ITSELF — the official rule, kept [0.04ms]
+(pass) sending > a message to somebody who is NOT a member is refused, naming them [0.05ms]
+(pass) sending > a member's UNDELIVERED backlog is bounded — a stalled member cannot silently accumulate [0.23ms]
+(pass) sending > DELIVERING frees the backlog: the bound is on what is not yet accepted [0.26ms]
+(pass) sending > ids are unique and ordered, so a mailbox can be cited [0.19ms]
+(pass) the state transitions > delivered and read are SEPARATE facts, and read is the one only this mailbox has [0.25ms]
+(pass) the state transitions > a REPEAT moves nothing and is not an error [0.20ms]
+(pass) the state transitions > an unknown id is ignored, so a stale citation cannot corrupt the log [0.06ms]
+(pass) durability > the log is APPEND-ONLY: a later transition never rewrites an earlier line [0.19ms]
+(pass) durability > a HALF-WRITTEN last line costs that line and nothing else [0.18ms]
+(pass) durability > a fold is order-independent for the transitions: read-then-delivered still ends both-set [0.08ms]
+(pass) durability > malformed records are SKIPPED, never fatal [0.04ms]
+(pass) the summary a status view renders > it counts total / unread / undelivered per member, and names what is oldest-unread [0.27ms]
+(pass) the summary a status view renders > an empty mailbox summarises to nothing at all [0.03ms]
+(pass) the summary a status view renders > inboxOf keeps insertion order [0.14ms]
+(pass) the legacy read path > a workspace with no mailbox yet reads as empty rather than throwing [0.04ms]
+(pass) the legacy read path > a file of only blank lines folds to empty [0.09ms]
+
+packages/mpd-team-core-plugin/test/tool-surface.test.ts:
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: undefined (undefined)
+(pass) the consolidated surface > FIVE tools and one command — not fourteen [0.03ms]
+(pass) the consolidated surface > every tool is ACTION-based, so a caller picks an action instead of a tool [0.03ms]
+(pass) the consolidated surface > the context budget holds: the whole surface stays under 5,000 characters [0.07ms]
+(pass) the consolidated surface > EVERY action of the retired hand-written surface is still reachable [0.04ms]
+(pass) the consolidated surface > the retired TOOL NAMES are gone — a re-added one would redden here [0.03ms]
+(pass) the consolidated surface > no description is a paragraph: each stays under 700 characters
+
+packages/mpd-team-core-plugin/test/dispatch.test.ts:
+(pass) one dispatch pass > a ready task goes to an idle member, in board order [0.06ms]
+(pass) one dispatch pass > a member already working something is NOT given a second task [0.04ms]
+(pass) one dispatch pass > THE SAME TASK IS NEVER DISPATCHED TWICE — the ledger is the reason, not the message [0.03ms]
+(pass) one dispatch pass > a running member is not idle: the roster status is the gate [0.02ms]
+(pass) one dispatch pass > no idle member is reported per task, not as a silent no-op [0.01ms]
+(pass) one dispatch pass > a blocked task waits and says what blocks it; a completed one is skipped [0.02ms]
+(pass) one dispatch pass > a HALT refuses the whole pass and names the reason — and touches nothing else [0.01ms]
+(pass) one dispatch pass > the limit caps one pass and reports the rest as capped [0.01ms]
+(pass) the ledger > assign returns a NEW ledger and never mutates the old one [0.01ms]
+(pass) the ledger > release frees a pairing and reports whether there was one [0.02ms]
+(pass) the ledger > RECONCILE forgets a task that was deleted or completed out of band — a member must not stay busy forever [0.03ms]
+(pass) the message a dispatched member receives > it names the task, carries the acceptance text, and says how to report back [0.02ms]
+
+packages/mpd-team-core-plugin/test/plan-store.test.ts:
+(pass) the staged plan > a fresh stage writes a plan under .mpd/team/staging and nothing else [0.17ms]
+(pass) the staged plan > members and tasks append, and a duplicate member name refuses [0.22ms]
+(pass) the staged plan > a plan survives a reload: what is on disk is what a later call reads [0.17ms]
+(pass) the staged plan > staging again REPLACES an unapproved plan and archives it — the old plan is still readable [0.25ms]
+(pass) the staged plan > an APPROVED plan is not replaced by a plain stage — approval is the boundary [0.23ms]
+(pass) the staged plan > sessions do not share a staging slot [0.16ms]
+(pass) the staged plan > a corrupt staging file reads as absent instead of throwing [0.11ms]
+(pass) task contracts and attempts > the first claim is attempt 1 and freezes what the task said [0.16ms]
+(pass) task contracts and attempts > the attempt counter is monotonic ACROSS claims, and a board revision cannot stand in for it [0.18ms]
+(pass) task contracts and attempts > contracts list newest claim first, and an unclaimed task has none [0.23ms]
+(pass) task contracts and attempts > a corrupt contract reads as absent, never as a half-written claim [0.12ms]
+(pass) the halt > a halt records who and why, and resuming reports whether one was there [0.14ms]
+(pass) plan identity > a plan id is stable, sortable and derived from the clock [0.05ms]
+
+packages/mpd-team-core-plugin/test/team-web.test.ts:
+(pass) the payload is computed from the RECORD > it carries the review fields the official board has no column for [0.55ms]
+(pass) the payload is computed from the RECORD > the VISUAL state comes from the same function the TUI uses [0.30ms]
+(pass) the payload is computed from the RECORD > the board is ordered by RANK, so the browser can lay out a graph without re-sorting [0.30ms]
+(pass) the payload is computed from the RECORD > the EXECUTOR is named, so the split's own state is visible in the browser [0.25ms]
+(pass) the payload is computed from the RECORD > a session with NO team is a payload with `team: null`, not an error [0.04ms]
+(pass) the payload is computed from the RECORD > a cycle is REPORTED in the payload rather than drawn as a sound board [0.22ms]
+(pass) the route > registers ONE exact path, and answers the caller's own session [0.49ms]
+(pass) the route > a THROWING read becomes a 500 payload, never an uncaught throw in a request [0.09ms]
+(pass) the route > a composition with NO web server registers nothing and says so quietly [0.06ms]
+(pass) the staged-plan route > serves the PLAN and its planId, not the team record [0.26ms]
+(pass) the staged-plan route > a session with NO staged plan is a payload with plan null, not an error [0.01ms]
+(pass) the task route > serves the frozen contracts and the hold, in the store's own fields [0.21ms]
+(pass) the mail route > serves the fold, and distinguishes an EMPTY mailbox from an unread one [0.22ms]
+(pass) the route family > registers ALL FOUR paths, and one registration covers the family [0.05ms]
+(pass) the shared approval phrase > names the planId, and is SERVED in the payload rather than re-derived by a consumer [0.17ms]
+(pass) the shared approval phrase > planForSession and the /plan route answer with the SAME projection [0.25ms]
+
+ 103 pass
+ 0 fail
+ 484 expect() calls
+Ran 103 tests across 8 files. [113.00ms]

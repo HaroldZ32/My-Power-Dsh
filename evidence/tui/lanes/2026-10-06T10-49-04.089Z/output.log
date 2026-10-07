@@ -1,0 +1,9 @@
+dsh-tui home fixture=.mpd/recon/tui-013/home/.dsh-tui/onboarding.json, .mpd/recon/tui-013/home/.dsh-tui/agent-preset.json preset=mpd
+seeded workmate library at .mpd/recon/tui-013/home/.mpd/workmate/qa-tui-probe
+model-echo check: runSessions=1 checked=0 offenders=0 (must be 0)
+harness command records THIS run: [{"sessionId":"f11067c3-424d-4313-b479-7d2e58fb0f0e","commandId":"cmd-ee781a20-1","kind":"success","text":"mpd workmates（1）：qa-tui-probe"},{"sessionId":"f11067c3-424d-4313-b479-7d2e58fb0f0e","commandId":"cmd-ee781a20-2","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"},{"sessionId":"f11067c3-424d-4313-b479-7d2e58fb0f0e","commandId":"cmd-ee781a20-3","kind":"success"}]
+surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiPanels=rendered tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=rendered tuiDialogs=rendered
+panel registration id=act1:team ok=true
+negative control ok=false (must be false)
+board-opened events in the sandbox store=6 scene-reported transcript rows=0
+renderer cross-check: the plugin APPENDED its log-only event (proven in the session store) but the host projected NO row: the Channel's own row count and the captured transcript are both empty, so this is a PROJECTION gap, not a registration one

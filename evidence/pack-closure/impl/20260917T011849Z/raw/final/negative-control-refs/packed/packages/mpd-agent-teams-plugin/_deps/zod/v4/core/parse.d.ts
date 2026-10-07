@@ -1,7 +1,7 @@
-import * as core from "./core.js";
-import * as errors from "./errors.js";
-import type * as schemas from "./schemas.js";
-import * as util from "./util.js";
+import * as core from "./core.ts";
+import * as errors from "./errors.ts";
+import type * as schemas from "./schemas.ts";
+import * as util from "./util.ts";
 export type $ZodErrorClass = {
     new (issues: errors.$ZodIssue[]): errors.$ZodError;
 };

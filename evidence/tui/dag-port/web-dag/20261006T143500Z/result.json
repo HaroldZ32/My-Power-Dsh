@@ -1,0 +1,89 @@
+{
+  "task": "R20/R21 WEB-plane rank derivation + R18's READER side (WEB) + R19's 'names what it UNLOCKS' half — dag-geometry, FINAL",
+  "member": "dag-geometry (Senior Engineer)",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "captured_utc": "2026-10-06T14:20:29Z",
+  "files": [
+    "packages/mpd-bundle-plugin/src/team-view.ts",
+    "packages/mpd-bundle-plugin/test/team-view.test.ts"
+  ],
+  "algorithm": {
+    "rank": "longest path over the blocker references that RESOLVE on the board, walked iteratively (an explicit stack, cycle-safe: the reference that closes a cycle contributes nothing)",
+    "fallback": "the served `depth` draws ONLY when NOT ONE reference resolves AND the served depths vary — the same narrow rule as mpd-tui-plugin/src/graph.ts, so the two planes agree",
+    "reported": "GraphGeometry.ranksDerived says which source won; `unresolved` is the UNION of the record's own report and the view's re-derivation; `unresolvedRecorded` is the record's own list",
+    "second_site_fixed": "the hover halo's rank-monotone guard compared SERVED depths, so on an all-zero board every hop was pruned (0 >= 0) and a hover lit one node; it now takes the ranks the geometry DREW (`graph.nodes[].rank`)",
+    "reader_side_added": "TeamTask.unresolvedBlockers (the producer's own field) is read per task, reported in the geometry, and rendered as a `d-unresolved` row in the pinned detail body",
+    "ordering": "the numeric collator added for R19 is unchanged and still sorts every column"
+  },
+  "commands": [
+    {
+      "command": "bun test packages/mpd-bundle-plugin/test/",
+      "observed": "154 pass / 0 fail / 2797 expect() calls (36 arms in team-view.test.ts)"
+    },
+    {
+      "command": "./node_modules/.bin/tsgo --noEmit -p tsconfig.json",
+      "observed": "PASS — 0 errors (whole tree)"
+    },
+    {
+      "command": "bun evidence/tui/dag-port/web-dag/20261006T143500Z/producer-shape.mts",
+      "observed": "the producer's own shape, minted by addTeamTask/resolveBlockers: a task with one dangling reference stores blockedBy=[T1,ghost-7] AND unresolvedBlockers=[ghost-7]; a clean task carries NO unresolvedBlockers key"
+    },
+    {
+      "command": "bun evidence/tui/dag-port/web-dag/20261006T143500Z/real-records.mts",
+      "observed": "BEFORE record (ordinals): ranks=1 edges=0 unresolved=[2,3,4,5,6,7,8,9]; AFTER record (repaired, live): ranks=5 edges=16 unresolved=[]; LIE (live references, every depth 0): ranks=5 edges=16 — the case that used to collapse to one column"
+    },
+    {
+      "command": "bun test ./packages   # wave suite",
+      "observed": "1788 pass / 3 skip / 3 fail — all failures in panel-dag.test.ts and panel.test.ts (panel-surface's work), none in this lane's files"
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts",
+      "observed": "VERDICT: PASS — 405 files, 33872 declarations, every declaration in the family commented"
+    }
+  ],
+  "acceptance_arms_added": [
+    "a board whose references RESOLVE while every served depth is 0 draws FIVE columns, not one (rankCount === 5 && !== 1), and the columns are T1..T5 / T6 / T7,T9 / T8 / T10",
+    "FALLBACK ARM A: a genuinely flat board served flat stays flat and reports ranksDerived=true",
+    "FALLBACK ARM B: nothing resolves and the depths vary → the fallback fires, ranksDerived=false, unresolved=['Y','Z']",
+    "R21: the measured record's ordinals are surfaced as ['2','3','4','5','6','7','8','9'] with 0 edges drawn; a MIXED board draws the resolving edge and reports only the ghost",
+    "the hover halo's ranks are the drawn ones (T7/T8/T9 strictly above T10 on the lying board)"
+  ],
+  "r18_reader_side": {
+    "what_landed": [
+      "TeamTask gained `unresolvedBlockers?: string[]`, mirroring the producer's own TeamTaskRecord field name and type (no shape invented)",
+      "layout() reads it per task, reports the RECORD's list as `unresolvedRecorded`, and `unresolved` is the UNION of the record's report and the view's re-derivation",
+      "the pinned detail body carries a `d-unresolved` row (EN key `task.unresolved`) for a task the record reports unresolved refs for"
+    ],
+    "arms": [
+      "the served unresolvedBlockers reaches the geometry and is reported AS the record's",
+      "a REPAIRED board (references rewritten, the record's report kept) still reports what the record said — the case only the reader can see",
+      "an ABSENT key means the task HAS no blockers, not that its blockers were lost (nothing is reported)",
+      "the pinned detail body names the record's unresolved references beside blocked-by and dependents; a clean task renders no such row"
+    ],
+    "BOUND_TO_ROUTE": {
+      "why": "the payload does NOT serve the field yet, so the WEB surface cannot show it end-to-end until the route is extended",
+      "evidence": "packages/mpd-team-core-plugin/src/team-web.ts lines 260-278 project id/subject/kind/status/visual/owner/attempt/round/verdict/blockedBy/failedBy/depth and STOP; the TeamWebTask interface declares no unresolvedBlockers. No record on disk carries it either (checked: .mpd/team/teams/team-20261006135108.json and evidence/tui/dag-port/team-feature-test/team-record-BEFORE-backup.json both carry it on 0 tasks).",
+      "minimal producer-side change (NOT this lane's file)": "in the projection add `...(task.unresolvedBlockers === undefined ? {} : { unresolvedBlockers: [...task.unresolvedBlockers] })` and declare `unresolvedBlockers?: string[]` on TeamWebTask. The view already reads it, so the WEB surface lights up the moment the route serves it."
+    }
+  },
+  "r19_unlocks_half": {
+    "status": "ALREADY CORRECT, and now pinned by an added arm",
+    "evidence": [
+      "detailSection derives `dependents` from the board's own `blockedBy` reversed (the `d-dependents` row) and renders it through the `task.dependents` key",
+      "the pre-existing arm asserted it verbatim: `expect(detail).toContain(\"dependents T4\")`",
+      "NO served `depth` is read there: a grep of `.depth` in team-view.ts found exactly two sites before this wave's fixes (the layout bucketing and focusChain's guard) and both now read the DRAWN ranks; the detail body reads references, not ranks"
+    ]
+  },
+  "fixture_expectations_that_moved_because_the_derivation_changed": {
+    "what": "the long-edge fixture's two geometry arms measured rank membership from the fixture's SERVED depths; the derivation puts T12 in rank 2 (its blocker T6 is rank 1) where the served list said rank 1",
+    "how_fixed": "both arms now read the DRAWN ranks (`graph.nodes[].rank`) and count the hops per gutter from the fixture's own references, so the assertions cannot go stale against a rank list again — the busiest gutter is 10 hops, not the 9 the served depths implied",
+    "why_disclosed": "an expectation that moves with the change under test is worth stating explicitly, so a reviewer can check it was principled rather than adjusted to pass"
+  },
+  "not_verified": [
+    "No browser render: `client.js` and the package dists are the captain's rebuild at the src freeze, so a WEB capture taken now would measure the OLD view",
+    "No record on disk carries `unresolvedBlockers` yet, so the reader is exercised against a fixture MINTED BY THE PRODUCER's own code rather than against a live payload",
+    "The view is exercised through the test harness's element tree and the pure geometry, not through a real React DOM",
+    "The hover halo's guard change is asserted through the drawn ranks, not through a rendered hover interaction on the lying board",
+    "No PTY/docker run"
+  ]
+}

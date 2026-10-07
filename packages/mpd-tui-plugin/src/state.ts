@@ -9,11 +9,13 @@
 // section plus a bounded problem note, because a status line or a board must
 // never be able to take the TUI down.
 import { readFileSync, readdirSync, statSync } from "node:fs"
+import { t } from "./i18n.js"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { isRecord } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
+import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 
 /** Bounded caps so one pathological state directory cannot stall a render. */
 const MAX_TEAMS = 20
@@ -162,8 +164,41 @@ function readTeam(views: readonly DshTeamView[], problems: string[]): TeamSummar
   }
 }
 
-/** `.mpd/boulder.json` — `works` is keyed by work id (tolerates an array form). */
-function readBoulder(root: string, problems: string[]): BoulderSummary | undefined {
+/**
+ * The team summary projected from the mpd-OWNED record — the PRIMARY source.
+ *
+ * Unlike the official readout this source has a real lifecycle (`staged`/`active`/`idle`/`ended`), a
+ * real description, and a description of what is actually running. It also exists in a composition
+ * where the official service cannot mount at all, which is the whole point of reading it.
+ * @param record - the principal record for this workspace.
+ * @returns the summary the board and status line render.
+ */
+function readRecordTeam(record: TeamRecord): TeamSummary {
+  /** The task tally, in the same buckets the official projection uses. */
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, failed: 0, claimed: 0, cancelled: 0, other: 0 }
+  for (const task of record.tasks.slice(0, MAX_TASKS)) {
+    counts.total += 1
+    switch (task.status) {
+      case "completed": counts.completed += 1; break
+      case "in_progress": counts.inProgress += 1; break
+      case "pending": counts.pending += 1; break
+      case "claimed": counts.claimed += 1; break
+      case "failed": counts.failed += 1; break
+      case "cancelled": counts.cancelled += 1; break
+      default: counts.other += 1
+    }
+  }
+  return {
+    id: scalarText(record.teamId, 60) ?? "?",
+    name: scalarText(record.name, 80) ?? "?",
+    phase: record.endedAt !== undefined ? "ended" : record.approvedAt === undefined ? "staged" : record.phase,
+    description: scalarText(record.description, 200),
+    members: record.members.length,
+    tasks: counts,
+  }
+}
+
+/** `.mpd/boulder.json` — `works` is keyed by work id (tolerates an array form). */function readBoulder(root: string, problems: string[]): BoulderSummary | undefined {
   /** Path of the work ledger under this workspace root. */
   const path = join(root, ".mpd", "boulder.json")
   /** The parsed ledger document; stays undefined when the file cannot be read. */
@@ -248,7 +283,7 @@ function readWorkmates(home: string): { count: number; names: string[] } {
  * @param home - the home directory holding the workmate library.
  * @returns the projection; never throws.
  */
-export function readBoardState(workspace: string, home: string = homedir(), views: readonly DshTeamView[] = []): BoardState {
+export function readBoardState(workspace: string, home: string = homedir(), views: readonly DshTeamView[] = [], records: readonly TeamRecord[] = []): BoardState {
   /** Bounded notes about entries that could not be read, rendered last on the board. */
   const problems: string[] = []
   /** The projection being assembled; the two optional sections land below. */
@@ -259,8 +294,14 @@ export function readBoardState(workspace: string, home: string = homedir(), view
     workmates: readWorkmates(home),
     problems,
   }
+  // THE PRIMARY SOURCE FIRST: the mpd record, when this workspace holds one. The official readout
+  // is consulted only when it does not — which is the difference between showing the team and
+  // showing "(none in this workspace)" in a dsh-tui composition, where the official service cannot
+  // mount at all.
   try {
-    state.team = readTeam(views, problems)
+    /** The principal mpd record, which is the newest that has not ended. */
+    const principal = records.find((record) => record.endedAt === undefined) ?? records[0]
+    state.team = principal === undefined ? readTeam(views, problems) : readRecordTeam(principal)
   } catch {
     problems.push("team state unreadable")
   }
@@ -301,15 +342,20 @@ export function statusLine(state: BoardState, notice?: string): string {
     const done = state.team.tasks.completed
     /** Total task count of the team row. */
     const total = state.team.tasks.total
-    parts.push(`team ${state.team.name} ${state.team.members}·${done}/${total}`)
-    if (state.team.tasks.failed > 0) parts.push(`failed ${state.team.tasks.failed}`)
+    // The status string has NO localized contribution field on this host (a status entry carries
+    // one `text`), so it is resolved through MPD's own dictionary. The line is rebuilt on every
+    // publish, so a `/lang` switch reaches it at the next refresh.
+    parts.push(t("status.teamRow", { name: state.team.name, members: state.team.members, done: String(done), total: String(total) }))
+    if (state.team.tasks.failed > 0) parts.push(t("status.failed", { n: String(state.team.tasks.failed) }))
   } else {
-    parts.push("team -")
+    parts.push(t("status.teamNone"))
   }
-  if (state.boulder !== undefined && state.boulder.works > 0) parts.push(`boulder ${state.boulder.active}/${state.boulder.works}`)
-  parts.push(`plans ${state.plans.count}`)
-  parts.push(`workmates ${state.workmates.count}`)
-  if (state.problems.length > 0) parts.push(`notes ${state.problems.length}`)
+  if (state.boulder !== undefined && state.boulder.works > 0) {
+    parts.push(t("status.boulder", { active: String(state.boulder.active), works: String(state.boulder.works) }))
+  }
+  parts.push(t("status.plans", { n: String(state.plans.count) }))
+  parts.push(t("status.workmates", { n: String(state.workmates.count) }))
+  if (state.problems.length > 0) parts.push(t("status.notes", { n: String(state.problems.length) }))
   // The bridge notice goes LAST so the counts stay readable, and it is the exact sentence
   // the design fixes for this case (never a paraphrase).
   if (notice !== undefined && notice.length > 0) parts.push(notice)
@@ -337,7 +383,7 @@ export function boardLines(state: BoardState, holds: readonly string[] = []): st
     }
   } else {
     lines.push("")
-    lines.push("team       (none in this workspace)")
+    lines.push(t("board.noTeam"))
   }
   // T3: the team watchdog's own HOLD, a different fact from `halted` (snapshot.js:94).
   if (holds.length > 0) lines.push(`team-hold  held (${holds.join(", ")})`)
@@ -347,7 +393,7 @@ export function boardLines(state: BoardState, holds: readonly string[] = []): st
       `boulder    ${state.boulder.works} work(s) · ${state.boulder.active} active · ${state.boulder.completed} completed${state.boulder.newestPlan === undefined ? "" : ` · newest ${state.boulder.newestPlan}`}`,
     )
   } else {
-    lines.push("boulder    (no work ledger)")
+    lines.push(t("board.noBoulder"))
   }
   lines.push(`plans      ${state.plans.count}${state.plans.newest === undefined ? "" : ` · newest ${state.plans.newest}`}`)
   lines.push(

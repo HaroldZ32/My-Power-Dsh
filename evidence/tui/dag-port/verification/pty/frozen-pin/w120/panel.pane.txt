@@ -1,0 +1,50 @@
+
+                                                                                │ ≡ ▸ ◆ ‹ MPD › ◈ ◆ 
+  ✦ dsh-TUI  v0.13.0                                                            ├─────────────────────────────────────
+  ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓  ▓▓                       │┌MPD────────────────────────────────┐
+  ▓▓  ▓▓ ▓▓     ▓▓     ▓▓  ▓▓ ▓▓     ▓▓     ▓▓     ▓▓ ▓▓                        ││subagents  0 total · 0 running · 0 │
+  ▓▓  ▓▓ ▓▓▒▒▒  ▓▓▒▒▒  ▓▓▒▒▒▒  ▒▒▒▒▒ ▓▓▒▒▒  ▓▓▒▒▒  ▓▓▓                          ││completed · 0 failed               │
+  ▓▓  ▓▓ ▓▓     ▓▓     ▓▓         ▓▓ ▓▓     ▓▓     ▓▓ ▓▓                        ││⚪ No subagents in the current     │
+  ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓     ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓  ▓▓                       ││session                            │
+                                                                                ││  Subagents appear here once the   │
+  ▓▓  ▓▓   ▒▒▒▒   ▓▓▒▒▒▒  ▓▓  ▓▓  ▓▓▒▒▒▒  ▓▓▒▒▒▒  ▓▓▒▒▒▒                        ││main agent starts Task delegations │
+  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓▓ ▓▓  ▓▓      ▓▓      ▓▓                            ││───────────────────────────────────│
+  ▓▓▒▒▓▓  ▓▓▒▒▓▓  ▓▓▒▒▒▒  ▓▓ ▓▓▓  ▓▓▒▒▒    ▒▒▒▒▒   ▒▒▒▒▒                        ││task dependency graph (rail)       │
+  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓ ▓▓   ▓▓  ▓▓  ▓▓          ▓▓      ▓▓                        ││○ T1 WRK REQUIREMENT: freeze   lead│
+  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓▒▒▒▒  ▓▓▒▒▒▒  ▓▓▒▒▒▒                        ││○ T2 WRK WORK: the ad  dag-geometry│
+  deepseek-flash · Max effort                                                   ││└─▸ ○ T11 FIX FIX: th  dag-geometry│
+  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013-en/ws         ││○ T3 WRK WORK: the i  panel-surface│
+  提示：回合运行中 /compact /model 会被拒绝，先 Ctrl+C · /tips 更多技巧         ││└─▸ ○ T6 WRK WORK: wire  seam-guard│
+                                                                                ││   ├─▸ ○ T7 WRK REVIEW: independent│
+    探索未至之境！                                                              ││   │  └─▸ ○ T8 WRK REVIEW: visual f│
+                                                                                ││   │     └─▸ ○ T10 WRK INTEGRATION:│
+                                                                                ││   ├─▸ ○ T9 WRK WORK: bilingual doc│
+   ▶ （Ctrl+P 展开） 已加载上下文 · 系统提示词 19 段 · 运行时上下文 2 项 · 技…  ││   └─▸ ○ T12 FIX FIX: t  seam-guard│
+                                                                                ││○ T4 WRK WORK: redesig  tui-visuals│
+                                                                                ││○ T5 WRK WORK: ROOT-CAU  seam-guard│
+                                                                                ││▼/▸ blocker → dependent · ▶ focus  │
+                                                                                ││✓ completed · ◐ running            │
+                                                                                ││○ open=blocked · ✗ failed          │
+                                                                                ││○ blocked=open · ⊘ cancelled       │
+                                                                                ││merged view · /mpd panel opens it f│
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+  mpd: 团队 tui-dag-port 7·0/12 · 计划 0 · workmate 1                           ││                                   │
+                                                                                ││                                   │
+  ╭────────────────────────────────────────────────────────────────────────────╮││                                   │
+  ⌸ ❯                                                                          ⛶││                                   │
+  ╰────────────────────────────────────────────────────────────────────────────╯│└───────────────────────────────────┘
+   deepseek-flash · max · ws                                                    ├─────────────────────────────────────
+                                                                                │ Esc 聊天 · ←/→ 切换 · z 缩放 · +/-…
+

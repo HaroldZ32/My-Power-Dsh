@@ -1,0 +1,859 @@
+== ARM A: checkout PRESENT (as found), env unset ==
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit=1]
+
+== ARM B: checkout made UNREACHABLE, env unset, then MPD_UPSTREAM_ROOT=/nonexistent ==
+--- B1: env -u MPD_UPSTREAM_ROOT (checkout absent) ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit=1]
+--- B2: MPD_UPSTREAM_ROOT=/nonexistent/surely/absent ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit=1]
+--- B3: MPD_UPSTREAM_ROOT=/nonexistent but pointing AT the real checkout path ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit=1]
+B1=1 B2=1 B3=1
+(restored: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29)
+== ARM C: --require-upstream REFUSAL ==
+[verify-vendor] REFUSED - --require-upstream: this gate has NO upstream subject any more.
+[verify-vendor] the oh-my-openagent checkout is retired from the composition (de-vendored 2026-10-07):
+[verify-vendor]   * no MPD_UPSTREAM_ROOT is read, no .mpd-dsh/upstream is looked for, no fallback exists;
+[verify-vendor]   * the upstream commit/version/statistics checks were DELETED, not skipped - nothing is left to require;
+[verify-vendor]   * upstream attribution lives in LICENSE-NOTICES.md, README.md and README.zh-CN.md, where no gate owns it.
+[verify-vendor] re-run without the flag to fingerprint the assets this repository ships, or revert the de-vendoring commit.
+[exit=1]
+
+== ARM D: unknown flag ==
+[verify-vendor] FAIL - unknown argument: --frobnicate
+usage: node scripts/verify-vendor.ts [--help]
+  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker
+  --help              print this text and exit 0
+  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)
+[exit=1]
+
+== ARM E: --help ==
+usage: node scripts/verify-vendor.ts [--help]
+  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker
+  --help              print this text and exit 0
+  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)
+[exit=0]
+
+== ARM F: prove MPD_UPSTREAM_ROOT is NOT READ (B1/B2/B3 outputs identical) ==
+
+== ARM G: NEGATIVE arm - a corrupted snapshot fingerprint must FAIL ==
+--- G1: one byte appended to vendor/mcp-src/utils/package.json (treeSha must mismatch) ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] FAIL - asset vendor/mcp-src treeSha mismatch
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit=1]
+--- G2: one extra FILE added (fileCount must drift) ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] FAIL - asset vendor/mcp-src count drifted: 460 vs 459
+[verify-vendor] FAIL - asset vendor/mcp-src treeSha mismatch
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit=1]
+--- G3: restored (must be back to the pre-arm state) ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit=1]
+G1=1 G2=1 G3=1
+snapshot tree hash after arm G: 1 modified/untracked file(s) under vendor/
+B1/B2/B3 line counts: 7 7 7
+B1 == B2 : True
+B2 == B3 : True
+VERDICT: MPD_UPSTREAM_ROOT has NO effect on the gate's output - the env var is not read
+NOTE: all three exits are 1 for ONE reason, named in the output: 'asset skills treeSha mismatch'
+      (Lane C's in-flight skills/** edit; the wave's single re-pin is the captain's step, AGENTS.md §9/§11)
+
+== ARM H: END-STATE simulation - copy of the lock + copy of the gate in a fixture root ==
+   (the fixture's skills entry is re-pinned with the DECLARED helper; the real VENDOR_LOCK.json is untouched)
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-snapshot/gatefix/VENDOR_LOCK.json  (4011 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 fileCount=335
+[repin-vendor]   computed (LF) : treeSha=0723140b6bc82f0750365bc229827081aa12c5ae11934a886e899596fa5626f8 fileCount=335 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 34fc2f92e2752bce6591f0c472aeafdf856e212785025c022b89db93390e2352   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 -> 0723140b6bc82f0750365bc229827081aa12c5ae11934a886e899596fa5626f8
+
+[repin-vendor] asset          : vendor/mcp-src
+[repin-vendor]   locked       : treeSha=05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4 fileCount=459
+[repin-vendor]   computed (LF) : treeSha=05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4 fileCount=459 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] WRITE     : applied 1 field change(s) to /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-snapshot/gatefix/VENDOR_LOCK.json
+[repin-vendor]   skills.treeSha: f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 -> 0723140b6bc82f0750365bc229827081aa12c5ae11934a886e899596fa5626f8
+[repin-vendor]   - (line 8)       "treeSha": "f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1"
+[repin-vendor]   + (line 8)       "treeSha": "0723140b6bc82f0750365bc229827081aa12c5ae11934a886e899596fa5626f8"
+[repin-vendor] WRITE     : linesChanged=1 bytes 4011 -> 4011 (differingBytes=58)
+--- H: the fixture gate, run with the checkout UNREACHABLE and no MPD_UPSTREAM_ROOT ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 335 files
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS - 6 shipped asset(s) fingerprinted, upstream identity not checked
+[exit=0]
+H(exit)=0
+fixture lock skills treeSha: 0723140b6bc82f0750365bc229827081aa12c5ae11934a886e899596fa5626f8
+REAL lock untouched:  1 file changed, 11 insertions(+), 25 deletions(-)
+
+== ARM I: MCP rebuild from the IN-REPO SNAPSHOT ONLY ==
+   command: HOME=<scratch bun cache> PATH=<pinned bun 1.4.0> node scripts/build-mcp.ts
+   (no MPD_UPSTREAM_ROOT; .mpd/ci-rehearsal/upstream NOT referenced)
+[build-mcp] mpd LSP overlay applied: server-definitions.ts -> /tmp/mpd-dsh-mcp-build-4gDkmG/src/lsp-core/src/lsp/server-definitions.ts
+[build-mcp] mpd LSP overlay applied: language-mappings.ts -> /tmp/mpd-dsh-mcp-build-4gDkmG/src/lsp-core/src/lsp/language-mappings.ts
+[build-mcp] ext dep: js-yaml <- js-yaml@5.3.0@@@1
+[build-mcp] ext dep: jsonc-parser <- jsonc-parser@3.3.1@@@1
+[build-mcp] ext dep: zod <- zod@4.4.3@@@1
+[build-mcp] ast-grep -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-astgrep/dist/cli.js (84651 bytes)
+[build-mcp] git-bash -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-gitbash/dist/cli.js (22137 bytes)
+[build-mcp] FAIL - lsp rebuild differs from the committed dist at char 10482 (rebuilt 234882 B vs committed 234916 B); the committed dists are the brand ground truth and a rebuild must reproduce them
+[build-mcp] FAIL - rebuilt line: "co" | committed line: "co"
+[exit=1]
+I(rebuild exit)=1
+-- restoring the two BUILD.lock files the rebuild rewrote (packages/*/dist/** is the integration task's surface) --
+dist surfaces after restore: 0 changed file(s)
+== ARM J: CONTROL - the same lsp build from the PRISTINE pinned checkout ==
+snapshot-sha=b82ce5fa8f69460b
+upstream-sha=b82ce5fa8f69460b
+
+== ARM K: A6 gates ==
+--- verify: node scripts/verify-comment-coverage.ts ---
+# verify-comment-coverage
+
+scanned 354 TypeScript file(s) of 354 in the source set; inspected 31890 declaration(s); skipped 14166 inline callback(s) as out of family
+
+VERDICT: FAIL — 16 violation(s) across 4 file(s).
+
+packages/mpd-verify-plugin/src/observe.ts (12)
+  137: comment — keyOf
+  139: comment — noteCall
+  169: comment — observedCodeRead
+  171: comment — escapeUses
+  173: comment — grantEscape
+  177: comment — consumeEscape
+  185: comment — countRead
+  193: comment — drainReads
+  202: comment — armedLoops
+  217: comment — seatFor
+  231: comment — observedDelegations
+  233: comment — observedCount
+
+skills/dsh-qa/scripts/session-start-team.ts (2)
+  878: comment — stagedShell
+  880: comment — missing
+
+packages/mpd-team-core-plugin/src/team-store.ts (1)
+  783: comment — left
+
+packages/mpd-verify-plugin/src/law.ts (1)
+  166: comment — ext
+
+[exit=1] verify
+--- verify: node scripts/verify-docs-parity.ts ---
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/independence.md
+ok   docs/index.md
+ok   docs/preset-default.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-better-sidebar-host/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-goal-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-roster-provider-plugin/README.md
+ok   packages/mpd-schemastery/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-core-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-adapter-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+FAIL package-no-readme:packages/mpd-verify-plugin — package directory mpd-verify-plugin has no README (not an exempt package)
+FAIL derived-value:delta-range:AGENTS.md — cannot adjudicate the delta-range claim(s) in AGENTS.md: agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read
+FAIL derived-value:delta-range:agent-references/index.md — cannot adjudicate the delta-range claim(s) in agent-references/index.md: agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read
+FAIL link-missing:docs/index.md:../agent-references/agent-teams-deltas.md — docs/index.md:47 links "../agent-references/agent-teams-deltas.md" but neither a file nor a directory exists at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/agent-references/agent-teams-deltas.md — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change
+FAIL link-missing:docs/index.zh-CN.md:../agent-references/agent-teams-deltas.md — docs/index.zh-CN.md:46 links "../agent-references/agent-teams-deltas.md" but neither a file nor a directory exists at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/agent-references/agent-teams-deltas.md — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change
+FAIL link-missing:packages/mpd-team-compact-plugin/README.md:../mpd-agent-teams-plugin/README.md — packages/mpd-team-compact-plugin/README.md:81 links "../mpd-agent-teams-plugin/README.md" but neither a file nor a directory exists at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-agent-teams-plugin/README.md — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change
+FAIL link-missing:packages/mpd-team-compact-plugin/README.zh-CN.md:../mpd-agent-teams-plugin/README.md — packages/mpd-team-compact-plugin/README.zh-CN.md:67 links "../mpd-agent-teams-plugin/README.md" but neither a file nor a directory exists at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-agent-teams-plugin/README.md — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-webui-tui-i18n.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note agent-references/agent-teams-deltas.md — DERIVED: site file not present in this root — region-count claim skipped
+[verify-docs-parity] links=430 checked=359 resolved=355 dead=4 exemptProvenance=0 absentSite=0 ignoredExternal=27 ignoredAnchorOnly=44 files=111
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=46 failed=7 violations=7 exempt=22 derived=1 links=430 dead=4 — FAIL
+[exit=1] verify
+--- verify: node scripts/verify-manual-paths.ts ---
+[verify-manual-paths] manual /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/AGENTS.md
+[verify-manual-paths] root /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+[verify-manual-paths] manual-sha256 b3c6b4b1b1ee3df2fffd3f52a23ffd1747b64393fa714fe3593e8c57cd5f04dd bytes=59988 mtime=2026-10-06T11:32:38.251Z
+[verify-manual-paths] rule candidate=path-shaped token | position=code span or ./|../-prefixed prose | shape=no glob/tilde/url/whitespace/placeholder/trailing-punctuation | anchor=./|-literal else first segment must be a repo-root entry | existence=stat <root>/<token>
+[verify-manual-paths] subjects audited=142 (resolved=134 unresolved=8); tokens that are not path-shaped are out of scope by the rule above and are counted nowhere
+[verify-manual-paths] census bucket=resolved direction=audited count=134 reason="audited: the path exists at the repo root"
+[verify-manual-paths] resolved AGENTS.md:9 -> README.md
+[verify-manual-paths] resolved AGENTS.md:16 -> scripts/verify-docs-parity.ts
+[verify-manual-paths] resolved AGENTS.md:19 -> docs
+[verify-manual-paths] resolved AGENTS.md:22 -> docs/index.md
+[verify-manual-paths] resolved AGENTS.md:28 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:33 -> docs
+[verify-manual-paths] resolved AGENTS.md:41 -> docs/decisions.md
+[verify-manual-paths] resolved AGENTS.md:41 -> docs/bline-report.md
+[verify-manual-paths] resolved AGENTS.md:42 -> docs/omo-parity-gap.md
+[verify-manual-paths] resolved AGENTS.md:42 -> docs/review-p0-p3.md
+[verify-manual-paths] resolved AGENTS.md:42 -> docs/track-a-report.md
+[verify-manual-paths] resolved AGENTS.md:43 -> docs/ulw-deepseek-optimization.md
+[verify-manual-paths] resolved AGENTS.md:43 -> docs/tui-edition-report.md
+[verify-manual-paths] resolved AGENTS.md:48 -> agent-references
+[verify-manual-paths] resolved AGENTS.md:50 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:52 -> agent-references/index.md
+[verify-manual-paths] resolved AGENTS.md:56 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:58 -> agent-references/verification-flow.md
+[verify-manual-paths] resolved AGENTS.md:59 -> agent-references/seam-adapters.md
+[verify-manual-paths] resolved AGENTS.md:60 -> agent-references/overview-and-provenance.md
+[verify-manual-paths] resolved AGENTS.md:61 -> agent-references/plugin-authoring.md
+[verify-manual-paths] resolved AGENTS.md:62 -> agent-references/qa-discipline.md
+[verify-manual-paths] resolved AGENTS.md:63 -> agent-references/installer-and-profiles.md
+[verify-manual-paths] resolved AGENTS.md:64 -> agent-references/glossary.md
+[verify-manual-paths] resolved AGENTS.md:72 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:75 -> docs/feature-audit.md
+[verify-manual-paths] resolved AGENTS.md:76 -> LICENSE.md
+[verify-manual-paths] resolved AGENTS.md:77 -> README.md
+[verify-manual-paths] resolved AGENTS.md:77 -> LICENSE-NOTICES.md
+[verify-manual-paths] resolved AGENTS.md:78 -> agent-references/overview-and-provenance.md
+[verify-manual-paths] resolved AGENTS.md:81 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:97 -> docs/plan-team-plane-split.md
+[verify-manual-paths] resolved AGENTS.md:112 -> agent-references/overview-and-provenance.md
+[verify-manual-paths] resolved AGENTS.md:123 -> .mpd/boulder.json
+[verify-manual-paths] resolved AGENTS.md:125 -> agent-references/overview-and-provenance.md
+[verify-manual-paths] resolved AGENTS.md:128 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:138 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:218 -> scripts/verify-vendor.ts
+[verify-manual-paths] resolved AGENTS.md:218 -> scripts/repin-vendor.ts
+[verify-manual-paths] resolved AGENTS.md:218 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:219 -> scripts/verify-dist-fresh.ts
+[verify-manual-paths] resolved AGENTS.md:219 -> dist
+[verify-manual-paths] resolved AGENTS.md:220 -> skills/dsh-qa/scripts/preset-conformance.ts
+[verify-manual-paths] resolved AGENTS.md:221 -> scripts/verify-pack-closure.ts
+[verify-manual-paths] resolved AGENTS.md:225 -> scripts/install-profile.ts
+[verify-manual-paths] resolved AGENTS.md:226 -> scripts/verify-docs-parity.ts
+[verify-manual-paths] resolved AGENTS.md:226 -> docs
+[verify-manual-paths] resolved AGENTS.md:227 -> scripts/verify-plugin-manifest.ts
+[verify-manual-paths] resolved AGENTS.md:227 -> dsh-plugin.json
+[verify-manual-paths] resolved AGENTS.md:227 -> dsh-distribution.json
+[verify-manual-paths] resolved AGENTS.md:227 -> package.json
+[verify-manual-paths] resolved AGENTS.md:227 -> evidence
+[verify-manual-paths] resolved AGENTS.md:228 -> scripts/verify-comment-coverage.ts
+[verify-manual-paths] resolved AGENTS.md:229 -> scripts/verify-no-host-override.ts
+[verify-manual-paths] resolved AGENTS.md:230 -> scripts/verify-manual-paths.ts
+[verify-manual-paths] resolved AGENTS.md:231 -> scripts/mpd-ext.ts
+[verify-manual-paths] resolved AGENTS.md:231 -> extensions/mpd-ext-example
+[verify-manual-paths] resolved AGENTS.md:232 -> skills/dsh-qa/scripts/bundle-lifecycle.ts
+[verify-manual-paths] resolved AGENTS.md:232 -> skills/dsh-qa/scripts/preset-conformance.ts
+[verify-manual-paths] resolved AGENTS.md:233 -> scripts/dump-config.ts
+[verify-manual-paths] resolved AGENTS.md:234 -> scripts/docker-e2e.ts
+[verify-manual-paths] resolved AGENTS.md:237 -> agent-references/verification-flow.md
+[verify-manual-paths] resolved AGENTS.md:239 -> scripts/verify-pack-closure.ts
+[verify-manual-paths] resolved AGENTS.md:246 -> evidence/workmate/rename-delete-core/20260910T132303Z-mount
+[verify-manual-paths] resolved AGENTS.md:248 -> scripts/dump-config.ts
+[verify-manual-paths] resolved AGENTS.md:275 -> .git/HEAD
+[verify-manual-paths] resolved AGENTS.md:288 -> evidence
+[verify-manual-paths] resolved AGENTS.md:317 -> README.md
+[verify-manual-paths] resolved AGENTS.md:317 -> package.json
+[verify-manual-paths] resolved AGENTS.md:319 -> agent-references/plugin-authoring.md
+[verify-manual-paths] resolved AGENTS.md:323 -> packages/mpd-dsh-adapter-plugin
+[verify-manual-paths] resolved AGENTS.md:329 -> packages/mpd-tui-adapter-plugin
+[verify-manual-paths] resolved AGENTS.md:334 -> agent-references/seam-adapters.md
+[verify-manual-paths] resolved AGENTS.md:341 -> scripts/verify-no-host-override.ts
+[verify-manual-paths] resolved AGENTS.md:342 -> docs/preset-default.md
+[verify-manual-paths] resolved AGENTS.md:343 -> scripts/set-default-preset.ts
+[verify-manual-paths] resolved AGENTS.md:356 -> agent-references/plugin-authoring.md
+[verify-manual-paths] resolved AGENTS.md:363 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:372 -> evidence/session-workspace-root/b1-resolution
+[verify-manual-paths] resolved AGENTS.md:376 -> .codegraph
+[verify-manual-paths] resolved AGENTS.md:383 -> node_modules
+[verify-manual-paths] resolved AGENTS.md:384 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:385 -> tsconfig.json
+[verify-manual-paths] resolved AGENTS.md:393 -> packages/mpd-ext-plugin/src/sdk.ts
+[verify-manual-paths] resolved AGENTS.md:394 -> packages/mpd-ext-plugin/dist/sdk.js
+[verify-manual-paths] resolved AGENTS.md:396 -> scripts/verify-dist-fresh.ts
+[verify-manual-paths] resolved AGENTS.md:401 -> agent-references/seam-adapters.md
+[verify-manual-paths] resolved AGENTS.md:404 -> skills/dsh-qa/scripts/preset-register.ts
+[verify-manual-paths] resolved AGENTS.md:412 -> agent-references/qa-discipline.md
+[verify-manual-paths] resolved AGENTS.md:414 -> skills/dsh-qa
+[verify-manual-paths] resolved AGENTS.md:422 -> skills/dsh-qa/scripts/lib/workspace-isolation.ts
+[verify-manual-paths] resolved AGENTS.md:425 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:435 -> skills/dsh-qa/scripts/lib/session-evidence.ts
+[verify-manual-paths] resolved AGENTS.md:438 -> evidence/dsh-qa/codegraph
+[verify-manual-paths] resolved AGENTS.md:446 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:470 -> agent-references/installer-and-profiles.md
+[verify-manual-paths] resolved AGENTS.md:474 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:476 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:476 -> presets/mpd.patch.yml
+[verify-manual-paths] resolved AGENTS.md:481 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:481 -> skills
+[verify-manual-paths] resolved AGENTS.md:492 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:500 -> package.json
+[verify-manual-paths] resolved AGENTS.md:501 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:501 -> presets/mpd.patch.yml
+[verify-manual-paths] resolved AGENTS.md:513 -> scripts/pack-mpd.ts
+[verify-manual-paths] resolved AGENTS.md:514 -> dist/mpd-package
+[verify-manual-paths] resolved AGENTS.md:516 -> dist
+[verify-manual-paths] resolved AGENTS.md:518 -> package.json
+[verify-manual-paths] resolved AGENTS.md:520 -> scripts/install-profile.ts
+[verify-manual-paths] resolved AGENTS.md:522 -> scripts/install-profile.ts
+[verify-manual-paths] resolved AGENTS.md:524 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:532 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:537 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:556 -> package.json
+[verify-manual-paths] resolved AGENTS.md:556 -> dsh-plugin.json
+[verify-manual-paths] resolved AGENTS.md:556 -> dsh-distribution.json
+[verify-manual-paths] resolved AGENTS.md:558 -> scripts/repin-vendor.ts
+[verify-manual-paths] resolved AGENTS.md:561 -> skills/dsh-qa/scripts/preset-conformance.ts
+[verify-manual-paths] resolved AGENTS.md:562 -> scripts/verify-dist-fresh.ts
+[verify-manual-paths] resolved AGENTS.md:562 -> scripts/verify-pack-closure.ts
+[verify-manual-paths] resolved AGENTS.md:566 -> scripts/docker-e2e.ts
+[verify-manual-paths] resolved AGENTS.md:568 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:579 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:581 -> evidence/gates/agents-budget
+[verify-manual-paths] resolved AGENTS.md:590 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:593 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:597 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:599 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:601 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:611 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:612 -> evidence/platform/harness-close
+[verify-manual-paths] resolved AGENTS.md:619 -> agent-references/glossary.md
+[verify-manual-paths] resolved AGENTS.md:637 -> agent-references/glossary.md
+[verify-manual-paths] census bucket=unresolved direction=audited count=8 reason="audited: the path does NOT exist at the repo root"
+[verify-manual-paths] unresolved AGENTS.md:57 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] unresolved AGENTS.md:57 -> scripts/patch-agent-teams-fixes.ts
+[verify-manual-paths] unresolved AGENTS.md:57 -> scripts/vendor-agent-teams.ts
+[verify-manual-paths] unresolved AGENTS.md:99 -> packages/mpd-agent-teams-plugin
+[verify-manual-paths] unresolved AGENTS.md:348 -> packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.ts
+[verify-manual-paths] unresolved AGENTS.md:353 -> scripts/patch-agent-teams-client.ts
+[verify-manual-paths] unresolved AGENTS.md:354 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] unresolved AGENTS.md:357 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] census bucket=anticipatory direction=declared count=2 reason="DECLARED anticipatory class: the manual names it, the repository keeps it by design and deliberately does NOT create it (AGENTS.md §3) — printed with its count so an exemption for a file that does not exist can never rot silently"
+[verify-manual-paths] anticipatory AGENTS.md:38 -> docs/adder4.md [ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.ts` as its own class, and deliberately not created yet]
+[verify-manual-paths] anticipatory AGENTS.md:38 -> docs/cnt8.md [ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.ts` as its own class, and deliberately not created yet]
+[verify-manual-paths] census bucket=declared-unreferenced direction=declared count=0 reason="ROT GUARD: a declared anticipatory path this manual no longer names — reported here rather than dropped silently"
+[verify-manual-paths] census bucket=over-report:url direction=over-report count=0 reason="contains `://` — a URL, not a repo path"
+[verify-manual-paths] census bucket=over-report:fragment direction=over-report count=44 reason="contains whitespace — a sentence or command fragment, not one path"
+[verify-manual-paths] over-report:fragment AGENTS.md:110 -> /ulw <objective> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:110 -> /ultrawork <objective> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:218 -> node scripts/verify-vendor.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:218 -> node scripts/repin-vendor.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:219 -> node scripts/verify-dist-fresh.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:220 -> node skills/dsh-qa/scripts/preset-conformance.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:221 -> node scripts/verify-pack-closure.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:224 -> node skills/dsh-qa/scripts/<case>.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:225 -> node scripts/install-profile.ts --dry-run [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:227 -> node scripts/verify-plugin-manifest.ts --pack [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:228 -> node scripts/verify-comment-coverage.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:229 -> node scripts/verify-no-host-override.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:230 -> node scripts/verify-manual-paths.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:231 -> bun scripts/mpd-ext.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:231 -> bun scripts/mpd-ext.ts validate extensions/mpd-ext-example [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:232 -> bun skills/dsh-qa/scripts/bundle-lifecycle.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:232 -> node skills/dsh-qa/scripts/preset-conformance.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:233 -> node scripts/dump-config.ts --profile <p> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:234 -> node scripts/docker-e2e.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:239 -> node scripts/verify-pack-closure.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:248 -> node scripts/dump-config.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:339 -> /mpd panel [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:341 -> node scripts/verify-no-host-override.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:343 -> node scripts/set-default-preset.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:378 -> node <file>.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:396 -> node scripts/verify-dist-fresh.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:418 -> agentsHome = $DSH_AGENTS_HOME ?? ~/.agents [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:440 -> evidence/<domain>/<slug>/<timestamp>/{result.json, output.log} [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:489 -> dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:489 -> … add @mpd-dsh/mpd [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:503 -> dsh plugin remove @mpd-dsh/mpd [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:513 -> node scripts/pack-mpd.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:522 -> node scripts/install-profile.ts --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain] [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:556 -> git checkout -b release/vX.Y.Z [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:558 -> node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:561 -> node skills/dsh-qa/scripts/preset-conformance.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:562 -> node scripts/verify-dist-fresh.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:562 -> node scripts/verify-pack-closure.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:566 -> node scripts/docker-e2e.ts --mode source --require-docker [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:593 -> node scripts/mpd-bg.ts reload-check <module-path> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:597 -> node scripts/mpd-bg.ts run --log <workspace-path> -- <cmd> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:599 -> node scripts/mpd-bg.ts probe <pidfile> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:601 -> node scripts/mpd-bg.ts check-write <path> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:611 -> node scripts/mpd-bg.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] census bucket=over-report:trailing direction=over-report count=1 reason="ends with punctuation — a bound-token fragment, not a path target"
+[verify-manual-paths] over-report:trailing AGENTS.md:436 -> request/header.data.header.tools[] [the token ends with "]"]
+[verify-manual-paths] census bucket=over-report:npm direction=over-report count=7 reason="starts with `@` — an npm package name, not a repo path"
+[verify-manual-paths] over-report:npm AGENTS.md:82 -> @deepseek-ai/dsh-llm-deepseek
+[verify-manual-paths] over-report:npm AGENTS.md:475 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:489 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:500 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:503 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:507 -> @ast-grep/cli
+[verify-manual-paths] over-report:npm AGENTS.md:508 -> @code-yeongyu/comment-checker
+[verify-manual-paths] census bucket=over-report:notRoot direction=over-report count=12 reason="first segment is not an entry at the repo root — a slug, route, branch, tool name or package-relative spelling, not a repo path"
+[verify-manual-paths] over-report:notRoot AGENTS.md:44 -> mpd-agent-teams-plugin/README.md [first segment "mpd-agent-teams-plugin"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:72 -> code-yeongyu/oh-my-openagent [first segment "code-yeongyu"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:269 -> release/vX.Y.Z [first segment "release"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:316 -> src/index.ts [first segment "src"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:327 -> src/index.ts [first segment "src"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:345 -> lib/mpd-adapter-ctx.ts [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:347 -> lib/members.ts [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:352 -> lib/client.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:435 -> tool/call.data.name [first segment "tool"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:435 -> tool/result [first segment "tool"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:489 -> github:HaroldZ32/My-Power-Dsh [first segment "github:HaroldZ32"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:556 -> release/vX.Y.Z [first segment "release"]
+[verify-manual-paths] census bucket=over-report:bare direction=over-report count=16 reason="a bare file name with no directory component and not a root file this repo is expected to carry"
+[verify-manual-paths] over-report:bare AGENTS.md:44 -> README_ZH.md
+[verify-manual-paths] over-report:bare AGENTS.md:50 -> AGENT.md
+[verify-manual-paths] over-report:bare AGENTS.md:50 -> CLAUDE.md
+[verify-manual-paths] over-report:bare AGENTS.md:63 -> install-profile.ts
+[verify-manual-paths] over-report:bare AGENTS.md:120 -> mpd.jsonc
+[verify-manual-paths] over-report:bare AGENTS.md:127 -> AGENT.md
+[verify-manual-paths] over-report:bare AGENTS.md:128 -> CLAUDE.md
+[verify-manual-paths] over-report:bare AGENTS.md:232 -> full-profile-boot.sh
+[verify-manual-paths] over-report:bare AGENTS.md:232 -> mount-proof.sh
+[verify-manual-paths] over-report:bare AGENTS.md:378 -> .ts
+[verify-manual-paths] over-report:bare AGENTS.md:380 -> .ts
+[verify-manual-paths] over-report:bare AGENTS.md:382 -> .cts
+[verify-manual-paths] over-report:bare AGENTS.md:426 -> settings.yaml
+[verify-manual-paths] over-report:bare AGENTS.md:630 -> roles.test.ts
+[verify-manual-paths] over-report:bare AGENTS.md:639 -> mpd.jsonc
+[verify-manual-paths] over-report:bare AGENTS.md:662 -> meta.json
+[verify-manual-paths] census bucket=under-report:glob direction=under-report count=39 reason="a glob pattern — there is no single file to stat"
+[verify-manual-paths] under-report:glob AGENTS.md:9 -> docs/*.md
+[verify-manual-paths] under-report:glob AGENTS.md:10 -> packages/*/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:10 -> *.zh-CN.md
+[verify-manual-paths] under-report:glob AGENTS.md:18 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:19 -> extensions/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:19 -> templates/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:20 -> packages/*/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:25 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:30 -> agent-references/**
+[verify-manual-paths] under-report:glob AGENTS.md:31 -> *.zh-CN.md
+[verify-manual-paths] under-report:glob AGENTS.md:33 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:37 -> docs/plan-*.md
+[verify-manual-paths] under-report:glob AGENTS.md:57 -> packages/mpd-agent-teams-plugin/**
+[verify-manual-paths] under-report:glob AGENTS.md:219 -> packages/*/src
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> extensions/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> templates/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> README*.md
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> docs/**
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> packages/*/README*.md
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> extensions/**
+[verify-manual-paths] under-report:glob AGENTS.md:226 -> templates/**
+[verify-manual-paths] under-report:glob AGENTS.md:234 -> docker/**
+[verify-manual-paths] under-report:glob AGENTS.md:256 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:381 -> packages/*/src
+[verify-manual-paths] under-report:glob AGENTS.md:381 -> dist/*.js
+[verify-manual-paths] under-report:glob AGENTS.md:425 -> <repo>/.mpd/team/*
+[verify-manual-paths] under-report:glob AGENTS.md:445 -> packages/*/dist/**
+[verify-manual-paths] under-report:glob AGENTS.md:445 -> dist/mpd-package/**
+[verify-manual-paths] under-report:glob AGENTS.md:446 -> .mpd/plans/**
+[verify-manual-paths] under-report:glob AGENTS.md:447 -> dist/**
+[verify-manual-paths] under-report:glob AGENTS.md:502 -> ./packages/*
+[verify-manual-paths] under-report:glob AGENTS.md:502 -> ./skills/*
+[verify-manual-paths] under-report:glob AGENTS.md:502 -> ./presets/*
+[verify-manual-paths] under-report:glob AGENTS.md:536 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:540 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:559 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:569 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:571 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:582 -> skills/**
+[verify-manual-paths] census bucket=under-report:home direction=under-report count=8 reason="home-relative (`~`) — it resolves in the user's HOME, not in the repo"
+[verify-manual-paths] under-report:home AGENTS.md:142 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:364 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:375 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:416 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:418 -> ~/.agents
+[verify-manual-paths] under-report:home AGENTS.md:483 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:604 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:652 -> ~/.mpd/workmate/
+[verify-manual-paths] census bucket=under-report:absolute direction=under-report count=7 reason="absolute (`/`) — it is outside the repo root"
+[verify-manual-paths] under-report:absolute AGENTS.md:21 -> /docs/index.md
+[verify-manual-paths] under-report:absolute AGENTS.md:94 -> /plugins/mpd-team/state
+[verify-manual-paths] under-report:absolute AGENTS.md:110 -> /ulw
+[verify-manual-paths] under-report:absolute AGENTS.md:110 -> /ultrawork
+[verify-manual-paths] under-report:absolute AGENTS.md:339 -> /mpd
+[verify-manual-paths] under-report:absolute AGENTS.md:582 -> /tmp
+[verify-manual-paths] under-report:absolute AGENTS.md:595 -> /tmp
+[verify-manual-paths] census bucket=under-report:outside direction=under-report count=0 reason="escapes the repo root (`../`) — it is outside the repo root"
+[verify-manual-paths] census bucket=under-report:placeholder direction=under-report count=27 reason="carries a placeholder (`<name>`, `$VAR`, `{a,b}`) — not a literal path"
+[verify-manual-paths] under-report:placeholder AGENTS.md:12 -> [English](./<name>.md)
+[verify-manual-paths] under-report:placeholder AGENTS.md:93 -> .mpd/team/teams/<id>.json
+[verify-manual-paths] under-report:placeholder AGENTS.md:100 -> <workspace>/.mpd/team
+[verify-manual-paths] under-report:placeholder AGENTS.md:209 -> packages/<pkg>/README.md
+[verify-manual-paths] under-report:placeholder AGENTS.md:224 -> skills/dsh-qa/scripts/<case>.ts
+[verify-manual-paths] under-report:placeholder AGENTS.md:267 -> feature/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:268 -> fix/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:281 -> backup/<branch>-<sha>
+[verify-manual-paths] under-report:placeholder AGENTS.md:283 -> feature/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:283 -> fix/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:316 -> packages/<pkg>/dist/index.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:317 -> @mpd-dsh/<name>
+[verify-manual-paths] under-report:placeholder AGENTS.md:336 -> <root>/lib/types/ui.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:373 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:374 -> <bundle>/presets
+[verify-manual-paths] under-report:placeholder AGENTS.md:378 -> <file>.ts
+[verify-manual-paths] under-report:placeholder AGENTS.md:399 -> packages/{mpd-dsh,mpd-tui}-adapter-plugin/src
+[verify-manual-paths] under-report:placeholder AGENTS.md:418 -> <DSH_HOME>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:418 -> <agentsHome>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:424 -> <DSH_HOME>/sessions/<projectKey(realCwd)>
+[verify-manual-paths] under-report:placeholder AGENTS.md:440 -> evidence/<domain>/<slug>/<timestamp>/{result.json,
+[verify-manual-paths] under-report:placeholder AGENTS.md:479 -> <profile>/node_modules
+[verify-manual-paths] under-report:placeholder AGENTS.md:495 -> github:<owner>/<repo>
+[verify-manual-paths] under-report:placeholder AGENTS.md:498 -> github:<owner>/<repo>#dev
+[verify-manual-paths] under-report:placeholder AGENTS.md:512 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:525 -> $DSH_HOME/.agent-presets/
+[verify-manual-paths] under-report:placeholder AGENTS.md:627 -> personas/<id>.md
+[verify-manual-paths] census bucket=under-report:elided direction=under-report count=1 reason="contains an elision mark — the path is not written out, so no literal target exists"
+[verify-manual-paths] under-report:elided AGENTS.md:12 -> [中文](./<name>.zh-CN.md) [non-ASCII/elision characters]
+[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason="a directory spelled in words rather than as a token — nothing to stat"
+[verify-manual-paths] census family=over-report direction=over-report total=80 buckets=6 (counted apart from under-report and from unresolved)
+[verify-manual-paths] census family=under-report direction=under-report total=82 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] FAIL unresolved=8 — the manual names paths that do not exist at the repo root: agent-references/agent-teams-deltas.md (AGENTS.md:57), scripts/patch-agent-teams-fixes.ts (AGENTS.md:57), scripts/vendor-agent-teams.ts (AGENTS.md:57), packages/mpd-agent-teams-plugin (AGENTS.md:99), packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.ts (AGENTS.md:348), scripts/patch-agent-teams-client.ts (AGENTS.md:353), agent-references/agent-teams-deltas.md (AGENTS.md:354), agent-references/agent-teams-deltas.md (AGENTS.md:357)
+[exit=1] verify
+--- repin-vendor (mirror guard) ---
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (4011 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 fileCount=335
+[repin-vendor]   computed (LF) : treeSha=d4dfdca612b31907eb55f62acf142a766ee703aab99b7038eb236806139bc78d fileCount=335 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 254f95749e49dca402286940486ef0ceea9f5e09a10794c4ccd007acda1fcdd0   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 -> d4dfdca612b31907eb55f62acf142a766ee703aab99b7038eb236806139bc78d
+
+[repin-vendor] asset          : vendor/mcp-src
+[repin-vendor]   locked       : treeSha=05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4 fileCount=459
+[repin-vendor]   computed (LF) : treeSha=05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4 fileCount=459 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : RED - lock does not match the working tree (drift=1, problems=0)
+[exit=1] repin --check
+
+== ARM L: scripts/bootstrap.ts still executes (its preflight + vendor step) ==
+[bootstrap] node v24.21.0
+[bootstrap] bun 1.4.2
+[bootstrap] git git version 2.53.0
+[bootstrap] dsh 0.2.0-rc.2
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[bootstrap] FAIL
+[exit=1] bootstrap.ts
+
+== ARM M: re-measured AFTER Lane B deleted packages/mpd-agent-teams-plugin/** ==
+   (the lock's _deps entry was removed by Lane A exactly so this deletion cannot redden the gate)
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit=1] verify-vendor (post-deletion)
+
+== ARM N (F1): run the PUBLISHED recipe verbatim into a scratch dir and count ==
+   recipe: vendor/mcp-src/README.md, 'Origin (re-derivable)' block
+
+== ARM N (F1): run the PUBLISHED recipe verbatim into a scratch dir and count ==
+   recipe: vendor/mcp-src/README.md, 'Origin (re-derivable)' block
++ git init -q upstream
++ cd upstream
++ git remote add origin https://github.com/code-yeongyu/oh-my-openagent
++ git config core.sparseCheckout true
++ git sparse-checkout init --cone
++ git sparse-checkout set packages/ast-grep-mcp packages/git-bash-mcp packages/lsp-daemon packages/mcp-stdio-core packages/utils packages/omo-config-core packages/lsp-core
++ git fetch --depth 1 origin 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+From https://github.com/code-yeongyu/oh-my-openagent
+ * branch            8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29 -> FETCH_HEAD
++ git checkout -q FETCH_HEAD
+++ git rev-parse HEAD
++ test 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29 = 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
++ cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-snapshot/recipe-repro
++ mkdir mcp-src
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/ast-grep-mcp mcp-src/ast-grep-mcp
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/git-bash-mcp mcp-src/git-bash-mcp
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/lsp-daemon mcp-src/lsp-daemon
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/mcp-stdio-core mcp-src/mcp-stdio-core
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/utils mcp-src/utils
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/omo-config-core mcp-src/omo-config-core
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/lsp-core mcp-src/lsp-core
+++ find mcp-src -type f
+++ wc -l
++ echo 'COUNT-after-copy: 464'
+COUNT-after-copy: 464
++ find mcp-src -name AGENTS.md -delete
+++ find mcp-src -type f
+++ wc -l
++ echo 'COUNT-after-AGENTS-omission: 457'
+COUNT-after-AGENTS-omission: 457
++ cp /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/vendor/mcp-src/README.md /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/vendor/mcp-src/README.zh-CN.md mcp-src/
+++ find mcp-src -type f
+++ wc -l
++ echo 'COUNT-final: 459'
+COUNT-final: 459
+recipe exit=0
+
+== ARM O (F1 control): the REPRODUCED directory must hash to the LOCKED treeSha ==
+   (fixture gate + a lock copy carrying ONLY the vendor/mcp-src entry; the asset is the recipe's output)
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] PASS - 1 shipped asset(s) fingerprinted, upstream identity not checked
+[exit=0]
+== ARM P (F1): repin-vendor --check against the REAL lock ==
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (4011 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 fileCount=335
+[repin-vendor]   computed (LF) : treeSha=d665fc517f540153ab9e72d0d3f1433c8b16df0cccaab7acbbdaa33f672afdc2 fileCount=332 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 55764ea2635c7411ca1a777ed8d93a6086539e85ae2b58a388cdc6d1fbd179e9   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 -> d665fc517f540153ab9e72d0d3f1433c8b16df0cccaab7acbbdaa33f672afdc2
+[repin-vendor]   DELTA        : fileCount 335 -> 332
+
+[repin-vendor] asset          : vendor/mcp-src
+[repin-vendor]   locked       : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459
+[repin-vendor]   computed (LF) : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : RED - lock does not match the working tree (drift=1, problems=0)
+[exit=1] repin --check
+
+########## F1 + F2 REPAIRS (post-T12) ##########
+
+== F2 ARM: node scripts/verify-vendor.ts --self-test ==
+[verify-vendor] SELF-TEST PASS - intact-fixture-PASS
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor] SELF-TEST PASS - one-byte-edit-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/corpus treeSha mismatch
+[verify-vendor] SELF-TEST PASS - added-file-count-drift-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/corpus count drifted: 3 vs 2
+[verify-vendor] SELF-TEST PASS - zero-subject-REFUSED
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - zero-subject run: VENDOR_LOCK.json declares no vendored assets to fingerprint - refusing to report PASS
+[verify-vendor] SELF-TEST PASS - corrupted-single-file-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/blob.js sha256 mismatch
+[verify-vendor] SELF-TEST PASS - require-upstream-REFUSED
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] REFUSED - --require-upstream: this gate has NO upstream subject any more.
+[verify-vendor] SELF-TEST PASS - unknown-flag-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - unknown argument: --frobnicate
+[verify-vendor] SELF-TEST PASS - restored-fixture-PASS
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor] SELF-TEST PASS - 8/8 arm(s) passed
+[exit=0] self-test
+
+== F2 guard: the REPIN MIRROR must still match after the rewrite ==
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+== FINAL RE-VERIFICATION (after the F1+F2 repairs) ==
+--- argv arms ---
+--help               usage: node scripts/verify-vendor.ts [--help] [--self-test]
+  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker
+  --self-test         run every fixture arm in a temp root; never reads or writes the shipped lock
+  --help              print this text and exit 0
+  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)
+[exit=0]
+--require-upstream   [verify-vendor] REFUSED - --require-upstream: this gate has NO upstream subject any more.
+[verify-vendor] the oh-my-openagent checkout is retired from the composition (de-vendored 2026-10-07):
+[verify-vendor]   * no MPD_UPSTREAM_ROOT is read, no .mpd-dsh/upstream is looked for, no fallback exists;
+[verify-vendor]   * the upstream commit/version/statistics checks were DELETED, not skipped - nothing is left to require;
+[verify-vendor]   * upstream attribution lives in LICENSE-NOTICES.md, README.md and README.zh-CN.md, where no gate owns it.
+[verify-vendor] re-run without the flag to fingerprint the assets this repository ships, or revert the de-vendoring commit.
+[exit=1]
+--frobnicate         [verify-vendor] FAIL - unknown argument: --frobnicate
+usage: node scripts/verify-vendor.ts [--help] [--self-test]
+  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker
+  --self-test         run every fixture arm in a temp root; never reads or writes the shipped lock
+  --help              print this text and exit 0
+  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)
+[exit=1]
+--self-test          [verify-vendor] SELF-TEST PASS - intact-fixture-PASS
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor] SELF-TEST PASS - one-byte-edit-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/corpus treeSha mismatch
+[verify-vendor] SELF-TEST PASS - added-file-count-drift-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/corpus count drifted: 3 vs 2
+[verify-vendor] SELF-TEST PASS - zero-subject-REFUSED
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - zero-subject run: VENDOR_LOCK.json declares no vendored assets to fingerprint - refusing to report PASS
+[verify-vendor] SELF-TEST PASS - corrupted-single-file-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/blob.js sha256 mismatch
+[verify-vendor] SELF-TEST PASS - require-upstream-REFUSED
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] REFUSED - --require-upstream: this gate has NO upstream subject any more.
+[verify-vendor] SELF-TEST PASS - unknown-flag-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - unknown argument: --frobnicate
+[verify-vendor] SELF-TEST PASS - restored-fixture-PASS
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor] SELF-TEST PASS - 8/8 arm(s) passed
+[exit=0]
+--- real run (env unset) ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills count drifted: 330 vs 335
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit=1]
+--- repin --check ---
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (4011 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 fileCount=335
+[repin-vendor]   computed (LF) : treeSha=449cd2e0186b0405e9150fdef5916fb9455316b4e0deaf692008ad392513d86d fileCount=330 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 9f7a09d80bfab88fc2d09c7399c8fdd0f76f64bb26b9396f30d1ba4eb853f86d   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 -> 449cd2e0186b0405e9150fdef5916fb9455316b4e0deaf692008ad392513d86d
+[repin-vendor]   DELTA        : fileCount 335 -> 330
+
+[repin-vendor] asset          : vendor/mcp-src
+[repin-vendor]   locked       : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459
+[repin-vendor]   computed (LF) : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : RED - lock does not match the working tree (drift=1, problems=0)
+[exit=1]

@@ -1,5 +1,5 @@
-import type { IssueData, ZodErrorMap, ZodIssue } from "../ZodError.cjs";
-import type { ZodParsedType } from "./util.cjs";
+import type { IssueData, ZodErrorMap, ZodIssue } from "../ZodError.cts";
+import type { ZodParsedType } from "./util.cts";
 export declare const makeIssue: (params: {
     data: any;
     path: (string | number)[];

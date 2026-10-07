@@ -1,32 +1,41 @@
 // Read-only projection of ONE team's workflow — the data behind the two TUI
 // surfaces (`mpd-tui-team`, `mpd-tui-plan`).
 //
-// 0.1.7 REBASE (boundary, frozen contract `.mpd/plans/tui-team-surface.md` §5.5): the retired
-// vendored `agent-teams` plugin and its `<workspace>/.mpd/team/<teamId>/team.json` are GONE. The
-// source is now the OFFICIAL live readout, resolved through the adapter
-// (`liveTeamViews(dsh, workspace)` → `dsh.teamLiveTeams()`), and the mailbox readers that mirrored
-// `<teamDir>/inbox/*.jsonl` are gone with the file they read.
+// 0.1.7 REBASE, then the 2026-09-30 TEAM-PLANE SPLIT.
 //
-// Those bytes are live — NOTHING here reads a disk record any more — and what the official plane
-// does not carry is reported as ABSENT rather than invented:
+// TWO SOURCES, ONE SHAPE. The PRIMARY source is now the mpd-OWNED team record, read through the
+// `mpdTeams` service (`<workspace>/.mpd/team/teams/<teamId>.json`, written by `mpd-team-core`),
+// which carries the review fields the official board has no column for — `kind`, `attempt`,
+// `round`, `verdict` — and which exists even in a composition where the official service cannot
+// mount. The OFFICIAL live readout (`liveTeamViews` → `dsh.teamLiveTeams()`) is kept as a
+// FALLBACK for a composition without the mpd team row.
+//
+// The fallback is not decoration, and the reason the record is primary is MEASURED: in a `dsh-tui`
+// composition the official service cannot mount at all (`TeamService` registers its session
+// projection through a ROOT-bound `ctx.root` proxy and the dsh-tui host refuses `root.effect` from
+// a plugin activation), so this surface used to read nothing and render `(none in this workspace)`.
+//
+// What the official plane does not carry is still reported as ABSENT rather than invented, and that
+// rule now binds the FALLBACK path:
 //   * `subject`, `status`, `blockedBy`, `ownerName` come from the board, so the DAG, the depth
-//     ordering and the BLOCKED marking keep working;
-//   * `kind`, `verdict`, `round`, `attempt` have NO official field: they stay OPTIONAL and are
-//     never populated, so a renderer that prints them prints the honest blank;
-//   * `phase` is DERIVED (a teammate running/provisioning ⇒ `active`), there is no staged plan and
-//     no `approvedAt`/`createdAt`, so `staged` is always false;
-//   * the peer mailbox lives in the Lead Session log with no adapter seam: `unread` is `null`
-//     ("not observable"), never a fabricated `0`.
+//     ordering and the BLOCKED marking keep working on either source;
+//   * on the FALLBACK path `kind`, `verdict`, `round`, `attempt` have NO official field: they stay
+//     ABSENT and are never populated, so a renderer that prints them prints the honest blank. On the
+//     mpd RECORD they are real data;
+//   * `phase` is DERIVED on the fallback (a teammate running/provisioning ⇒ `active`) and STORED on
+//     the record; the peer mailbox lives in the Lead Session log with no adapter seam, so `unread`
+//     is `null` ("not observable") on either source, never a fabricated `0`.
 //
 // This module still performs ZERO writes — no write primitive may appear in this package's built
-// bytes — and it never touches a harness service: the ADAPTER is the only contact surface, and a
-// scene receives its resolved views from the composition root.
+// bytes — and it never touches a harness service: the ADAPTER and the `mpdTeams` service are the
+// only contact surfaces, and a scene receives its resolved views from the composition root.
 //
 // Nothing here throws: an absent/unreadable readout degrades to an empty workflow plus a bounded
 // problem note. A scene must never be able to take the session down (contract §10, last criterion).
 import { isRecord } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshAdapter, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
+import type { TeamRecord, TeamTaskRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 
 /** Bounded caps — so one pathological readout cannot stall a render. */
 const MAX_TEAMS = 20
@@ -43,6 +52,15 @@ export interface TeamTaskRow {
   id: string
   /** The board's subject, sanitized; empty when the board carries none. */
   subject: string
+  /**
+   * The task's acceptance text, sanitized — the record's own `description`, carried through.
+   *
+   * IT IS CARRIED FOR CLAUSE C3, and it is the reason the projection keeps it at all: the CJK ban
+   * governs the DRAWING, while the click/pin detail body must keep the original subject AND description
+   * untouched. A projection that dropped the description could not honour that half of the clause no
+   * matter what the detail body did with it — the text would no longer exist to show.
+   */
+  description?: string
   /** Optional in the durable record — a hand-written fixture may omit it (§3.1 item 4). */
   kind?: string
   /** The official board status; `pending` when the board carries none. */
@@ -181,7 +199,16 @@ export function mailboxKey(name: string): string {
   return points.length > MAILBOX_KEY_MAX ? points.slice(0, MAILBOX_KEY_MAX).join("") : cleaned
 }
 
-/** The dependency ids that still block (`state.js:dependencyStates`). */
+/**
+ * The dependency ids that still block, and the subset of them that FAILED.
+ *
+ * **OPT-1 (user decision, 2026-09-13) — DO NOT "FIX" THIS.** A FAILED dependency does NOT block its
+ * dependents: they stay `open` and dispatchable, and the failure is carried in the SECOND list so a
+ * renderer can name it (`failed-dep=`). The reasoning recorded with the decision: a failed dependency
+ * must not pin its dependents forever, and a cancelled one already does not. An unknown id counts as
+ * pending, hence blocking. `mpd-team-core-plugin/src/team-store.ts` carries the same rule on the
+ * mpd-owned record; the two must keep agreeing.
+ */
 function blockingDependencies(tasks: readonly TeamTaskRow[], dependencies: readonly string[]): { blocking: string[]; failed: string[] } {
   /** Task lookup by id, the index every dependency walk uses. */
   const byId = new Map(tasks.map((task) => [task.id, task]))
@@ -537,6 +564,229 @@ export function readTeamWorkflow(workspace: string, holds: readonly string[] = [
 /** The exact phrase the user must type to approve (`approve <teamId>`), from the record's own id. */
 export function approvalPhrase(teamId: string): string {
   return `approve ${teamId}`
+}
+
+/**
+ * The structural face of the `mpdTeams` service this package reads.
+ *
+ * Declared STRUCTURALLY rather than imported: the service is another plugin's runtime object, and a
+ * value import would bundle that plugin's whole module graph into this one. Only the two members
+ * this package actually calls are named, so a wider service stays compatible.
+ */
+export interface MpdTeamsLike {
+  /** Every team in a workspace, newest first. */
+  list?: (workspace: string) => TeamRecord[]
+  /** The team bound to one Lead session. */
+  active?: (workspace: string, sessionId?: string) => TeamRecord | undefined
+  /**
+   * The STAGED PLAN of one session — the SHARED projection, exactly as the Web panel receives it.
+   *
+   * The service-level reads above are workspace-scoped because an agentless surface has no session of
+   * its own; a SCENE does, on its live channel, which is why this one takes a session id and why the
+   * TUI does not need a second implementation of the plan projection or of the approval gate.
+   * @param workspace - the workspace to read.
+   * @param sessionId - the session whose staged plan is wanted.
+   * @returns the payload, or undefined when this composition exposes no plan face.
+   */
+  planFor?: (workspace: string, sessionId: string) => MpdPlanView | undefined
+}
+
+/** The staged-plan payload a TUI surface renders; the shared projection's own shape. */
+export interface MpdPlanView {
+  /** The staged plan, or null when this session has nothing awaiting approval. */
+  plan: {
+    /** The PRE-approval identity. */
+    planId: string
+    /** The team name the user reads. */
+    name: string
+    /** What the team is for. */
+    description: string
+    /** `required` waits for an explicit approval. */
+    approval: string
+    /** The EXACT string the approval gate demands, SERVED rather than re-derived. */
+    phrase: string
+    /** Whether an approval already committed. */
+    approved: boolean
+    /** Whether it was discarded instead. */
+    discarded: boolean
+    /** The teammates it wants raised. */
+    members: Array<{ name: string; description: string; role?: string }>
+    /** The tasks it wants posted. */
+    tasks: Array<{ subject: string; description: string; owner?: string; blockedBy: string[] }>
+  } | null
+}
+
+/**
+ * Read the staged plan a TUI surface should show, through the SHARED service face.
+ *
+ * The session id comes from the surface's own live channel — the one piece of session identity a TUI
+ * scene has, and the reason the plan is reachable here at all. Nothing is cached: the caller resolves
+ * it per read, exactly as §6 requires of every workspace root.
+ * @param teams - the `mpdTeams` service face, or undefined when the composition has none.
+ * @param workspace - the workspace resolved for THIS read.
+ * @param sessionId - the live session's id, or undefined when the channel has not bound one yet.
+ * @returns the plan view, or undefined when there is nothing to show or no service to ask.
+ */
+export function readPlanView(teams: MpdTeamsLike | undefined, workspace: string, sessionId: string | undefined): MpdPlanView["plan"] | undefined {
+  if (teams === undefined || typeof teams.planFor !== "function" || sessionId === undefined || sessionId === "") return undefined
+  try {
+    return teams.planFor(workspace, sessionId)?.plan ?? undefined
+  } catch {
+    // A service that throws must redden the surface's empty state, not take its render down.
+    return undefined
+  }
+}
+
+/**
+ * The team a TUI surface should show: the newest record that is not explicitly ended.
+ *
+ * "Newest" is the record's own `createdAt`, because the TUI has no session id of its own to ask
+ * `active()` with — it is an agentless surface serving whichever workspace the live sessions name.
+ * An ENDED team is skipped so a finished wave does not hide the running one behind it; a workspace
+ * whose every team has ended still shows the newest, because a reader asking "what happened" must
+ * get the last answer rather than a blank.
+ * @param records - the records to choose from, newest first as `list` returns them.
+ * @returns the principal record, or undefined when the workspace holds none.
+ */
+export function principalRecord(records: readonly TeamRecord[]): TeamRecord | undefined {
+  return records.find((record) => record.endedAt === undefined) ?? records[0]
+}
+
+/**
+ * Read the LIVE mpd records for one workspace, through the `mpdTeams` service.
+ *
+ * Never throws: an absent service (the mpd team row is not mounted) or a service that fails answers
+ * `[]`, which sends every caller down the official fallback path.
+ * @param teams - the resolved `mpdTeams` service, or undefined when the row is absent.
+ * @param workspace - the workspace to read.
+ * @returns the records, newest first; `[]` when there is no service or no team.
+ */
+export function mpdTeamRecords(teams: MpdTeamsLike | undefined, workspace: string): TeamRecord[] {
+  try {
+    /** The service's `list`, when the resolved object carries one. */
+    const list = teams?.list
+    if (typeof list !== "function" || workspace === "") return []
+    return list(workspace) ?? []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Project ONE mpd team record into the workflow shape every TUI renderer already consumes.
+ *
+ * This is the PRIMARY path. `kind`, `attempt`, `round` and `verdict` are real here (the whole
+ * reason the record exists), the roster's route comes from the record's own `route`, and `phase`
+ * is the STORED one brought in line with the record's contents rather than re-derived from scratch.
+ * @param workspace - the calling session's workspace root (display only).
+ * @param holds - the team ids the watchdog currently holds.
+ * @param record - the record to project.
+ * @returns the projection; never throws.
+ */
+export function readRecordWorkflow(workspace: string, holds: readonly string[], record: TeamRecord): TeamWorkflow {
+  /** Notes about what could not be read; bounded before they are returned. */
+  const problems: string[] = []
+  /** The board, capped so one pathological record cannot stall a render. */
+  const board: TeamTaskRecord[] = record.tasks.slice(0, MAX_TASKS)
+  /** The projected rows, built before the depth and visual passes below. */
+  const tasks: TeamTaskRow[] = board.map((task) => ({
+    id: scalarText(task.id, 40) ?? "",
+    subject: scalarText(task.subject, 160) ?? "",
+    description: scalarText(task.description, 400),
+    kind: scalarText(task.kind, 24),
+    status: scalarText(task.status, 40) ?? "pending",
+    visual: "open",
+    assignee: scalarText(task.owner, 80),
+    attempt: typeof task.attempt === "number" ? task.attempt : undefined,
+    round: typeof task.round === "number" ? task.round : undefined,
+    verdict: scalarText(task.verdict, 40),
+    dependencies: task.blockedBy.map((id) => scalarText(id, 40)).filter((id): id is string => id !== undefined),
+    failedDependencies: [],
+    depth: 0,
+  }))
+  /** Depth per task id, computed once for the whole board. */
+  const depths = taskDepths(tasks)
+  for (const task of tasks) {
+    task.depth = depths.get(task.id) ?? 0
+    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed
+    task.visual = taskVisualState(task.status, tasks, task.dependencies)
+  }
+  /** The board ordered by rank then by the record's own order, which is the graph's reading order. */
+  const order = new Map(tasks.map((task, index) => [task.id, index]))
+  tasks.sort((left, right) => left.depth - right.depth || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0))
+  /** The ids on a dependency cycle, reported rather than drawn as if the board were sound. */
+  const cycle = cycleIds(tasks)
+  if (cycle.length > 0) problems.push(`cycle ${cycle.join(",")}`)
+
+  /** Task tally by the record's own status vocabulary. */
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 }
+  for (const task of tasks) {
+    counts.total += 1
+    switch (task.status) {
+      case "completed": counts.completed += 1; break
+      case "in_progress": counts.inProgress += 1; break
+      case "pending": counts.pending += 1; break
+      case "claimed": counts.claimed += 1; break
+      case "failed": counts.failed += 1; break
+      case "cancelled": counts.cancelled += 1; break
+      default: counts.other += 1
+    }
+  }
+
+  /** The roster rows, excluding nothing: the record never carries a lead or a removed member. */
+  const members: TeamMemberRow[] = record.members.map((member) => {
+    /** This member's display name; `?` when the row carries none. */
+    const name = scalarText(member.name, 80) ?? "?"
+    /** Tasks assigned to this member, in board order. */
+    const owned = tasks.filter((task) => task.assignee === name)
+    /** Tasks of this member that are completed. */
+    const done = owned.filter((task) => task.status === "completed").length
+    /** The first owned task still in flight. */
+    const current = owned.find((task) => task.status === "in_progress" || task.status === "claimed")
+    return {
+      name,
+      role: scalarText(member.role ?? member.description, 120),
+      route: scalarText(member.route, 80),
+      status: scalarText(member.status, 40) ?? "unknown",
+      done,
+      total: owned.length,
+      progress: owned.length === 0 ? 0 : Math.round((done / owned.length) * 100),
+      currentTask: current?.id,
+      // The mpd mailbox is ours and DOES carry a read state, but the record does not fold it in;
+      // `null` keeps the honest "not observable here" rather than a fabricated 0.
+      unread: null,
+    }
+  })
+
+  /** Whether anything is actually in flight, which is what `phase` means to a reader. */
+  const active = record.members.some((member) => member.status === "running" || member.status === "provisioning")
+    || record.tasks.some((task) => task.status === "in_progress" || task.status === "claimed")
+  /** Total dependency edges across the board. */
+  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0)
+
+  return {
+    workspace,
+    team: {
+      id: scalarText(record.teamId, 60) ?? "?",
+      name: scalarText(record.name, 80) ?? "?",
+      // The STORED phase, brought in line with the record: an ended team stays ended, and a record
+      // whose contents have moved on is not left claiming a phase it no longer has.
+      phase: record.endedAt !== undefined ? "ended" : record.approvedAt === undefined ? "staged" : active ? "active" : "idle",
+      description: scalarText(record.description, 200),
+      captainSessionId: scalarText(record.leadSessionId, 80),
+      stagedAt: scalarText(record.approvedAt ?? record.createdAt, 40),
+      // `staged` is the Web's own precondition for the plan editor, and on this source it is REAL.
+      staged: record.approvedAt === undefined,
+      runnable: members.length > 0 && tasks.length > 0,
+      links,
+    },
+    members,
+    tasks,
+    counts,
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems: problems.slice(0, MAX_PROBLEMS),
+  }
 }
 
 /** The team-scene body: header, watchdog, roster, task DAG, counts, mailbox, problems. */

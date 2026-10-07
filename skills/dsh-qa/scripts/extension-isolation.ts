@@ -1303,7 +1303,7 @@ async function selfTest(): Promise<void> {
   const installer = readFileSync(join(REPO, "scripts", "install-profile.ts"), "utf8")
   check(installer.includes('"mpd-ext"'), "install-profile.ts no longer writes the mpd-ext row")
   // The bundle patch, read to prove the `mpd-ext` row is still mounted.
-  const patch = readFileSync(join(REPO, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(REPO, "cordis.patch.yml"), "utf8")
   check(/- id: mpd-ext\b/.test(patch), "the bundle patch no longer carries the mpd-ext row")
   // The repo's own stdio MCP server, the healthy server the bridge case boots against.
   const lsp = join(REPO, "packages", "mpd-mcp-lsp", "dist", "cli.js")

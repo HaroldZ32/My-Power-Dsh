@@ -1,0 +1,6 @@
+== before rebuild ==
+86a96bf0a50b1779606410e7e55c2a3658cc651fcde25efeec0233299d97fa50  packages/mpd-codegraph-plugin/dist/index.js
+9397f95fd33dfbe56ce99873e6a4aaa370b08981526262253f5ec8d13ab4c92d  packages/mpd-dsh-adapter-plugin/dist/index.js
+== after rebuild ==
+86a96bf0a50b1779606410e7e55c2a3658cc651fcde25efeec0233299d97fa50  packages/mpd-codegraph-plugin/dist/index.js
+9397f95fd33dfbe56ce99873e6a4aaa370b08981526262253f5ec8d13ab4c92d  packages/mpd-dsh-adapter-plugin/dist/index.js

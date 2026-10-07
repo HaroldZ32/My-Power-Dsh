@@ -1,0 +1,3 @@
+### node skills/dsh-qa/scripts/preset-register.ts --self-test
+[preset-register self-test] ok: roster fixtures + 2 declared bundle patches rewritten to checkout-absolute operands + preset row intact + retired preset-root service absent
+exit=0

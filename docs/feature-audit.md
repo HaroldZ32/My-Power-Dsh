@@ -6,6 +6,15 @@ This document is the **current baseline/capability comparison** for the port:
 AGENTS.md §1 references it as the engineering target. Historical port-plan records
 live under `docs/plan-*` and are process records, not part of this audit.
 
+> **STATUS REFRAMED (de-vendor-and-verify-law, 2026-10-07).** oh-my-openagent is an EARLY
+> REFERENCE, not a conformance target. The identity checks that used to measure this repository
+> against it are DELETED, no gate reads an upstream checkout, and no synchronisation is owed — the
+> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are
+> acknowledged in [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) and the root README. Everything below
+> is therefore a HISTORICAL MEASUREMENT of a capability surface, kept because the comparison is
+> informative; read a ✅ as "this shipped", never as "this is still upstream-conformant", and read
+> nothing here as a promise to follow upstream release by release.
+
 Audit date: 2026-08-26. Baseline: the upstream project 8c57e46 (v5.0.0-beta.20) capability surface.
 Legend: ✅ full / 🟡 partial / ❌ missing / ➖ not applicable (host-specific legacy).
 
@@ -20,7 +29,7 @@ Legend: ✅ full / 🟡 partial / ❌ missing / ➖ not applicable (host-specifi
 | plan mode | planning-only mode | ✅ | DSH native plan-mode |
 | delegate / multi-model | delegate-task with fallback chains | 🟡 | subagent tools + mpd_modelchain_resolve (11 roles, 2-3 entry DeepSeek chains). Richer variant/effort mapping from upstream model-core not ported |
 | background agents | parallel background tasks | ✅ | DSH jobs + tool-jobs |
-| Skills corpus | upstream skill corpus | ✅ | ported (2026-08-27): the corpus ships under `skills/` (18 directories, incl. `svn-master` and the repo's own `dsh-qa`) and is SERVED by reference — `mpd-bootstrap` registers `<bundle>/skills` as a `bundled` skills provider through the adapter, so it is never copied into `$DSH_HOME`; see `docs/omo-parity-gap.md` §Content gaps |
+| Skills corpus | upstream skill corpus | ✅ | ported (2026-08-27): the corpus ships under `skills/` (19 directories, incl. `svn-master`, the repo's own `dsh-qa` and `cordis-dev` — the latter adapted from the DeepSeek Harness's 创造模式 preset skills, MIT, see `LICENSE-NOTICES.md`) and is SERVED by reference — `mpd-bootstrap` registers `<bundle>/skills` as a `bundled` skills provider through the adapter, so it is never copied into `$DSH_HOME`; see `docs/omo-parity-gap.md` §Content gaps |
 | Rules / AGENTS.md | nested rule discovery & injection | ✅ | DSH agent-instructions (baseline + nested + change tracking) |
 | Built-in MCPs (5) | git_bash, lsp, codegraph, context7, grep_app | ✅ | git_bash (win-gated), lsp (8 tools), codegraph (plugin+init), context7, grep_app (remote rows) + ast_grep extra |
 | Slash commands | /goal /ultrawork /team /hyperplan … | 🟡 | DSH native commands + `/mpd-codegraph` and the ULW pair `/ulw` + `/ultrawork` (equivalent; the objective is the argument) + the TUI `/mpd` tree; the ULW engine is also a tool (`mpd_ultrawork`, `mpd_ulw` light alias). There is no `/team` and no `/agent-teams` command — team work is driven by the official tools |
@@ -57,7 +66,7 @@ mounts it since 0.1.7-rc.2, when the official Agent Teams plugin replaced it (se
 above and `docs/plan-0.1.7-adaptation.md`).
 
 The retained plugin is `0.1.16-rc.3-mpd`: the **0.1.14 body** plus the audited upstream
-**0.1.16-rc.3** deltas this host generation needs — `lib/harness-compat.js` (team delivery
+**0.1.16-rc.3** deltas this host generation needs — `lib/harness-compat.ts` (team delivery
 through the public `ctx.subagents.prompt(request, signal)` continuable seam on harness
 **0.1.5-rc.2+**, with the Alpha.2 `followup` and the Alpha.5…0.1.2-rc.1 symbol-keyed FIFO
 queue `Symbol.for('dsh.subagent.queuePrompt')` kept only as older-generation fallbacks;
@@ -66,9 +75,9 @@ payload (`setup(agent.ctx, agent)`) instead of reading `childCtx.agent` — an a
 Cordis ctx is a proxy that throws `cannot get property "agent" without inject` (there is no
 `agent` service; the host injects `agents`, plural), and the listener fires for the captain's
 own session too, so the old read aborted member initialization team-wide and made 0.1.5 team
-mode unusable; retirement guard on every delivery face), `lib/capabilities.js`
-(agent-scoped member instructions + captain-tool denial), `lib/tool-names.js`,
-`lib/web-routes.js` (browser-authentication fence + bounded JSON body), member
+mode unusable; retirement guard on every delivery face), `lib/capabilities.ts`
+(agent-scoped member instructions + captain-tool denial), `lib/tool-names.ts`,
+`lib/web-routes.ts` (browser-authentication fence + bounded JSON body), member
 turn-failure handling (`failMemberOpenAttempt`), and the durability fixes (settled
 team-lock release, blank optional task-field normalization, captain `claim_task` guard,
 parked-attempt recovery idempotency). Evidence: `evidence/agent-teams/scheduler-wakeup-fix/`.

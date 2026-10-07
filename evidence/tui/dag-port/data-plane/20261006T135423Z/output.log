@@ -1,0 +1,501 @@
+=== R21 data-plane evidence: raw outputs (2026-10-06T14:17:01Z) ===
+
+--- artifact revisions ---
+bc6b6955c306b4f2c0c1a9cae535e1cf1b5f2311130429429c166b17fa2437d7  packages/mpd-team-core-plugin/dist/index.js
+507f104ad06421ad14fcf3950c5f549351901a6e5ffe5a67f921d2dc4c79f080  packages/mpd-team-core-plugin/src/index.ts
+dcfc288e07e5868039c8bd1fdfe3502b5aa74cd755410eb4d397065529917f1a  packages/mpd-team-core-plugin/src/team-store.ts
+8bc01ad85975f0f2455c668c5daaa787dd3f387110dd2a4e0659c1214df57f54  packages/mpd-team-core-plugin/src/plan-store.ts
+
+--- THE AFTER RUN: the captain's plan shape approved through the real tool ---
+write-time reading: [{"reference":"2","form":"position"}]
+write-time reading: [{"reference":"2","form":"position"},{"reference":"3","form":"position"},{"reference":"4","form":"position"},{"reference":"6","form":"position"}]
+write-time reading: [{"reference":"7","form":"position"}]
+write-time reading: [{"reference":"2","form":"position"},{"reference":"3","form":"position"},{"reference":"4","form":"position"},{"reference":"5","form":"position"},{"reference":"6","form":"position"}]
+write-time reading: [{"reference":"7","form":"position"},{"reference":"8","form":"position"},{"reference":"9","form":"position"}]
+approval reported unresolved: []
+record: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/data-plane/20261006T135423Z/after-record.json
+board: [
+ {
+  "id": "T1",
+  "blockedBy": [],
+  "unresolved": []
+ },
+ {
+  "id": "T2",
+  "blockedBy": [],
+  "unresolved": []
+ },
+ {
+  "id": "T3",
+  "blockedBy": [],
+  "unresolved": []
+ },
+ {
+  "id": "T4",
+  "blockedBy": [],
+  "unresolved": []
+ },
+ {
+  "id": "T5",
+  "blockedBy": [],
+  "unresolved": []
+ },
+ {
+  "id": "T6",
+  "blockedBy": [
+   "T2"
+  ],
+  "unresolved": []
+ },
+ {
+  "id": "T7",
+  "blockedBy": [
+   "T2",
+   "T3",
+   "T4",
+   "T6"
+  ],
+  "unresolved": []
+ },
+ {
+  "id": "T8",
+  "blockedBy": [
+   "T7"
+  ],
+  "unresolved": []
+ },
+ {
+  "id": "T9",
+  "blockedBy": [
+   "T2",
+   "T3",
+   "T4",
+   "T5",
+   "T6"
+  ],
+  "unresolved": []
+ },
+ {
+  "id": "T10",
+  "blockedBy": [
+   "T7",
+   "T8",
+   "T9"
+  ],
+  "unresolved": []
+ }
+]
+
+--- THE REVIEWER'S OWN SCRIPT, run against MY producer's record ---
+{
+  "generatedAt": "2026-10-06T14:16:41.553Z",
+  "recordPath": "evidence/tui/dag-port/data-plane/20261006T135423Z/after-record.json",
+  "preRepair": {
+    "label": "pre-repair (frozen transcription)",
+    "servedDepthMode": "all-zero",
+    "tasks": 10,
+    "dataPlaneDepths": {
+      "T1": 0,
+      "T2": 0,
+      "T3": 0,
+      "T4": 0,
+      "T5": 0,
+      "T6": 0,
+      "T7": 0,
+      "T8": 0,
+      "T9": 0,
+      "T10": 0
+    },
+    "distinctRanks": [
+      0
+    ],
+    "links": 0,
+    "cycles": [],
+    "unresolvedReferences": [
+      "T6 -> 2",
+      "T7 -> 2",
+      "T7 -> 3",
+      "T7 -> 4",
+      "T7 -> 6",
+      "T8 -> 7",
+      "T9 -> 2",
+      "T9 -> 3",
+      "T9 -> 4",
+      "T9 -> 5",
+      "T9 -> 6",
+      "T10 -> 7",
+      "T10 -> 8",
+      "T10 -> 9"
+    ],
+    "payloadDepths": [
+      0
+    ],
+    "webLayout": {
+      "rankCount": 1,
+      "width": 168,
+      "height": 518,
+      "columns": [
+        [
+          "T1",
+          "T2",
+          "T3",
+          "T4",
+          "T5",
+          "T6",
+          "T7",
+          "T8",
+          "T9",
+          "T10"
+        ]
+      ],
+      "nodeRanks": [
+        "T1:0",
+        "T2:0",
+        "T3:0",
+        "T4:0",
+        "T5:0",
+        "T6:0",
+        "T7:0",
+        "T8:0",
+        "T9:0",
+        "T10:0"
+      ]
+    }
+  },
+  "resolvableFlatZero": {
+    "label": "references RESOLVE and every served depth is STILL 0 (the R20 arm)",
+    "servedDepthMode": "all-zero",
+    "tasks": 10,
+    "dataPlaneDepths": {
+      "T1": 0,
+      "T2": 0,
+      "T3": 0,
+      "T4": 0,
+      "T5": 0,
+      "T6": 1,
+      "T7": 2,
+      "T8": 3,
+      "T9": 2,
+      "T10": 4
+    },
+    "distinctRanks": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "links": 14,
+    "cycles": [],
+    "unresolvedReferences": [],
+    "payloadDepths": [
+      0
+    ],
+    "webLayout": {
+      "rankCount": 5,
+      "width": 840,
+      "height": 414,
+      "columns": [
+        [
+          "T1",
+          "T2",
+          "T3",
+          "T4",
+          "T5"
+        ],
+        [
+          "T6"
+        ],
+        [
+          "T7",
+          "T9"
+        ],
+        [
+          "T8"
+        ],
+        [
+          "T10"
+        ]
+      ],
+      "nodeRanks": [
+        "T1:0",
+        "T2:0",
+        "T3:0",
+        "T4:0",
+        "T5:0",
+        "T6:1",
+        "T7:2",
+        "T9:2",
+        "T8:3",
+        "T10:4"
+      ]
+    }
+  },
+  "resolvableFlatServed": {
+    "label": "references resolve and the payload carries the honest depths (the control)",
+    "servedDepthMode": "served",
+    "tasks": 10,
+    "dataPlaneDepths": {
+      "T1": 0,
+      "T2": 0,
+      "T3": 0,
+      "T4": 0,
+      "T5": 0,
+      "T6": 1,
+      "T7": 2,
+      "T8": 3,
+      "T9": 2,
+      "T10": 4
+    },
+    "distinctRanks": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "links": 14,
+    "cycles": [],
+    "unresolvedReferences": [],
+    "payloadDepths": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "webLayout": {
+      "rankCount": 5,
+      "width": 840,
+      "height": 414,
+      "columns": [
+        [
+          "T1",
+          "T2",
+          "T3",
+          "T4",
+          "T5"
+        ],
+        [
+          "T6"
+        ],
+        [
+          "T7",
+          "T9"
+        ],
+        [
+          "T8"
+        ],
+        [
+          "T10"
+        ]
+      ],
+      "nodeRanks": [
+        "T1:0",
+        "T2:0",
+        "T3:0",
+        "T4:0",
+        "T5:0",
+        "T6:1",
+        "T7:2",
+        "T9:2",
+        "T8:3",
+        "T10:4"
+      ]
+    }
+  },
+  "live": {
+    "label": "live record (as it stands now)",
+    "servedDepthMode": "served",
+    "tasks": 10,
+    "dataPlaneDepths": {
+      "T1": 0,
+      "T2": 0,
+      "T3": 0,
+      "T4": 0,
+      "T5": 0,
+      "T6": 1,
+      "T7": 2,
+      "T8": 3,
+      "T9": 2,
+      "T10": 4
+    },
+    "distinctRanks": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "links": 14,
+    "cycles": [],
+    "unresolvedReferences": [],
+    "payloadDepths": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "webLayout": {
+      "rankCount": 5,
+      "width": 840,
+      "height": 414,
+      "columns": [
+        [
+          "T1",
+          "T2",
+          "T3",
+          "T4",
+          "T5"
+        ],
+        [
+          "T6"
+        ],
+        [
+          "T7",
+          "T9"
+        ],
+        [
+          "T8"
+        ],
+        [
+          "T10"
+        ]
+      ],
+      "nodeRanks": [
+        "T1:0",
+        "T2:0",
+        "T3:0",
+        "T4:0",
+        "T5:0",
+        "T6:1",
+        "T7:2",
+        "T9:2",
+        "T8:3",
+        "T10:4"
+      ]
+    }
+  }
+}
+
+--- the report arm: one genuinely unresolvable reference ---
+write-time reading: [{"reference":"2","form":"position"}]
+write-time reading: [{"reference":"2","form":"position"},{"reference":"3","form":"position"},{"reference":"4","form":"position"},{"reference":"6","form":"position"}]
+write-time reading: [{"reference":"7","form":"position"}]
+write-time reading: [{"reference":"2","form":"position"},{"reference":"3","form":"position"},{"reference":"4","form":"position"},{"reference":"5","form":"position"},{"reference":"6","form":"position"}]
+write-time reading: [{"reference":"7","form":"position"},{"reference":"8","form":"position"},{"reference":"9","form":"position"},{"reference":"the review task","form":"unknown"}]
+approval reported unresolved: [{"taskId":"T10","references":["the review task"]}]
+record: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/data-plane/20261006T135423Z/report-record.json
+board: [
+ {
+  "id": "T1",
+  "blockedBy": [],
+  "unresolved": []
+ },
+ {
+  "id": "T2",
+  "blockedBy": [],
+  "unresolved": []
+ },
+ {
+  "id": "T3",
+  "blockedBy": [],
+  "unresolved": []
+ },
+ {
+  "id": "T4",
+  "blockedBy": [],
+  "unresolved": []
+ },
+ {
+  "id": "T5",
+  "blockedBy": [],
+  "unresolved": []
+ },
+ {
+  "id": "T6",
+  "blockedBy": [
+   "T2"
+  ],
+  "unresolved": []
+ },
+ {
+  "id": "T7",
+  "blockedBy": [
+   "T2",
+   "T3",
+   "T4",
+   "T6"
+  ],
+  "unresolved": []
+ },
+ {
+  "id": "T8",
+  "blockedBy": [
+   "T7"
+  ],
+  "unresolved": []
+ },
+ {
+  "id": "T9",
+  "blockedBy": [
+   "T2",
+   "T3",
+   "T4",
+   "T5",
+   "T6"
+  ],
+  "unresolved": []
+ },
+ {
+  "id": "T10",
+  "blockedBy": [
+   "T7",
+   "T8",
+   "T9",
+   "the review task"
+  ],
+  "unresolved": [
+   "the review task"
+  ]
+ }
+]
+
+--- mpd-team-core-plugin suite ---
+
+ 136 pass
+ 0 fail
+ 629 expect() calls
+Ran 136 tests across 10 files. [151.00ms]
+
+--- root typecheck ---
+packages/mpd-bundle-plugin/test/team-view.test.ts(1026,28): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+packages/mpd-bundle-plugin/test/team-view.test.ts(1113,18): error TS2339: Property 'ranksDerived' does not exist on type 'GraphGeometry'.
+packages/mpd-bundle-plugin/test/team-view.test.ts(1127,18): error TS2339: Property 'unresolved' does not exist on type 'GraphGeometry'.
+packages/mpd-bundle-plugin/test/team-view.test.ts(1137,17): error TS2339: Property 'ranksDerived' does not exist on type 'GraphGeometry'.
+packages/mpd-bundle-plugin/test/team-view.test.ts(1141,19): error TS2339: Property 'ranksDerived' does not exist on type 'GraphGeometry'.
+packages/mpd-bundle-plugin/test/team-view.test.ts(1143,19): error TS2339: Property 'unresolved' does not exist on type 'GraphGeometry'.
+packages/mpd-bundle-plugin/test/team-view.test.ts(1162,18): error TS2339: Property 'unresolved' does not exist on type 'GraphGeometry'.
+packages/mpd-bundle-plugin/test/team-view.test.ts(1168,18): error TS2339: Property 'unresolved' does not exist on type 'GraphGeometry'.
+
+--- dist freshness ---
+  STALE   packages/mpd-tui-plugin/dist/index.js  <- packages/mpd-tui-plugin/src/index.ts
+  STALE: packages/mpd-team-core-plugin/dist/index.js — committed packages/mpd-team-core-plugin/dist/index.js (132793 B, bc6b6955c306b4f2…) != fresh build of packages/mpd-team-core-plugin/src/index.ts (136550 B, a6b96536dbfdf3bf…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-team-core-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-core-plugin/dist/index.js
+  STALE: packages/mpd-tui-plugin/dist/index.js — committed packages/mpd-tui-plugin/dist/index.js (368005 B, 584b02f34c1da39a…) != fresh build of packages/mpd-tui-plugin/src/index.ts (367751 B, 8f3a6c4be632704b…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+[verify-dist-fresh] FAIL - 2 of 29 targets not fresh (STALE: 2) — 631ms
+
+--- comment coverage ---
+
+packages/mpd-tui-plugin/src/panel-workmate.ts (2)
+  391: comment — viewport
+  482: comment — scroller
+
+packages/mpd-tui-plugin/src/panel.ts (2)
+  266: comment — viewport
+  415: comment — scroller
+
+error: script "verify:comments" exited with code 1

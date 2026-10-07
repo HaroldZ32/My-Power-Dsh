@@ -1,0 +1,341 @@
+[verify-manual-paths] manual /root/dshProj/My-Power-Dsh/AGENTS.md
+[verify-manual-paths] root /root/dshProj/My-Power-Dsh
+[verify-manual-paths] manual-sha256 e25ca2e2ccb7e6fc0c62a8245b89d88ef3d5fe6fbfbba7ba1c74d4edb7d7ad49 bytes=65515 mtime=2026-09-29T09:52:42.056Z
+[verify-manual-paths] rule candidate=path-shaped token | position=code span or ./|../-prefixed prose | shape=no glob/tilde/url/whitespace/placeholder/trailing-punctuation | anchor=./|-literal else first segment must be a repo-root entry | existence=stat <root>/<token>
+[verify-manual-paths] subjects audited=133 (resolved=133 unresolved=0); tokens that are not path-shaped are out of scope by the rule above and are counted nowhere
+[verify-manual-paths] census bucket=resolved direction=audited count=133 reason="audited: the path exists at the repo root"
+[verify-manual-paths] resolved AGENTS.md:9 -> README.md
+[verify-manual-paths] resolved AGENTS.md:14 -> scripts/verify-docs-parity.ts
+[verify-manual-paths] resolved AGENTS.md:17 -> docs
+[verify-manual-paths] resolved AGENTS.md:20 -> docs/index.md
+[verify-manual-paths] resolved AGENTS.md:26 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:31 -> docs
+[verify-manual-paths] resolved AGENTS.md:39 -> docs/decisions.md
+[verify-manual-paths] resolved AGENTS.md:39 -> docs/bline-report.md
+[verify-manual-paths] resolved AGENTS.md:40 -> docs/omo-parity-gap.md
+[verify-manual-paths] resolved AGENTS.md:40 -> docs/review-p0-p3.md
+[verify-manual-paths] resolved AGENTS.md:40 -> docs/track-a-report.md
+[verify-manual-paths] resolved AGENTS.md:41 -> docs/ulw-deepseek-optimization.md
+[verify-manual-paths] resolved AGENTS.md:41 -> docs/tui-edition-report.md
+[verify-manual-paths] resolved AGENTS.md:46 -> agent-references
+[verify-manual-paths] resolved AGENTS.md:48 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:50 -> agent-references/index.md
+[verify-manual-paths] resolved AGENTS.md:54 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:55 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] resolved AGENTS.md:55 -> scripts/patch-agent-teams-fixes.ts
+[verify-manual-paths] resolved AGENTS.md:55 -> scripts/vendor-agent-teams.ts
+[verify-manual-paths] resolved AGENTS.md:56 -> agent-references/verification-flow.md
+[verify-manual-paths] resolved AGENTS.md:66 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:72 -> LICENSE.md
+[verify-manual-paths] resolved AGENTS.md:73 -> README.md
+[verify-manual-paths] resolved AGENTS.md:73 -> LICENSE-NOTICES.md
+[verify-manual-paths] resolved AGENTS.md:76 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:97 -> docs/plan-team-plane-split.md
+[verify-manual-paths] resolved AGENTS.md:101 -> packages/mpd-agent-teams-plugin
+[verify-manual-paths] resolved AGENTS.md:101 -> LICENSE-NOTICES.md
+[verify-manual-paths] resolved AGENTS.md:105 -> docs/plan-0.1.7-adaptation.md
+[verify-manual-paths] resolved AGENTS.md:136 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:146 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:221 -> scripts/verify-vendor.ts
+[verify-manual-paths] resolved AGENTS.md:221 -> scripts/repin-vendor.ts
+[verify-manual-paths] resolved AGENTS.md:221 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:222 -> scripts/verify-dist-fresh.ts
+[verify-manual-paths] resolved AGENTS.md:222 -> dist
+[verify-manual-paths] resolved AGENTS.md:223 -> skills/dsh-qa/scripts/preset-conformance.ts
+[verify-manual-paths] resolved AGENTS.md:224 -> scripts/verify-pack-closure.ts
+[verify-manual-paths] resolved AGENTS.md:228 -> scripts/install-profile.ts
+[verify-manual-paths] resolved AGENTS.md:229 -> scripts/verify-docs-parity.ts
+[verify-manual-paths] resolved AGENTS.md:229 -> docs
+[verify-manual-paths] resolved AGENTS.md:230 -> scripts/verify-plugin-manifest.ts
+[verify-manual-paths] resolved AGENTS.md:230 -> dsh-plugin.json
+[verify-manual-paths] resolved AGENTS.md:230 -> dsh-distribution.json
+[verify-manual-paths] resolved AGENTS.md:230 -> package.json
+[verify-manual-paths] resolved AGENTS.md:230 -> evidence
+[verify-manual-paths] resolved AGENTS.md:231 -> scripts/verify-comment-coverage.ts
+[verify-manual-paths] resolved AGENTS.md:231 -> scripts
+[verify-manual-paths] resolved AGENTS.md:231 -> docker
+[verify-manual-paths] resolved AGENTS.md:231 -> tests
+[verify-manual-paths] resolved AGENTS.md:231 -> templates
+[verify-manual-paths] resolved AGENTS.md:231 -> extensions
+[verify-manual-paths] resolved AGENTS.md:232 -> scripts/verify-manual-paths.ts
+[verify-manual-paths] resolved AGENTS.md:233 -> scripts/mpd-ext.ts
+[verify-manual-paths] resolved AGENTS.md:233 -> extensions/mpd-ext-example
+[verify-manual-paths] resolved AGENTS.md:234 -> skills/dsh-qa/scripts/bundle-lifecycle.ts
+[verify-manual-paths] resolved AGENTS.md:234 -> skills/dsh-qa/scripts/preset-conformance.ts
+[verify-manual-paths] resolved AGENTS.md:235 -> scripts/dump-config.ts
+[verify-manual-paths] resolved AGENTS.md:236 -> scripts/docker-e2e.ts
+[verify-manual-paths] resolved AGENTS.md:238 -> scripts/verify-pack-closure.ts
+[verify-manual-paths] resolved AGENTS.md:247 -> evidence/workmate/rename-delete-core/20260910T132303Z-mount
+[verify-manual-paths] resolved AGENTS.md:249 -> scripts/dump-config.ts
+[verify-manual-paths] resolved AGENTS.md:276 -> .git/HEAD
+[verify-manual-paths] resolved AGENTS.md:310 -> README.md
+[verify-manual-paths] resolved AGENTS.md:310 -> package.json
+[verify-manual-paths] resolved AGENTS.md:313 -> packages/mpd-dsh-adapter-plugin
+[verify-manual-paths] resolved AGENTS.md:322 -> packages/mpd-ext-plugin/src/skill-frontmatter.ts
+[verify-manual-paths] resolved AGENTS.md:337 -> packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.ts
+[verify-manual-paths] resolved AGENTS.md:345 -> scripts/patch-agent-teams-client.ts
+[verify-manual-paths] resolved AGENTS.md:347 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] resolved AGENTS.md:349 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] resolved AGENTS.md:354 -> scripts/vendor-agent-teams.ts
+[verify-manual-paths] resolved AGENTS.md:380 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:390 -> evidence/session-workspace-root/b1-resolution
+[verify-manual-paths] resolved AGENTS.md:397 -> .codegraph
+[verify-manual-paths] resolved AGENTS.md:398 -> packages/mpd-codegraph-plugin/README.md
+[verify-manual-paths] resolved AGENTS.md:406 -> node_modules
+[verify-manual-paths] resolved AGENTS.md:407 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:408 -> tsconfig.json
+[verify-manual-paths] resolved AGENTS.md:416 -> packages/mpd-ext-plugin/src/sdk.ts
+[verify-manual-paths] resolved AGENTS.md:417 -> packages/mpd-ext-plugin/dist/sdk.js
+[verify-manual-paths] resolved AGENTS.md:419 -> scripts/verify-dist-fresh.ts
+[verify-manual-paths] resolved AGENTS.md:427 -> skills/dsh-qa/scripts/preset-register.ts
+[verify-manual-paths] resolved AGENTS.md:437 -> skills/dsh-qa
+[verify-manual-paths] resolved AGENTS.md:446 -> skills/dsh-qa/scripts/lib/workspace-isolation.ts
+[verify-manual-paths] resolved AGENTS.md:460 -> skills/dsh-qa/scripts/lib/session-evidence.ts
+[verify-manual-paths] resolved AGENTS.md:467 -> evidence/dsh-qa/codegraph
+[verify-manual-paths] resolved AGENTS.md:479 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:513 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:515 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:516 -> presets/mpd.patch.yml
+[verify-manual-paths] resolved AGENTS.md:520 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:521 -> skills
+[verify-manual-paths] resolved AGENTS.md:533 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:542 -> package.json
+[verify-manual-paths] resolved AGENTS.md:543 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:544 -> presets/mpd.patch.yml
+[verify-manual-paths] resolved AGENTS.md:547 -> packages/mpd-bundle-plugin/client.js
+[verify-manual-paths] resolved AGENTS.md:555 -> .toolchain
+[verify-manual-paths] resolved AGENTS.md:564 -> scripts/pack-mpd.ts
+[verify-manual-paths] resolved AGENTS.md:565 -> dist/mpd-package
+[verify-manual-paths] resolved AGENTS.md:567 -> docs
+[verify-manual-paths] resolved AGENTS.md:567 -> agent-references
+[verify-manual-paths] resolved AGENTS.md:567 -> scripts
+[verify-manual-paths] resolved AGENTS.md:569 -> dist
+[verify-manual-paths] resolved AGENTS.md:571 -> package.json
+[verify-manual-paths] resolved AGENTS.md:573 -> scripts/install-profile.ts
+[verify-manual-paths] resolved AGENTS.md:575 -> scripts/install-profile.ts
+[verify-manual-paths] resolved AGENTS.md:577 -> cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:586 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:591 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:610 -> package.json
+[verify-manual-paths] resolved AGENTS.md:610 -> dsh-plugin.json
+[verify-manual-paths] resolved AGENTS.md:610 -> dsh-distribution.json
+[verify-manual-paths] resolved AGENTS.md:612 -> scripts/repin-vendor.ts
+[verify-manual-paths] resolved AGENTS.md:615 -> skills/dsh-qa/scripts/preset-conformance.ts
+[verify-manual-paths] resolved AGENTS.md:616 -> scripts/verify-dist-fresh.ts
+[verify-manual-paths] resolved AGENTS.md:616 -> scripts/verify-pack-closure.ts
+[verify-manual-paths] resolved AGENTS.md:620 -> scripts/docker-e2e.ts
+[verify-manual-paths] resolved AGENTS.md:622 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:633 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:635 -> evidence/gates/agents-budget
+[verify-manual-paths] resolved AGENTS.md:644 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:647 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:651 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:653 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:655 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:665 -> scripts/mpd-bg.ts
+[verify-manual-paths] resolved AGENTS.md:666 -> evidence/platform/harness-close
+[verify-manual-paths] resolved AGENTS.md:680 -> presets/mpd.patch.yml
+[verify-manual-paths] resolved AGENTS.md:724 -> packages/mpd-roster-provider-plugin/README.md
+[verify-manual-paths] resolved AGENTS.md:739 -> tests/golden
+[verify-manual-paths] census bucket=unresolved direction=audited count=0 reason="audited: the path does NOT exist at the repo root"
+[verify-manual-paths] census bucket=anticipatory direction=declared count=2 reason="DECLARED anticipatory class: the manual names it, the repository keeps it by design and deliberately does NOT create it (AGENTS.md §3) — printed with its count so an exemption for a file that does not exist can never rot silently"
+[verify-manual-paths] anticipatory AGENTS.md:36 -> docs/adder4.md [ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.ts` as its own class, and deliberately not created yet]
+[verify-manual-paths] anticipatory AGENTS.md:36 -> docs/cnt8.md [ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.ts` as its own class, and deliberately not created yet]
+[verify-manual-paths] census bucket=declared-unreferenced direction=declared count=0 reason="ROT GUARD: a declared anticipatory path this manual no longer names — reported here rather than dropped silently"
+[verify-manual-paths] census bucket=over-report:url direction=over-report count=0 reason="contains `://` — a URL, not a repo path"
+[verify-manual-paths] census bucket=over-report:fragment direction=over-report count=41 reason="contains whitespace — a sentence or command fragment, not one path"
+[verify-manual-paths] over-report:fragment AGENTS.md:115 -> /ulw <objective> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:115 -> /ultrawork <objective> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:117 -> /ulw … [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:221 -> node scripts/verify-vendor.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:221 -> node scripts/repin-vendor.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:222 -> node scripts/verify-dist-fresh.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:223 -> node skills/dsh-qa/scripts/preset-conformance.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:224 -> node scripts/verify-pack-closure.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:227 -> node skills/dsh-qa/scripts/<case>.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:228 -> node scripts/install-profile.ts --dry-run [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:230 -> node scripts/verify-plugin-manifest.ts --pack [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:231 -> node scripts/verify-comment-coverage.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:232 -> node scripts/verify-manual-paths.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:233 -> bun scripts/mpd-ext.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:233 -> bun scripts/mpd-ext.ts validate extensions/mpd-ext-example [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:234 -> bun skills/dsh-qa/scripts/bundle-lifecycle.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:234 -> node skills/dsh-qa/scripts/preset-conformance.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:235 -> node scripts/dump-config.ts --profile <p> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:236 -> node scripts/docker-e2e.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:238 -> node scripts/verify-pack-closure.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:249 -> node scripts/dump-config.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:400 -> node <file>.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:419 -> node scripts/verify-dist-fresh.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:441 -> agentsHome = $DSH_AGENTS_HOME ?? ~/.agents [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:468 -> evidence/<domain>/<slug>/<timestamp>/{result.json, output.log} [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:529 -> dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:529 -> … add @mpd-dsh/mpd [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:548 -> dsh plugin remove @mpd-dsh/mpd [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:564 -> node scripts/pack-mpd.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:575 -> node scripts/install-profile.ts --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain] [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:610 -> git checkout -b release/vX.Y.Z [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:612 -> node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:615 -> node skills/dsh-qa/scripts/preset-conformance.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:616 -> node scripts/verify-dist-fresh.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:616 -> node scripts/verify-pack-closure.ts [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:620 -> node scripts/docker-e2e.ts --mode source --require-docker [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:647 -> node scripts/mpd-bg.ts reload-check <module-path> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:651 -> node scripts/mpd-bg.ts run --log <workspace-path> -- <cmd> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:653 -> node scripts/mpd-bg.ts probe <pidfile> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:655 -> node scripts/mpd-bg.ts check-write <path> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:665 -> node scripts/mpd-bg.ts --self-test [the whole code span, whitespace included]
+[verify-manual-paths] census bucket=over-report:trailing direction=over-report count=1 reason="ends with punctuation — a bound-token fragment, not a path target"
+[verify-manual-paths] over-report:trailing AGENTS.md:465 -> request/header.data.header.tools[] [the token ends with "]"]
+[verify-manual-paths] census bucket=over-report:npm direction=over-report count=14 reason="starts with `@` — an npm package name, not a repo path"
+[verify-manual-paths] over-report:npm AGENTS.md:77 -> @deepseek-ai/dsh-llm-deepseek
+[verify-manual-paths] over-report:npm AGENTS.md:87 -> @deepseek-ai/dsh-experimental-agent-team
+[verify-manual-paths] over-report:npm AGENTS.md:232 -> @scope/name
+[verify-manual-paths] over-report:npm AGENTS.md:424 -> @mpd-dsh/mpd/packages/...
+[verify-manual-paths] over-report:npm AGENTS.md:425 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:514 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:529 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:542 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:548 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:553 -> @ast-grep/cli
+[verify-manual-paths] over-report:npm AGENTS.md:554 -> @code-yeongyu/comment-checker
+[verify-manual-paths] over-report:npm AGENTS.md:677 -> @deepseek-ai/dsh-agent-presets
+[verify-manual-paths] over-report:npm AGENTS.md:678 -> @deepseek-ai/dsh-agent-preset-registry
+[verify-manual-paths] over-report:npm AGENTS.md:679 -> @deepseek-ai/dsh-agent-preset
+[verify-manual-paths] census bucket=over-report:notRoot direction=over-report count=19 reason="first segment is not an entry at the repo root — a slug, route, branch, tool name or package-relative spelling, not a repo path"
+[verify-manual-paths] over-report:notRoot AGENTS.md:42 -> mpd-agent-teams-plugin/README.md [first segment "mpd-agent-teams-plugin"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:65 -> code-yeongyu/oh-my-openagent [first segment "code-yeongyu"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:100 -> lib/client.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:270 -> release/vX.Y.Z [first segment "release"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:309 -> src/index.ts [first segment "src"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:319 -> src/shared.ts [first segment "src"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:321 -> src/index.ts [first segment "src"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:327 -> lib/mpd-adapter-ctx.ts [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:334 -> lib/members.ts [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:336 -> _deps/dsh-agent [first segment "_deps"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:344 -> lib/client.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:355 -> lib/index.ts [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:357 -> lib/mpd-adapter-ctx.ts [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:445 -> session/create [first segment "session"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:449 -> mpd_workmate_rename/delete [first segment "mpd_workmate_rename"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:464 -> tool/call.data.name [first segment "tool"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:465 -> tool/result [first segment "tool"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:529 -> github:HaroldZ32/My-Power-Dsh [first segment "github:HaroldZ32"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:610 -> release/vX.Y.Z [first segment "release"]
+[verify-manual-paths] census bucket=over-report:bare direction=over-report count=16 reason="a bare file name with no directory component and not a root file this repo is expected to carry"
+[verify-manual-paths] over-report:bare AGENTS.md:42 -> README_ZH.md
+[verify-manual-paths] over-report:bare AGENTS.md:48 -> AGENT.md
+[verify-manual-paths] over-report:bare AGENTS.md:48 -> CLAUDE.md
+[verify-manual-paths] over-report:bare AGENTS.md:135 -> AGENT.md
+[verify-manual-paths] over-report:bare AGENTS.md:136 -> CLAUDE.md
+[verify-manual-paths] over-report:bare AGENTS.md:234 -> full-profile-boot.sh
+[verify-manual-paths] over-report:bare AGENTS.md:234 -> mount-proof.sh
+[verify-manual-paths] over-report:bare AGENTS.md:400 -> .ts
+[verify-manual-paths] over-report:bare AGENTS.md:402 -> .ts
+[verify-manual-paths] over-report:bare AGENTS.md:404 -> .cts
+[verify-manual-paths] over-report:bare AGENTS.md:451 -> settings.yaml
+[verify-manual-paths] over-report:bare AGENTS.md:676 -> preset.yml
+[verify-manual-paths] over-report:bare AGENTS.md:676 -> agent.cordis.yml
+[verify-manual-paths] over-report:bare AGENTS.md:690 -> roles.test.ts
+[verify-manual-paths] over-report:bare AGENTS.md:704 -> mpd.jsonc
+[verify-manual-paths] over-report:bare AGENTS.md:736 -> meta.json
+[verify-manual-paths] census bucket=under-report:glob direction=under-report count=43 reason="a glob pattern — there is no single file to stat"
+[verify-manual-paths] under-report:glob AGENTS.md:9 -> docs/*.md
+[verify-manual-paths] under-report:glob AGENTS.md:10 -> packages/*/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:10 -> *.zh-CN.md
+[verify-manual-paths] under-report:glob AGENTS.md:16 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:17 -> extensions/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:17 -> templates/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:18 -> packages/*/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:23 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:28 -> agent-references/**
+[verify-manual-paths] under-report:glob AGENTS.md:29 -> *.zh-CN.md
+[verify-manual-paths] under-report:glob AGENTS.md:31 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:35 -> docs/plan-*.md
+[verify-manual-paths] under-report:glob AGENTS.md:55 -> packages/mpd-agent-teams-plugin/**
+[verify-manual-paths] under-report:glob AGENTS.md:222 -> packages/*/src
+[verify-manual-paths] under-report:glob AGENTS.md:229 -> extensions/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:229 -> templates/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:229 -> README*.md
+[verify-manual-paths] under-report:glob AGENTS.md:229 -> docs/**
+[verify-manual-paths] under-report:glob AGENTS.md:229 -> packages/*/README*.md
+[verify-manual-paths] under-report:glob AGENTS.md:229 -> extensions/**
+[verify-manual-paths] under-report:glob AGENTS.md:229 -> templates/**/README*.md
+[verify-manual-paths] under-report:glob AGENTS.md:231 -> packages/*/{src,test,self-fix-tests}
+[verify-manual-paths] under-report:glob AGENTS.md:231 -> skills/*/scripts/
+[verify-manual-paths] under-report:glob AGENTS.md:236 -> docker/**
+[verify-manual-paths] under-report:glob AGENTS.md:257 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:327 -> lib/mpd-*.js
+[verify-manual-paths] under-report:glob AGENTS.md:403 -> packages/*/src
+[verify-manual-paths] under-report:glob AGENTS.md:404 -> dist/*.js
+[verify-manual-paths] under-report:glob AGENTS.md:448 -> <repo>/.mpd/team/mpd-default-*
+[verify-manual-paths] under-report:glob AGENTS.md:478 -> packages/*/dist/**
+[verify-manual-paths] under-report:glob AGENTS.md:478 -> dist/mpd-package/**
+[verify-manual-paths] under-report:glob AGENTS.md:479 -> .mpd/plans/**
+[verify-manual-paths] under-report:glob AGENTS.md:480 -> src/**
+[verify-manual-paths] under-report:glob AGENTS.md:485 -> dist/**
+[verify-manual-paths] under-report:glob AGENTS.md:545 -> ./packages/*
+[verify-manual-paths] under-report:glob AGENTS.md:546 -> ./skills/*
+[verify-manual-paths] under-report:glob AGENTS.md:546 -> ./presets/*
+[verify-manual-paths] under-report:glob AGENTS.md:590 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:594 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:613 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:623 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:625 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:636 -> skills/**
+[verify-manual-paths] census bucket=under-report:home direction=under-report count=10 reason="home-relative (`~`) — it resolves in the user's HOME, not in the repo"
+[verify-manual-paths] under-report:home AGENTS.md:150 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:381 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:395 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:439 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:441 -> ~/.agents
+[verify-manual-paths] under-report:home AGENTS.md:522 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:563 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:658 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:725 -> ~/.mpd/workmate/
+[verify-manual-paths] under-report:home AGENTS.md:732 -> ~/.mpd/workmate/.archive/<key>-<stamp>/
+[verify-manual-paths] census bucket=under-report:absolute direction=under-report count=6 reason="absolute (`/`) — it is outside the repo root"
+[verify-manual-paths] under-report:absolute AGENTS.md:19 -> /docs/index.md
+[verify-manual-paths] under-report:absolute AGENTS.md:115 -> /ulw
+[verify-manual-paths] under-report:absolute AGENTS.md:115 -> /ultrawork
+[verify-manual-paths] under-report:absolute AGENTS.md:117 -> /ulw
+[verify-manual-paths] under-report:absolute AGENTS.md:636 -> /tmp
+[verify-manual-paths] under-report:absolute AGENTS.md:649 -> /tmp
+[verify-manual-paths] census bucket=under-report:outside direction=under-report count=0 reason="escapes the repo root (`../`) — it is outside the repo root"
+[verify-manual-paths] census bucket=under-report:placeholder direction=under-report count=29 reason="carries a placeholder (`<name>`, `$VAR`, `{a,b}`) — not a literal path"
+[verify-manual-paths] under-report:placeholder AGENTS.md:12 -> [English](./<name>.md)
+[verify-manual-paths] under-report:placeholder AGENTS.md:95 -> .mpd/team/teams/<id>.json
+[verify-manual-paths] under-report:placeholder AGENTS.md:103 -> <workspace>/.mpd/team
+[verify-manual-paths] under-report:placeholder AGENTS.md:111 -> <profile>/node_modules
+[verify-manual-paths] under-report:placeholder AGENTS.md:212 -> packages/<pkg>/README.md
+[verify-manual-paths] under-report:placeholder AGENTS.md:227 -> skills/dsh-qa/scripts/<case>.ts
+[verify-manual-paths] under-report:placeholder AGENTS.md:268 -> feature/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:269 -> fix/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:282 -> backup/<branch>-<sha>
+[verify-manual-paths] under-report:placeholder AGENTS.md:309 -> packages/<pkg>/dist/index.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:310 -> @mpd-dsh/<name>
+[verify-manual-paths] under-report:placeholder AGENTS.md:326 -> lib/{index,capabilities,harness-compat,members,command,tools}.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:391 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:392 -> <bundle>/presets
+[verify-manual-paths] under-report:placeholder AGENTS.md:400 -> <file>.ts
+[verify-manual-paths] under-report:placeholder AGENTS.md:441 -> <DSH_HOME>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:441 -> <agentsHome>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:447 -> <DSH_HOME>/sessions/<projectKey(realCwd)>
+[verify-manual-paths] under-report:placeholder AGENTS.md:461 -> <DSH_HOME>/sessions/<projectKey(cwd)>/<sessionId>/
+[verify-manual-paths] under-report:placeholder AGENTS.md:468 -> evidence/<domain>/<slug>/<timestamp>/{result.json,
+[verify-manual-paths] under-report:placeholder AGENTS.md:481 -> packages/<pkg>/dist/index.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:519 -> <profile>/node_modules
+[verify-manual-paths] under-report:placeholder AGENTS.md:530 -> <DSH_HOME>/profiles/<profile>/
+[verify-manual-paths] under-report:placeholder AGENTS.md:537 -> github:<owner>/<repo>
+[verify-manual-paths] under-report:placeholder AGENTS.md:540 -> github:<owner>/<repo>#dev
+[verify-manual-paths] under-report:placeholder AGENTS.md:557 -> <profile>/node_modules/@mpd-dsh/mpd
+[verify-manual-paths] under-report:placeholder AGENTS.md:562 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:578 -> $DSH_HOME/.agent-presets/
+[verify-manual-paths] under-report:placeholder AGENTS.md:687 -> personas/<id>.md
+[verify-manual-paths] census bucket=under-report:elided direction=under-report count=1 reason="contains an elision mark — the path is not written out, so no literal target exists"
+[verify-manual-paths] under-report:elided AGENTS.md:12 -> [中文](./<name>.zh-CN.md) [non-ASCII/elision characters]
+[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason="a directory spelled in words rather than as a token — nothing to stat"
+[verify-manual-paths] census family=over-report direction=over-report total=91 buckets=6 (counted apart from under-report and from unresolved)
+[verify-manual-paths] census family=under-report direction=under-report total=89 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] PASS resolved=133 over-report=91 under-report=89 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)

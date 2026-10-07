@@ -1,7 +1,7 @@
-import * as core from "./core.cjs";
-import type * as errors from "./errors.cjs";
-import type * as schemas from "./schemas.cjs";
-import * as util from "./util.cjs";
+import * as core from "./core.cts";
+import type * as errors from "./errors.cts";
+import type * as schemas from "./schemas.cts";
+import * as util from "./util.cts";
 export interface $ZodCheckDef {
     check: string;
     error?: errors.$ZodErrorMap<never> | undefined;

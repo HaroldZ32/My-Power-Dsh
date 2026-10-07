@@ -24,11 +24,11 @@
     },
     "./types": {
       "types": "./lib/types/types.d.ts",
-      "default": "./lib/types/types.js"
+      "default": "./lib/types/types.ts"
     },
     "./presentation": {
       "types": "./lib/types/presentation.d.ts",
-      "default": "./lib/types/presentation.js"
+      "default": "./lib/types/presentation.ts"
     },
     "./src/*": "./src/*",
     "./package.json": "./package.json"

@@ -3721,7 +3721,7 @@ window.__ModuleLoader__.load({
 	}
 });
 
-//# sourceMappingURL=client.js.map
+//# sourceMappingURL=agent-teams-client.js.map
 
 // ==== @mpd-dsh/team-page: AgentTeams rendered inside a DSH-better-sidebar tab ====
 window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle web client — the bundle's OWN team surface: the TEAM WATCHDOG view.
@@ -4815,7 +4815,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     }
   }))
 
-  /** The thirteen scalar knobs and the twelve slot leaves, in the order the card renders them. */
+  /** The thirteen scalar knobs, the twelve slot leaves and the TUI surface's own knob, in the order the card renders them. */
   const FIELDS                    = [
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
     { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -4838,6 +4838,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     // the human sentences are built from SLOT_GROUPS below, so a slot's copy is stated once here
     // exactly as the shared declaration states it (a test compares the two element-wise).
     ...SLOT_FIELDS,
+    // The TUI surface's own knob (the Ctrl+A takeover toggle): mirrored from the ONE declaration,
+    // whose `hint` is the semantics sentence — the card renders it as `semantics`, exactly like the
+    // two watchdog rows above.
+    { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", semantics: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" },
   ]
 
   // The per-row hint, HUMAN SENTENCE FIRST: the knob's own `semantics` (what it is and what
@@ -5620,6 +5624,195 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     }
   }
 
+  // ── R2: the section renders on the harness's OWN settings-form tokens ───────────
+  // WHAT THIS IS: the card's entire visual contract, read off the INSTALLED primitives —
+  // `@deepseek-ai/dsh-client-ui-primitives/lib/settings-form/fields.module.css` (`.field`, `.field +
+  // .field`, `.label`, `.hint`, `.input`, `.reset`) and `SettingsForm.module.css` (`.form`,
+  // `.footer`, `.save`, `.readOnly`), with the alias VALUES and the focus ring taken from the theme
+  // bundle (`dsh-client-ui-theme`: `body{…}` is the light theme, `body[data-ds-dark-theme]{…}` the
+  // dark one, and its `focus.css` holds `:root{--dsw-focus-ring-width:2px}` plus the global
+  // `:focus-visible` rule), and the section title/description from the settings plane's own
+  // `dsh-client-ui-settings-models` (`.title` 16px/500/24px, `.description` 14px/24px). R2 is a
+  // RESTYLE: nothing in this block reads, writes or re-keys a value — every key, attribute and
+  // behaviour path below the styles is the one that shipped.
+  //
+  // FALLBACK DISCIPLINE (BINDING): an inline style gets no stylesheet default, and a bare
+  // `var(--dsw-…)` that resolves to nothing paints an invisible control — so every token below is
+  // read WITH a literal. A token this bundle ALREADY pairs keeps that exact literal
+  // (`--dsw-alias-label-primary, #1c1c1e`, `-secondary, #5b6472`, `-tertiary, #8a94a6`,
+  // `--dsw-alias-state-business-primary, #4d6bfe` — the vocabulary `team-view.ts` renders the team
+  // panel with, so the two panels degrade identically); a token it does not pair yet carries the
+  // token's own LIGHT-theme value from the theme bundle, which is what the token resolves to by
+  // default. `--dsw-focus-ring-color` is DEFINED by that theme (as `transparent`, for pointer
+  // modality), so its fallback is the host's own nested one rather than a literal.
+  //
+  // THE FOCUS RING IS NOT PAINTED HERE, deliberately: the host's global `:focus-visible` rule
+  // already gives every focusable element `outline-width: var(--dsw-focus-ring-width)` in
+  // `outline-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary))` — the
+  // exact pair the contract names — and a pseudo-class cannot be expressed as an inline style. Only
+  // the CONTROL opts out, exactly as the host's `.input:focus-visible` does (border accent, no
+  // outline), through the two listeners below.
+  /** The radius the harness's `.field` / `.input` / `.button` all share (`--dsw-radius-md:12px`). */
+  const RADIUS_MD = "var(--dsw-radius-md, 12px)"
+  /** The control stroke (`.input`): 0.5px, light-theme literal. */
+  const STROKE_CONTROL = "0.5px solid var(--dsw-alias-border-l4, #00000029)"
+  /** The FIELD separator (`.field + .field`): 0.5px, light-theme literal. */
+  const STROKE_FIELD = "0.5px solid var(--dsw-alias-border-l2, #0000001a)"
+  /** The outlined action's stroke (`.button.outline`): 0.5px, light-theme literal. */
+  const STROKE_BUTTON = "0.5px solid var(--dsw-alias-border-l3, #0000001f)"
+  /** The label alias the host's `.label` colours with (the bundle's existing literal). */
+  const LABEL_PRIMARY = "var(--dsw-alias-label-primary, #1c1c1e)"
+  /** The muted alias (`.reset`, `.description`; the bundle's existing literal). */
+  const LABEL_SECONDARY = "var(--dsw-alias-label-secondary, #5b6472)"
+  /** The dimmest alias (`.hint`, `.readOnly`, `.failed`; the bundle's existing literal). */
+  const LABEL_TERTIARY = "var(--dsw-alias-label-tertiary, #8a94a6)"
+  /** The control fill (`.input` `--dsw-alias-bg-layer-3`, light-theme literal `#fff`). */
+  const FILL_CONTROL = "var(--dsw-alias-bg-layer-3, #fff)"
+  /** The focus/active accent (`.input:focus-visible`; the bundle's existing literal). */
+  const ACCENT = "var(--dsw-alias-state-business-primary, #4d6bfe)"
+  /** The pointer-hover wash (`.button.outline:hover`), light-theme literal. */
+  const HOVER_WASH = "var(--dsw-alias-interactive-bg-hover, #2631480f)"
+  /**
+   * Every inline style bag the card renders with. The keys are the ROLES the harness names
+   * (`.field`, `.label`, `.hint`, `.input`, `.help`, `.footer`, `.save`, `.reset`, `.readOnly`), so a
+   * reviewer can diff one against its stylesheet rule directly.
+   */
+  const SKIN                                                  = {
+    /** The host's `.form`: a plain column — the host's own sections have no panel chrome. */
+    form: { display: "flex", flexDirection: "column" },
+    /** `.field`: flex column, gap 6px, padding 12px 0. The separator is added per field below. */
+    field: { display: "flex", flexDirection: "column", gap: 6, padding: "12px 0" },
+    /** The settings section title (`.title`: 16px/500/24px, label-primary). */
+    title: { margin: 0, fontSize: 16, fontWeight: 500, lineHeight: "24px", color: LABEL_PRIMARY },
+    /** The section description (`.description`: 14px/24px, label-secondary). */
+    description: { margin: "0 0 12px", fontSize: 14, lineHeight: "24px", color: LABEL_SECONDARY },
+    /** `.readOnly` / `.unavailable`: the state notes, 12px/1.5 tertiary. */
+    note: { margin: "0 0 12px", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** `.help`: the disclosure block — 12px/1.6 stack, 8px between paragraphs. */
+    help: { margin: "0 0 12px", display: "flex", flexDirection: "column", gap: 8, paddingTop: 10 },
+    /** One `.help > p`: 12px/1.6, the hint colour (the captain's R2 note: no wall of body text). */
+    helpText: { margin: 0, fontSize: 12, lineHeight: 1.6, color: LABEL_TERTIARY },
+    /** `.label`: 13px/500/1.5, label-primary. */
+    label: { display: "block", fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
+    /** `.hint`: the row's human sentence — 12px/1.5 tertiary (the contract's hint row). */
+    hint: { display: "block", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** The block that stacks the sentence over its key, with the 2px the row always had. */
+    hintBlock: { display: "block", marginBottom: 2 },
+    /** The dotted key BENEATH a sentence: one step down (11px, dimmer) so it never competes. */
+    key: { display: "block", fontSize: 11, lineHeight: 1.5, opacity: 0.6, color: LABEL_TERTIARY },
+    /** The dotted key as a row's ONLY hint (a knob with no sentence): the hint size, still dim. */
+    keyOnly: { display: "block", marginBottom: 2, fontSize: 12, lineHeight: 1.5, opacity: 0.6, color: LABEL_TERTIARY },
+    /** `.input`: 34px, 0 12px padding, the control stroke, radius-md, layer-3 fill, 13px. */
+    control: {
+      boxSizing: "border-box",
+      width: "100%",
+      height: 34,
+      padding: "0 12px",
+      border: STROKE_CONTROL,
+      borderRadius: RADIUS_MD,
+      background: FILL_CONTROL,
+      fontSize: 13,
+      lineHeight: 1.5,
+      color: LABEL_PRIMARY,
+    },
+    /** `.input:disabled`: a control the page refuses writes on greys its text and drops the cursor. */
+    controlOff: { color: LABEL_TERTIARY, cursor: "default" },
+    /** A slot's group heading: the label treatment, with the field rhythm's top padding. */
+    groupHeading: { marginTop: 12, fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
+    /** A slot's one-line impact: the hint treatment. */
+    groupImpact: { margin: "2px 0 0", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** The row's marker line (overridden / invalid) that carries the reset link. */
+    resetNote: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** `.reset`: a link-shaped button — no chrome, 12px/1.5, label-secondary. */
+    reset: {
+      border: "none",
+      background: "none",
+      padding: 0,
+      fontFamily: "inherit",
+      fontSize: 12,
+      lineHeight: 1.5,
+      color: LABEL_SECONDARY,
+      cursor: "pointer",
+    },
+    /** `.footer`: one row, gap 8px, 16px above. */
+    footer: { display: "flex", alignItems: "center", gap: 8, paddingTop: 16 },
+    /** `.save`: radius-md pill, 5px 14px, 13px, label-primary fill with the layer-3 text colour. */
+    save: {
+      appearance: "none",
+      border: "1px solid transparent",
+      borderRadius: RADIUS_MD,
+      padding: "5px 14px",
+      fontFamily: "inherit",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer",
+      background: LABEL_PRIMARY,
+      color: FILL_CONTROL,
+    },
+    /** `.button.outline`: the secondary action beside the save. */
+    discard: {
+      appearance: "none",
+      border: STROKE_BUTTON,
+      borderRadius: RADIUS_MD,
+      padding: "5px 14px",
+      fontFamily: "inherit",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer",
+      background: "transparent",
+      color: LABEL_PRIMARY,
+    },
+    /** `.failed`: the save's own status line, 12px/1.5 tertiary, stretched like the host's. */
+    status: { flex: 1, minWidth: 0, margin: 0, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+  }
+
+  /** The field bag of the field at `index`: the separator lands on every field but the FIRST. */
+  const fieldStyle = (index        )                                  => (index === 0 ? SKIN.field : { ...SKIN.field, borderTop: STROKE_FIELD })
+
+  /** The control bag of one row: a control the page refuses writes on takes `.input:disabled`. */
+  const controlStyle = (off         )                                  => (off ? { ...SKIN.control, ...SKIN.controlOff } : SKIN.control)
+
+  /** The mutable inline-style bag a focus or hover listener writes to (a DOM element's `style`). */
+                        
+                                                             
+                              
+   
+
+  /** The event shape those listeners read: the element the event was dispatched on. */
+                        
+                                                                                   
+                                        
+   
+
+  /** Write one declaration set onto the element an event came from, so inline styles can react. */
+  const paint = (event            , declarations                        )       => {
+    for (const [property, value] of Object.entries(declarations)) event.currentTarget.style[property] = value
+  }
+
+  /** The control's focus pair: the host's `.input:focus-visible` on, and the token pair back off. */
+  const CONTROL_FOCUS = {
+    /** On focus: the business-primary border, with the ring opted out (the host's own rule). */
+    onFocus: (event            )       => paint(event, { borderColor: ACCENT, outline: "none" }),
+    /** On blur: clear both, so the inline `border` shorthand and the global ring apply again. */
+    onBlur: (event            )       => paint(event, { borderColor: "", outline: "" }),
+  }
+
+  /** The reset link's hover pair (`.reset:hover` → label-primary), for a button that reads as a link. */
+  const LINK_HOVER = {
+    /** Enter: the link darkens to label-primary. */
+    onMouseEnter: (event            )       => paint(event, { color: LABEL_PRIMARY }),
+    /** Leave: back to label-secondary. */
+    onMouseLeave: (event            )       => paint(event, { color: LABEL_SECONDARY }),
+  }
+
+  /** The outlined action's hover pair (`.button.outline:hover` → the interactive wash). */
+  const BUTTON_HOVER = {
+    /** Enter: the wash replaces the transparent fill. */
+    onMouseEnter: (event            )       => paint(event, { background: HOVER_WASH }),
+    /** Leave: back to transparent. */
+    onMouseLeave: (event            )       => paint(event, { background: "transparent" }),
+  }
+
   /** The card component: self-contained markup, no private host components. */
   function createCardComponent(react              , fields                    = FIELDS, readGroups                = () => [])                                         {
     /** The element factory, destructured once per component construction. */
@@ -5644,8 +5837,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       } catch {
         /* a broken catalog probe degrades the OPTIONS, never the section */
       }
-      /** One rendered row per knob, in declaration order. */
-      const rows = fields.map((field) => {
+      /** One rendered row per knob, in declaration order (`index` picks the separator). */
+      const rows = fields.map((field, index) => {
         /** The row's dotted knob key. */
         const key = fieldKey(field)
         /** The row's control (a knob with no projected control renders an empty input). */
@@ -5668,12 +5861,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         const pointer = keyAt < 0 ? hint : hint.slice(keyAt).replace(/\)\s*$/, "").trim()
         /** The hint markup: sentence plus key, or the key alone for a knob with no sentence. */
         const hintNode = human.length === 0
-          ? createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 }, "data-mpd-row-key": key }, pointer)
+          ? createElement("span", { style: SKIN.keyOnly, "data-mpd-row-key": key }, pointer)
           : createElement(
               "span",
-              { style: { display: "block", marginBottom: 2 } },
-              createElement("span", { style: { display: "block", fontSize: 12, opacity: 0.95 }, "data-mpd-row-human": key }, human),
-              createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.6 }, "data-mpd-row-key": key }, pointer),
+              { style: SKIN.hintBlock },
+              createElement("span", { style: SKIN.hint, "data-mpd-row-human": key }, human),
+              createElement("span", { style: SKIN.key, "data-mpd-row-key": key }, pointer),
             )
         /** The row's options (select knobs only). */
         const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
@@ -5681,7 +5874,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         const input = field.kind === "select" && options.length > 0
           ? createElement(
               "select",
-              { value: control.text, disabled, onChange: (event             ) => props.edit(key, event.target.value), style: { width: "100%" } },
+              { value: control.text, disabled, onChange: (event             ) => props.edit(key, event.target.value), style: { ...controlStyle(disabled), cursor: disabled ? "default" : "pointer" }, ...CONTROL_FOCUS },
               createElement("option", { value: "" }, "—"),
               ...optionElements(createElement, options),
             )
@@ -5689,19 +5882,20 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
               value: control.text,
               disabled,
               onChange: (event             ) => props.edit(key, event.target.value),
-              style: { width: "100%" },
+              style: controlStyle(disabled),
+              ...CONTROL_FOCUS,
             })
         return createElement(
           "label",
-          { key, style: { display: "block", margin: "8px 0" } },
-          createElement("span", { style: { display: "block", fontSize: 13, fontWeight: 600 } }, label),
+          { key, style: fieldStyle(index) },
+          createElement("span", { style: SKIN.label }, label),
           hintNode,
           input,
           createElement(
             "span",
-            { style: { fontSize: 11, opacity: 0.7 } },
+            { style: SKIN.resetNote },
             (control.overridden ? "overridden · " : "") + (control.invalid ? "not a valid value · " : ""),
-            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key) }, t("reset")),
+            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key), style: SKIN.reset, ...LINK_HOVER }, t("reset")),
           ),
         )
       })
@@ -5718,7 +5912,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       /** The catalog line rendered immediately above the first slot row. */
       const slotLine = createElement(
         "p",
-        { style: { margin: "12px 0 4px", fontSize: 12, opacity: 0.75 }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
+        { style: { ...SKIN.note, margin: "12px 0 4px" }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
         catalogNotice(catalog),
       )
       // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
@@ -5734,57 +5928,67 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         if (slot !== previous) {
           slotChildren.push(createElement(
             "div",
-            { key: "group." + slot, style: { marginTop: 10, fontSize: 13, fontWeight: 700 }, "data-mpd-slot-group": slot },
+            { key: "group." + slot, style: SKIN.groupHeading, "data-mpd-slot-group": slot },
             t("teamModels." + slot + ".heading"),
           ))
           slotChildren.push(createElement(
             "p",
-            { key: "impact." + slot, style: { margin: "2px 0 0", fontSize: 11, opacity: 0.75 }, "data-mpd-slot-impact": slot },
+            { key: "impact." + slot, style: SKIN.groupImpact, "data-mpd-slot-impact": slot },
             t("teamModels." + slot + ".impact"),
           ))
         }
         slotChildren.push(slotRows[index])
       }
+      /** Whether the save is blocked (a read-only page, no staged edit, or an invalid draft). */
+      const saveBlocked = disabled || !state.dirty || state.invalid
       return createElement(
         "div",
-        { style: { border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: 12 } },
-        createElement("h3", { style: { margin: "0 0 4px" } }, t("title")),
-        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("intro")),
+        { style: SKIN.form },
+        createElement("h3", { style: SKIN.title }, t("title")),
+        createElement("p", { style: SKIN.description }, t("intro")),
+        // The preset explanation sits beside the intro: same hint treatment, one extra sentence.
+        createElement("p", { style: SKIN.helpText, "data-mpd-preset-about": "1" }, t("presetAbout")),
         disabled
-          ? createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("readOnly"))
+          ? createElement("p", { style: SKIN.note }, t("readOnly"))
           : null,
         createElement(
           "p",
           {
-            style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 },
+            style: SKIN.note,
             [CATALOG_ATTR]: catalog.mode,
             "data-mpd-catalog-providers": String(catalog.providers ?? 0),
             "data-mpd-catalog-models": String(catalog.models ?? 0),
           },
           catalogNotice(catalog),
         ),
-        // THE DISCLOSURE, ONCE. Every row used to carry it, which is what buried the rows.
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "bridge" },
-          state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "restart" },
-          state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
-        // The not-lost clause belongs to the same statement; it used to ride every row's hint.
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "not-lost" },
-          NOT_LOST),
-        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "workspace" },
-          state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
+        // THE DISCLOSURE, ONCE, in its own `.help` block: the same four sentences as before, at the
+        // hint size and colour with the host's 8px between paragraphs, so they read as ONE note
+        // instead of a second wall of body copy beside the fields.
+        createElement(
+          "div",
+          { style: SKIN.help },
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "bridge" },
+            state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "restart" },
+            state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
+          // The not-lost clause belongs to the same statement; it used to ride every row's hint.
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "not-lost" },
+            NOT_LOST),
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
+            state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
+        ),
         ...scalarRows,
         slotLine,
         ...slotChildren,
         createElement(
           "div",
-          { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 10 } },
-          createElement("button", { type: "button", disabled: disabled || !state.dirty || state.invalid, onClick: () => props.save() }, t("save")),
-          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard() }, t("discard")),
-          createElement("span", { style: { fontSize: 12, opacity: 0.75 } }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
+          { style: SKIN.footer },
+          createElement("button", { type: "button", disabled: saveBlocked, onClick: () => props.save(), style: { ...SKIN.save, opacity: saveBlocked ? 0.4 : 1 } }, t("save")),
+          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard(), style: SKIN.discard, ...BUTTON_HOVER }, t("discard")),
+          createElement("span", { style: SKIN.status }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
         ),
         state.mode === "memory"
-          ? createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, t("memoryMode"))
+          ? createElement("p", { style: SKIN.note }, t("memoryMode"))
           : null,
       )
     }
@@ -5797,6 +6001,17 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       nav: "MPD",
       title: "MPD bundle",
       intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
+      // WHAT THIS BUNDLE'S PRESET IS — carried HERE because the preset picker cannot localize it.
+      //
+      // MEASURED on the installed harness (2026-10-06): a preset's `name`/`description` are plain
+      // strings rendered verbatim by `dsh-client-ui-agent-preset`; only the harness's OWN four presets
+      // are localized, through a FIXED id table (`BUILT_IN_PRESET_KEYS = { standard, ptc, minimal,
+      // cordis }`) whose values are keys in the host client's own dictionary. A third-party preset has
+      // no key and no slot, and §6 forbids patching the host's client code — so the MPD preset's own
+      // English sentence stays English in every language. This row is the localized explanation on a
+      // surface this bundle DOES own.
+      presetAbout:
+        "The \"MPD (Main Working Agent)\" preset is this bundle's main agent: it reads the project's AGENT.md/AGENTS.md/CLAUDE.md, works natively, consults the 11 specialists through mpd_role_spawn, and runs teams on the official Agent Teams plugin. Its description in the preset picker is supplied by the harness as plain text and is not localizable.",
       save: "Save",
       discard: "Discard",
       reset: "Reset to the file value",
@@ -5810,6 +6025,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       nav: "MPD",
       title: "MPD 插件包",
       intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
+      // 这个 bundles 的 preset 是什么 —— 放在这里，是因为 preset 选择器无法本地化它。
+      presetAbout:
+        "「MPD (Main Working Agent)」是本插件包的主工作 agent：读取项目的 AGENT.md/AGENTS.md/CLAUDE.md，原生工作，通过 mpd_role_spawn 一次性咨询 11 位专家，并用官方 Agent Teams 插件跑团队。它在 preset 选择器里的说明由宿主以纯文本提供，无法本地化。",
       save: "保存",
       discard: "放弃",
       reset: "重置为文件值",
@@ -6371,6 +6589,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           console.warn("[mpd] AgentTeams sidebar file failed to mount: " + String(error));
         }
         try {
+          registerTeamSidebarTab(sidebarCtx, service);
+        } catch (error) {
+          console.warn("[mpd] the team tab registration failed: " + String(error));
+        }
+        try {
           registerWorkmateSidebarTab(sidebarCtx, service);
         } catch (error) {
           console.warn("[mpd] workmate sidebar tab registration failed: " + String(error));
@@ -6387,6 +6610,311 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     }
   }
 
+  // ── THE TEAM VIEW (W4) ─────────────────────────────────────────────────────
+  // INSIDE THE FACTORY, and that placement is load-bearing. This module is spliced into the client
+  // as ONE ARROW EXPRESSION, so anything declared after the closing brace lands OUTSIDE the module
+  // wrapper: the ambient `declare`s below survive that because they erase to nothing, but RUNTIME
+  // code does not — measured: `const TEAM_STATE_PATH` sitting there broke the whole built client
+  // with `Unexpected token 'const'`, in every arm that evaluates the served bytes.
+  /** The route the team view polls; the host row registers the same path. */
+  const TEAM_STATE_PATH = "/plugins/mpd-team/state"
+  /**
+   * The route serving the session's STAGED PLAN — the shared projection's other half.
+   *
+   * A SEPARATE ROUTE, and the view polls BOTH in one pass: a staged plan is what exists BEFORE an
+   * approval and the team record is what exists AFTER one, so a panel that read only records showed
+   * nothing for the state a captain most needs to act on.
+   */
+  const TEAM_PLAN_PATH = "/plugins/mpd-team/plan"
+
+  /**
+   * The route serving the session's FROZEN ACCEPTANCE CONTRACTS and the workspace hold.
+   *
+   * Passed to the view so a pinned task can quote the contract it was claimed under. Without it the
+   * detail body correctly renders its "no contract was served" sentence — which is indistinguishable
+   * on screen from a task that genuinely has none, so the route is threaded rather than left out.
+   */
+  const TEAM_TASK_PATH = "/plugins/mpd-team/task"
+
+  /**
+   * The team view's own copy, in English — the fallback AND the key list.
+   *
+   * A view built by `teamViewOf()` runs in a render path with no `ctx`, so it can neither bind nor
+   * register a locale namespace itself; it takes a translator as a dependency instead. This table is
+   * what the translator answers with when the host's locale registry is absent or answers nothing,
+   * which is why the view can never render a bare key. The same key set is registered below, so `zh`
+   * resolves for a Chinese host and this table carries the English.
+   */
+  const TEAM_COPY_EN                         = {
+    "header.approved": "approved",
+    "header.workspace": "workspace",
+    "header.complete": "complete",
+    "progress.label": "Progress",
+    "members.title": "MEMBERS",
+    "members.empty": "No member was raised for this team.",
+    "members.current": "current",
+    "task.title": "TASKS",
+    "task.empty": "No shared task yet — the captain posts them with team_task_create.",
+    "task.cycle": "CYCLE",
+    "task.blockedBy": "blocked by",
+    "task.dependents": "dependents",
+    "task.attempt": "attempt",
+    "task.round": "round",
+    "task.verdict": "verdict",
+    "task.owner": "owner",
+    "task.contract": "acceptance contract",
+    "task.contract.none": "No frozen acceptance contract was served for this task.",
+    "task.close": "close",
+    "tally.running": "running",
+    "tally.ready": "ready",
+    "tally.blocked": "blocked",
+    "tally.released": "released by a failed blocker",
+    "state.reading": "Reading the team…",
+    "state.unavailable": "No team state is being served. The mpd team row may not be mounted in this profile.",
+    "state.none": "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.",
+    // ── D2: the session-less workspace listing ────────────────────────────────
+    // Mirrored VERBATIM from `team-view.ts`'s own table (the view's English fallback and this host
+    // dictionary are deliberately one text): a session with no team of its own now lists the
+    // workspace's teams instead of claiming the workspace is empty.
+    "workspace.title": "WORKSPACE TEAMS",
+    "workspace.hint": "No team is bound to this session. The workspace's own teams are listed here — a session drives the one it approved itself.",
+    "workspace.active": "this session",
+    "workspace.members": "members",
+    "workspace.stage": "Stage one with agent_teams_plan, then approve it.",
+    "phase.staged": "staged",
+    "phase.active": "active",
+    "phase.idle": "idle",
+    "phase.ended": "ended",
+    "executor.label": "executor",
+    "plan.members": "Wants {n} member(s)",
+    "plan.tasks": "Wants {n} task(s)",
+    "plan.gate": "To approve, type:",
+    "kind.req": "REQ",
+    "kind.wrk": "WRK",
+    "kind.rev": "REV",
+    "kind.fix": "FIX",
+    "kind.int": "INT",
+    // THE ROSTER ROLES. These are product names carried by the record (`member.role`), so English is the
+    // identity mapping and Chinese is a DISPLAY-only rendering — the record itself is never rewritten.
+    // Without this the panel renders a Chinese shell around English role chips, which is the one place a
+    // reader could still tell the panel was translated from somewhere else.
+    "Lead": "Lead",
+    "Architect": "Architect",
+    "Researcher": "Researcher",
+    "Planner": "Planner",
+    "Deep Worker": "Deep Worker",
+    "Senior Engineer": "Senior Engineer",
+    "Explorer": "Explorer",
+    "Reviewer": "Reviewer",
+    "Plan Reviewer": "Plan Reviewer",
+    "Vision Analyst": "Vision Analyst",
+    "Junior Engineer": "Junior Engineer",
+  }
+
+  /**
+   * The team view's copy in Simplified Chinese, keyed identically to {@link TEAM_COPY_EN}.
+   *
+   * `zh` is the meaning-authoritative half of the pair; the English file is its translation. The two
+   * labels the capture driver asserts on (`members.title` / `task.title`) are deliberately kept as the
+   * host's own convention shows them — an uppercase SECTION label — so a screenshot reads the same
+   * structure in either language while the words behind it are local.
+   */
+  const TEAM_COPY_ZH                         = {
+    "header.approved": "已批准",
+    "header.workspace": "工作区",
+    "header.complete": "已完成",
+    "progress.label": "进度",
+    "members.title": "成员",
+    "members.empty": "该团队尚未拉起成员。",
+    "members.current": "当前",
+    "task.title": "任务",
+    "task.empty": "暂无共享任务 — 队长用 team_task_create 发布任务。",
+    "task.cycle": "依赖环",
+    "task.blockedBy": "前置",
+    "task.dependents": "后继",
+    "task.attempt": "认领次数",
+    "task.round": "评审轮次",
+    "task.verdict": "评审结论",
+    "task.owner": "负责人",
+    "task.contract": "验收契约",
+    "task.contract.none": "该任务没有已冻结的验收契约。",
+    "task.close": "关闭",
+    "tally.running": "进行中",
+    "tally.ready": "可领取",
+    "tally.blocked": "受阻",
+    "tally.released": "因前置失败而释放",
+    "state.reading": "正在读取团队…",
+    "state.unavailable": "未提供团队状态。该配置可能没有挂载 mpd 团队行。",
+    "state.none": "本工作区还没有团队。用 agent_teams_plan 拟定一个团队，然后批准它。",
+    // ── D2：无会话归属时的团队清单 ────────────────────────────────
+    // 会话未绑定团队时不再只显示一句空状态：这里列出本工作区自己的团队，并标出哪个属于当前会话。
+    "workspace.title": "工作区团队",
+    "workspace.hint": "当前会话未绑定团队。以下列出本工作区的团队 — 只有自己批准的那个才由当前会话驱动。",
+    "workspace.active": "当前会话",
+    "workspace.members": "成员",
+    "workspace.stage": "用 agent_teams_plan 拟定一个团队，然后批准它。",
+    "phase.staged": "已拟定",
+    "phase.active": "进行中",
+    "phase.idle": "空闲",
+    "phase.ended": "已结束",
+    "executor.label": "执行器",
+    "plan.members": "需要 {n} 名成员",
+    "plan.tasks": "需要 {n} 个任务",
+    "plan.gate": "批准请键入：",
+    "kind.req": "需求",
+    "kind.wrk": "工作",
+    "kind.rev": "评审",
+    "kind.fix": "修复",
+    "kind.int": "集成",
+    "Lead": "队长",
+    "Architect": "架构师",
+    "Researcher": "研究员",
+    "Planner": "规划师",
+    "Deep Worker": "深度执行者",
+    "Senior Engineer": "高级工程师",
+    "Explorer": "探索者",
+    "Reviewer": "审查者",
+    "Plan Reviewer": "计划审查者",
+    "Vision Analyst": "视觉分析师",
+    "Junior Engineer": "初级工程师",
+  }
+
+  /**
+   * The translator the shared team view renders with.
+   *
+   * COMMITTED BY THE TAB'S OWN MOUNT, because that is the only place a bound translator exists: the
+   * view is constructed inside a render path that has no `ctx`. Until that mount the fallback answers,
+   * so the view is never left without one — and once committed, the bound translator is followed for
+   * the rest of the session, which is what makes a host language switch take effect on the next render.
+   */
+  let teamTranslator                                       
+
+  /**
+   * Resolve one team-view key, preferring the tab's bound translator and falling back to English.
+   *
+   * TOTAL by construction: an unbound translator, a throw inside the host's, or a host that answers
+   * the key itself all end at {@link TEAM_COPY_EN}, so a missing translation degrades to readable
+   * English rather than to a raw key on screen.
+   * @param key - the dictionary key the view asked for.
+   * @returns the localized string, the English fallback, or the key when even that is absent.
+   */
+  function teamSay(key        )         {
+    if (teamTranslator !== undefined) {
+      try {
+        /** What the host's translator answered for this key. */
+        const answered = teamTranslator(key)
+        // A host that echoes the key back has no entry for it; the English table is the better answer.
+        if (typeof answered === "string" && answered.length > 0 && answered !== key) return answered
+      } catch {
+        // A throwing host translator costs the translation, never the panel.
+      }
+    }
+    return TEAM_COPY_EN[key] ?? key
+  }
+
+  /** The session the team sidebar last announced, so the line is logged once per session, not per render. */
+  let announcedSidebarSession                    
+
+  /**
+   * Whether the client entry already reported that NO sidebar host is carrying the mpd panels.
+   *
+   * ONE LINE PER ENTRY, and the reason it is a module-scope flag rather than a local: the two
+   * moments that learn the fact are different — a seam missing at apply time, and the settle
+   * check registered at the end of {@link mountHarnessSidebar} — and a user debugging a GUI with no
+   * Team tab needs EXACTLY ONE line that says so instead of a stream of them per poll.
+   */
+  let harnessSidebarReported = false
+
+  /** The harness right sidebar's own seam ids, named once so the report and the injection cannot drift. */
+  const HARNESS_SIDEBAR_SERVICES = "sidebarRightTabs + sidebarRight"
+
+  /**
+   * How long the client waits for a sidebar host to take the panels before it reports that NONE did.
+   *
+   * WHY A BOUNDED WAIT AND NOT DISPOSAL ALONE (D1/F5). The entry disposer fires at page unload, so a
+   * profile with no reachable seat reported the problem only after the user had already given up on an
+   * empty right sidebar. This bound is DERIVED FROM MEASUREMENT rather than chosen: the sidebar's own
+   * provider was measured arriving `true` eight seconds after `apply()` (see {@link mountSidebarPages}),
+   * and the settle check runs after the injection callbacks have had that whole window — so a seat that
+   * is merely LATE has already registered and this line stays silent, while a profile that has no seat
+   * at all is reported while the user is looking at the page.
+   *
+   * Exported so a TEST can shorten it: an arm that waits the production bound would spend eight seconds
+   * per case, and a private knob behind a public seam is how the assertion stays honest instead of
+   * being deleted for being slow.
+   */
+  let settleTimeoutMsValue = 8000
+
+  /**
+   * Which host took the mpd panels on the last mount, for the diagnostic to NAME.
+   *
+   * The settle check's whole value is the sentence it prints, and "NOTHING took it" is only half of
+   * what the reader needs: naming the host that DID take the panels (or that they are contested) turns
+   * a mystery into a fact. Written by {@link mountHarnessSidebar}, read by the settle line below — the
+   * reader that a snapshot of a mount's own tallies would otherwise lack.
+   */
+  let harnessSidebarHost = ""
+
+  /**
+   * Report, at most once per client entry, that neither sidebar host is carrying the mpd panels.
+   *
+   * THE SILENT MODE THIS CLOSES (D1). With `dsh-better-sidebar` absent BY DESIGN the mpd panels ride
+   * the harness's own right sidebar, whose services are reached through `ctx.inject` — and a missing
+   * seam there produces NOTHING: no tab, no error, and (before this line) no diagnostic either, so
+   * the user sees an empty GUI and no reason for it. The line states the reason and leaves the reader
+   * with the one thing that still works, the ROUTES.
+   * @param reason - why no sidebar host took the panels, phrased as a clause.
+   */
+  function reportNoHarnessSidebar(reason        )       {
+    if (harnessSidebarReported) return
+    harnessSidebarReported = true
+    // WHICH HOST, when one arrived late: "nothing took the panels" is the claim, and naming the host
+    // that DID take them (after the bound, or on a remount) is the difference between a mystery and a
+    // fact for whoever reads the console. Empty when neither host ever published.
+    /** The host that took the panels, as the mount recorded it, or an empty string. */
+    const host = harnessSidebarHost
+    console.warn("[mpd] no sidebar host took the mpd panels: " + reason + (host === "" ? "" : " (the host that did take them: " + host + ")") + ". The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on " + TEAM_STATE_PATH + " and " + TEAM_PLAN_PATH + ".");
+  }
+
+  /** The shared team view, built once per client entry; undefined when the splice is absent. */
+  let teamView                                                        
+
+  /** The React surface `require("react")` answers with, or undefined. */
+  function reactSurface()          {
+    try { return require("react") } catch { return undefined }
+  }
+
+  /**
+   * Build (once) the team view both sidebar hosts render.
+   *
+   * ONE body for both hosts is the point: they are different extension APIs with different prop shapes,
+   * and a view written against either works only there. Both can `fetch`, so both read this bundle's
+   * own route (`/plugins/mpd-team/state`) — the mpd RECORD — instead of the official client projection
+   * this view used to read, which is empty in exactly the compositions the split exists for.
+   * @returns the view, or undefined when the host has no React or the splice produced nothing.
+   */
+  function teamViewOf()                                                         {
+    if (teamView !== undefined) return teamView
+    /** The host's React, which the factory body builds elements with. */
+    const react = reactSurface()
+    if (react === undefined) return undefined
+    if (typeof MPD_TEAM_VIEW !== "object" || MPD_TEAM_VIEW === null) return undefined
+    try {
+      teamView = MPD_TEAM_VIEW.createTeamView({
+        react,
+        statePath: TEAM_STATE_PATH,
+        planPath: TEAM_PLAN_PATH,
+        // The task route is what lets a pinned node quote its frozen contract; the translator is the
+        // view's only language source (it runs in a render path with no `ctx` of its own).
+        taskPath: TEAM_TASK_PATH,
+        t: teamSay,
+      })
+      return teamView
+    } catch (error) {
+      console.warn("[mpd] the team view could not be built: " + String(error))
+      return undefined
+    }
+  }
   /** Read one service from a context that has it in scope (never throws). */
   function readService(ctx               , name        )          {
     try {
@@ -7003,6 +7531,50 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * + menu entry and its page component; there is no floating fallback by decision,
    * mirroring the AgentTeams page.
    */
+  // The tab id is named apart from the OFFICIAL sidebar's registration further down: the two hosts
+  // keep separate id spaces, and reusing one name for both invited exactly the collision the compiler
+  // caught. The watchdog page keeps its own `mpd-agent-teams` id, so all three are distinct.
+  /** The better-sidebar tab id for the MPD team view. */
+  const TEAM_PAGE_TAB_ID = "mpd-team";
+  /** Where the team tab sits among the host's tabs: before the watchdog page, after the builtins. */
+  const TEAM_TAB_ORDER = 80;
+
+  /**
+   * Register the MPD TEAM tab on `dsh-better-sidebar` — the PREFERRED host.
+   *
+   * ONE BODY, TWO HOSTS. The component is the shared team view ({@link teamViewOf}), which reads
+   * this bundle's own route; a host that cannot fetch renders it as the empty state, and the tab
+   * still opens. Where the two hosts differ is only registration.
+   * @param ctx - the injection scope, which owns the disposer.
+   * @param sidebar - the better-sidebar service.
+   * @returns whether the tab was registered.
+   */
+  function registerTeamSidebarTab(ctx               , sidebar                )          {
+    if (typeof sidebar.registerTab !== "function") return false;
+    // IDEMPOTENT by descriptor presence: `ctx.inject` re-fires when the provider remounts and the
+    // host's `registerTab` THROWS on a duplicate id (the same rule the workmate tab follows).
+    if (sidebarAlreadyHasTab(sidebar, TEAM_PAGE_TAB_ID)) return true;
+    /** The shared view, or undefined when this host has no React to build it with. */
+    const view = teamViewOf();
+    if (view === undefined) return false;
+    ctx.effect(() => sidebar.registerTab({
+      id: TEAM_PAGE_TAB_ID,
+      title: () => "Team",
+      icon: () => "◆",
+      order: TEAM_TAB_ORDER,
+      single: true,
+      component: (props         ) => view.TeamView(props),
+    }), "mpd: team sidebar tab");
+    return true;
+  }
+
+  /**
+   * Register the library as a DSH-better-sidebar tab. The sidebar service is passed in
+   * because it must be RESOLVED through `ctx.inject` (see mountSidebarPages) — a probe at
+   * apply() time races the provider and always loses. The descriptor owns the tab type, its
+   * + menu entry and its page component; there is no floating fallback by decision,
+   * mirroring the AgentTeams page.
+   */
   function registerWorkmateSidebarTab(ctx               , sidebar                )          {
     if (typeof sidebar.registerTab !== "function") return false;
     // IDEMPOTENT by descriptor presence: `ctx.inject` re-fires when the provider remounts,
@@ -7051,6 +7623,3808 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * card must cost the card ONLY — never the sidebar pages and never the client entry (a throwing
    * client entry fails the whole page as `entry: pending`).
    */
+  var MPD_SETTINGS_CARD = (function () {
+  /** The settings namespace this section edits (the `mpd` namespace of the settings document). */
+  const NS = "mpd"
+  /**
+   * THE ENTRY the harness's settings machinery serves, which is NOT the namespace.
+   *
+   * MEASURED on a live boot (docker/ui, 2026-09-27): the loader gives the row
+   * `entry.options.id = "mpd-config"` (its `entry.id` is the address `include:mpd-config`, and
+   * `settings.describe()` reports it under `ns = "mpd-config"`). `configForms.get(ns)` resolves with
+   * `entries().find(row => row.options.id === ns)` and THROWS `No configurable plugin entry "mpd"` for
+   * a namespace no entry has — which is why every input on this card rendered empty.
+   */
+  const CONFIG_ENTRY = "mpd-config"
+  /** The locale namespace the section's own labels live in. */
+  const LOCALE_NS = "mpdSettings"
+  /** The LIST slot the settings shell renders as top-level sections. */
+  const SECTION_SLOT = "settings.section"
+  /** This section's stable id (the shell keys the active section by it). */
+  const SECTION_ID = "mpd"
+  /** After `general` 0, `models` 10 and `plugins` 15 — so no existing section moves. */
+  const SECTION_ORDER = 20
+
+  /** The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE). */
+  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime"
+  /**
+   * The HOST LIMITATION half of the truth (T-18), byte-identical to
+   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT` and rendered as the
+   * card's second disclosure paragraph: the file-derived base is fixed for the running process, so
+   * a hand edit of `.mpd/mpd.jsonc` applies at the next `dsh` boot and never mid-process, and only
+   * a change made through the settings document can reach a running plugin (where it subscribes).
+   * This is the honest replacement for the old "any settings edit wins from the next tick on"
+   * claim, which the host's mount-time base read does not support.
+   */
+  const BRIDGE_RESTART_LIMIT = "the file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update"
+  /** The third disclosure paragraph: what a save means when no session is live. */
+  const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
+  // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
+  // hint and the status line carry).
+  /** The not-lost clause rendered under the two disclosures. */
+  const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
+
+  // ── types for the seams this factory crosses ────────────────────────────────
+  /** The subset of React this card uses; the host injects the real module at boot. */
+                          
+                                                                                                         
+                                                                                      
+   
+
+  /** The event shape a text input or select hands its change handler. */
+                         
+                                                                             
+                             
+   
+
+  /** One knob the card renders (the mirror of the ONE shared knob declaration in settings-schema.ts). */
+                             
+                                                                                                   
+                  
+                             
+                 
+                                        
+              
+                                                                     
+                
+                                                                                                           
+                      
+                                                                                               
+                      
+                                                   
+                        
+   
+
+  /** One leaf of a team-model slot, with the option list the parity contract declares for it. */
+                      
+                                                                  
+                
+                                  
+                 
+                                             
+              
+                                                         
+                     
+   
+
+  /** The member group one slot routes (both locales, plus the member list the sentences interpolate). */
+                       
+                                  
+              
+                                             
+              
+                                                              
+                   
+                                                              
+                     
+   
+
+  /** One localized sentence pair. */
+                           
+                                
+              
+                                           
+              
+   
+
+  /** One rendered option of a select (a `group` turns the list into optgroups). */
+                         
+                                                      
+                 
+                                           
+                 
+                                                                           
+                  
+   
+
+  /** One catalog provider group, as the host's model-selection service projects it. */
+                          
+                                                                
+              
+                                                        
+                 
+                                                                                                 
+                          
+   
+
+  /** One catalog model. */
+                          
+                                                          
+               
+                                                     
+                 
+                                             
+                                             
+   
+
+  /** One reasoning effort of one model (the runtime list is filtered for a usable id before use). */
+                           
+                                                                      
+              
+                                                      
+                 
+   
+
+  /** The catalog state the card renders and announces. */
+                         
+                                                                         
+                
+                                                       
+                      
+                                                    
+                   
+                                              
+                   
+                                                               
+                   
+                                                                                             
+                     
+   
+
+  /** The model directory of one session, as the host's service hands it over. */
+                            
+                                              
+             
+                                          
+                                                       
+                                                                      
+                                                      
+     
+                                                                                 
+                        
+   
+
+  /** The slice of a model-directory snapshot this card reads. */
+                               
+                                                     
+                           
+   
+
+  /** The host's model-directory service. */
+                                   
+                                                                                             
+                                                                          
+   
+
+  /** The client's session-list snapshot, as far as this card reads it. */
+                                 
+                                                
+                   
+                                                     
+                                                        
+                                                           
+                                                          
+                                                                                                        
+                                                            
+                                                                    
+                  
+   
+
+  /** The client's sessions service. */
+                             
+                                                                        
+            
+                                         
+                                                         
+                                                                     
+                                                      
+     
+                                                   
+                                   
+                                           
+                                     
+   
+
+  /** The live model catalog the card follows. */
+                         
+                                                                                       
+                        
+                                                                            
+                       
+                                                 
+                                
+                                       
+                           
+                                                                          
+                                                      
+   
+
+  /** One control of one row, as `project()` renders it. */
+                        
+                                    
+                
+                                                                     
+                        
+                                                                      
+                     
+   
+
+  /** One staged edit of one row. */
+                        
+                                   
+                
+                                                                  
+                   
+   
+
+  /** A staged row's interpretation: a clear marker, a parsed value, or undefined for an invalid draft. */
+                                                                            
+
+  /** One write a save would send (the harness's `settings/mutate` op). */
+                     
+                                                                 
+                       
+                                                
+                  
+                                              
+                   
+   
+
+  /** The three disclosure strings the card states once at its top. */
+                        
+                                                                           
+                             
+                                            
+                                
+                                                     
+                               
+   
+
+  /** The settings form's snapshot, as this card reads it. */
+                           
+                                             
+                   
+                                           
+                  
+                                            
+                   
+                                                                             
+                      
+                                                              
+                 
+                                                                    
+                     
+   
+
+  /** The per-namespace settings form this card drives. */
+                           
+                                       
+                                                
+                                                                                            
+                                                
+                                                    
+                                                                  
+                                                                                   
+                       
+   
+
+  /** The state the card component renders, published through its own store. */
+                       
+                                       
+                      
+                                       
+                     
+                                              
+                
+                                     
+                  
+                                               
+                    
+                                       
+                   
+                                        
+                   
+                                      
+                 
+                                                                   
+                                        
+                                                                
+                          
+                                              
+                        
+   
+
+  /** The store the card's hook reads (a minimal snapshot store, not the host's private one). */
+                       
+                             
+                                
+                                                                   
+                                                      
+                                                       
+                                  
+   
+
+  /** The face the slot registration injects into the component. */
+                      
+                                                             
+                                 
+                                
+                                             
+                                                
+                                     
+                                  
+                    
+                                     
+                       
+   
+
+  /** The controller behind that face. */
+                            
+                                                                 
+                          
+                                                                        
+                    
+                                                                  
+                       
+                                   
+                       
+   
+
+  /** The props the slot registration hands the card component. */
+                                
+                                                                                          
+                                                                           
+                                                                                  
+                               
+                                
+                                             
+                                                
+                                     
+                                  
+                    
+                                     
+                       
+   
+
+  /** The harness's per-namespace settings forms service. */
+                                  
+                                                         
+                                                         
+   
+
+  /** The client context this card is mounted with (only the members it touches are named). */
+                         
+                                                                           
+            
+                                                                                             
+                                                         
+                                                                                     
+                                                                                 
+     
+                                                                                                         
+                                                                                                               
+                                                                               
+                                                                                 
+                                                                               
+                                   
+                                                                             
+                                      
+   
+
+  /** The mount options (the offline harness pins its own field list). */
+                          
+                                                           
+                              
+   
+
+  /**
+   * The twenty-two knobs — the SAME fields the TUI `/settings` section declares (the thirteen
+   * scalar knobs, then the twelve team-model slot leaves). The composed hint LEADS with the knob's
+   * human sentence (`semantics`/`semanticsZh`) and then states its mpd.jsonc key + the shared
+   * disclosure, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the two
+   * watchdog rows carry the sentence they always had). The slot leaves take their option lists
+   * from the live catalog at render time instead.
+   */
+  /** The four team-model slots, in the order the card renders them. */
+  const SLOT_SLOTS = ["slot1", "slot2", "slot3", "slot4"]
+  /** The three leaves every slot carries, with their declared option lists. */
+  const SLOT_LEAVES                          = [
+    { leaf: "provider", label: "provider", zh: "提供商", options: ["deepseek-official"] },
+    { leaf: "model", label: "model", zh: "模型", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
+    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度", options: ["off", "low", "high", "max"] },
+  ]
+  /**
+   * What each slot IS — the member group it routes, in the group's own order (mirror of
+   * `TEAM_MODEL_SLOT_GROUPS`). The group name and the member list are the only inputs the twelve
+   * shared human sentences interpolate, so the card cannot drift from the declaration by accident:
+   * the parity test compares every sentence and heading below with the shared declaration's own
+   * builders. Slot 4 carries its OWN sentences/impact (an image-input constraint, not a
+   * shared-route one), mirrored from `TEAM_MODEL_SLOT_LEAF_OVERRIDES` / `…_IMPACT_OVERRIDES`.
+   */
+  const SLOT_GROUPS                            = {
+    slot1: { en: "heavy members", zh: "重推理成员", members: "Architect, Planner, Reviewer, Lead, Senior Engineer", membersZh: "Architect、Planner、Reviewer、Lead、Senior Engineer" },
+    slot2: { en: "analysis members", zh: "分析型成员", members: "Researcher, Explorer, Plan Reviewer", membersZh: "Researcher、Explorer、Plan Reviewer" },
+    slot3: { en: "execution members", zh: "执行型成员", members: "Deep Worker, Junior Engineer", membersZh: "Deep Worker、Junior Engineer" },
+    slot4: { en: "vision member", zh: "视觉成员", members: "Vision Analyst", membersZh: "Vision Analyst" },
+  }
+  /** The one-line impact under a slot's group heading (the shared text for slots 1-3). */
+  const SLOT_IMPACT                         = {
+    en: "When a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.",
+    zh: "建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。",
+  }
+  /** The vision slot's OWN impact line (mirror of `TEAM_MODEL_SLOT_IMPACT_OVERRIDES.slot4`). */
+  const SLOT_IMPACT_OVERRIDES                                         = {
+    slot4: {
+      en: "When a team is created Vision Analyst starts on this slot's provider · model · reasoning effort; the model here MUST accept image input or image analysis fails; an unusable value fails team creation loudly, naming the member and the slot.",
+      zh: "建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。",
+    },
+  }
+  /** Slot 4's OWN leaf sentences (mirror of `TEAM_MODEL_SLOT_LEAF_OVERRIDES.slot4`). */
+  const SLOT_SENTENCE_OVERRIDES                                                = {
+    slot4: {
+      provider: {
+        en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
+        zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。",
+      },
+      model: {
+        en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
+        zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
+      },
+      reasoningEffort: {
+        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
+        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+      },
+    },
+  }
+  /** The impact line of ONE slot: the slot's own override, else the shared sentence. */
+  const impactOf = (slot        , lang        )         => (SLOT_IMPACT_OVERRIDES[slot] ?? SLOT_IMPACT)[lang]
+  /** The HUMAN sentence of one slot leaf in both locales: what it IS, then what configuring it DOES. */
+  function slotSentence(slot        , leaf        )                {
+    /** The slot's own override table, when it has one. */
+    const override = SLOT_SENTENCE_OVERRIDES[slot]
+    if (override !== undefined) return override[leaf]
+    /** The member group this slot routes. */
+    const group = SLOT_GROUPS[slot]
+    if (leaf === "provider") {
+      return {
+        en: `The provider half of this slot. The slots are the default model route of team members: when a team is created, the ${group.en} (${group.members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.`,
+        zh: `这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，${group.zh}（${group.membersZh}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。`,
+      }
+    }
+    if (leaf === "model") {
+      return {
+        en: `This slot's model. Together with the provider above, it decides the model the ${group.en} (${group.members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.`,
+        zh: `这一档的模型。与上面的提供商共同决定 ${group.zh}（${group.membersZh}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。`,
+      }
+    }
+    return {
+      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.`,
+      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。`,
+    }
+  }
+  /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */
+  function slotHeading(slot        , index        )                {
+    /** The member group this slot routes. */
+    const group = SLOT_GROUPS[slot]
+    return { en: `Slot ${index} — ${group.en} (${group.members})`, zh: `槽位 ${index} —— ${group.zh}（${group.membersZh}）` }
+  }
+  /** The twelve slot rows: the same order, paths and DECLARED option lists as the shared declaration. */
+  const SLOT_FIELDS                    = SLOT_SLOTS.flatMap((slot, index) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
+    /** The slot leaf's own human sentence, which the row's hint leads with. */
+    const sentence = slotSentence(slot, leaf)
+    return {
+      path: ["teamModels", slot, leaf],
+      label: `Slot ${index + 1} ${label} (${SLOT_GROUPS[slot].en})`,
+      zh: `槽位 ${index + 1} ${zh}（${SLOT_GROUPS[slot].zh}）`,
+      kind: "select",
+      options,
+      semantics: sentence.en,
+      semanticsZh: sentence.zh,
+    }
+  }))
+
+  /** The thirteen scalar knobs, the twelve slot leaves and the TUI surface's own knob, in the order the card renders them. */
+  const FIELDS                    = [
+    { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
+    { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
+    { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
+    { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
+    { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
+    { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
+    { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },
+    { path: ["watchdog", "warnSilenceMs"], label: "Silence warning threshold (ms)", zh: "静默告警阈值（毫秒）", kind: "number" },
+    { path: ["watchdog", "tickIntervalMs"], label: "Watchdog tick interval (ms)", zh: "看门狗轮询间隔（毫秒）", kind: "number" },
+    { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
+    { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
+    { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", semantics: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
+    { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", semantics: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
+    // The four team-model slots (twelve leaves, mirrors of the ONE knob declaration in
+    // packages/mpd-config-plugin/src/settings-schema.ts). Every slot leaf is a `select`: the
+    // options come from the live catalog at render time (see optionsFor) and fall back to the
+    // declared lists below, so no slot value is ever typed. The DECLARED lists are the parity
+    // surface with the TUI; the LIVE lists are a different source by construction. The labels and
+    // the human sentences are built from SLOT_GROUPS below, so a slot's copy is stated once here
+    // exactly as the shared declaration states it (a test compares the two element-wise).
+    ...SLOT_FIELDS,
+    // The TUI surface's own knob (the Ctrl+A takeover toggle): mirrored from the ONE declaration,
+    // whose `hint` is the semantics sentence — the card renders it as `semantics`, exactly like the
+    // two watchdog rows above.
+    { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", semantics: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" },
+  ]
+
+  // The per-row hint, HUMAN SENTENCE FIRST: the knob's own `semantics` (what it is and what
+  // configuring it does) leads in the row's locale, then the real mpd.jsonc key with the bridge
+  // disclosure and the not-lost clause — byte-identical to the hint the TUI section builds for the
+  // same knob, so the two front doors state the same thing in the same order. A knob with no
+  // human sentence keeps the disclosure-only hint it always had.
+  /**
+   * One row's hint: its own sentence plus the dotted mpd.jsonc key. The bridge disclosure is stated
+   * ONCE at the top of the card, not once per row — measured in a real browser (docker/ui,
+   * 2026-09-27, `05b-mpd-section.png`): with it inlined, all 25 rows read as the same four lines and
+   * each knob's own sentence was pushed off screen, while the card already repeated the same text
+   * again at the bottom.
+   */
+  const keyOf = (field                 )         => `mpd.jsonc ${field.path.join(".")}`
+  /** One row's hint text: the human sentence first, then the dotted key in parentheses. */
+  const hintOf = (field                 , lang         = "en")         => {
+    /** The knob's human sentence in the requested locale. */
+    const sentence = lang === "zh" ? field.semanticsZh : field.semantics
+    /** The dotted mpd.jsonc key this row edits. */
+    const pointer = keyOf(field)
+    return sentence === undefined || sentence.length === 0 ? pointer : `${sentence} (${pointer})`
+  }
+  /** The dictionary key of one row (the same dotted key the hint names). */
+  const fieldKey = (field                 )         => field.path.join(".")
+  /** Walk a nested path into an untyped settings value (a missing or non-object step answers undefined). */
+  const leafOf = (value         , path          )          => path.reduce         ((acc, part) => (acc === null || acc === undefined ? undefined : (acc                           )[part]), value)
+
+  /** Parse the control's text into a value for this field, or undefined when it is not one. */
+  function parse(kind        , text         )                                        {
+    if (kind === "number") {
+      /** The text as a number, which must be finite to count. */
+      const n = Number(String(text).trim())
+      return Number.isFinite(n) ? n : undefined
+    }
+    if (kind === "boolean") {
+      /** The text normalized for the two boolean spellings. */
+      const t = String(text).trim().toLowerCase()
+      if (t === "true" || t === "1") return true
+      if (t === "false" || t === "0") return false
+      return undefined
+    }
+    /** Every other kind keeps its text (an empty one is "unset"). */
+    const t = String(text)
+    return t.length === 0 ? undefined : t
+  }
+
+  /** Render one settings value as the control's text (a missing value renders empty). */
+  const format = (kind        , value         )         => (value === undefined || value === null ? "" : String(value))
+
+  /**
+   * The namespace sub-tree that renders as a DEPENDENT picker: for each slot the provider, the
+   * model (grouped by provider) and the reasoning effort (the SELECTED model's own efforts) are
+   * all selections, so no slot value is ever typed. The card MIRRORS this declaration instead of
+   * importing the TypeScript plugin's knob list: the web client must not reference that symbol (a
+   * QA gate pins it), and the parity test compares the mirror with the real one.
+   */
+  const TEAM_MODEL_SLOT = "teamModels"
+
+  /**
+   * The session the catalog binds to, read from the client's OWN list snapshot.
+   *
+   * MEASURED in a real browser against the live host (`evidence/web-card-catalog/20260918T073000Z/`):
+   * `sessions.list.getSnapshot()` is `{ ids, byId, current, phase, subagentsByParent, jobsBySession,
+   * currentAddress }`, and `current` is the session ID **STRING** — never an object. The host's own
+   * consumers prove it: `dsh-client-ui-session` hands it straight to `sessions.binding(current)`, and
+   * `dsh-api-session-controller`'s `followCurrent()` indexes `snapshot.byId[current]`.
+   *
+   * THE DEFECT THIS REPLACES: `current.sessionId ?? current.id` on a STRING is always `undefined`, so
+   * a card with a live current session rendered `no session is bound` — the exact sentence measured in
+   * the user's browser. The earlier acceptance missed it because its fixture INJECTED
+   * `{ current: { sessionId } }`, i.e. it asserted the ASSUMED shape instead of the real one.
+   *
+   * The object form is still accepted (last) so an existing caller that injects `{ sessionId }` keeps
+   * working. Guarded: a missing sessions service, a missing list or an unbound session answer
+   * undefined instead of throwing.
+   */
+  function currentSessionIdOf(sessions                             )                     {
+    try {
+      /** The client's session-list snapshot. */
+      const snapshot = listSnapshotOf(sessions)
+      if (snapshot === undefined || snapshot === null) return undefined
+      /** The session the app is showing, in either the measured or the legacy spelling. */
+      const current = snapshot.current
+      if (typeof current === "string") return current.length === 0 ? undefined : current
+      if (current !== null && typeof current === "object") {
+        /** The id the object form carries. */
+        const id = current.sessionId ?? current.id
+        return typeof id === "string" && id.length > 0 ? id : undefined
+      }
+      return undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** The client's session-list snapshot, or undefined when the service is absent or unreadable. */
+  function listSnapshotOf(sessions                             )                                  {
+    /** The list service, when the sessions service exposes one. */
+    const list = sessions ? sessions.list : undefined
+    // The service hands back its own untyped snapshot; the card reads only the fields declared above.
+    return list && typeof list.getSnapshot === "function" ? list.getSnapshot()                        : undefined
+  }
+
+  /**
+   * Every session id the list snapshot carries, in the snapshot's own order. `ids` is the MEASURED
+   * field; `items` and `byId` are read too, so a snapshot from another host build still yields
+   * candidates.
+   */
+  function listedSessionIds(snapshot                     )           {
+    /** The candidate ids, deduplicated in first-seen order. */
+    const ids           = []
+    /** Add one candidate id when it is a usable string and not already listed. */
+    const push = (id         )       => {
+      if (typeof id === "string" && id.length > 0 && !ids.includes(id)) ids.push(id)
+    }
+    if (Array.isArray(snapshot.ids)) for (const id of snapshot.ids) push(id)
+    if (Array.isArray(snapshot.items)) for (const item of snapshot.items) push(item === null || item === undefined ? undefined : (item.sessionId ?? item.id))
+    if (snapshot.byId !== null && snapshot.byId !== undefined && typeof snapshot.byId === "object") for (const id of Object.keys(snapshot.byId)) push(id)
+    return ids
+  }
+
+  /**
+   * The session a model directory can actually be resolved FOR. The session the app is SHOWING wins
+   * (`current`); when the app has no current session — measured: the settings dialog opens before any
+   * conversation — every LISTED session is tried and the first for which BOTH `scope(id)` and
+   * `binding(id)` resolve wins, because that pair is exactly the precondition the host's resolver
+   * documents (`… resolved no scope` / `… resolved no binding`). A non-`blank` session is tried
+   * first: a placeholder row is a poor thing to pin a catalog preview to.
+   *
+   * No `open()` is needed and none is performed: the host mints a listed session's scope lazily
+   * (`eligible(id) = current === id || ids.includes(id)`, measured resolving for every listed id).
+   */
+  function boundSessionIdOf(sessions                             )                     {
+    /** The session the app is showing, when it has one. */
+    const current = currentSessionIdOf(sessions)
+    if (current !== undefined) return current
+    try {
+      if (sessions === null || sessions === undefined) return undefined
+      if (typeof sessions.scope !== "function" || typeof sessions.binding !== "function") return undefined
+      /** The client's session-list snapshot. */
+      const snapshot = listSnapshotOf(sessions)
+      if (snapshot === undefined || snapshot === null) return undefined
+      /** Every session id the snapshot carries. */
+      const ids = listedSessionIds(snapshot)
+      /** The snapshot's session map, read for the `blank` placeholder flag. */
+      const byId = snapshot.byId !== null && snapshot.byId !== undefined && typeof snapshot.byId === "object" ? snapshot.byId : {}
+      /** The ids with the real sessions first (a blank placeholder is a poor catalog pin). */
+      const ordered = [...ids.filter((id) => byId[id]?.blank !== true), ...ids.filter((id) => byId[id]?.blank === true)]
+      for (const id of ordered) {
+        try {
+          if (sessions.scope(id) !== undefined && sessions.binding(id) !== undefined) return id
+        } catch {
+          /* an unresolvable id is not a candidate */
+        }
+      }
+    } catch {
+      /* an unreadable list is not a candidate */
+    }
+    return undefined
+  }
+
+  /** Read one service from a context that has it IN SCOPE (never throws). */
+  function readService(ctx                         , name        )          {
+    try {
+      return ctx && typeof ctx.get === "function" ? ctx.get(name) : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** The data attribute carrying the branch that produced the option lists (assertable, no browser). */
+  const CATALOG_ATTR = "data-mpd-catalog-state"
+  /** The sentence a fallback MUST say out loud — a silent fallback is what hid this defect. */
+  const CATALOG_FALLBACK_NOTICE = "declared fallback — live catalog unavailable"
+  /** The state the card starts in, before any injection has resolved. */
+  const FALLBACK_CATALOG              = { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason: "the model catalog injection has not resolved yet" }
+
+  /** The one sentence the card renders for one catalog state: LIVE (with counts) or fallback. */
+  function catalogNotice(info                         )         {
+    /** The state to describe (the declared fallback when none was published yet). */
+    const state = info ?? FALLBACK_CATALOG
+    if (state.mode === "live") {
+      /** How many providers the live catalog carries. */
+      const providers = Number(state.providers ?? 0)
+      /** How many models the live catalog carries. */
+      const models = Number(state.models ?? 0)
+      return "live catalog — " + String(providers) + (providers === 1 ? " provider" : " providers") + " · " + String(models) + (models === 1 ? " model" : " models")
+    }
+    /** The fallback's own reason, in parentheses, when it states one. */
+    const reason = typeof state.reason === "string" && state.reason.length > 0 ? " (" + state.reason + ")" : ""
+    return CATALOG_FALLBACK_NOTICE + reason
+  }
+
+  /**
+   * The short trailing marker a SLOT row's hint carries while the catalog is in fallback: the third
+   * surface of the same state, on the rows the user is actually looking at. Live renders nothing
+   * here — the hint is not part of the front-door parity contract (the parity pin compares the
+   * declaration), so the suffix is a render-time addition only.
+   */
+  function slotFallbackMarker(info                         )         {
+    /** The state to describe (the declared fallback when none was published yet). */
+    const state = info ?? FALLBACK_CATALOG
+    if (state.mode === "live") return ""
+    /** The fallback's own reason, or "" when it states none. */
+    const reason = typeof state.reason === "string" && state.reason.length > 0 ? state.reason : ""
+    return reason === "" ? " — declared fallback" : " — declared fallback: " + reason
+  }
+
+  /** The provider/model counts of one group list. */
+  function catalogCounts(groups                )                                        {
+    /** How many models every group contributes. */
+    let models = 0
+    for (const group of groups) models += Array.isArray(group.models) ? group.models.length : 0
+    return { providers: groups.length, models }
+  }
+
+  /**
+   * The LIVE model catalog: the host client's own provider groups
+   * (`{ id, name, models: [{ id, name, reasoning?: { efforts: [{ id, name }] } }] }`).
+   *
+   * THE DEFECT THIS REPLACES (measured): a BARE `ctx.get` probe for `modelDirectories` can never
+   * see the service — `@deepseek-ai/dsh-client-ui-model-selection` provides it from ANOTHER
+   * plugin's
+   * fiber, and cordis resolves services through the fiber's own scope, so the probe answered
+   * `undefined` forever and the card silently rendered its DECLARED option lists (one provider).
+   * The measured rule lives in this package's `src/web-client.ts` header; the answer is the
+   * dynamic form `ctx.inject(["modelDirectories", "sessions", "remote.session"], …)`, which waits
+   * for the providers
+   * WITHOUT parking this boot entry. They must NEVER be added to the module's declared
+   * `inject`/`REQUIRED_SERVICES` list: a declared-but-unregistered service is fatal to the whole
+   * page (`assertEntriesActive` turns it into a `pending` entry).
+   *
+   * THE SECOND DEFECT (measured in a real browser, `evidence/web-card-catalog/`): the injection
+   * alone is not enough, because cordis services are CALLER-scoped — the service's own `ctx`
+   * resolves to the ACCESSING ctx. The host's model-directory resolver declares
+   * `inject = ["sessions","remote","remote.session"]` and reads `this.ctx.remote.session` inside
+   * `directoryFor()`, so a caller that injected only `["modelDirectories","sessions"]` is REJECTED
+   * with `cannot get property "remote.session" without inject`, the card degrades, and the UI shows
+   * the declared fallback while the browser's own catalog carries two providers. The caller must
+   * therefore declare the same dotted chain it makes the service read: `remote.session` is
+   * NECESSARY AND SUFFICIENT (measured: `["modelDirectories","sessions"]` throws,
+   * `+ "remote"` throws, `+ "remote.session"` is ready with 2 providers / 31 models). `remote` is
+   * NOT added: `this.ctx.remote` is a FIRST-LEVEL read, which a caller-scoped call re-roots at the
+   * RESOLVER's own fiber (where its `static inject` satisfies it) — only DOTTED seams are re-rooted
+   * at the CALLER's injection fiber, so `remote` would be one more activation precondition and
+   * nothing else. The name stays in the DYNAMIC inject list only: a declared-but-unregistered
+   * service on a loader ENTRY is page-fatal (`assertEntriesActive`), while a parked dynamic
+   * injection merely never fires and the card keeps its declared fallback.
+   *
+   * LIVE, not a one-shot snapshot: once a directory exists for the bound session it is
+   * SUBSCRIBED, `load()`ed (so the catalog is really fetched), and every store notification
+   * re-projects the card's own store — a provider/model that appears while the page is open shows
+   * up without a rebuild. `directoryFor` THROWS for a session the host does not know, so every
+   * step is wrapped and degrades to the declared lists — with `info()` saying so out loud.
+   */
+  function createLiveCatalog(hostCtx             )              {
+    /** The bound session's model directory, once one resolved. */
+    let directory                            
+    /** The session the directory is bound to (a switch rebinds it). */
+    let boundSessionId                    
+    /** The catalog's current provider groups. */
+    let groups                 = []
+    /** The catalog's current state. */
+    let info              = FALLBACK_CATALOG
+    /** The directory store's unsubscribe function, while one is held. */
+    let unsubscribeStore                      = null
+    /** The session-list unsubscribe function, while one is held. */
+    let unsubscribeSessions                      = null
+    /** The dynamic-injection fiber, while the injection is live. */
+    let fiber                                  = null
+    /** Every subscriber the card's store forwards to. */
+    const listeners = new Set            ()
+
+    /** Wake every subscriber (a broken one must not break the card). */
+    function notify()       {
+      for (const listener of [...listeners]) {
+        try {
+          listener()
+        } catch {
+          /* a broken listener must not break the card */
+        }
+      }
+    }
+
+    /**
+     * The CONSOLE SIGNAL: a degraded read used to be visible ONLY in the card's own paragraph at
+     * the TOP of the section, which a user looking at the three slot pickers at the BOTTOM never
+     * sees — and the fallback path was console-silent, which is how a dead catalog read survived a
+     * whole verification wave. Exactly ONE warning when the state BECOMES a fallback (never
+     * repeated while it stays one; re-armed when it returns to live and degrades again) and ONE
+     * info when it becomes live. The sentence is `catalogNotice`'s — never a second wording.
+     */
+    /**
+     * Announce a state change ONCE per transition. `pending` marks a fallback that is only the
+     * sessions list still ENUMERATING: the card starts with the plugin (measured — the injected
+     * callback fires during app BOOT, long before any conversation exists), so announcing that first
+     * "no session is bound" put a `[mpd]` WARNING into every healthy boot while nothing was wrong.
+     * The rendered state is unchanged (the visible fallback paragraph still says exactly this); only
+     * the CONSOLE announce waits for the list to settle, so a warning means a degrade again.
+     */
+    /** The mode the console last announced, so a transition is announced exactly once. */
+    let announcedMode                    
+    /** Publish one catalog state and announce a transition. */
+    function publish(nextGroups                , nextInfo             )       {
+      groups = nextGroups
+      info = nextInfo
+      /** The mode this state renders as. */
+      const mode = info !== null && info !== undefined && info.mode === "live" ? "live" : "fallback"
+      /** Whether this fallback is only the session list still enumerating. */
+      const pending = info !== null && info !== undefined && info.pending === true
+      if (pending !== true && mode !== announcedMode) {
+        announcedMode = mode
+        /** The one sentence this state is announced with. */
+        const sentence = catalogNotice(info)
+        if (mode === "live") console.info("[mpd] model catalog:", sentence)
+        else console.warn("[mpd] model catalog:", sentence)
+      }
+      notify()
+    }
+
+    /** Degrade to the declared lists, with the reason the card renders and announces. */
+    function fallback(reason        , pending          )       {
+      publish([], { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason, pending: pending === true })
+    }
+
+    /** Drop the bound directory and its store subscription (the catalog keeps its last state). */
+    function releaseDirectory()       {
+      if (unsubscribeStore !== null) {
+        try {
+          unsubscribeStore()
+        } catch {
+          /* the store may already be gone */
+        }
+        unsubscribeStore = null
+      }
+      directory = undefined
+    }
+
+    /** Re-read the bound directory's store and republish (live: called on every notification). */
+    function readStore()       {
+      try {
+        /** The bound directory's store, when it has one. */
+        const store = directory ? directory.store : undefined
+        /** The store's current snapshot. */
+        const snapshot = store && typeof store.getSnapshot === "function" ? store.getSnapshot() : undefined
+        /** The groups the snapshot carries (an absent list counts as none). */
+        const raw = snapshot && Array.isArray(snapshot.groups) ? snapshot.groups : []
+        /** The groups that carry an id and a model list. */
+        const next = raw.filter((group) => group !== null && typeof group === "object" && typeof group.id === "string" && Array.isArray(group.models))
+        if (next.length === 0) {
+          fallback("the model directory for this session reports no provider")
+          return
+        }
+        /** The provider/model counts of the groups about to be published. */
+        const counts = catalogCounts(next)
+        publish(next, { mode: "live", providers: counts.providers, models: counts.models })
+      } catch {
+        fallback("the model directory could not be read")
+      }
+    }
+
+    /** Bind (or rebind) the directory of the current session and follow its store. */
+    function bindDirectory(directories                                          , sessions                             , force         )       {
+      /** The session the directory should belong to. */
+      const sessionId = boundSessionIdOf(sessions)
+      // A session-list notification is not a reason to re-fetch an unchanged directory: only a
+      // real SWITCH (or a provider remount, which passes force) rebinds and reloads.
+      if (force !== true && sessionId !== undefined && sessionId === boundSessionId && directory !== undefined) return
+      boundSessionId = sessionId
+      releaseDirectory()
+      try {
+        if (directories === null || directories === undefined || typeof directories.directoryFor !== "function") {
+          fallback("no model directory service is registered")
+          return
+        }
+        if (sessionId === undefined) {
+          // "the list has not enumerated yet" is NOT the same state as "the list is ready and offers
+          // no bindable session": only the second is a degrade worth a console warning.
+          /** The list snapshot, read only to tell enumeration from an empty list. */
+          const snapshot = listSnapshotOf(sessions)
+          /** Whether the list is still enumerating (its phase is not `ready` yet). */
+          const enumerating = snapshot !== undefined && snapshot !== null && snapshot.phase !== "ready"
+          fallback("no session is bound", enumerating)
+          return
+        }
+        /** The directory the host resolved for that session. */
+        const found = directories.directoryFor(sessionId)
+        if (found === null || found === undefined) {
+          fallback("the host resolved no model directory for this session")
+          return
+        }
+        directory = found
+        /** The directory's own store, when it has one. */
+        const store = found.store
+        if (store && typeof store.subscribe === "function") unsubscribeStore = store.subscribe(() => readStore())
+        readStore()
+        if (typeof found.load === "function") {
+          try {
+            Promise.resolve(found.load()).then(() => readStore(), () => { /* a failed load keeps the last snapshot */ })
+          } catch {
+            /* a synchronous throw keeps the last snapshot */
+          }
+        }
+      } catch (error) {
+        // directoryFor THROWS for a session the host does not know — and for a CALLER whose inject
+        // list does not satisfy the service's own reads (`cannot get property "remote.session"
+        // without inject`, the measured defect). Degrade, never crash the card, and NAME the cause:
+        // a mislabeled fallback is what kept this defect invisible in the UI for a whole lane.
+        /** The failure's own message, or "" when it carries none. */
+        const detail = error !== null && error !== undefined && typeof (error                         ).message === "string" ? (error                         ).message           : ""
+        fallback("the host resolved no model directory for this session" + (detail === "" ? "" : ": " + detail.slice(0, 160)))
+      }
+    }
+
+    /** Bind the catalog to the services of one injected scope. */
+    function bind(scoped             )       {
+      releaseDirectory()
+      if (unsubscribeSessions !== null) {
+        try {
+          unsubscribeSessions()
+        } catch {
+          /* the list may be gone */
+        }
+        unsubscribeSessions = null
+      }
+      // Services come back untyped through the context probe; only the members declared above are read.
+      /** The host's model-directory service, when this scope exposes one. */
+      const directories = readService(scoped, "modelDirectories")                                     
+      /** The client's sessions service, when this scope exposes one. */
+      const sessions = readService(scoped, "sessions")                               
+      try {
+        /** The session list, when the sessions service exposes one. */
+        const list = sessions ? sessions.list : undefined
+        // A session SWITCH re-binds the directory: the picker follows the session the page is on.
+        if (list && typeof list.subscribe === "function") unsubscribeSessions = list.subscribe(() => bindDirectory(directories, sessions, false))
+      } catch {
+        unsubscribeSessions = null
+      }
+      // The injection itself is a (re)bind: a provider remount must never keep a stale directory.
+      bindDirectory(directories, sessions, true)
+    }
+
+    return {
+      /** Start the dynamic injection. The scoped ctx of the callback is what reads the services. */
+      start()          {
+        if (typeof hostCtx?.inject !== "function") {
+          fallback("the client runtime exposes no ctx.inject")
+          return false
+        }
+        try {
+          // The CALLER-SCOPED chain: `remote.session` is what the host's directory resolver reads on
+          // ITS ctx, and cordis resolves a service's ctx to the ACCESSING ctx — so it must be
+          // declared HERE (dynamically; never in the module's declared inject) or `directoryFor`
+          // throws `cannot get property "remote.session" without inject`. Measured necessary AND
+          // sufficient; see the class comment above.
+          fiber = hostCtx.inject(["modelDirectories", "sessions", "remote.session"], (scoped) => bind(scoped))
+        } catch (error) {
+          console.warn("[mpd] settings section: the model catalog could not be injected: " + String(error))
+          fallback("the model catalog injection failed")
+          return false
+        }
+        return true
+      },
+      /** Release the directory, the session subscription and the injection fiber. */
+      dispose()       {
+        releaseDirectory()
+        if (unsubscribeSessions !== null) {
+          try {
+            unsubscribeSessions()
+          } catch {
+            /* the list may be gone */
+          }
+          unsubscribeSessions = null
+        }
+        if (fiber !== null && typeof fiber.dispose === "function") {
+          try {
+            fiber.dispose()
+          } catch {
+            /* the fiber may already be gone */
+          }
+        }
+        fiber = null
+        listeners.clear()
+      },
+      /** The catalog's current provider groups. */
+      groups: ()                 => groups,
+      /** The catalog's current state. */
+      info: ()              => info,
+      /** Subscribe to catalog changes; the returned function unsubscribes. */
+      subscribe(listener            )                {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+    }
+  }
+
+  /** The declared fallback options of one knob, in the { value, label } shape the card renders. */
+  function declaredOptions(field                 )                {
+    return (Array.isArray(field.options) ? field.options : []).map((value) => ({ value, label: value }))
+  }
+
+  /** The catalog entry of one exact provider/model pair (the provider leaf picks the group). */
+  function findModel(groups                , providerId         , modelId         )                           {
+    /** The groups of the selected provider, which are searched first. */
+    const preferred = groups.filter((group) => group.id === providerId)
+    for (const group of [...preferred, ...groups.filter((group) => group.id !== providerId)]) {
+      for (const model of group.models) if (model && model.id === modelId) return model
+    }
+    return undefined
+  }
+
+  /**
+   * The options ONE field renders. Non-slot knobs keep their declared list. Slot leaves derive
+   * theirs from the catalog and fall back to the declared list whenever the catalog is empty or
+   * lacks the requested entry — a missing catalog degrades the OPTIONS, never the section:
+   *   provider          -> the catalog's provider ids (label = the provider's display name)
+   *   model             -> every provider's models, GROUPED by provider (optgroup label)
+   *   reasoningEffort   -> the SELECTED model's own efforts, so changing the model re-derives them
+   */
+  function optionsFor(field                 , groups                , controls                                        )                {
+    /** The knob's declared options, which every degrade path returns. */
+    const declared = declaredOptions(field)
+    if (field.path[0] !== TEAM_MODEL_SLOT || groups.length === 0) return declared
+    /** The slot this row belongs to (`slot1`…`slot4`). */
+    const slot = field.path[1]
+    /** The leaf this row edits. */
+    const leaf = field.path[2]
+    if (leaf === "provider") return groups.map((group) => ({ value: group.id, label: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id }))
+    if (leaf === "model") {
+      /** Every provider's models, in the catalog's own order. */
+      const options                = []
+      for (const group of groups) {
+        for (const model of group.models) if (model && typeof model.id === "string") options.push({ value: model.id, label: typeof model.name === "string" && model.name.length > 0 ? model.name : model.id, group: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id })
+      }
+      return options.length > 0 ? options : declared
+    }
+    /** The text of one control of this slot, which the effort list derives from. */
+    const textOf = (path          )                     => {
+      /** The control the render is currently showing for that path. */
+      const control = controls ? controls[path.join(".")] : undefined
+      return control ? control.text : undefined
+    }
+    /** The model the provider and model controls currently select. */
+    const model = findModel(groups, textOf([TEAM_MODEL_SLOT, slot, "provider"]), textOf([TEAM_MODEL_SLOT, slot, "model"]))
+    /** The selected model's own efforts (an absent list counts as none). */
+    const efforts = model && model.reasoning && Array.isArray(model.reasoning.efforts) ? model.reasoning.efforts : []
+    /** Those efforts as rendered options. */
+    const derived = efforts.filter((effort) => effort && typeof effort.id === "string").map((effort) => ({ value: effort.id, label: typeof effort.name === "string" && effort.name.length > 0 ? effort.name : effort.id }))
+    return derived.length > 0 ? derived : declared
+  }
+
+  /**
+   * The option children of one select: `optgroup`s keyed by provider when the options carry a
+   * group (the model control, where the provider is shown as a group), a flat list otherwise.
+   */
+  function optionElements(createElement                               , options               )            {
+    if (!options.some((option) => typeof option.group === "string")) {
+      return options.map((option) => createElement("option", { key: option.value, value: option.value }, option.label))
+    }
+    /** The group labels, in first-seen order. */
+    const labels           = []
+    /** The options of every group. */
+    const byGroup = new Map                       ()
+    for (const option of options) {
+      /** The option's group label (an ungrouped option lands in the empty group). */
+      const label = typeof option.group === "string" ? option.group : ""
+      if (!byGroup.has(label)) {
+        byGroup.set(label, [])
+        labels.push(label)
+      }
+      // The `has`/`set` above is what makes the entry present; the assertion is type-level only.
+      byGroup.get(label) .push(option)
+    }
+    return labels.map((label) =>
+      createElement(
+        "optgroup",
+        { key: label, label },
+        ...byGroup.get(label) .map((option) => createElement("option", { key: option.value, value: option.value }, option.label)),
+      ),
+    )
+  }
+
+  /** A minimal snapshot store (the host's own is private): subscribe + getSnapshot, stable refs. */
+  function createStore   (initial   )                                                                                                       {
+    /** The current snapshot, replaced only by `set`. */
+    let snapshot = initial
+    /** Every subscriber the store wakes after a `set`. */
+    const listeners = new Set            ()
+    return {
+      /** The current snapshot (the same reference until the next `set`). */
+      getSnapshot: ()    => snapshot,
+      /** Subscribe a component; the returned function unsubscribes it. */
+      subscribe(listener            )                {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+      /** Replace the snapshot and wake every subscriber. */
+      set(next   )       {
+        snapshot = next
+        for (const listener of [...listeners]) {
+          try {
+            listener()
+          } catch {
+            /* a broken listener must not break the card */
+          }
+        }
+      },
+    }
+  }
+
+  /**
+   * The card's form controller: reads the bound settings scope, stages edits, and writes them with
+   * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
+   * express (it writes top-level fields only).
+   */
+  function createMpdCardController(scope               , fields                    = FIELDS, disclosure             = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo                    = () => FALLBACK_CATALOG)                 {
+    /** Every staged edit, keyed by the row's dotted knob key. */
+    const staged = new Map                    ()
+    // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
+    // call site is a TDZ ReferenceError (measured by this module's own test).
+    /** Whether a save is in flight. */
+    let saving = false
+    /** Whether the last save failed. */
+    let failed = false
+    /** The last failure's message. */
+    let lastError = ""
+    /** The card's own store, whose first projection is built from the bound scope. */
+    const store = createStore(project())
+
+    /** The bound form's snapshot and the namespace sub-tree this card reads values from. */
+    function readScope()                                                            {
+      /** The form's current snapshot. */
+      const snapshot = scope.getSnapshot()
+      return { snapshot, section: snapshot?.value ?? snapshot?.user }
+    }
+
+    /** Project the whole card state (rows, flags, disclosures and catalog state). */
+    function project()            {
+      /** The form snapshot and the namespace sub-tree of this projection. */
+      const { snapshot, section } = readScope()
+      /** Every row's control, keyed by the row's dotted knob key. */
+      const controls                             = {}
+      /** Whether any row carries a staged edit. */
+      let dirty = false
+      /** Whether any staged draft is invalid. */
+      let invalid = false
+      for (const field of fields) {
+        /** The row's dotted knob key. */
+        const key = fieldKey(field)
+        /** The row's staged edit, when the user typed one. */
+        const stagedEdit = staged.get(key)
+        if (stagedEdit !== undefined) {
+          // A clear marker and a parsed value share this slot; only the marker carries `kind`, so
+          // the access is asserted where it is read (type-level only).
+          /** The staged draft's interpretation. */
+          const parsed             = stagedEdit.clear ? { kind: "clear" } : parse(field.kind, stagedEdit.text)
+          controls[key] = { text: stagedEdit.text, overridden: (parsed                                 )?.kind === "set", invalid: parsed === undefined }
+          if (parsed === undefined) invalid = true
+          dirty = true
+          continue
+        }
+        controls[key] = { text: format(field.kind, leafOf(section, field.path)), overridden: leafOf(snapshot?.user, field.path) !== undefined, invalid: false }
+      }
+      return {
+        available: snapshot?.status === "ready",
+        writable: snapshot?.writable === true,
+        mode: snapshot?.mode ?? "memory",
+        dirty,
+        invalid,
+        saving,
+        failed,
+        error: lastError,
+        controls,
+        disclosure,
+        // Which branch produced the slot option lists — LIVE (with counts) or the declared
+        // fallback. It rides the card's OWN store, so a catalog change re-projects the card.
+        catalog: catalogInfo() ?? FALLBACK_CATALOG,
+      }
+    }
+
+    /** Re-project and publish the card state. */
+    function publish()       {
+      store.set(project())
+    }
+    try {
+      scope.subscribe(publish)
+    } catch {
+      /* a scope without subscribe still renders its first snapshot */
+    }
+
+    /** Every staged edit a save would write (an unparsable draft contributes no write). */
+    function plan()            {
+      /** The ops a save would send. */
+      const writes            = []
+      for (const field of fields) {
+        /** The row's dotted knob key. */
+        const key = fieldKey(field)
+        /** The row's staged edit, when the user typed one. */
+        const stagedEdit = staged.get(key)
+        if (stagedEdit === undefined) continue
+        if (stagedEdit.clear) {
+          writes.push({ op: "unset", path: [...field.path] })
+          continue
+        }
+        /** The staged draft's parsed value (an unparsable one contributes no write). */
+        const parsed = parse(field.kind, stagedEdit.text)
+        if (parsed === undefined) continue
+        if (format(field.kind, leafOf(readScope().section, field.path)) === format(field.kind, parsed)) continue
+        writes.push({ op: "set", path: [...field.path], value: parsed })
+      }
+      return writes
+    }
+
+    /** Write every staged edit through the scope's mutate, with the revision fence. */
+    async function save()                {
+      /** The ops this save would send. */
+      const writes = plan()
+      // A scope that is not writable (a non-loopback page keeps its snapshot in memory) must not
+      // even ATTEMPT a write: the card renders the reason, and the edit stays staged for the user
+      // rather than being silently dropped on the wire.
+      if (saving || writes.length === 0 || readScope().snapshot?.writable !== true) return
+      saving = true
+      failed = false
+      lastError = ""
+      publish()
+      try {
+        // The revision fence: the scope reports the revision it read, so a concurrent change is a
+        // conflict the user can retry rather than a silent overwrite.
+        await scope.mutate(writes, scope.getSnapshot()?.revision)
+        staged.clear()
+      } catch (error) {
+        failed = true
+        lastError = String((error                         )?.message ?? error)
+      }
+      saving = false
+      publish()
+    }
+
+    /** Stage one row's edit, clear the last failure and re-project. */
+    function stage(key        , edit            )       {
+      staged.set(key, edit)
+      failed = false
+      lastError = ""
+      publish()
+    }
+
+    return {
+      /** The face the slot registration injects: one hook store plus the form actions. */
+      inject()           {
+        return {
+          hooks: { mpdCard: store },
+          edit: (key        , text        ) => stage(key, { text, clear: false }),
+          resetField: (key        ) => stage(key, { text: "", clear: true }),
+          save: ()       => {
+            void save()
+          },
+          discard: ()       => {
+            if (staged.size === 0 && !failed) return
+            staged.clear()
+            failed = false
+            lastError = ""
+            publish()
+          },
+        }
+      },
+      store,
+      /** Re-project after an EXTERNAL change (the live catalog): the card's store is the channel. */
+      refresh: ()       => {
+        publish()
+      },
+      /** Release the bound scope. */
+      dispose: ()       => {
+        try {
+          scope.dispose()
+        } catch {
+          /* already disposed */
+        }
+      },
+    }
+  }
+
+  // ── R2: the section renders on the harness's OWN settings-form tokens ───────────
+  // WHAT THIS IS: the card's entire visual contract, read off the INSTALLED primitives —
+  // `@deepseek-ai/dsh-client-ui-primitives/lib/settings-form/fields.module.css` (`.field`, `.field +
+  // .field`, `.label`, `.hint`, `.input`, `.reset`) and `SettingsForm.module.css` (`.form`,
+  // `.footer`, `.save`, `.readOnly`), with the alias VALUES and the focus ring taken from the theme
+  // bundle (`dsh-client-ui-theme`: `body{…}` is the light theme, `body[data-ds-dark-theme]{…}` the
+  // dark one, and its `focus.css` holds `:root{--dsw-focus-ring-width:2px}` plus the global
+  // `:focus-visible` rule), and the section title/description from the settings plane's own
+  // `dsh-client-ui-settings-models` (`.title` 16px/500/24px, `.description` 14px/24px). R2 is a
+  // RESTYLE: nothing in this block reads, writes or re-keys a value — every key, attribute and
+  // behaviour path below the styles is the one that shipped.
+  //
+  // FALLBACK DISCIPLINE (BINDING): an inline style gets no stylesheet default, and a bare
+  // `var(--dsw-…)` that resolves to nothing paints an invisible control — so every token below is
+  // read WITH a literal. A token this bundle ALREADY pairs keeps that exact literal
+  // (`--dsw-alias-label-primary, #1c1c1e`, `-secondary, #5b6472`, `-tertiary, #8a94a6`,
+  // `--dsw-alias-state-business-primary, #4d6bfe` — the vocabulary `team-view.ts` renders the team
+  // panel with, so the two panels degrade identically); a token it does not pair yet carries the
+  // token's own LIGHT-theme value from the theme bundle, which is what the token resolves to by
+  // default. `--dsw-focus-ring-color` is DEFINED by that theme (as `transparent`, for pointer
+  // modality), so its fallback is the host's own nested one rather than a literal.
+  //
+  // THE FOCUS RING IS NOT PAINTED HERE, deliberately: the host's global `:focus-visible` rule
+  // already gives every focusable element `outline-width: var(--dsw-focus-ring-width)` in
+  // `outline-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary))` — the
+  // exact pair the contract names — and a pseudo-class cannot be expressed as an inline style. Only
+  // the CONTROL opts out, exactly as the host's `.input:focus-visible` does (border accent, no
+  // outline), through the two listeners below.
+  /** The radius the harness's `.field` / `.input` / `.button` all share (`--dsw-radius-md:12px`). */
+  const RADIUS_MD = "var(--dsw-radius-md, 12px)"
+  /** The control stroke (`.input`): 0.5px, light-theme literal. */
+  const STROKE_CONTROL = "0.5px solid var(--dsw-alias-border-l4, #00000029)"
+  /** The FIELD separator (`.field + .field`): 0.5px, light-theme literal. */
+  const STROKE_FIELD = "0.5px solid var(--dsw-alias-border-l2, #0000001a)"
+  /** The outlined action's stroke (`.button.outline`): 0.5px, light-theme literal. */
+  const STROKE_BUTTON = "0.5px solid var(--dsw-alias-border-l3, #0000001f)"
+  /** The label alias the host's `.label` colours with (the bundle's existing literal). */
+  const LABEL_PRIMARY = "var(--dsw-alias-label-primary, #1c1c1e)"
+  /** The muted alias (`.reset`, `.description`; the bundle's existing literal). */
+  const LABEL_SECONDARY = "var(--dsw-alias-label-secondary, #5b6472)"
+  /** The dimmest alias (`.hint`, `.readOnly`, `.failed`; the bundle's existing literal). */
+  const LABEL_TERTIARY = "var(--dsw-alias-label-tertiary, #8a94a6)"
+  /** The control fill (`.input` `--dsw-alias-bg-layer-3`, light-theme literal `#fff`). */
+  const FILL_CONTROL = "var(--dsw-alias-bg-layer-3, #fff)"
+  /** The focus/active accent (`.input:focus-visible`; the bundle's existing literal). */
+  const ACCENT = "var(--dsw-alias-state-business-primary, #4d6bfe)"
+  /** The pointer-hover wash (`.button.outline:hover`), light-theme literal. */
+  const HOVER_WASH = "var(--dsw-alias-interactive-bg-hover, #2631480f)"
+  /**
+   * Every inline style bag the card renders with. The keys are the ROLES the harness names
+   * (`.field`, `.label`, `.hint`, `.input`, `.help`, `.footer`, `.save`, `.reset`, `.readOnly`), so a
+   * reviewer can diff one against its stylesheet rule directly.
+   */
+  const SKIN                                                  = {
+    /** The host's `.form`: a plain column — the host's own sections have no panel chrome. */
+    form: { display: "flex", flexDirection: "column" },
+    /** `.field`: flex column, gap 6px, padding 12px 0. The separator is added per field below. */
+    field: { display: "flex", flexDirection: "column", gap: 6, padding: "12px 0" },
+    /** The settings section title (`.title`: 16px/500/24px, label-primary). */
+    title: { margin: 0, fontSize: 16, fontWeight: 500, lineHeight: "24px", color: LABEL_PRIMARY },
+    /** The section description (`.description`: 14px/24px, label-secondary). */
+    description: { margin: "0 0 12px", fontSize: 14, lineHeight: "24px", color: LABEL_SECONDARY },
+    /** `.readOnly` / `.unavailable`: the state notes, 12px/1.5 tertiary. */
+    note: { margin: "0 0 12px", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** `.help`: the disclosure block — 12px/1.6 stack, 8px between paragraphs. */
+    help: { margin: "0 0 12px", display: "flex", flexDirection: "column", gap: 8, paddingTop: 10 },
+    /** One `.help > p`: 12px/1.6, the hint colour (the captain's R2 note: no wall of body text). */
+    helpText: { margin: 0, fontSize: 12, lineHeight: 1.6, color: LABEL_TERTIARY },
+    /** `.label`: 13px/500/1.5, label-primary. */
+    label: { display: "block", fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
+    /** `.hint`: the row's human sentence — 12px/1.5 tertiary (the contract's hint row). */
+    hint: { display: "block", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** The block that stacks the sentence over its key, with the 2px the row always had. */
+    hintBlock: { display: "block", marginBottom: 2 },
+    /** The dotted key BENEATH a sentence: one step down (11px, dimmer) so it never competes. */
+    key: { display: "block", fontSize: 11, lineHeight: 1.5, opacity: 0.6, color: LABEL_TERTIARY },
+    /** The dotted key as a row's ONLY hint (a knob with no sentence): the hint size, still dim. */
+    keyOnly: { display: "block", marginBottom: 2, fontSize: 12, lineHeight: 1.5, opacity: 0.6, color: LABEL_TERTIARY },
+    /** `.input`: 34px, 0 12px padding, the control stroke, radius-md, layer-3 fill, 13px. */
+    control: {
+      boxSizing: "border-box",
+      width: "100%",
+      height: 34,
+      padding: "0 12px",
+      border: STROKE_CONTROL,
+      borderRadius: RADIUS_MD,
+      background: FILL_CONTROL,
+      fontSize: 13,
+      lineHeight: 1.5,
+      color: LABEL_PRIMARY,
+    },
+    /** `.input:disabled`: a control the page refuses writes on greys its text and drops the cursor. */
+    controlOff: { color: LABEL_TERTIARY, cursor: "default" },
+    /** A slot's group heading: the label treatment, with the field rhythm's top padding. */
+    groupHeading: { marginTop: 12, fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
+    /** A slot's one-line impact: the hint treatment. */
+    groupImpact: { margin: "2px 0 0", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** The row's marker line (overridden / invalid) that carries the reset link. */
+    resetNote: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** `.reset`: a link-shaped button — no chrome, 12px/1.5, label-secondary. */
+    reset: {
+      border: "none",
+      background: "none",
+      padding: 0,
+      fontFamily: "inherit",
+      fontSize: 12,
+      lineHeight: 1.5,
+      color: LABEL_SECONDARY,
+      cursor: "pointer",
+    },
+    /** `.footer`: one row, gap 8px, 16px above. */
+    footer: { display: "flex", alignItems: "center", gap: 8, paddingTop: 16 },
+    /** `.save`: radius-md pill, 5px 14px, 13px, label-primary fill with the layer-3 text colour. */
+    save: {
+      appearance: "none",
+      border: "1px solid transparent",
+      borderRadius: RADIUS_MD,
+      padding: "5px 14px",
+      fontFamily: "inherit",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer",
+      background: LABEL_PRIMARY,
+      color: FILL_CONTROL,
+    },
+    /** `.button.outline`: the secondary action beside the save. */
+    discard: {
+      appearance: "none",
+      border: STROKE_BUTTON,
+      borderRadius: RADIUS_MD,
+      padding: "5px 14px",
+      fontFamily: "inherit",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer",
+      background: "transparent",
+      color: LABEL_PRIMARY,
+    },
+    /** `.failed`: the save's own status line, 12px/1.5 tertiary, stretched like the host's. */
+    status: { flex: 1, minWidth: 0, margin: 0, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+  }
+
+  /** The field bag of the field at `index`: the separator lands on every field but the FIRST. */
+  const fieldStyle = (index        )                                  => (index === 0 ? SKIN.field : { ...SKIN.field, borderTop: STROKE_FIELD })
+
+  /** The control bag of one row: a control the page refuses writes on takes `.input:disabled`. */
+  const controlStyle = (off         )                                  => (off ? { ...SKIN.control, ...SKIN.controlOff } : SKIN.control)
+
+  /** The mutable inline-style bag a focus or hover listener writes to (a DOM element's `style`). */
+                        
+                                                             
+                              
+   
+
+  /** The event shape those listeners read: the element the event was dispatched on. */
+                        
+                                                                                   
+                                        
+   
+
+  /** Write one declaration set onto the element an event came from, so inline styles can react. */
+  const paint = (event            , declarations                        )       => {
+    for (const [property, value] of Object.entries(declarations)) event.currentTarget.style[property] = value
+  }
+
+  /** The control's focus pair: the host's `.input:focus-visible` on, and the token pair back off. */
+  const CONTROL_FOCUS = {
+    /** On focus: the business-primary border, with the ring opted out (the host's own rule). */
+    onFocus: (event            )       => paint(event, { borderColor: ACCENT, outline: "none" }),
+    /** On blur: clear both, so the inline `border` shorthand and the global ring apply again. */
+    onBlur: (event            )       => paint(event, { borderColor: "", outline: "" }),
+  }
+
+  /** The reset link's hover pair (`.reset:hover` → label-primary), for a button that reads as a link. */
+  const LINK_HOVER = {
+    /** Enter: the link darkens to label-primary. */
+    onMouseEnter: (event            )       => paint(event, { color: LABEL_PRIMARY }),
+    /** Leave: back to label-secondary. */
+    onMouseLeave: (event            )       => paint(event, { color: LABEL_SECONDARY }),
+  }
+
+  /** The outlined action's hover pair (`.button.outline:hover` → the interactive wash). */
+  const BUTTON_HOVER = {
+    /** Enter: the wash replaces the transparent fill. */
+    onMouseEnter: (event            )       => paint(event, { background: HOVER_WASH }),
+    /** Leave: back to transparent. */
+    onMouseLeave: (event            )       => paint(event, { background: "transparent" }),
+  }
+
+  /** The card component: self-contained markup, no private host components. */
+  function createCardComponent(react              , fields                    = FIELDS, readGroups                = () => [])                                         {
+    /** The element factory, destructured once per component construction. */
+    const { createElement } = react
+    return function MpdSettingsCard(props                    )          {
+      /** The card state this render is built from. */
+      const state = props.useMpdCard((snapshot) => snapshot)
+      /** The translator for this render, or the identity fallback when the host passed none. */
+      const t = typeof props.t === "function" ? props.t : (key        )         => key
+      /** Whether every control renders disabled (a read-only page). */
+      const disabled = !state.writable
+      // The catalog branch this render used. Silent fallback is what hid the defect, so the state
+      // is part of the rendered output (and of the data attributes) — never implicit.
+      /** The catalog state this render used. */
+      const catalog = state.catalog ?? FALLBACK_CATALOG
+      /** The live provider groups the slot pickers derive their options from. */
+      let groups                 = []
+      try {
+        /** The catalog probe's answer, which counts only when it is a list. */
+        const probed = readGroups()
+        if (Array.isArray(probed)) groups = probed                  
+      } catch {
+        /* a broken catalog probe degrades the OPTIONS, never the section */
+      }
+      /** One rendered row per knob, in declaration order (`index` picks the separator). */
+      const rows = fields.map((field, index) => {
+        /** The row's dotted knob key. */
+        const key = fieldKey(field)
+        /** The row's control (a knob with no projected control renders an empty input). */
+        const control = state.controls[key] ?? { text: "" }
+        /** The row's label. */
+        const label = t(key)
+        // The twelve slot rows carry the fallback marker; the thirteen scalar rows are untouched.
+        /** The row's hint, with the slot rows carrying the fallback marker. */
+        const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
+        // HUMAN SENTENCE FIRST, at full readability; the row's dotted KEY sits BENEATH it, dimmer.
+        // The bridge DISCLOSURE is not here at all any more — it is stated once at the top of the
+        // card. Repeating it per row is what buried every row's own sentence (measured in a real
+        // browser: 2026-09-27, `05b-mpd-section.png`).
+        /** Where the dotted key starts inside the hint. */
+        const keyAt = hint.indexOf("mpd.jsonc " + key)
+        // The key sits inside parentheses now, so drop the opening one the slice leaves behind.
+        /** The human sentence half of the hint. */
+        const human = keyAt > 0 ? hint.slice(0, keyAt).replace(/\(\s*$/, "").trim() : ""
+        /** The dotted-key half of the hint. */
+        const pointer = keyAt < 0 ? hint : hint.slice(keyAt).replace(/\)\s*$/, "").trim()
+        /** The hint markup: sentence plus key, or the key alone for a knob with no sentence. */
+        const hintNode = human.length === 0
+          ? createElement("span", { style: SKIN.keyOnly, "data-mpd-row-key": key }, pointer)
+          : createElement(
+              "span",
+              { style: SKIN.hintBlock },
+              createElement("span", { style: SKIN.hint, "data-mpd-row-human": key }, human),
+              createElement("span", { style: SKIN.key, "data-mpd-row-key": key }, pointer),
+            )
+        /** The row's options (select knobs only). */
+        const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
+        /** The row's control markup: a select when options exist, else a text input. */
+        const input = field.kind === "select" && options.length > 0
+          ? createElement(
+              "select",
+              { value: control.text, disabled, onChange: (event             ) => props.edit(key, event.target.value), style: { ...controlStyle(disabled), cursor: disabled ? "default" : "pointer" }, ...CONTROL_FOCUS },
+              createElement("option", { value: "" }, "—"),
+              ...optionElements(createElement, options),
+            )
+          : createElement("input", {
+              value: control.text,
+              disabled,
+              onChange: (event             ) => props.edit(key, event.target.value),
+              style: controlStyle(disabled),
+              ...CONTROL_FOCUS,
+            })
+        return createElement(
+          "label",
+          { key, style: fieldStyle(index) },
+          createElement("span", { style: SKIN.label }, label),
+          hintNode,
+          input,
+          createElement(
+            "span",
+            { style: SKIN.resetNote },
+            (control.overridden ? "overridden · " : "") + (control.invalid ? "not a valid value · " : ""),
+            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key), style: SKIN.reset, ...LINK_HOVER }, t("reset")),
+          ),
+        )
+      })
+      // VISIBLE AT THE CONTROL: the four team-model pickers sit at the BOTTOM of the 25 rows,
+      // where the section's top notice is off-screen — so the SAME sentence renders again
+      // immediately above the first slot row (between the 13 scalar rows and the twelve slot rows),
+      // in BOTH states. It carries its own `data-mpd-catalog-state`; the top notice keeps its own.
+      /** The index of the first slot row (-1 when the field list carries no slot leaf). */
+      const slotStart = fields.findIndex((field) => field.path[0] === TEAM_MODEL_SLOT)
+      /** The thirteen scalar rows. */
+      const scalarRows = slotStart < 0 ? rows : rows.slice(0, slotStart)
+      /** The twelve slot rows. */
+      const slotRows = slotStart < 0 ? [] : rows.slice(slotStart)
+      /** The catalog line rendered immediately above the first slot row. */
+      const slotLine = createElement(
+        "p",
+        { style: { ...SKIN.note, margin: "12px 0 4px" }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
+        catalogNotice(catalog),
+      )
+      // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
+      // who the slot routes before reading a single hint. The rows stay DIRECT children of the card
+      // (the heading/impact are siblings, not a wrapper), so every existing row lookup still holds.
+      /** The slot rows interleaved with one heading/impact pair per slot. */
+      const slotChildren            = []
+      for (let index = 0; index < slotRows.length; index++) {
+        /** The slot this row belongs to. */
+        const slot = String(fields[slotStart + index].path[1])
+        /** The slot of the row above ("" at the first slot row). */
+        const previous = index === 0 ? "" : String(fields[slotStart + index - 1].path[1])
+        if (slot !== previous) {
+          slotChildren.push(createElement(
+            "div",
+            { key: "group." + slot, style: SKIN.groupHeading, "data-mpd-slot-group": slot },
+            t("teamModels." + slot + ".heading"),
+          ))
+          slotChildren.push(createElement(
+            "p",
+            { key: "impact." + slot, style: SKIN.groupImpact, "data-mpd-slot-impact": slot },
+            t("teamModels." + slot + ".impact"),
+          ))
+        }
+        slotChildren.push(slotRows[index])
+      }
+      /** Whether the save is blocked (a read-only page, no staged edit, or an invalid draft). */
+      const saveBlocked = disabled || !state.dirty || state.invalid
+      return createElement(
+        "div",
+        { style: SKIN.form },
+        createElement("h3", { style: SKIN.title }, t("title")),
+        createElement("p", { style: SKIN.description }, t("intro")),
+        // The preset explanation sits beside the intro: same hint treatment, one extra sentence.
+        createElement("p", { style: SKIN.helpText, "data-mpd-preset-about": "1" }, t("presetAbout")),
+        disabled
+          ? createElement("p", { style: SKIN.note }, t("readOnly"))
+          : null,
+        createElement(
+          "p",
+          {
+            style: SKIN.note,
+            [CATALOG_ATTR]: catalog.mode,
+            "data-mpd-catalog-providers": String(catalog.providers ?? 0),
+            "data-mpd-catalog-models": String(catalog.models ?? 0),
+          },
+          catalogNotice(catalog),
+        ),
+        // THE DISCLOSURE, ONCE, in its own `.help` block: the same four sentences as before, at the
+        // hint size and colour with the host's 8px between paragraphs, so they read as ONE note
+        // instead of a second wall of body copy beside the fields.
+        createElement(
+          "div",
+          { style: SKIN.help },
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "bridge" },
+            state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "restart" },
+            state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
+          // The not-lost clause belongs to the same statement; it used to ride every row's hint.
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "not-lost" },
+            NOT_LOST),
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
+            state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
+        ),
+        ...scalarRows,
+        slotLine,
+        ...slotChildren,
+        createElement(
+          "div",
+          { style: SKIN.footer },
+          createElement("button", { type: "button", disabled: saveBlocked, onClick: () => props.save(), style: { ...SKIN.save, opacity: saveBlocked ? 0.4 : 1 } }, t("save")),
+          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard(), style: SKIN.discard, ...BUTTON_HOVER }, t("discard")),
+          createElement("span", { style: SKIN.status }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
+        ),
+        state.mode === "memory"
+          ? createElement("p", { style: SKIN.note }, t("memoryMode"))
+          : null,
+      )
+    }
+  }
+
+  /** The zh/en dictionaries: the TUI section's labels and zh descriptions, plus the card's copy. */
+  function dictionaries(fields                    = FIELDS)                                                             {
+    /** The English dictionary, extended below with one entry per field. */
+    const en                         = {
+      nav: "MPD",
+      title: "MPD bundle",
+      intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
+      // WHAT THIS BUNDLE'S PRESET IS — carried HERE because the preset picker cannot localize it.
+      //
+      // MEASURED on the installed harness (2026-10-06): a preset's `name`/`description` are plain
+      // strings rendered verbatim by `dsh-client-ui-agent-preset`; only the harness's OWN four presets
+      // are localized, through a FIXED id table (`BUILT_IN_PRESET_KEYS = { standard, ptc, minimal,
+      // cordis }`) whose values are keys in the host client's own dictionary. A third-party preset has
+      // no key and no slot, and §6 forbids patching the host's client code — so the MPD preset's own
+      // English sentence stays English in every language. This row is the localized explanation on a
+      // surface this bundle DOES own.
+      presetAbout:
+        "The \"MPD (Main Working Agent)\" preset is this bundle's main agent: it reads the project's AGENT.md/AGENTS.md/CLAUDE.md, works natively, consults the 11 specialists through mpd_role_spawn, and runs teams on the official Agent Teams plugin. Its description in the preset picker is supplied by the harness as plain text and is not localizable.",
+      save: "Save",
+      discard: "Discard",
+      reset: "Reset to the file value",
+      saving: "Saving…",
+      unsaved: "Unsaved",
+      readOnly: "This deployment stores settings read-only (a non-loopback page never reaches the host document).",
+      memoryMode: "This page is not loopback: settings writes stay process-local and never reach the host document.",
+    }
+    /** The Simplified-Chinese dictionary, extended below with one entry per field. */
+    const zh                         = {
+      nav: "MPD",
+      title: "MPD 插件包",
+      intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
+      // 这个 bundles 的 preset 是什么 —— 放在这里，是因为 preset 选择器无法本地化它。
+      presetAbout:
+        "「MPD (Main Working Agent)」是本插件包的主工作 agent：读取项目的 AGENT.md/AGENTS.md/CLAUDE.md，原生工作，通过 mpd_role_spawn 一次性咨询 11 位专家，并用官方 Agent Teams 插件跑团队。它在 preset 选择器里的说明由宿主以纯文本提供，无法本地化。",
+      save: "保存",
+      discard: "放弃",
+      reset: "重置为文件值",
+      saving: "保存中…",
+      unsaved: "未保存",
+      readOnly: "当前部署以只读方式存储设置（非回环页面无法写入宿主文档）。",
+      memoryMode: "该页面不是回环地址：设置写入仅保留在进程内，不会写入宿主文档。",
+    }
+    for (const field of fields) {
+      /** The row's dotted knob key, which is also its dictionary key. */
+      const key = fieldKey(field)
+      en[key] = field.label
+      zh[key] = field.zh
+      en[key + ".hint"] = hintOf(field, "en")
+      zh[key + ".hint"] = hintOf(field, "zh")
+    }
+    // The group heading and its one-line impact, per slot, in BOTH locales: the card renders them
+    // above each slot's three rows, so a reader learns the group without parsing a hint sentence.
+    for (const [index, slot] of SLOT_SLOTS.entries()) {
+      /** The slot's group heading in both locales. */
+      const heading = slotHeading(slot, index + 1)
+      en["teamModels." + slot + ".heading"] = heading.en
+      zh["teamModels." + slot + ".heading"] = heading.zh
+      en["teamModels." + slot + ".impact"] = impactOf(slot, "en")
+      zh["teamModels." + slot + ".impact"] = impactOf(slot, "zh")
+    }
+    return { en, zh }
+  }
+
+  /**
+   * Mount the section. The namespace's form comes from the harness's `configForms` service, so
+   * `ctx.inject` — never a declared dependency (a declared-but-absent service makes the whole page
+   * fail as `entry: pending`; `web-client-adapt --self-test` asserts this rule against the built
+   * client). One warning on absence, never a throw.
+   * @param ctx - the client entry's context.
+   * @returns true when the registration was attempted.
+   */
+  function mountSettingsCard(ctx                                , options               = {})          {
+    try {
+      if (ctx === undefined || ctx === null || ctx.slots === undefined || typeof ctx.slots.inject !== "function") return false
+      /** The knobs this mount renders (the shared list unless a caller pinned one). */
+      const fields = options.fields ?? FIELDS
+      /** The dictionaries this registration serves its labels from. */
+      const dicts = dictionaries(fields)
+      try {
+        if (ctx.locale !== undefined && typeof ctx.locale.register === "function") ctx.locale.register(LOCALE_NS, dicts)
+      } catch (error) {
+        console.warn("[mpd] settings section: locale registration failed: " + String(error))
+      }
+      ctx.slots.inject(SECTION_SLOT, function* () {
+        try {
+          // THE FORM IS THE SCOPE. Until 2026-09-27 this block waited on
+          // an injected `settingsScope` service, and that service exists NOWHERE in harness
+          // 0.1.7-rc.2 (a grep over every @deepseek-ai/* client bundle returns nothing), so the
+          // callback never fired: the Settings dialog rendered General / Models / Built-in
+          // plugins / Agent presets with NO mpd section, and — because that path logged nothing
+          // — the absence was silent. The harness's own sections reach their namespace through
+          // `ctx.configForms.get(ns)`, whose controller carries the SAME shape this card already
+          // used (`getSnapshot`, `subscribe`, `set`, `mutate`), so the card is unchanged and
+          // only its host object moves.
+          // Read it BOTH ways: a real client context exposes services as properties, while a
+          // stub context (the offline harness) serves them through `get`. The card must not care
+          // which one it is talking to.
+          // STILL DEFERRED, and that is the point: `configForms` is provided by ANOTHER plugin's
+          // fiber, so a one-shot probe at apply() races it. The DYNAMIC form waits for the
+          // provider without parking this boot entry — a declared-but-absent service would turn
+          // the whole page into `entry: pending` (the rule `web-client-adapt --self-test` pins).
+          ctx.inject(["configForms"], (scoped) => {
+            // The context probe answers an untyped service; only the members declared above are read.
+            /** The settings forms service, from the property or through `get`. */
+            const forms = ((typeof scoped.get === "function" ? scoped.get("configForms") : undefined) ?? scoped.configForms)                                    
+            if (forms === undefined || forms === null || typeof forms.get !== "function") {
+              console.warn("[mpd] settings section: this harness exposes no configForms service — the mpd section is not registered")
+              return
+            }
+            /** The form of this section's own configurable entry. */
+            const scope = forms.get(CONFIG_ENTRY)
+            // ONE diagnostic line, and it is load-bearing: "the section renders but every input is
+            // empty" has three possible causes that look identical on screen — the form lookup threw
+            // (warned above), the store never fills, or it fills with a shape this card does not read.
+            // Printing the snapshot's status and whether a value arrived tells them apart from a
+            // capture, without a debugger.
+            try {
+              /** The form's first snapshot, printed so an empty card is diagnosable. */
+              const first = scope?.getSnapshot?.()
+              console.log("[mpd] settings section: form status=" + String(first?.status) + " value=" + (first?.value === undefined ? "absent" : "present") + " writable=" + String(first?.writable) + " mode=" + String(first?.mode))
+              if (typeof scope?.subscribe === "function") scope.subscribe(() => {
+                /** The form's snapshot after the change that fired this line. */
+                const now = scope.getSnapshot?.()
+                console.log("[mpd] settings section: form updated status=" + String(now?.status) + " value=" + (now?.value === undefined ? "absent" : "present"))
+              })
+            } catch (error) {
+              console.warn("[mpd] settings section: snapshot probe failed: " + String((error                         )?.message ?? error))
+            }
+            // The LIVE catalog: injected (never probed), subscribed, and re-projected into the
+            // card's own store on every change. Started BEFORE the registration so the first
+            // render already carries the real list when the providers are up.
+            /** The live catalog this card follows. */
+            const catalog = createLiveCatalog(ctx)
+            // An absent form is the probe path above (it renders its warning); the controller's own
+            // guarded calls keep the same behaviour the untyped original had for that case.
+            /** The card's form controller, bound to the resolved scope. */
+            const controller = createMpdCardController(scope                 , fields, undefined, () => catalog.info())
+            /** The catalog subscription that re-projects the card. */
+            const unsubscribeCatalog = catalog.subscribe(() => {
+              controller.refresh()
+            })
+            catalog.start()
+            // The slot leaves render their option lists from the LIVE catalog on every render.
+            // The host's React module is untyped here, so its used surface is asserted (type-level).
+            /** The card component, bound to the live catalog probe. */
+            const Section = createCardComponent(require("react")                , fields, () => catalog.groups())
+            // The host's descriptor: id + explicit order + a label resolved through this
+            // registration's locale dictionaries. `children` is omitted because this section
+            // renders no nested slot of its own.
+            /** The unregister function the slot registry answered with. */
+            const unregister = ctx.slots.register(
+              { name: SECTION_SLOT, id: SECTION_ID, order: SECTION_ORDER, label: () => dicts.en.nav, locale: LOCALE_NS, inject: () => controller.inject() },
+              Section,
+            )
+            return () => {
+              try {
+                unregister()
+              } catch {
+                /* the slot may be gone */
+              }
+              try {
+                unsubscribeCatalog()
+              } catch {
+                /* already unsubscribed */
+              }
+              catalog.dispose()
+              controller.dispose()
+            }
+          })
+        } catch (error) {
+          console.warn("[mpd] settings section: could not mount the mpd section: " + String(error))
+        }
+        yield undefined
+      })
+      return true
+    } catch (error) {
+      console.warn("[mpd] settings section: slot registration failed: " + String(error))
+      return false
+    }
+  }
+
+  /** Everything the offline harness and the bundle's client entry consume from this factory. */
+  return {
+    mountSettingsCard,
+    createMpdCardController,
+    createCardComponent,
+    dictionaries,
+    createLiveCatalog,
+    catalogNotice,
+    optionsFor,
+    optionElements,
+    FIELDS,
+    SETTINGS_NS: NS,
+    LOCALE_NS,
+    SECTION_SLOT,
+    SECTION_ID,
+    SECTION_ORDER,
+    BRIDGE_DISCLOSURE,
+    BRIDGE_RESTART_LIMIT,
+    NO_WORKSPACE_NOTICE,
+    CATALOG_ATTR,
+    CATALOG_FALLBACK_NOTICE,
+  }
+  })();
+
+
+  var MPD_TEAM_VIEW = (function () {
+  /** The React surface a factory body builds with (the host's own copy, via `require`). */
+                          
+                                                                                                         
+                                                                                      
+                                                                  
+                                                                  
+                                                         
+                                                                      
+   
+
+  /**
+   * The translator the host binds to its own locale namespace.
+   *
+   * OPTIONAL by contract: `web-client.ts` owns the `ctx.locale.bind("mpdTeamSidebar")` call and threads
+   * the bound function in, so this file stays renderable — and testable — with no locale seam at all,
+   * in which case a missing translator reads the English source literal instead.
+   */
+                        
+                                                                                                  
+                         
+   
+
+  /** One member row, as the route serves it. */
+                        
+                             
+              
+                        
+                
+                                      
+                 
+                                                         
+                  
+                                                     
+                
+                                  
+                 
+                                                      
+                    
+                                                             
+                  
+   
+
+  /** One task row, as the route serves it. */
+                      
+                                  
+              
+                          
+                   
+                                                                        
+                 
+                                
+                  
+                                                                                
+                  
+                                            
+                  
+                         
+                    
+                        
+                  
+                          
+                    
+                                    
+                       
+       
+                                                                                                   
+      
+                                                                                                   
+                                                                                                   
+                                                                                                    
+                                                                                                     
+                                                                                                        
+                                                                                                 
+       
+                                 
+                                                                                     
+                      
+                                                                    
+                 
+   
+
+  /**
+   * One of the WORKSPACE's teams, as `/plugins/mpd-team/state` lists it beside the session's own.
+   *
+   * Read for the session-less branch: a session that approved nothing still has a workspace, and the
+   * teams in it are what the panel shows instead of the bare empty sentence.
+   */
+                           
+                                        
+              
+                                        
+                
+                                
+                       
+                                                                           
+                 
+                                                          
+                       
+                                                                                   
+                                                               
+                           
+                   
+                                                                                 
+                   
+   
+
+  /** The payload the route serves. */
+                       
+                                          
+                
+                                                  
+                      
+                                                                                                         
+                                                                    
+                                                            
+                                                                                                                     
+                                                     
+                                                                                                                                            
+                      
+                         
+                                    
+                     
+                                          
+                    
+                                                             
+                                              
+                         
+                      
+   
+
+  /**
+   * The route's per-task record, as `/plugins/mpd-team/task` serves it: the FROZEN acceptance
+   * contracts, one per claimed task. Read for the pinned task's detail body, so the sidebar quotes the
+   * text a reviewer holds the work to rather than a summary of it.
+   */
+                               
+                                          
+                
+                                                                 
+                                                                                                                                                          
+   
+
+  /** The staged plan, as `/plugins/mpd-team/plan` serves it — the SHARED projection's half. */
+                      
+                                          
+                
+                                                                                    
+           
+                                                                                         
+                    
+                                          
+                  
+                                  
+                         
+                                                       
+                      
+                                       
+                      
+                                                                                                     
+                    
+                                                   
+                       
+                                              
+                        
+                                           
+                                                                                       
+                                       
+                                                                                                              
+            
+   
+
+  /** What one poll produced: the last payload, or the last failure. */
+                       
+                                                                       
+                           
+                                                                                               
+                         
+                                                                               
+                                                                                                             
+                                                                                        
+                   
+   
+
+  /** One node's box inside its column, in pixels — the geometry the drawn edges are computed from. */
+                       
+                                    
+                  
+                                                                       
+                
+                                      
+               
+       
+                                                                                                  
+      
+                                                                                                     
+                                                                                                    
+                                                                          
+       
+                   
+                                                 
+               
+   
+
+  /** One painted rectangle of one drawn edge, in the canvas's own pixels. */
+                      
+                      
+                
+                     
+               
+                                                                 
+                 
+                                                                    
+                  
+   
+
+  /** One point of a flattened curve, in the canvas's own pixels — the sample a containment test reads. */
+                        
+                                                             
+             
+                                                            
+             
+   
+
+  /**
+   * One route's PAINTED form: the SVG path that draws it, the polyline that proves it, and its head.
+   *
+   * `points` is a flattened SAMPLE of exactly the path `d` describes — built in the same closed-form
+   * call, at the same radius — so "this edge never enters a node box" is a statement about the DRAWN
+   * curve that a test can prove arithmetically, without a browser, a canvas or a measuring pass. The
+   * drawing and the proof are therefore one object rather than two that must agree.
+   */
+                       
+                                                                                                            
+             
+       
+                                                                                                  
+                                                                                                        
+                                                                                           
+      
+                                                                                                       
+                                                                                                     
+                                                                                                         
+       
+                        
+                                                                                                         
+                   
+                                                                                                            
+                  
+   
+
+  /**
+   * One drawn dependency, ROUTED BEFORE IT IS PAINTED.
+   *
+   * The route is computed here, once, and the render only paints it — the single source of truth the
+   * file's GEO comment demands. That is also what lets the geometry be ASSERTED: a test reads these
+   * rectangles and proves no edge crosses a box, which is the mechanical meaning of "legible".
+   */
+                       
+                                 
+                  
+                                 
+                 
+                                                                                                   
+                   
+                                                                                 
+                                                    
+       
+                                                                                                   
+      
+                                                                                                       
+                                                                                                
+       
+                    
+                                                                                                        
+                    
+                                                                                      
+                       
+   
+
+  /**
+   * The whole DAG geometry, computed ONCE from the payload and never measured.
+   *
+   * A measuring pass would be a second source of truth (it can disagree with the data); fixed boxes
+   * cannot, so every edge below is arithmetic over ranks and rows.
+   */
+                           
+                                                                                              
+                         
+                                                
+                     
+                                                                     
+                 
+                                                                           
+                  
+                                                                                           
+                               
+                                                     
+                      
+                                                                                            
+                      
+                                                                                                  
+                 
+                                                                                    
+                  
+                                                                
+                    
+                                                                                                       
+                        
+                                                                                                   
+                   
+       
+                                                                                                   
+                                                                                                 
+       
+                         
+       
+                                                                                  
+      
+                                                                                            
+                                                                                                       
+                                                                                                    
+                                                                                          
+      
+                                                                                                        
+                                                                                                         
+                                                                              
+       
+                        
+                                                                                                           
+                                
+   
+
+  /** The style bag this view uses; the host supplies the tokens, the literals are fallbacks. */
+  const CSS = {
+    panel: { padding: "10px 12px 14px", fontSize: "12px", lineHeight: 1.45, overflowY: "auto", height: "100%", width: "100%", boxSizing: "border-box" },
+    dim: { color: "var(--dsw-alias-label-tertiary, #8a94a6)" },
+    head: { fontSize: "13px", fontWeight: 600, color: "var(--dsw-alias-label-primary, #1f2937)" },
+    subHead: { marginTop: "10px", fontWeight: 600, color: "var(--dsw-alias-label-primary, #1f2937)" },
+    chip: { display: "inline-block", padding: "0 6px", borderRadius: "var(--dsw-radius-sm, 4px)", fontSize: "11px", border: "0.5px solid var(--dsw-alias-border-l2, #d8dde5)", color: "var(--dsw-alias-label-secondary, #5b6472)" },
+    row: { display: "flex", gap: "6px", alignItems: "baseline", padding: "2px 0" },
+    card: { border: "0.5px solid var(--dsw-alias-border-l2, #d8dde5)", borderRadius: "var(--dsw-radius-md, 8px)", padding: "6px 8px", marginBottom: "6px", background: "var(--dsw-alias-bg-layer-3, transparent)" },
+    meta: { fontFamily: "var(--dsw-font-mono, ui-monospace, monospace)", fontSize: "10px", color: "var(--dsw-alias-label-tertiary, #8a94a6)" },
+    bar: { height: "6px", borderRadius: "var(--dsw-radius-sm, 4px)", background: "var(--dsw-alias-bg-layer-4, #e6e8eb)", overflow: "hidden", marginTop: "6px" },
+    barFill: { height: "100%", background: "var(--dsw-alias-state-success-primary, #12a150)" },
+    scroll: { position: "relative", overflow: "auto", marginTop: "6px" },    grid: { position: "relative", display: "grid" },
+    column: { position: "relative" },
+    edgeLayer: { position: "absolute", left: 0, top: 0, pointerEvents: "none" },
+    edge: { position: "absolute", background: "var(--dsw-alias-border-l2, #d8dde5)" },
+    // THE BOX INSET IS NOT WRITTEN HERE: it comes from the geometry (`graph.inset`), because the
+    // busiest gutter's lanes are paid for out of it and a literal would detach every box from the
+    // edges routed against it. The node's background is OPAQUE so that a run can only ever be hidden
+    // by a box, never show through it.
+    node: { position: "absolute", boxSizing: "border-box", height: "42px", overflow: "hidden", cursor: "pointer", border: "0.5px solid var(--dsw-alias-border-l2, #d8dde5)", borderRadius: "var(--dsw-radius-sm, 4px)", padding: "3px 5px", background: "var(--dsw-alias-bg-layer-1, #ffffff)", fontFamily: "var(--dsw-font-mono, ui-monospace, monospace)", fontSize: "10px", lineHeight: 1.3 },
+    nodeTop: { display: "flex", gap: "4px", alignItems: "baseline", whiteSpace: "nowrap", overflow: "hidden" },
+  }
+
+  /** The colour token each rendered state draws in — a MEANING mapped to a host token, never a literal. */
+  const TONE                         = {
+    completed: "var(--dsw-alias-state-success, #12a150)",
+    running: "var(--dsw-alias-state-business-primary, #4d6bfe)",
+    failed: "var(--dsw-alias-state-error-primary, #e5484d)",
+    blocked: "var(--dsw-alias-state-warn-primary, #e08700)",
+    cancelled: "var(--dsw-alias-label-tertiary, #8a94a6)",
+    open: "var(--dsw-alias-label-secondary, #5b6472)",
+  }
+
+  /** The glyph each rendered state draws with, so the panel reads without colour. */
+  const GLYPH                         = { completed: "✓", running: "◐", failed: "✗", blocked: "○", cancelled: "⊘", open: "○" }
+
+  /** The key each kind abbreviation resolves through, so the abbreviation is bilingual too. */
+  const KIND_KEY                         = { requirement: "kind.req", work: "kind.wrk", review: "kind.rev", repair: "kind.fix", integration: "kind.int" }
+
+  /** The key each lifecycle phase resolves through, so a phase label is localized like every other word. */
+  const PHASE_KEY                         = { staged: "phase.staged", active: "phase.active", idle: "phase.idle", ended: "phase.ended" }
+
+  /** The English a key falls back to when no translator is threaded in — the view's own words. */
+  const EN                         = {
+    "header.approved": "approved",
+    "header.workspace": "workspace",
+    "header.complete": "complete",
+    "progress.label": "Progress",
+    // The two panel headings stay UPPERCASE in English: the host's own capture asserts on those
+    // literals (`checks.teamPanelShowsRoster`), and a green capture is worth more than a case change.
+    "members.title": "MEMBERS",
+    "members.empty": "No member was raised for this team.",
+    "members.current": "current",
+    "task.title": "TASKS",
+    "task.empty": "No shared task yet — the captain posts them with team_task_create.",
+    "task.cycle": "CYCLE",
+    "task.blockedBy": "blocked by",
+    "task.unresolved": "unresolved blockers",
+    "task.dependents": "dependents",
+    "task.attempt": "attempt",
+    "task.round": "round",
+    "task.verdict": "verdict",
+    "task.owner": "owner",
+    "task.contract": "acceptance contract",
+    "task.contract.none": "No frozen acceptance contract was served for this task.",
+    "task.close": "close",
+    "tally.running": "running",
+    "tally.ready": "ready",
+    "tally.blocked": "blocked",
+    "tally.released": "released by a failed blocker",
+    "state.reading": "Reading the team…",
+    "state.unavailable": "No team state is being served. The mpd team row may not be mounted in this profile.",
+    "state.none": "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.",
+    // ── D2: the session-less workspace listing ────────────────────────────────
+    // A session that approved nothing of its own still has a workspace, and a panel that answered it
+    // with the sentence above claimed the WORKSPACE was empty about a workspace holding four teams.
+    // These keys render the truth instead: what is here, and which of them this session drives.
+    "workspace.title": "WORKSPACE TEAMS",
+    "workspace.hint": "No team is bound to this session. The workspace's own teams are listed here — a session drives the one it approved itself.",
+    "workspace.active": "this session",
+    "workspace.members": "members",
+    "workspace.stage": "Stage one with agent_teams_plan, then approve it.",
+    "phase.staged": "staged",
+    "phase.active": "active",
+    "phase.idle": "idle",
+    "phase.ended": "ended",
+    "executor.label": "executor",
+    "plan.members": "Wants {n} member(s)",
+    "plan.tasks": "Wants {n} task(s)",
+    "plan.gate": "To approve, type:",
+    "kind.req": "REQ",
+    "kind.wrk": "WRK",
+    "kind.rev": "REV",
+    "kind.fix": "FIX",
+    "kind.int": "INT",
+  }
+
+  /**
+   * THE GRAPH'S ONE GEOMETRY SOURCE — the boxes and the edges both read it.
+   *
+   * WHY IT EXISTS (reported from a screenshot 2026-10-06): the node's own place and its edge's endpoint
+   * were computed from SEPARATE literals — the box from `COLUMN_PAD + row * (NODE_H + NODE_GAP)` and the
+   * edge from its own `rank * COLUMN_W ± …` arithmetic. Two expressions that must agree, in two places,
+   * is how a line ends up meeting a box at the wrong spot, and it is ALSO why any change to a size
+   * detaches every edge: the endpoint stops tracking the box the moment one of the literals moves.
+   *
+   * Every position below is DERIVED from the four sizes, so an endpoint is the box's own border and
+   * cannot drift from it. A size change (a different node height, a wider column, a text-scale factor)
+   * therefore moves the boxes AND the edges together.
+   */
+  const GEO = {
+    /** One rank column's width. */
+    column: 168,
+    /**
+     * How far a node's box sits inside its column, per side — the box is `column - 2 * inset` wide.
+     *
+     * TWELVE, AND THE NUMBER IS LOAD-BEARING. Two neighbouring boxes stand `2 * inset` apart, and an
+     * edge's vertical run stands in the MIDDLE of that gutter, so each of its two horizontal legs is
+     * `inset` long — and `curveOf` clamps a fillet to half of its shorter leg. At the old base of 4 the
+     * legs were 4px, the radius clamped to 2px, and the "curves" read as an orthogonal line with a nick
+     * in it: the user's ask was a mermaid-style curve, and 2px does not discharge it. A base of 12 gives
+     * an ordinary one-lane forward edge its FULL 6px fillet, which is the smallest change that makes the
+     * declared radius visible. The price is 24px of the box (160 → 144 wide), paid knowingly because the
+     * subject line is now the graph-safe ASCII label rather than a full task title.
+     */
+    inset: 12,
+    /** One node box's height. */
+    nodeHeight: 42,
+    /** The vertical gap between two nodes of one column. */
+    nodeGap: 10,
+    /** The vertical padding at the top and bottom of every column. */
+    pad: 4,
+  }
+  /** The preferred spacing between two lane columns, in pixels. */
+  const LANE_STEP = 3
+  /** The clearance every lane keeps off a box's border, so a line never lands on a border. */
+  const LANE_CLEARANCE = 1
+  /** The furthest a box may be pushed inside its column, so a busy board cannot shrink a box away. */
+  const MAX_INSET = 24
+  /** The arrival marker's width in pixels, which is how far its tip reaches into the gutter. */
+  const MARK_W = 5
+  /** The arrival marker's height in pixels, which is the triangle's base. */
+  const MARK_H = 8
+  /**
+   * The corner radius every bend of a drawn edge is filleted with, in pixels — the ONE declared knob.
+   *
+   * Read only through {@link curveOf}'s `radius` argument, and echoed on every drawn curve so the control
+   * is observable in the LAYOUT rather than only in the DOM. `radius = 0` collapses every fillet and the
+   * closing sweep into plain `L` commands, which is what makes the curve's one non-trivial claim — that
+   * a rounded path still stays inside the corridor its orthogonal route was proven to occupy —
+   * falsifiable rather than assumed.
+   *
+   * The per-vertex clamp to HALF of the shorter adjacent leg is derived, never declared, and it is what
+   * makes 6px safe here: two lanes in a crowded gutter stand `LANE_STEP` apart, so an unclamped radius
+   * would overshoot into its neighbour's corridor.
+   */
+  const EDGE_RADIUS = 6
+  /**
+   * The shortest leg a SWEEP is drawn across, in pixels.
+   *
+   * Below it the final approach degrades to the orthogonal `L`+`L` the radius-0 control emits: a lane a
+   * single pixel wide cannot carry a curve, and pretending it can would push the sweep's control points
+   * out of the corridor the route was proven to occupy.
+   */
+  const EDGE_SWEEP_MIN = 2
+  /** The x of the LEFT border of a node in one column, for a column inset — the box's own border. */
+  const borderLeft = (rank        , inset        )         => rank * GEO.column + inset
+  /** The x of the RIGHT border of a node in one column, for that same inset. */
+  const borderRight = (rank        , inset        )         => rank * GEO.column + GEO.column - inset
+  /** The y of a box's top, from its row inside the column — the SAME expression the node renders with. */
+  const boxTop = (row        )         => GEO.pad + row * (GEO.nodeHeight + GEO.nodeGap)
+  /** The y of a box's vertical MIDDLE, which is where an edge attaches. */
+  const boxMiddle = (row        )         => boxTop(row) + GEO.nodeHeight / 2
+  /** How far a member's current task is truncated before it is drawn. */
+  /**
+   * Read the session id off the host's own sidebar DOM marker, as a LAST resort.
+   *
+   * WHY THIS EXISTS (MEASURED 2026-10-05, on the installed harness): the right sidebar renders a tab
+   * body with an EMPTY props object — `renderSlot(seat, {}, …)` — so neither `props.sessionId` nor
+   * `props.scope.sessionId` carries anything, and the panel addressed the workspace principal instead
+   * of the session on screen. The host does publish the session, on
+   * `[data-sidebar-right-session]` elements that are SIBLINGS of the pane rather than ancestors of the
+   * body, so walking up cannot find it either. This is the host's own marker (its pane reports it and
+   * the client uses it for hit-testing), and reading it is the only route from a tab body to its own
+   * session without a prop the host does not pass.
+   *
+   * TOTAL and side-effect free: no `document` (a non-browser render, or a test) answers "", a marker
+   * without the attribute answers "", and the first marker wins because a document holds one right
+   * sidebar per session and the visible pane's is the one the browser reports first.
+   * @returns the DOM-advertised session id, or "" when the page does not advertise one.
+   */
+  function sessionIdFromPane()         {
+    /** The page's document, or undefined outside a browser. */
+    const doc = typeof document === "undefined" ? undefined : document
+    if (doc === undefined || typeof doc.querySelector !== "function") return ""
+    /** The first element carrying the host's session marker. */
+    const marked = doc.querySelector("[data-sidebar-right-session]")
+    if (marked === null) return ""
+    /** The marker's value, when it is a non-empty string. */
+    const value = marked.getAttribute("data-sidebar-right-session")
+    return typeof value === "string" ? value : ""
+  }
+
+  /** How much of a task subject a node or a member card shows before it ellipsizes. */
+  const SUBJECT_MAX = 30
+  /** The colour a focused edge draws in — a token with its literal fallback, like every other value here. */
+  const FOCUS_EDGE = "var(--dsw-alias-label-secondary, #5b6472)"
+  /**
+   * The order two task ids draw in: NUMERIC, so `T2` precedes `T10` instead of following it (R19).
+   *
+   * `t10` sorts before `t2` character-wise, which is the opposite of how a reader counts tasks, so the
+   * comparator is numeric rather than lexical — the same rule, and the same reference model, as the TUI
+   * drawing engine's.
+   */
+  const ID_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" })
+
+  return {
+    /**
+     * Build the team view ONCE, so both sidebar hosts render the same component with the same
+     * polling behaviour rather than two lookalikes that can drift.
+     * @param deps - the React surface, the routes, the poll interval and the host's translator.
+     * @returns the view component, its poller and the DAG layout the panel draws with.
+     */
+    createTeamView(deps                                                                                                                   )   
+                                                                                                        
+                                            
+                                                                                    
+                                                                                  
+                                                                          
+                                                     
+                                                                                                
+                                                                   
+         
+                                                                                                         
+                                                
+                                                                         
+                                               
+         
+                                                                  
+         
+                                                                                                   
+                                                                  
+                                                                                       
+                                                                                 
+         
+                                                                                               
+      {
+      /** The dependencies this closure reads on every call, plus the plan and task routes when given. */
+      const { react, statePath, planPath, taskPath } = deps
+      /** How often the panel re-reads; the route is cheap and this is a status surface. */
+      const pollMs = typeof deps.pollMs === "number" && deps.pollMs > 0 ? deps.pollMs : 2000
+      /** The host's translator; absent in a bare mount, in which case the English literals below win. */
+      const hostT = deps.t
+      // BOTH SETTERS ARE DECLARED AT FACTORY SCOPE, not inside the component. The detail body and the
+      // edge drawing are FUNCTION DECLARATIONS of this factory, so a name that only existed inside
+      // `TeamView` would be a `ReferenceError` the moment a handler fired — measured: the detail
+      // body's close button threw exactly that. The hook still owns the state; these two only carry
+      // the setters the last render produced, and every reader below runs after a render.
+      /** The pinned-task setter the last render produced; null until the first render runs. */
+      let setPinned                                         = null
+      /** The hover setter the last render produced; null until the first render runs. */
+      let setHover                                         = null
+
+      /** Read the routes, never rejecting: a failure is a VALUE the panel renders. */
+      /** The session suffix every route takes, so they cannot address different sessions. */
+      const queryOf = (sessionId        )         => (sessionId === "" ? "" : "?sessionId=" + encodeURIComponent(sessionId))
+      /** Read ONE route, never rejecting; a failure is a VALUE the panel renders. */
+      const readOne = async     (path        , sessionId        )                                                => {
+        try {
+          /** The host's own transport; the panel never assumes a proxy. */
+          const response = await fetch(path + queryOf(sessionId), { headers: { accept: "application/json" } })
+          if (!response.ok) return { value: null, error: { status: response.status } }
+          /** The served payload, validated below rather than trusted. */
+          const payload = (await response.json())                        
+          // A payload without the route's own `ok` marker is treated as unreadable rather than rendered
+          // as an empty team, which would claim "no team" about a route that failed.
+          if (payload === null || typeof payload !== "object" || payload.ok !== true) return { value: null, error: { status: response.status, body: payload } }
+          return { value: payload }
+        } catch (error) {
+          return { value: null, error }
+        }
+      }
+      /** Read every route, never rejecting. One pass, so the halves cannot disagree. */
+      const read = async (sessionId        )                     => {
+        // ALL THREE ROUTES IN ONE PASS. They are three halves of one answer — the team as it exists
+        // after an approval, the plan that awaits one, and the frozen contracts the pinned detail body
+        // quotes — and a panel that polled them separately could show a staged plan beside a team that
+        // approval had already replaced.
+        const [state, plan, contracts] = await Promise.all([
+          readOne           (statePath, sessionId),
+          planPath === undefined ? Promise.resolve({ value: null                    }) : readOne          (planPath, sessionId),
+          taskPath === undefined ? Promise.resolve({ value: null                             }) : readOne                   (taskPath, sessionId),
+        ])
+        /** The frozen contracts, keyed by task id, so the detail body is a lookup and not a scan. */
+        const byTask                                                                                                 = {}
+        for (const contract of contracts.value?.contracts ?? []) {
+          byTask[contract.taskId] = { description: contract.description, claimedBy: contract.claimedBy, claimedAt: contract.claimedAt, attempt: contract.attempt }
+        }
+        return {
+          state: state.value,
+          plan: plan.value === null ? null : plan.value.plan === null ? null : plan.value,
+          contracts: byTask,
+          error: state.error,
+        }
+      }
+
+      /** Poll until stopped; the interval is owned by the CALLER's effect. */
+      /** Start polling; the returned function stops it. */
+      /** Start polling; the returned function stops it. */
+      const start = (sessionId        , publish                           )               => {
+        /** Whether the caller still wants results; cleared by the returned stop function. */
+        let live = true
+        /** One poll: read, then publish only when still live. */
+        const tick = async ()                => {
+          /** This poll's outcome, published only if the panel is still mounted. */
+          const next = await read(sessionId)
+          // A poll that lands after the panel unmounted must not publish: React would warn, and the
+          // next mount would render a stale team for one frame.
+          if (live) publish(next)
+        }
+        void tick()
+        /** The interval the caller's effect stops; owned here, cleared on stop. */
+        const timer = setInterval(() => { void tick() }, pollMs)
+        return () => { live = false; clearInterval(timer) }
+      }
+
+      /**
+       * Resolve one key through the host's translator, or answer the English literal when there is no
+       * translator or the translator has no entry (the host answers the KEY itself on a miss, which is
+       * never what a reader should see, so a key that comes back unchanged falls back too).
+       * @param key - the dictionary key.
+       * @returns the string this render draws.
+       */
+      const t = (key        )         => {
+        if (typeof hostT !== "function") return EN[key] ?? key
+        try {
+          /** What the host answered for this key. */
+          const answer = hostT(key)
+          if (typeof answer === "string" && answer !== "" && answer !== key) return answer
+        } catch {
+          // A translator that throws is a broken locale, never a broken panel: the literal below is the
+          // same fallback an absent translator gets.
+        }
+        return EN[key] ?? key
+      }
+      /** Resolve a key whose English carries one `{n}` placeholder. */
+      const tn = (key        , n        )         => t(key).replace("{n}", String(n))
+      /** Truncate one label for a fixed-width box (the CSS ellipsizes anything this misses). */
+      const short = (text        , max        )         => (text.length <= max ? text : text.slice(0, max - 1) + "…")
+      /** The last path segment of a workspace path, which is what the header names. */
+      const baseName = (path        )         => {
+        /** The path's segments, with its trailing separators removed first. */
+        const parts = path.replace(/[\\/]+$/, "").split(/[\\/]/)
+        return parts[parts.length - 1] === "" ? path : parts[parts.length - 1]
+      }
+      /** The status tone of one rendered state, falling back to the neutral label colour. */
+      const toneOf = (visual        )         => TONE[visual] ?? TONE.open
+      /** The glyph of one rendered state; `?` is honest about a state this view has never seen. */
+      const glyphOf = (visual        )         => GLYPH[visual] ?? "?"
+      /** The bilingual kind abbreviation of one task; empty when the task carries no kind. */
+      const kindOf = (kind                    )         => {
+        if (kind === undefined || kind === "") return ""
+        /** The dictionary key this kind resolves through, when it is one of the five. */
+        const key = KIND_KEY[kind]
+        return key === undefined ? kind : t(key)
+      }
+      /** The style of one member's status dot: a CSS circle, never a raster avatar or a mascot. */
+      const memberDot = (status        )                         => ({
+        width: "7px",
+        height: "7px",
+        borderRadius: "999px",
+        background: status === "running" ? TONE.running : status === "idle" ? TONE.open : toneOf(status),
+        flex: "0 0 auto",
+      })
+      /** One label/value row of the task detail body. */
+      const detailRow = (key        , labelKey        , value        )          => react.createElement("div", { key, style: { ...CSS.row, ...CSS.meta } },
+        react.createElement("span", { style: { minWidth: "72px", color: FOCUS_EDGE } }, t(labelKey)),
+        react.createElement("span", { style: { flex: "1 1 auto", wordBreak: "break-word" } }, value))
+
+      /**
+       * The STAGED PLAN, drawn from the shared projection.
+       *
+       * Every string here comes from the payload — including the approval phrase, which is SERVED
+       * rather than re-derived, so the Web panel and the TUI scene demand the same thing.
+       * @param plan - the staged plan half of the payload.
+       * @returns the section element.
+       */
+      const planSection = (plan                               )          => {
+        /** The plan's rows, in render order. */
+        const rows            = [
+          react.createElement("div", { key: "p-head", style: CSS.head }, plan.name),
+          react.createElement("div", { key: "p-sub", style: CSS.dim }, plan.planId + " · " + plan.approval),
+          react.createElement("div", { key: "p-desc", style: { marginTop: "4px" } }, plan.description),
+          react.createElement("div", { key: "p-members-head", style: CSS.subHead }, tn("plan.members", plan.members.length)),
+        ]
+        for (const member of plan.members) {
+          rows.push(react.createElement("div", { key: "pm-" + member.name, style: CSS.row },
+            react.createElement("span", { style: { flex: "1 1 auto" } }, member.name),
+            react.createElement("span", { style: CSS.dim }, member.role ?? "")))
+        }
+        rows.push(react.createElement("div", { key: "p-tasks-head", style: CSS.subHead }, tn("plan.tasks", plan.tasks.length)))
+        for (const task of plan.tasks) {
+          rows.push(react.createElement("div", {
+            key: "pt-" + task.subject,
+            style: { ...CSS.card, borderColor: undefined },
+            title: task.description,
+          },
+          task.subject + (task.owner === undefined ? "" : " @" + task.owner),
+          task.blockedBy.length === 0 ? null : react.createElement("div", { style: CSS.meta }, "⇠ " + task.blockedBy.join(", "))))
+        }
+        // THE GATE, stated where the plan is read. The phrase is the PRE-approval identity, so it is
+        // knowable the whole time the plan is staged — which a teamId would not be.
+        rows.push(react.createElement("div", { key: "p-gate", style: CSS.subHead }, t("plan.gate")))
+        rows.push(react.createElement("div", { key: "p-phrase", style: { ...CSS.card, marginTop: "2px", fontWeight: 700 } }, plan.phrase))
+        return react.createElement("div", { style: CSS.panel }, rows)
+      }
+
+      /**
+       * The GRAPH-SAFE label of one task: the printable-ASCII content of its subject, or its ordinal.
+       *
+       * THE RULE IS EXACT (clause C4): take the maximal runs of printable ASCII (`\x20`-`\x7E`), join
+       * the runs with a single space, collapse whitespace, trim. A subject that leaves nothing — pure
+       * CJK, punctuation, an empty string — draws `#<ordinal>` instead, so the node still carries a
+       * number a reader can match against the board's own order rather than an empty line.
+       *
+       * WHY THE DRAWING AND NOT THE DATA: CJK is unreadable at these widths (the user's own report),
+       * while the pinned detail body and the hover `title` keep the ORIGINAL subject — that is where
+       * the Chinese belongs (clause C3). ONE composer, named the same on both surfaces, called by every
+       * drawing site: a renderer that composed a label of its own from `subject` is exactly how the two
+       * would come to disagree (clause C2).
+       * @param subject - the subject exactly as the route served it.
+       * @param ordinal - the task's 1-based position in the board order the surface was handed.
+       * @returns the label to DRAW, never empty.
+       */
+      const graphSafeLabel = (subject        , ordinal        )         => {
+        /** The subject as text, so a payload that served no string draws the ordinal instead of crashing. */
+        const text = typeof subject === "string" ? subject : ""
+        /** Every maximal run of printable ASCII in the subject, in order. */
+        const runs = text.match(/[\x20-\x7E]+/g) ?? []
+        /** Those runs joined, their whitespace collapsed and trimmed — the rule's whole arithmetic. */
+        const label = runs.join(" ").replace(/\s+/g, " ").trim()
+        return label === "" ? "#" + ordinal : label
+      }
+
+      /**
+       * The painted form of one routed edge: an SVG path over the route's own vertices, plus its sample.
+       *
+       * THE GRAMMAR (clause W6). `M` starts on the blocker's border. Every INTERIOR vertex gets both its
+       * legs shortened by `r = min(EDGE_RADIUS, legIn / 2, legOut / 2)` and the join is closed by a `Q`
+       * through the corner itself — the exact circular-arc approximation at a right angle, with none of
+       * an `A` command's sweep-flag bookkeeping across mixed directions. The corner that opens the FINAL
+       * APPROACH is the one place a cubic earns its keep: from the same shortened entry point,
+       * `C entry exit W` lands on the arrival border with a HORIZONTAL tangent, so the arrowhead points
+       * into the box instead of arriving at an angle (the user's 入盒前一段曲线).
+       *
+       * `radius = 0` takes the `L` branch at every vertex, so `d` is a pure `M`/`L` orthogonal polyline
+       * and `points` EQUALS the waypoint list — a byte-comparable control rather than a visual claim.
+       * @param waypoints - the route's vertices, in travel order, every leg axis-aligned.
+       * @param radius - the corner radius in pixels; `0` (or less) emits the straight polyline.
+       * @returns the path's `d` and the flattened polyline of exactly that path.
+       */
+      const curveOf = (waypoints              , radius        )                                      => {
+        /** The path commands, in emission order. */
+        const commands           = []
+        /** The flattened polyline: every vertex the pen reaches, plus the samples each arc appends. */
+        const points               = []
+        /**
+         * One coordinate as the path writes it: absolute, two decimals, never `-0`, never an exponent.
+         *
+         * The formatting is FROZEN because an arm compares `data-mpd-curve` to `curve.d` by exact string
+         * equality — leaving float printing to the renderer is how that comparison starts failing for
+         * reasons that have nothing to do with the geometry.
+         */
+        const at = (value        )         => {
+          /** The value at the declared precision, with its negative zero normalised away. */
+          const rounded = Math.round(value * 100) / 100
+          return String(rounded === 0 ? 0 : rounded)
+        }
+        /** Append one vertex or sample to the polyline, as a copy. */
+        const push = (point            )       => { points.push({ x: point.x, y: point.y }) }
+        /** Lift the pen to a vertex without drawing it: the path's `M`. */
+        const moveTo = (point            )       => {
+          commands.push("M " + at(point.x) + " " + at(point.y))
+          push(point)
+        }
+        /**
+         * Draw a straight leg: its `L`, and the leg's own endpoint as the polyline's next vertex.
+         *
+         * NOTHING is sampled along it, on purpose. W3's instrument measures SEGMENTS between consecutive
+         * samples, which is exact for a straight leg and needs no density assumption, while sampling
+         * would break the radius-0 control's promise that `points` is the waypoint list itself.
+         */
+        const lineTo = (point            )       => {
+          commands.push("L " + at(point.x) + " " + at(point.y))
+          push(point)
+        }
+        /** Draw one corner's quadratic fillet: the `Q` through the corner, plus the arc's own samples. */
+        const quadTo = (control            , point            )       => {
+          /** The vertex the fillet starts from. */
+          const from = points[points.length - 1]
+          /** The control polygon's length, an upper bound of the arc, which sets the sample count. */
+          const span = Math.abs(control.x - from.x) + Math.abs(control.y - from.y) + Math.abs(point.x - control.x) + Math.abs(point.y - control.y)
+          /** How many samples the arc is cut into — a step of a pixel or less, whatever the leg's length. */
+          const steps = Math.max(2, Math.ceil(span))
+          for (let step = 1; step <= steps; step += 1) {
+            /** The curve parameter at this sample. */
+            const t = step / steps
+            /** Its complement, so each weight costs one subtraction. */
+            const s = 1 - t
+            push({ x: s * s * from.x + 2 * s * t * control.x + t * t * point.x, y: s * s * from.y + 2 * s * t * control.y + t * t * point.y })
+          }
+          commands.push("Q " + at(control.x) + " " + at(control.y) + " " + at(point.x) + " " + at(point.y))
+        }
+        /** Draw the closing cubic sweep into the arrival border, with its own samples. */
+        const cubicTo = (first            , second            , point            )       => {
+          /** The vertex the sweep starts from. */
+          const from = points[points.length - 1]
+          /** The control polygon's length, an upper bound of the arc, which sets the sample count. */
+          const span = Math.abs(first.x - from.x) + Math.abs(first.y - from.y) + Math.abs(second.x - first.x) + Math.abs(second.y - first.y) + Math.abs(point.x - second.x) + Math.abs(point.y - second.y)
+          /** How many samples the arc is cut into. */
+          const steps = Math.max(2, Math.ceil(span))
+          for (let step = 1; step <= steps; step += 1) {
+            /** The curve parameter at this sample. */
+            const t = step / steps
+            /** Its complement. */
+            const s = 1 - t
+            push({
+              x: s * s * s * from.x + 3 * s * s * t * first.x + 3 * s * t * t * second.x + t * t * t * point.x,
+              y: s * s * s * from.y + 3 * s * s * t * first.y + 3 * s * t * t * second.y + t * t * t * point.y,
+            })
+          }
+          commands.push("C " + at(first.x) + " " + at(first.y) + " " + at(second.x) + " " + at(second.y) + " " + at(point.x) + " " + at(point.y))
+        }
+        /** The vertex the path leaves from: the blocker's own border. */
+        const start = waypoints[0]
+        moveTo(start)
+        // EVERY VERTEX BUT THE FIRST AND LAST IS A CORNER. The last one opens the FINAL APPROACH and is
+        // the only one that sweeps; the others are filleted, which is what turns the right angles the
+        // route was computed from into the rounded elbows the user asked for.
+        for (let index = 1; index < waypoints.length - 1; index += 1) {
+          /** The vertex the leg into this corner came from. */
+          const previous = waypoints[index - 1]
+          /** The corner itself. */
+          const corner = waypoints[index]
+          /** The vertex the leg out of this corner runs to. */
+          const next = waypoints[index + 1]
+          /** The incoming leg's length — Manhattan, because every leg here is axis-aligned. */
+          const legIn = Math.abs(corner.x - previous.x) + Math.abs(corner.y - previous.y)
+          /** The outgoing leg's length, measured the same way. */
+          const legOut = Math.abs(next.x - corner.x) + Math.abs(next.y - corner.y)
+          /** The fillet actually drawn: the declared radius, clamped to half of the shorter leg. */
+          const fillet = Math.max(0, Math.min(radius, legIn / 2, legOut / 2))
+          /** Whether this corner is the one the closing sweep opens from. */
+          const sweeping = index === waypoints.length - 2
+          // THE `L` BRANCH: a zero radius, a leg too short to carry one, or — for the sweep alone — a
+          // lane narrower than `EDGE_SWEEP_MIN`, where a curve's controls would leave the corridor.
+          if (fillet <= 0 || (sweeping && (legIn < EDGE_SWEEP_MIN || legOut < EDGE_SWEEP_MIN))) { lineTo(corner); continue }
+          /** The incoming leg's direction, as a unit vector. */
+          const intoX = (corner.x - previous.x) / legIn
+          /** That same direction's y. */
+          const intoY = (corner.y - previous.y) / legIn
+          /** The outgoing leg's direction, which the join's second control point follows. */
+          const outX = (next.x - corner.x) / legOut
+          /** That same direction's y. */
+          const outY = (next.y - corner.y) / legOut
+          /** The vertex the join begins at: the corner pulled back along the incoming leg. */
+          const entry             = { x: corner.x - intoX * fillet, y: corner.y - intoY * fillet }
+          /** The vertex it ends at: the corner pushed on along the outgoing leg. */
+          const exit             = { x: corner.x + outX * fillet, y: corner.y + outY * fillet }
+          lineTo(entry)
+          if (sweeping) {
+            // THE FINAL APPROACH. Both controls stand on the route's own legs — the entry on the riser,
+            // the exit on the lead-in — so the curve leaves downward and lands horizontally: the
+            // arrowhead points INTO the border rather than arriving at an angle.
+            cubicTo(entry, exit, next)
+          } else {
+            quadTo(corner, exit)
+          }
+        }
+        /** The route's last vertex: the border the dependency arrives at. */
+        const end = waypoints[waypoints.length - 1]
+        /** Where the polyline currently ends, which the sweep may already have carried to `end`. */
+        const tail = points[points.length - 1]
+        if (tail !== undefined && (tail.x !== end.x || tail.y !== end.y)) lineTo(end)
+        return { d: commands.join(" "), points }
+      }
+
+      /**
+       * Compute the whole DAG geometry from the board alone: rank columns, node boxes, and every
+       * drawn edge ROUTED as a chain of adjacent-rank hops.
+       *
+       * `depth` is already the longest dependency path, so the columns are correct without re-deriving
+       * a layout; a negative or non-finite depth falls back to rank 0 rather than dropping the task.
+       * Every box is fixed, which is what lets an edge be arithmetic instead of a measurement.
+       *
+       * WHAT WAS WRONG (reported from a screenshot 2026-10-06: "依赖关系连线，根本看不清"):
+       *   * a multi-rank edge took the space between its two END boxes and called it "the band the
+       *     riser lives in" — but for an edge that skips a rank that band is the WHOLE INTERMEDIATE
+       *     COLUMN, so the vertical run went straight down through the boxes standing in it, and the
+       *     horizontal run did the same across the parent's row;
+       *   * the lanes were `0, +3, -3, +6, -6` inside an 8px gutter, and the riser was CLAMPED into
+       *     that band, so three edges leaving one column collapsed onto one or two pixels and read as
+       *     a single thick bus;
+       *   * the edge layer was the grid's LAST child, so even a correct line would have painted over
+       *     the boxes rather than behind them.
+       *
+       * THE FIX, all of it standard layered-graph practice:
+       *   1. DUMMY ROWS. An edge spanning more than one rank is expanded into a chain of adjacent-rank
+       *      hops, one reserved row per intermediate rank. Nothing occupies that row, so each hop runs
+       *      along a real corridor: the vertical runs stand in the gutters between columns and every
+       *      crossing of an intermediate column happens at the reserved row. No edge can cross a box.
+       *   2. A MEASURED GUTTER. The box inset is derived from the busiest gutter's lane count, so the
+       *      gutter is wide enough for every lane; the spacing is then computed FROM that gutter. Two
+       *      lanes can never share a column — and a lane that cannot be given one is COUNTED in
+       *      `laneOverflow` rather than silently stacked.
+       *   3. THE ROUTES TRAVEL OUT OF THIS FUNCTION, so the render paints them and a test can assert
+       *      them: the geometry is one object, and `data-mpd-box`/`data-mpd-route` publish it.
+       * @param tasks - the board, in the order the route served it.
+       * @param radius - the corner radius the painted curves are built with, defaulting to
+       *   {@link EDGE_RADIUS}; `0` is clause W6's control and emits the straight orthogonal polyline.
+       * @returns the columns, the canvas size, every node's box and every routed edge.
+       */
+      const layout = (tasks            , radius         = EDGE_RADIUS)                => {
+        // ── R20: THE RANK IS DERIVED FROM THE `blockedBy` GRAPH, NOT TRUSTED FROM `depth` ──────────
+        // WHAT WAS WRONG, and it is the defect the user photographed: this function bucketed the
+        // columns by `task.depth` verbatim. `team-store.ts` resolves a blocker by exact task id or
+        // exact subject and otherwise returns the reference UNCHANGED, and its `taskDepths` then
+        // FILTERS the unresolvable ones out — so on our own live board (ids `T1..T10`, `blockedBy`
+        // holding plan ordinals `["2"]`, `["2","3","4","6"]`, …) every task became a root, every depth
+        // became 0, and the view drew ONE column with NO edges. A view that trusts that number
+        // reproduces the lie; the TUI sibling (`mpd-tui-plugin/src/graph.ts`) already derives it, and
+        // the two planes must agree or the same record reads differently in the sidebar and the
+        // terminal. This is the same algorithm, inline because this file is ONE factory expression.
+        /** Task lookup by id, so a blocker reference can be resolved at all. */
+        const byId                           = {}
+        for (const task of tasks) byId[task.id] = task
+        /** A task's blocker references; a record may carry none at all, or carry something else. */
+        const blockedOf = (task          )           => (Array.isArray(task.blockedBy) ? task.blockedBy : [])
+        /** Every blocker reference no task on the board carries, which is REPORTED rather than dropped. */
+        const missing = new Set        ()
+        /** How many blocker references DO resolve to a task on the board. */
+        let resolved = 0
+        for (const task of tasks) {
+          for (const reference of blockedOf(task)) {
+            if (byId[reference] === undefined) missing.add(reference)
+            else resolved += 1
+          }
+        }
+        // THE UNRESOLVED REFERENCES ARE A RESULT, NOT A LOG LINE: the store's silent filter is what
+        // produced the one-column board, so the view hands the list on (the page reports the count).
+        // AND THE RECORD'S OWN REPORT IS READ BESIDE THE VIEW'S RE-DERIVATION (R18's reader side): the
+        // producer stores what matched nothing at write time in `unresolvedBlockers`, a fact that
+        // survives a later repair of the references — the live board was repaired that way — so a
+        // viewer must see BOTH: what the record said then, and what the served references say now.
+        /** The references the RECORD itself reports, task by task; empty when the payload carries none. */
+        const recorded = new Set        ()
+        for (const task of tasks) {
+          for (const reference of Array.isArray(task.unresolvedBlockers) ? task.unresolvedBlockers : []) recorded.add(reference)
+        }
+        /** The record's own report, sorted and de-duplicated. */
+        const unresolvedRecorded = [...recorded].sort()
+        /** The blocker references that resolve to nothing, from the record AND from the board. */
+        const unresolved = [...new Set([...unresolvedRecorded, ...missing])].sort()
+        /** The rank a served `depth` claims; a negative or non-finite depth is a root. */
+        const servedRank = (task          )         => (Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0)
+        /** Whether the served depths claim any structure at all. */
+        const servedVaries = new Set(tasks.map((task) => servedRank(task))).size > 1
+        // THE DERIVATION WINS; THE SERVED DEPTH IS THE NARROW FALLBACK, exactly as in the TUI engine: it
+        // draws only when NOT ONE reference resolves AND the served depths still vary, i.e. when the
+        // record knows about structure its references cannot express. Both arms matter — a genuinely
+        // flat board served flat draws flat, and our broken board (nothing resolves, every depth 0, so
+        // they do NOT vary) falls through to the derivation.
+        /** Whether the ranks were DERIVED; `false` means the served depth was the only signal left. */
+        const derived = !(resolved === 0 && servedVaries)
+        /** The rank every task draws in. */
+        const rankOf = new Map                ()
+        if (!derived) {
+          for (const task of tasks) rankOf.set(task.id, servedRank(task))
+        } else {
+          /** The settled rank of every task. */
+          const settled = new Map                ()
+          /** The tasks on the current walk, whose ranks are not settled yet. */
+          const walking = new Set        ()
+          for (const root of tasks) {
+            if (settled.has(root.id)) continue
+            /** The walk's frames: the id, and how many of its blockers have been expanded. */
+            const stack                                      = [{ id: root.id, next: 0 }]
+            walking.add(root.id)
+            while (stack.length > 0) {
+              /** The frame being worked. */
+              const frame = stack[stack.length - 1]
+              /** This task's blocker references that RESOLVE to a task on the board. */
+              const blocked = blockedOf(byId[frame.id]).filter((reference) => byId[reference] !== undefined)
+              if (frame.next < blocked.length) {
+                /** The next blocker to expand. */
+                const dependency = blocked[frame.next]
+                frame.next += 1
+                // A blocker already on the walk closes a CYCLE: it contributes nothing, so the walk
+                // neither recurses nor settles it twice — and every rank stays finite.
+                if (settled.has(dependency) || walking.has(dependency)) continue
+                walking.add(dependency)
+                stack.push({ id: dependency, next: 0 })
+                continue
+              }
+              /** The longest chain under this task, one longer than its deepest blocker. */
+              let deepest = 0
+              for (const dependency of blocked) deepest = Math.max(deepest, (settled.get(dependency) ?? 0) + 1)
+              settled.set(frame.id, deepest)
+              walking.delete(frame.id)
+              stack.pop()
+            }
+          }
+          for (const task of tasks) rankOf.set(task.id, settled.get(task.id) ?? 0)
+        }
+        /** The board bucketed by rank, which is the graph's column axis. */
+        const columns               = []
+        for (const task of tasks) {
+          /** The rank this task draws in, per the plan above — never a value off the record. */
+          const at = Math.max(0, rankOf.get(task.id) ?? 0)
+          while (columns.length <= at) columns.push([])
+          columns[at].push(task)
+        }
+        // R19 — WITHIN A COLUMN THE TASK ORDER IS NUMERIC, not the order the route happened to serve.
+        // MEASURED before this comparator: a scrambled board drew `T10, T2, T1, T3, T20`, which is the
+        // order a reader has to re-sort in their head; the TUI sibling derived the same rule from the
+        // same reference model (`localeCompare(..., { numeric: true })`), and the two planes must agree
+        // or the same board reads differently in the sidebar and the terminal.
+        for (const column of columns) column.sort((left, right) => ID_ORDER.compare(left.id, right.id))
+        /** The grid's width in columns: one per rank, never zero. */
+        const rankCount = Math.max(columns.length, 1)
+        /**
+         * Each task's 1-based position in the board order this layout was handed.
+         *
+         * The ordinal clause C4's fallback label prints, taken HERE because this is the one place that
+         * still holds the served order: `columns` is re-ordered by rank and id, so a node that read its
+         * own position off the drawing would number the picture rather than the board.
+         */
+        const ordinalOf                         = {}
+        for (let index = 0; index < tasks.length; index += 1) ordinalOf[tasks[index].id] = index + 1
+        /** Every node's box, before the reserved rows are known — its `row` is final, its `top` is not. */
+        const nodes              = []
+        for (let rank = 0; rank < columns.length; rank += 1) {
+          for (let row = 0; row < columns[rank].length; row += 1) {
+            nodes.push({ task: columns[rank][row], rank, row, ordinal: ordinalOf[columns[rank][row].id] ?? 0, top: boxTop(row) })
+          }
+        }
+        /** The node each task id names, so an edge resolves both of its boxes in one lookup. */
+        const nodeOf                            = {}
+        for (const node of nodes) nodeOf[node.task.id] = node
+
+        // ── THE DEPENDENCIES TO DRAW ──────────────────────────────────────────────────────────────
+        // One per `blockedBy` entry naming a task ON THIS BOARD. An id the board does not carry draws
+        // NOTHING: the payload serves the list raw, so a ghost entry is reachable in real data, and an
+        // edge into a node that is not there would be a picture of a dependency the record lacks.
+        /** The dependencies to route, in board order. */
+        const wants                                                              = []
+        for (const node of nodes) {
+          // A RECORD MAY CARRY NO BLOCKER LIST AT ALL (a minimal fixture, an older payload), so the
+          // list is read defensively rather than trusted to be an array.
+          /** This task's blocker references, empty when the record carries none. */
+          const blocked = Array.isArray(node.task.blockedBy) ? node.task.blockedBy : []
+          for (const blockerId of blocked) {
+            /** The blocker's own box; a blocker the board does not carry draws no edge. */
+            const parent = nodeOf[blockerId]
+            if (parent === undefined) continue
+            wants.push({ parent, child: node, key: parent.task.id + ">" + node.task.id })
+          }
+        }
+
+        // ── DUMMY ROWS: one reserved row per (long edge × intermediate rank) ──────────────────────
+        /** The reserved row each long edge owns in each rank it crosses. */
+        const reserved = new Map                             ()
+        /** How many rows each rank's column must hold: its boxes, plus the rows reserved inside it. */
+        const slots           = columns.map((column) => column.length)
+        for (const want of wants) {
+          /** The lower rank this edge touches. */
+          const lo = Math.min(want.parent.rank, want.child.rank)
+          /** The higher rank it touches. */
+          const hi = Math.max(want.parent.rank, want.child.rank)
+          if (hi - lo < 2) continue
+          /** This edge's own reserved rows, one per rank strictly between its two ends. */
+          const mine = reserved.get(want.key) ?? new Map                ()
+          for (let rank = lo + 1; rank < hi; rank += 1) {
+            mine.set(rank, slots[rank])
+            slots[rank] += 1
+          }
+          reserved.set(want.key, mine)
+        }
+
+        // ── LANES: one per hop, per gutter, always distinct ──────────────────────────────────────
+        /** The edge keys crossing each gutter, gutter by gutter, in board order. */
+        const crossing             = []
+        for (let rank = 0; rank + 1 < rankCount; rank += 1) crossing.push([])
+        /** The same-rank edges' own keys per column, which have no gutter between their ends. */
+        const levelKeys             = columns.map(() => [])
+        for (const want of wants) {
+          /** The lower rank this edge touches. */
+          const lo = Math.min(want.parent.rank, want.child.rank)
+          /** The higher rank it touches. */
+          const hi = Math.max(want.parent.rank, want.child.rank)
+          if (hi === lo) {
+            levelKeys[lo].push(want.key)
+            continue
+          }
+          for (let rank = lo; rank < hi; rank += 1) if (crossing[rank] !== undefined) crossing[rank].push(want.key)
+        }
+        /** The lane index each edge takes in each gutter. */
+        const laneIndex = new Map                ()
+        /** How many lanes the busiest gutter must carry, which is what sizes the inset. */
+        let maxLanes = 0
+        for (let rank = 0; rank < crossing.length; rank += 1) {
+          maxLanes = Math.max(maxLanes, crossing[rank].length)
+          crossing[rank].forEach((key, index) => laneIndex.set(rank + "@" + key, index))
+        }
+        // THE GUTTER IS DERIVED FROM THE LANES, not written down: a box keeps `inset` on each side of
+        // its column, two neighbouring boxes therefore stand `2 * inset` apart, and the busiest gutter
+        // asks for enough of that room to give every lane its preferred spacing plus a clearance.
+        /** The inset every box keeps inside its column at this board's lane count. */
+        const inset = Math.max(GEO.inset, Math.min(MAX_INSET, Math.ceil((maxLanes * LANE_STEP + LANE_CLEARANCE * 2) / 2)))
+        /** The measured gutter between two neighbouring columns' boxes. */
+        const gutter = inset * 2
+        /** How far a lane may stand from a gutter's centre and still clear both boxes. */
+        const halfBand = Math.max(0, inset - LANE_CLEARANCE)
+        /** The most lanes one gutter can hold as DISTINCT columns at one pixel apart. */
+        const capacity = halfBand * 2 + 1
+        /** How many hops could not be given a distinct column, which a page must be able to report. */
+        let laneOverflow = 0
+        for (const keys of crossing) laneOverflow += Math.max(0, keys.length - capacity)
+        // A same-rank dependency has no gutter between its ends, so it runs around the RIGHT of its
+        // column, in the inset space no box occupies. Its lanes are counted here so an overflow there
+        // is reported on the same terms.
+        for (const keys of levelKeys) laneOverflow += Math.max(0, keys.length - halfBand)
+
+        /** The x of the LEFT border of a box in one column, at this board's inset. */
+        const leftOf = (rank        )         => borderLeft(rank, inset)
+        /** The x of the RIGHT border of a box in one column, at this board's inset. */
+        const rightOf = (rank        )         => borderRight(rank, inset)
+        /**
+         * The x of one lane inside one gutter: the gutter's centre plus its alternating offset.
+         * @param rank - the gutter's index, i.e. the column it sits to the right of.
+         * @param key - the edge's key.
+         * @returns the lane's x, always inside the gutter and never on a box's border.
+         */
+        const laneX = (rank        , key        )         => {
+          /** How many lanes this gutter carries. */
+          const count = crossing[rank]?.length ?? 1
+          /** The furthest any lane of this gutter stands from the centre. */
+          const reach = Math.max(0, Math.ceil((count - 1) / 2))
+          /** The spacing the measured band pays for, so two lanes never share a column. */
+          const step = reach === 0 ? 0 : Math.max(1, Math.floor(halfBand / reach))
+          /** This lane's own index in the gutter. */
+          const index = laneIndex.get(rank + "@" + key) ?? 0
+          /** The alternating offset: 0, +1, -1, +2, -2 … the first lane stays nearest the centre. */
+          const offset = index === 0 ? 0 : (index % 2 === 1 ? 1 : -1) * Math.ceil(index / 2)
+          /** The furthest a lane may stand here, which only a REPORTED overflow reaches. */
+          const bound = Math.max(0, Math.min(halfBand, reach * step))
+          return (rank + 1) * GEO.column + Math.max(-bound, Math.min(bound, offset * step))
+        }
+        /**
+         * One horizontal run that STOPS where the next element starts, from either side.
+         *
+         * The end convention matters and is not cosmetic: a run that meets another RUN stops one pixel
+         * short of it (the perpendicular element covers that pixel), which is what keeps two segments
+         * from double-painting a corner and a lane's x exact.
+         */
+        const run = (fromX        , toX        , y        )           =>
+          ({ left: Math.min(fromX, toX), top: y, width: Math.max(Math.abs(toX - fromX), 1), height: 1 })
+        /**
+         * One horizontal run that REACHES a box's border, covering that border's own pixel.
+         *
+         * The mirror of {@link run}: an end that meets a BOX must touch it, or a 1px line stops a pixel
+         * short of the task it describes and the picture reads as a dependency that does not arrive.
+         */
+        const reach = (fromX        , toX        , y        )           =>
+          ({ left: Math.min(fromX, toX), top: y, width: Math.abs(toX - fromX) + 1, height: 1 })
+        /** One vertical run's rectangle, stopping just as a `run` does. */
+        const runV = (x        , fromY        , toY        )           =>
+          ({ left: x, top: Math.min(fromY, toY), width: 1, height: Math.max(Math.abs(toY - fromY), 1) })
+
+        /** Every routed edge, in board order. */
+        const edges              = []
+        for (const want of wants) {
+          /** Whether the dependency runs downhill, which is the ordinary case. */
+          const forward = want.parent.rank <= want.child.rank
+          /** Whether both ends sit in the SAME column, which is a cyclic board's shape. */
+          const level = want.parent.rank === want.child.rank
+          /** The x the edge leaves the blocker's own border at, at that border's middle. */
+          const fromX = forward ? rightOf(want.parent.rank) : leftOf(want.parent.rank)
+          /** The x it arrives at on the blocked task's border. */
+          const toX = level ? rightOf(want.child.rank) : forward ? leftOf(want.child.rank) : rightOf(want.child.rank)
+          /** The y it leaves at: the blocker's vertical middle. */
+          const fromY = boxMiddle(want.parent.row)
+          /** The y it arrives at: the blocked task's vertical middle. */
+          const toY = boxMiddle(want.child.row)
+          /** The reserved rows this edge owns, empty for an adjacent-rank edge. */
+          const mine = reserved.get(want.key)
+          /** The painted runs, in draw order. */
+          const segments                                         = []
+          /** The x the path currently stands at, starting on the blocker's border. */
+          let x = fromX
+          /** The y the path currently stands at, starting at the blocker's middle. */
+          let y = fromY
+          /** How many vertical runs have been painted, which numbers their keys. */
+          let risers = 0
+          /** How many intermediate-column crossings have been painted, which numbers their keys. */
+          let crossings = 0
+          /**
+           * The route's own VERTICES, in travel order, starting on the blocker's border.
+           *
+           * Recorded here because this is where the route is walked: the painted curve is a
+           * parametrisation of THESE points, never a second routing of its own, so a change to a lane or
+           * a reserved row moves the picture and the assertion together.
+           */
+          const waypoints               = [{ x: fromX, y: fromY }]
+          /**
+           * Record one vertex, skipping a visit that did not MOVE the pen.
+           *
+           * A dependency whose two boxes sit on the same row walks to its lane and then "down" to the
+           * row it never leaves, which used to append the SAME point twice: a no-op entry in `points`
+           * and a redundant `L` in the radius-0 path. Nothing about containment depended on it (a
+           * zero-length segment hides nothing); it is removed because a route with no repeated vertex is
+           * the cleaner statement of what was walked. The RECTS are untouched by this — they are cut from
+           * the pen's own arithmetic, not from this list — so `data-mpd-route` stays byte-identical.
+           */
+          const mark = (point            )       => {
+            /** The vertex the list currently ends on, which is where the pen already stands. */
+            const last = waypoints[waypoints.length - 1]
+            if (last !== undefined && last.x === point.x && last.y === point.y) return
+            waypoints.push(point)
+          }
+          if (level) {
+            // A SAME-RANK DEPENDENCY: no gutter lies between its ends, so the path leaves the blocker's
+            // right border, steps into the inset space to the RIGHT of the column — which no box
+            // occupies — runs down to the blocked task's row and comes back in on its right border.
+            /** This edge's own slot in that inset space. */
+            const slot = Math.max(0, Math.min(Math.max(0, halfBand - 1), levelKeys[want.parent.rank].indexOf(want.key)))
+            /** The x that slot stands at, one clearance off the column's own boxes. */
+            const lane = rightOf(want.parent.rank) + LANE_CLEARANCE + slot
+            segments.push({ key: "out", rect: run(x, lane, y) })
+            mark({ x: lane, y })
+            segments.push({ key: "riser", rect: runV(lane, y, toY) })
+            mark({ x: lane, y: toY })
+            x = lane
+            y = toY
+          } else {
+            /** The gutters this path walks, in walk order: downhill forward, uphill for a back edge. */
+            const walk           = []
+            for (let rank = Math.min(want.parent.rank, want.child.rank); rank < Math.max(want.parent.rank, want.child.rank); rank += 1) walk.push(rank)
+            if (!forward) walk.reverse()
+            for (let index = 0; index < walk.length; index += 1) {
+              /** The gutter this hop's vertical run stands in. */
+              const lane = laneX(walk[index], want.key)
+              // The horizontal run that reaches the lane: the LEAD-OUT leaves the blocker's border, and
+              // a later one crosses an intermediate column at the row reserved in it — which is the
+              // whole point of the reservation, and why no horizontal can meet a box.
+              if (risers === 0) segments.push({ key: "out", rect: run(x, lane, y) })
+              else {
+                crossings += 1
+                segments.push({ key: "cross" + crossings, rect: run(x, lane, y) })
+              }
+              mark({ x: lane, y })
+              /** The y this hop ends at: the blocked task's middle last, a reserved row in between. */
+              const next = index === walk.length - 1
+                ? toY
+                : boxMiddle(mine?.get(forward ? walk[index] + 1 : walk[index]) ?? 0)
+              risers += 1
+              segments.push({ key: risers === 1 ? "riser" : "riser" + risers, rect: runV(lane, y, next) })
+              mark({ x: lane, y: next })
+              x = lane
+              y = next
+            }
+          }
+          // The lead-in lands ON the blocked task's border — covering that border's pixel, because this
+          // end meets a BOX rather than another run — and the arrowhead's tip sits on the same x.
+          segments.push({ key: "in", rect: reach(x, toX, y) })
+          mark({ x: toX, y })
+          // THE MARKER POINTS ALONG THE TRAVEL: it points LEFT when the path's last leg ran leftward,
+          // which is what a back edge does and what a same-rank edge does when it comes back around its
+          // own column. A marker that pointed the other way would read as an edge leaving the task.
+          /** Whether the arrowhead points left, i.e. the edge arrives from the right. */
+          const pointsLeft = level || toX < fromX
+          /**
+           * The arrowhead's BOUNDING BOX, whose tip end is the border the dependency arrives at.
+           *
+           * `headMax` is kept exactly as it was: `data-mpd-route` serializes this rect and clause W4 pins
+           * that string, so the head's own geometry may not move underneath it. The clamp never binds on
+           * a real board — the inset is capped far below a column's width — and the horizontal-scrollbar
+           * intent it carries is now held by the canvas being exactly `graph.width` wide, one clipping
+           * rule for the whole plane rather than a per-head correction.
+           */
+          const headMax = Math.max(0, rankCount * GEO.column - MARK_W)
+          /** The x of the arrowhead's TIP, which IS the border the edge arrives at (clause W5). */
+          const tipX = toX
+          /** The arrowhead's own box: its tip on the arrival border, its base one head-length behind it. */
+          const marker           = {
+            left: Math.min(headMax, pointsLeft ? tipX : tipX - MARK_W),
+            top: toY - Math.floor(MARK_H / 2),
+            width: MARK_W,
+            height: MARK_H,
+          }
+          // THE ARRIVAL IS A POINT (W5): `toX` is already the border this edge lands on in all three
+          // cases — forward, same-rank and back — so the tip is the route's own last vertex and the
+          // assertion is a pure equality with no knowledge of the head's width.
+          /** The PAINTED form of this route: the same waypoints, filleted and swept (clause W6). */
+          const shape = curveOf(waypoints, radius)
+          edges.push({
+            parent: want.parent.task.id,
+            child: want.child.task.id,
+            witness: want.child.task.id + "<-" + want.parent.task.id,
+            segments,
+            curve: { d: shape.d, points: shape.points, tip: { x: toX, y: toY }, radius },
+            marker,
+            pointsLeft,
+          })
+        }
+
+        /** The tallest column's slot count, which is how tall the grid must be. */
+        let tallest = 0
+        for (const count of slots) tallest = Math.max(tallest, count)
+        return {
+          columns,
+          rankCount,
+          width: rankCount * GEO.column,
+          height: Math.max(tallest * (GEO.nodeHeight + GEO.nodeGap) - GEO.nodeGap + GEO.pad * 2, GEO.nodeHeight + GEO.pad * 2),
+          gridTemplateColumns: "repeat(" + rankCount + ", " + GEO.column + "px)",
+          nodes,
+          edges,
+          inset,
+          gutter,
+          maxLanes,
+          laneOverflow,
+          slots,
+          ranksDerived: derived,
+          unresolved,
+          unresolvedRecorded,
+        }
+      }
+
+      /**
+       * The transitive halo of one task: the hovered node, its ANCESTORS (what it rests on) and its
+       * DESCENDANTS (what rests on it), along the drawn dependency edges.
+       *
+       * A chain is a RANK-MONOTONE path over the drawn edges: every hop to the left climbs to a strictly
+       * lower rank, every hop to the right descends to a strictly higher one. That is the relation the
+       * columns draw, and it is the only one that survives a diamond. Measured: walking the edges alone
+       * lit `T1 → T2 → T3 → T4` up entirely when T2 was hovered, because T3 (a legitimate descendant) then
+       * handed the walk its own dependent T4 — and a walk that let the two directions feed each other did
+       * the same the other way round. The origin is the ONE exception, because a cycle resolves a
+       * revisited node to rank 0, so a back-edge genuinely runs between two nodes of the same rank.
+       *
+       * THE RANKS ARE THE DRAWN ONES (R20). This walk used to compare the served `depth` values, which is
+       * the same lie the columns trusted: on a board whose depths are all 0 the guard pruned EVERY hop
+       * (`parent.depth >= byId[id].depth` is `0 >= 0`), so a hover lit one node and dimmed everything —
+       * a halo that reaches nothing is exactly as wrong as a one-column drawing. The caller passes the
+       * ranks the geometry actually drew, so the halo and the picture cannot disagree.
+       *
+       * Each frontier is worked as a QUEUE rather than a recursion, and `inHalo` holds it to one visit
+       * per node, so a dependency cycle in the payload — which the route reports rather than repairs —
+       * cannot spin this into a stack overflow.
+       * @param tasks - the board.
+       * @param from - the hovered task's id.
+       * @param rankOf - the rank each task was DRAWN in, straight off the geometry's own nodes.
+       * @returns the ids to tint; every other node is dimmed while a focus is held.
+       */
+      const focusChain = (tasks            , from        , rankOf                        )                          => {
+        /** The task each id names, for the dependency lookups below. */
+        const byId                           = {}
+        for (const task of tasks) byId[task.id] = task
+        /** The ids in the halo so far. */
+        const focus                          = {}
+        if (byId[from] === undefined) return focus
+        /** What rests on each task, which is `blockedBy` read backwards. */
+        const dependentsOf                           = {}
+        for (const task of tasks) {
+          for (const blockerId of task.blockedBy) {
+            if (dependentsOf[blockerId] === undefined) dependentsOf[blockerId] = []
+            dependentsOf[blockerId].push(task.id)
+          }
+        }
+        focus[from] = true
+        /** The ancestor frontier, seeded with the hovered node only; it keeps its OWN visited set. */
+        const up           = [from]
+        /** Every id the ancestor chain has already visited. */
+        const seenUp                          = { [from]: true }
+        /** The descendant frontier, seeded with the hovered node only. */
+        const down           = [from]
+        /** Every id the descendant chain has already visited. */
+        const seenDown                          = { [from]: true }
+        while (up.length > 0) {
+          /** The id this pass expands. */
+          const id = up.shift()          
+          /** The origin, whose own rank row the guard below is relaxed for (see the cycle note above). */
+          const atOrigin = id === from
+          for (const blockerId of byId[id].blockedBy) {
+            if (seenUp[blockerId] === true) continue
+            /** The blocker's own row; one the board does not carry draws no edge and tints nothing. */
+            const parent = byId[blockerId]
+            if (parent === undefined) continue
+            // Strictly to the left — never a step back to the right, which is what keeps a cousin out —
+            // measured in the ranks the DRAWING used, never in the served depth (see the note above).
+            if ((rankOf[blockerId] ?? 0) >= (rankOf[id] ?? 0) && !atOrigin && blockerId !== from) continue
+            seenUp[blockerId] = true
+            focus[blockerId] = true
+            up.push(blockerId)
+          }
+        }
+        while (down.length > 0) {
+          /** The id this pass expands. */
+          const id = down.shift()          
+          /** The origin, whose own rank row the guard below is relaxed for. */
+          const atOrigin = id === from
+          for (const childId of dependentsOf[id] ?? []) {
+            /** The dependent's own row, which must lie strictly to the right of the node expanded. */
+            const child = byId[childId]
+            if (child === undefined || seenDown[childId] === true) continue
+            if ((rankOf[childId] ?? 0) <= (rankOf[id] ?? 0) && !atOrigin && childId !== from) continue
+            seenDown[childId] = true
+            focus[childId] = true
+            down.push(childId)
+          }
+        }
+        return focus
+      }
+
+      /**
+       * Paint one routed edge: ONE SVG path over the layout's own waypoints, plus its arrowhead.
+       *
+       * NO GEOMETRY IS COMPUTED HERE. The layout routed the edge and derived its painted form — the
+       * fillets, the closing sweep, the flattened polyline, the arrowhead's box — and this function only
+       * decides the colour and emits the two elements, so the drawing and the asserted geometry cannot
+       * drift apart. The SVG is a PAINTING plane, never a second source of truth: nothing below reads
+       * the DOM, measures a box or resolves a style, which is the one prohibition that SURVIVES this
+       * wave's contract amendment (the prohibition was always measurement, never SVG).
+       * @param edge - the routed edge, straight off the geometry.
+       * @param tinted - whether BOTH of its ends are inside the hover halo.
+       * @returns the edge's group, its path and its arrival arrowhead.
+       */
+      const edgeOf = (edge           , tinted         )          => {
+        /** The colour every run of this edge draws in; a focused edge reads brighter. */
+        const base = tinted ? FOCUS_EDGE : CSS.edge.background
+        /** The arrowhead's own box, whose tip end is the border the dependency arrives at. */
+        const head = edge.marker
+        /** The x of the TIP: the box's right end for a right-pointing head, its left one otherwise. */
+        const tipX = edge.pointsLeft ? head.left : head.left + head.width
+        /** The x its base stands at, which is the box's other end. */
+        const baseX = edge.pointsLeft ? head.left + head.width : head.left
+        /** The y the head is centred on, which is the arrival row. */
+        const tipY = head.top + head.height / 2
+        /** The arrowhead as an SVG polygon: the tip first, then the base's two corners. */
+        const headShape = tipX + "," + tipY + " " + baseX + "," + head.top + " " + baseX + "," + (head.top + head.height)
+        // THE TIP MARK IS A ZERO-WIDTH RECT (clause W4): `toX` is the border the edge lands on, and a
+        // zero width means an arm can read the apex without knowing `MARK_W` — the width the old CSS
+        // triangle published nowhere, which is exactly why the arrival was unreadable from the DOM.
+        /** The arrival point, serialized in the same `left,top,width,height` grammar as every other mark. */
+        const tipText = edge.curve.tip.x + "," + (edge.curve.tip.y - Math.floor(MARK_H / 2)) + ",0," + MARK_H
+        return react.createElement("g", {
+          key: "edge:" + edge.parent + ">" + edge.child,
+          // THE WITNESSABLE MARK: `capture.mts` (docker/ui) reads `data-mpd-edge` and counts `data-mpd-graph`'s
+          // `edges=` against exactly these, so one edge per DRAWN dependency is what must appear here.
+          "data-mpd-edge": edge.witness,
+          // STILL THE ROUTING TRUTH: the orthogonal runs the layout cut, in draw order, with the
+          // direction and the arrowhead's box — the curve below is a parametrisation of these.
+          "data-mpd-route": routeText(edge),
+        },
+          react.createElement("path", {
+            key: "curve",
+            // THE PAINTED FORM, published so a test can prove the drawn path is the proven one: the
+            // flattened polyline the containment arm measures is built from exactly this `d`.
+            "data-mpd-curve": edge.curve.d,
+            d: edge.curve.d,
+            fill: "none",
+            // THE TINT IS THE STROKE (clause W7): the box this edge used to fill with a colour is now
+            // painted by a line, so the focus halo has to travel through the stroke and the head's fill.
+            stroke: base,
+            strokeWidth: "1",
+            strokeLinecap: "round",
+          }),
+          react.createElement("polygon", {
+            key: "head",
+            // THE HEAD IS A POLYGON, NOT A PATH, so "one `<path>` per drawn edge" stays countable.
+            "data-mpd-head": "1",
+            "data-mpd-tip": tipText,
+            points: headShape,
+            fill: base,
+            stroke: "none",
+          }),
+        )
+      }
+
+      /**
+       * One rectangle as the comma-joined text `data-mpd-route` publishes.
+       * @param rect - the rectangle.
+       * @returns `left,top,width,height`.
+       */
+      const rectText = (rect          )         => rect.left + "," + rect.top + "," + rect.width + "," + rect.height
+
+      /**
+       * One edge's whole route as the text `data-mpd-route` publishes, so a test asserts the geometry
+       * that was DRAWN rather than re-deriving it: the runs in draw order, then `R`/`L`, then the
+       * arrival marker's own box.
+       * @param edge - the routed edge.
+       * @returns the serialized route.
+       */
+      const routeText = (edge           )         =>
+        edge.segments.map((segment) => rectText(segment.rect)).join(";") + "|" + (edge.pointsLeft ? "L" : "R") + rectText(edge.marker)
+
+      /**
+       * The TASK DETAIL body of the pinned node: the record's own fields, its blockers and its
+       * dependents, and — when the task route served one — the FROZEN acceptance contract, quoted
+       * rather than summarized because that text is what a reviewer holds the work to.
+       * @param task - the pinned task.
+       * @param tasks - the whole board, for the dependents lookup.
+       * @param contract - the frozen contract of this task, when the route served one.
+       * @returns the detail element.
+       */
+      const detailSection = (task          , tasks            , contract                                                                                            )          => {
+        /** The tasks resting on this one, which is the reverse of `blockedBy`. */
+        const dependents           = []
+        for (const other of tasks) if (other.blockedBy.indexOf(task.id) >= 0) dependents.push(other.id)
+        /** The detail's rows, in render order. */
+        const rows            = [
+          react.createElement("div", { key: "d-top", style: CSS.row },
+            react.createElement("span", { key: "d-subject", style: { flex: "1 1 auto", fontWeight: 600 } }, task.subject),
+            react.createElement("span", {
+              key: "d-close",
+              "data-detail-close": task.id,
+              style: { ...CSS.chip, cursor: "pointer" },
+              onClick: () => { if (setPinned !== null) setPinned(null) },
+            }, t("task.close"))),
+          react.createElement("div", { key: "d-id", style: { ...CSS.meta, marginTop: "2px" } },
+            task.id + " · " + kindOf(task.kind) + " · " + glyphOf(task.visual) + " " + task.visual
+            + (task.failedBy.length === 0 ? "" : " · " + t("task.verdict") + " ✗ " + task.failedBy.join(", "))),
+        ]
+        if (task.owner !== undefined) rows.push(detailRow("d-owner", "task.owner", task.owner))
+        if (task.attempt !== undefined) rows.push(detailRow("d-attempt", "task.attempt", String(task.attempt)))
+        if (task.round !== undefined) rows.push(detailRow("d-round", "task.round", String(task.round)))
+        if (task.verdict !== undefined) rows.push(detailRow("d-verdict", "task.verdict", task.verdict))
+        rows.push(detailRow("d-blocked", "task.blockedBy", task.blockedBy.length === 0 ? "—" : task.blockedBy.join(", ")))
+        rows.push(detailRow("d-dependents", "task.dependents", dependents.length === 0 ? "—" : dependents.join(", ")))
+        // THE PRODUCER'S OWN REPORT, on the task it belongs to (R18's reader side): these references
+        // matched nothing when the record was written, so naming them is what turns "this task looks
+        // like it has no blockers" into "this task HAS blockers the record could not resolve".
+        /** The references this record reports as unresolved, absent when everything resolved. */
+        const recordedUnresolved = Array.isArray(task.unresolvedBlockers) ? task.unresolvedBlockers : []
+        if (recordedUnresolved.length > 0) rows.push(detailRow("d-unresolved", "task.unresolved", recordedUnresolved.join(", ")))
+        if (contract === undefined) {
+          rows.push(react.createElement("div", { key: "d-contract-none", style: { ...CSS.dim, marginTop: "4px" } }, t("task.contract.none")))
+        } else {
+          rows.push(react.createElement("div", { key: "d-contract-head", style: CSS.subHead }, t("task.contract")))
+          rows.push(react.createElement("div", { key: "d-contract", style: { ...CSS.card, marginTop: "2px", whiteSpace: "pre-wrap", wordBreak: "break-word" } }, contract.description))
+        }
+        return react.createElement("div", { key: "task-detail", "data-mpd-detail": task.id, style: { marginTop: "10px" } }, rows)
+      }
+
+      /**
+       * One language-independent word per lifecycle phase.
+       *
+       * The phase is the RECORD's own word (`staged`/`active`/`idle`/`ended`), and it stays
+       * distinguishable from the other three even in a Chinese render, which is why it is translated
+       * through a key table rather than echoed raw into a localized panel.
+       * @param phase - the phase as the payload serves it.
+       * @returns the localized label.
+       */
+      const phaseLabel = (phase        )         => t(PHASE_KEY[phase] ?? phase)
+
+      /**
+       * The workspace's teams, listed for a session that has none of its own.
+       *
+       * THE DEAD END THIS REMOVES (D2): the record is session-scoped, so a panel in a session that
+       * did not approve the workspace's team rendered "no team in this workspace yet" while the team
+       * sat on disk — the exact state the user reported as "built but not used". Every row carries
+       * `data-mpd-workspace-team=<id>`, so a driver can prove which teams were rendered rather than
+       * trusting a screenshot.
+       * @param records - the workspace's teams, newest first.
+       * @param activeId - the team bound to THIS session, when the index binds one.
+       * @returns the section element.
+       */
+      const workspaceSection = (records                 , activeId                    )          => {
+        /** The section's rows, in render order. */
+        const rows            = [
+          react.createElement("div", { key: "w-title", style: CSS.subHead }, t("workspace.title")),
+          react.createElement("div", { key: "w-hint", style: CSS.dim }, t("workspace.hint")),
+        ]
+        for (const team of records) {
+          rows.push(react.createElement("div", {
+            key: "w-" + team.id,
+            "data-mpd-workspace-team": team.id,
+            style: CSS.card,
+            title: team.description,
+          },
+          react.createElement("div", { key: "w-top", style: CSS.row },
+            react.createElement("span", { key: "w-name", style: { flex: "1 1 auto", fontWeight: 600 } }, team.name),
+            // ACTIVE IS BOTH A WORD AND A MARKER: the chip says which session drives this team, and the
+            // attribute makes it assertable without parsing the panel's text.
+            team.active || team.id === activeId
+              ? react.createElement("span", { key: "w-active", "data-mpd-workspace-active": team.id, style: CSS.chip }, t("workspace.active"))
+              : null),
+          react.createElement("div", { key: "w-meta", style: CSS.meta },
+            team.id + " · " + phaseLabel(team.phase) + " · " + team.tasks.completed + "/" + team.tasks.total + " " + t("task.title").toLowerCase()
+            + (team.tasks.failed === 0 ? "" : " · " + team.tasks.failed + " ✗")
+            + " · " + team.members + " " + t("workspace.members"))))
+        }
+        rows.push(react.createElement("div", { key: "w-stage", style: { ...CSS.dim, marginTop: "6px" } }, t("workspace.stage")))
+        return react.createElement("div", { "data-mpd-team-tab": "", "data-mpd-workspace-teams": String(records.length), style: CSS.panel }, rows)
+      }
+
+      /**
+       * The team panel.
+       *
+       * The session id comes from the host's own props when it offers one (both hosts do, in their own
+       * spelling); without one the route answers the workspace's principal team, which is what a panel
+       * opened outside a session should show.
+       */
+      const TeamView = (props          )          => {
+        /** The host's props, read leniently: both hosts spell the session differently. */
+        const seat = (props ?? {})                                                            
+        /** The session this panel addresses; empty asks the route for the workspace principal. */
+        const sessionId = String(seat.sessionId ?? seat.scope?.sessionId ?? "") || sessionIdFromPane()
+        /** The polled store and its setter. */
+        const [store, setStore] = react.useState({ state: null, plan: null, contracts: {}, error: undefined }             )
+        // One poller per session: the effect re-runs when the host hands this panel a different one.
+        react.useEffect(() => start(sessionId, setStore), [sessionId])
+        // HOVER AND PIN ARE DECLARED BEFORE EVERY EARLY RETURN on purpose: a hook's slot order must be
+        // identical on every render path, or React's own state would shift the moment a team appears.
+        /** The hovered task's id, which drives the focus chain; null when nothing is hovered. */
+        const [hover, setHoverState] = react.useState(null                 )
+        /** The pinned task's id, which drives the detail body; null when nothing is pinned. */
+        const [pinned, setPinnedState] = react.useState(null                 )
+        // The handlers below are closures of THIS render, so they always write through this render's
+        // setters; the factory-scope names are what the detail body and the edges reach.
+        setPinned = setPinnedState                                 
+        setHover = setHoverState                                 
+        /** The store, narrowed out of the tuple above. */
+        const current = store             
+        /** The last readable payload, or null while there is none. */
+        const state = current.state
+        if (state === null) {
+          // THE ROOT CARRIES THE TEAM ID, and `""` while there is none: the host asserts on a stable
+          // marker for the tab, so every path out of this view writes it — including the two that have
+          // no team yet.
+          return react.createElement("div", { "data-mpd-team-tab": "", style: { ...CSS.panel, ...CSS.dim } },
+            current.error === undefined ? t("state.reading") : t("state.unavailable"))
+        }
+        if (state.team === null) {
+          // A STAGED PLAN WITH NO TEAM IS THE NORMAL PRE-APPROVAL STATE, not an empty one: the team
+          // record is materialised AT approval, so before one there is nothing to show here and
+          // everything to show in the plan. Returning the empty sentence would have hidden the very
+          // thing the captain came to approve.
+          if (current.plan !== null && current.plan.plan !== null) return planSection(current.plan.plan)
+          // ── THE WORKSPACE'S OWN TEAMS (D2) ─────────────────────────────────────
+          // The team record is SESSION-scoped, so a session that approved nothing rendered the empty
+          // sentence even while the workspace held teams another session had built — which is exactly
+          // what the user read as "建了但没用上". When the route served a non-empty listing, THAT is the
+          // answer; the sentence below stays for the workspace that genuinely has no team yet.
+          /** The workspace listing this payload carries, when the route read one. */
+          const listed = state.workspaceTeams?.records ?? []
+          if (listed.length > 0) return workspaceSection(listed, state.workspaceTeams?.activeId)
+          return react.createElement("div", { "data-mpd-team-tab": "", style: { ...CSS.panel, ...CSS.dim } }, t("state.none"))
+        }
+        /** The team head; non-null past the guard above. */
+        const team = state.team
+        /** The tally, in the record's own vocabulary. */
+        const counts = state.counts
+        /** The board, which the figures, the graph and the detail body all read. */
+        const tasks = state.tasks
+        /** The completion percentage, 0 while the board has no tasks. */
+        const percent = counts.total === 0 ? 0 : Math.round((counts.completed / counts.total) * 100)
+        /** The DAG geometry of this poll's board. */
+        const graph = layout(tasks)
+        /** The node each task id draws in, so an edge is placed from the board alone. */
+        const nodeOf                            = {}
+        for (const node of graph.nodes) nodeOf[node.task.id] = node
+        /**
+         * The GRAPH-SAFE label of every node, keyed by task id — clause C4, composed in ONE place.
+         *
+         * Built here rather than inline because it is the ONLY text the drawing takes from a task: the
+         * ordinal comes off the geometry's own nodes (which hold the served board's order), and the
+         * pinned detail body and the hover `title` keep the original subject untouched (clause C3).
+         */
+        const labelOf                         = {}
+        for (const node of graph.nodes) labelOf[node.task.id] = graphSafeLabel(node.task.subject, node.ordinal)
+        // THE RANKS THE DRAWING USED, handed to the hover halo so it cannot measure a different relation
+        // than the columns draw: the node's own `rank` IS the derived rank (R20), never the served value.
+        /** The drawn rank of every task, straight off the geometry. */
+        const drawnRank                         = {}
+        for (const node of graph.nodes) drawnRank[node.task.id] = node.rank
+        // THE TALLY SAYS WHAT A CAPTAIN ACTS ON, not just how far along the board is: how many tasks
+        // a member could pick up RIGHT NOW, and how many of those are only ready because a
+        // prerequisite FAILED (OPT-1 releases them, and that must not hide inside "ready").
+        /** The line a captain reads: what is moving, what is pickable, what is held. */
+        const tally = counts.running + " " + t("tally.running") + " · " + counts.ready + " " + t("tally.ready")
+          + " · " + counts.blocked + " " + t("tally.blocked")
+          + (counts.releasedByFailure === 0 ? "" : " · " + counts.releasedByFailure + " " + t("tally.released"))
+        /** The focus halo of the hovered node — empty while nothing is hovered, so every node is full. */
+        const focus                          = hover === null ? {} : focusChain(tasks, hover          , drawnRank)
+        /** Whether a hover is dimming the rest of the board. */
+        const focusing = Object.keys(focus).length > 0
+        // A CHAIN IS ACTIVE ONLY WITH A RELATED NODE: a hover whose halo holds nothing beyond the
+        // hovered task itself relates to nothing, and a reader that counted that as a chain would be
+        // reading a highlight that tinted one node and dimmed no other.
+        /** Whether the hovered node's halo reaches at least one other node. */
+        const chainActive = focusing && Object.keys(focus).length > 1
+        /** The drawn edges, PAINTED FROM THE LAYOUT'S OWN ROUTES: one per dependency on the board. */
+        // A `blockedBy` id the board does not carry draws NOTHING: the payload serves the list raw,
+        // while the rank projection drops unknown ids, so an entry naming a ghost is reachable in real
+        // data — and an edge into a node that is not there would be a picture of a dependency that the
+        // record does not have. The layout already applied that rule, so the count here is the count
+        // the `data-mpd-graph` witness announces.
+        const edges            = []
+        for (const edge of graph.edges) {
+          // THE TINT IS A HOVER FACT, so it is decided here and not in the geometry: an edge reads
+          // brighter only while BOTH of its ends are inside the halo, which is what makes a chain
+          // readable as a path rather than as two unrelated highlights.
+          edges.push(edgeOf(edge, focus[edge.parent] === true && focus[edge.child] === true))
+        }
+        /** The pinned task's own record, or undefined when the pinned id left the board. */
+        const pinnedTask = pinned === null ? undefined : tasks.find((candidate) => candidate.id === pinned)
+        /** The panel's elements, in render order. */
+        const children            = [
+          react.createElement("div", { key: "head", style: CSS.head }, team.name),
+          react.createElement("div", { key: "sub", style: CSS.row },
+            react.createElement("span", { key: "phase", style: CSS.chip }, team.phase),
+            react.createElement("span", { key: "id", style: CSS.dim }, team.id),
+            team.approvedAt === undefined ? null : react.createElement("span", { key: "approved", style: CSS.dim }, t("header.approved") + " " + team.approvedAt),
+            state.workspace === undefined ? null : react.createElement("span", { key: "ws", style: CSS.dim }, t("header.workspace") + " " + baseName(state.workspace))),
+          react.createElement("div", { key: "tally", style: { ...CSS.dim, marginTop: "2px" } }, tally),
+          react.createElement("div", { key: "figures", style: { ...CSS.dim, marginTop: "2px" } },
+            counts.completed + "/" + counts.total + " " + t("header.complete")
+            + " · " + counts.running + " " + t("tally.running") + " / " + counts.ready + " " + t("tally.ready")),
+          react.createElement("div", { key: "bar", style: CSS.bar },
+            react.createElement("div", { "data-progress": String(percent), style: { ...CSS.barFill, width: percent + "%" } })),
+          react.createElement("div", { key: "progress", style: { ...CSS.meta, marginTop: "2px" } }, t("progress.label") + " " + percent + "%"),
+          // THE EXECUTOR IS SHOWN, because which backend raises a member is exactly the fact that
+          // explains a team behaving differently than expected — served by the same route.
+          react.createElement("div", { key: "exec", style: { ...CSS.dim, marginTop: "4px" } },
+            react.createElement("span", { style: CSS.chip }, state.executor.kind), " " + t("executor.label")),
+          react.createElement("div", { key: "members-head", style: CSS.subHead }, t("members.title") + " (" + state.members.length + ")"),
+        ]
+        if (state.members.length === 0) {
+          children.push(react.createElement("div", { key: "members-empty", style: { ...CSS.dim, marginTop: "2px" } }, t("members.empty")))
+        }
+        for (const member of state.members) {
+          // ONE PLAIN CARD PER MEMBER (the user's ruling: 成员卡的 UI 不必那么花哨): a CSS status dot,
+          // the name, the role chip, the route in tertiary text, the current task truncated, and the
+          // fraction right-aligned. No avatar, no mascot, no state art.
+          /** The card's rows, in render order. */
+          const card            = [
+            react.createElement("div", { key: "c-top", style: CSS.row },
+              react.createElement("span", { key: "dot", style: memberDot(member.status), title: member.status }),
+              react.createElement("span", { key: "name", style: { flex: "1 1 auto", fontWeight: 600 } }, member.name),
+              member.role === undefined || member.role === "" ? null : react.createElement("span", { key: "role", style: CSS.chip }, t(member.role)),
+              react.createElement("span", { key: "frac", style: CSS.dim }, member.done + "/" + member.total)),
+          ]
+          if (member.route !== undefined && member.route !== "") {
+            card.push(react.createElement("div", { key: "c-route", style: { ...CSS.meta, marginTop: "1px" } }, member.route))
+          }
+          if (member.current !== undefined && member.current !== "") {
+            card.push(react.createElement("div", { key: "c-current", style: { ...CSS.meta, marginTop: "1px" }, title: member.current },
+              t("members.current") + " " + short(member.current, SUBJECT_MAX)))
+          }
+          children.push(react.createElement("div", { key: "m-" + member.id, "data-member": member.id, style: CSS.card }, card))
+        }
+        // THE DAG, in the form a 380px column can carry: one rank column per rank, one node per task,
+        // and one DRAWN edge per `blockedBy` entry that names a task on this board. The edge layer is a
+        // PAINTING plane over the layout's own arithmetic — one SVG path per edge, no measurement
+        // anywhere — so the curve cannot disagree with the data it was routed from.
+        children.push(react.createElement("div", { key: "tasks-head", style: CSS.subHead }, t("task.title") + " (" + tasks.length + ")"))
+        if (tasks.length === 0) {
+          // The empty state NAMES THE CALL that fills it, so a captain reading an empty board knows
+          // what to post rather than only that nothing is there.
+          children.push(react.createElement("div", { key: "tasks-empty", style: { ...CSS.dim, marginTop: "2px" } }, t("task.empty")))
+        }
+        if (state.cycles.length > 0) {
+          // A CYCLE IS REPORTED, NEVER HIDDEN: an unrenderable board still has to say what is wrong with
+          // it, and the payload already carries the ids.
+          children.push(react.createElement("div", { key: "cycles", style: { marginTop: "2px", color: TONE.blocked } },
+            t("task.cycle") + " " + state.cycles.join(", ")))
+        }
+        if (tasks.length > 0) {
+          children.push(react.createElement("div", {
+            key: "graph",
+            // THE WITNESSABLE MARK: the counts are of what is RENDERED below, so a screenshot's
+            // `ranks=`/`edges=` cannot drift from the picture the panel actually drew.
+            "data-mpd-graph": "ranks=" + graph.rankCount + " edges=" + edges.length,
+            // A chain is active only when the halo holds a RELATED node, not merely the hovered one.
+            "data-mpd-focus": chainActive ? "chain" : "none",
+            // THE ONLY SCROLLER, ON PURPOSE (the user's ruling): the pan exists so the WHOLE DAG can be
+            // seen, which is a property of this box alone. Its width stays the PANEL's — `100%` — while
+            // the canvas inside it is `graph.width` wide, so a wide board scrolls HERE and never pushes
+            // a sibling row sideways, never widens the panel and never clips the text around it.
+            style: { ...CSS.scroll, width: "100%", height: Math.min(graph.height, 260) + "px" },
+          },
+            // The grid WRAPS the canvas: the wrapper carries the vertical breathing room as padding, so
+            // the origin an edge's absolute coordinates are measured from stays the grid itself.
+            react.createElement("div", { style: { position: "relative", width: graph.width + "px", padding: GEO.pad + "px 0" } },
+              react.createElement("div", { style: { ...CSS.grid, width: graph.width + "px", height: graph.height + "px", gridTemplateColumns: graph.gridTemplateColumns } },
+              // THE EDGES LAYER IS THE GRID'S FIRST CHILD, so every path paints BEHIND the boxes. The
+              // routes no longer cross a box (the layout reserves a row for each long edge's hops),
+              // but this is the safety net that makes an overlap impossible rather than merely
+              // unlikely: a mis-routed line can only be hidden by a node, never cover a task.
+              // ONE `<svg>` IS THE WHOLE PLANE: one canvas, one coordinate space — the layout's own —
+              // with `width`/`height`/`viewBox` all saying the same thing, so a path's numbers ARE the
+              // pixels the geometry was asserted in and SVG's default clipping keeps a head that sits
+              // on the canvas edge from opening a scrollbar.
+              react.createElement("svg", {
+                key: "edges",
+                "data-edges": "1",
+                width: graph.width,
+                height: graph.height,
+                viewBox: "0 0 " + graph.width + " " + graph.height,
+                style: { ...CSS.edgeLayer, width: graph.width + "px", height: graph.height + "px" },
+              }, edges),
+              graph.columns.map((column, rank) => react.createElement("div", {
+                key: "col-" + rank,
+                "data-mpd-rank": String(rank),
+                style: { ...CSS.column, width: GEO.column + "px", height: graph.height + "px" },
+              },
+              column.map((task, row) => react.createElement("div", {
+                key: "node-" + task.id,
+                "data-mpd-node": task.id,
+                // THE BOX'S OWN RECTANGLE, published so the geometry can be ASSERTED from what was
+                // actually rendered: an edge's runs and every box come out of the same object, and a
+                // test proves no run crosses a box without re-deriving a single number.
+                "data-mpd-box": (rank * GEO.column + graph.inset) + "," + boxTop(row) + "," + (GEO.column - graph.inset * 2) + "," + GEO.nodeHeight,
+                role: "button",
+                tabIndex: 0,
+                "aria-pressed": pinned === task.id,
+                title: task.subject + (task.attempt === undefined ? "" : " · " + t("task.attempt") + " " + task.attempt),
+                style: {
+                  ...CSS.node,
+                  // THE INSET IS THE LAYOUT'S, not the stylesheet's: it is the width the busiest
+                  // gutter's lanes were paid for out of, so a fixed 4px here would detach every box
+                  // from the geometry the edges were routed against.
+                  left: graph.inset + "px",
+                  right: graph.inset + "px",
+                  top: boxTop(row) + "px",
+                  borderColor: focusing && focus[task.id] !== true ? CSS.edge.background : toneOf(task.visual),
+                  opacity: focusing && focus[task.id] !== true ? "0.4" : "1",
+                  borderWidth: pinned === task.id ? "1px" : "0.5px",
+                },
+                  // THE HOVER CHAIN LIVES ON THE NODE ITSELF: the host drives it with a real mouse move,
+                  // so `onMouseEnter`/`onMouseLeave` here are the only writers — no document listener,
+                  // no layout effect, and therefore nothing that can outlive this element.
+                  onMouseEnter: () => { if (setHover !== null) setHover(task.id) },
+                  onMouseLeave: () => { if (setHover !== null) setHover(null) },
+                  onClick: () => { if (setPinned !== null) setPinned(pinned === task.id ? null : task.id) },
+                  onKeyDown: (event                  ) => {
+                    if (event?.key !== "Enter" && event?.key !== " ") return
+                    if (setPinned !== null) setPinned(pinned === task.id ? null : task.id)
+                  },
+                },
+                react.createElement("div", { key: "node-top", style: CSS.nodeTop },
+                  react.createElement("span", { key: "glyph", style: { color: toneOf(task.visual), fontWeight: 700 } }, glyphOf(task.visual)),
+                  react.createElement("span", { key: "id", style: { fontWeight: 700 } }, task.id),
+                  react.createElement("span", { key: "kind", style: CSS.dim }, kindOf(task.kind))),
+                react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, labelOf[task.id]),
+                // The closers, in order: the node, the column's node map, the column, the grid's column
+                // map, the grid, the padded wrapper, the graph element, and `children.push`.
+                ))))))))
+        }
+        if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id]))
+        for (const problem of state.problems) {
+          children.push(react.createElement("div", { key: "p-" + problem, style: { ...CSS.dim, marginTop: "6px" } }, problem))
+        }
+        return react.createElement("div", { "data-mpd-team-tab": team.id, style: CSS.panel }, children)
+      }
+
+      return { TeamView, start, read, layout, graphSafeLabel, curveOf }
+    },
+  }
+  })();
+
+
   function loadSettingsCard()                     {
     // THE SPLICED CARD FIRST. `require("@mpd-dsh/settings-card")` asks the module loader for a
     // SIBLING `__ModuleLoader__.load` block, and the loader's require map only serves the
@@ -7074,6 +11448,25 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 
   /** The element factory, bound once for the Team tab's terser render tree. */
   const h = react.createElement;
+  /** The workmate tab's stable id in the harness right sidebar's registry. */
+  const WORKMATE_TAB_ID = "@mpd-dsh/workmate-sidebar";
+  /** The workmate tab's kind (the tab registry keys open tabs on it). */
+  const WORKMATE_TAB_KIND = "mpd-workmate";
+  /** The shortcut that opens the workmate tab, named by its guide entry. */
+  const WORKMATE_COMMAND_ID = "mpd-workmate.new";
+
+  /**
+   * The workmate library seat in the harness right sidebar.
+   *
+   * The library view reads only a translator, so this seat builds the same element the
+   * better-sidebar descriptor does — one view, two hosts, exactly like the team tab beside it. The
+   * seat's own props carry no translator, so the bound one from this module's locale is used.
+   * @param props - seat props from `sidebar.right.pane.tab`.
+   * @returns the library element.
+   */
+  function WorkmateSidebarBody(props                               )          {
+    return react.createElement(WorkmateLibraryView, { t: translateFor({ t: props && props.t }) });
+  }
   /** The Team tab's stable id. */
   const TEAM_TAB_ID = "@mpd-dsh/team-sidebar";
   /** The Team tab's kind (the tab registry keys open tabs on it). */
@@ -7113,109 +11506,155 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    *   own `inject`, and `useSessions`/`useSession` from the primitives package.
    */
   function TeamSidebarBody(props                  )          {
-    /** The session whose team this tab renders, as the seat resolved it. */
-    const sessionId = props.sessionId;
-    // The primitives package is a bare global here (see the ambient declaration above), so both
-    // fallbacks are narrowed to the hook shape at the point of use.
-    /** The sessions store hook: the seat's own, else the host's primitives package. */
-    const useSessions = props.useSessions || primitives.useSessions                ;
-    /** The session store hook: the seat's own, else the host's primitives package. */
-    const useSession = props.useSession || primitives.useSession               ;
-    // A teammate's own panel addresses the LEAD's board: the same rule the official UI uses.
-    /** The parent session's id when this seat is a teammate's own panel. */
-    const ambientLead = typeof useSession === "function"
-      ? useSession((snapshot) => snapshot?.subagent?.address?.parentSessionId)
-      : undefined;
-    /** The board this tab addresses: the ambient lead when there is one, else its own session. */
-    const leadId = ambientLead || sessionId;
-    /** The team projection of that board, or undefined while it has no team. */
-    const team = typeof useSessions === "function"
-      ? useSessions((state) => (leadId === undefined ? undefined : state.projectionsBySession?.[leadId]?.values?.agentTeam))
-      : undefined;
-
-    if (team === undefined) {
+    // ── ONE BODY, TWO HOSTS ────────────────────────────────────────────────────
+    // This used to read the OFFICIAL client projection
+    // (`useSessions(s => s.projectionsBySession[leadId].values.agentTeam)`), which is the last place
+    // the official plugin was still the source of truth — and a store that is EMPTY in exactly the
+    // compositions the split exists for, because a client store can only carry what a mounted
+    // service projected. It now renders the SAME component the better-sidebar tab does, over this
+    // bundle's own route, so the two hosts cannot disagree about what the team is.
+    /** The shared team view, or undefined when this host has no React to build it with. */
+    const view = teamViewOf();
+    if (view === undefined) {
       return h("div", { style: { padding: "12px", fontSize: "12px", ...dim } },
-        "No team in this session yet. Ask the Lead to spawn one with spawn_teammate.");
+        "The team view is unavailable in this client build.");
     }
-    /** The team's members (an absent list renders the empty-state line). */
-    const members = Array.isArray(team.members) ? team.members : [];
-    /** The team's shared tasks (an absent list renders the empty-state line). */
-    const tasks = Array.isArray(team.tasks) ? team.tasks : [];
-    /** How many tasks are completed. */
-    const done = tasks.filter((task) => task.status === "completed").length;
-    /** The completion percentage (0 while the board has no tasks). */
-    const percent = tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100);
-    // A completion bar alone cannot say whether anything is MOVING. The board already carries
-    // `ready` and `blockedBy`, so the view states what a captain acts on: how many tasks a
-    // teammate could pick up right now, and how many are waiting on something else.
-    /** How many open tasks a teammate could pick up right now. */
-    const ready = tasks.filter((task) => task.status !== "completed" && task.ready === true).length;
-    /** How many open tasks are waiting on something else. */
-    const blocked = tasks.filter((task) => task.status !== "completed" && task.ready === false).length;
-    /** How many members are currently working. */
-    const running = members.filter((member) => member.phase === "active" || member.phase === "running").length;
+    // ANNOUNCE THE SESSION THIS SEAT RENDERS, ONCE. The value is the only place the panel's own view
+    // of "which session am I" is observable from outside, and a verification run needs exactly that:
+    // MEASURED 2026-10-05, a capture that seeded a session IT created kept reading an empty panel,
+    // because the app renders a session of its own choosing. One `[mpd…]` line lets the driver seed
+    // the RIGHT session (the console collector already keeps every such line for the report).
+    /** The session this seat's props name, whichever spelling the host used. */
+    const seatSession = sessionIdOfSeat(props)
+    if (seatSession !== "" && announcedSidebarSession !== seatSession) {
+      announcedSidebarSession = seatSession
+      console.info("[mpd] team sidebar session: " + seatSession)
+    }
+    // The seat's own props are forwarded VERBATIM, which is what makes the two hosts work with one
+    // body: the harness right sidebar passes `sessionId` directly (verified in the DOM 2026-10-05 —
+    // the prop bag carried `useSessions,useSessionStatus,useSessionRetainInfo,sessionId,useSession,…`
+    // and the view fetched all three routes with that id), while the better-sidebar host spells the
+    // same fact differently. Nothing here needs to know which host this is.
+    return view.TeamView(props);
+  }
 
-    return h("div", { style: { padding: "10px 12px 14px", overflowY: "auto" } },
-      h("div", { style: { display: "flex", alignItems: "baseline", gap: "8px" } },
-        h("strong", { style: { fontSize: "12px" } }, "Team progress"),
-        h("span", { style: dim }, done + "/" + tasks.length + " done"),
-      ),
-      h("div", { style: { ...dim, marginTop: "2px" } },
-        running + " of " + members.length + " running · " + ready + " ready · " + blocked + " blocked"),
-      h("div", { style: { height: "6px", borderRadius: "3px", background: "var(--dsh-color-fill-secondary, #e6e8eb)", marginTop: "6px", overflow: "hidden" } },
-        h("div", { style: { height: "100%", width: percent + "%", background: "#22a06b" } }),
-      ),
-      team.failure === undefined ? null
-        : h("div", { style: { ...dim, color: "#d64545", marginTop: "6px" } }, String(team.failure)),
+  /**
+   * Read the session id off a seat's props, whichever spelling the host used.
+   *
+   * The two sidebar hosts pass the same FACT in different shapes — the harness's right sidebar puts
+   * `sessionId` on the props directly, while a nested `scope.sessionId` is the other spelling this
+   * bundle has seen — so the reader tolerates both and answers "" when neither is present.
+   * @param props - the seat props as the host supplied them.
+   * @returns the session id, or an empty string when the props carry none.
+   */
+  function sessionIdOfSeat(props         )         {
+    /** The props as a bag, so an unknown host shape can be read without a cast at each use. */
+    const bag = (props ?? {})                                                            
+    /** The direct spelling first, then the nested one. */
+    const value = bag.sessionId ?? bag.scope?.sessionId
+    return typeof value === "string" ? value : ""
+  }
 
-      h("div", { style: { ...dim, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: "12px" } }, "Members (" + members.length + ")"),
-      members.length === 0
-        ? h("div", { style: { ...dim, padding: "4px 0" } }, "No member yet — the captain spawns them with spawn_teammate.")
-        : members.map((member) => h("div", { key: String(member.id), style: rowStyle },
-            h("span", { style: dot(STATUS_COLOR[member.phase] || "#8a8f98") }),
-            h("span", { style: { ...ellipsis, fontSize: "12px" } }, String(member.name)),
-            h("span", { style: chip(member.role === "lead" ? "#6b4fd8" : "#8a8f98") }, String(member.role)),
-            member.error === undefined ? null : h("span", { style: { ...dim, color: "#d64545", ...ellipsis } }, String(member.error)),
-          )),
+  /** Whether one harness-sidebar registration was accepted on the last mount — see the settle check below. */
+  let harnessSidebarRegistered         = 0
 
-      h("div", { style: { ...dim, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: "12px" } }, "Tasks (" + tasks.length + ")"),
-      tasks.length === 0
-        ? h("div", { style: { ...dim, padding: "4px 0" } }, "No shared task yet — the captain posts them with team_task_create.")
-        : tasks.map((task) => h("div", { key: String(task.id), style: { ...rowStyle, alignItems: "flex-start" } },
-            h("span", { style: chip(STATUS_COLOR[task.status] || "#8a8f98") }, String(task.status)),
-            h("div", { style: { flex: "1 1 auto", minWidth: 0 } },
-              h("div", { style: { ...ellipsis, fontSize: "12px" } }, String(task.subject)),
-              h("div", { style: { ...dim, ...ellipsis } },
-                (task.ownerName === undefined ? "unowned" : String(task.ownerName)) +
-                (Array.isArray(task.blockedBy) && task.blockedBy.length > 0 ? " · blocked by " + task.blockedBy.join(", ") : "") +
-                (task.ready === false ? " · not ready" : "")),
-            ))),
-    );
+  /**
+   * Whether `dsh-better-sidebar` took the panels on the last mount.
+   *
+   * The settle check asks "did NOTHING take the mpd panels?", and in a profile that mounts BOTH hosts
+   * the harness seat resolves and its callback backs off deliberately — leaving the counter at zero
+   * for a perfectly healthy composition. This latch is what tells those two states apart, so the loud
+   * line is emitted exactly when the panels are really unreachable.
+   *
+   * Both are SNAPSHOTS of the last `mountHarnessSidebar` call, never its working state: the counters
+   * it decides with are local to that call, so a teardown that lands after a later arm re-mounted the
+   * sidebar cannot read that arm's numbers.
+   */
+  let betterSidebarPreferred          = false
+
+  /**
+   * Publish what one mount settled on, so the exported diagnostics and the settle line read a
+   * coherent set.
+   *
+   * Named rather than inlined because the mount now publishes from TWO points: the early preference
+   * probe (which returns before the fallback runs) and the end of a completed mount, where a late
+   * harness seat may have registered after the snapshot was already written.
+   * @param preferred - whether `dsh-better-sidebar` took the panels on this mount.
+   * @param registered - how many harness-sidebar registrations the seat accepted.
+   */
+  function publishSettle(preferred         , registered        )       {
+    harnessSidebarRegistered = registered
+    betterSidebarPreferred = preferred
+    harnessSidebarHost = preferred ? "dsh-better-sidebar" : registered > 0 ? "the harness right sidebar" : ""
   }
 
   /** The harness-sidebar Team tab, contributed by the bundle's ONE applied client module. */
   function mountHarnessSidebar(ctx               )       {
+    // THIS CALL'S OWN TALLIES, not factory state: the settle check below closes over them, so what it
+    // reports is what THIS mount did. A reload of the client module in an offline harness re-runs
+    // `apply`, and a value shared across mounts would let one arm's outcome silence another's report.
+    /** How many tab registrations this mount's fallback attempt got accepted. */
+    let registered         = 0
+    /** Whether this mount found `dsh-better-sidebar` and deliberately left the fallback alone. */
+    let preferred          = false
+    // ── THE PREFERENCE, PROBED EARLY AS WELL AS IN THE GATE ──────────────────────
+    // The gate inside the `sidebarRightTabs + sidebarRight` callback is the AUTHORITATIVE check (the
+    // latest knowable moment). This early probe answers the OTHER composition, and it is not a race:
+    // `betterSidebar` is visible here exactly when that service is a plain registry entry — which is
+    // how the client framework hands out a service that is up at apply time — while a plugin-fiber
+    // service stays invisible to a bare probe and is caught by the callback instead. Without this
+    // half, a profile mounting BOTH hosts but never publishing the harness SEAT would wait out the
+    // bounded settle and report a problem neither host has (measured in the offline harness, where
+    // the seat is exactly that absent).
+    /** Whether `dsh-better-sidebar` is already visible to a plain probe. */
+    const preferredEarly          = typeof ctx.get === "function" && (()          => {
+      try { return ctx.get("betterSidebar") !== undefined && ctx.get("betterSidebar") !== null } catch { return false }
+    })()
+    if (preferredEarly) {
+      // The preferred host owns the panels: latch it and leave the fallback (and the settle report) alone.
+      preferred = true
+      publishSettle(preferred, registered)
+      return
+    }
     // DEGRADE, NEVER TAKE THE ENTRY DOWN. `ctx.inject` is a client-framework seam: a
     // composition (or the offline client harness) without it must simply not get this tab,
     // while the workmate page and the settings card still mount. Measured: an unguarded read
     // threw inside `apply`, and `bun test packages/mpd-bundle-plugin` reported
     // "Unhandled error between tests" for every arm that drives the real client bytes.
-    // SILENT by design: the settings card's arms count the boot's console warnings, and an
-    // optional tab that is simply absent is not a warning-worthy event (the same reading the
-    // better-sidebar mount takes when its host never arrives).
-    if (typeof ctx.inject !== "function" || typeof ctx.locale?.bind !== "function") return
+    // LOUD, NOT SILENT (D1). Returning quietly here is the mode this file shipped with, and it is
+    // the one a user cannot debug: the Team and Workmate tabs are simply absent with no reason
+    // given. The line is emitted ONCE, names WHAT is missing, and states that the ROUTES still
+    // serve the data, so the NEXT check is a hint rather than a hunch.
+    if (typeof ctx.inject !== "function" || typeof ctx.locale?.bind !== "function") {
+      /** Which of the two seam reads failed, as the report should read it. */
+      const missing = typeof ctx.inject !== "function" ? "ctx.inject" : "ctx.locale.bind"
+      reportNoHarnessSidebar("this client ctx exposes no " + missing)
+      return
+    }
     /** The translator bound to this tab's own locale namespace. */
     const t = ctx.locale.bind("mpdTeamSidebar");
+    // COMMIT IT for the shared view, which is constructed by `teamViewOf()` in a render path that has
+    // no `ctx` and therefore cannot bind a namespace itself. Wrapped so the view gets the full English
+    // table for any key the host does not resolve, and so a throwing host translator cannot take the
+    // panel down: the view receives `teamSay`, never the host's function directly.
+    teamTranslator = (key        )         => {
+      try { return String(t(key)) } catch { return TEAM_COPY_EN[key] ?? key }
+    };
     ctx.effect(() => ctx.locale.register("mpdTeamSidebar", {
       en: {
         "type.label": "Team",
         "guide.title": "Team",
         "guide.description": "Roster and shared task progress for this session",
+        // The shared view's own copy. Registered from the SAME table the fallback reads, so the two
+        // cannot drift: a key added to the view and forgotten here still renders English instead of
+        // a raw key, which is the failure mode this pairing exists to make impossible.
+        ...TEAM_COPY_EN,
       },
       zh: {
         "type.label": "团队",
         "guide.title": "团队",
         "guide.description": "本会话的名册与共享任务进度",
+        ...TEAM_COPY_ZH,
       },
     }), "mpd-team-sidebar:copy");
     // The guide entry names a COMMAND, not a callback: that command is a client shortcut.
@@ -7230,6 +11669,31 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       }), "mpd-team-sidebar:command");
     });
     ctx.inject(["sidebarRightTabs", "sidebarRight"], (sidebar) => {
+      // ── THE PREFERENCE, APPLIED AT THE ONE MOMENT IT CAN BE ──────────────────
+      // `dsh-better-sidebar` FIRST, this official sidebar only as the FALLBACK (user decision,
+      // 2026-09-30). The check runs HERE, when the official sidebar is ready to accept a
+      // registration, because that is the latest moment at which the answer is knowable and the
+      // earliest at which it matters: registering into both would put the same panel in two places
+      // in a profile that mounts both hosts.
+      if (typeof ctx.get === "function") {
+        /** The better-sidebar service, when this profile has that host. */
+        let primary         ;
+        try { primary = ctx.get("betterSidebar"); } catch { primary = undefined; }
+        if (primary !== undefined && primary !== null) {
+          preferred = true;
+          // PUBLISHED ON THIS BRANCH TOO (S9). A seat that is invisible to the bare probe at apply time
+          // and visible here is the case this callback exists for, so returning without publishing left
+          // the module snapshot on its apply-time values — `sidebarDiagnostics()` reported
+          // `{host: "", preferred: false}` about a profile whose panels better-sidebar owns.
+          publishSettle(preferred, registered);
+          console.info("[mpd] better-sidebar is mounted: the team view registers THERE, and the official right sidebar is left to its own tabs");
+          return;
+        }
+      }
+    // THE SEAM IS REAL AND THIS IS THE FALLBACK'S TURN: every registration below is counted, so the
+    // check at the end of this callback can tell "the host took the tabs" from "the host refused
+    // them" — the second is a defect in THIS file and must not be silent either.
+    try {
     sidebar.effect(() => sidebar.sidebarRightTabs.register({
       id: TEAM_TAB_ID,
       kind: TEAM_TAB_KIND,
@@ -7243,13 +11707,104 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         description: () => t("guide.description"),
       }],
     }), "mpd-team-sidebar:type");
+    registered += 1;
     sidebar.effect(() => sidebar.slots.register({
       name: "sidebar.right.pane.tab",
       key: TEAM_TAB_ID,
       locale: "mpdTeamSidebar",
       inject: (sessionId         ) => ({ sessionId }),
     }, TeamSidebarBody), "mpd-team-sidebar:body");
+    // ── THE WORKMATE LIBRARY, THE SAME WAY ───────────────────────────────────
+    // The library was a better-sidebar-ONLY surface, so a profile with just the harness sidebar —
+    // which is what a checkout install resolves, because `dsh-better-sidebar` is an optional peer —
+    // had NO way to reach it at all. It is registered HERE, inside the same preference gate, so the
+    // two hosts are two registrations of one feature rather than two features.
+    sidebar.effect(() => sidebar.sidebarRightTabs.register({
+      id: WORKMATE_TAB_ID,
+      kind: WORKMATE_TAB_KIND,
+      priority: "extension",
+      title: () => "Workmates",
+      guide: [{
+        id: "new",
+        commandId: WORKMATE_COMMAND_ID,
+        order: 41,
+        title: () => "Workmates",
+        description: () => "Durable agents from your library",
+      }],
+    }), "mpd-workmate-sidebar:type");
+    registered += 1;
+    sidebar.effect(() => sidebar.slots.register({
+      name: "sidebar.right.pane.tab",
+      key: WORKMATE_TAB_ID,
+      locale: WORKMATE_LOCALE_NAMESPACE,
+      inject: () => ({}),
+    }, WorkmateSidebarBody), "mpd-workmate-sidebar:body");
+    } catch (error) {
+      // A THROWING HOST IS NOT AN ABSENT HOST, and conflating the two is how a real defect reads as
+      // an optional surface that simply is not there. The registration attempt stays contained (a
+      // throw out of `apply` would fail the whole web page), and the report gate is the same single
+      // line, so a broken fallback still produces exactly one diagnostic.
+      reportNoHarnessSidebar("\"" + HARNESS_SIDEBAR_SERVICES + "\" is served but refused the registration: " + String(error))
+      return
+    }
+    if (registered === 0) {
+      // The seam resolved and both registrations were attempted, yet the host accepted none: reported
+      // rather than left as an empty right sidebar.
+      reportNoHarnessSidebar("\"" + HARNESS_SIDEBAR_SERVICES + "\" resolved but accepted no tab registration")
+    }
+    // PUBLISHED FROM INSIDE THE CALLBACK, because a seat that arrives AFTER `apply()` returned (the
+    // live case, and every harness arm) would otherwise leave the diagnostics reading the pre-arrival
+    // snapshot — `registered: 0, host: ""` about a profile whose panels are registered and fine.
+    publishSettle(preferred, registered)
     });
+    // ── THE SETTLE CHECK (D1) ───────────────────────────────────────────────────
+    // The OTHER way this surface goes missing: the seat named above never resolves at all (a build
+    // without the harness right sidebar, or a seat renamed by a newer host). `ctx.inject` parks its
+    // callback and says NOTHING when its deps never arrive, so nothing inside the callback can learn
+    // that. TWO moments ask the question and the report gate makes them ONE line:
+    //   • a BOUNDED WAIT after this mount — the line a user staring at an empty right sidebar needs
+    //     WHILE the page is open (F5: the disposer alone reported it only at unload);
+    //   • the entry DISPOSER as the final backstop, for a page torn down before the bound elapsed.
+    // Never a false line: with `dsh-better-sidebar` mounted the callback DOES resolve, takes the
+    // preference branch above, and falls to the bottom with nothing registered — so `registered` alone
+    // would report a problem neither host has. The `preferred` latch keeps that guarantee.
+    /** The bounded-wait handle, cleared by the disposer below so a torn-down entry leaves no timer. */
+    let settleTimer                                           
+    if (typeof setTimeout === "function") {
+      settleTimer = setTimeout(() => {
+        settleTimer = undefined
+        if (registered === 0 && !preferred) {
+          reportNoHarnessSidebar("neither \"" + HARNESS_SIDEBAR_SERVICES + "\" nor better-sidebar accepted a registration within " + settleTimeoutMsValue + "ms")
+        }
+      }, settleTimeoutMsValue)
+    }
+    ctx.effect(() => () => {
+      // THE TIMER IS CLEARED FIRST: a disposed entry must not leave a pending callback behind, and a
+      // page torn down inside the bound reports through the backstop below instead.
+      if (settleTimer !== undefined) {
+        clearTimeout(settleTimer)
+        settleTimer = undefined
+      }
+      if (registered === 0 && !preferred) {
+        reportNoHarnessSidebar("\"" + HARNESS_SIDEBAR_SERVICES + "\" was never published in this profile, and better-sidebar is not mounted either")
+      }
+    }, "mpd: harness sidebar report");
+    // The command the workmate guide entry names. Registered in the same injected scope as the
+    // team's, because both open a tab on the SAME registry and neither may run before it exists.
+    ctx.inject(["shortcuts"], (scope) => {
+      scope.effect(() => scope.shortcuts.register({
+        id: WORKMATE_COMMAND_ID,
+        label: () => "Workmates",
+        aliases: ["workmate", "open workmate tab"],
+        regions: ["page", "editable", "terminal"],
+        modals: [],
+        resolve: () => ({ status: "handled", run: () => ctx.sidebarRight.openTab(WORKMATE_TAB_KIND) }),
+      }), "mpd-workmate-sidebar:command");
+    });
+    // PUBLISH WHAT THIS MOUNT SETTLED ON. The two locals are what the settle checks DECIDE with; the
+    // snapshots are what the settle line and the exported diagnostics READ (naming the host that won),
+    // and the callback above publishes again on a late arrival so a settled value is never stale.
+    publishSettle(preferred, registered)
   }
 
   /** The client entry: mount the command row, both sidebar pages and the settings card. */
@@ -7288,10 +11843,37 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   /** The page's dictionaries, frozen so an offline assertion cannot mutate them. */
   const dictionaries = { zh: Object.freeze({ ...zh }), en: Object.freeze({ ...en }) };
 
+  /**
+   * The client-entry diagnostics, exported for the OFFLINE harness.
+   *
+   * The settle line is a TIMED behaviour, so an arm that wants to assert it must be able to shorten
+   * the bound (`settleTimeoutMs(ms)`) and to read WHAT the entry settled on (`sidebarDiagnostics()`:
+   * whether it reported, which host took the panels, how many registrations were accepted, and whether
+   * the better-sidebar preference fired). Without these two the only honest assertions would be an
+   * eight-second sleep per case or a deleted one.
+   * @param ms - the new settle bound in milliseconds, or undefined to READ the current one.
+   * @returns the bound in force after the call.
+   */
+  const settleTimeoutMs = (ms         )         => {
+    if (typeof ms === "number" && Number.isFinite(ms) && ms >= 0) settleTimeoutMsValue = ms
+    return settleTimeoutMsValue
+  }
+
+  /**
+   * What the last mount settled on, so a test can assert the DIAGNOSTIC and not only the console line.
+   * @returns the reported flag, the host that won, the accepted registrations and the preference latch.
+   */
+  const sidebarDiagnostics = ()                                                                              => ({
+    reported: harnessSidebarReported,
+    host: harnessSidebarHost,
+    registered: harnessSidebarRegistered,
+    preferred: betterSidebarPreferred,
+  })
+
   // `inject`/`apply` are the client-module contract; the view plus the two pure helpers
   // (dictionaries and the §D failure mapper) are exported so the offline harness
   // (packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs) can pin them without a browser.
-  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard };
+  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard, settleTimeoutMs, sidebarDiagnostics };
   return module.exports;
 }
 
@@ -7323,4 +11905,28 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                               
  
 
-/** The spliced settings card module, or undefined when the build did not splice one. */ });
+/** The spliced settings card module, or undefined when the build did not splice one. */
+                                                                  
+
+/** The spliced team-view global's shape: the ONE factory both sidebar hosts build their body from. */
+                             
+                                                                                             
+                                                                                                                                                                        
+ 
+
+/** The built team view. */
+                             
+                                                                                                             
+                                        
+ 
+
+/**
+ * The team view the build splices in (W4) — see {@link MPD_SETTINGS_CARD} for why it arrives as a
+ * global rather than an import: only THIS module is applied as a client plugin, so a sibling
+ * `load()` block would define the view where nothing applied can reach it.
+ *
+ * THE TYPE IS NAMED, and that is not style: a `declare const` carrying an INLINE multi-line object
+ * type does not survive type stripping here — the stripped artifact keeps a stray `{`, which then
+ * swallows the rest of the module as an object literal and fails the whole client with
+ * `Unexpected token 'const'` a hundred lines later. Measured on this very declaration.
+ */ });

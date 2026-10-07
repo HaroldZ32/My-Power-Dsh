@@ -8,7 +8,7 @@
 //      corpus is visible exactly while the bundle is installed and disappears
 //      when the row unloads — no $DSH_HOME/skills copy, no stale version stamp.
 //   2) mpd preset: served from <bundle>/presets by the agent-presets root the
-//      bundle patch configures (packages/mpd-bundle/cordis.patch.yml) — no
+//      bundle patch configures (cordis.patch.yml) — no
 //      $DSH_HOME/.agent-presets copy.
 //   3) Legacy migration: the version-stamped copies written by bundle <= 0.2.6
 //      into $DSH_HOME/skills and $DSH_HOME/.agent-presets are removed on the
@@ -20,7 +20,7 @@ import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs"
 import { readdir, readFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
-import { bundleRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SKILLS, bundleRootOf, dshSeamInject, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { isAbsent, parseFrontmatter, parseInvocation, stringField, type Frontmatter } from "../../mpd-ext-plugin/src/skill-frontmatter"
 
@@ -28,7 +28,7 @@ import { isAbsent, parseFrontmatter, parseInvocation, stringField, type Frontmat
 export const name = "mpd-bootstrap"
 // The skills registry is a host-plane service shipped by dsh-base; declaring it
 // is a true hard dependency (this row's whole purpose is to contribute to it).
-export const inject = ["skills"]
+export const inject = dshSeamInject(DSH_SEAM_SKILLS)
 
 /**
  * Row config, every key optional: the bundle patch mounts this row with NO config, so the
@@ -78,7 +78,7 @@ function presetsSource(root: string): string {
 function warn(ctx: Ctx, message: string): void {
   try {
     if (ctx.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
-    else console.log("[mpd-bootstrap] " + message)
+    else rowLogLine("mpd-bootstrap", "[mpd-bootstrap] " + message)
   } catch { /* logging must never fail provisioning */ }
 }
 
@@ -284,7 +284,7 @@ function createProvider(root: string, ctx: Ctx, dsh: DshAdapter, invalidate: () 
         if (displayPath === undefined || !displayPath.startsWith(root)) return
         invalidate()
       } catch (error) {
-        console.warn("[mpd-bootstrap] fs/observed invalidation failed (the observation is unaffected): " + String((error as Error)?.message ?? error))
+        rowLogLine("mpd-bootstrap", "[mpd-bootstrap] fs/observed invalidation failed (the observation is unaffected): " + String((error as Error)?.message ?? error))
       }
     })
   }
@@ -392,16 +392,16 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   try { version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version ?? "unknown" } catch { /* keep */ }
 
   if (config.skipSkills === true) {
-    console.log("[mpd-bootstrap] skill corpus provider skipped (config)")
+    rowLogLine("mpd-bootstrap", "[mpd-bootstrap] skill corpus provider skipped (config)")
   } else {
     dsh.registerSkillProvider((control: any) =>
       createProvider(corpus, ctx, dsh, () => control?.invalidate?.()),
     )
-    console.log("[mpd-bootstrap] skill corpus served from " + corpus + " (provider " + PROVIDER_NAME + ", bundle " + version + ")")
+    rowLogLine("mpd-bootstrap", "[mpd-bootstrap] skill corpus served from " + corpus + " (provider " + PROVIDER_NAME + ", bundle " + version + ")")
   }
 
   if (config.skipLegacyCleanup === true) {
-    console.log("[mpd-bootstrap] legacy home-copy cleanup skipped (config)")
+    rowLogLine("mpd-bootstrap", "[mpd-bootstrap] legacy home-copy cleanup skipped (config)")
     return
   }
   try {

@@ -32,7 +32,7 @@ type SmokeSteps = Record<string, SmokeStep>
 /** The offline self-test: bundle row, built dist symbols and the package's own unit suite. */
 function selfTest(): void {
   // The bundle patch, which must still carry the memory row.
-  const bundle = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const bundle = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   if (!bundle.includes("mpd-memory")) { console.error("[memory-smoke self-test] FAIL: bundle row"); process.exit(1) }
   // The built plugin dist, whose bytes must carry every tool name and the vcs binary it shells out to.
   const dist = readFileSync(join(repoRoot, "packages", "mpd-memory-plugin", "dist", "index.js"), "utf8")

@@ -1,5 +1,5 @@
-import * as core from "../core/index.cjs";
-import * as schemas from "./schemas.cjs";
+import * as core from "../core/index.cts";
+import * as schemas from "./schemas.cts";
 export interface ZodMiniISODateTime extends schemas.ZodMiniStringFormat<"datetime"> {
     _zod: core.$ZodISODateTimeInternals;
 }

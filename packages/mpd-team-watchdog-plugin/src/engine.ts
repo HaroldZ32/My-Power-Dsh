@@ -12,7 +12,7 @@
 // store; nothing here reaches a harness service directly (AGENTS.md §6). The
 // engine is a plain class so a test or a lane can drive `tickOnce(now)` with an
 // injected clock and a stub adapter, without a boot.
-import { type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import { rowLogLine, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { HOLD_TOOL, applyHold, applyResume } from "./actions.js"
 import { ChannelFold, type ChannelView } from "./channel.js"
 import { readWatchdogSection } from "./config-file.js"
@@ -37,7 +37,7 @@ import { sceneDir } from "./paths.js"
 import { buildScene, mailboxUnreadObservable, writeScene, type SceneIncident } from "./scene.js"
 import { appendIncident, readHold, readIncidents, readWatermarks, type IncidentRecord } from "./sidecars.js"
 import { appendHeartbeat, listHeartbeatKeys, message, readHeartbeats, rotateHeartbeats, type HeartbeatKind, type HeartbeatStamp } from "./store.js"
-import { agentIds, CAPTAIN_KEY, currentTask, dependencyBlocked, readTeams, resolveIdentity, teamOf, type TeamRecord } from "./team.js"
+import { agentIds, CAPTAIN_KEY, currentTask, dependencyBlocked, readTeams, resolveIdentity, teamOf, type MpdTeamsRead, type TeamRecord } from "./team.js"
 
 /** Fully-resolved engine configuration (no optional key left). */
 export interface EngineConfig {
@@ -238,7 +238,7 @@ function sessionIdOf(value: unknown): string | null {
 /** One diagnostic line on stderr; never throws. */
 function report(text: string): void {
   try {
-    console.warn("[mpd-team-watchdog] " + text)
+    rowLogLine("mpd-team-watchdog", "[mpd-team-watchdog] " + text)
   } catch {
     // nothing left to report with
   }
@@ -603,13 +603,13 @@ export class WatchdogEngine {
   /**
    * The live team readout for one workspace, cached for `teamCacheMs`.
    *
-   * SOURCE (0.1.7): `dsh.teamLiveTeams()` — the OFFICIAL Agent Teams readout, folded by the
-   * adapter over the live agent registry. There is no `<stateDir>/<teamId>/team.json` any more,
-   * and the folded readout is the only truth about a roster and a board. The cache now bounds
-   * two live service reads per tick (the fold is per live Lead), not a file parse.
+   * SOURCE: the MPD TEAM RECORD first (`mpdTeams.list(workspace)`, the authoritative plane whose
+   * `team-<stamp>` ids are the ones the dispatch gate asks about), then `dsh.teamLiveTeams()` — the
+   * OFFICIAL Agent Teams readout — as the fallback for a composition that runs the official
+   * executor. See `team.ts#readTeams` for why the union is deliberately not taken.
    *
-   * The workspace is still part of the cache key: the readout itself is process-wide, but a
-   * per-workspace entry keeps the tick's accounting (and `invalidate()`) exactly as they were.
+   * The cache bounds the read per workspace; the mpd service is resolved PER CALL below, so a row
+   * that mounts after this engine does is still read.
    */
   private teams(workspace: string, now: number = Date.now()): TeamRecord[] {
     // The cache key: workspace and state directory, so two rows never share an entry.
@@ -617,10 +617,32 @@ export class WatchdogEngine {
     // The cached readout for this workspace, when one is still fresh.
     const cached = this.teamCache.get(key)
     if (this.config.teamCacheMs > 0 && cached !== undefined && now - cached.at < this.config.teamCacheMs) return cached.teams
-    // The live readout from the adapter, cached below for `teamCacheMs`.
-    const teams = readTeams(this.dsh)
+    // The live readout, cached below for `teamCacheMs`.
+    const teams = readTeams(this.dsh, workspace, this.mpdTeams())
     this.teamCache.set(key, { at: now, teams })
     return teams
+  }
+
+  /**
+   * The `mpdTeams` service face, resolved PER CALL from this row's own context.
+   *
+   * Never captured at apply: the service is provided by another row, which may mount later, and a
+   * composition without it must read exactly as it did before. A service that is absent, of the
+   * wrong shape, or read through a context that throws answers `undefined` — never a throw, because
+   * this runs inside a tick.
+   */
+  private mpdTeams(): MpdTeamsRead | undefined {
+    try {
+      // The context's soft service probe; a minimal test context may not carry one.
+      const get = (this.ctx as { get?: (id: string, strict?: boolean) => unknown }).get
+      if (typeof get !== "function") return undefined
+      /** The service as the composition answers it, or undefined when it is not mounted. */
+      const service = get.call(this.ctx, "mpdTeams", false)
+      if (service === null || typeof service !== "object") return undefined
+      return typeof (service as MpdTeamsRead).list === "function" ? (service as MpdTeamsRead) : undefined
+    } catch {
+      return undefined
+    }
   }
 
   /** The workspace root for an agent (adapter precedence, never cached). */
@@ -1204,7 +1226,7 @@ export class WatchdogEngine {
     }
     if (this.config.verboseSkips) {
       try {
-        console.log("[" + this.config.logPrefix + "] skipped " + reason)
+        rowLogLine("mpd-team-watchdog", "[" + this.config.logPrefix + "] skipped " + reason)
       } catch {
         // stdout closed
       }
@@ -1571,8 +1593,8 @@ export class WatchdogEngine {
       // a logger that throws must not break a heartbeat
     }
     try {
-      if (level === "warn") console.warn(line)
-      else console.log(line)
+      if (level === "warn") rowLogLine("mpd-team-watchdog", line)
+      else rowLogLine("mpd-team-watchdog", line)
     } catch {
       // stdout closed: nothing left to do
     }

@@ -1,0 +1,797 @@
+{
+  "case": "docker-client-install",
+  "title": "a clean ubuntu:24.04 container installs and boots @mpd-dsh/mpd from a copy of this checkout",
+  "ok": false,
+  "complete": false,
+  "image": "mpd-docker-e2e:local",
+  "startedAt": "2026-09-29T07:07:06.000Z",
+  "finishedAt": "2026-09-29T07:15:51.228Z",
+  "durationSeconds": 525,
+  "harness": {
+    "installed": "0.2.0-rc.1",
+    "expected": "0.2.0-rc.1",
+    "assertion": "harness.version",
+    "node": "v24.19.0 (npm 11.17.0)",
+    "bun": "1.4.2 (BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "ubuntu": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)"
+  },
+  "proves": [
+    "node 24 + bun + pnpm + @deepseek-ai/dsh install inside a bare ubuntu:24.04 container",
+    "the bundle installs with ONE command from a copy of the checkout (dsh plugin --profile web add .)",
+    "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
+    "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
+    "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition)",
+    "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd"
+  ],
+  "provesCompositionOnly": [
+    "the composed profile carries the mpd rows, the preset-mpd row and the three official agent-team rows"
+  ],
+  "doesNotProve": [
+    "any live LLM turn or model routing: no credentials are staged (AGENTS.md §10)",
+    "`--dump-config` output is COMPOSITION evidence and is never cited here as a plugin load",
+    "a packed/tarball install from dist/mpd-package",
+    "a machine without network access: apt, nodejs.org, bun.sh, npm and the registry are all used"
+  ],
+  "summary": {
+    "total": 43,
+    "passed": 31,
+    "failed": 1,
+    "null": 11,
+    "failedNames": [
+      "tui.laneExit"
+    ],
+    "nullNames": [
+      "tui.pluginAddHost",
+      "tui.pluginAddBundle",
+      "tui.compose",
+      "tui.registryDefaultMpd",
+      "tui.presetRow",
+      "tui.mpdTuiRow",
+      "tui.agentTeamRows",
+      "tui.boot",
+      "tui.noFatalSignatures",
+      "tui.sessionPreset",
+      "boot.llmTurn"
+    ]
+  },
+  "assertions": [
+    {
+      "name": "ubuntu.version",
+      "ok": true,
+      "reason": "the base image is ubuntu:24.04",
+      "raw": "ubuntu 24.04"
+    },
+    {
+      "name": "toolchain.apt",
+      "ok": true,
+      "reason": "apt-get update + install curl git ca-certificates unzip xz-utils tmux",
+      "raw": "exit=0/0"
+    },
+    {
+      "name": "toolchain.node",
+      "ok": true,
+      "reason": "install by official tarball, sha256 verified against the published SHASUMS256.txt",
+      "raw": "v24.19.0 (1:node-v24.19.0-linux-x64.tar.xz: OK )"
+    },
+    {
+      "name": "toolchain.bun",
+      "ok": true,
+      "reason": "bun installed by the official script and asserted on PATH",
+      "raw": "1.4.2"
+    },
+    {
+      "name": "toolchain.pnpm",
+      "ok": true,
+      "reason": "required by 'dsh plugin' (it forwards to pnpm), available on PATH",
+      "raw": "11.23.0"
+    },
+    {
+      "name": "harness.version",
+      "ok": true,
+      "reason": "npm i -g then 'dsh --version' printed the pin exactly",
+      "raw": "0.2.0-rc.1"
+    },
+    {
+      "name": "copy.contextFiltered",
+      "ok": true,
+      "reason": "the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed",
+      "raw": "absent: node_modules .git evidence .toolchain dist pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs"
+    },
+    {
+      "name": "copy.repo",
+      "ok": true,
+      "reason": "package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present",
+      "raw": "name=@mpd-dsh/mpd"
+    },
+    {
+      "name": "build.bunInstall",
+      "ok": true,
+      "reason": "bun install resolved the workspace and the dev/optional dependencies",
+      "raw": "exit=0"
+    },
+    {
+      "name": "build.dists",
+      "ok": true,
+      "reason": "every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact",
+      "raw": "BUILD_OK=23/23"
+    },
+    {
+      "name": "install.exit",
+      "ok": true,
+      "reason": "one command installed the bundle into the profile",
+      "raw": "exit=0 spec=."
+    },
+    {
+      "name": "install.profileDep",
+      "ok": true,
+      "reason": "the profile links the checkout and keeps the box bundles",
+      "raw": "dep=link:/opt/mpd bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd"
+    },
+    {
+      "name": "install.installedTree",
+      "ok": true,
+      "reason": "the installed bundle resolves inside the profile",
+      "raw": "/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd"
+    },
+    {
+      "name": "compose.dumpExit",
+      "ok": true,
+      "reason": "the sanctioned composer exited 0",
+      "raw": "exit=0"
+    },
+    {
+      "name": "compose.mpdRows",
+      "ok": true,
+      "reason": "the mpd host rows compose and the default preset selection is mpd",
+      "raw": "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate default: mpd x1"
+    },
+    {
+      "name": "compose.presetRow",
+      "ok": true,
+      "reason": "the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)",
+      "raw": "- id: preset-mpd"
+    },
+    {
+      "name": "compose.agentTeamRows",
+      "ok": true,
+      "reason": "the official agent-team rows compose under the mpd-owned ids (§4 D3)",
+      "raw": "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team"
+    },
+    {
+      "name": "boot.probeApplied",
+      "ok": true,
+      "reason": "the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition",
+      "raw": "[docker-probe] APPLIED=ok"
+    },
+    {
+      "name": "boot.adapterService",
+      "ok": true,
+      "reason": "the mpd-dsh-adapter row applied and provided the mpdDsh service",
+      "raw": "[mpd-dsh-adapter] mpdDsh provided"
+    },
+    {
+      "name": "boot.adapterToolCall",
+      "ok": true,
+      "reason": "an internal tool call through the adapter answered ok",
+      "raw": "[docker-probe] ADAPTER_TOOL_CALL=ok"
+    },
+    {
+      "name": "boot.mpdTools",
+      "ok": true,
+      "reason": "every core mpd tool answered from the live registry",
+      "raw": "CORE_TOOLS=6/6"
+    },
+    {
+      "name": "boot.agentTeamTools",
+      "ok": true,
+      "reason": "every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)",
+      "raw": "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-f07c6951-56b0-4e3f-aa61-a98dcd8c"
+    },
+    {
+      "name": "boot.sessionGateListener",
+      "ok": true,
+      "reason": "the mpd session gate listener is REGISTERED for the created session — liveness, not composition (the contract that was silently dead in v0.10.0)",
+      "raw": "[mpd-roles] session gate listener registered for agent \"session-f07c6951-56b0-4e3f-aa61-a98dcd8c3efd\" agentPreset=mpd"
+    },
+    {
+      "name": "boot.agentTeamService",
+      "ok": true,
+      "reason": "the official TeamService is mounted in the booted process (its class name is the witness)",
+      "raw": "[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService methods=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership"
+    },
+    {
+      "name": "boot.servesHttp",
+      "ok": true,
+      "reason": "the booted Web app answered 200",
+      "raw": "/plugins/mpd-workmate/list -> 200"
+    },
+    {
+      "name": "boot.presetMount",
+      "ok": true,
+      "reason": "the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)",
+      "raw": "POST /api/session/create -> {\"type\":\"server-response\",\"rpcId\":\"rpc-1-1790666128-1838\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-f07c6951-56b0-4e3f-aa61-a98dcd8c3efd\",\"agentPreset\":\"mpd\"}}}"
+    },
+    {
+      "name": "boot.noFatalSignatures",
+      "ok": true,
+      "reason": "no fatal apply/module signature in the boot log",
+      "raw": "0 matches"
+    },
+    {
+      "name": "isolation.home",
+      "ok": true,
+      "reason": "HOME and DSH_HOME stay on the sandbox paths for every harness command",
+      "raw": "HOME=/root/sandbox-home DSH_HOME=/root/sandbox-dsh"
+    },
+    {
+      "name": "isolation.realHome",
+      "ok": true,
+      "reason": "no harness/toolchain marker under the real home (/root)",
+      "raw": "absent: .dsh .mpd .npm .bun"
+    },
+    {
+      "name": "isolation.noCredentials",
+      "ok": true,
+      "reason": "no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)",
+      "raw": "inventory=.credentials.yaml(161B),"
+    },
+    {
+      "name": "tui.hostInstall",
+      "ok": true,
+      "reason": "the TUI host installs globally and lands on PATH",
+      "raw": "version=0.11.1 bin=/usr/local/bin/dsh-tui"
+    },
+    {
+      "name": "tui.pluginAddHost",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.pluginAddBundle",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.compose",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.registryDefaultMpd",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.presetRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mpdTuiRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.agentTeamRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.boot",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.noFatalSignatures",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.sessionPreset",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.llmTurn",
+      "ok": null,
+      "reason": "not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.",
+      "raw": "no credentials staged by design"
+    },
+    {
+      "name": "tui.laneExit",
+      "ok": false,
+      "reason": "the TUI lane aborted (exit 1) — see this step's log; earlier tui.* records are the assertions that had already run",
+      "raw": "line=74"
+    }
+  ],
+  "observations": {
+    "rebuildNoSrc": "NO_SRC=mpd-agent-teams-plugin=adopted upstream main code under lib/ (no src/),mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-codegraph=sha-pinned prebuilt vendored at pack time (no local src/),mpd-mcp-shared=built offline by scripts/build-mcp.ts from the upstream checkout (no local src/)",
+    "installSpec": ".",
+    "installTail": "+ @mpd-dsh/mpd link:/opt/mpd  Already up to date Done in 679ms using pnpm v11.23.0 ",
+    "dumpMpdRowIds": "mpd-agent-team,mpd-better-sidebar,mpd-bootstrap,mpd-boulder,mpd-codegraph,mpd-comment-checker,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-hashline,mpd-memory,mpd-modelchain,mpd-roles,mpd-roster-provider,mpd-team-compact,mpd-team-tools,mpd-team-watchdog,mpd-tool-agent-team,mpd-tools,mpd-tui,mpd-ui-agent-team,mpd-ulw,mpd-web-compat,mpd-workmate,",
+    "dumpDefaultMpdLines": "1",
+    "dumpAgentTeamRows": "mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team,",
+    "retiredToolsPresent": "<probe did not report>",
+    "teamToolPlane": "root-plane read=0/9 (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below",
+    "uiTeamRow": "resolved in the bundle's own node_modules (resolved through the link: dependency) at /opt/mpd/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json with dsh.client.platform=web; host half is a no-op apply(), so no server-side registration can witness this browser-discovered plugin — its load is witnessed as resolved+composed+no apply failure (boot.noFatalSignatures)",
+    "sessionCreate": "http=200 type=server-response rpcIdEcho=match ok=true agentPreset=mpd",
+    "realHomeMarkers": ".bashrc,.profile,sandbox-dsh,sandbox-home,",
+    "credentialFiles": ".credentials.yaml(161B), (sizes only; the CONTENT of a credential-shaped file is deliberately never copied into the evidence — the check is a secret-shape match, not a dump)"
+  },
+  "facts": {
+    "stamp": "2026-09-29T07:07:06Z",
+    "entrypoint": "docker/entrypoint.sh",
+    "image": "mpd-docker-e2e:local",
+    "ubuntuImage": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)",
+    "pins": "node=24.19.0 dsh=0.2.0-rc.1 pnpm=11.23.0",
+    "home": "/root/sandbox-home",
+    "dshHome": "/root/sandbox-dsh",
+    "aptSeconds": "50",
+    "nodeArch": "amd64 -> linux-x64",
+    "node": "v24.19.0 (npm 11.17.0)",
+    "bun": "1.4.2 (BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "dsh": "0.2.0-rc.1 (/usr/local/bin/dsh)",
+    "harnessVersion": "0.2.0-rc.1",
+    "harnessVersionExpected": "0.2.0-rc.1",
+    "copyManifest": "@mpd-dsh/mpd",
+    "rebuildEntries": "ENTRIES=23",
+    "profileDep": "link:/opt/mpd",
+    "profileBundles": "@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd",
+    "bootCoreTools": "6/6",
+    "bootTeamToolsRootPlane": "0/9",
+    "bootAdapterCaps": "tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister",
+    "bootAgentTeamsMethods": "listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership",
+    "bootCookieJarLines": "4",
+    "bootCookieExchange": "http=303 tokenPresent=yes",
+    "bootHttp": "/plugins/mpd-workmate/list -> 200",
+    "bootAgentTeamToolsScoped": "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-f07c6951-56b0-4e3f-aa61-a98dcd8c",
+    "bootSessionGate": "[mpd-roles] session gate listener registered for agent \"session-f07c6951-56b0-4e3f-aa61-a98dcd8c3efd\" agentPreset=mpd",
+    "hashesMeasuredAt": "2026-09-29T07:15:51Z",
+    "finishedAt": "2026-09-29T07:15:51Z"
+  },
+  "hashes": [
+    {
+      "sha256": "39242314d17fee37403b7836a87cd80523922a73ba8a51080aebbb57c2b69361",
+      "path": "/opt/mpd/package.json"
+    },
+    {
+      "sha256": "823e95759b3a542b778edff18584a655137516b33663e35194ae95876670dae1",
+      "path": "/opt/mpd/cordis.patch.yml"
+    },
+    {
+      "sha256": "84b9b3487094dbe63732999d14b6ab399dd87f2c866f48619417dadfee6413c6",
+      "path": "/opt/mpd/presets/mpd.patch.yml"
+    },
+    {
+      "sha256": "d6a787c4a59ab8fa0a8b0ac639ed54d7dc0c3ff9085d4aa38e449e06b868c48c",
+      "path": "packages/mpd-better-sidebar-host/dist/index.js"
+    },
+    {
+      "sha256": "c34aed19ff6ccc9ba636fd398cdd5e4912efc5154b283c367b15ffa97b1786db",
+      "path": "packages/mpd-bootstrap-plugin/dist/index.js"
+    },
+    {
+      "sha256": "e369d2afd65af275c890f8f0a9039caef73ce8a496e2d93eb6e82982ee7692fe",
+      "path": "packages/mpd-boulder-plugin/dist/index.js"
+    },
+    {
+      "sha256": "82aac79d524db6f32080b5813e2dd75811bb54ab5d983ce926c9ef5d3a3f3f39",
+      "path": "packages/mpd-bundle-plugin/dist/index.js"
+    },
+    {
+      "sha256": "d64168f3bec3a70a5078d6253e9524e52e9fa80e3042219652ca80f6eaaac58a",
+      "path": "packages/mpd-codegraph-plugin/dist/index.js"
+    },
+    {
+      "sha256": "c06c4b32ed3a5412a63434d281197e424e12bfae9491059e587c2d42c5e7dd77",
+      "path": "packages/mpd-comment-checker-plugin/dist/index.js"
+    },
+    {
+      "sha256": "406de1e830efab7b7af7cca91b65899c795d7c474459ef5a21f8675bef421a59",
+      "path": "packages/mpd-config-plugin/dist/index.js"
+    },
+    {
+      "sha256": "e4fed6a4156dc3d0ed5121262ce3055f2071b8b2bf2f739c5fd700c395d91663",
+      "path": "packages/mpd-dsh-adapter-plugin/dist/index.js"
+    },
+    {
+      "sha256": "2d50293babf289f8e46ba4273cdc587444485fcbf90d7944567a02a2a4c909df",
+      "path": "packages/mpd-ext-plugin/dist/index.js"
+    },
+    {
+      "sha256": "78caa1dbdefb703f4d91d5c81767ba82a4fe7c968d63df14b0296656e3b63a14",
+      "path": "packages/mpd-hashline-plugin/dist/index.js"
+    },
+    {
+      "sha256": "7bfa5210e1bad90c4751c5d8d2f5acc924267a05a74f5bc6038f1f5c4e9f30e8",
+      "path": "packages/mpd-memory-plugin/dist/index.js"
+    },
+    {
+      "sha256": "21d9a6a86720fffc5ba7ca408d6173ca904c3f33d9dbab0f10a836e1f9e10d84",
+      "path": "packages/mpd-modelchain-plugin/dist/index.js"
+    },
+    {
+      "sha256": "82d3fb1f9b97ccf5c5b4223689d2b483352da56cafa606bbf94a2cecd15f504a",
+      "path": "packages/mpd-qa-roles-probe/dist/index.js"
+    },
+    {
+      "sha256": "5821b5792f601aa53f12d5324ae1d8a2f23c349a7f42b18a9db173bed9c84ad8",
+      "path": "packages/mpd-roles-plugin/dist/index.js"
+    },
+    {
+      "sha256": "2ee50b5479d4ba592b4b2034edf41122e3c8568ef5551a3370ac47858bba73fd",
+      "path": "packages/mpd-roster-provider-plugin/dist/index.js"
+    },
+    {
+      "sha256": "86ab1d5715519d666d39e98dbdfabaee1c04d5dda46a3b5f6d739aaee7830f91",
+      "path": "packages/mpd-team-compact-plugin/dist/index.js"
+    },
+    {
+      "sha256": "53d6f20dd39e6d5ab5e535dc93aeff71ae51d28c4f741f548847e78683868a44",
+      "path": "packages/mpd-team-tools-plugin/dist/index.js"
+    },
+    {
+      "sha256": "05b6ef8d2b436d87e9afc582c507dbed190ad3f87ecbb9b7df6ed004417cc7e6",
+      "path": "packages/mpd-team-watchdog-plugin/dist/index.js"
+    },
+    {
+      "sha256": "12265a9776c9abbfeb76b2ccb99cbda11af3f76931bda748fdc8d1b4e2e3d78a",
+      "path": "packages/mpd-tools-plugin/dist/index.js"
+    },
+    {
+      "sha256": "e6e726aab82882d0ce93519907b82c4739f2f782c19505f6c4f0401442514c24",
+      "path": "packages/mpd-tui-plugin/dist/index.js"
+    },
+    {
+      "sha256": "8ad52bec13c01832b03dbf51acefc773ca88a6036995d53b1cf7a11f01c085ae",
+      "path": "packages/mpd-ulw-plugin/dist/index.js"
+    },
+    {
+      "sha256": "4447a1a2389f20d6d6d3c3ff23087d45c61f8a7501dced14f0bf5c52dc0d96ec",
+      "path": "packages/mpd-workmate-plugin/dist/index.js"
+    }
+  ],
+  "steps": [
+    {
+      "id": "01-apt-update",
+      "exit": 0,
+      "seconds": 27,
+      "cmd": "apt-get update ",
+      "logFile": "01-apt-update.log",
+      "logBytes": 1635,
+      "tail": [
+        "Get:1 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]",
+        "Get:2 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]",
+        "Get:3 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1934 kB]",
+        "Get:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]",
+        "Get:5 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]",
+        "Get:6 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]",
+        "Get:7 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]",
+        "Get:8 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]",
+        "Get:9 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]",
+        "Get:10 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1310 kB]",
+        "Get:11 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1542 kB]",
+        "Get:12 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [50.0 kB]",
+        "Get:13 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1633 kB]",
+        "Get:14 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2159 kB]",
+        "Get:15 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [56.2 kB]",
+        "Get:16 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2048 kB]",
+        "Get:17 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]",
+        "Get:18 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]",
+        "Get:19 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]",
+        "Fetched 33.0 MB in 26s (1281 kB/s)",
+        "Reading package lists...",
+        ""
+      ]
+    },
+    {
+      "id": "01-apt-install",
+      "exit": 0,
+      "seconds": 23,
+      "cmd": "env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux ",
+      "logFile": "01-apt-install.log",
+      "logBytes": 16418,
+      "tail": [
+        "Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...\r",
+        "Setting up libutempter0:amd64 (1.2.1-3build1) ...\r",
+        "Setting up git-man (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...\r",
+        "Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up openssl (3.0.13-0ubuntu3.15) ...\r",
+        "Setting up tmux (3.4-1ubuntu0.1) ...\r",
+        "Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...\r",
+        "Setting up ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "121 added, 0 removed; done.\r",
+        "Setting up perl (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...\r",
+        "Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up liberror-perl (0.17029-2) ...\r",
+        "Setting up git (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up curl (8.5.0-2ubuntu10.15) ...\r",
+        "Processing triggers for debianutils (5.17build1) ...\r",
+        "Processing triggers for libc-bin (2.39-0ubuntu8.9) ...\r",
+        "Processing triggers for ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "0 added, 0 removed; done.\r",
+        "Running hooks in /etc/ca-certificates/update.d...\r",
+        "done.\r",
+        ""
+      ]
+    },
+    {
+      "id": "02-node",
+      "exit": 0,
+      "seconds": 23,
+      "cmd": "bash -c  set -euo pipefail V=\"$1\"; A=\"$2\" cd /tmp curl -fsSLO \"https://nodejs.org/dist/v${V}/node-v${V}-linux-${A}.tar.xz\" curl -fsSL -o SHASUMS256.txt \"https://nodejs.org/dist/v${V}/SHASUMS256.txt\" grep \" node-v${V}-linux-${A}.tar.xz\\$\" SHASUMS256.txt > node.sha256 sha256sum -c node.sha256 tar -xJf \"node-v${V}-linux-${A}.tar.xz\" -C /usr/local --strip-components=1 --no-same-owner rm -f \"node-v${V}-linux-${A}.tar.xz\" SHASUMS256.txt node.sha256 node -v npm -v  _ 24.19.0 x64 ",
+      "logFile": "02-node.log",
+      "logBytes": 52,
+      "tail": [
+        "node-v24.19.0-linux-x64.tar.xz: OK",
+        "v24.19.0",
+        "11.17.0",
+        ""
+      ]
+    },
+    {
+      "id": "03-bun",
+      "exit": 0,
+      "seconds": 142,
+      "cmd": "bash -c set -euo pipefail; curl -fsSL https://bun.sh/install | bash ",
+      "logFile": "03-bun.log",
+      "logBytes": 97695,
+      "tail": [
+        "#=#=#                                                                          \r##O#-#                                                                         \r##O=#  #                                                                       \r#=#=-#  #                                                                      \r\r                                                                           0.2%\r                                                                           0.6%\r#                                                                          1.5%\r#                                                                          1.9%\r#                                                                          2.8%\r##                                                                         3.6%\r##                                                                         3.8%\r###                                                                        5.1%\r###                                                                        5.2%\r####                                                                       6.3%\r#####                                                                      7.3%\r#####                                                                      7.8%\r#####                                                                      8.3%\r######                                                                     8.8%\r######                                                                     9.0%\r######                                                                     9.5%\r#######                                                                   10.1%\r#######                                                                   10.4%\r#######                                                                   10.6%\r#######                                                                   10.9%\r########                                                                  11.2%\r########                                                                  11.5%\r########                                                                  11.9%\r########                                                                  12.0%\r########                                                                  12.3%\r########                                                                  12.5%\r#########                                                                 12.8%\r#########                                                                 12.9%\r#########                                                                 13.2%\r#########                                                                 13.3%\r#########                                                                 13.4%\r#########                                                                 13.5%\r#########                                                                 13.6%\r#########                                                                 13.8%\r##########                                                                13.9%\r##########                                                                14.0%\r##########                                                                14.1%\r##########                                                                14.2%\r##########                                                                14.4%\r##########                                                                14.4%\r##########                                                                14.6%\r##########                                                                14.7%\r##########                                                                14.8%\r##########                                                                14.8%\r##########                                                                14.9%\r##########                                                                14.9%\r##########                                                                15.0%\r##########                                                                15.1%\r##########                                                                15.1%\r##########                                                                15.2%\r##########                                                                15.2%\r###########                                                               15.3%\r###########                                                               15.4%\r###########                                                               15.5%\r###########                                                               15.5%\r###########                                                               15.6%\r###########                                                               15.7%\r###########                                                               15.8%\r###########                                                               15.9%\r###########                                                               16.0%\r###########                                                               16.0%\r###########                                                               16.1%\r###########                                                               16.2%\r###########                                                               16.2%\r###########                                                               16.3%\r###########                                                               16.4%\r###########                                                               16.5%\r###########                                                               16.6%\r###########                                                               16.7%\r############                                                              16.7%\r############                                                              16.8%\r############                                                              16.9%\r############                                                              17.0%\r############                                                              17.1%\r############                                                              17.2%\r############                                                              17.3%\r############                                                              17.4%\r############                                                              17.4%\r############                                                              17.5%\r############                                                              17.6%\r############                                                              17.7%\r############                                                              17.8%\r############                                                              17.9%\r############                                                              18.0%\r#############                                                             18.1%\r#############                                                             18.3%\r#############                                                             18.4%\r#############                                                             18.5%\r#############                                                             18.6%\r#############                                                             18.8%\r#############                                                             18.9%\r#############                                                             19.0%\r#############                                                             19.2%\r#############                                                             19.3%\r##############                                                            19.5%\r##############                                                            19.6%\r##############                                                            19.8%\r##############                                                            19.9%\r##############                                                            20.1%\r##############                                                            20.3%\r##############                                                            20.5%\r##############                                                            20.6%\r##############                                                            20.7%\r###############                                                           20.9%\r###############                                                           21.0%\r###############                                                           21.2%\r###############                                                           21.2%\r###############                                                           21.4%\r###############                                                           21.5%\r###############                                                           21.7%\r###############                                                           21.8%\r###############                                                           21.9%\r###############                                                           22.0%\r###############                                                           22.1%\r###############                                                           22.2%\r###############                                                           22.2%\r################                                                          22.3%\r################                                                          22.4%\r################                                                          22.4%\r################                                                          22.5%\r################                                                          22.6%\r################                                                          22.7%\r################                                                          22.8%\r################                                                          22.9%\r################                                                          23.0%\r################                                                          23.1%\r################                                                          23.2%\r################                                                          23.3%\r################                                                          23.4%\r################                                                          23.5%\r#################                                                         23.6%\r#################                                                         23.8%\r#################                                                         23.9%\r#################                                                         24.0%\r#################                                                         24.2%\r#################                                                         24.3%\r#################                                                         24.5%\r#################                                                         24.6%\r#################                                                         24.7%\r#################                                                         24.9%\r#################                                                         25.0%\r##################                                                        25.1%\r##################                                                        25.2%\r##################                                                        25.3%\r##################                                                        25.5%\r##################                                                        25.6%\r##################                                                        25.7%\r##################                                                        25.8%\r##################                                                        25.9%\r##################                                                        26.1%\r##################                                                        26.2%\r##################                                                        26.3%\r##################                                                        26.3%\r###################                                                       26.4%\r###################                                                       26.5%\r###################                                                       26.6%\r###################                                                       26.7%\r###################                                                       26.8%\r###################                                                       26.9%\r###################                                                       26.9%\r###################                                                       27.0%\r###################                                                       27.0%\r###################                                                       27.1%\r###################                                                       27.2%\r###################                                                       27.2%\r###################                                                       27.3%\r###################                                                       27.3%\r###################                                                       27.3%\r###################                                                       27.4%\r###################                                                       27.5%\r###################                                                       27.5%\r###################                                                       27.6%\r###################                                                       27.7%\r###################                                                       27.7%\r####################                                                      27.8%\r####################                                                      27.9%\r####################                                                      28.0%\r####################                                                      28.0%\r####################                                                      28.1%\r####################                                                      28.2%\r####################                                                      28.3%\r####################                                                      28.4%\r####################                                                      28.5%\r####################                                                      28.7%\r####################                                                      28.8%\r####################                                                      28.8%\r####################                                                      28.9%\r####################                                                      29.0%\r####################                                                      29.1%\r#####################                                                     29.2%\r#####################                                                     29.3%\r#####################                                                     29.3%\r#####################                                                     29.3%\r#####################                                                     29.4%\r#####################                                                     29.5%\r#####################                                                     29.5%\r#####################                                                     29.5%\r#####################                                                     29.6%\r#####################                                                     29.7%\r#####################                                                     29.7%\r#####################                                                     29.8%\r#####################                                                     29.8%\r#####################                                                     29.9%\r#####################                                                     29.9%\r#####################                                                     30.0%\r#####################                                                     30.1%\r#####################                                                     30.1%\r#####################                                                     30.3%\r#####################                                                     30.3%\r#####################                                                     30.3%\r#####################                                                     30.4%\r#####################                                                     30.5%\r######################                                                    30.6%\r######################                                                    30.6%\r######################                                                    30.7%\r######################                                                    30.8%\r######################                                                    30.8%\r######################                                                    30.8%\r######################                                                    30.9%\r######################                                                    31.0%\r######################                                                    31.1%\r######################                                                    31.1%\r######################                                                    31.1%\r######################                                                    31.2%\r######################                                                    31.3%\r######################                                                    31.4%\r######################                                                    31.5%\r######################                                                    31.5%\r######################                                                    31.6%\r######################                                                    31.6%\r######################                                                    31.7%\r######################                                                    31.8%\r######################                                                    31.9%\r######################                                                    31.9%\r#######################                                                   31.9%\r#######################                                                   32.0%\r#######################                                                   32.0%\r#######################                                                   32.1%\r#######################                                                   32.1%\r#######################                                                   32.2%\r#######################                                                   32.2%\r#######################                                                   32.3%\r#######################                                                   32.3%\r#######################                                                   32.4%\r#######################                                                   32.5%\r#######################                                                   32.5%\r#######################                                                   32.6%\r#######################                                                   32.6%\r#######################                                                   32.7%\r#######################                                                   32.8%\r#######################                                                   32.8%\r#######################                                                   32.9%\r#######################                                                   33.0%\r#######################                                                   33.0%\r#######################                                                   33.1%\r#######################                                                   33.2%\r#######################                                                   33.3%\r########################                                                  33.4%\r########################                                                  33.5%\r########################                                                  33.5%\r########################                                                  33.6%\r########################                                                  33.7%\r########################                                                  33.8%\r########################                                                  33.9%\r########################                                                  34.0%\r########################                                                  34.1%\r########################                                                  34.2%\r########################                                                  34.3%\r########################                                                  34.4%\r########################                                                  34.4%\r########################                                                  34.6%\r########################                                                  34.6%\r#########################                                                 34.7%\r#########################                                                 34.8%\r#########################                                                 34.9%\r#########################                                                 35.0%\r#########################                                                 35.0%\r#########################                                                 35.1%\r#########################                                                 35.2%\r#########################                                                 35.3%\r#########################                                                 35.4%\r#########################                                                 35.4%\r#########################                                                 35.5%\r#########################                                                 35.6%\r#########################                                                 35.6%\r#########################                                                 35.7%\r#########################                                                 35.8%\r#########################                                                 35.9%\r#########################                                                 36.0%\r#########################                                                 36.1%\r#########################                                                 36.1%\r##########################                                                36.2%\r##########################                                                36.3%\r##########################                                                36.3%\r##########################                                                36.4%\r##########################                                                36.4%\r##########################                                                36.5%\r##########################                                                36.6%\r##########################                                                36.6%\r##########################                                                36.7%\r##########################                                                36.8%\r##########################                                                36.9%\r##########################                                                36.9%\r##########################                                                37.0%\r##########################                                                37.1%\r##########################                                                37.2%\r##########################                                                37.3%\r##########################                                                37.4%\r###########################                                               37.5%\r###########################                                               37.7%\r###########################                                               37.7%\r###########################                                               37.9%\r###########################                                               38.0%\r###########################                                               38.1%\r###########################                                               38.2%\r###########################                                               38.4%\r###########################                                               38.5%\r###########################                                               38.6%\r###########################                                               38.7%\r###########################                                               38.8%\r###########################                                               38.9%\r############################                                              39.0%\r############################                                              39.0%\r############################                                              39.2%\r############################                                              39.3%\r############################                                              39.3%\r############################                                              39.4%\r############################                                              39.6%\r############################                                              39.7%\r############################                                              39.7%\r############################                                              39.8%\r############################                                              39.8%\r############################                                              39.9%\r############################                                              40.1%\r############################                                              40.1%\r############################                                              40.2%\r############################                                              40.2%\r#############################                                             40.3%\r#############################                                             40.4%\r#############################                                             40.5%\r#############################                                             40.5%\r#############################                                             40.6%\r#############################                                             40.7%\r#############################                                             40.8%\r#############################                                             40.9%\r#############################                                             41.0%\r#############################                                             41.1%\r#############################                                             41.3%\r#############################                                             41.4%\r#############################                                             41.4%\r#############################                                             41.5%\r#############################                                             41.6%\r##############################                                            41.8%\r##############################                                            41.8%\r##############################                                            41.9%\r##############################                                            41.9%\r##############################                                            42.0%\r##############################                                            42.1%\r##############################                                            42.1%\r##############################                                            42.2%\r##############################                                            42.2%\r##############################                                            42.3%\r##############################                                            42.3%\r##############################                                            42.4%\r##############################                                            42.4%\r##############################                                            42.4%\r##############################                                            42.5%\r##############################                                            42.5%\r##############################                                            42.6%\r##############################                                            42.6%\r##############################                                            42.7%\r##############################                                            42.8%\r##############################                                            42.8%\r##############################                                            42.9%\r##############################                                            42.9%\r##############################                                            43.0%\r##############################                                            43.0%\r###############################                                           43.1%\r###############################                                           43.1%\r###############################                                           43.2%\r###############################                                           43.2%\r###############################                                           43.2%\r###############################                                           43.3%\r###############################                                           43.3%\r###############################                                           43.4%\r###############################                                           43.4%\r###############################                                           43.5%\r###############################                                           43.5%\r###############################                                           43.6%\r###############################                                           43.6%\r###############################                                           43.6%\r###############################                                           43.7%\r###############################                                           43.8%\r###############################                                           43.8%\r###############################                                           43.9%\r###############################                                           44.0%\r###############################                                           44.0%\r###############################                                           44.1%\r###############################                                           44.1%\r###############################                                           44.2%\r###############################                                           44.3%\r###############################                                           44.4%\r################################                                          44.5%\r################################                                          44.5%\r################################                                          44.6%\r################################                                          44.6%\r################################                                          44.7%\r################################                                          44.8%\r################################                                          44.9%\r################################                                          44.9%\r################################                                          44.9%\r################################                                          45.0%\r################################                                          45.1%\r################################                                          45.2%\r################################                                          45.3%\r################################                                          45.3%\r################################                                          45.4%\r################################                                          45.5%\r################################                                          45.5%\r################################                                          45.6%\r################################                                          45.7%\r################################                                          45.7%\r################################                                          45.8%\r#################################                                         45.9%\r#################################                                         45.9%\r#################################                                         46.0%\r#################################                                         46.0%\r#################################                                         46.1%\r#################################                                         46.2%\r#################################                                         46.2%\r#################################                                         46.3%\r#################################                                         46.3%\r#################################                                         46.4%\r#################################                                         46.5%\r#################################                                         46.6%\r#################################                                         46.6%\r#################################                                         46.7%\r#################################                                         46.8%\r#################################                                         46.8%\r#################################                                         46.8%\r#################################                                         46.9%\r#################################                                         46.9%\r#################################                                         47.0%\r#################################                                         47.1%\r#################################                                         47.1%\r#################################                                         47.1%\r#################################                                         47.2%\r##################################                                        47.3%\r##################################                                        47.3%\r##################################                                        47.4%\r##################################                                        47.5%\r##################################                                        47.5%\r##################################                                        47.5%\r##################################                                        47.6%\r##################################                                        47.6%\r##################################                                        47.7%\r##################################                                        47.7%\r##################################                                        47.8%\r##################################                                        47.8%\r##################################                                        47.9%\r##################################                                        47.9%\r##################################                                        47.9%\r##################################                                        48.0%\r##################################                                        48.1%\r##################################                                        48.1%\r##################################                                        48.2%\r##################################                                        48.2%\r##################################                                        48.3%\r##################################                                        48.3%\r##################################                                        48.3%\r##################################                                        48.4%\r##################################                                        48.4%\r##################################                                        48.5%\r##################################                                        48.6%\r##################################                                        48.6%\r###################################                                       48.6%\r###################################                                       48.7%\r###################################                                       48.8%\r###################################                                       48.9%\r###################################                                       49.0%\r###################################                                       49.0%\r###################################                                       49.0%\r###################################                                       49.1%\r###################################                                       49.1%\r###################################                                       49.2%\r###################################                                       49.2%\r###################################                                       49.3%\r###################################                                       49.3%\r###################################                                       49.4%\r###################################                                       49.5%\r###################################                                       49.5%\r###################################                                       49.6%\r###################################                                       49.6%\r###################################                                       49.7%\r###################################                                       49.8%\r###################################                                       49.8%\r###################################                                       49.9%\r###################################                                       49.9%\r###################################                                       50.0%\r####################################                                      50.0%\r####################################                                      50.1%\r####################################                                      50.2%\r####################################                                      50.2%\r####################################                                      50.2%\r####################################                                      50.3%\r####################################                                      50.4%\r####################################                                      50.4%\r####################################                                      50.5%\r####################################                                      50.5%\r####################################                                      50.6%\r####################################                                      50.6%\r####################################                                      50.6%\r####################################                                      50.7%\r####################################                                      50.7%\r####################################                                      50.8%\r####################################                                      50.8%\r####################################                                      50.9%\r####################################                                      50.9%\r####################################                                      51.0%\r####################################                                      51.0%\r####################################                                      51.0%\r####################################                                      51.1%\r####################################                                      51.1%\r####################################                                      51.2%\r####################################                                      51.2%\r####################################                                      51.3%\r####################################                                      51.3%\r####################################                                      51.4%\r#####################################                                     51.4%\r#####################################                                     51.4%\r#####################################                                     51.5%\r#####################################                                     51.5%\r#####################################                                     51.6%\r#####################################                                     51.6%\r#####################################                                     51.7%\r#####################################                                     51.7%\r#####################################                                     51.7%\r#####################################                                     51.8%\r#####################################                                     51.8%\r#####################################                                     51.9%\r#####################################                                     52.0%\r#####################################                                     52.1%\r#####################################                                     52.2%\r#####################################                                     52.2%\r#####################################                                     52.4%\r#####################################                                     52.4%\r#####################################                                     52.5%\r#####################################                                     52.6%\r#####################################                                     52.6%\r#####################################                                     52.7%\r######################################                                    52.8%\r######################################                                    52.9%\r######################################                                    53.0%\r######################################                                    53.0%\r######################################                                    53.0%\r######################################                                    53.1%\r######################################                                    53.2%\r######################################                                    53.3%\r######################################                                    53.3%\r######################################                                    53.4%\r######################################                                    53.5%\r######################################                                    53.5%\r######################################                                    53.6%\r######################################                                    53.7%\r######################################                                    53.7%\r######################################                                    53.8%\r######################################                                    53.9%\r######################################                                    54.0%\r######################################                                    54.1%\r#######################################                                   54.2%\r#######################################                                   54.2%\r#######################################                                   54.3%\r#######################################                                   54.4%\r#######################################                                   54.6%\r#######################################                                   54.6%\r#######################################                                   54.7%\r#######################################                                   54.8%\r#######################################                                   54.8%\r#######################################                                   54.9%\r#######################################                                   55.0%\r#######################################                                   55.1%\r#######################################                                   55.2%\r#######################################                                   55.2%\r#######################################                                   55.3%\r#######################################                                   55.3%\r#######################################                                   55.4%\r#######################################                                   55.4%\r#######################################                                   55.5%\r#######################################                                   55.5%\r########################################                                  55.6%\r########################################                                  55.6%\r########################################                                  55.7%\r########################################                                  55.8%\r########################################                                  55.8%\r########################################                                  55.9%\r########################################                                  55.9%\r########################################                                  56.0%\r########################################                                  56.0%\r########################################                                  56.1%\r########################################                                  56.1%\r########################################                                  56.2%\r########################################                                  56.3%\r########################################                                  56.4%\r########################################                                  56.4%\r########################################                                  56.6%\r########################################                                  56.6%\r########################################                                  56.7%\r########################################                                  56.8%\r########################################                                  56.8%\r########################################                                  56.9%\r#########################################                                 57.0%\r#########################################                                 57.1%\r#########################################                                 57.1%\r#########################################                                 57.2%\r#########################################                                 57.2%\r#########################################                                 57.2%\r#########################################                                 57.3%\r#########################################                                 57.3%\r#########################################                                 57.4%\r#########################################                                 57.4%\r#########################################                                 57.5%\r#########################################                                 57.6%\r#########################################                                 57.7%\r#########################################                                 57.7%\r#########################################                                 57.8%\r#########################################                                 57.8%\r#########################################                                 57.9%\r#########################################                                 58.0%\r#########################################                                 58.0%\r#########################################                                 58.1%\r#########################################                                 58.1%\r#########################################                                 58.2%\r#########################################                                 58.2%\r#########################################                                 58.3%\r##########################################                                58.3%\r##########################################                                58.4%\r##########################################                                58.5%\r##########################################                                58.6%\r##########################################                                58.7%\r##########################################                                58.7%\r##########################################                                58.8%\r##########################################                                58.9%\r##########################################                                58.9%\r##########################################                                59.0%\r##########################################                                59.1%\r##########################################                                59.2%\r##########################################                                59.3%\r##########################################                                59.3%\r##########################################                                59.4%\r##########################################                                59.5%\r##########################################                                59.5%\r##########################################                                59.6%\r##########################################                                59.6%\r###########################################                               59.8%\r###########################################                               59.8%\r###########################################                               59.9%\r###########################################                               60.0%\r###########################################                               60.1%\r###########################################                               60.2%\r###########################################                               60.3%\r###########################################                               60.4%\r###########################################                               60.5%\r###########################################                               60.6%\r###########################################                               60.6%\r###########################################                               60.7%\r###########################################                               60.8%\r###########################################                               60.9%\r###########################################                               61.0%\r###########################################                               61.1%\r###########################################                               61.1%\r############################################                              61.2%\r############################################                              61.3%\r############################################                              61.3%\r############################################                              61.4%\r############################################                              61.4%\r############################################                              61.5%\r############################################                              61.6%\r############################################                              61.7%\r############################################                              61.7%\r############################################                              61.8%\r############################################                              61.8%\r############################################                              61.9%\r############################################                              61.9%\r############################################                              62.0%\r############################################                              62.0%\r############################################                              62.1%\r############################################                              62.2%\r############################################                              62.3%\r############################################                              62.4%\r############################################                              62.4%\r############################################                              62.5%\r#############################################                             62.6%\r#############################################                             62.6%\r#############################################                             62.7%\r#############################################                             62.8%\r#############################################                             62.8%\r#############################################                             62.9%\r#############################################                             62.9%\r#############################################                             63.0%\r#############################################                             63.0%\r#############################################                             63.0%\r#############################################                             63.1%\r#############################################                             63.1%\r#############################################                             63.2%\r#############################################                             63.2%\r#############################################                             63.3%\r#############################################                             63.3%\r#############################################                             63.4%\r#############################################                             63.4%\r#############################################                             63.4%\r#############################################                             63.5%\r#############################################                             63.6%\r#############################################                             63.6%\r#############################################                             63.7%\r#############################################                             63.7%\r#############################################                             63.8%\r#############################################                             63.8%\r#############################################                             63.8%\r##############################################                            63.9%\r##############################################                            63.9%\r##############################################                            64.0%\r##############################################                            64.0%\r##############################################                            64.1%\r##############################################                            64.1%\r##############################################                            64.2%\r##############################################                            64.2%\r##############################################                            64.3%\r##############################################                            64.3%\r##############################################                            64.4%\r##############################################                            64.4%\r##############################################                            64.5%\r##############################################                            64.5%\r##############################################                            64.6%\r##############################################                            64.7%\r##############################################                            64.8%\r##############################################                            64.9%\r##############################################                            65.0%\r##############################################                            65.0%\r##############################################                            65.1%\r##############################################                            65.2%\r##############################################                            65.3%\r###############################################                           65.4%\r###############################################                           65.4%\r###############################################                           65.5%\r###############################################                           65.6%\r###############################################                           65.7%\r###############################################                           65.8%\r###############################################                           65.9%\r###############################################                           66.0%\r###############################################                           66.1%\r###############################################                           66.1%\r###############################################                           66.2%\r###############################################                           66.3%\r###############################################                           66.5%\r###############################################                           66.5%\r###############################################                           66.6%\r################################################                          66.7%\r################################################                          66.8%\r################################################                          66.9%\r################################################                          67.0%\r################################################                          67.0%\r################################################                          67.1%\r################################################                          67.2%\r################################################                          67.3%\r################################################                          67.3%\r################################################                          67.4%\r################################################                          67.5%\r################################################                          67.5%\r################################################                          67.6%\r################################################                          67.7%\r################################################                          67.8%\r################################################                          67.9%\r################################################                          68.0%\r#################################################                         68.1%\r#################################################                         68.2%\r#################################################                         68.3%\r#################################################                         68.4%\r#################################################                         68.5%\r#################################################                         68.6%\r#################################################                         68.6%\r#################################################                         68.8%\r#################################################                         68.8%\r#################################################                         68.9%\r#################################################                         69.0%\r#################################################                         69.0%\r#################################################                         69.1%\r#################################################                         69.3%\r#################################################                         69.3%\r#################################################                         69.4%\r##################################################                        69.5%\r##################################################                        69.6%\r##################################################                        69.6%\r##################################################                        69.7%\r##################################################                        69.8%\r##################################################                        69.9%\r##################################################                        69.9%\r##################################################                        70.0%\r##################################################                        70.1%\r##################################################                        70.1%\r##################################################                        70.2%\r##################################################                        70.3%\r##################################################                        70.4%\r##################################################                        70.5%\r##################################################                        70.5%\r##################################################                        70.7%\r##################################################                        70.8%\r###################################################                       70.9%\r###################################################                       70.9%\r###################################################                       70.9%\r###################################################                       71.0%\r###################################################                       71.1%\r###################################################                       71.1%\r###################################################                       71.2%\r###################################################                       71.2%\r###################################################                       71.2%\r###################################################                       71.3%\r###################################################                       71.4%\r###################################################                       71.4%\r###################################################                       71.5%\r###################################################                       71.5%\r###################################################                       71.6%\r###################################################                       71.6%\r###################################################                       71.6%\r###################################################                       71.7%\r###################################################                       71.7%\r###################################################                       71.8%\r###################################################                       71.9%\r###################################################                       71.9%\r###################################################                       72.0%\r###################################################                       72.1%\r###################################################                       72.2%\r####################################################                      72.2%\r####################################################                      72.4%\r####################################################                      72.4%\r####################################################                      72.5%\r####################################################                      72.6%\r####################################################                      72.7%\r####################################################                      72.9%\r####################################################                      73.0%\r####################################################                      73.0%\r####################################################                      73.1%\r####################################################                      73.2%\r####################################################                      73.2%\r####################################################                      73.2%\r####################################################                      73.3%\r####################################################                      73.4%\r####################################################                      73.5%\r####################################################                      73.6%\r#####################################################                     73.6%\r#####################################################                     73.7%\r#####################################################                     73.8%\r#####################################################                     74.0%\r#####################################################                     74.0%\r#####################################################                     74.1%\r#####################################################                     74.2%\r#####################################################                     74.3%\r#####################################################                     74.4%\r#####################################################                     74.4%\r#####################################################                     74.5%\r#####################################################                     74.6%\r#####################################################                     74.6%\r#####################################################                     74.7%\r#####################################################                     74.8%\r#####################################################                     74.8%\r#####################################################                     74.9%\r#####################################################                     75.0%\r######################################################                    75.1%\r######################################################                    75.1%\r######################################################                    75.2%\r######################################################                    75.2%\r######################################################                    75.3%\r######################################################                    75.4%\r######################################################                    75.4%\r######################################################                    75.5%\r######################################################                    75.6%\r######################################################                    75.6%\r######################################################                    75.7%\r######################################################                    75.7%\r######################################################                    75.8%\r######################################################                    75.8%\r######################################################                    75.9%\r######################################################                    75.9%\r######################################################                    76.0%\r######################################################                    76.0%\r######################################################                    76.1%\r######################################################                    76.1%\r######################################################                    76.2%\r######################################################                    76.2%\r######################################################                    76.3%\r######################################################                    76.3%\r#######################################################                   76.4%\r#######################################################                   76.4%\r#######################################################                   76.5%\r#######################################################                   76.6%\r#######################################################                   76.7%\r#######################################################                   76.7%\r#######################################################                   76.7%\r#######################################################                   76.8%\r#######################################################                   76.9%\r#######################################################                   77.0%\r#######################################################                   77.0%\r#######################################################                   77.1%\r#######################################################                   77.2%\r#######################################################                   77.3%\r#######################################################                   77.4%\r#######################################################                   77.4%\r#######################################################                   77.5%\r#######################################################                   77.6%\r#######################################################                   77.7%\r########################################################                  77.9%\r########################################################                  77.9%\r########################################################                  78.1%\r########################################################                  78.2%\r########################################################                  78.3%\r########################################################                  78.3%\r########################################################                  78.5%\r########################################################                  78.7%\r########################################################                  78.7%\r########################################################                  78.9%\r########################################################                  78.9%\r########################################################                  79.0%\r########################################################                  79.1%\r########################################################                  79.1%\r#########################################################                 79.2%\r#########################################################                 79.2%\r#########################################################                 79.3%\r#########################################################                 79.4%\r#########################################################                 79.4%\r#########################################################                 79.5%\r#########################################################                 79.5%\r#########################################################                 79.6%\r#########################################################                 79.6%\r#########################################################                 79.7%\r#########################################################                 79.8%\r#########################################################                 79.8%\r#########################################################                 79.8%\r#########################################################                 79.9%\r#########################################################                 79.9%\r#########################################################                 80.0%\r#########################################################                 80.0%\r#########################################################                 80.1%\r#########################################################                 80.1%\r#########################################################                 80.2%\r#########################################################                 80.2%\r#########################################################                 80.3%\r#########################################################                 80.3%\r#########################################################                 80.4%\r#########################################################                 80.5%\r##########################################################                80.6%\r##########################################################                80.7%\r##########################################################                80.7%\r##########################################################                80.9%\r##########################################################                80.9%\r##########################################################                81.0%\r##########################################################                81.0%\r##########################################################                81.1%\r##########################################################                81.2%\r##########################################################                81.3%\r##########################################################                81.4%\r##########################################################                81.5%\r##########################################################                81.6%\r##########################################################                81.7%\r##########################################################                81.8%\r##########################################################                81.8%\r##########################################################                81.9%\r###########################################################               82.0%\r###########################################################               82.1%\r###########################################################               82.1%\r###########################################################               82.2%\r###########################################################               82.2%\r###########################################################               82.3%\r###########################################################               82.4%\r###########################################################               82.5%\r###########################################################               82.5%\r###########################################################               82.6%\r###########################################################               82.7%\r###########################################################               82.9%\r###########################################################               82.9%\r###########################################################               82.9%\r###########################################################               83.0%\r###########################################################               83.1%\r###########################################################               83.1%\r###########################################################               83.2%\r###########################################################               83.3%\r###########################################################               83.3%\r############################################################              83.4%\r############################################################              83.5%\r############################################################              83.6%\r############################################################              83.7%\r############################################################              83.7%\r############################################################              83.8%\r############################################################              83.9%\r############################################################              84.0%\r############################################################              84.1%\r############################################################              84.1%\r############################################################              84.1%\r############################################################              84.2%\r############################################################              84.3%\r############################################################              84.3%\r############################################################              84.4%\r############################################################              84.5%\r############################################################              84.5%\r############################################################              84.6%\r#############################################################             84.7%\r#############################################################             84.8%\r#############################################################             85.0%\r#############################################################             85.0%\r#############################################################             85.1%\r#############################################################             85.2%\r#############################################################             85.2%\r#############################################################             85.3%\r#############################################################             85.3%\r#############################################################             85.4%\r#############################################################             85.5%\r#############################################################             85.6%\r#############################################################             85.6%\r#############################################################             85.7%\r#############################################################             85.8%\r#############################################################             85.9%\r#############################################################             86.0%\r#############################################################             86.0%\r#############################################################             86.1%\r##############################################################            86.1%\r##############################################################            86.2%\r##############################################################            86.4%\r##############################################################            86.4%\r##############################################################            86.5%\r##############################################################            86.5%\r##############################################################            86.6%\r##############################################################            86.7%\r##############################################################            86.7%\r##############################################################            86.8%\r##############################################################            86.9%\r##############################################################            87.0%\r##############################################################            87.0%\r##############################################################            87.1%\r##############################################################            87.1%\r##############################################################            87.2%\r##############################################################            87.3%\r##############################################################            87.4%\r##############################################################            87.4%\r##############################################################            87.5%\r###############################################################           87.6%\r###############################################################           87.6%\r###############################################################           87.7%\r###############################################################           87.7%\r###############################################################           87.8%\r###############################################################           87.9%\r###############################################################           87.9%\r###############################################################           88.0%\r###############################################################           88.0%\r###############################################################           88.0%\r###############################################################           88.1%\r###############################################################           88.1%\r###############################################################           88.2%\r###############################################################           88.2%\r###############################################################           88.3%\r###############################################################           88.3%\r###############################################################           88.4%\r###############################################################           88.4%\r###############################################################           88.5%\r###############################################################           88.5%\r###############################################################           88.6%\r###############################################################           88.7%\r###############################################################           88.7%\r###############################################################           88.8%\r###############################################################           88.9%\r################################################################          89.0%\r################################################################          89.1%\r################################################################          89.2%\r################################################################          89.3%\r################################################################          89.4%\r################################################################          89.4%\r################################################################          89.5%\r################################################################          89.6%\r################################################################          89.7%\r################################################################          89.8%\r################################################################          89.8%\r################################################################          89.9%\r################################################################          89.9%\r################################################################          90.0%\r################################################################          90.0%\r################################################################          90.0%\r################################################################          90.1%\r################################################################          90.2%\r################################################################          90.2%\r################################################################          90.3%\r#################################################################         90.3%\r#################################################################         90.3%\r#################################################################         90.4%\r#################################################################         90.4%\r#################################################################         90.5%\r#################################################################         90.5%\r#################################################################         90.6%\r#################################################################         90.6%\r#################################################################         90.7%\r#################################################################         90.7%\r#################################################################         90.7%\r#################################################################         90.8%\r#################################################################         90.9%\r#################################################################         90.9%\r#################################################################         91.0%\r#################################################################         91.1%\r#################################################################         91.1%\r#################################################################         91.2%\r#################################################################         91.3%\r#################################################################         91.4%\r#################################################################         91.4%\r#################################################################         91.5%\r#################################################################         91.5%\r##################################################################        91.7%\r##################################################################        91.7%\r##################################################################        91.8%\r##################################################################        91.8%\r##################################################################        91.9%\r##################################################################        92.0%\r##################################################################        92.0%\r##################################################################        92.1%\r##################################################################        92.1%\r##################################################################        92.2%\r##################################################################        92.2%\r##################################################################        92.2%\r##################################################################        92.3%\r##################################################################        92.3%\r##################################################################        92.4%\r##################################################################        92.4%\r##################################################################        92.5%\r##################################################################        92.6%\r##################################################################        92.6%\r##################################################################        92.7%\r##################################################################        92.7%\r##################################################################        92.7%\r##################################################################        92.8%\r##################################################################        92.8%\r##################################################################        92.9%\r##################################################################        92.9%\r##################################################################        93.0%\r##################################################################        93.0%\r##################################################################        93.1%\r###################################################################       93.1%\r###################################################################       93.1%\r###################################################################       93.2%\r###################################################################       93.3%\r###################################################################       93.3%\r###################################################################       93.4%\r###################################################################       93.5%\r###################################################################       93.5%\r###################################################################       93.6%\r###################################################################       93.7%\r###################################################################       93.8%\r###################################################################       93.8%\r###################################################################       93.9%\r###################################################################       93.9%\r###################################################################       94.0%\r###################################################################       94.1%\r###################################################################       94.2%\r###################################################################       94.2%\r###################################################################       94.3%\r###################################################################       94.4%\r####################################################################      94.6%\r####################################################################      94.6%\r####################################################################      94.7%\r####################################################################      94.9%\r####################################################################      95.0%\r####################################################################      95.1%\r####################################################################      95.2%\r####################################################################      95.3%\r####################################################################      95.4%\r####################################################################      95.5%\r####################################################################      95.7%\r####################################################################      95.8%\r#####################################################################     95.9%\r#####################################################################     96.0%\r#####################################################################     96.1%\r#####################################################################     96.2%\r#####################################################################     96.3%\r#####################################################################     96.5%\r#####################################################################     96.6%\r#####################################################################     96.7%\r#####################################################################     96.8%\r#####################################################################     96.9%\r#####################################################################     97.0%\r#####################################################################     97.1%\r#####################################################################     97.2%\r######################################################################    97.3%\r######################################################################    97.4%\r######################################################################    97.5%\r######################################################################    97.7%\r######################################################################    97.8%\r######################################################################    97.8%\r######################################################################    97.9%\r######################################################################    98.0%\r######################################################################    98.1%\r######################################################################    98.1%\r######################################################################    98.3%\r######################################################################    98.3%\r######################################################################    98.4%\r######################################################################    98.5%\r######################################################################    98.6%\r#######################################################################   98.6%\r#######################################################################   98.7%\r#######################################################################   98.8%\r#######################################################################   98.9%\r#######################################################################   98.9%\r#######################################################################   99.0%\r#######################################################################   99.1%\r#######################################################################   99.2%\r#######################################################################   99.2%\r#######################################################################   99.3%\r#######################################################################   99.4%\r#######################################################################   99.6%\r#######################################################################   99.6%\r#######################################################################   99.7%\r#######################################################################   99.8%\r#######################################################################   99.9%\r######################################################################## 100.0%",
+        "bun was installed successfully to /opt/toolchain/bun/bin/bun ",
+        "Run 'bun --help' to get started",
+        ""
+      ]
+    },
+    {
+      "id": "04-pnpm",
+      "exit": 0,
+      "seconds": 8,
+      "cmd": "npm i -g pnpm@11.23.0 ",
+      "logFile": "04-pnpm.log",
+      "logBytes": 86,
+      "tail": [
+        "",
+        "added 1 package in 8s",
+        "",
+        "1 package is looking for funding",
+        "  run `npm fund` for details",
+        ""
+      ]
+    },
+    {
+      "id": "05-dsh",
+      "exit": 0,
+      "seconds": 198,
+      "cmd": "npm i -g @deepseek-ai/dsh@0.2.0-rc.1 ",
+      "logFile": "05-dsh.log",
+      "logBytes": 1162,
+      "tail": [
+        "npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead",
+        "",
+        "added 544 packages in 3m",
+        "",
+        "64 packages are looking for funding",
+        "  run `npm fund` for details",
+        "npm warn allow-scripts 5 packages have install scripts not yet covered by allowScripts:",
+        "npm warn allow-scripts   @deepseek-ai/dsh-subprocess-local@0.2.0-rc.1 (postinstall: node scripts/ensure-spawn-helper.mjs)",
+        "npm warn allow-scripts   koffi@3.1.1 (install: node ./cnoke.cjs -P . -D src/koffi --prebuild --release)",
+        "npm warn allow-scripts   node-pty@1.2.0-beta.15 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)",
+        "npm warn allow-scripts   @google/genai@1.52.0 (preinstall: echo 'preinstall: no-op')",
+        "npm warn allow-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)",
+        "npm warn allow-scripts",
+        "npm warn allow-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.",
+        ""
+      ]
+    },
+    {
+      "id": "06-copy",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "cp -a /src/. /opt/mpd/ ",
+      "logFile": "06-copy.log",
+      "logBytes": 0,
+      "tail": [
+        ""
+      ]
+    },
+    {
+      "id": "07-bun-install",
+      "exit": 0,
+      "seconds": 68,
+      "cmd": "bash -c cd '/opt/mpd' && bun install ",
+      "logFile": "07-bun-install.log",
+      "logBytes": 398,
+      "tail": [
+        "bun install v1.4.2 (744846f84)",
+        "",
+        "+ @typescript/native-preview@7.0.0-dev.20260707.2",
+        "+ bun-types@1.4.0",
+        "+ dsh-better-sidebar@0.19.0-alpha.1",
+        "+ typescript5@5.9.3",
+        "+ @colbymchenry/codegraph@1.5.0",
+        "+ @deepseek-ai/dsh-experimental-agent-team@0.1.7-rc.2",
+        "+ @deepseek-ai/dsh-experimental-client-ui-agent-team@0.1.7-rc.2",
+        "+ @deepseek-ai/dsh-experimental-tool-agent-team@0.1.7-rc.2",
+        "",
+        "292 packages installed [67.26s]",
+        ""
+      ]
+    },
+    {
+      "id": "08-rebuild",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd-e2e/lib/rebuild.ts --repo /opt/mpd --json /work/rebuild.json ",
+      "logFile": "08-rebuild.log",
+      "logBytes": 3494,
+      "tail": [
+        "[rebuild] OK   packages/mpd-better-sidebar-host/src/index.ts -> packages/mpd-better-sidebar-host/dist/index.js (exit=0 bytes=1110)",
+        "[rebuild] OK   packages/mpd-bootstrap-plugin/src/index.ts -> packages/mpd-bootstrap-plugin/dist/index.js (exit=0 bytes=54799)",
+        "[rebuild] OK   packages/mpd-boulder-plugin/src/index.ts -> packages/mpd-boulder-plugin/dist/index.js (exit=0 bytes=72164)",
+        "[rebuild] OK   packages/mpd-bundle-plugin/src/index.ts -> packages/mpd-bundle-plugin/dist/index.js (exit=0 bytes=53045)",
+        "[rebuild] OK   packages/mpd-codegraph-plugin/src/index.ts -> packages/mpd-codegraph-plugin/dist/index.js (exit=0 bytes=45800)",
+        "[rebuild] OK   packages/mpd-comment-checker-plugin/src/index.ts -> packages/mpd-comment-checker-plugin/dist/index.js (exit=0 bytes=47840)",
+        "[rebuild] OK   packages/mpd-config-plugin/src/index.ts -> packages/mpd-config-plugin/dist/index.js (exit=0 bytes=131976)",
+        "[rebuild] OK   packages/mpd-dsh-adapter-plugin/src/index.ts -> packages/mpd-dsh-adapter-plugin/dist/index.js (exit=0 bytes=44890)",
+        "[rebuild] OK   packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js (exit=0 bytes=176156)",
+        "[rebuild] OK   packages/mpd-ext-plugin/src/sdk.ts -> packages/mpd-ext-plugin/dist/sdk.js (exit=0 bytes=1708)",
+        "[rebuild] OK   packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js (exit=0 bytes=79038)",
+        "[rebuild] OK   packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js (exit=0 bytes=54637)",
+        "[rebuild] OK   packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js (exit=0 bytes=47403)",
+        "[rebuild] OK   packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js (exit=0 bytes=48972)",
+        "[rebuild] OK   packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js (exit=0 bytes=81751)",
+        "[rebuild] OK   packages/mpd-roster-provider-plugin/src/index.ts -> packages/mpd-roster-provider-plugin/dist/index.js (exit=0 bytes=92193)",
+        "[rebuild] OK   packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js (exit=0 bytes=58420)",
+        "[rebuild] OK   packages/mpd-team-tools-plugin/src/index.ts -> packages/mpd-team-tools-plugin/dist/index.js (exit=0 bytes=81127)",
+        "[rebuild] OK   packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js (exit=0 bytes=172304)",
+        "[rebuild] OK   packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js (exit=0 bytes=43454)",
+        "[rebuild] OK   packages/mpd-tui-plugin/src/index.ts -> packages/mpd-tui-plugin/dist/index.js (exit=0 bytes=174409)",
+        "[rebuild] OK   packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js (exit=0 bytes=66180)",
+        "[rebuild] OK   packages/mpd-workmate-plugin/src/index.ts -> packages/mpd-workmate-plugin/dist/index.js (exit=0 bytes=80658)",
+        "[rebuild] ENTRIES=23",
+        "[rebuild] BUILD_OK=23/23",
+        "[rebuild] BUILD_FAILED=",
+        "[rebuild] NO_SRC=mpd-agent-teams-plugin=adopted upstream main code under lib/ (no src/),mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-codegraph=sha-pinned prebuilt vendored at pack time (no local src/),mpd-mcp-shared=built offline by scripts/build-mcp.ts from the upstream checkout (no local src/)",
+        "[rebuild] SKIPPED_SRC=mpd-mcp-astgrep=src/ exists but owns no discoverable build entry,mpd-mcp-gitbash=src/ exists but owns no discoverable build entry,mpd-mcp-lsp=src/ exists but owns no discoverable build entry",
+        "[rebuild] OK=true",
+        ""
+      ]
+    },
+    {
+      "id": "09-install",
+      "exit": 0,
+      "seconds": 1,
+      "cmd": "bash -c cd '/opt/mpd' && dsh plugin --profile web add '.' ",
+      "logFile": "09-install.log",
+      "logBytes": 161,
+      "tail": [
+        "dsh: initialized profile web at /root/sandbox-dsh/profiles/web",
+        "",
+        "dependencies:",
+        "+ @mpd-dsh/mpd link:/opt/mpd",
+        "",
+        "Already up to date",
+        "Done in 679ms using pnpm v11.23.0",
+        ""
+      ]
+    },
+    {
+      "id": "10-dump",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd/scripts/dump-config.ts --profile web ",
+      "logFile": "10-dump.log",
+      "logBytes": 76818,
+      "tail": [
+        "              provider: claude-code",
+        "              toolName: subagent_claude_code",
+        "              backgroundMode: one-shot",
+        "              maxDepth: provider-managed",
+        "          - id: workflow-ptc",
+        "            name: '@deepseek-ai/dsh-workflow-ptc'",
+        "            config:",
+        "              provider: spawn",
+        "          - id: tool-workflow",
+        "            name: '@deepseek-ai/dsh-tool-workflow'",
+        "          - id: tool-ralph",
+        "            name: '@deepseek-ai/dsh-tool-ralph'",
+        "            config:",
+        "              subagentProvider: spawn",
+        "              maxRounds: 64",
+        "      - id: tool-ask-user",
+        "        name: '@deepseek-ai/dsh-tool-ask-user'",
+        "      - id: tool-todo",
+        "        name: '@deepseek-ai/dsh-tool-todo'",
+        "        config:",
+        "          allowParallelInProgress: true",
+        "      - id: tool-web",
+        "        name: '@deepseek-ai/dsh-tool-web'",
+        "        config:",
+        "          fetch: false",
+        "          searchTimeoutMs: 60000",
+        "      - id: present",
+        "        name: '@deepseek-ai/dsh-tool-present'",
+        "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).",
+        ""
+      ]
+    },
+    {
+      "id": "11-boot",
+      "exit": -1,
+      "seconds": 11,
+      "cmd": "dsh --profile web --patch probe.yml --port 3197 --no-open (background; terminated by the harness after the assertions)",
+      "logFile": "11-boot.log",
+      "logBytes": 3605,
+      "tail": [
+        "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+        "[mpd-codegraph] init status=ok binary=/opt/mpd/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/work",
+        "[mpd-bootstrap] skill corpus served from /opt/mpd/skills (provider mpd-bundle, bundle 0.11.6)",
+        "[docker-probe] APPLIED=ok",
+        "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on",
+        "[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)",
+        "[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry \"mpd-config\") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.",
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+        "[mpd-roster] provider \"mpd-roster\" registered (delegating to \"spawn\"; point the team tool row's freshProvider at it)",
+        "[docker-probe] CORE_TOOLS=6/6",
+        "[docker-probe] CORE_TOOLS_MISSING=",
+        "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+        "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+        "[docker-probe] TEAM_TOOLS_ROOT=0/9",
+        "[docker-probe] AGENTS_AT_APPLY=0",
+        "[docker-probe] RETIRED_TOOLS_PRESENT=",
+        "[docker-probe] ADAPTER_SERVICE=present",
+        "[docker-probe] ADAPTER_CAPS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister",
+        "[docker-probe] ADAPTER_TOOL_CALL=ok",
+        "[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService",
+        "[docker-probe] AGENT_TEAMS_METHODS=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership",
+        "[docker-probe] DONE=1",
+        "dsh web: http://127.0.0.1:3197/?token=<redacted>",
+        "[mpd-roles] roster section registered for agent \"session-f07c6951-56b0-4e3f-aa61-a98dcd8c3efd\" agentPreset=mpd — mpd:roster order=605",
+        "[mpd-roles] session gate listener registered for agent \"session-f07c6951-56b0-4e3f-aa61-a98dcd8c3efd\" agentPreset=mpd",
+        "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-f07c6951-56b0-4e3f-aa61-a98dcd8c scopelessRead=0/9",
+        "[docker-probe] AGENT_VISIBLE_TOOLS=97 agent=session-f07c6951-56b0-4e3f-aa61-a98dcd8c",
+        ""
+      ]
+    },
+    {
+      "id": "12-tui",
+      "exit": 1,
+      "seconds": 0,
+      "cmd": "bash docker/tui-lane.sh",
+      "logFile": "12-tui.log",
+      "logBytes": 232,
+      "tail": [
+        "[record] tui.hostInstall=true — the TUI host installs globally and lands on PATH",
+        "[record] tui.laneExit=false — the TUI lane aborted (exit 1) — see this step's log; earlier tui.* records are the assertions that had already run",
+        ""
+      ]
+    }
+  ],
+  "outputLog": "output.log",
+  "evidenceScrubbed": true
+}

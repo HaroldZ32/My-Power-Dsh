@@ -27,8 +27,8 @@
 import { describe, expect, test } from "bun:test"
 // The vendored cordis build ships no declaration file, so this module resolves to `any`; the
 // directive stays loud and self-healing rather than a blanket `@ts-ignore`.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { Context } from "../../mpd-schemastery/harness/cordis/lib/index.ts"
 import { WatchdogEngine, type EngineContext } from "../src/engine"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { readHeartbeats } from "../src/store"
@@ -38,13 +38,41 @@ import { agent, sandbox, stubAdapter, testConfig, writeTeam, type StubAdapter } 
 const FALLBACK = { kind: "enter" as const, messages: ["claimed-user-message"] }
 
 /**
+ * The slice of the real vendored cordis context these arms drive.
+ *
+ * WHY AN ALIAS: `Context` is a real VALUE whose `on` / `emit` / `waterfall` / `get` members are
+ * installed by a Proxy handler (`ReflectService.handler` in the vendored module), so they are absent
+ * from the class's own type even though every runtime instance carries them. Naming the driven slice
+ * keeps each call site checked instead of widening the context to `any`.
+ */
+interface DrivenContext {
+  /** Subscribe to one bus event; returns the cordis disposer. */
+  on(event: string, handler: unknown): unknown
+  /** Emit one event through the real bus. */
+  emit(event: string, ...args: unknown[]): unknown
+  /** Run one waterfall step, exactly as the harness's own loop does. */
+  waterfall(...args: unknown[]): Promise<unknown>
+  /** Read one installed service, or undefined when it is absent. */
+  get(name: string): unknown
+}
+
+/**
+ * Create a real vendored cordis context, typed as the slice these arms drive.
+ * @returns the real context; the alias above names the members its class type omits.
+ */
+function realContext(): DrivenContext {
+  // A cast is the only way to name a runtime member the class's own type does not declare.
+  return new Context() as unknown as DrivenContext
+}
+
+/**
  * A stub adapter whose `onEvent` forwards to a REAL cordis context.
  *
  * The engine subscribes through the ADAPTER (AGENTS.md §6), and the real adapter forwards
  * to `ctx.on` — so a test that drives `ctx.waterfall` / `ctx.emit` needs that forwarding,
  * not a stub-private listener map. This IS the production contract, not a test shortcut.
  */
-function adapterOn(ctx: Context, stub: StubAdapter): DshAdapter {
+function adapterOn(ctx: DrivenContext, stub: StubAdapter): DshAdapter {
   return {
     ...stub.adapter,
     onEvent: (event: string, handler: (...args: unknown[]) => unknown) => {
@@ -56,10 +84,10 @@ function adapterOn(ctx: Context, stub: StubAdapter): DshAdapter {
 }
 
 /** One engine whose listeners land on a REAL cordis context. */
-function realEngine(box: { workspace: string; stateDir: string }): { ctx: Context; handle: WatchdogEngine; stub: StubAdapter; disposers: (() => void)[]; dispose: () => void } {
+function realEngine(box: { workspace: string; stateDir: string }): { ctx: DrivenContext; handle: WatchdogEngine; stub: StubAdapter; disposers: (() => void)[]; dispose: () => void } {
   // The real cordis context whose waterfall the harness dispatches through. Its type is the
   // vendored module's own `Context` export, written down because that module is untyped.
-  const ctx: Context = new Context()
+  const ctx: DrivenContext = realContext()
   // The stub adapter whose `onEvent` is overlaid with real forwarding.
   const stub = stubAdapter({ workspace: box.workspace })
   // The engine subscribes through the ADAPTER (`dsh.onEvent`), and the REAL adapter
@@ -137,7 +165,7 @@ describe("agent/pre-step is a waterfall (the decision must survive a heartbeat)"
   test("NEGATIVE CONTROL: the retired shape really does clobber the decision", () => {
     // Without this, the two tests above could pass on a cordis that no longer vetoes,
     // and the pin would silently stop measuring anything.
-    const ctx: Context = new Context()
+    const ctx: DrivenContext = realContext()
     // The retired shape: a listener returning a stamp instead of delegating.
     const stampLike = { kind: "step", at: Date.now(), memberKey: "Architect" }
     ctx.on("agent/pre-step", () => stampLike)
@@ -164,7 +192,10 @@ describe("agent/pre-step is a waterfall (the decision must survive a heartbeat)"
       // The stub adapter whose `onEvent` is overlaid with real forwarding.
       const stub = stubAdapter({ workspace: box.workspace })
       // The engine whose handlers are asserted to return nothing.
-      const handle = new WatchdogEngine(adapterOn(ctx, stub), ctx, testConfig({ stateDir: box.stateDir }))
+      // This arm's context is a deliberate FAKE — it records handlers instead of dispatching them —
+      // so the cast names the one member `adapterOn` forwards to; the engine itself still takes the
+      // real `EngineContext` this fake declares. Every other arm passes a genuine cordis context.
+      const handle = new WatchdogEngine(adapterOn(ctx as unknown as DrivenContext, stub), ctx, testConfig({ stateDir: box.stateDir }))
       // Teardown callbacks for every listener the engine installed.
       const disposers = handle.install()
       try {
@@ -201,7 +232,7 @@ describe("agent/pre-step is a waterfall (the decision must survive a heartbeat)"
     try {
       writeTeam(box, { id: "team-a", members: [{ id: "a1", name: "Architect" }], tasks: [] })
       // The real cordis context, so the waterfall path is exercised.
-      const ctx: Context = new Context()
+      const ctx: DrivenContext = realContext()
       // The stub adapter whose `onEvent` is overlaid with real forwarding.
       const stub = stubAdapter({ workspace: box.workspace })
       // The engine whose stamp is replaced with a thrower below.

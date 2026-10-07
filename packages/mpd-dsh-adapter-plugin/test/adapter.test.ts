@@ -3,25 +3,49 @@
 // actionable error instead of crashing the plugin tree.
 import { describe, expect, spyOn, test } from "bun:test"
 import { spawnSync } from "node:child_process"
-import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join, resolve } from "node:path"
 
-// The two vendored `_deps/**` JS modules ship NO type declarations, and that tree is outside this
-// lane's write scope, so the imports are the one place a directive is the honest tool: the module
-// resolves to `any`, and every shape this file relies on is declared at its own use site (the
+// The two RELOCATED harness modules (`mpd-schemastery/harness/{cordis,dsh-llm}`) ship no type
+// declarations this file can use, so the imports are the one place a directive is the honest tool:
+// the module resolves to `any`, and every shape this file relies on is declared at its own use site (the
 // `Context` waterfall calls below and the message comparison against `userMessage`). A LOCAL
 // `.d.ts` is impossible here (it would have to live in the vendored tree) and a `declare module`
 // block would be an augmentation trick. `@ts-expect-error` (not `@ts-ignore`) so a future vendored
 // type declaration turns this into a loud "unused directive" instead of a silent suppression.
 /** The vendored cordis module, used as the REAL waterfall dispatcher in the last describe block. */
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
-/** The vendored host message constructor, compared field by field against this adapter's own. */
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { createUserMessage } from "../../mpd-agent-teams-plugin/_deps/dsh-llm/lib/index.js"
-import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, SERVICE_NAME, textBlock, userMessage } from "../src/index"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { Context } from "../../mpd-schemastery/harness/cordis/lib/index.ts"
 
-/** A recording double of the FULL harness: ten services, the event bus and provide(). */
+/**
+ * The slice of the real vendored cordis context these arms drive.
+ *
+ * WHY AN ALIAS: `Context` is a real VALUE whose `on` / `waterfall` / `plugin` members are installed
+ * by a Proxy handler (`ReflectService.handler` in the vendored module), so they are absent from the
+ * class's own type even though every runtime instance carries them. Naming the driven slice keeps
+ * each call site checked instead of widening the context to `any`.
+ */
+interface DrivenContext {
+  /** Subscribe to one bus event; the handler is whatever shape the arm registers. */
+  on(event: string, handler: unknown): unknown
+  /** Run one waterfall step as the harness does; the resolved decision always carries its `kind`. */
+  waterfall(...args: unknown[]): Promise<{ kind: string } & Record<string, unknown>>
+  /** Create a plugin fiber from a row definition. */
+  plugin(plugin: unknown, config?: unknown): unknown
+}
+
+/**
+ * Create a real vendored cordis context, typed as the slice these arms drive.
+ * @returns the real context; the alias above names the members its class type omits.
+ */
+const realContext = (): DrivenContext => new Context() as unknown as DrivenContext
+/** The vendored host message constructor, compared field by field against this adapter's own. */
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { createUserMessage } from "../../mpd-schemastery/harness/dsh-llm/lib/index.ts"
+import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, resolveDshAdapter, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, GOAL_TOOL_NAMES, SERVICE_NAME, textBlock, userMessage } from "../src/index"
+
+/** A recording double of the FULL harness: eleven services (the goal domain included), the event bus and provide(). */
 function fakeHarness(overrides: Record<string, unknown> = {}): {
   /** The ctx handed to the adapter: a service lookup, provide() and the event bus. */
   ctx: {
@@ -79,7 +103,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}): {
   const tools = {
     register: (definition: any) => { registered.push(definition); return () => { registered.pop() } },
     guard: (guard: any) => { guards.push(guard); return () => { guards.pop() } },
-    get: (name: string) => (name === "mcp__wave_mcp__prepare_session" ? { name } : undefined),
+    get: (name: string) => (name === "mcp__wave_mcp__prepare_session" || GOAL_TOOL_NAMES.includes(name) ? { name } : undefined),
     execute: async (exec: any) => {
       executed.push(exec)
       if (exec.name === "boom") throw new Error("tool exploded")
@@ -136,7 +160,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}): {
   const agentPresets = { resolve: async (id: string) => ({ id }) }
   /** The host-plane compaction engine, a different object from the agent's own. */
   const compaction = { compactNow: async (agent: any) => ({ agent }) }
-  // MEASURED host contract (dsh-commands/lib/index.js `register()`): the registry
+  // MEASURED host contract (dsh-commands/lib/index.ts `register()`): the registry
   // returns the exact effect disposer that unregisters the definition, which the
   // adapter must pass through verbatim.
   const commands = {
@@ -201,9 +225,14 @@ function fakeHarness(overrides: Record<string, unknown> = {}): {
   }
   /** The live-session registry: one agent, reachable by list and by get. */
   const agents = { list: () => [sampleAgent], get: (id: string) => (id === sampleAgent.id ? sampleAgent : undefined) }
+  // additive (goal plane): the host-plane goal domain. A full web/base harness mounts
+  // `@deepseek-ai/dsh-goal`, so the fixture carries its `get`, and the three goal tools resolve in
+  // the tool registry — which is what makes BOTH goal flags read true on a full harness. The
+  // adapter's goal BEHAVIOUR is owned by test/adapter-goal-surface.test.ts.
+  const goals = { get: () => undefined }
   /** The ctx handed to the adapter: a service lookup, provide() and the event bus. */
   const ctx = {
-    get: (serviceName: string) => ({ tools, subagents, agentTeams, skills, agentPresets, agents, compaction, commands, llm, systemPrompt } as Record<string, unknown>)[serviceName],
+    get: (serviceName: string) => ({ tools, subagents, agentTeams, skills, agentPresets, agents, compaction, commands, llm, systemPrompt, goals } as Record<string, unknown>)[serviceName],
     on: (event: string, listener: any) => {
       if (event === "tools/post-execute") listeners.push(listener)
       if (event === "tools/pre-execute") preListeners.push(listener)
@@ -236,6 +265,56 @@ describe("capabilities", () => {
     expect(caps.llmCatalog).toBe(false)
   })
 })
+
+/**
+ * The lines appended to a log file since a byte offset was marked, oldest first.
+ *
+ * @param file the log file the sink wrote into.
+ * @param offset the byte offset marked before the call under test.
+ * @returns the appended text split into non-empty lines; `[]` when nothing was appended.
+ */
+function appendedAfter(file: string, offset: number): string[] {
+  try {
+    return readFileSync(file, "utf8").slice(offset).split("\n").filter((line) => line !== "")
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Run `run` with the row-log root pinned to a fresh SANDBOX workspace, and collect what the adapter
+ * appended to that row's log.
+ *
+ * R5 (lane F) moved the adapter's own diagnostics off `console.warn` and into
+ * `<workspace>/.mpd/logs/<row>.log`, so the two arms below read the file a user would instead of a
+ * console spy that can no longer see anything. `MPD_MCP_LOG_DIR` OUTRANKS `DSH_WORKSPACE_ROOT` in the
+ * sink's documented root chain, so BOTH are pinned to the sandbox — an ambient value would otherwise
+ * win — and both are put back before the arm returns. The repo's own `.mpd/logs` is never touched.
+ *
+ * @param row the row log's base name, i.e. `<row>.log`.
+ * @param run the call under test.
+ * @returns the call's own result, plus the lines appended to the row log while it ran.
+ */
+async function inRowLog<T>(row: string, run: () => Promise<T>): Promise<{ result: T; lines: string[] }> {
+  /** The sandbox workspace this arm's row log is written under; removed before the arm returns. */
+  const sandbox = mkdtempSync(join(tmpdir(), "mpd-adapter-rowlog-"))
+  /** The two env keys the sink's root chain reads, saved for the restore below. */
+  const saved = { logDir: process.env.MPD_MCP_LOG_DIR, workspace: process.env.DSH_WORKSPACE_ROOT }
+  process.env.MPD_MCP_LOG_DIR = sandbox
+  process.env.DSH_WORKSPACE_ROOT = sandbox
+  /** This row's log file under the sandbox. */
+  const file = join(sandbox, ".mpd", "logs", `${row}.log`)
+  /** The log's byte size BEFORE the call, so only the appended bytes are read back. */
+  let offset = 0
+  try { offset = statSync(file).size } catch { offset = 0 }
+  try {
+    return { result: await run(), lines: appendedAfter(file, offset) }
+  } finally {
+    if (saved.logDir === undefined) delete process.env.MPD_MCP_LOG_DIR; else process.env.MPD_MCP_LOG_DIR = saved.logDir
+    if (saved.workspace === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = saved.workspace
+    rmSync(sandbox, { recursive: true, force: true })
+  }
+}
 
 describe("llm catalog plane", () => {
   // A ctx whose ONLY service is the model registry (the seam reads nothing else).
@@ -303,34 +382,53 @@ describe("llm catalog plane", () => {
   })
 
   test("a missing llm service degrades and warns exactly once", async () => {
-    /** The console.warn spy, restored in the finally block. */
+    /** The console.warn spy: R5 says the line must NOT reach the terminal, so it is asserted empty. */
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     try {
-      /** An adapter over a harness with no llm service. */
-      const adapter = createDshAdapter({ get: () => undefined })
-      expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
-      // Second read: same degrade, but the warn-once line is NOT repeated.
-      expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
-      expect(warn).toHaveBeenCalledTimes(1)
-      expect(String(warn.mock.calls[0]?.[0])).toMatch(/llmCatalog degraded/)
-      expect(String(warn.mock.calls[0]?.[0])).toMatch(/llm service is unavailable/)
+      /** The two catalog reads this arm makes, plus the row-log lines they appended. */
+      const { result, lines } = await inRowLog("mpd-dsh-adapter", async () => {
+        /** An adapter over a harness with no llm service. */
+        const adapter = createDshAdapter({ get: () => undefined })
+        /** The first degraded read. */
+        const first = await adapter.llmCatalog()
+        // Second read: same degrade, but the warn-once line is NOT repeated.
+        /** The second degraded read. */
+        const second = await adapter.llmCatalog()
+        return { first, second }
+      })
+      expect(result.first).toEqual({ providers: [], degraded: true })
+      expect(result.second).toEqual({ providers: [], degraded: true })
+      // The warn-once guard is read off the file: exactly ONE line for two reads, naming the seam.
+      expect(lines).toHaveLength(1)
+      expect(lines[0]).toMatch(/llmCatalog degraded/)
+      expect(lines[0]).toMatch(/llm service is unavailable/)
+      expect(warn).not.toHaveBeenCalled()
     } finally {
       warn.mockRestore()
     }
   })
 
   test("a partial seam degrades, names the missing method, and reports capabilities false", async () => {
-    /** The console.warn spy, restored in the finally block. */
+    /** The console.warn spy: R5 says the line must NOT reach the terminal, so it is asserted empty. */
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     try {
       /** A registry missing resolveModelInfo. */
       const partial = { listProviders: () => [], listModels: async () => [] }
-      /** The adapter over that partial seam. */
-      const adapter = createDshAdapter(llmOnlyCtx(partial))
-      expect(adapter.capabilities().llmCatalog).toBe(false)
-      expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
-      expect(warn).toHaveBeenCalledTimes(1)
-      expect(String(warn.mock.calls[0]?.[0])).toContain("resolveModelInfo")
+      /** The seam's capability reading plus the catalog read, and the lines that read appended. */
+      const { result, lines } = await inRowLog("mpd-dsh-adapter", async () => {
+        /** The adapter over that partial seam. */
+        const adapter = createDshAdapter(llmOnlyCtx(partial))
+        /** Whether the seam reports itself usable. */
+        const usable = adapter.capabilities().llmCatalog
+        /** The degraded catalog the read returns. */
+        const catalog = await adapter.llmCatalog()
+        return { usable, catalog }
+      })
+      expect(result.usable).toBe(false)
+      expect(result.catalog).toEqual({ providers: [], degraded: true })
+      expect(lines).toHaveLength(1)
+      expect(lines[0]).toContain("resolveModelInfo")
+      expect(warn).not.toHaveBeenCalled()
     } finally {
       warn.mockRestore()
     }
@@ -606,6 +704,81 @@ describe("tool plane", () => {
     await runtime.execute({ name: "mcp__wave_mcp__prepare_session", arguments: { out_dir: "/x" } })
     expect(executed).toHaveLength(1)
     expect(executed[0].callId).toMatch(/^mpd-/)
+  })
+
+  test("hasTool/toolRuntime().get resolve a PRESET-plane tool through the agent's OWN view, and keep the plane rule otherwise", () => {
+    /** The preset-plane definition the live agent's scope answers; identity is asserted below. */
+    const planDefinition = { name: "agent_teams_plan", description: "staged plan tool" }
+    /** The name the HOST plane carries — a repository row, for the no-regression direction. */
+    const HOST_NAME = "mcp__wave_mcp__prepare_session"
+    /** The preset-plane name the host plane cannot see. */
+    const PRESET_NAME = planDefinition.name
+    /** Every viewing scope the agent-scoped registry was asked with, in call order. */
+    const scopes: unknown[] = []
+    /** The live Agent: its own view carries the preset row, and it RESTRICTED the host row away. */
+    const agent = {
+      id: "lead-1",
+      ctx: {
+        on: () => () => {},
+        effect: () => () => {},
+        tools: {
+          restrict: () => () => {},
+          execute: async () => ({}),
+          /**
+           * The installed registry's rule, modelled: a name resolves along the VIEWING SCOPE's
+           * chain and nowhere else, and a global this scope restricted away reads as ABSENT.
+           * @param name - the tool name asked for.
+           * @param scope - the viewing scope, absent for the global view.
+           * @returns the definition, or undefined for any other view.
+           */
+          get: (name: string, scope?: unknown) => {
+            scopes.push(scope)
+            if (scope !== agent) return undefined
+            return name === PRESET_NAME ? planDefinition : undefined
+          },
+        },
+      },
+    }
+    /** The ctx: a host-plane registry carrying ONLY the host row, plus the live-agent registry. */
+    const ctx = {
+      get: (serviceName: string) => (serviceName === "agents"
+        ? { list: () => [agent] }
+        : serviceName === "tools" ? { get: (name: string) => (name === HOST_NAME ? { name } : undefined) } : undefined),
+      on: () => () => {},
+      provide: () => {},
+    }
+    /** The adapter under test. */
+    const adapter = createDshAdapter(ctx)
+
+    // WITH the agent: the preset-plane row resolves — the arm that goes red if the argument is dropped.
+    expect(adapter.hasTool(PRESET_NAME, agent)).toBe(true)
+    // The definition comes from the SAME view the probe answered from, by identity.
+    expect(adapter.toolRuntime().get(PRESET_NAME, agent)).toBe(planDefinition)
+    expect(scopes.length).toBeGreaterThan(0)
+    expect(scopes.every((scope) => scope === agent)).toBe(true)
+    // WITHOUT the agent the read is the host-plane GLOBAL view, where the preset row does not exist.
+    expect(adapter.hasTool(PRESET_NAME)).toBe(false)
+    expect(adapter.toolRuntime().get(PRESET_NAME)).toBeUndefined()
+    // A HOST-plane row is visible to that agent too (its view contains the globals): no regression.
+    expect(adapter.hasTool(HOST_NAME)).toBe(true)
+    // ... unless that scope RESTRICTED it away. The agent view is AUTHORITATIVE: a restricted global
+    // reads as absent rather than being resurrected by a host-plane fallback.
+    expect(adapter.hasTool(HOST_NAME, agent)).toBe(false)
+    // NEGATIVE CONTROL: a name that agent's own view misses stays false in both directions.
+    expect(adapter.hasTool("nope", agent)).toBe(false)
+    expect(adapter.toolRuntime().get("nope", agent)).toBeUndefined()
+    // An object carrying NO scope at all is "no agent view available": the global read is the one
+    // left to ask, so the host row still answers and the preset row still does not.
+    expect(adapter.hasTool(HOST_NAME, { id: "bare-agent" })).toBe(true)
+    expect(adapter.hasTool(PRESET_NAME, { id: "bare-agent" })).toBe(false)
+    // A scope whose read THROWS is that answer — never a silent host-plane retry.
+    /** An agent whose own view cannot answer at all. */
+    const brokenAgent = {
+      id: "broken-agent",
+      ctx: { on: () => () => {}, effect: () => () => {}, tools: { restrict: () => () => {}, execute: async () => ({}), get: () => { throw new Error("scope exploded") } } },
+    }
+    expect(adapter.hasTool(HOST_NAME, brokenAgent)).toBe(false)
+    expect(adapter.toolRuntime().get(HOST_NAME, brokenAgent)).toBeUndefined()
   })
 
   test("executeTool normalizes success, tool error, thrown error and a missing runtime", async () => {
@@ -940,7 +1113,7 @@ describe("row entry", () => {
 describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
   // MEASURED host order inside one synchronous write(): bumpRevision
   // (settings/document-updated) THEN commit (settings/updated(ns,next,prev,source))
-  // — @deepseek-ai/dsh-settings/lib/index.js:466-467 and :497-498.
+  // — @deepseek-ai/dsh-settings/lib/index.ts:466-467 and :497-498.
   function settingsHarness(settings: Record<string, unknown>): {
     /** The ctx handed to the adapter: a settings service plus the host event bus. */
     ctx: { get(serviceName: string): unknown; on(event: string, listener: (...args: unknown[]) => unknown): () => void }
@@ -1115,7 +1288,7 @@ describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by
     value?: unknown
   }> {
     /** A real vendored cordis Context: the dispatcher under test. */
-    const ctx = new Context()
+    const ctx = realContext()
     /** The adapter over that real context. */
     const adapter = createDshAdapter(ctx as any)
     install(adapter)
@@ -1170,7 +1343,7 @@ describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by
 
   test("a downstream DENY still denies: the observer cannot upgrade a blocked call", async () => {
     /** A real cordis Context for the deny path. */
-    const ctx = new Context()
+    const ctx = realContext()
     /** Every gate kind the observer saw. */
     const seen: string[] = []
     createDshAdapter(ctx as any).onPreToolExecute((_exec, decision) => { seen.push(String(decision?.kind)) })
@@ -1183,14 +1356,14 @@ describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by
   test("NEGATIVE CONTROL: a listener that returns without delegating DOES veto the gate", async () => {
     // The retired `agent/pre-step` shape, re-enacted on `tools/pre-execute`: this is what the
     // adapter's wrapper exists to prevent, and it proves the cordis semantics above are real.
-    const ctx = new Context()
+    const ctx = realContext()
     ctx.on("tools/pre-execute", (() => ({ kind: "allow", hijacked: true })) as any)
     /** The gate the vetoing listener installed. */
     const gate = await ctx.waterfall(ctx, "tools/pre-execute", { name: "bash" }, () => Promise.resolve({ kind: "allow" as const }))
     expect(gate).toEqual({ kind: "allow", hijacked: true })
     // …while the ADAPTER's own hook, registered on the same event, passes the harness's
     // decision through untouched.
-    const clean = new Context()
+    const clean = realContext()
     createDshAdapter(clean as any).onPreToolExecute(() => {})
     /** The gate the ADAPTER's hook passes through untouched. */
     const passed = await clean.waterfall(clean, "tools/pre-execute", { name: "bash" }, () => Promise.resolve({ kind: "allow" as const }))
@@ -1309,7 +1482,7 @@ describe("lazy mpdDsh resolution (T-50)", () => {
     // siblings concurrently). In that window a strict read answers `undefined` while a non-strict read
     // already sees the value — the old eager resolution cached that transient `undefined` as a private
     // adapter for the whole session and blamed the ROW ORDER.
-    const root = new Context()
+    const root = realContext()
     /** The warning lines the facade emitted. */
     const lines: string[] = []
     /** The provider row that will provide the shared service. */
@@ -1342,5 +1515,88 @@ describe("lazy mpdDsh resolution (T-50)", () => {
     expect(lines.some((line) => line.includes("ROW ORDER"))).toBe(false)
     // …and the SAME facade reaches the mounted adapter once the provider is ACTIVE.
     expect((facade as any).marker).toBe("mounted")
+  })
+})
+
+// ── the eager resolver's fallback, and the compaction-engine memo (S2/S3) ──────
+
+describe("S2: the compaction-engine memo follows the LIVE agent, not the id", () => {
+  test("an agent that left the registry no longer answers with its engine", () => {
+    /** The first incarnation's member-scoped engine, told apart by object identity. */
+    const engine = { realm: "incarnation-1" }
+    /** The live Agent the registry serves while its session lasts. */
+    const agent = { id: "agent-1", ctx: { get: (name: string) => (name === "compaction" ? engine : undefined) } }
+    /** The registry, mutable so the arm can END the session (the recycled-id case). */
+    const live = new Map<string, unknown>([["agent-1", agent]])
+    /** The ctx the adapter is built over: the `agents` registry, nothing else. */
+    const ctx = { get: (name: string) => (name === "agents" ? { get: (id: string) => live.get(id), list: () => [...live.values()] } : undefined) }
+    /** The adapter whose per-agent memo is under test. */
+    const dsh = createDshAdapter(ctx as never)
+    // The first query resolves the agent's OWN scoped engine and memoizes it.
+    expect(dsh.compactionEngineForAgent("agent-1")).toBe(engine)
+    // THE SESSION ENDS: the id leaves the live registry, so the memo must not answer for it.
+    live.delete("agent-1")
+    expect(dsh.compactionEngineForAgent("agent-1")).toBeUndefined()
+  })
+
+  test("a recycled id gets the NEW incarnation's engine, never the previous one's", () => {
+    /** The first incarnation's engine: a dead realm once its session ended. */
+    const first = { realm: "incarnation-1" }
+    /** The second incarnation's engine, reached through the same agent id. */
+    const second = { realm: "incarnation-2" }
+    /** The registry, whose entry for one id is REPLACED below. */
+    const live = new Map<string, unknown>([["agent-1", { id: "agent-1", ctx: { get: () => first } }]])
+    /** The ctx the adapter is built over. */
+    const ctx = { get: (name: string) => (name === "agents" ? { get: (id: string) => live.get(id), list: () => [...live.values()] } : undefined) }
+    /** The adapter whose per-agent memo is under test. */
+    const dsh = createDshAdapter(ctx as never)
+    expect(dsh.compactionEngineForAgent("agent-1")).toBe(first)
+    // The id is RECYCLED: a new Agent object with the same id owns a different realm.
+    live.set("agent-1", { id: "agent-1", ctx: { get: () => second } })
+    expect(dsh.compactionEngineForAgent("agent-1")).toBe(second)
+  })
+})
+
+describe("S3: the EAGER resolver is as loud about its fallback as the lazy twin", () => {
+  test("a composition without mpdDsh warns once, naming the identity, and still falls back", () => {
+    /** The lines the resolver emitted, captured through its own sink. */
+    const lines: string[] = []
+    /** A ctx that provides NO adapter: the standalone composition the fallback must keep working for. */
+    const ctx = { get: (_name: string, _strict?: boolean) => undefined }
+    /** The adapter this call resolves to. */
+    const dsh = resolveDshAdapter(ctx as never, { warn: (line: string) => lines.push(line) })
+    // THE CONTRACT IS UNCHANGED: the fallback still serves the row.
+    expect(typeof dsh.workspaceRoot).toBe("function")
+    // …but it is no longer SILENT: one line, carrying the same marker and identity as the lazy path.
+    expect(lines.length).toBe(1)
+    expect(lines[0]).toContain("ADAPTER FALLBACK")
+    expect(lines[0]).toContain("adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK)
+  })
+
+  test("a registered-but-not-ACTIVE provider is diagnosed as pending, never as a missing row", () => {
+    /** The lines the resolver emitted, captured through its own sink. */
+    const lines: string[] = []
+    /** The mounted adapter the strict read must NOT see yet (a non-ACTIVE provider's fiber). */
+    const mounted = { marker: "mounted" }
+    /** A ctx whose strict read misses while its non-strict read already sees the registration. */
+    const ctx = { get: (name: string, strict?: boolean) => (name === SERVICE_NAME && strict === false ? mounted : undefined) }
+    /** The adapter this call resolves to, built beside the registered one. */
+    const dsh = resolveDshAdapter(ctx as never, { warn: (line: string) => lines.push(line) })
+    expect(typeof dsh.workspaceRoot).toBe("function")
+    expect(lines.length).toBe(1)
+    expect(lines[0]).toContain("NOT YET ACTIVE")
+    // The wrong fix (blaming the row order) is NOT emitted for a registered provider.
+    expect(lines[0]).not.toContain("ROW ORDER")
+  })
+
+  test("a mounted adapter is used as-is, with NO fallback line at all (negative control)", () => {
+    /** The lines the resolver emitted, captured through its own sink. */
+    const lines: string[] = []
+    /** The mounted adapter, whose identity proves which instance answered. */
+    const mounted = { marker: "mounted" }
+    /** A ctx whose strict read resolves the mounted service. */
+    const ctx = { get: (name: string, strict?: boolean) => (name === SERVICE_NAME && strict !== false ? mounted : undefined) }
+    expect(resolveDshAdapter(ctx as never, { warn: (line: string) => lines.push(line) })).toBe(mounted as never)
+    expect(lines).toEqual([])
   })
 })

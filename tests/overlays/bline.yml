@@ -1,4 +1,4 @@
-# B-line plugin rows now live in the bundle patch (packages/mpd-bundle/cordis.patch.yml).
+# B-line plugin rows now live in the bundle patch (cordis.patch.yml).
 # Keep this overlay empty to avoid duplicate entry ids; use it only for isolated dev of one plugin
 # (comment out the bundle rows temporarily or apply this overlay WITHOUT the bundle patch).
 []
