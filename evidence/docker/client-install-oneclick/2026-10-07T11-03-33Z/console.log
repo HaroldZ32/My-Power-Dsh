@@ -8,36 +8,36 @@
 #2 transferring dockerfile: 6.33kB done
 #2 DONE 0.0s
 
-#3 [mpd-oneclick internal] load metadata for docker.io/library/ubuntu:24.04
+#3 [mpd-client internal] load metadata for docker.io/library/ubuntu:24.04
 #3 DONE 0.0s
 
 #4 [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm
 #4 DONE 0.0s
 
-#5 [mpd-oneclick stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
-#5 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
+#5 [mpd-oneclick node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
+#5 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
 #5 DONE 0.0s
 
-#6 [mpd-oneclick node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
-#6 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
+#6 [mpd-oneclick stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
+#6 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
 #6 DONE 0.0s
 
-#7 [mpd-client internal] load build context
-#7 transferring context:
-#7 transferring context: 26.54MB 0.1s done
+#7 [mpd-oneclick internal] load build context
+#7 transferring context: 25.81MB 0.1s
+#7 transferring context: 26.58MB 0.1s done
 #7 DONE 0.1s
 
-#8 [mpd-client stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
+#8 [mpd-oneclick stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
 #8 CACHED
 
 #9 [mpd-client stage-1  3/12] COPY . /src/
 #9 DONE 0.2s
 
-#10 [mpd-oneclick stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
+#10 [mpd-client stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
 #10 DONE 0.1s
 
 #11 [mpd-oneclick stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
-#11 DONE 0.0s
+#11 DONE 0.1s
 
 #12 [mpd-oneclick stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
 #12 DONE 0.1s
@@ -45,54 +45,54 @@
 #13 [mpd-client stage-1  7/12] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
 #13 DONE 0.1s
 
-#14 [mpd-oneclick stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+#14 [mpd-client stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
 #14 DONE 0.1s
 
 #15 [mpd-client stage-1  9/12] COPY docker/ui/capture.mts /opt/mpd-e2e/capture.mts
 #15 DONE 0.1s
 
-#16 [mpd-client stage-1 10/12] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
-#16 DONE 0.1s
+#16 [mpd-oneclick stage-1 10/12] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
+#16 DONE 0.0s
 
 #17 [mpd-client stage-1 11/12] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mts /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src
-#17 DONE 0.3s
+#17 DONE 0.2s
 
-#18 [mpd-client stage-1 12/12] WORKDIR /work
+#18 [mpd-oneclick stage-1 12/12] WORKDIR /work
 #18 DONE 0.1s
 
 #19 [mpd-client] exporting to image
 #19 exporting layers
-#19 exporting layers 1.0s done
-#19 exporting manifest sha256:8b8e4faf0a6956529a4f0b8cc269095bce52a5274a6900d44c892988146e4bb2 0.0s done
-#19 exporting config sha256:a79e39f9e487de7d461434c99a2ccbebe44836787a06ad95a782a2e6916ed95c 0.0s done
-#19 exporting attestation manifest sha256:0f7efaad9266d887dacf3e00b975cf97dbc0ec40673a6dc897adfae8c7a4f6a1 0.0s done
-#19 exporting manifest list sha256:c464e8041eeab1ace0f051ebdbfd19ac0c0324140ea2db36af18f0184c4dfd3e
-#19 exporting manifest list sha256:c464e8041eeab1ace0f051ebdbfd19ac0c0324140ea2db36af18f0184c4dfd3e 0.0s done
+#19 exporting layers 0.9s done
+#19 exporting manifest sha256:f07e3309dff83a9bbe777eed8c12d8e7695f03977752c2818e3976f88a2a2698 0.0s done
+#19 exporting config sha256:7e90339fd21ef97e6508ff7776ffadc313c4e88baf87f30295717b8736020a6b 0.0s done
+#19 exporting attestation manifest sha256:e9b118dc6e583da321fc5d2b4c5e0bf042dfdc0a95fdcb59da668ad0426bdf07 0.0s done
+#19 exporting manifest list sha256:ab3711f2d6450eb97f3a59f3bf21687172ca0680e927b4e81e1c4dbfaf864483
+#19 exporting manifest list sha256:ab3711f2d6450eb97f3a59f3bf21687172ca0680e927b4e81e1c4dbfaf864483 0.0s done
 #19 naming to docker.io/library/mpd-docker-e2e:local done
 #19 unpacking to docker.io/library/mpd-docker-e2e:local
 #19 unpacking to docker.io/library/mpd-docker-e2e:local 0.5s done
-#19 DONE 1.7s
+#19 DONE 1.6s
 
 #20 [mpd-oneclick] exporting to image
-#20 exporting layers 1.0s done
-#20 exporting manifest sha256:77b82999c735c8d3007f544c8e3e5647122b6574730656ab4b058a626e3a9996 0.0s done
-#20 exporting config sha256:f10bef7e388578d06ea0c9ebcada592f341dbf4a0d587bc88ed9c2c90a53e0e2 0.0s done
-#20 exporting attestation manifest sha256:73eeb00b97a86ee1f71b8e204c192a8811f555ac058cb1af2c3503b1e94e9f89 0.0s done
-#20 exporting manifest list sha256:5e888e84aac6cc21bdb3e07208cd5e66de8aef41f64175e6e5ca59ca0df20bca 0.0s done
+#20 exporting layers 0.9s done
+#20 exporting manifest sha256:d9ccf1ef2a7614641063726604fb38ee013b9c44d95e8fafbecd10385816b564 0.0s done
+#20 exporting config sha256:1d0bc78571b27932a364b2107c394168b1e8ac96c0908c62fcd6bd33ad2885d1 0.0s done
+#20 exporting attestation manifest sha256:cf5ac5ced8fba3488937353e087c0a63a8fb49cd23011657ce8ec08feaf11a76 0.0s done
+#20 exporting manifest list sha256:0a105aea98029e409dabe4ede46ce7ead1d291bf8bf6846ee3895e3cc23d65f7 0.0s done
 #20 naming to docker.io/library/mpd-docker-e2e:local done
 #20 unpacking to docker.io/library/mpd-docker-e2e:local 0.5s done
 #20 DONE 1.6s
 
-#21 [mpd-oneclick] resolving provenance for metadata file
+#21 [mpd-client] resolving provenance for metadata file
 #21 DONE 0.0s
 
-#22 [mpd-client] resolving provenance for metadata file
+#22 [mpd-oneclick] resolving provenance for metadata file
 #22 DONE 0.0s
  Image mpd-docker-e2e:local Built 
  Image mpd-docker-e2e:local Built 
- Container docker-mpd-client-run-157d071d539f Creating 
- Container docker-mpd-client-run-157d071d539f Created 
-===== Docker client-install E2E — 2026-10-07T10:58:22Z =====
+ Container docker-mpd-oneclick-run-6fd926ed944c Creating 
+ Container docker-mpd-oneclick-run-6fd926ed944c Created 
+===== Docker client-install E2E — 2026-10-07T11:03:36Z =====
 ubuntu image : ubuntu 24.04
 app dir      : /opt/mpd   (copy of /src)
 HOME         : /root/sandbox-home
@@ -105,26 +105,26 @@ pins         : nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0
 $ apt-get update
 Get:1 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]
 Get:2 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]
-Get:3 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [50.0 kB]
+Get:3 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1545 kB]
 Get:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
 Get:5 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
-Get:6 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1323 kB]
-Get:7 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]
-Get:8 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]
-Get:9 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1545 kB]
-Get:10 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1943 kB]
-Get:11 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]
+Get:6 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]
+Get:7 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1323 kB]
+Get:8 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [50.0 kB]
+Get:9 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1943 kB]
+Get:10 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]
+Get:11 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]
 Get:12 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]
-Get:13 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [56.2 kB]
-Get:14 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2165 kB]
-Get:15 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1701 kB]
-Get:16 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2138 kB]
-Get:17 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]
-Get:18 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]
-Get:19 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]
-Fetched 33.2 MB in 6s (5425 kB/s)
+Get:13 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1701 kB]
+Get:14 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2138 kB]
+Get:15 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2165 kB]
+Get:16 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [56.2 kB]
+Get:17 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]
+Get:18 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]
+Get:19 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]
+Fetched 33.2 MB in 7s (4711 kB/s)
 Reading package lists...
-[step 01-apt-update] exit=0 seconds=7
+[step 01-apt-update] exit=0 seconds=8
 ===== STEP 01-apt-install =====
 $ env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux
 Reading package lists...
@@ -191,7 +191,7 @@ Get:31 http://archive.ubuntu.com/ubuntu noble/main amd64 libutempter0 amd64 1.2.
 Get:32 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 tmux amd64 3.4-1ubuntu0.1 [480 kB]
 Get:33 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 unzip amd64 6.0-28ubuntu4.1 [174 kB]
 debconf: delaying package configuration, since apt-utils is not installed
-Fetched 19.8 MB in 5s (3769 kB/s)
+Fetched 19.8 MB in 5s (3847 kB/s)
 Selecting previously unselected package perl-modules-5.38.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 4381 files and directories currently installed.)
 Preparing to unpack .../0-perl-modules-5.38_5.38.2-3.2ubuntu0.6_all.deb ...
@@ -355,7 +355,7 @@ curl: curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 bro
 ----- bun (official install script) -----
 ===== STEP 03-bun =====
 $ bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash
-#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                    -=#=#   #   #                                                                  -=O#-#   #   #                                                                 -=O=#  #   #   #                                                               -=O=-#  #    #   #                                                             -=O=- #   #   #    #                                                                                                                                      0.0%                                                                           0.1%                                                                           0.2%                                                                           0.3%                                                                           0.4%                                                                           0.7%                                                                           1.0%                                                                           1.4%#                                                                          2.0%#                                                                          2.6%##                                                                         3.6%###                                                                        5.0%####                                                                       6.8%######                                                                     9.3%#########                                                                 12.8%###########                                                               16.4%##############                                                            20.4%#################                                                         24.2%####################                                                      28.4%#######################                                                   32.3%############################                                              39.7%#################################                                         46.3%##################################                                        48.2%#######################################                                   55.1%########################################                                  56.2%###########################################                               60.6%################################################                          67.4%###################################################                       71.8%########################################################                  78.8%###########################################################               83.0%##############################################################            86.8%###################################################################       94.2%######################################################################## 100.0%
+#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                    -=#=#   #   #                                                                  -=O#-#   #   #                                                                 -=O=#  #   #   #                                                               -=O=-#  #    #   #                                                             -=O=- #   #   #    #                                                           -=O=-   #   #   #     #                                                        -=O=-    #   #    #     #                                                      -=O=-      #   #     #    #                                                                                                                               0.0%                                                                           0.1%                                                                           0.2%                                                                           0.3%                                                                           0.5%                                                                           0.7%                                                                           0.9%                                                                           1.3%#                                                                          1.8%#                                                                          2.4%##                                                                         3.3%###                                                                        4.5%####                                                                       6.2%######                                                                     8.5%########                                                                  11.5%###########                                                               15.4%#############                                                             18.1%###############                                                           22.0%##################                                                        26.2%#####################                                                     30.1%########################                                                  34.5%#############################                                             41.4%################################                                          45.6%####################################                                      50.9%#######################################                                   54.5%##########################################                                59.1%#############################################                             63.0%################################################                          67.8%###################################################                       72.2%########################################################                  78.7%###########################################################               82.1%################################################################          89.0%#################################################################         90.7%######################################################################    98.0%#######################################################################   99.5%######################################################################## 100.0%
 bun was installed successfully to /opt/toolchain/bun/bin/bun 
 Run 'bun --help' to get started
 [step 03-bun] exit=0 seconds=9
@@ -369,7 +369,7 @@ added 1 package in 5s
 
 1 package is looking for funding
   run `npm fund` for details
-[step 04-pnpm] exit=0 seconds=4
+[step 04-pnpm] exit=0 seconds=5
 [record] toolchain.pnpm=true — required by 'dsh plugin' (it forwards to pnpm), available on PATH
 
 ----- @deepseek-ai/dsh@0.2.0-rc.2 -----
@@ -389,7 +389,7 @@ npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: n
 npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
 npm warn install-scripts
 npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.
-[step 05-dsh] exit=0 seconds=81
+[step 05-dsh] exit=0 seconds=82
 [record] harness.version=true — npm i -g then 'dsh --version' printed the pin exactly
 
 ----- build-context filter (did the image carry host state?) -----
@@ -401,80 +401,50 @@ $ cp -a /src/. /opt/mpd/
 [step 06-copy] exit=0 seconds=0
 [record] copy.repo=true — package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present
 
+----- one-click mode: build the scratch git repository the spec will pull -----
+===== STEP 06b-oneclick-repo =====
+$ bash -c rm -rf '/opt/oneclick-src' '/opt/oneclick.git'     && mkdir -p '/opt/oneclick-src'     && cp -a '/src/.' '/opt/oneclick-src/'     && cd '/opt/oneclick-src'     && git init -q .     && git add -A     && git -c user.email=e2e@local -c user.name='mpd e2e' commit -qm 'one-click fixture: the build context as committed'     && git clone -q --bare . '/opt/oneclick.git'
+[step 06b-oneclick-repo] exit=0 seconds=1
+[record] oneclick.scratchRepo=true — the scratch remote (a git repository of the build context) exists, so the spec resolves through the real git path
+
 ----- bun install -----
-===== STEP 07-bun-install =====
-$ bash -c cd '/opt/mpd' && bun install
-bun install v1.4.2 (744846f84)
-
-+ @typescript/native-preview@7.0.0-dev.20260707.2
-+ bun-types@1.4.0
-+ dsh-better-sidebar@0.24.1
-+ typescript5@5.9.3
-+ @colbymchenry/codegraph@1.5.0
-+ @deepseek-ai/dsh-experimental-agent-team@0.2.0-rc.2
-+ @deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.0-rc.2
-+ @deepseek-ai/dsh-experimental-tool-agent-team@0.2.0-rc.2
-
-289 packages installed [9.93s]
-[step 07-bun-install] exit=0 seconds=10
-[record] build.bunInstall=true — bun install resolved the workspace and the dev/optional dependencies
+[record] build.bunInstall=null — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
 
 ----- rebuild every packages/*/dist from source (canonical repo-root bun build) -----
-===== STEP 08-rebuild =====
-$ node /opt/mpd-e2e/lib/rebuild.ts --repo /opt/mpd --json /work/rebuild.json
-[rebuild] OK   packages/mpd-better-sidebar-host/src/index.ts -> packages/mpd-better-sidebar-host/dist/index.js (exit=0 bytes=1652)
-[rebuild] OK   packages/mpd-bootstrap-plugin/src/index.ts -> packages/mpd-bootstrap-plugin/dist/index.js (exit=0 bytes=77492)
-[rebuild] OK   packages/mpd-boulder-plugin/src/index.ts -> packages/mpd-boulder-plugin/dist/index.js (exit=0 bytes=97183)
-[rebuild] OK   packages/mpd-bundle-plugin/src/index.ts -> packages/mpd-bundle-plugin/dist/index.js (exit=0 bytes=75577)
-[rebuild] OK   packages/mpd-codegraph-plugin/src/index.ts -> packages/mpd-codegraph-plugin/dist/index.js (exit=0 bytes=68833)
-[rebuild] OK   packages/mpd-comment-checker-plugin/src/index.ts -> packages/mpd-comment-checker-plugin/dist/index.js (exit=0 bytes=70835)
-[rebuild] OK   packages/mpd-config-plugin/src/index.ts -> packages/mpd-config-plugin/dist/index.js (exit=0 bytes=151271)
-[rebuild] OK   packages/mpd-dsh-adapter-plugin/src/index.ts -> packages/mpd-dsh-adapter-plugin/dist/index.js (exit=0 bytes=66844)
-[rebuild] OK   packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js (exit=0 bytes=197236)
-[rebuild] OK   packages/mpd-ext-plugin/src/sdk.ts -> packages/mpd-ext-plugin/dist/sdk.js (exit=0 bytes=1708)
-[rebuild] OK   packages/mpd-goal-plugin/src/index.ts -> packages/mpd-goal-plugin/dist/index.js (exit=0 bytes=75617)
-[rebuild] OK   packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js (exit=0 bytes=102936)
-[rebuild] OK   packages/mpd-mcp-astgrep/src/launch.ts -> packages/mpd-mcp-astgrep/dist/launch.js (exit=0 bytes=11231)
-[rebuild] OK   packages/mpd-mcp-codegraph/src/launch.ts -> packages/mpd-mcp-codegraph/dist/launch.js (exit=0 bytes=15956)
-[rebuild] OK   packages/mpd-mcp-gitbash/src/launch.ts -> packages/mpd-mcp-gitbash/dist/launch.js (exit=0 bytes=7284)
-[rebuild] OK   packages/mpd-mcp-lsp/src/launch.ts -> packages/mpd-mcp-lsp/dist/launch.js (exit=0 bytes=7276)
-[rebuild] OK   packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js (exit=0 bytes=77688)
-[rebuild] OK   packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js (exit=0 bytes=70008)
-[rebuild] OK   packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js (exit=0 bytes=71614)
-[rebuild] OK   packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js (exit=0 bytes=132066)
-[rebuild] OK   packages/mpd-roster-provider-plugin/src/index.ts -> packages/mpd-roster-provider-plugin/dist/index.js (exit=0 bytes=111361)
-[rebuild] OK   packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js (exit=0 bytes=82933)
-[rebuild] OK   packages/mpd-team-core-plugin/src/index.ts -> packages/mpd-team-core-plugin/dist/index.js (exit=0 bytes=142878)
-[rebuild] OK   packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js (exit=0 bytes=194528)
-[rebuild] OK   packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js (exit=0 bytes=66337)
-[rebuild] OK   packages/mpd-tui-adapter-plugin/src/index.ts -> packages/mpd-tui-adapter-plugin/dist/index.js (exit=0 bytes=40276)
-[rebuild] OK   packages/mpd-tui-plugin/src/index.ts -> packages/mpd-tui-plugin/dist/index.js (exit=0 bytes=375998)
-[rebuild] OK   packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js (exit=0 bytes=107163)
-[rebuild] OK   packages/mpd-verify-plugin/src/index.ts -> packages/mpd-verify-plugin/dist/index.js (exit=0 bytes=111927)
-[rebuild] OK   packages/mpd-workmate-plugin/src/index.ts -> packages/mpd-workmate-plugin/dist/index.js (exit=0 bytes=104266)
-[rebuild] ENTRIES=30
-[rebuild] BUILD_OK=30/30
-[rebuild] BUILD_FAILED=
-[rebuild] NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built offline by scripts/build-mcp.ts from the upstream checkout (no local src/),mpd-schemastery=package has no src/ directory (dist is the only committed artifact)
-[rebuild] SKIPPED_SRC=
-[rebuild] OK=true
-[step 08-rebuild] exit=0 seconds=0
-[record] build.dists=true — every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact
+[record] build.dists=null — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
 
------ dsh plugin --profile web add . (the whole install, mode=source) -----
+----- dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh#feature/de-vendor-and-verify-law (the whole install, mode=oneclick) -----
 ===== STEP 09-install =====
-$ bash -c cd '/opt/mpd' && dsh plugin --profile web add '.'
+$ bash -c cd '/opt/mpd' && dsh plugin --profile web add 'github:HaroldZ32/My-Power-Dsh#feature/de-vendor-and-verify-law'
 dsh: initialized profile web at /root/sandbox-dsh/profiles/web
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /root/sandbox-home/.local/share/pnpm/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 0, reused 0, downloaded 1, added 0
+Progress: resolved 3, reused 0, downloaded 1, added 0
+Progress: resolved 10, reused 0, downloaded 1, added 0
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
 
 dependencies:
-+ @mpd-dsh/mpd link:/opt/mpd
++ @mpd-dsh/mpd github:HaroldZ32/My-Power-Dsh#feature/de-vendor-and-verify-law
 
-Already up to date
-Done in 325ms using pnpm v11.23.0
-[step 09-install] exit=0 seconds=1
+Packages: +11
++++++++++++
+Progress: resolved 16, reused 0, downloaded 1, added 1
+Progress: resolved 16, reused 0, downloaded 9, added 9
+Progress: resolved 16, reused 0, downloaded 10, added 10
+Progress: resolved 16, reused 0, downloaded 11, added 10
+Progress: resolved 16, reused 0, downloaded 11, added 11, done
+Done in 31.6s using pnpm v11.23.0
+[step 09-install] exit=0 seconds=32
 [record] install.exit=true — one command installed the bundle into the profile
-[record] install.profileDep=true — the profile links the checkout and keeps the box bundles
+[record] install.profileDep=true — the profile records the GIT spec pnpm resolved — the published-package path, not a checkout link — and keeps the box bundles
 [record] install.installedTree=true — the installed bundle resolves inside the profile
+
+----- one-click packaging: what the published package carried -----
+[record] oneclick.requiredPaths=true — every path the rows and the display metadata name is present in the installed package
+[record] oneclick.filesAllowlist=true — the files allowlist was honoured: no frozen evidence tree, no git history, no lane scratch in the installed package
+[record] oneclick.distByteIdentical=true — 34 committed dist entry/entries landed byte-identical, so the install ran no build and shipped what the source tree builds
 
 ----- COMPOSITION ONLY: dsh --profile web --dump-config -----
 ===== STEP 10-dump =====
@@ -2516,7 +2486,7 @@ $ cd /work && dsh --profile web --patch /work/probe.yml --port 3197 --no-open
 
 ----- BROWSER LANE (real Web GUI) -----
 
-added 2 packages, and audited 3 packages in 7s
+added 2 packages, and audited 3 packages in 6s
 
 1 high severity vulnerability
 
@@ -2679,7 +2649,7 @@ Get:100 http://archive.ubuntu.com/ubuntu noble/main amd64 libglx0 amd64 1.7.0-1b
 Get:101 http://archive.ubuntu.com/ubuntu noble/main amd64 libgl1 amd64 1.7.0-1build1 [102 kB]
 Get:102 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 xvfb amd64 2:21.1.12-1ubuntu1.8 [877 kB]
 debconf: delaying package configuration, since apt-utils is not installed
-Fetched 97.6 MB in 14s (7132 kB/s)
+Fetched 97.6 MB in 12s (7846 kB/s)
 Selecting previously unselected package fonts-ipafont-gothic.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 8245 files and directories currently installed.)
 Preparing to unpack .../000-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
@@ -3188,7 +3158,9 @@ Chromium Headless Shell 131.0.6778.33 (playwright build v1148) downloaded to /wo
 [record] live.nativeExecutor=null — not attempted: no live turn ran, so no member could be raised
 [record] live.headlessPresetRow=null — not attempted: the headless profile was never driven, so its preset activation is unmeasured
 [record] live.credentialRemoved=null — not attempted: nothing was staged, so nothing needed removing
-[report] ok=true complete=false passed=64 failed=0 null=30 scrubbed=true -> /out/result.json
+[report] ok=true complete=false passed=66 failed=0 null=32 scrubbed=true -> /out/result.json
+[report] NULL build.bunInstall — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
+[report] NULL build.dists — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
 [report] NULL tui.mergedPanelOpens — the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above
 [report] NULL tui.mergedPanelOrder — the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry
 [report] NULL live.credentialStaged — not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum

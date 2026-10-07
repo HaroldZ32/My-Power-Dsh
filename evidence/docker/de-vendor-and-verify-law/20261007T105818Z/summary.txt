@@ -1,2 +1,4 @@
 docker lane 20261007T105818Z on e183311c (feature/de-vendor-and-verify-law)
 rootless daemon: [name=seccomp,profile=builtin name=rootless name=cgroupns]
+source exit=0
+oneclick exit=0

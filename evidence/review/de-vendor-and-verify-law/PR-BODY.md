@@ -139,7 +139,7 @@ bounces back to a writer.
 | `bun scripts/mpd-ext.ts --self-test` | **PASS** |
 | `node skills/dsh-qa/scripts/session-start-team.ts` (LIVE) | **PASS** — 14 sides, `failed: []`, rev `cae00e5a…`, gate sha `995564251c877723…` |
 | `node skills/dsh-qa/scripts/verify-law.ts` (LIVE) | **PASS — 9/9 arms**; the real workspace's `.mpd/verify/boot.json` ABSENT before and after |
-| Docker real-machine lane | see the release note below |
+| Docker real-machine lane (`--mode source` then `--mode oneclick --spec github:HaroldZ32/My-Power-Dsh#feature/de-vendor-and-verify-law`, BOTH with `--require-docker`) | **exit 0 / exit 0** on a real ROOTLESS daemon — `[report] ok=true passed=66 failed=0 null=32`; `[browser-lane] rows=8 failed=0`; `[record] tui.noDirectTuiSeam=true` on a byte-identical copy of the INSTALLED tree. The 32 NULLs are CREDENTIAL-GATED live turns (`live.*`, `boot.llmTurn` — "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum") plus one arm this host cannot observe, recorded as such rather than as a pass. Evidence: `evidence/docker/de-vendor-and-verify-law/20261007T105818Z/` |
 
 **The wave's single `skills/**` re-pin landed in the SAME commit as the change that invalidated it**
 (`skills.treeSha f8d30d96… → bebc42ea… → 7095adc6…`, fileCount 335 → 331), per §9/§11.
@@ -299,7 +299,7 @@ vendored `dsh-agent-teams` 主体做同样的事，并把仍在发货的部分**
 | `install-profile.ts --dry-run` / `mpd-ext.ts --self-test` | **PASS** |
 | `session-start-team.ts`（真机） | **PASS** —— 14 侧、`failed: []`、rev `cae00e5a…`、门哈希 `995564251c877723…` |
 | `verify-law.ts`（真机） | **PASS —— 9/9 臂**；真工作区 `.mpd/verify/boot.json` 前后均 ABSENT |
-| Docker 真机车道 | 见下方发布说明 |
+| Docker 真机车道（`--mode source`，再 `--mode oneclick --spec github:HaroldZ32/My-Power-Dsh#feature/de-vendor-and-verify-law`，**两者都带 `--require-docker`**） | **exit 0 / exit 0**，跑在**真实 rootless** 守护进程上 —— `[report] ok=true passed=66 failed=0 null=32`；`[browser-lane] rows=8 failed=0`；`[record] tui.noDirectTuiSeam=true`（在**已安装树**的逐字节副本上）。32 个 NULL 是**凭据受限**的活体轮次（`live.*` 与 `boot.llmTurn`，理由原文：「未尝试：活体轮次需要 `MPD_E2E_LIVE=1` 与按名转发的凭据；挂载断言就是无凭据下的最大值」），外加一个本宿主**不可观测**的臂 —— 如实记为不可观测，而不是记成 pass。证据：`evidence/docker/de-vendor-and-verify-law/20261007T105818Z/` |
 
 **本波唯一一次 `skills/**` re-pin 与使它失效的改动落在同一提交**（`skills.treeSha f8d30d96… → bebc42ea… →
 7095adc6…`，文件数 335 → 331），符合 §9/§11。
