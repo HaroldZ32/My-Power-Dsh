@@ -1,106 +1,73 @@
- Image mpd-docker-e2e:local Building 
- Image mpd-docker-e2e:local Building 
-#1 [internal] load local bake definitions
-#1 reading from stdin 1.05kB done
-#1 DONE 0.0s
+===== Docker client-install E2E (ubuntu:24.04 + compose) =====
+stamp:   2026-10-07T15:52:07Z
+image:   mpd-docker-e2e:local
+command: node scripts/docker-e2e.ts   (container: docker/entrypoint.sh)
 
-#2 [mpd-client internal] load build definition from Dockerfile
-#2 transferring dockerfile: 6.33kB done
-#2 DONE 0.0s
+PROVES: a clean ubuntu:24.04 container installs node/bun/pnpm + @deepseek-ai/dsh,
+        copies this checkout, rebuilds every packages/*/dist from source, installs the
+        bundle with `dsh plugin --profile web add .`, composes the mpd rows, and MOUNTS
+        the installed profile in an isolated HOME/DSH_HOME with registration
+        instrumentation (docker/probe.ts) reading the live tool registry, plus a real
+        `POST /api/session/create` with agentPreset=mpd (the gateway refuses on an
+        inactive preset row).
+DOES NOT PROVE: any live LLM turn (no credentials are staged, AGENTS.md §10); that the
+        COMPOSED row list equals the MOUNTED row list (the dump is labelled composition
+        only); a packed/tarball install (dist/mpd-package is not exercised here).
 
-#3 [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm
-#3 DONE 0.0s
+===== facts =====
+stamp = 2026-10-07T15:52:07Z
+entrypoint = docker/entrypoint.sh
+image = mpd-docker-e2e:local
+ubuntuImage = ubuntu 24.04 (Ubuntu 24.04.5 LTS)
+pins = nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0
+home = /root/sandbox-home
+dshHome = /root/sandbox-dsh
+aptSeconds = 16
+nodeArch = amd64 -> linux-x64
+nodeSource = image (node:24-bookworm /usr/local)
+node = v24.21.0 (npm 11.19.0)
+bunPath = /opt/toolchain/bun/bin/bun
+bun = 1.4.2 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)
+pnpm = 11.23.0
+dsh = 0.2.0-rc.2 (/usr/local/bin/dsh)
+harnessVersion = 0.2.0-rc.2
+harnessVersionExpected = 0.2.0-rc.2
+copyManifest = @mpd-dsh/mpd
+oneclick.spec = git+file:///opt/oneclick.git
+oneclick.commit = c248e71b44c80b327f2459cc16ed4e0bee60c820
+profileDep = git+file:///opt/oneclick.git
+profileBundles = @deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd
+oneclick.distCompared = 34
+bootCoreTools = 6/6
+bootTeamToolsRootPlane = 0/9
+bootAdapterCaps = tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals
+bootAgentTeamsMethods = listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+bootCookieJarLines = 4
+bootCookieExchange = http=303 tokenPresent=yes
+bootHttp = /plugins/mpd-workmate/list -> 200
+bootAgentTeamToolsScoped = [docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-c3a0ca68-6168-4ae4-9bd8-54de6e36
+bootSessionGate = [mpd-roles] session gate listener registered for agent "session-c3a0ca68-6168-4ae4-9bd8-54de6e361435" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)
+teamRoutesSession = session-c3a0ca68-6168-4ae4-9bd8-54de6e361435
+teamRoutes =  state=200/true plan=200/true task=200/true mail=200/true
+hashesMeasuredAt = 2026-10-07T15:59:04Z
+finishedAt = 2026-10-07T15:59:04Z
 
-#4 [mpd-client internal] load metadata for docker.io/library/ubuntu:24.04
-#4 DONE 0.0s
+===== observations (reported, never gated) =====
+installSpec = git+file:///opt/oneclick.git
+installTail = Progress: resolved 16, reused 0, downloaded 10, added 10 Progress: resolved 16, reused 0, downloaded 11, added 10 Progress: resolved 16, reused 0, downloaded 11, added 11, done Done in 12.9s using pnpm v11.23.0 
+dumpMpdRowIds = mpd-agent-team,mpd-better-sidebar,mpd-bootstrap,mpd-boulder,mpd-codegraph,mpd-comment-checker,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-goal,mpd-hashline,mpd-memory,mpd-modelchain,mpd-roles,mpd-roster-provider,mpd-team-compact,mpd-team-core,mpd-team-watchdog,mpd-tool-agent-team,mpd-tools,mpd-tui,mpd-tui-adapter,mpd-ui-agent-team,mpd-ulw,mpd-verify,mpd-web-compat,mpd-workmate,
+dumpDefaultMpdLines = 0 (expected 0: the bundle ships no preset override)
+dumpAgentTeamRows = mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team,
+retiredToolsPresent = <probe did not report>
+teamToolPlane = root-plane read=0/9 (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below
+uiTeamRow = resolved in profile node_modules at /root/sandbox-dsh/profiles/web/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json with dsh.client.platform=web; host half is a no-op apply(), so no server-side registration can witness this browser-discovered plugin — its load is witnessed as resolved+composed+no apply failure (boot.noFatalSignatures)
+sessionCreate = http=200 type=server-response rpcIdEcho=match ok=true agentPreset=mpd
+realHomeMarkers = .bashrc,.profile,sandbox-dsh,sandbox-home,
+credentialFiles = .credentials.yaml(161B), (sizes only; the CONTENT of a credential-shaped file is deliberately never copied into the evidence — the check is a secret-shape match, not a dump)
 
-#5 [mpd-client node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
-#5 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
-#5 DONE 0.0s
-
-#6 [mpd-client stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
-#6 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
-#6 DONE 0.0s
-
-#7 [mpd-oneclick internal] load build context
-#7 transferring context: 25.96MB 0.1s
-#7 transferring context: 28.15MB 0.1s done
-#7 DONE 0.2s
-
-#8 [mpd-oneclick stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
-#8 CACHED
-
-#9 [mpd-oneclick stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
-#9 CACHED
-
-#10 [mpd-oneclick stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
-#10 CACHED
-
-#11 [mpd-oneclick stage-1  9/12] COPY docker/ui/capture.mts /opt/mpd-e2e/capture.mts
-#11 CACHED
-
-#12 [mpd-oneclick stage-1 10/12] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
-#12 CACHED
-
-#13 [mpd-oneclick stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
-#13 CACHED
-
-#14 [mpd-oneclick stage-1  7/12] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
-#14 CACHED
-
-#15 [mpd-oneclick stage-1  3/12] COPY . /src/
-#15 CACHED
-
-#16 [mpd-oneclick stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
-#16 CACHED
-
-#17 [mpd-oneclick stage-1 11/12] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mts /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src
-#17 CACHED
-
-#18 [mpd-oneclick stage-1 12/12] WORKDIR /work
-#18 CACHED
-
-#19 [mpd-oneclick] exporting to image
-#19 exporting layers done
-#19 exporting manifest sha256:a9f1c3fc2b2601143bab0bc45da1fa1e86f1e608fe79c2eef9a3aa266e3c058c done
-#19 exporting config sha256:834deb1c4c664878898edeeb1f85c4e772b4adb084039db918ed362698eed98e done
-#19 exporting attestation manifest sha256:a04c4207720eb23d754c58a52aaa92c4ab9b363d1f0827b6d2fca1332c31c59a
-#19 exporting attestation manifest sha256:a04c4207720eb23d754c58a52aaa92c4ab9b363d1f0827b6d2fca1332c31c59a 0.0s done
-#19 exporting manifest list sha256:a2f7d8a65c2d386c4ad3a19c60c929c94355812bc40d16eab79d103df1ade994 0.0s done
-#19 naming to docker.io/library/mpd-docker-e2e:local done
-#19 unpacking to docker.io/library/mpd-docker-e2e:local 0.0s done
-#19 DONE 0.1s
-
-#20 [mpd-client] exporting to image
-#20 exporting layers done
-#20 exporting manifest sha256:c1d9040d6be17c5260d5b4b7ba73c5181b193c2d7b5dc8b90bf48af443544614 done
-#20 exporting config sha256:cb5c151179a60154a15d494e3aee4f11b5410687fcb5d877fc46270ccfb22a01 0.0s done
-#20 exporting attestation manifest sha256:f1f5332cd51925440692954ecba34d9e99330500da374719aa021e728512e67e 0.0s done
-#20 exporting manifest list sha256:48183a1089cd858d2c0d7262c5ff3e8dea520765999a83396189d580c2ee4d86 0.0s done
-#20 naming to docker.io/library/mpd-docker-e2e:local done
-#20 unpacking to docker.io/library/mpd-docker-e2e:local 0.0s done
-#20 DONE 0.1s
-
-#21 [mpd-oneclick] resolving provenance for metadata file
-#21 DONE 0.0s
-
-#22 [mpd-client] resolving provenance for metadata file
-#22 DONE 0.0s
- Image mpd-docker-e2e:local Built 
- Image mpd-docker-e2e:local Built 
- Container docker-mpd-oneclick-run-4d65b1f2cdac Creating 
- Container docker-mpd-oneclick-run-4d65b1f2cdac Created 
-===== Docker client-install E2E — 2026-10-07T15:52:07Z =====
-ubuntu image : ubuntu 24.04
-app dir      : /opt/mpd   (copy of /src)
-HOME         : /root/sandbox-home
-DSH_HOME     : /root/sandbox-dsh
-pins         : nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0
-[record] ubuntu.version=true — the base image is ubuntu:24.04
-
------ apt: curl git ca-certificates unzip xz-utils -----
-===== STEP 01-apt-update =====
-$ apt-get update
+===== steps =====
+----- STEP 01-apt-update (exit=0, 7s) -----
+$ apt-get update 
 Get:1 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]
 Get:2 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]
 Get:3 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1323 kB]
@@ -122,9 +89,10 @@ Get:18 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.
 Get:19 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]
 Fetched 33.2 MB in 6s (5456 kB/s)
 Reading package lists...
-[step 01-apt-update] exit=0 seconds=7
-===== STEP 01-apt-install =====
-$ env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux
+
+
+----- STEP 01-apt-install (exit=0, 9s) -----
+$ env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux 
 Reading package lists...
 Building dependency tree...
 Reading state information...
@@ -343,36 +311,26 @@ Updating certificates in /etc/ssl/certs...
 0 added, 0 removed; done.
 Running hooks in /etc/ca-certificates/update.d...
 done.
-[step 01-apt-install] exit=0 seconds=9
-[record] toolchain.apt=true — apt-get update + install curl git ca-certificates unzip xz-utils tmux
-curl: curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10
 
------ Node.js 24.19.0 -----
-[record] toolchain.node=true — node v24.21.0 and npm 11.19.0 come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org
 
------ bun (official install script) -----
-===== STEP 03-bun =====
-$ bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash
+----- STEP 03-bun (exit=0, 9s) -----
+$ bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash 
 #=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                    -=#=#   #   #                                                                  -=O#-#   #   #                                                                 -=O=#  #   #   #                                                               -=O=-#  #    #   #                                                             -=O=- #   #   #    #                                                                                                                                      0.0%                                                                           0.1%                                                                           0.2%                                                                           0.4%                                                                           0.4%                                                                           0.7%                                                                           0.9%                                                                           1.3%#                                                                          1.9%#                                                                          2.5%##                                                                         3.4%###                                                                        4.7%####                                                                       6.5%######                                                                     8.8%########                                                                  11.5%###########                                                               15.8%#############                                                             18.7%###############                                                           22.1%##################                                                        25.1%####################                                                      28.2%#######################                                                   32.7%##########################                                                37.0%#############################                                             41.0%################################                                          45.4%###################################                                       49.4%######################################                                    53.9%##########################################                                58.8%#############################################                             62.8%#################################################                         68.9%####################################################                      73.0%#######################################################                   77.0%##########################################################                81.1%#############################################################             85.5%#################################################################         90.6%####################################################################      95.3%######################################################################## 100.0%
 bun was installed successfully to /opt/toolchain/bun/bin/bun 
 Run 'bun --help' to get started
-[step 03-bun] exit=0 seconds=9
-[record] toolchain.bun=true — bun 1.4.2 on PATH, installed via official-script
 
------ pnpm 11.23.0 (required by 'dsh plugin') -----
-===== STEP 04-pnpm =====
-$ npm i -g pnpm@11.23.0
+
+----- STEP 04-pnpm (exit=0, 5s) -----
+$ npm i -g pnpm@11.23.0 
 
 added 1 package in 4s
 
 1 package is looking for funding
   run `npm fund` for details
-[step 04-pnpm] exit=0 seconds=5
-[record] toolchain.pnpm=true — required by 'dsh plugin' (it forwards to pnpm), available on PATH
 
------ @deepseek-ai/dsh@0.2.0-rc.2 -----
-===== STEP 05-dsh =====
-$ npm i -g @deepseek-ai/dsh@0.2.0-rc.2
+
+----- STEP 05-dsh (exit=0, 107s) -----
+$ npm i -g @deepseek-ai/dsh@0.2.0-rc.2 
 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
 
 added 538 packages in 2m
@@ -387,33 +345,18 @@ npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: n
 npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
 npm warn install-scripts
 npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.
-[step 05-dsh] exit=0 seconds=107
-[record] harness.version=true — npm i -g then 'dsh --version' printed the pin exactly
 
------ build-context filter (did the image carry host state?) -----
-[record] copy.contextFiltered=true — the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed
 
------ copy the checkout to /opt/mpd -----
-===== STEP 06-copy =====
-$ cp -a /src/. /opt/mpd/
-[step 06-copy] exit=0 seconds=0
-[record] copy.repo=true — package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present
+----- STEP 06-copy (exit=0, 0s) -----
+$ cp -a /src/. /opt/mpd/ 
 
------ one-click mode: build the scratch git repository the spec will pull -----
-===== STEP 06b-oneclick-repo =====
-$ bash -c rm -rf '/opt/oneclick-src' '/opt/oneclick.git'     && mkdir -p '/opt/oneclick-src'     && cp -a '/src/.' '/opt/oneclick-src/'     && cd '/opt/oneclick-src'     && git init -q .     && git add -A     && git -c user.email=e2e@local -c user.name='mpd e2e' commit -qm 'one-click fixture: the build context as committed'     && git clone -q --bare . '/opt/oneclick.git'
-[step 06b-oneclick-repo] exit=0 seconds=1
-[record] oneclick.scratchRepo=true — the scratch remote (a git repository of the build context) exists, so the spec resolves through the real git path
 
------ bun install -----
-[record] build.bunInstall=null — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
+----- STEP 06b-oneclick-repo (exit=0, 1s) -----
+$ bash -c rm -rf '/opt/oneclick-src' '/opt/oneclick.git'     && mkdir -p '/opt/oneclick-src'     && cp -a '/src/.' '/opt/oneclick-src/'     && cd '/opt/oneclick-src'     && git init -q .     && git add -A     && git -c user.email=e2e@local -c user.name='mpd e2e' commit -qm 'one-click fixture: the build context as committed'     && git clone -q --bare . '/opt/oneclick.git' 
 
------ rebuild every packages/*/dist from source (canonical repo-root bun build) -----
-[record] build.dists=null — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
 
------ dsh plugin --profile web add git+file:///opt/oneclick.git (the whole install, mode=oneclick) -----
-===== STEP 09-install =====
-$ bash -c cd '/opt/mpd' && dsh plugin --profile web add 'git+file:///opt/oneclick.git'
+----- STEP 09-install (exit=0, 13s) -----
+$ bash -c cd '/opt/mpd' && dsh plugin --profile web add 'git+file:///opt/oneclick.git' 
 dsh: initialized profile web at /root/sandbox-dsh/profiles/web
 Progress: resolved 0, reused 0, downloaded 1, added 0
 Progress: resolved 3, reused 0, downloaded 1, added 0
@@ -434,19 +377,10 @@ Progress: resolved 16, reused 0, downloaded 10, added 10
 Progress: resolved 16, reused 0, downloaded 11, added 10
 Progress: resolved 16, reused 0, downloaded 11, added 11, done
 Done in 12.9s using pnpm v11.23.0
-[step 09-install] exit=0 seconds=13
-[record] install.exit=true — one command installed the bundle into the profile
-[record] install.profileDep=true — the profile records the GIT spec pnpm resolved — the published-package path, not a checkout link — and keeps the box bundles
-[record] install.installedTree=true — the installed bundle resolves inside the profile
 
------ one-click packaging: what the published package carried -----
-[record] oneclick.requiredPaths=true — every path the rows and the display metadata name is present in the installed package
-[record] oneclick.filesAllowlist=true — the files allowlist was honoured: no frozen evidence tree, no git history, no lane scratch in the installed package
-[record] oneclick.distByteIdentical=true — 34 committed dist entry/entries landed byte-identical, so the install ran no build and shipped what the source tree builds
 
------ COMPOSITION ONLY: dsh --profile web --dump-config -----
-===== STEP 10-dump =====
-$ node /opt/mpd/scripts/dump-config.ts --profile web
+----- STEP 10-dump (exit=0, 0s) -----
+$ node /opt/mpd/scripts/dump-config.ts --profile web 
 [dump-config] COMPOSITION ONLY — rows composed, no plugin code executed.
 [dump-config] The flag COMPOSES rows (base / bundle / patch / preset layers) and NEVER executes plugin code,
 [dump-config] so it CANNOT witness a plugin load, an apply abort or a schema rejection.
@@ -2429,51 +2363,33 @@ $ node /opt/mpd/scripts/dump-config.ts --profile web
       - id: present
         name: '@deepseek-ai/dsh-tool-present'
 [dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).
-[step 10-dump] exit=0 seconds=0
-[label] the block above is COMPOSITION ONLY — rows composed, no plugin code executed
-[record] compose.dumpExit=true — the sanctioned composer exited 0
------ scripts/verify-no-host-override.ts (subject: a byte-identical copy of the installed patch) -----
-[verify-no-host-override] subject: 2 declared patch layer(s)
-[verify-no-host-override]   patch: /work/no-host-override-subject/cordis.patch.yml
-[verify-no-host-override]   patch: /work/no-host-override-subject/presets/mpd.patch.yml
-[verify-no-host-override] bundle id-targets (overrides): 0 (none: this bundle is purely additive)
-[verify-no-host-override] bundle inserted rows (additive): 34
-[verify-no-host-override] unclassified top-level entries: 0
-[verify-no-host-override] host layers found on disk: 3
-[verify-no-host-override]   host: dsh-base -> /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base [1 patch file(s)]
-[verify-no-host-override]   host: dsh-web-app -> /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app [5 patch file(s)]
-[verify-no-host-override]   host: dsh-headless -> /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless [1 patch file(s)]
-[verify-no-host-override] host-declared row ids: 185
-[verify-no-host-override] declared exemptions (0): none
-[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 185 host-declared row ids)
-[record] compose.mpdRows=true — the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's
-[record] compose.presetRow=true — the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)
-[record] compose.agentTeamRows=true — the official agent-team rows compose under the mpd-owned ids (§4 D3)
-[record] live.credentialStaged=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum
-[record] live.credentialScoped=null — not attempted: no credential was staged, so there was nothing to scope-check
-[record] boot.workspaceRegistered=true — the scratch workspace was registered in the harness's own store BEFORE the boot, so the Web GUI renders a usable composer instead of the disabled landing state
 
------ MOUNTING BOOT (registration instrumentation) -----
-$ cd /work && dsh --profile web --patch /work/probe.yml --port 3197 --no-open
-[record] boot.probeApplied=true — the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition
-[record] boot.adapterService=true — the mpd-dsh-adapter row applied and provided the mpdDsh service — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-dsh-adapter.log (R5: MPD diagnostics never touch the terminal)
-[record] boot.adapterToolCall=true — an internal tool call through the adapter answered ok
-[record] boot.mpdTools=true — every core mpd tool answered from the live registry
-[record] boot.mcpTools=true — every MCP server this bundle mounts exposed its tool from the live registry
-[record] boot.agentTeamService=true — the official TeamService is mounted in the booted process (its class name is the witness)
-[record] boot.servesHttp=true — the booted Web app answered 200
-[record] boot.presetMount=true — the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)
-[record] boot.agentTeamTools=true — every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)
-[record] boot.sessionGateListener=true — the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)
-[record] boot.noFatalSignatures=true — no fatal apply/module signature in the boot log
-[record] team.route.state=true — the mpd team route answered a JSON payload from a REAL mounted row
-[record] team.route.plan=true — the mpd team route answered a JSON payload from a REAL mounted row
-[record] team.route.task=true — the mpd team route answered a JSON payload from a REAL mounted row
-[record] team.route.mail=true — the mpd team route answered a JSON payload from a REAL mounted row
-[record] team.routesAll=true — all four /plugins/mpd-team routes are registered by the mounted row and answer ok:true
-[record] team.planLookup=true — the plan route answered a plan SHAPE for the live session (null when nothing is staged, which is the honest pre-approval answer)
 
------ LIVE TURN ON THE WEB PLANE (gateway) -----
+----- STEP 11-boot (exit=-1, 11s) -----
+$ dsh --profile web --patch probe.yml --port 3197 --no-open (background; terminated by the harness after the assertions)
+[docker-probe] APPLIED=ok
+[docker-probe] CORE_TOOLS=6/6
+[docker-probe] CORE_TOOLS_MISSING=
+[docker-probe] MCP_TOOLS=3/3
+[docker-probe] MCP_TOOLS_MISSING=
+[docker-probe] TEAM_TOOLS_ROOT=0/9
+[docker-probe] AGENTS_AT_APPLY=0
+[docker-probe] RETIRED_TOOLS_PRESENT=
+[docker-probe] ADAPTER_SERVICE=present
+[docker-probe] ADAPTER_CAPS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals
+[docker-probe] ADAPTER_TOOL_CALL=ok
+[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService
+[docker-probe] AGENT_TEAMS_METHODS=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+[docker-probe] DONE=1
+dsh web: http://127.0.0.1:3197/?token=<redacted>
+[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-c3a0ca68-6168-4ae4-9bd8-54de6e36 scopelessRead=0/9
+[docker-probe] AGENT_VISIBLE_TOOLS=105 agent=session-c3a0ca68-6168-4ae4-9bd8-54de6e36
+[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-839e2360-c401-4113-8c2b-49947f64 scopelessRead=0/9
+[docker-probe] AGENT_VISIBLE_TOOLS=105 agent=session-839e2360-c401-4113-8c2b-49947f64
+
+
+----- STEP 12-web-live (exit=0, 0s) -----
+$ skipped: no live credential staged
 [record] live.web.turnStarted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
 [record] live.web.turnCompleted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
 [record] live.web.noErrorTurns=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
@@ -2482,7 +2398,9 @@ $ cd /work && dsh --profile web --patch /work/probe.yml --port 3197 --no-open
 [record] live.web.mpdToolCalled=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
 [record] live.web.assistantReplied=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
 
------ BROWSER LANE (real Web GUI) -----
+
+----- STEP 13-browser (exit=0, 0s) -----
+$ node browser-lane.ts (Chromium drives the real Web GUI)
 
 added 2 packages, and audited 3 packages in 6s
 
@@ -3112,11 +3030,9 @@ Chromium Headless Shell 131.0.6778.33 (playwright build v1148) downloaded to /wo
 [record] ui.noConsoleErrors=true — the browser reported no console errors and no uncaught page errors
 [browser-lane] rows=8 failed=0 shots=/out/ui-shots
 
------ isolation -----
-[record] isolation.home=true — HOME and DSH_HOME stay on the sandbox paths for every harness command
-[record] isolation.realHome=true — no harness/toolchain marker under the real home (/root)
-[record] isolation.noCredentials=true — no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)
-===== STEP 14-tui =====
+
+----- STEP 14-tui (exit=0, 0s) -----
+$ bash docker/tui-lane.sh
 [record] tui.hostInstall=true — the TUI host installs globally and lands on PATH
 [record] tui.pluginAddHost=true — the TUI host bundle installs into the dsh-tui profile
 [record] tui.pluginAddBundle=true — THIS bundle installs into the dsh-tui profile as the third patch layer
@@ -3144,48 +3060,207 @@ Chromium Headless Shell 131.0.6778.33 (playwright build v1148) downloaded to /wo
 [record] tui.noFatalSignatures=true — no fatal apply/module/preset signature in the TUI pane or log
 [record] tui.sessionPreset=true — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)
 [record] tui.laneExit=true — the TUI lane ran to completion with every assertion green
-[record] live.headless.turnStarted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[record] live.headless.turnCompleted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[record] live.headless.noErrorTurns=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[record] live.headless.noMalformedToolJson=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[record] live.headless.toolCallsParsed=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[record] live.headless.mpdToolCalled=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[record] live.headless.assistantReplied=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[record] boot.llmTurn=null — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
-[record] live.teamRecord=null — not attempted: no live turn ran, so no approval could materialise a record
-[record] live.nativeExecutor=null — not attempted: no live turn ran, so no member could be raised
-[record] live.headlessPresetRow=null — not attempted: the headless profile was never driven, so its preset activation is unmeasured
-[record] live.credentialRemoved=null — not attempted: nothing was staged, so nothing needed removing
-[report] ok=true complete=false passed=66 failed=0 null=32 scrubbed=true -> /out/result.json
-[report] NULL build.bunInstall — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
-[report] NULL build.dists — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
-[report] NULL tui.mergedPanelOpens — the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above
-[report] NULL tui.mergedPanelOrder — the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry
-[report] NULL live.credentialStaged — not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.credentialScoped — not attempted: no credential was staged, so there was nothing to scope-check
-[report] NULL live.credentialRemoved — not attempted: nothing was staged, so nothing needed removing
-[report] NULL live.web.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.web.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.web.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.web.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.web.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.web.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.web.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.tui.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.tui.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.tui.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.tui.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.tui.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.tui.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.tui.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.headless.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.headless.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.headless.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.headless.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.headless.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.headless.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.headless.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
-[report] NULL live.teamRecord — not attempted: no live turn ran, so no approval could materialise a record
-[report] NULL live.nativeExecutor — not attempted: no live turn ran, so no member could be raised
-[report] NULL live.headlessPresetRow — not attempted: the headless profile was never driven, so its preset activation is unmeasured
-[report] NULL boot.llmTurn — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+
+
+===== assertions =====
+PASS ubuntu.version — the base image is ubuntu:24.04
+     raw: ubuntu 24.04
+PASS toolchain.apt — apt-get update + install curl git ca-certificates unzip xz-utils tmux
+     raw: exit=0/0
+PASS toolchain.node — node v24.21.0 and npm 11.19.0 come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org
+     raw: v24.21.0 npm=11.19.0
+PASS toolchain.bun — bun 1.4.2 on PATH, installed via official-script
+     raw: 1.4.2
+PASS toolchain.pnpm — required by 'dsh plugin' (it forwards to pnpm), available on PATH
+     raw: 11.23.0
+PASS harness.version — npm i -g then 'dsh --version' printed the pin exactly
+     raw: 0.2.0-rc.2
+PASS copy.contextFiltered — the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed
+     raw: absent: node_modules .git evidence .toolchain dist pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs
+PASS copy.repo — package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present
+     raw: name=@mpd-dsh/mpd
+NULL build.bunInstall — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
+     raw: skipped by design
+NULL build.dists — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
+     raw: skipped by design
+PASS install.exit — one command installed the bundle into the profile
+     raw: exit=0 spec=git+file:///opt/oneclick.git
+PASS install.profileDep — the profile records the GIT spec pnpm resolved — the published-package path, not a checkout link — and keeps the box bundles
+     raw: dep=git+file:///opt/oneclick.git bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd
+PASS install.installedTree — the installed bundle resolves inside the profile
+     raw: /root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd
+PASS compose.dumpExit — the sanctioned composer exited 0
+     raw: exit=0
+PASS compose.mpdRows — the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's
+     raw: rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate layers=2 idTargets=0 defaultMpdLines=0 gate exit=0 subject=byte-identical [verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 185 host-declared row ids) 
+PASS compose.presetRow — the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)
+     raw: - id: preset-mpd
+PASS compose.agentTeamRows — the official agent-team rows compose under the mpd-owned ids (§4 D3)
+     raw: ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team
+PASS boot.probeApplied — the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition
+     raw: [docker-probe] APPLIED=ok
+PASS boot.adapterService — the mpd-dsh-adapter row applied and provided the mpdDsh service — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-dsh-adapter.log (R5: MPD diagnostics never touch the terminal)
+     raw: [mpd-dsh-adapter] mpdDsh provided (file=/work/.mpd/logs/mpd-dsh-adapter.log)
+PASS boot.adapterToolCall — an internal tool call through the adapter answered ok
+     raw: [docker-probe] ADAPTER_TOOL_CALL=ok
+PASS boot.mpdTools — every core mpd tool answered from the live registry
+     raw: CORE_TOOLS=6/6
+PASS boot.mcpTools — every MCP server this bundle mounts exposed its tool from the live registry
+     raw: MCP_TOOLS=3/3
+PASS boot.agentTeamTools — every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)
+     raw: [docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-c3a0ca68-6168-4ae4-9bd8-54de6e36
+PASS boot.sessionGateListener — the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)
+     raw: [mpd-roles] session gate listener registered for agent "session-c3a0ca68-6168-4ae4-9bd8-54de6e361435" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)
+PASS boot.agentTeamService — the official TeamService is mounted in the booted process (its class name is the witness)
+     raw: [docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService methods=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+PASS boot.servesHttp — the booted Web app answered 200
+     raw: /plugins/mpd-workmate/list -> 200
+PASS boot.presetMount — the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)
+     raw: POST /api/session/create -> {"type":"server-response","rpcId":"rpc-1-1791388489-16918","result":{"ok":true,"value":{"sessionId":"session-c3a0ca68-6168-4ae4-9bd8-54de6e361435","agentPreset":"mpd"}}}
+PASS boot.noFatalSignatures — no fatal apply/module signature in the boot log
+     raw: 0 matches
+PASS isolation.home — HOME and DSH_HOME stay on the sandbox paths for every harness command
+     raw: HOME=/root/sandbox-home DSH_HOME=/root/sandbox-dsh
+PASS isolation.realHome — no harness/toolchain marker under the real home (/root)
+     raw: absent: .dsh .mpd .npm .bun
+PASS isolation.noCredentials — no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)
+     raw: inventory=.credentials.yaml(161B), live=0
+PASS tui.hostInstall — the TUI host installs globally and lands on PATH
+     raw: version=0.13.0 bin=/usr/local/bin/dsh-tui
+PASS tui.pluginAddHost — the TUI host bundle installs into the dsh-tui profile
+     raw: exit=0
+PASS tui.pluginAddBundle — THIS bundle installs into the dsh-tui profile as the third patch layer
+     raw: exit=0
+PASS tui.compose — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)
+     raw: exit=0
+PASS tui.presetPreference — the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.13.0 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd
+     raw: pref=/root/sandbox-home/.dsh-tui/agent-preset.json hex=7b0a202022707265736574223a20226d7064220a7d writerParity=identical hostRowDefault=standard bundleForcedMpdLines=0 shippedIdTargets=<none> layers=2/2
+PASS tui.presetRow — the mpd preset row is composed in the TUI plane
+     raw: id=preset-mpd
+PASS tui.mpdTuiRow — the bundle's mpd-tui row is composed in the TUI plane
+     raw: id=mpd-tui
+PASS tui.agentTeamRows — all three official Agent Teams rows are composed in the TUI plane
+     raw: ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team
+NULL tui.mergedPanelOpens — the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above
+     raw: panelSeam=present rowHits=1 module=present proofOwner=skills/dsh-qa/scripts/tui-panels.ts,tui-deps-ctrla.ts
+NULL tui.mergedPanelOrder — the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry
+     raw: panelSeam=present orderCoveredBy=packages/mpd-tui-plugin/test/panel.test.ts subagentMarker=line 7 [the host's own empty-state line (this session carries NO host subagent row)] teamMarker=line 10 header=line 6 emptyState=line 7 pane=pane-merged.txt
+PASS tui.hostDashboardKeyIntact — Ctrl+A stayed the HOST's key on this host, as frozen R4 requires wherever the panel seam is present: with the seeded team present it did NOT open MPD's merged panel, and after the team record was removed it still did not. The panel is reached through MPD's own entry points instead (tui.mergedPanelOpens above proves /mpd panel)
+     raw: panelSeam=present phaseA=no-mpd-panel mpdTitleHits=0 hostDashboardTitleHits=1 phaseB=team-record-removed mpdTitleHits=0 hostDashboardTitleHits=1
+PASS tui.noDirectTuiSeam — the D6 gate (no file outside mpd-tui-adapter-plugin names a ctx.tui* seam) passed on a byte-identical copy of the INSTALLED tree, executed where node can strip types
+     raw: gate exit=0 subject=byte-identical (cmp over every copied .ts and the gate file itself) source=/root/sandbox-dsh/profiles/dsh-tui/node_modules/@mpd-dsh/mpd scanned: 28 package(s), 137 .ts file(s) RESULT: PASS (0 findings)
+PASS tui.boot — the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)
+     raw: tmux=new-session-ok ready=chat-screen noLaunchpad=1 onboardingHex=7b0a202022636f6d… landingMarkerHits=0
+PASS tui.noFatalSignatures — no fatal apply/module/preset signature in the TUI pane or log
+     raw: scanned=pane+pane-log
+PASS tui.sessionPreset — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)
+     raw: {"found":true,"sessionId":"ba3643de-8ea2-4f4e-82fa-acd749a5ceac","agentPreset":"mpd","bytes":687}
+NULL live.credentialStaged — not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum
+     raw: MPD_E2E_LIVE=0 key=absent
+NULL live.credentialScoped — not attempted: no credential was staged, so there was nothing to scope-check
+     raw: staged=none
+NULL live.credentialRemoved — not attempted: nothing was staged, so nothing needed removing
+     raw: staged=none
+NULL live.web.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.teamRecord — not attempted: no live turn ran, so no approval could materialise a record
+     raw: staged=none
+NULL live.nativeExecutor — not attempted: no live turn ran, so no member could be raised
+     raw: staged=none
+NULL live.headlessPresetRow — not attempted: the headless profile was never driven, so its preset activation is unmeasured
+     raw: staged=none
+NULL boot.llmTurn — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+     raw: no credentials staged by design
+PASS boot.workspaceRegistered — the scratch workspace was registered in the harness's own store BEFORE the boot, so the Web GUI renders a usable composer instead of the disabled landing state
+     raw: id=ws-mpd-e2e path=/work/ws
+PASS ui.loads — the Web GUI loaded and rendered visible text in a real browser
+     raw: chars=201
+PASS ui.workspaceSelected — a workspace is selected in the GUI, so the session composer is live
+     raw: placeholders=Describe what you want to build | Add files or run commands
+PASS ui.composerPresent — the prompt composer exists and is editable — the entry point of every turn
+     raw: placeholders=Describe what you want to build | Add files or run commands
+PASS ui.promptSent — a prompt was typed into the composer and sent through the real UI
+     raw: promptChars=88
+PASS ui.replyRendered — the transcript changed after the send and shows the turn's own output
+     raw: before=225 after=619 done=true
+PASS ui.mpdSettingsSection — the MPD settings section registers and renders its card in Settings
+     raw: chars=4000
+PASS ui.teamPanel — the right sidebar opens on the Agent Teams panel with its roster and board
+     raw: chars=705 teamTab=1
+PASS ui.noConsoleErrors — the browser reported no console errors and no uncaught page errors
+     raw: console=0 page=0
+PASS oneclick.scratchRepo — the scratch remote (a git repository of the build context) exists, so the spec resolves through the real git path
+     raw: commit=c248e71b44c80b327f2459cc16ed4e0bee60c820 repo=/opt/oneclick.git
+PASS oneclick.requiredPaths — every path the rows and the display metadata name is present in the installed package
+     raw: checked: patch files, MCP launchers, web client, icon, locale, skills corpus
+PASS oneclick.filesAllowlist — the files allowlist was honoured: no frozen evidence tree, no git history, no lane scratch in the installed package
+     raw: absent: evidence/ .git/ docker/ .qa-tmp/
+PASS oneclick.distByteIdentical — 34 committed dist entry/entries landed byte-identical, so the install ran no build and shipped what the source tree builds
+     raw: cmp -s on each entry
+PASS team.route.state — the mpd team route answered a JSON payload from a REAL mounted row
+     raw: HTTP 200 keys=workspace,sessionId,workspaceTeams,team,counts,members,tasks,cycles,executor,problems
+PASS team.route.plan — the mpd team route answered a JSON payload from a REAL mounted row
+     raw: HTTP 200 keys=workspace,sessionId,plan
+PASS team.route.task — the mpd team route answered a JSON payload from a REAL mounted row
+     raw: HTTP 200 keys=workspace,contracts,hold
+PASS team.route.mail — the mpd team route answered a JSON payload from a REAL mounted row
+     raw: HTTP 200 keys=workspace,messages,records
+PASS team.routesAll — all four /plugins/mpd-team routes are registered by the mounted row and answer ok:true
+     raw: green=4/4
+PASS team.planLookup — the plan route answered a plan SHAPE for the live session (null when nothing is staged, which is the honest pre-approval answer)
+     raw: plan=null session=session-c3a0ca68-6168-4ae4-9bd8-54de6e361435
+PASS tui.teamSceneOpened — the /mpd team scene opened on a real terminal
+     raw: chars=11755
+PASS tui.teamGraphDrawn — the LAYERED BOXES were drawn: the ROUNDED corner census equals the record's own task count, one box per task, which a dropped box reddens (the square corners the old arm matched belong to the scene FRAME; the subjects are NOT claimed here, because clause AC1 moved them to the pinned detail body that tui.teamGraphContent asserts)
+     raw: corners=╭3 ╮3 ╰3 ╯3 tasksFromRecord=3 ids=T1,T2,T3 pane=pane-team.txt
+PASS tui.teamGraphEdges — the dependency EDGES were drawn with box-drawing junctions
+     raw: junctions=46
+PASS tui.teamGraphContent — every task id the lane's OWN record carries is drawn as a node label AND the record's own subject is reachable one keystroke away in the pinned detail body, where clause AC1 moved it (a literal id would keep passing after a dropped task)
+     raw: ids=T1,T2,T3 fromRecord=3 labelsExpected=3 missing=[none] pane=pane-team.txt chars=11755 pinnedFocus=T1 detail=[T1 · requirement · freeze the contract] pinnedPane=pane-teamPinned.txt
+PASS tui.laneExit — the TUI lane ran to completion with every assertion green
+     raw: records=19
+
+===== summary =====
+passed=66 failed=0 null=32 total=98
+ok=true
+complete=false
