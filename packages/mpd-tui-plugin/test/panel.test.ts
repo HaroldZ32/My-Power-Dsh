@@ -21,8 +21,10 @@
 import { describe, expect, test } from "bun:test"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import { createLog } from "../src/log"
-import { DAG_CHARS } from "../src/dag-theme"
-import { createPanelComponent, PANEL_DESCRIPTOR_FROZEN, PANEL_MIN_COLUMNS, PANEL_ORDER, PANEL_SLUG, PANEL_TITLE, panelStatusLine, registerPanelSurface, takeoverArmed } from "../src/panel"
+import { DAG_CHARS, DAG_CHROME, DAG_TONE_THEME } from "../src/dag-theme"
+import { graphRow, toneColor, usePanelViewport, viewportGutter, viewportRail, type PanelKit } from "../src/panel-core"
+import { createPanelComponent, PANEL_DESCRIPTOR_FROZEN, PANEL_ICON, PANEL_MIN_COLUMNS, PANEL_ORDER, PANEL_SLUG, PANEL_TITLE, panelStatusLine, registerPanelSurface, takeoverArmed } from "../src/panel"
+import { cellWidth } from "../src/sanitize"
 import { legendLines } from "../src/graph"
 import { pick, TUI_TEXT, t } from "../src/i18n"
 import type { TeamWorkflow } from "../src/team-state"
@@ -408,14 +410,20 @@ describe("the panel registration (frozen descriptor, discovered id)", () => {
     // it, so this one line moves with the fix; nothing else in this file is touched.
     expect(descriptor?.minColumns).toBe(28)
     expect(descriptor?.order).toBe(10)
-    // No icon (the host demands exactly one display cell) and — deliberately — NO `compact`: the
-    // 0.13.0 host validates and stores that slot but does NOT mount its render slot, so declaring one
-    // would claim a surface that cannot render.
-    expect(descriptor?.icon).toBeUndefined()
+    // AMENDED (wave `tui-dag-highlight`, AC8) — the merged page now declares its OWN icon: without one the
+    // host fell back to the letter `M`, and the three MPD pages were not told apart at a glance. The
+    // host REJECTS an icon that is not exactly one display cell, so both halves are asserted: the
+    // descriptor carries the module's own icon, and that icon measures ONE cell under the plugin's own
+    // rule. It is asserted SYMBOLICALLY (`PANEL_ICON`), so the Chrome lane's choice of glyph is its own
+    // to change without re-pinning this arm.
+    expect(descriptor?.icon).toBe(PANEL_ICON)
+    expect(cellWidth(PANEL_ICON)).toBe(1)
+    // …and — deliberately — NO `compact`: the 0.13.0 host validates and stores that slot but does NOT
+    // mount its render slot, so declaring one would claim a surface that cannot render.
     expect(descriptor?.compact).toBeUndefined()
     expect(typeof descriptor?.component).toBe("function")
     // The module-level frozen constants agree with what the host received.
-    expect(PANEL_DESCRIPTOR_FROZEN).toEqual({ apiVersion: 1, id: PANEL_SLUG, title: PANEL_TITLE, minColumns: PANEL_MIN_COLUMNS, order: PANEL_ORDER })
+    expect(PANEL_DESCRIPTOR_FROZEN).toEqual({ apiVersion: 1, id: PANEL_SLUG, title: PANEL_TITLE, icon: PANEL_ICON, minColumns: PANEL_MIN_COLUMNS, order: PANEL_ORDER })
     // THE ID IS THE HOST'S, DISCOVERED from its own `list()` read-back — never composed here.
     expect(surface.id()).toBe("act0:team")
     expect(surface.registered()).toBe(true)
@@ -647,14 +655,33 @@ describe("the panel component (both sections, props kit only)", () => {
     /** The flattened text, joined across rows for the containment assertions. */
     const text = kit.text(tree)
     // SECTION (a): the host's curated snapshot rows, through the SAME projection the scene uses.
-    expect(indexOfRow("subagents  2 total · 1 running · 1 completed · 0 failed")).toBe(0)
-    expect(indexOfRow("🟡 1 running · 🟢 1 completed · 🔴 0 failed")).toBe(1)
-    expect(indexOfRow("🟡 Panel Engineer · continuable · running")).toBe(2)
-    expect(indexOfRow("🟢 Plan Reviewer · one-shot · completed")).toBe(3)
+    //
+    // AMENDED (wave `tui-dag-highlight`, AC8) — the VALUE UNDER TEST moved, the arm's claim did not:
+    // every MPD page now draws its OWN title row (the page's title at the left, MPD's `⤢` full-screen
+    // control at the right) ABOVE both sections, so the host's rows no longer start at row 0. That is
+    // ONE host row; it reads as two lines HERE only because this suite's flattening counts each child
+    // of a Box as its own line. The arm therefore derives the offset from the render instead of pinning
+    // an index, and keeps asserting what it always did: the page's chrome first, then the host's rows in
+    // the host's own order, with the DAG below them.
+    // THE OFFSET IS DERIVED, NEVER PINNED: a page drawn WITH a full-screen opener carries its own title
+    // row (AC8) above these lines and a bare unit arm passes no opener, so the arm asserts the ORDER —
+    // the host's four section rows consecutively, then the DAG — and leaves where the chrome ends to the
+    // Chrome lane's own suite.
+    /** The first row the host's own section occupies, after whatever chrome precedes it. */
+    const firstHostRow = indexOfRow("subagents  2 total · 1 running · 1 completed · 0 failed")
+    expect(firstHostRow).toBeGreaterThanOrEqual(0)
+    expect(indexOfRow("🟡 1 running · 🟢 1 completed · 🔴 0 failed")).toBe(firstHostRow + 1)
+    expect(indexOfRow("🟡 Panel Engineer · continuable · running")).toBe(firstHostRow + 2)
+    expect(indexOfRow("🟢 Plan Reviewer · one-shot · completed")).toBe(firstHostRow + 3)
     // SECTION (b): the MPD DAG, drawn for the width the props' `useTerminalSize()` reported.
-    expect(indexOfRow("task dependency graph")).toBeGreaterThan(3)
-    expect(indexOfRow("│ ✓ T1 WRK build the panel")).toBeGreaterThan(indexOfRow("task dependency graph"))
-    expect(indexOfRow("│ ○ T2 WRK migrate the plugin")).toBeGreaterThan(indexOfRow("task dependency graph"))
+    expect(indexOfRow("task dependency graph")).toBeGreaterThan(firstHostRow + 3)
+    // AMENDED (wave `tui-dag-highlight`, AC1/AC2) — the VALUE UNDER TEST changed by the frozen contract,
+    // not the arm's claim: the node box is now the COMPACT 3-row form and its label is exactly
+    // `状态符号 + 任务号`, so the kind abbreviation and the subject are GONE from the drawing and the old
+    // needles (`│ ✓ T1 WRK build the panel`) pinned a label the wave removed. What this arm still
+    // asserts is unchanged: both tasks are drawn, and they are drawn BELOW the host's own section.
+    expect(indexOfRow("│ ✓ T1")).toBeGreaterThan(indexOfRow("task dependency graph"))
+    expect(indexOfRow("│ ○ T2")).toBeGreaterThan(indexOfRow("task dependency graph"))
     // THE LEGEND'S OWN WIDTH CONTRACT, asserted as the WIDTH-DEPENDENT behaviour it is.
     //
     // AMENDED DELIBERATELY (2026-10-13), and the reason is a change in the VALUE UNDER TEST rather than a
@@ -794,5 +821,146 @@ describe("the legacy Ctrl+A arming rule (frozen R4/R5)", () => {
   test("without the seam and without a saved value the row config decides", () => {
     expect(takeoverArmed(false, undefined, true)).toBe(true)
     expect(takeoverArmed(false, undefined, false)).toBe(false)
+  })
+})
+
+// ── the shared panel core: the non-colour highlight and the two draggable rails ─
+
+/**
+ * The kit double as `panel-core`'s own narrow contract sees it.
+ *
+ * The cast is the one every arm in this file already makes for the host kit: `PanelKit` describes what the
+ * HOST hands across the JS boundary (its React, its ui kit), and the double models exactly the members
+ * the core reads.
+ * @param kit - the kit double.
+ * @returns the same object, typed as the host kit.
+ */
+function coreKit(kit: Kit): PanelKit {
+  return kit as unknown as PanelKit
+}
+
+/**
+ * A page taller than its window AND a drawing wider than its window, so both axes of the ONE shared
+ * viewport handle have a band worth scrubbing.
+ * @returns the sizes `usePanelViewport`'s `read()` reports.
+ */
+function pannableSizes(): { contentRows: number; viewportRows: number; contentCols: number; viewportCols: number } {
+  return { contentRows: 100, viewportRows: 10, contentCols: 200, viewportCols: 40 }
+}
+
+describe("the DAG row's non-colour emphasis (AC5)", () => {
+  test("every tone keeps its own theme colour, while focus/chain are BOLD and dim carries dimColor", () => {
+    /** The host kit double; `graphRow` itself calls no hook. */
+    const kit = makeKit()
+    /** Every tone the frozen table declares, in table order — the rule covers all of them. */
+    const tones = Object.keys(DAG_TONE_THEME)
+    /** One span per tone, in a row wide enough that the cell budget clamps nothing away. */
+    const spans = tones.map((tone) => ({ text: `[${tone}]`, tone }))
+    /** The drawn row, as the double records it. */
+    const row = graphRow(coreKit(kit), spans, { key: "tones", cols: 400 }) as Element
+    /** One span's own element, by its position in the row. */
+    const spanAt = (at: number): Element => row.children[at] as Element
+    // NO NEW COLOUR TABLE: the loop is over the contract's own table, and each span still carries the
+    // tone's OWN theme key — the emphasis RIDES ON TOP of the colour rather than replacing it.
+    for (let at = 0; at < tones.length; at += 1) {
+      expect(spanAt(at).props.color).toBe(toneColor(tones[at]))
+      expect(spanAt(at).props.bold === true).toBe(tones[at] === "focus" || tones[at] === "chain")
+      expect(spanAt(at).props.dimColor === true).toBe(tones[at] === "dim")
+    }
+    // THE DRAWING IS UNTOUCHED: emphasis is style, so the row's text is exactly the spans' text, in order.
+    expect(kit.text(row)).toBe(tones.map((tone) => `[${tone}]`).join(""))
+  })
+})
+
+describe("the two draggable rails (AC7)", () => {
+  test("a VERTICAL drag commits an ABSOLUTE row offset through the same band a click maps through", () => {
+    /** The kit double, whose React holds the viewport's own refs and state cell. */
+    const kit = makeKit()
+    /** A 100-row page drawn in a 10-row window. */
+    const viewport = usePanelViewport(coreKit(kit), () => ({ contentRows: 100, viewportRows: 10 }))
+    /** The rail `panelViewportBody` draws for it — no page callback, exactly as the real pages call it. */
+    const rail = viewportGutter(coreKit(kit), viewport) as Element
+    expect(rail).toBeDefined()
+    /** The three phases the host's drag protocol delivers, all on the same absolute mapping. */
+    const phases = ["onDragStart", "onDragMove", "onDragEnd"] as const
+    for (const phase of phases) expect(typeof rail.props[phase]).toBe("function")
+    // THE BAND, in numbers: max = 100 - 10 = 90 rows, the 10-cell rail's thumb is 1 cell
+    // (`floor(viewport² / content)`), so the track the pointer scrubs along is 9 cells and row 4 of it is
+    // 4/9 of the way down. The assertion is the NUMBER — 40, not "something moved".
+    ;(rail.props.onDragMove as (event: unknown) => void)({ localRow: 4 })
+    expect(viewport.offset).toBe(40)
+    ;(rail.props.onDragEnd as (event: unknown) => void)({ localRow: 0 })
+    expect(viewport.offset).toBe(0)
+    ;(rail.props.onDragEnd as (event: unknown) => void)({ localRow: 9 })
+    expect(viewport.offset).toBe(90)
+    // A host that reports NO position is not a gesture that throws: it reads as the band's first cell,
+    // which is the default this rail's own click has always used.
+    expect(() => (rail.props.onDragMove as (event: unknown) => void)(undefined)).not.toThrow()
+    expect(viewport.offset).toBe(0)
+    // The drawing is the contract's rail, one cell per viewport row.
+    expect(drawnRowTexts(rail)).toHaveLength(10)
+  })
+
+  test("a rail WITH a page callback hands the drag the SAME row it hands a click", () => {
+    /** The kit double. */
+    const kit = makeKit()
+    /** The same 100-row page in a 10-row window. */
+    const viewport = usePanelViewport(coreKit(kit), () => ({ contentRows: 100, viewportRows: 10 }))
+    /** Every row the page's callback was handed, in call order. */
+    const seen: number[] = []
+    /** The rail a page wired its own track mapping to. */
+    const rail = viewportGutter(coreKit(kit), viewport, (row: number): void => {
+      seen.push(row)
+    }) as Element
+    ;(rail.props.onDragMove as (event: unknown) => void)({ localRow: 3 })
+    ;(rail.props.onClick as (event: unknown) => void)({ localRow: 3 })
+    // ONE mapping per rail, so the two gestures cannot disagree about where a cell lands — and a page
+    // that owns the mapping keeps owning it: the rail itself does not also scroll.
+    expect(seen).toEqual([3, 3])
+    expect(viewport.offset).toBe(0)
+  })
+
+  test("a HORIZONTAL drag scrubs the column offset to the expected absolute column", () => {
+    /** The kit double. */
+    const kit = makeKit()
+    /** A 200-column drawing in a 40-column window (with the vertical axis as above). */
+    const viewport = usePanelViewport(coreKit(kit), () => pannableSizes())
+    /** The one-row rail the page draws in place of its own `gutterCellsX` row. */
+    const rail = viewportRail(coreKit(kit), viewport, 40) as Element
+    expect(rail).toBeDefined()
+    /** The three phases the host's drag protocol delivers. */
+    const phases = ["onDragStart", "onDragMove", "onDragEnd"] as const
+    for (const phase of phases) expect(typeof rail.props[phase]).toBe("function")
+    // THE BAND, in numbers: colMax = 200 - 40 = 160 columns, the 40-cell rail's thumb is 8 cells
+    // (`floor(40² / 200)`), so the track is 32 cells and column 8 of it is a quarter of the way across.
+    ;(rail.props.onDragMove as (event: unknown) => void)({ localCol: 8 })
+    expect(viewport.colOffset).toBe(40)
+    ;(rail.props.onDragEnd as (event: unknown) => void)({ localCol: 0 })
+    expect(viewport.colOffset).toBe(0)
+    ;(rail.props.onDragEnd as (event: unknown) => void)({ localCol: 32 })
+    expect(viewport.colOffset).toBe(160)
+    // THE ROW IS THE CONTRACT'S OWN DRAWING (`gutterCellsX`): the thumb where the arithmetic puts it, the
+    // track behind it — the gesture is new, the pixels are not.
+    expect(kit.text(rail)).toBe(DAG_CHROME.barFull.repeat(8) + DAG_CHROME.barEmpty.repeat(32))
+  })
+
+  test("a drawing that fits reserves NO rail, and a rail whose Box ignores drag props still draws", () => {
+    /** A kit of its own: the viewport's hooks are keyed by position in the double. */
+    const kit = makeKit()
+    /** A drawing exactly as wide as its window — nothing to scrub. */
+    const flat = usePanelViewport(coreKit(kit), () => ({ contentRows: 100, viewportRows: 10, contentCols: 40, viewportCols: 40 }))
+    expect(viewportRail(coreKit(kit), flat, 40)).toBeUndefined()
+    // A HOST WHOSE `Box` IGNORES THE DRAG PROPS (the kit double's Box takes any props and forwards none)
+    // is the shape every arm above already renders through: the row is still ONE row, built from the
+    // kit's own components, so an older host loses the gesture and never the drawing.
+    /** A kit whose viewport DOES overflow, rendered through that same ignoring Box. */
+    const wide = makeKit()
+    /** The pannable viewport. */
+    const panned = usePanelViewport(coreKit(wide), () => pannableSizes())
+    /** The rail element that old host receives. */
+    const rail = viewportRail(coreKit(wide), panned, 40) as Element
+    expect(rail.type).toBe(wide.ui.Box)
+    expect(rail.children).toHaveLength(1)
+    expect((rail.children[0] as Element).type).toBe(wide.ui.Text)
   })
 })

@@ -1,0 +1,11 @@
+$ bun .mpd/recon/termaid-revert/acceptance.ts .mpd/recon/tui-013-fv/ws/.mpd/team/teams/mpd-probe-team.json 80 40
+PASS  AC1  boxes=7/7 off-shape=0
+PASS  AC2  rounded=true sharpPresent=false boxRows=3
+PASS  AC3  three-box rank width=36 (<=40 required); panel column at 80 cells
+PASS  AC4  clicked the SECOND box of the rank at localCol=14; pinned T3=true, pinned the leftmost T2=false
+PASS  AC5  bold spans=10 dim spans=48 focusBold=true chain=[T1] chainBold=true
+PASS  AC6  pinned=true openAgentPage called with ["agent-verify"] (expected ["agent-verify"])
+PASS  AC7  two rails found (gutter+rail); dragging the gutter on localRow moved=true, the rail on localCol moved=true, at 28x12
+PASS  AC8  icons=["❖","◈","⬢"] widths=[1,1,1] distinct=true hostCollisions=[] fullscreenGlyphRendered=true
+
+8/8 criteria PASS

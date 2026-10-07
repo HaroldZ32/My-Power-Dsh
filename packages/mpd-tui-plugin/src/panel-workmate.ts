@@ -24,6 +24,10 @@ import { join } from "node:path"
 import type { PanelRegistrationHandle, SeamOutcome, TuiAdapter } from "./types.js"
 import type { Log } from "./log.js"
 import { DAG_CHROME, WORKMATE_PANEL_MIN_COLUMNS, WORKMATE_PANEL_SLUG } from "./dag-theme.js"
+// THE CHROME COMES FROM THE MERGED PAGE, not a second implementation of it: the `⤢` control, its
+// hover treatment and the row it sits in are ONE definition, so the three MPD pages cannot drift into
+// three different-looking affordances.
+import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow, type PanelPageOptions } from "./panel.js"
 import {
   clampScroll,
   PANEL_CHROME_ROWS,
@@ -53,10 +57,17 @@ export const WORKMATE_PANEL_TITLE = "MPD workmate"
 /**
  * The descriptor's icon: EXACTLY ONE display cell, which is the host's own hard requirement.
  *
- * `◆` (U+25C6) is one cell under the plugin's own measure and under the host's East-Asian-width rule,
- * and it is the contract's own pin marker — the shape the library's own instances are catalogued under.
+ * WHY IT IS NOT `DAG_CHROME.pinMarker` (the `◆` U+25C6 this page used to declare) — measured on the
+ * installed dsh-tui 0.13.0: the host's own panel bar draws `components/sidePanel/builtinPanels.js`,
+ * whose seven tabs already own `≡` (U+2261), `▸` (U+25B8), `◆` (U+25C6), `ⓘ` (U+24D8), `∿` (U+223F),
+ * `⌗` (U+2317) and `♥` (U+2665). `◆` is the host's AGENTS tab, so this page wore the host's own
+ * badge and the tab strip could not be read. `⬢` (U+2B22) is one cell under the plugin's own
+ * `sanitize.cellWidth` AND under the host's own `stringWidth` — both measured, because the host
+ * REJECTS a registration whose icon is not exactly one cell and the two measures disagree about some
+ * symbols. The pin marker stays the ENTRY marker inside this page's rows; it is only the panel's own
+ * identity that had to stop borrowing it.
  */
-export const WORKMATE_PANEL_ICON = DAG_CHROME.pinMarker
+export const WORKMATE_PANEL_ICON = "⬢"
 
 /** The ordering hint inside the host's panel bar: after the merged panel (10) and the DAG page (11). */
 export const WORKMATE_PANEL_ORDER = 12
@@ -346,9 +357,12 @@ function entryLines(entry: WorkmateEntry, cols: number): string[] {
  * @param readLibrary - reads the library for the current home, per render. It is injected (rather than
  *   imported) so this file stays free of the plugin that owns the library's mutations, and so the page
  *   can be driven from a fixture in a test without touching a real home.
+ * @param options - this page's own chrome: the full-screen opener its `⤢` control calls (the board
+ *   scene, which already lists the library). Optional, so a caller that only wants the shelf still
+ *   gets a component; the registered page always passes one, so the control the user sees is wired.
  * @returns a component matching the host's panel props contract.
  */
-export function createWorkmatePanelComponent(readLibrary: () => WorkmateLibrary): unknown {
+export function createWorkmatePanelComponent(readLibrary: () => WorkmateLibrary, options?: PanelPageOptions): unknown {
   return function MpdTuiWorkmatePanel(props: PanelPropsLike): unknown {
     /** The host's React instance and ui kit, proved usable before a single hook is called. */
     const kit = panelKit(props?.React, props?.ui)
@@ -389,8 +403,9 @@ export function createWorkmatePanelComponent(readLibrary: () => WorkmateLibrary)
     /** The page's self-windowed viewport: the same single-offset device the DAG page uses. */
     /** The sizes the hook and every later closure read; written by this render, before anything reads it. */
     const sizes = { contentRows: 1, viewportRows: 1 }
-    /** The window height this panel affords, from the height the host reported. */
-    const windowRows = Math.max(1, (measured.rows ?? WORKMATE_FALLBACK_ROWS) - PANEL_CHROME_ROWS)
+    /** The window height this panel affords, from the height the host reported (its title row and footer
+     * are drawn OUTSIDE the window, which is why they are subtracted here). */
+    const windowRows = Math.max(1, (measured.rows ?? WORKMATE_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS)
     /** The shelf's ONE scroll position: the cursor's auto-scroll and the page keys both drive it. */
     const viewport = usePanelViewport(kit, () => sizes)
     /** Register the keymap: `↑↓`/`jk` walk the shelf, and a key this page does not handle is left to the host. */
@@ -488,11 +503,17 @@ export function createWorkmatePanelComponent(readLibrary: () => WorkmateLibrary)
     /** The visible slice of the shelf, inside the page's own wheel handler (the slice is taken on the
      * page's own rows, so `rowIndex`'s numbers stay indices into exactly this array). */
     const scrolled = kit.React.createElement(kit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows))
-    /** The pinned footer: the keys this page handles, plus where the shelf is. */
-    const footer = textRow(kit, `↑↓/jk move · PgUp/PgDn scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols })
+    /** The pinned footer: the `⤢` hint FIRST (a 26-cell row is clamped from its END, so a trailing hint
+     * would be the first thing the host cut at the width this page asks for), then the keys it handles
+     * and where the shelf is. */
+    const footer = textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · ↑↓/jk move · PgUp/PgDn${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols })
     /** The visible slice plus its reserved gutter column. */
     const body = panelViewportBody(kit, [scrolled], scroller)
-    return panelFrame(kit, WORKMATE_PANEL_TITLE, [...body, footer])
+    // THE TITLE ROW IS OUTSIDE THE WINDOW, immediately under the frame's top border: the page's own
+    // name and MPD's `⤢`, both pinned, so the control is at the same cell however far the shelf scrolls.
+    /** This page's chrome row: its title and the full-screen control. */
+    const titleRow = usePanelTitleRow(kit, { key: "title", title: WORKMATE_PANEL_TITLE, cols: contentCols, ...(options?.openFullscreen === undefined ? {} : { open: options.openFullscreen }) })
+    return panelFrame(kit, WORKMATE_PANEL_TITLE, [titleRow, ...body, footer])
   }
 }
 
@@ -536,7 +557,9 @@ export function registerWorkmatePanel(tui: TuiAdapter, deps: WorkmatePanelDeps):
   const panel: PanelRegistrationHandle | undefined = deps.enabled
     ? tui.registerPanel({
         ...WORKMATE_PANEL_DESCRIPTOR_FROZEN,
-        component: createWorkmatePanelComponent(() => readWorkmateLibrary(deps.home())),
+        // The `⤢` control the page draws itself calls THIS opener — the same full-screen surface the
+        // page's own routed open falls back to, so the button and the fallback cannot name two surfaces.
+        component: createWorkmatePanelComponent(() => readWorkmateLibrary(deps.home()), { openFullscreen: () => deps.openScene() }),
       })
     : undefined
   return {

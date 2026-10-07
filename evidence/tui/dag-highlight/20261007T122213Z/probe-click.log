@@ -1,0 +1,232 @@
+$ bun .mpd/recon/termaid-revert/probe-click.ts .mpd/recon/tui-013-fv/ws/.mpd/team/teams/mpd-probe-team.json 80 40   # the captain's own instrument, UNCHANGED
+
+=== RENDER 1 (no pin) ===
+  [inactive] team 
+  [accent] fidelity-cjk-dag  
+  [inactive] phase active  tasks 
+  [success] 1/7  
+  [inactive] members 
+  [accent] 1  
+  [success] ██░░░░░░░░░░░░░░╭────────╮
+  [text]                                                                     
+  [success] │ ✓ T1
+  [text]    
+  [success] │
+  [text]                                                                     
+  [success] ╰───┬────╯
+  [text]                                                                         
+  [promptBorder] │
+  [text]                                                                              
+  [promptBorder] ├────────────╮
+  [text]                                                                 
+  [success] ▼
+  [text]             
+  [warning] ▼
+  [text]                                                             
+  [success] ╭───┴────╮
+  [text]    
+  [warning] ╭───┴────╮
+  [text]                                                        
+  [success] │ ✓ T2
+  [text]    
+  [success] │
+  [text]    
+  [warning] │ ○ T3
+  [text]    
+  [warning] │
+  [text]                                                        
+  [success] ╰───┬────╯
+  [text]    
+  [warning] ╰───┬────╯
+  [text]                                                            
+  [promptBorder] │
+  [text]             
+  [promptBorder] │
+  [text]                                                                 
+  [promptBorder] ├────────────╯
+  [text]                                                                 
+  [warning] ▼
+  [text]                                                                          
+  [warning] ╭───┴────╮
+  [text]                                                                     
+  [warning] │ ○ T4
+  [text]    
+  [warning] │
+  [text]                                                                     
+  [warning] ╰───┬────╯
+  [text]                                                                         
+  [promptBorder] │
+  [text]                                                                              
+  [promptBorder] ├────────────╮
+  [text]                                                                 
+  [warning] ▼
+  [text]             
+  [warning] ▼
+  [text]                                                             
+  [warning] ╭───┴────╮
+  [text]    
+  [warning] ╭───┴────╮
+  [text]                                                        
+  [warning] │ ○ T5
+  [text]    
+  [warning] │
+  [text]    
+  [warning] │ ○ T6
+  [text]    
+  [warning] │
+  [text]                                                        
+  [warning] ╰───┬────╯
+  [text]    
+  [warning] ╰───┬────╯
+  [text]                                                            
+  [promptBorder] │
+  [text]             
+  [promptBorder] │
+  [text]                                                                 
+  [promptBorder] ├────────────╯
+  [text]                                                                 
+  [warning] ▼
+  [text]                                                                          
+  [warning] ╭───┴────╮
+  [text]                                                                     
+  [warning] │ ○ T7
+  [text]    
+  [warning] │
+  [text]                                                                     
+  [warning] ╰────────╯
+  [text]                                                                     
+  [undefined] view boxes · 7 tasks · ranks derived▼/▸ blocker above → dependent below · ▶ focus lights its chain✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open⊘ cancelled↑↓/jk move · Enter pin · Esc unpin · ⤢ fullscreen · ⇧↑↓/⇧←→ scroll
+
+clickable rows: 27
+   "╭────────╮                                                                    "
+   "│ ✓ T1   │                                                                    "
+   "╰───┬────╯                                                                    "
+   "    │                                                                         "
+   "    ├────────────╮                                                            "
+   "    ▼            ▼                                                            "
+   "╭───┴────╮   ╭───┴────╮                                                       "
+   "│ ✓ T2   │   │ ○ T3   │                                                       "
+   "╰───┬────╯   ╰───┬────╯                                                       "
+   "    │            │                                                            "
+   "    ├────────────╯                                                            "
+   "    ▼                                                                         "
+   "╭───┴────╮                                                                    "
+   "│ ○ T4   │                                                                    "
+   "╰───┬────╯                                                                    "
+   "    │                                                                         "
+   "    ├────────────╮                                                            "
+   "    ▼            ▼                                                            "
+   "╭───┴────╮   ╭───┴────╮                                                       "
+   "│ ○ T5   │   │ ○ T6   │                                                       "
+   "╰───┬────╯   ╰───┬────╯                                                       "
+   "    │            │                                                            "
+   "    ├────────────╯                                                            "
+   "    ▼                                                                         "
+   "╭───┴────╮                                                                    "
+   "│ ○ T7   │                                                                    "
+   "╰────────╯                                                                    "
+
+CLICKING the row that DRAWS T3: "│ ✓ T2   │   │ ○ T3   │                                                       "
+
+=== RENDER 2 (after clicking the row that draws T3) ===
+  [inactive] team 
+  [accent] fidelity-cjk-dag  
+  [inactive] phase active  tasks 
+  [success] 1/7  
+  [inactive] members 
+  [accent] 1  
+  [success] ██░░░░░░░░░░░░░░╭────────╮
+  [text]                                                                     
+  [success] │ ✓ T1
+  [text]    
+  [success] │
+  [text]                                                                     
+  [success] ╰───┬────╯
+  [text]                                                                         
+  [accent] │
+  [text]                                                                              
+  [accent] ├
+  [inactive] ────────────╮
+  [text]                                                                 
+  [accentShimmer] ▼
+  [text]             
+  [inactive] ▼
+  [text]                                                             
+  [accentShimmer] ╭───┴────╮
+  [text]    
+  [inactive] ╭───┴────╮
+  [text]                                                        
+  [accentShimmer] │ ▶ T2
+  [text]    
+  [accentShimmer] │
+  [text]    
+  [inactive] │ ○ T3
+  [text]    
+  [inactive] │
+  [text]                                                        
+  [accentShimmer] ╰───┬────╯
+  [text]    
+  [inactive] ╰───┬────╯
+  [text]                                                            
+  [inactive] │
+  [text]             
+  [inactive] │
+  [text]                                                                 
+  [inactive] ├────────────╯
+  [text]                                                                 
+  [inactive] ▼
+  [text]                                                                          
+  [inactive] ╭───┴────╮
+  [text]                                                                     
+  [inactive] │ ○ T4
+  [text]    
+  [inactive] │
+  [text]                                                                     
+  [inactive] ╰───┬────╯
+  [text]                                                                         
+  [inactive] │
+  [text]                                                                              
+  [inactive] ├────────────╮
+  [text]                                                                 
+  [inactive] ▼
+  [text]             
+  [inactive] ▼
+  [text]                                                             
+  [inactive] ╭───┴────╮
+  [text]    
+  [inactive] ╭───┴────╮
+  [text]                                                        
+  [inactive] │ ○ T5
+  [text]    
+  [inactive] │
+  [text]    
+  [inactive] │ ○ T6
+  [text]    
+  [inactive] │
+  [text]                                                        
+  [inactive] ╰───┬────╯
+  [text]    
+  [inactive] ╰───┬────╯
+  [text]                                                            
+  [inactive] │
+  [text]             
+  [inactive] │
+  [text]                                                                 
+  [inactive] ├────────────╯
+  [text]                                                                 
+  [inactive] ▼
+  [text]                                                                          
+  [inactive] ╭───┴────╮
+  [text]                                                                     
+  [inactive] │ ○ T7
+  [text]    
+  [inactive] │
+  [text]                                                                     
+  [inactive] ╰────────╯
+  [text]                                                                     
+  [undefined] view boxes · 7 tasks · ranks derived
+  [accentShimmer] ◆ T2
+  [undefined] subject W1 — 自适应纵向布局引擎（dag-layout.ts）description Serves C1 + C2 (arrows + legend). Implements directional arrowheadid T2kind workvisual completedverdict —failedBy —owner Senior Engineer Graph
+  [accent] ███████████████████████████████
+  [inactive] ░░░░░░░
+  [undefined] ↑↓/jk move · Enter pin · Esc unpin · ⤢ fullscreen · ⇧↑↓/⇧←→ scroll 1/9

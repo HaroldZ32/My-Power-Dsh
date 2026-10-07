@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "repairId": "rep-20261007T123439-87f654",
+  "sourceRecordId": "rec-20261007T123439-15d9ec",
+  "sourceTaskId": null,
+  "sourceFindingIds": [
+    "DOC-1"
+  ],
+  "summary": "repair loop-20261007T120525-04d808 after rec-20261007T123439-15d9ec: docs/tui.md §3.3 (the panel inventory, line 208) still declares the workmate page's icon as `◆` U+25C6 in the PRESENT tense, while §3.4's new chrome bullet (lines 327-335) and §11.5's icon row both declare `⬢` U+2B22 and state that `◆` is byte-identical to the host's own `agents` tab icon — the exact value AC8 forbids ('each distinct from the host's built-ins'). The zh twin carries the same contradiction: docs/tui.zh-CN.md line 178 says 图标 `◆`, while its own bullet at line 275 and its §11.5 row at line 759 say `⬢` and call `◆` the host's icon. §11.5's supersession table names only '§11.4 icon cell', so by the page's own amendment convention (§11.5 preamble: 'The rows above stay as written ... the following supersedes them') §3.3's sentence is NOT covered and stands as a live, contradictory claim. Minimal reproduction: read docs/tui.md line 208 and line 330 in the same file; read docs/tui.zh-CN.md lines 178 and 275.",
+  "writerId": "delegate:agent_teams_plan",
+  "status": "open",
+  "createdAt": "2026-10-07T12:34:39.194Z"
+}

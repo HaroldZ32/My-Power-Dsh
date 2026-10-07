@@ -23,6 +23,9 @@ import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import { Context, Service } from "../../mpd-schemastery/harness/cordis/lib/index.ts"
 import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
+import { PANEL_ICON } from "../src/panel"
+import { DAG_PANEL_ICON } from "../src/panel-dag"
+import { WORKMATE_PANEL_ICON } from "../src/panel-workmate"
 import { COMMAND_ACTIONS, MODEL_COMMAND } from "../src/command-trees"
 import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
 import { createLog } from "../src/log"
@@ -419,7 +422,10 @@ describe("full composition (every service injected)", () => {
     expect(calls.panels[0].title).toBe("MPD")
     expect(calls.panels[0].minColumns).toBe(28)
     expect(calls.panels[0].order).toBe(10)
-    expect(calls.panels[0].icon).toBeUndefined()
+    // AMENDED (wave `tui-dag-highlight`, AC8) — the merged page now DECLARES an icon instead of letting
+    // the host fall back to the letter `M`. Asserted SYMBOLICALLY (the module's own constant), so the
+    // Chrome lane's choice of glyph is its own to change.
+    expect(calls.panels[0].icon).toBe(PANEL_ICON)
     expect(calls.panels[0].compact).toBeUndefined()
     expect(typeof calls.panels[0].component).toBe("function")
     expect(outcomeOf(report, "panel").state).toBe("confirmed")
@@ -429,7 +435,7 @@ describe("full composition (every service injected)", () => {
     expect(calls.panels[1].apiVersion).toBe(1)
     expect(calls.panels[1].id).toBe("dag")
     expect(calls.panels[1].title).toBe("MPD DAG")
-    expect(calls.panels[1].icon).toBe("◈")
+    expect(calls.panels[1].icon).toBe(DAG_PANEL_ICON)
     expect(calls.panels[1].minColumns).toBe(28)
     expect(calls.panels[1].order).toBe(11)
     expect(typeof calls.panels[1].component).toBe("function")
@@ -439,7 +445,11 @@ describe("full composition (every service injected)", () => {
     expect(calls.panels[2].apiVersion).toBe(1)
     expect(calls.panels[2].id).toBe("workmate")
     expect(calls.panels[2].title).toBe("MPD workmate")
-    expect(calls.panels[2].icon).toBe("◆")
+    // AMENDED (wave `tui-dag-highlight`, AC8) — the workmate page's icon CHANGED from the pin marker
+    // `◆` (U+25C6), which is byte-identical to the host's own `agents` tab, to its own glyph. Asserted
+    // symbolically: three panels, three glyphs, none of them borrowed from the host's panel bar.
+    expect(calls.panels[2].icon).toBe(WORKMATE_PANEL_ICON)
+    expect(new Set([calls.panels[0].icon, calls.panels[1].icon, calls.panels[2].icon]).size).toBe(3)
     expect(calls.panels[2].minColumns).toBe(28)
     expect(calls.panels[2].order).toBe(12)
     expect(typeof calls.panels[2].component).toBe("function")

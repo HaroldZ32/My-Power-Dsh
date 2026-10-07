@@ -23,13 +23,16 @@ import {
   DAG_TONE_GLYPH,
 } from "../src/dag-theme"
 import { cellWidth, clampCells } from "../src/sanitize"
-import { graphSafeLabel, layoutBoxesNatural, layoutRail, sliceSpans, widestLabelCells } from "../src/graph"
+import { PANEL_FULLSCREEN_GLYPH } from "../src/panel"
+import { layoutBoxesNatural, layoutRail, sliceSpans, widestLabelCells } from "../src/graph"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import {
+  agentIdForOwner,
   createDagPanelComponent,
   dagBadge,
   dagPageOf,
   dagPanelLayout,
+  dagRowClick,
   DAG_PANEL_DESCRIPTOR_FROZEN,
   DAG_PANEL_ICON,
   DAG_PANEL_ID,
@@ -39,7 +42,7 @@ import {
   registerDagPanel,
   type DagPanelTask,
 } from "../src/panel-dag"
-import { clampScroll, gutterCells, legendLinesFor, panelContentWidth, panelKeysArmed, panelScrollKey, runningGlyph, scrollByWheel, usePanelViewport } from "../src/panel-core"
+import { clampScroll, gutterCells, legendLinesFor, PANEL_CHROME_ROWS, panelContentWidth, panelKeysArmed, panelScrollKey, runningGlyph, scrollByWheel, usePanelViewport } from "../src/panel-core"
 import {
   createWorkmatePanelComponent,
   readWorkmateLibrary,
@@ -414,31 +417,37 @@ interface HostRecorder {
   cleared: number
   /** The key listeners the page subscribed. */
   listeners: Array<(event: unknown) => void>
+  /** Every `toast` line the page showed through the host, in order (AC6's "never a silent no-op"). */
+  toasts: string[]
   /** The host API handed to the component. */
   host: Record<string, unknown>
 }
 
 /**
  * Build the host API double.
- * @param options - the focus/visibility the host reports, and whether it exposes `onKey` at all.
+ * @param options - the focus/visibility the host reports, whether it exposes `onKey` at all, and the
+ *   subagent rows its snapshot carries — the ONE source AC6 resolves an owner name against.
  * @returns the recorder.
  */
-function makeHost(options: { focused?: boolean; visible?: boolean; onKey?: boolean; snapshotThrows?: boolean } = {}): HostRecorder {
+function makeHost(options: { focused?: boolean; visible?: boolean; onKey?: boolean; snapshotThrows?: boolean; subagents?: unknown } = {}): HostRecorder {
   /** Every `notify` call the page made. */
   const notifications: Array<{ level: string; unread: number | undefined }> = []
   /** The key listeners the page subscribed. */
   const listeners: Array<(event: unknown) => void> = []
+  /** Every `toast` line the page showed. */
+  const toasts: string[] = []
   /** The recorder under construction. */
   const recorder: HostRecorder = {
     snapshot: (): unknown => {
       if (options.snapshotThrows === true) throw new Error("host state unreadable")
-      return { subagents: [] }
+      return { subagents: Array.isArray(options.subagents) ? options.subagents : [] }
     },
     focused: options.focused ?? true,
     visible: options.visible ?? true,
     notifications,
     cleared: 0,
     listeners,
+    toasts,
     host: {},
   }
   recorder.host = {
@@ -450,7 +459,10 @@ function makeHost(options: { focused?: boolean; visible?: boolean; onKey?: boole
     clearBadge: (): void => {
       recorder.cleared += 1
     },
-    toast: (): boolean => true,
+    toast: (text: string): boolean => {
+      toasts.push(text)
+      return true
+    },
     ...(options.onKey === false
       ? {}
       : {
@@ -713,27 +725,33 @@ describe("the DAG page's layout choice", () => {
     expect(dagPageOf(undefined)).toBeUndefined()
   })
 
-  test("boxes are drawn ONLY when the widest label fits: a subject is never cut", () => {
-    /** A board whose subjects are far wider than any sidebar box could hold. */
-    const long = fanInTasks().map((task) => ({ ...task, subject: "port the WEB dependency DAG into the TUI surfaces end to end" }))
-    // The gate is EXACT: a 61-cell label cannot fit a box interior even at the drawing's own maximum
-    // node width, so no box is drawn at ANY panel width — the rail carries the subject whole instead.
+  test("boxes are drawn ONLY when the widest label fits: a label is never cut", () => {
+    // RE-POINTED FOR CLAUSE AC1. The gate this arm locks is `labelOverflow` — a box is drawn only when its
+    // interior holds the whole label — and under AC1 the label a node writes is `<marker> <id>`, so the
+    // field that can overflow is the ID. Before AC1 the arm drove it with a 61-cell SUBJECT; the fixture
+    // is now a board whose IDS are far wider than any box interior, which is the same test of the same rule.
+    /** A board whose task ids are far wider than any box interior the drawing will size, chain included. */
+    const suffix = "wide".repeat(16)
+    /** The same board with the suffix on every id AND on every dependency, so the chain stays intact. */
+    const long = fanInTasks().map((task) => ({ ...task, id: `${task.id}-${suffix}`, dependencies: task.dependencies.map((dep) => `${dep}-${suffix}`) }))
+    // The gate is EXACT: a ~69-cell label cannot fit a box interior even at the drawing's own maximum
+    // node width, so no box is drawn at ANY panel width — the rail carries the label instead.
     for (const cols of [80, 200, 400]) {
       /** The layout at this width. */
       const layout = dagPanelLayout(long, cols)
       expect(layout.mode).toBe("rail")
-      /** The drawing's text, joined across its rows. */
-      const drawn = layout.view.lines.map((row) => row.map((span) => span.text).join("")).join("\n")
-      for (const task of long) expect(drawn).toContain(task.subject)
     }
-    // POSITIVE CONTROL: a short-subject board DOES get its boxes, and there the subject is whole too —
-    // so the gate declines boxes for a reason, not always.
-    /** The short-subject board at a wide panel. */
+    // THE REFUSAL IS THE DRAWING'S OWN REPORT, which is what makes the fallback above a fact rather than
+    // the page's guess.
+    expect(layoutBoxesNatural(long)?.labelOverflow).toBe(true)
+    // POSITIVE CONTROL: an ORDINARY board DOES get its boxes, and there the id-bearing label sits inside
+    // its own borders — so the gate declines for a reason rather than always.
+    /** The ordinary board at a wide panel. */
     const short = dagPanelLayout(fanInTasks(), 200)
     expect(short.mode).toBe("boxes")
     /** The boxed drawing's text. */
     const boxed = short.view.lines.map((row) => row.map((span) => span.text).join("")).join("\n")
-    for (const task of fanInTasks()) expect(boxed).toContain(task.subject)
+    for (const task of fanInTasks()) expect(boxed).toContain(`${DAG_TONE_GLYPH[task.visual] ?? "?"} ${task.id}`)
   })
 
   test("A REAL BOARD STILL DRAWS BOXES: the natural width cap holds a realistic label whole", () => {
@@ -755,10 +773,11 @@ describe("the DAG page's layout choice", () => {
     }))
     /** The widest label this board would write, which is what the cap has to hold. */
     const widest = widestLabelCells(real)
-    // THE LABEL IS REALISTIC, so the arm cannot pass on a degenerate fixture: it is the ~50 cells the
-    // capture's pane carried, and it is what a real board's subjects produce.
-    expect(widest).toBeGreaterThanOrEqual(45)
-    expect(widest).toBeLessThanOrEqual(60)
+    // THE WIDTH THE CAP HOLDS IS THE LABEL'S (clause AC1): `<marker> <id>`. The capture's 48-53 cell
+    // SUBJECTS are still on this board — they are what the record carries and what the DETAIL body reads —
+    // but they no longer size a box, which is the fact this assertion states.
+    expect(widest).toBe(cellWidth(`${DAG_TONE_GLYPH[real[0].visual] ?? "?"} ${real[0].id}`))
+    expect(widest).toBeLessThanOrEqual(10)
     // BOXES AT A SIDEBAR WIDTH — the exact assertion the capture's `view rail` falsified. 44 is near the
     // host's own split-width floor, so this is the narrow case, not a wide one.
     for (const cols of [44, 80, 140, 220]) {
@@ -770,8 +789,8 @@ describe("the DAG page's layout choice", () => {
       /** The drawing's text, joined across its rows. */
       const drawn = layout.view.lines.map((row) => row.map((span) => span.text).join("")).join("\n")
       for (let index = 0; index < real.length; index += 1) {
-        /** The label this task would draw, composed by the drawing's own rule. */
-        const label = graphSafeLabel(real[index].subject, index + 1)
+        /** The label this task would draw, composed the way the drawing's own rule composes it (AC1). */
+        const label = `${DAG_TONE_GLYPH[real[index].visual] ?? "?"} ${real[index].id}`
         expect(`cols=${cols} ${real[index].id} whole=${drawn.includes(label)}`).toBe(`cols=${cols} ${real[index].id} whole=true`)
       }
       // THE DRAWING IS ALLOWED TO BE WIDER THAN THE PANEL, and the window is what fits — the two facts
@@ -779,10 +798,10 @@ describe("the DAG page's layout choice", () => {
       expect(layout.view.width).toBeGreaterThan(0)
       for (const row of layout.view.lines) expect(cellWidth(sliceSpans(row, 0, cols).map((span) => span.text).join(""))).toBe(cols)
     }
-    // THE SAFETY NET SURVIVES (T1): a subject that genuinely cannot fit inside the capped box is STILL
+    // THE SAFETY NET SURVIVES (T1): a label that genuinely cannot fit inside the capped box is STILL
     // reported and STILL falls back, so raising the cap moved the threshold rather than removing it.
-    /** A pathological subject: 200 ASCII cells, far past any legible box. */
-    const absurd = fanInTasks().map((task) => ({ ...task, subject: "x".repeat(200) }))
+    /** A pathological ID: ~200 ASCII cells, far past any legible box, kept unique per task. */
+    const absurd = fanInTasks().map((task, index) => ({ ...task, id: `${"x".repeat(199)}${index}` }))
     for (const cols of [44, 200]) {
       expect(`cols=${cols} mode=${dagPanelLayout(absurd, cols).mode}`).toBe(`cols=${cols} mode=rail`)
     }
@@ -791,24 +810,17 @@ describe("the DAG page's layout choice", () => {
     /** The natural-path cap and the label budget it implies, read from the drawing's own behaviour. */
     const cap = layoutBoxesNatural(real)?.width ?? 0
     expect(cap).toBeGreaterThan(0)
-    // THE BOUNDARY IS DERIVED FROM THE COMPOSER, never guessed: the cap bounds the LABEL, and the label
-    // is the `marker id KIND ` prefix PLUS the subject, so the subject's own budget is the cap minus
-    // whatever prefix this fixture's kind draws. Measuring it here is what keeps the arm from drifting
-    // when the kind abbreviations or the cap change.
-    // The probe subject is ONE character rather than EMPTY, and that is not cosmetic: an empty subject
-    // has no printable ASCII, so the composer answers its `#<ordinal>` fallback and the "prefix" measured
-    // would be the fallback's width instead. One character gives `prefix + 1` exactly.
-    /** The prefix this board's kind draws, in cells: the composer's output for a one-character subject. */
-    const prefixCells = widestLabelCells(fanInTasks().slice(0, 1).map((task) => ({ ...task, subject: "y" }))) - 1
-    // `NATURAL_MAX_NODE_WIDTH - 3` is the widest label a capped box writes whole (`" " + label` inside
-    // `nodeWidth - 2`); the arm states the number it is testing rather than importing the constant.
-    /** The subject length in cells that still fits whole. */
-    const fits = 61 - prefixCells
+    // THE BOUNDARY IS DERIVED FROM THE DRAWING'S OWN MEASURE, never guessed: `NATURAL_MAX_NODE_WIDTH - 3`
+    // is the widest label a capped box writes whole (`" " + label` inside `nodeWidth - 2`), and under AC1
+    // the label is the one-cell marker, one space and the ID — so the ID's own budget is that number
+    // minus the two cells the marker and the space occupy.
+    /** The id length in cells that still fits whole inside the capped box. */
+    const fits = 61 - 2
     expect(fits).toBeGreaterThan(0)
-    /** A board at exactly the widest label a capped box writes whole. */
-    const atCap = fanInTasks().slice(0, 1).map((task) => ({ ...task, subject: "y".repeat(fits) }))
+    /** A board whose id sits at exactly the widest label a capped box writes whole. */
+    const atCap = fanInTasks().slice(0, 1).map((task) => ({ ...task, id: "y".repeat(fits) }))
     /** …and one cell more, which must trip the net. */
-    const overCap = fanInTasks().slice(0, 1).map((task) => ({ ...task, subject: "y".repeat(fits + 1) }))
+    const overCap = fanInTasks().slice(0, 1).map((task) => ({ ...task, id: "y".repeat(fits + 1) }))
     expect(`atCap=${widestLabelCells(atCap)}/${layoutBoxesNatural(atCap)?.labelOverflow}`).toBe(`atCap=61/false`)
     expect(`overCap=${widestLabelCells(overCap)}/${layoutBoxesNatural(overCap)?.labelOverflow}`).toBe(`overCap=62/true`)
   })
@@ -820,9 +832,12 @@ describe("the DAG page's layout choice", () => {
     // `labelOverflow` still answers `false`, so nothing falls back and nothing reports it. Measured:
     // `requirements contract` drew as `requirements contrac`. The label row is read through the box's
     // OWN rectangle, so the arm cannot pass on a drawing whose geometry moved.
-    for (const subject of ["requirements contract", "geometry engine", "panel surface"]) {
+    // RE-POINTED FOR CLAUSE AC1: the value that can sit between the two bounds is now a MID-LENGTH ID.
+    for (const id of ["K1-geometry-engine", "K2-requirements-contract", "K3-panel-surface"]) {
       /** The one-task board, so the label is the whole question. */
-      const board = fanInTasks().slice(0, 1).map((task) => ({ ...task, subject }))
+      const board = fanInTasks().slice(0, 1).map((task) => ({ ...task, id }))
+      /** The label the drawing composes for this task (clause AC1): the marker, a space, the id. */
+      const label = `${DAG_TONE_GLYPH[board[0].visual] ?? "?"} ${id}`
       /** The drawing at its natural width. */
       const view = layoutBoxesNatural(board)
       expect(view?.labelOverflow).toBe(false)
@@ -835,11 +850,11 @@ describe("the DAG page's layout choice", () => {
       /** The interior, between the two border cells. */
       const interior = row.slice(hit.col + 1, hit.colEnd)
       // BOTH BORDERS SURVIVE, and the label inside them is the WHOLE composed string — the clause, stated
-      // directly rather than through a rebuilt row: the subject the composer produces must appear
-      // verbatim between the two border cells, and nothing may be missing off its end.
-      expect(`${subject} borders=${row[hit.col]}${row[hit.colEnd]}`).toBe(`${subject} borders=${DAG_CHARS.vertical}${DAG_CHARS.vertical}`)
-      expect(`${subject} whole=${interior.includes(graphSafeLabel(subject, 1))}`).toBe(`${subject} whole=true`)
-      expect(`${subject} trimmed=${interior.trim()}`).toBe(`${subject} trimmed=${interior.trim().replace(/ +$/u, "")}`)
+      // directly rather than through a rebuilt row: the label the composer produces must appear verbatim
+      // between the two border cells, and nothing may be missing off its end.
+      expect(`${id} borders=${row[hit.col]}${row[hit.colEnd]}`).toBe(`${id} borders=${DAG_CHARS.vertical}${DAG_CHARS.vertical}`)
+      expect(`${id} whole=${interior.includes(label)}`).toBe(`${id} whole=true`)
+      expect(`${id} trimmed=${interior.trim()}`).toBe(`${id} trimmed=${interior.trim().replace(/ +$/u, "")}`)
     }
   })
 
@@ -1065,6 +1080,363 @@ describe("click-to-pin and the keyboard", () => {
   })
 })
 
+// ── AC4: the click resolves through the DRAWING's own rectangle, COLUMN included ────────────────
+// THE DEFECT THIS LANE EXISTS TO FIX, and the reason these arms are shaped the way they are: every box
+// of a rank shares ONE row band, so a predicate that reads only the row always lands on the LEFTMOST box
+// of that rank — which the drawing's natural width routinely pans out of view. Measured on the captain's
+// fixture: clicking the row that DRAWS `T3` pinned `T2`.
+/** The panel height the AC4/AC6 arms give their panel, taller than any fixture so the whole drawing shows. */
+const POINTER_PANEL_ROWS = 120
+
+/** The panel width those arms measure against, which is the width the page counts its own cells from. */
+const POINTER_PANEL_COLUMNS = 80
+
+/**
+ * A board whose SECOND rank holds TWO boxes: `B1` and `B2` are both blocked by `A0`, so they share one
+ * row band and differ only in COLUMN — the one shape the row-only predicate cannot get right, and
+ * therefore the fixture the AC4 positive control needs. `C1` hangs off `B1` so a chain exists to light.
+ * @returns the board, in the drawing's own vocabulary.
+ */
+function twoBoxRankTasks(): DagPanelTask[] {
+  return [
+    { id: "A0", subject: "requirements freeze", kind: "requirement", visual: "completed", dependencies: [], failedDependencies: [], depth: 0 },
+    { id: "B1", subject: "geometry engine", kind: "work", visual: "running", dependencies: ["A0"], failedDependencies: [], depth: 1 },
+    { id: "B2", subject: "panel surface", kind: "work", visual: "blocked", dependencies: ["A0"], failedDependencies: [], depth: 1 },
+    { id: "C1", subject: "ptt review", kind: "review", visual: "open", dependencies: ["B1"], failedDependencies: [], depth: 2 },
+  ]
+}
+
+/**
+ * The board's workflow with owner names attached, which is what the record carries into the page.
+ * @param tasks - the board.
+ * @param owners - the owner name per task id.
+ * @returns the workflow the page reads.
+ */
+function workflowWithOwners(tasks: readonly DagPanelTask[], owners: Record<string, string>): TeamWorkflow {
+  /** The workflow under construction, whose task rows carry the owners. */
+  const workflow = workflowOf(tasks)
+  for (const task of workflow.tasks) {
+    /** This task's owner, when the arm assigned one. */
+    const owner = owners[task.id]
+    if (owner !== undefined) task.assignee = owner
+  }
+  return workflow
+}
+
+/**
+ * The drawing the PAGE lays out for a board.
+ *
+ * It reproduces the page's own call — `dagPanelLayout(tasks, contentCols, focus, windowRows)` — so an arm
+ * measures against the geometry that was RENDERED rather than against a second guess about it.
+ * @param tasks - the board handed to the page.
+ * @param rows - the panel height the kit reports.
+ * @returns the layout the page drew.
+ */
+function pageLayoutOf(tasks: readonly DagPanelTask[], rows: number): ReturnType<typeof dagPanelLayout> {
+  return dagPanelLayout(tasks, panelContentWidth(POINTER_PANEL_COLUMNS), undefined, Math.max(1, rows - PANEL_CHROME_ROWS))
+}
+
+/**
+ * Every clickable element of a rendered tree, in DRAW order.
+ *
+ * The page binds ONE handler per drawing row and none on its chrome rows, so index `n` of this list is
+ * the element the layout drew on drawing row `n` — which is how an arm can address a row by the index
+ * the geometry reported instead of by guessing from the text.
+ * @param tree - the rendered tree.
+ * @returns the click handlers, in the order the tree carries them.
+ */
+function clickHandlers(tree: unknown): Array<(event: unknown) => void> {
+  /** The handlers found so far. */
+  const found: Array<(event: unknown) => void> = []
+  /** Walks the tree depth-first, which is draw order. */
+  const walk = (node: unknown): void => {
+    if (node === null || node === undefined || typeof node !== "object") return
+    if (Array.isArray(node)) {
+      for (const child of node) walk(child)
+      return
+    }
+    /** This node as an element. */
+    const element = node as Element
+    if (typeof element.props?.onClick === "function") found.push(element.props.onClick as (event: unknown) => void)
+    walk(element.props?.children)
+    walk(element.children)
+  }
+  walk(tree)
+  return found
+}
+
+/**
+ * One click on one drawing row, at a column INSIDE the given rectangle — the pointer event the host
+ * delivers, carrying the row's own index and a position the drawing can resolve.
+ * @param page - the page component under test.
+ * @param kit - the host kit double.
+ * @param host - the host API double.
+ * @param at - the drawing row and a column inside the rectangle to click.
+ */
+function clickRowAt(page: (props: unknown) => unknown, kit: Kit, host: HostRecorder, at: { row: number; col: number }): void {
+  clickHandlers(render(page, kit, host))[at.row]({ localRow: 0, localCol: at.col + 1 })
+}
+
+describe("AC4: a click resolves through the row's own rectangle, COLUMN included", () => {
+  test("POSITIVE CONTROL: clicking the SECOND box of a two-box rank pins the SECOND task", () => {
+    /** The kit: wide enough for boxes, tall enough that the whole drawing is on screen. */
+    const kit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
+    /** The host double, focused and visible. */
+    const host = makeHost()
+    /** The board whose second rank holds two boxes. */
+    const tasks = twoBoxRankTasks()
+    /** The page, built the way every existing caller builds it: no second argument. */
+    const page = createDagPanelComponent(() => workflowOf(tasks)) as (props: unknown) => unknown
+    /** The drawing the page itself laid out, which every assertion below is measured from. */
+    const layout = pageLayoutOf(tasks, POINTER_PANEL_ROWS)
+    /** The RIGHT-hand box of the shared rank — the one a row-only predicate can never reach. */
+    const second = layout.view.hits.find((hit) => hit.taskId === "B2")
+    /** The LEFT-hand box of that same rank, which the row band does reach. */
+    const first = layout.view.hits.find((hit) => hit.taskId === "B1")
+    expect(second).toBeDefined()
+    expect(first).toBeDefined()
+    if (second === undefined || first === undefined) return
+    // THE PRE-FIX PREDICATE, written out on the SAME row — this is what makes the arm above a real
+    // control: the old row-only resolution can only ever reach the band's FIRST box, so the assertion
+    // `▶ B2` FAILS against it and passes against the column-aware one.
+    /** The task the row-band resolution reaches on the second box's own row. */
+    const bandOnly = layout.view.hits.find((hit) => second.row >= hit.row && second.row <= hit.rowEnd)
+    expect(bandOnly?.taskId).toBe("B1")
+    // THE DEFECT'S PRECONDITION, asserted rather than assumed: the two boxes share a row band and differ
+    // in COLUMN. Without this the arm could pass on a board that never exercised the defect at all.
+    expect(second.row).toBe(first.row)
+    expect(second.col).toBeGreaterThan(first.col)
+    /** The clickable elements of the first render, in draw order. */
+    const clickable = clickHandlers(render(page, kit, host))
+    // EVERY DRAWING ROW CARRIES THE HANDLER (blank space included) and no chrome row does, so the
+    // clickable elements ARE the drawing's rows — which is what makes `second.row` addressable at all.
+    expect(clickable.length).toBe(layout.view.lines.length)
+    // THE CLICK: the second box's row, at a column INSIDE the second box.
+    clickable[second.row]({ localRow: 0, localCol: second.col + 1 })
+    /** What the page draws after the click. */
+    const painted = kit.text(render(page, kit, host))
+    expect(painted).toContain(`${DAG_CHROME.pinMarker} B2`)
+    expect(painted).not.toContain(`${DAG_CHROME.pinMarker} B1`)
+  })
+
+  test("the row-band fallback still pins without a column, and a column-aware MISS CLEARS the pin", () => {
+    /** The kit. */
+    const kit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
+    /** The host double. */
+    const host = makeHost()
+    /** The board whose second rank holds two boxes. */
+    const tasks = twoBoxRankTasks()
+    /** The page. */
+    const page = createDagPanelComponent(() => workflowOf(tasks)) as (props: unknown) => unknown
+    /** The drawing the page laid out. */
+    const layout = pageLayoutOf(tasks, POINTER_PANEL_ROWS)
+    /** The leftmost box of the shared band, which is the one the row-band rule resolves to. */
+    const leftmost = layout.view.hits.find((hit) => hit.taskId === "B1")
+    expect(leftmost).toBeDefined()
+    if (leftmost === undefined) return
+    // NO USABLE COLUMN: the fallback resolves by ROW BAND, and the first rectangle of that band wins —
+    // the pre-fix behaviour, kept on purpose so a host that delivers no position still pins something
+    // rather than doing nothing at all.
+    clickHandlers(render(page, kit, host))[leftmost.row]({})
+    expect(kit.text(render(page, kit, host))).toContain("failedBy")
+    // A COLUMN-AWARE MISS ON BLANK SPACE: the pointer is over no rectangle, so the pin is CLEARED. The
+    // discriminating assertion is the DETAIL BODY, not the marker: clearing the pin leaves the keyboard
+    // cursor where it was, and the cursor draws the same `▶` the pin does.
+    clickHandlers(render(page, kit, host))[leftmost.row]({ localRow: 0, localCol: layout.view.width + 4 })
+    expect(kit.text(render(page, kit, host))).not.toContain("failedBy")
+  })
+
+  test("dagRowClick reports WHICH rule resolved a row, and resolves nothing for a row with no box", () => {
+    /** The board whose second rank holds two boxes. */
+    const tasks = twoBoxRankTasks()
+    /** The drawing the page would lay out for it. */
+    const layout = pageLayoutOf(tasks, POINTER_PANEL_ROWS)
+    /** The right-hand box of the shared rank. */
+    const second = layout.view.hits.find((hit) => hit.taskId === "B2")
+    if (second === undefined) return
+    // THE COLUMN RULE: the second box's own column resolves to it, and the same row at the leftmost
+    // box's column resolves to THAT one — the two boxes are told apart, which the row band cannot do.
+    expect(dagRowClick(layout.view, second.row, 0, { localRow: 0, localCol: second.col + 1 })).toEqual({ taskId: "B2", byColumn: true })
+    expect(dagRowClick(layout.view, second.row, 0, { localRow: 0, localCol: 1 })).toEqual({ taskId: "B1", byColumn: true })
+    // A column-aware miss resolves to no task AND says the column decided, which is what clears the pin.
+    expect(dagRowClick(layout.view, second.row, 0, { localRow: 0, localCol: layout.view.width + 4 })).toEqual({ byColumn: true })
+    // NO USABLE COORDINATES: the same row falls back to the band, and the band's first box wins.
+    expect(dagRowClick(layout.view, second.row, 0, undefined)).toEqual({ taskId: "B1", byColumn: false })
+    expect(dagRowClick(layout.view, second.row, 0, { localRow: 0, localCol: Number.NaN })).toEqual({ taskId: "B1", byColumn: false })
+    // THE PAN IS ADDED, NOT SUBTRACTED: with the drawing panned by one cell, the pointer one cell further
+    // right lands on the same task as an unpanned pointer one cell left — the sign the full-screen scene's
+    // own `hitTest(..., localCol + scrollXAt)` uses.
+    expect(dagRowClick(layout.view, second.row, 1, { localRow: 0, localCol: second.col })).toEqual({ taskId: "B2", byColumn: true })
+    // A ROW THAT BELONGS TO NO BOX resolves to nothing under BOTH rules, so a blank row clears the pin.
+    expect(dagRowClick(layout.view, second.row + 4, 0, { localRow: 0, localCol: 1 }).taskId).toBeUndefined()
+    expect(dagRowClick(layout.view, second.row + 4, 0, {}).taskId).toBeUndefined()
+  })
+})
+
+// ── AC6: the second click on the pinned task opens its owner's work page ────────────────────────
+// "单击高亮依赖树并打开详细描述，再次单击进入对应agent的工作页面" — the pin is the first click, the agent
+// page is the second, and the owner name is resolved against the HOST's own curated subagent rows.
+describe("AC6: clicking the ALREADY-PINNED task opens its owner's agent page", () => {
+  test("resolves the owner through the host's subagent rows and calls the row's opener", () => {
+    /** The kit. */
+    const kit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
+    /** The host double, reporting one live subagent whose description names the owner. */
+    const host = makeHost({ subagents: [{ agentId: "agent-7", description: "Panel Engineer (Senior Engineer) · L2 the DAG panel" }] })
+    /** The board whose second rank holds two boxes. */
+    const tasks = twoBoxRankTasks()
+    /** Every id the row's opener was asked for, so the arm can tell a click from an opening. */
+    const opened: string[] = []
+    /** The page, carrying the row's opener — the wiring `registerDagPanel` forwards. */
+    const page = createDagPanelComponent(() => workflowWithOwners(tasks, { B2: "Panel Engineer" }), {
+      openAgentPage: (agentId: string): boolean => {
+        opened.push(agentId)
+        return true
+      },
+    }) as (props: unknown) => unknown
+    /** The right-hand box of the shared rank, which is the box this arm clicks. */
+    const second = pageLayoutOf(tasks, POINTER_PANEL_ROWS).view.hits.find((hit) => hit.taskId === "B2")
+    expect(second).toBeDefined()
+    if (second === undefined) return
+    // THE FIRST CLICK PINS, and it does NOT open anything: the page the user asked for is the second one.
+    clickRowAt(page, kit, host, second)
+    expect(opened).toEqual([])
+    expect(kit.text(render(page, kit, host))).toContain("failedBy")
+    // THE SECOND CLICK ON THE SAME TASK opens that task's owner page.
+    clickRowAt(page, kit, host, second)
+    expect(opened).toEqual(["agent-7"])
+    expect(host.toasts).toEqual([])
+    // THE PIN IS KEPT: the chain stays lit behind the page the click opened.
+    expect(kit.text(render(page, kit, host))).toContain(`${DAG_CHROME.pinMarker} B2`)
+  })
+
+  test("an unmatched owner, an absent opener and a refusal each SPEAK through the host's toast", () => {
+    /** The board whose second rank holds two boxes. */
+    const tasks = twoBoxRankTasks()
+    /** The owner name the record carries for `B2`. */
+    const owner = "Panel Engineer"
+    /** The right-hand box of the shared rank, which every case below clicks twice. */
+    const second = pageLayoutOf(tasks, POINTER_PANEL_ROWS).view.hits.find((hit) => hit.taskId === "B2")
+    expect(second).toBeDefined()
+    if (second === undefined) return
+    // (a) THE HOST REPORTS SUBAGENTS, BUT NOT THIS OWNER: nothing is opened and the page says why.
+    /** The kit of the unmatched case. */
+    const unmatchedKit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
+    /** The host of the unmatched case, reporting a subagent that is not this task's owner. */
+    const unmatchedHost = makeHost({ subagents: [{ agentId: "agent-9", description: "Geometry Engineer" }] })
+    /** Every id the opener of the unmatched case was asked for. */
+    const unmatchedOpened: string[] = []
+    /** The page of the unmatched case, carrying an opener that records every id it is asked for. */
+    const unmatchedPage = createDagPanelComponent(() => workflowWithOwners(tasks, { B2: owner }), {
+      openAgentPage: (agentId: string): boolean => {
+        unmatchedOpened.push(agentId)
+        return true
+      },
+    }) as (props: unknown) => unknown
+    clickRowAt(unmatchedPage, unmatchedKit, unmatchedHost, second)
+    clickRowAt(unmatchedPage, unmatchedKit, unmatchedHost, second)
+    expect(unmatchedOpened).toEqual([])
+    expect(unmatchedHost.toasts.length).toBe(1)
+    expect(unmatchedHost.toasts[0]).toContain(owner)
+    // (b) THE ROW RESOLVES, but this page was built WITHOUT an opener (`createDagPanelComponent(reader)`
+    // — the form that must keep working): the click is still not silent.
+    /** The kit of the absent-opener case. */
+    const noOpenerKit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
+    /** The host of the absent-opener case, reporting the row this task's owner resolves to. */
+    const noOpenerHost = makeHost({ subagents: [{ agentId: "agent-7", description: owner }] })
+    /** The page of the absent-opener case: the ONE-ARGUMENT form that must keep working. */
+    const noOpenerPage = createDagPanelComponent(() => workflowWithOwners(tasks, { B2: owner })) as (props: unknown) => unknown
+    clickRowAt(noOpenerPage, noOpenerKit, noOpenerHost, second)
+    clickRowAt(noOpenerPage, noOpenerKit, noOpenerHost, second)
+    expect(noOpenerHost.toasts.length).toBe(1)
+    expect(noOpenerHost.toasts[0]).toContain("agent-7")
+    // (c) THE OPENER REFUSES (`false` is the contract's "no page was reached"): reported, not swallowed.
+    /** The kit of the refusing case. */
+    const refusedKit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
+    /** The host of the refusing case, reporting the row this task's owner resolves to. */
+    const refusedHost = makeHost({ subagents: [{ agentId: "agent-7", description: owner }] })
+    /** Every id the refusing opener was asked for. */
+    const refusedOpened: string[] = []
+    /** The page of the refusing case, carrying an opener that answers `false`. */
+    const refusedPage = createDagPanelComponent(() => workflowWithOwners(tasks, { B2: owner }), {
+      openAgentPage: (agentId: string): boolean => {
+        refusedOpened.push(agentId)
+        return false
+      },
+    }) as (props: unknown) => unknown
+    clickRowAt(refusedPage, refusedKit, refusedHost, second)
+    clickRowAt(refusedPage, refusedKit, refusedHost, second)
+    expect(refusedOpened).toEqual(["agent-7"])
+    expect(refusedHost.toasts.length).toBe(1)
+    expect(refusedHost.toasts[0]).toContain("agent-7")
+  })
+
+  test("a second click on the SAME handler — before the host re-rendered — still opens the page", () => {
+    // THE GENERATIONAL CASE THE LIVE PIN EXISTS FOR. A sidebar panel is passive: the host may deliver
+    // both clicks to the handler it already holds, so the second one arrives from a closure born BEFORE
+    // the pin existed. Deciding "already pinned" from that render's own state would re-pin the task and
+    // silently ignore the user's request — the second click would look like the first.
+    /** The kit. */
+    const kit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
+    /** The host double, reporting the subagent row this task's owner resolves to. */
+    const host = makeHost({ subagents: [{ agentId: "agent-5", description: "Panel Engineer" }] })
+    /** The board whose second rank holds two boxes. */
+    const tasks = twoBoxRankTasks()
+    /** Every id the row's opener was asked for. */
+    const opened: string[] = []
+    /** The page, carrying the row's opener. */
+    const page = createDagPanelComponent(() => workflowWithOwners(tasks, { B2: "Panel Engineer" }), {
+      openAgentPage: (agentId: string): boolean => {
+        opened.push(agentId)
+        return true
+      },
+    }) as (props: unknown) => unknown
+    /** The right-hand box of the shared rank. */
+    const second = pageLayoutOf(tasks, POINTER_PANEL_ROWS).view.hits.find((hit) => hit.taskId === "B2")
+    expect(second).toBeDefined()
+    if (second === undefined) return
+    /** ONE handler, taken from ONE render — the element the host would keep calling. */
+    const click = clickHandlers(render(page, kit, host))[second.row]
+    click({ localRow: 0, localCol: second.col + 1 })
+    click({ localRow: 0, localCol: second.col + 1 })
+    expect(opened).toEqual(["agent-5"])
+  })
+
+  test("agentIdForOwner matches the owner NAME against the host's own descriptions", () => {
+    /** A snapshot with a containment match FIRST and an exact match second, so precedence is testable. */
+    const snapshot = {
+      subagents: [
+        { agentId: "agent-1", description: "Panel Engineer (Senior Engineer) · L2" },
+        { agentId: "agent-2", description: "Senior Engineer" },
+        { description: "a row with no id at all" },
+        null,
+        "junk",
+      ],
+    }
+    // EXACT WINS OVER CONTAINMENT even when the containing row comes first: a role named by two rows
+    // resolves to the row that IS that name.
+    expect(agentIdForOwner(snapshot, "Senior Engineer")).toBe("agent-2")
+    expect(agentIdForOwner(snapshot, "Panel Engineer")).toBe("agent-1")
+    // CASE AND WHITESPACE ARE FOLDED, so a record that shouts or pads its owner still resolves.
+    expect(agentIdForOwner(snapshot, "  panel   ENGINEER ")).toBe("agent-1")
+    // NOTHING MATCHES, NOTHING IS NAMED, NOTHING IS READABLE: undefined, never a guess.
+    expect(agentIdForOwner(snapshot, "Geometry Engineer")).toBeUndefined()
+    expect(agentIdForOwner(snapshot, undefined)).toBeUndefined()
+    expect(agentIdForOwner(snapshot, "   ")).toBeUndefined()
+    expect(agentIdForOwner({}, "Panel Engineer")).toBeUndefined()
+    expect(agentIdForOwner({ subagents: "not an array" }, "Panel Engineer")).toBeUndefined()
+    expect(agentIdForOwner(undefined, "Panel Engineer")).toBeUndefined()
+    // A HOSTILE SNAPSHOT degrades to "no id" rather than throwing inside the host's reconciler.
+    /** A snapshot whose `subagents` READ throws — the shape a dead host or a proxy presents. */
+    const hostile = {
+      /** Throws on the first read, which is exactly where `agentIdForOwner` must degrade, not propagate. */
+      get subagents(): unknown {
+        throw new Error("boom")
+      },
+    }
+    expect(agentIdForOwner(hostile, "Panel Engineer")).toBeUndefined()
+  })
+})
+
 // ── R1 acceptance: a non-empty board PAINTS, and an empty workspace SAYS SO ─
 // The two outcomes the R1 blocker is about. They are asserted APART because a page that prints only the
 // empty-state sentence and a page that prints only the drawing are both "something on screen" — and the
@@ -1077,9 +1449,14 @@ describe("R1: non-empty board vs empty workspace", () => {
     const kit = makeKit({ columns: 80, rows: 200, animation: "value" })
     /** The rendered text. */
     const text = kit.text(render(page, kit, makeHost()))
-    // THE DRAWING ITSELF: the fixture's task ids and subjects, which only the drawing can produce.
+    // THE DRAWING ITSELF: the fixture's task ids under the label clause AC1 gives every node — the state
+    // marker and the id, which only the drawing can produce. The SUBJECT is no longer part of a node at
+    // all (that is AC1's whole point), so it is read in the pinned DETAIL BODY instead, and the C3 arm
+    // below is where that half of the contract is locked.
+    /** The fixture's first task, whose own marker and id the drawing must carry. */
+    const first = chainTasks()[0]
     expect(text).toContain("T1")
-    expect(text).toContain("Integration task #1")
+    expect(text).toContain(`${DAG_TONE_GLYPH[first.visual] ?? "?"} ${first.id}`)
     // …plus the page's own chrome, so a reader can tell WHICH page they are on and what they see.
     expect(text).toContain("team")
     expect(text).toContain("view ")
@@ -1309,7 +1686,12 @@ describe("the scrollbar and the self-windowed viewport", () => {
     host.listeners[0]({ input: "j", key: {}, preventDefault: (): void => {} })
     /** The board, for the ids the arms assert on. */
     const board = bigBoard(40)
-    expect(visible(render(page, kit, host))).toContain(board[0].subject)
+    // RE-POINTED FOR CLAUSE AC1: the drawing carries `<marker> <id>`, so the FOCUSED task's row is what
+    // these arms look for — the focus marker followed by that task's own id. The marker is read out of
+    // `dag-theme.ts` (`graph.ts` composes its labels from the same table), never re-typed here.
+    /** The focused task's own drawn label: the focus marker, a space, and its id. */
+    const focusedLabel = (task: DagPanelTask): string => `${DAG_CHARS.focusMarker} ${task.id}`
+    expect(visible(render(page, kit, host))).toContain(focusedLabel(board[0]))
     // ARM B — THE LAST TASK. Walking the whole board moves the window down with the focus; the last
     // task's own row must be inside the window when the focus reaches it.
     for (let press = 0; press < board.length - 1; press += 1) host.listeners[0]({ input: "j", key: {}, preventDefault: (): void => {} })
@@ -1317,9 +1699,11 @@ describe("the scrollbar and the self-windowed viewport", () => {
     const lastTree = render(page, kit, host)
     /** The window's text after the walk reached the last task. */
     const atLast = visible(lastTree)
-    expect(atLast).toContain(board[board.length - 1].subject)
+    expect(atLast).toContain(focusedLabel(board[board.length - 1]))
     // And the window genuinely MOVED: a page that never scrolled would pass the first arm and fail this.
-    expect(atLast).not.toContain(board[0].subject)
+    // The trailing space is what keeps `▶ B1` from matching `▶ B10`: a task's label is followed by its own
+    // padding or tail on every row the drawing emits.
+    expect(atLast).not.toContain(`${focusedLabel(board[0])} `)
   })
 
   test("the wheel scrolls down on a positive delta, up on a negative one, and does nothing when it fits", () => {
@@ -1596,5 +1980,125 @@ describe("the workmate page", () => {
     expect(missing.archived).toBe(0)
     // The root is still reported, so the empty page can say WHERE it looked.
     expect(missing.root).toContain(".mpd/workmate")
+  })
+})
+
+// ── AC8b: the page's own `⤢` control, and the dep that reaches it ────────────
+//
+// WHY THIS ARM IS ABOUT THE DEP AND NOT ABOUT THE GLYPH. The host cannot draw a full-screen control
+// for a plugin panel (measured: `dsh-adapter/panels.js` freezes a descriptor WITHOUT `capabilities`
+// while `SidePanelColumn.js`'s `canExpand` reads `definition.capabilities?.fullscreen === true`), so
+// this page draws its own. A `⤢` in the text proves only that something was painted; what the reader
+// actually needs is that the control REACHES the row's full-screen surface — and the seam between the
+// two is `registerDagPanel`'s forward, which is exactly where a dep can stop without any test of the
+// component noticing. So the arm walks the whole chain: registration -> captured component -> render
+// -> click -> the dep the ROW was given, counted.
+
+describe("AC8b · the page draws its own `⤢`, and the dep the row received reaches it", () => {
+  test("a click on the control reaches the `openFullscreen` dep forwarded by `registerDagPanel`", () => {
+    /** The registration the host received. */
+    const registered: Record<string, unknown>[] = []
+    /** The host's own read-back rows, appended by a registration exactly as the host composes them. */
+    const rows: Array<{ id: string; title: string; source: string }> = []
+    /** The host's panel registry double. */
+    const registry = {
+      register: (descriptor: Record<string, unknown>): (() => void) => {
+        registered.push(descriptor)
+        rows.push({ id: `act3:${String(descriptor.id)}`, title: String(descriptor.title), source: "plugin" })
+        return () => {}
+      },
+      list: (): readonly { id: string; title: string; source: string }[] => rows,
+      open: (): boolean => true,
+    }
+    /** The ctx double: services are reachable only through the injected scope, as the host has it. */
+    const build = (): Record<string, any> => {
+      /** The host's registry double this arm registers against. */
+      const ctx: Record<string, any> = {
+        get: (): undefined => undefined,
+        effect: (callback: () => () => void): Record<string, never> => {
+          callback()
+          return {}
+        },
+        logger: { info: () => {}, warn: () => {}, debug: () => {} },
+      }
+      ctx.inject = (dependencies: readonly string[], callback: (scoped: Record<string, any>) => void): Record<string, never> => {
+        /** The injected scope, whose `get` resolves the mounted service. */
+        const scoped = build()
+        scoped.get = (name: string): unknown => (name === "tuiPanels" ? registry : undefined)
+        if (dependencies.includes("tuiPanels")) callback(scoped)
+        return {}
+      }
+      return ctx
+    }
+    /** The real adapter over that host. */
+    const tui = createTuiAdapter(build() as never)
+    /** How many times the row's own full-screen opener ran. */
+    let opened = 0
+    /** The registered page, wired the way `index.ts` wires it. */
+    registerDagPanel(tui as never, {
+      enabled: true,
+      readWorkflow: () => workflowFixture(),
+      openScene: () => true,
+      openFullscreen: () => {
+        opened += 1
+        return true
+      },
+      log: { info: () => {}, warn: () => {}, debug: () => {}, error: () => {} } as never,
+    })
+    /** The component the HOST received, which is what a reader actually sees. */
+    const component = registered[0]?.component as (props: unknown) => unknown
+    expect(typeof component).toBe("function")
+    /** The kit and the host double every other render arm in this file uses. */
+    const kit = makeKit({ columns: 40 })
+    /** The host API double. */
+    const host = makeHost()
+    /** The rendered page. */
+    const tree = render(component, kit, host)
+    /** The clickable control, by the key the shared chrome gives it. */
+    const control = elementByKey(tree, "title-fullscreen")
+    expect(control).toBeDefined()
+    // THE GLYPH IS THE CONTRACT'S OWN, one cell wide, inside the control the reader clicks.
+    expect(kit.text(elementByKey(control, "title-glyph"))).toBe(PANEL_FULLSCREEN_GLYPH)
+    expect(cellWidth(PANEL_FULLSCREEN_GLYPH)).toBe(1)
+    // AND IT IS A REAL CONTROL: the host would deliver a click here, with the pair of hover handlers
+    // the host PanelBar's own `⤢` carries.
+    expect(typeof control?.props?.onClick).toBe("function")
+    expect(typeof control?.props?.onMouseEnter).toBe("function")
+    expect(typeof control?.props?.onMouseLeave).toBe("function")
+    // RENDERED, NOT USED: merely looking at the sidebar must not open a scene.
+    expect(opened).toBe(0)
+    /**
+     * The pointer event the click carries, with the host's own stopper.
+     *
+     * `stopImmediatePropagation` marks the object it was CALLED ON, so the flag the assertion below
+     * reads is the one the control itself set rather than a counter this arm installed in the path.
+     */
+    const event = {
+      stopped: false,
+      /** The host's own propagation stopper, as an event carries it. */
+      stopImmediatePropagation(): void {
+        this.stopped = true
+      },
+    }
+    ;(control?.props?.onClick as (event: unknown) => void)(event)
+    // THE OUTCOME: the dep the ROW was given is the one that ran — not merely that a `⤢` was painted.
+    expect(opened).toBe(1)
+    // …and the host's own click-to-focus fallback was not also allowed to fire.
+    expect(event.stopped).toBe(true)
+  })
+
+  test("a row given no opener still draws the row, but its glyph carries no click handler", () => {
+    /** The page built the way a caller with no full-screen surface builds it. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    /** The kit double. */
+    const kit = makeKit({ columns: 40 })
+    /** The rendered page. */
+    const tree = render(page, kit, makeHost())
+    // The ROW is still drawn — the chrome is identical on every page — and only the handler is absent.
+    expect(kit.text(tree)).toContain(PANEL_FULLSCREEN_GLYPH)
+    /** The control element itself, which is where a click would have to land. */
+    const control = elementByKey(tree, "title-fullscreen")
+    expect(control).toBeDefined()
+    expect(control?.props?.onClick).toBeUndefined()
   })
 })

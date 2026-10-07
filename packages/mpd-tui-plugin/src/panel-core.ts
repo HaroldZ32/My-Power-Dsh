@@ -284,6 +284,28 @@ export function toneColor(tone: string): string {
   return typeof key === "string" && key !== "" ? key : DAG_TONE_THEME.blank
 }
 
+/**
+ * The props one DAG span's `Text` carries: its tone's theme colour PLUS the non-colour emphasis AC5
+ * requires.
+ *
+ * WHY THE EMPHASIS EXISTS AT ALL (measured): in the host's dark theme the drawing's grey-out is
+ * `dim = inactive #8991A0` against `open = subtle #A6ADBA`, two greys that read as one, and `graphRow`
+ * passed neither `bold` nor `dimColor` — so a pinned chain and the rest of the board were separated by
+ * nothing a reader could see. The rule is one line each and it uses the HOST'S own channels (`bold`, and
+ * the `dimColor` flag that resolves to the theme's `inactive`), never a new colour: a `focus` or `chain`
+ * span is BOLD, a `dim` span carries `dimColor` ON TOP of its tone colour, and every other tone is drawn
+ * exactly as it was.
+ * @param tone - the tone a span carries, from `graph.ts`'s own vocabulary.
+ * @returns the span's colour plus the emphasis this tone adds.
+ */
+function spanEmphasis(tone: string): { color: string; bold?: boolean; dimColor?: boolean } {
+  /** The tone's own theme colour; the tones stay the drawing's, this only adds a channel to them. */
+  const color = toneColor(tone)
+  if (tone === "focus" || tone === "chain") return { color, bold: true }
+  if (tone === "dim") return { color, dimColor: true }
+  return { color }
+}
+
 /** The `key` prop every created element carries; React warns without one on a list child. */
 export interface ElementKey {
   /** The element's stable key inside its parent's child list. */
@@ -366,6 +388,8 @@ export function clampRowSpans(spans: readonly { text: string; tone: string }[], 
  * applies `clampCells(stripControl(...))` at layout time, and re-clamping a cell at a time would cut
  * the row's own multi-span geometry twice. The span-level clamp exists for the one-cell overflow a
  * wide glyph can still produce, which would otherwise make the host wrap the row.
+ * Each span carries its tone's colour AND that tone's non-colour emphasis ({@link spanEmphasis}, AC5), so
+ * a pinned chain is readable without colour at all.
  * @param kit - the proved host kit.
  * @param spans - the row's spans, in draw order.
  * @param options - the row's key, its cell budget and its optional click wiring.
@@ -378,8 +402,8 @@ export function graphRow(
 ): unknown {
   /** The row's spans, inside this panel's own cell budget. */
   const fitted = clampRowSpans(spans, options.cols)
-  /** One host `Text` per span, so each tone keeps its own colour inside the single row element. */
-  const drawn = fitted.map((span, at) => kit.React.createElement(kit.ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
+  /** One host `Text` per span: each tone keeps its own colour AND its own emphasis inside the single row. */
+  const drawn = fitted.map((span, at) => kit.React.createElement(kit.ui.Text, { key: `s${at}`, ...spanEmphasis(span.tone) }, span.text))
   /** The row element itself. */
   const row = kit.React.createElement(kit.ui.Text, { key: `t-${options.key}` }, ...drawn)
   if (options.onClick === undefined || typeof kit.ui.Box !== "function") return row
@@ -962,12 +986,86 @@ export function usePanelViewport(
 }
 
 /**
+ * One pointer event's position on ONE axis, as a rail's own handlers read it.
+ *
+ * The host recomputes `localRow`/`localCol` before each handler from the element's OWN rect (measured in
+ * the installed dsh-tui 0.13.0: `ink/events/pointer-event.js`'s `_prepareForTarget` sets
+ * `localCol = col - rect.x`, `localRow = row - rect.y`), so the number IS the cell inside the rail — no
+ * arithmetic on the absolute pointer position is needed here. A missing or non-numeric coordinate reads
+ * as the rail's FIRST cell, which is the default the rail's own click has always used.
+ * @param event - the pointer event, as the host delivered it.
+ * @param axis - the axis to read: `row` for a vertical rail, `col` for the horizontal one.
+ * @returns the position, floored to a whole cell.
+ */
+function localCell(event: unknown, axis: "row" | "col"): number {
+  /** This axis's own member, before it is trusted. */
+  const raw = event === null || event === undefined ? undefined : (event as Record<string, unknown>)[axis === "row" ? "localRow" : "localCol"]
+  return typeof raw === "number" && Number.isFinite(raw) ? Math.floor(raw) : 0
+}
+
+/**
+ * The cell band a rail's thumb travels along — the mapping BOTH rails share.
+ *
+ * `extent - thumb`, with the SAME thumb length a rail's own drawing computes (`gutterCells` /
+ * `gutterCellsX`): `floor(extent² / content)`, at least one cell and never longer than the rail.
+ * `clampScroll` defines `max = content - extent`, so the content length is reconstructed from the two
+ * numbers a rail already holds and this band can never disagree with the thumb drawn above it.
+ * The rails need the NUMBER rather than the string because a drag maps a pointer position along this
+ * band onto the offset band — which is the host's own arithmetic in `components/ScrollbarGutter.js`
+ * (`const trackH = Math.max(1, viewport - thumbH)`, then `Math.round((y / trackH) * maxScroll)`).
+ * @param extent - the rail's own length, in cells.
+ * @param max - the furthest offset `clampScroll` allows, in the offset's own units.
+ * @returns the travel, in cells; zero when the thumb fills the rail (there is nothing to scrub).
+ */
+function railTravel(extent: number, max: number): number {
+  /** The rail's usable length; below one cell there is no rail to scrub. */
+  const cells = Math.max(1, Math.floor(Number.isFinite(extent) ? extent : 1))
+  /** The furthest offset, floored and never negative. */
+  const span = Math.max(0, Math.floor(Number.isFinite(max) ? max : 0))
+  /** The content length the thumb's size is a fraction of: `max = content - extent`, so `content = extent + max`. */
+  const content = cells + span
+  /** The thumb's length: the fraction of the content the rail shows, at least one cell. */
+  const thumb = Math.min(cells, Math.max(1, Math.floor((cells * cells) / content)))
+  return cells - thumb
+}
+
+/**
+ * The ABSOLUTE offset a pointer's position on a rail asks for — one mapping for both rails, every phase.
+ *
+ * The position is read against the track band ALONE, never against the thumb's current placement, so no
+ * grabbed-thumb offset can enter the gesture: this is the host's own rule for its reference rail
+ * ("drag to point, no grabbed thumb offset" — `components/ScrollbarGutter.js`). The ends are pinned the
+ * way the host pins them: the band's first cell is the offset's start, and any cell at or past the band's
+ * end is the maximum.
+ * @param position - the pointer's position along the rail, in cells.
+ * @param travel - this rail's {@link railTravel}.
+ * @param max - the furthest offset `clampScroll` allows.
+ * @returns the offset to commit; always inside `[0, max]`.
+ */
+function railOffset(position: number, travel: number, max: number): number {
+  /** The furthest offset, floored and never negative. */
+  const span = Math.max(0, Math.floor(Number.isFinite(max) ? max : 0))
+  if (span === 0) return 0
+  /** The pointer's own cell, floored; a non-numeric position reads as the band's start. */
+  const cell = Math.floor(Number.isFinite(position) ? position : 0)
+  if (cell <= 0) return 0
+  if (cell >= travel) return span
+  return Math.round((cell / travel) * span)
+}
+
+/**
  * The gutter RAIL: the reserved column, drawn as a full-height box when the content overflows.
  *
  * It is a separate element from the rows so the column is reserved ONCE for the whole page rather than
  * per row (the host's own reason for a permanent gutter: a column that changed width would rewrap every
  * row). Clicking the rail scrolls to the clicked position, the classic track semantics — the host's own
  * `Box` keeps `onClick`, which is what makes that available to a plugin panel at all.
+ *
+ * THE RAIL DRAGS TOO (AC7): the same Box carries `onDragStart`/`onDragMove`/`onDragEnd`, each receiving
+ * `{localRow}` recomputed from this Box's own rect by the host's drag protocol, and every phase maps
+ * through the SAME arithmetic the click uses — a page that passed `onTrackClick` owns both, and a rail
+ * without one maps the row itself through its own band ({@link railOffset}). A host whose `Box` ignores
+ * the drag props renders exactly the rail it rendered before: the props are additive.
  * @param kit - the proved host kit.
  * @param viewport - this render's viewport.
  * @param onTrackClick - receives the clicked row offset inside the gutter, when the page wants track jumps.
@@ -985,7 +1083,28 @@ export function viewportGutter(kit: PanelKit, viewport: PanelViewport, onTrackCl
       cell,
     ),
   )
-  if (onTrackClick === undefined) return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1 }, ...rows)
+  /** The track band this rail's pointer positions scrub along. */
+  const travel = railTravel(viewport.viewportRows, viewport.max)
+  /**
+   * One drag phase applied as an absolute offset.
+   *
+   * With a page callback the drag and the click stay ONE gesture — the page's own mapping decides both,
+   * which is what stops the two from disagreeing about where a cell lands. Without one (the shape
+   * {@link panelViewportBody} uses) the rail commits the mapped offset itself.
+   * @param event - the host's drag event.
+   */
+  const scrubTo = (event: unknown): void => {
+    /** The row the pointer is on inside this rail. */
+    const row = localCell(event, "row")
+    if (onTrackClick !== undefined) {
+      onTrackClick(row)
+      return
+    }
+    viewport.scrollTo(railOffset(row, travel, viewport.max))
+  }
+  /** The three drag phases the host's protocol delivers, all on the same absolute mapping. */
+  const dragging = { onDragStart: scrubTo, onDragMove: scrubTo, onDragEnd: scrubTo }
+  if (onTrackClick === undefined) return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1, ...dragging }, ...rows)
   return kit.React.createElement(
     kit.ui.Box,
     {
@@ -997,9 +1116,54 @@ export function viewportGutter(kit: PanelKit, viewport: PanelViewport, onTrackCl
         const row = typeof (event as { localRow?: unknown } | undefined)?.localRow === "number" ? Math.floor((event as { localRow: number }).localRow) : 0
         onTrackClick(row)
       },
+      ...dragging,
     },
     ...rows,
   )
+}
+
+/**
+ * The HORIZONTAL rail: the reserved row under a drawing wider than its window, made DRAGGABLE (AC7).
+ *
+ * The row form of {@link viewportGutter}, and the second rail the user asked to be scrubbable. Its CELLS
+ * come from `gutterCellsX` — the ONE horizontal-gutter function (clause T4), so the thumb here and the
+ * window drawn above it can never disagree — while its drag handlers come from the host's own protocol:
+ * `onDragStart`/`onDragMove`/`onDragEnd` each receive `{localCol}` recomputed from THIS element's own
+ * rect, and every phase commits an ABSOLUTE column offset ({@link railOffset}) — the same band arithmetic
+ * the click uses, never a delta from where the thumb was grabbed.
+ *
+ * `cols` MUST be the window width the page reported as its horizontal viewport: `viewport.colMax` was
+ * clamped against it, so the rail's own length and the band it maps through are one number. A drawing
+ * that fits returns `undefined` and reserves NO row.
+ * @param kit - the proved host kit.
+ * @param viewport - this render's viewport; its COLUMN members are what the rail scrubs.
+ * @param cols - the rail's own width in cells.
+ * @returns the one-row rail element, or undefined when the drawing fits.
+ */
+export function viewportRail(kit: PanelKit, viewport: PanelViewport, cols: number): unknown | undefined {
+  if (!viewport.colOverflow) return undefined
+  /** The rail's own length, floored at one cell. */
+  const extent = Math.max(1, Math.floor(Number.isFinite(cols) ? cols : 1))
+  /** The drawing's width: `clampScroll` defines the column band's max as `contentCols - viewportCols`. */
+  const contentCols = extent + viewport.colMax
+  /** The rail's cells, from the ONE horizontal-gutter function (clause T4). */
+  const cells = gutterCellsX(viewport.colOffset, contentCols, extent)
+  if (cells === "") return undefined
+  /** The track band this rail's pointer positions scrub along. */
+  const travel = railTravel(extent, viewport.colMax)
+  /**
+   * One drag phase committed as an absolute column offset.
+   * @param event - the host's drag event.
+   */
+  const scrubTo = (event: unknown): void => {
+    viewport.scrollToCol(railOffset(localCell(event, "col"), travel, viewport.colMax))
+  }
+  // THE ROW IS DRAWN BY THE SAME BUILDER THE PAGES USED BEFORE (`textRow` + `gutterCellsX`), so the
+  // gesture changes and the pixels do not; only the wrapping Box — the drag target the host captures —
+  // is new. ONE ROW: the Text is the row, the Box is what carries the handlers.
+  /** The rail's cells as the one row a reader sees. */
+  const row = textRow(kit, cells, { key: "hrail", tone: "edge", maxCells: extent })
+  return kit.React.createElement(kit.ui.Box, { key: "hrail-track", flexDirection: "row", onDragStart: scrubTo, onDragMove: scrubTo, onDragEnd: scrubTo }, row)
 }
 
 /**

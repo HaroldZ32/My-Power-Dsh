@@ -726,12 +726,31 @@ describe("surface T1 — the team workflow", () => {
     // The roster, one line, so the graph gets the room; a member carries its own progress.
     expect(text).toContain("roster")
     expect(text).toContain("Architect 1/2")
-    // THE GRAPH replaced the indented task list: every task is a BOX carrying its state glyph, its
-    // id, its kind abbreviation and its subject, and the dependency edge is DRAWN rather than
-    // described in a `deps=` suffix.
+    // THE GRAPH replaced the indented task list: every task is a BOX carrying its state glyph and its
+    // id, and the dependency edge is DRAWN rather than described in a `deps=` suffix.
+    //
+    // AMENDED (wave `tui-dag-highlight`, AC1) — the VALUE UNDER TEST moved, the arm's claim did not.
+    // The box's label is now exactly `<marker> <id>`: the kind abbreviation and the SUBJECT are gone
+    // from the drawing, because a box is a fixed-width cell budget and a free-text subject squeezed
+    // through it is what used to render a CJK subject as `#5`. The subject is not lost — AC1 keeps it
+    // in the DETAIL PANE — so the arm asserts BOTH halves below rather than trading one for the other.
     expect(text).toContain("task dependency graph")
-    expect(text).toContain("✓ t1 freeze the contract")
-    expect(text).toContain("○ t2 build it")
+    expect(text).toContain("✓ t1")
+    expect(text).toContain("○ t2")
+    // …AND `freeze the contract` IS EXACTLY WHAT THE DRAWING NO LONGER CARRIES. Asserting its absence
+    // here is what makes the two lines below a claim about the fix rather than about a coincidence.
+    expect(text).not.toContain("freeze the contract")
+    // The subject travels with the FOCUS instead: `j` walks the drawing order and pins the first task,
+    // so the drawing swaps its state glyph for the focus marker (AC1's second marker) and the pane
+    // states the whole contract — id, kind and subject — for the task in focus.
+    /** The scene after the focus walked to the first task in drawing order. */
+    const focused = pressAndRender(kit, components[TEAM_SCENE_ID], "j")
+    // `j` landed on t1, and the drawing says so: the marker is the FOCUS marker, not the state glyph.
+    expect(focused).toContain("▶ t1")
+    // The pane's own line. The `?` is the projection's HONEST BLANK for the kind — the official team
+    // plane carries no such field (the projection arm above pins that), so the pane prints what the
+    // record holds rather than inventing a kind to sit between the id and the subject.
+    expect(focused).toContain("t1 · ? · freeze the contract")
     // The edge between the root and its dependent is real box drawing, and the junction where it
     // leaves the parent's bottom border is what a flat list could not express.
     expect(text).toContain("┬")

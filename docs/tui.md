@@ -205,7 +205,7 @@ limit, not a configuration mistake.
 `src/panel.ts` (slug `team`, title `MPD`, `order` 10) with the **merged** body (the host's own curated
 subagent snapshot rows first, then the MPD dependency DAG for the current workspace's team),
 `src/panel-dag.ts` (slug `dag`, title `MPD DAG`, one-cell icon `◈`, `order` 11) and
-`src/panel-workmate.ts` (slug `workmate`, title `MPD workmate`, icon `◆`, `order` 12), with the last two
+`src/panel-workmate.ts` (slug `workmate`, title `MPD workmate`, icon `⬢`, `order` 12), with the last two
 described in §3.4. All three are `apiVersion` 1, all three declare **no `compact`** — 0.13.0 validates
 and stores a descriptor's `compact` slot but does not mount its render slot, so declaring one would claim
 a surface that cannot render — and all three ask for **`minColumns` 28**, the host's own floor. The final
@@ -304,6 +304,35 @@ legend, a footer naming the keys it handles, a status badge and a pinned detail 
   (`id`, `kind`, `visual`, `verdict`, `failedBy`, `owner`, `attempt`, `round`, `blockedBy`,
   `dependents`), and `↑↓/jk`, `Enter`, `Esc` move, pin and unpin. **Hover is deliberately absent** — a
   terminal has no pointer-move and the user dropped it.
+- **A node reads `<marker> <id>` and nothing else** (`✓ T3`, and `▶ T3` for the task in focus). The
+  subject is NOT in the drawing; it is verbatim in the pinned detail body, where a Chinese sentence
+  reads as a Chinese sentence instead of being squeezed into printable ASCII. Removing it is also what
+  lets a rank of three nodes fit a 40-cell sidebar.
+- **The box is the compact three-row form** (top border, content, bottom border) with the ROUNDED
+  corners. One form per drawing, so two boxes in one rank can never have different heights.
+- **A click resolves through the drawing's own hit rectangle, COLUMN included.** Both boxes of a rank
+  share one row band, so a row-only lookup pins the leftmost box of that rank — measured, and the
+  reason a user clicking a task watched the highlight land on its neighbour. The pointer's own column
+  (plus the current pan offset) selects the box; a click that lands on no box clears the pin.
+- **The highlight is visible without colour.** With a pin held, the pinned task and every task on its
+  upstream dependency chain render BOLD, and everything else renders in the muted tone AND with the
+  host's `dimColor` flag — because the dark theme's `inactive` and `subtle` are close enough that a
+  colour-only grey-out is invisible.
+- **Clicking the pinned task a second time opens that member's work page**: MPD's full-screen
+  subagents scene, positioned on the detail view of the task's owner. The owner (`assignee`) is matched
+  against the host's curated subagent rows; when nothing matches, MPD says so through the host's toast
+  and the scene opens on its list — never a silent no-op.
+- **Both scrollbars drag.** The vertical gutter and the horizontal rail scrub under a mouse drag
+  through the SAME absolute track arithmetic a click uses (no grabbed-thumb offset). Click, wheel and
+  keyboard gestures keep working; a host that ignores the drag props simply does not drag.
+- **Each MPD page draws its own chrome: a distinct one-cell icon and a clickable `⤢`.** The three icons
+  are `❖` (the merged page, which used to declare NO icon and fall back to the letter `M`), `◈` (the DAG
+  page) and `⬢` (the workmate page, which used to wear `◆` — byte-identical to the host's own `agents`
+  tab, so it was not a distinct symbol at all). Each icon measures exactly one cell under both this
+  bundle's `cellWidth` and the host's `stringWidth`, because the host REFUSES a registration whose icon
+  is not one cell. The `⤢` opens that page's existing full-screen scene, and it is MPD's own control
+  because the host cannot draw one for a plugin panel — §11.5 records the measured reason, and the
+  real-terminal capture in `evidence/tui/dag-highlight/` shows the glyph on the page's title row.
 - **OPT-1 (user decision, 2026-09-13): a FAILED dependency does NOT block its dependents.** They stay
   `open` and dispatchable, and the failure is reported BESIDE the state (`failedBy`), never folded into
   `blocked`.
@@ -316,11 +345,7 @@ legend, a footer naming the keys it handles, a status badge and a pinned detail 
 **Bounds, stated as limits.** Not ported from the WEB view: hover, its pixel geometry (fixed `168px`
 columns, `42px` nodes), CSS ellipsis, `overflow:auto`, native tooltips, DOM reads and `fetch` polling —
 none has a terminal equivalent, so none is faked. The WEB DAG remains the semantic reference and was not
-modified beyond the rank-derivation and edge-routing repairs its own legibility required. And one KNOWN
-OPEN DEFECT: the DAG page's scrollbar is functional but not flawless — an unbounded `PgDn` run can drive
-the window to zero rows because the scroll offset accumulates across renders (diagnosed, bounded by
-`clampScroll`, and recorded; the two failing `bun test ./packages` arms at the freeze are exactly those
-offset-accumulation arms).
+modified beyond the rank-derivation and edge-routing repairs its own legibility required.
 
 ## 4. Admission and distribution artifacts
 
@@ -854,3 +879,37 @@ DEFECT — an unbounded `PgDn` run can drive the window to zero rows because the
 across renders — so it is recorded, never advertised as flawless. (e) Browser-only behaviour (hover,
 pixel geometry, CSS ellipsis, `overflow:auto`, native tooltips, DOM reads and `fetch` polling) is not
 ported and not claimed.
+
+### 11.5 Amendment after the DAG-highlight wave (2026-10-07)
+
+The rows above stay as written for the revision and the host they measured. This wave fixes the DAG
+page's click, shrinks its nodes and gives the three sidebar pages their own chrome, so the following
+**supersedes** them — supersedes, not merely appends to, because two contradictory statements on one
+page is worse than either alone:
+
+| Superseded statement | Was | Is (measured 2026-10-07) |
+|---|---|---|
+| §3.4 — "Clicking a task pins a detail body with ten facts" | clicking a node pinned that node | **The click was COLUMN-BLIND.** `panel-dag.ts` resolved a pointer with `hits.find(c => index >= c.row && index <= c.rowEnd)` — rows only — while `GraphHit` already carried `col`/`colEnd` and `graph.ts` already exported `hitTest(view, row, col)`. Every box of a rank shares ONE row band, so a click always pinned the **leftmost** box of that rank; the Termaid-width change made a rank hold two or three boxes, and the leftmost is often panned out of view, so the `▶` and the blue chain landed on a task the user never pointed at. Measured headlessly before the fix: clicking the row that DRAWS `T3` rendered `[accentShimmer] │ ▶ T2 …` with `T3` left `[inactive]`. The click now resolves through the drawing's own hit rectangle with the pointer's column plus the pan offset; a click on no box CLEARS the pin |
+| §3.4 — the node label | `<marker> <id> <KIND> <graph-safe subject>` | **`<marker> <id>`** — `✓ T3`, `▶ T3`. The subject is no longer in the drawing at all, which is what removes the 乱码 class the user reported (a Chinese subject squeezed through `graphSafeLabel` read as `#5`) and what lets a rank of three nodes fit a 40-cell sidebar. The subject and the description remain VERBATIM in the pinned detail body |
+| §3.4 — the box form | a five-row box with two padding rows | **the compact THREE-row box** (top border, content, bottom border), rounded corners kept, one form per drawing |
+| §3.4 — what a pin looks like | a tone change only (colour) | the pinned task and its upstream dependency chain render **BOLD**, and everything else carries the muted tone **AND** the host's `dimColor` flag — because `inactive` (`#8991A0`) against `subtle` (`#A6ADBA`) is nearly invisible in the dark theme. **MEASURED BOUND, stated rather than implied**: on the installed 0.13.0 the host resolves `dimColor` to `theme.inactive` — the same key `DAG_TONE_THEME.dim` already names — so the flag is a SEMANTIC channel and changes no pixel here; the visible non-colour separator is the BOLD on the focus and the chain. The grey-out itself is the real `subtle`→`inactive` step |
+| §3.4 — the DAG page's scrollbars | one vertical gutter, click-to-jump; one horizontal rail, wheel/keyboard only | **both rails scrub under a mouse DRAG**, through the SAME absolute track arithmetic a click uses (`onDragStart`/`onDragMove`/`onDragEnd` with the host's own `localRow`/`localCol`), exactly as the host's `components/ScrollbarGutter.js` does. Click, wheel and keyboard keep working |
+| §3.3 / §11.4 icon cell — `workmate` | icon `◆` U+25C6 | **`◆` is one of the host's OWN tab icons** (`agents`), so it was not a distinct symbol at all. The measured set is `MPD` = `❖` U+2756, `MPD DAG` = `◈` U+25C8, `MPD workmate` = `⬢` U+2B22, each one cell under both the plugin's `sanitize.cellWidth` and the host's `stringWidth` (the host REJECTS a registration whose icon is not exactly one cell) |
+| §3.3 / §11.4 — the merged page's tab | title `MPD`, **no icon**, so the host drew the fallback letter `M` | the merged page declares `❖` and no longer falls back to a letter |
+| §3.3 / §10 — a fullscreen control on the MPD pages | none | each MPD page draws **its own clickable `⤢`**, which opens that page's existing full-screen scene. It is MPD's own control and not the host's **because the host cannot draw one for a plugin panel**: dsh-tui 0.13.0's descriptor validator freezes a plugin definition with exactly `{id, title, icon, order, minColumns, source, pluginId, mountPolicy, component, compact}` — **no `capabilities`** — while `components/sidePanel/SidePanelColumn.js`'s `canExpand` reads `definition.capabilities?.fullscreen === true`, so the host's own `⤢` can never appear for MPD, and `Chat.js`'s `openPanelFullscreen` maps built-in panel ids only. Declaring `capabilities` would draw a button that does nothing, which this bundle does not ship |
+| §3.4 — the closing bounds sentence, and §11.4 bound (d) | "the two failing `bun test ./packages` arms at the freeze are exactly those offset-accumulation arms"; the DAG scrollbar's unbounded-`PgDn` defect recorded as KNOWN OPEN | **stale and REMOVED.** The offset is held in a ref that is the single live authority and every read is clamped against the CURRENT render's sizes, so the accumulating-offset defect is fixed and the suite is green (measured this wave: `bun test packages` exit 0, 382 passing in the TUI package alone). The scrollbar's remaining bound is the one §3.4 still states honestly: MPD cannot observe a render |
+| §3.4 — the DAG page's ten-fact detail body | pin/unpin only | plus: clicking an ALREADY-PINNED task opens that member's **work page** — MPD's full-screen `mpd-tui-subagents` scene positioned on the detail view of the task's owner, matched through the host's curated subagent rows. When the owner matches no row, the host toast says so and the scene opens on its list |
+
+**Evidence of this wave** (all under `evidence/tui/dag-highlight/`): `20261007T120342Z/` — the PRE-fix
+diagnosis, with the runnable `probe-click.ts`/`render.ts` instruments and the log that shows clicking
+the row drawing `T3` pinning `T2`; the wave's post-fix run, the acceptance-instrument log, the real-PTY
+capture and the gate logs land in a second stamped directory under the same slug.
+
+**Bounds (the bounds are part of the claim).** (a) The pointer-coordinate **DELIVERY** path — whether
+the terminal and the host actually hand `onClick`/`onDragStart` usable `localRow`/`localCol` to a row
+`Box` inside a plugin sidebar panel — is **declared, not proven**: the headless arms prove the
+RESOLUTION and a real-PTY capture proves the RENDER, and this page claims exactly that much. (b) A
+host that ignores the drag props simply does not drag; no gesture is lost, because click, wheel and
+keyboard stay bound. (c) The DAG drawing is unchanged in every other respect: the rank derivation, the
+unresolved-blocker and cycle reporting, the arrowheads, the legend and the six-state palette are the
+§11.4 ones. (d) The WEB dependency view was NOT touched by this wave.

@@ -27,7 +27,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd panel`, `/mpd dag`, `/mpd workmate`, `/mpd workmates` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
 | Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks slot → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
-| Sidebar pages (dsh-tui 0.13.0) | `ctx.tuiPanels` (through the adapter) | THREE pages — `team` (`MPD`, `order` 10, the merged view), `dag` (`MPD DAG`, `◈`, `order` 11) and `workmate` (`MPD workmate`, `◆`, `order` 12); all `minColumns` 28 and no `compact`. `alt+a` / `/mpd panel` route to the merged view through `tuiPanels.open()` when the seam is bound; `/mpd dag` and `/mpd workmate` route to their own pages. EVERY refusal FALLS BACK to that page's full-screen scene (`mpd-tui-subagents` for `team`/`dag`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
+| Sidebar pages (dsh-tui 0.13.0) | `ctx.tuiPanels` (through the adapter) | THREE pages — `team` (`MPD`, `order` 10, the merged view), `dag` (`MPD DAG`, `◈`, `order` 11) and `workmate` (`MPD workmate`, `⬢`, `order` 12) — the merged page declares `❖`, so none of the three falls back to a letter and none collides with a host tab icon; all `minColumns` 28 and no `compact`. `alt+a` / `/mpd panel` route to the merged view through `tuiPanels.open()` when the seam is bound; `/mpd dag` and `/mpd workmate` route to their own pages. EVERY refusal FALLS BACK to that page's full-screen scene (`mpd-tui-subagents` for `team`/`dag`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
 | Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: this is the FALLBACK surface — `alt+a` and `/mpd panel` land here when the host has no panel seam or refuses the open — and on a pre-0.13.0 host **`Ctrl+A`** reaches it whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
 | `Ctrl+A` take-over | a `ctx.tuiStatus` view + the adapter's host-input contact | `Ctrl+A` opens the merged panel instead of the host's own dashboard while the team projection holds a team with at least one task; with no team — or on a host whose input bus the adapter cannot reach — the key behaves exactly as before (`tui.dashboardKey`, default `true`; see NOT CLAIMED 7-9) |
 | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
@@ -45,9 +45,17 @@ descriptor (`*_DESCRIPTOR_FROZEN` at module scope) and each inside the host's ow
 
 | Module | slug (the host prefixes it with the activation's plugin id) | title | icon | `order` | `minColumns` |
 |---|---|---|---|---|---|
-| `src/panel.ts` | `team` | `MPD` | — | 10 | 28 |
+| `src/panel.ts` | `team` | `MPD` | `❖` | 10 | 28 |
 | `src/panel-dag.ts` | `dag` | `MPD DAG` | `◈` | 11 | 28 |
-| `src/panel-workmate.ts` | `workmate` | `MPD workmate` | `◆` | 12 | 28 |
+| `src/panel-workmate.ts` | `workmate` | `MPD workmate` | `⬢` | 12 | 28 |
+
+**Every icon must be DISTINCT from the host's own seven tab icons** — `≡` (its `todo` panel), `▸` (jobs),
+`◆` (agents), `ⓘ` (info), `∿` (trajectory), `⌗` (workspace), `♥` (companion) — and exactly one cell under
+BOTH this package's `sanitize.cellWidth` and the host's `stringWidth`, because the host REJECTS a
+registration whose icon is not exactly one cell. The merged page used to declare no icon and the host
+therefore drew the fallback letter `M`; the workmate page used to declare `◆`, which is byte-identical
+to the host's own `agents` tab and so was not a distinct symbol at all. Both are fixed here, and the
+whole set is asserted by the package suite.
 
 Every page is `apiVersion` 1 (the only value 0.13.0 accepts) and declares **no `compact`**: 0.13.0
 validates and stores that row slot but does not mount its render slot, so declaring one would claim a
@@ -170,9 +178,13 @@ the config), `alt+a` and `/mpd panel` keep the pre-panel full-screen path, and t
 decided by the seam alone.
 
 **BOUNDS, stated plainly.** (1) The visibility claim is a claim about the TWO SWITCHES, and it is
-measured: with `sidePanel.panels` carrying the page ids and the sidebar open, the 120-column frozen
-capture's panel bars read `≡ ▸ ◆ ‹ MPD › ◈ ◆`, `≡ ▸ ◆ M ‹ MPD DAG › ◆` and `≡ ▸ ◆ M ◈ ‹ MPD workmate ›`
-with `mpdTab=true`; without them the bar is the host's own three tabs (`‹ 待办 › ▸ ◆`). At 80 and 48
+measured: with `sidePanel.panels` carrying the page ids and the sidebar open, the DAG-highlight wave's
+real-PTY capture reads the bar as `≡ ▸ ◆ ❖ ‹ MPD DAG › ⬢` — the merged page wearing `❖` (it used to
+declare NO icon and fall back to the letter `M`) and the workmate page wearing `⬢` (it used to wear `◆`,
+which is byte-identical to the host's own `agents` tab). The PRIOR wave's capture of the same switches
+read `≡ ▸ ◆ ‹ MPD › ◈ ◆`, `≡ ▸ ◆ M ‹ MPD DAG › ◆` and `≡ ▸ ◆ M ◈ ‹ MPD workmate ›`; it is kept as
+provenance and it is NOT what this build draws. Without the switches the bar is the host's own three tabs
+(`‹ 待办 › ▸ ◆`). At 80 and 48
 columns the same capture reports `split=false` — the host draws no panel column at all, so no page can
 be visible there whatever the list says. (2) MPD cannot observe a RENDER: the host's `TuiPanelEvent` set
 carries no `opened`/`focused` (an explicit host TODO), so what the plugin knows is a composed id and an
@@ -228,17 +240,59 @@ a footer naming the keys this page really handles.
   state key rather than abbreviating it — a legend entry that does not fit is DROPPED, never cut. The
   arrow and focus sentences come from `graph.ts`'s own `legendLines`, so the legend names exactly the
   characters the drawing paints.
+- **A node draws `<marker> <id>` and nothing else (AC1).** `✓ T3`, and `▶ T3` for the task in focus. The
+  kind abbreviation and the graph-safe subject are GONE from the drawing: a Chinese subject squeezed
+  through `graphSafeLabel` read as `#5`, which a user read as 乱码, and the subject was what made one box
+  wider than the 40-cell sidebar its rank lives in. The subject and the description are NOT lost — they
+  are verbatim in the pinned detail body, which is text rather than a drawing. `graphSafeLabel` stays
+  exported and unchanged: the WEB parity arm and `dag-label-parity.test.ts` consume it.
+- **The box is the compact THREE-row form (AC2).** Top border, content, bottom border — no padding rows —
+  with the rounded corners kept, and ONE form per drawing so two boxes in one rank can never have
+  different heights. The node width is derived from the label the box must carry
+  (`labelCells + 3` chrome, floored at 10 for the natural path) rather than from a fixed constant, so a
+  rank of three nodes draws in ~36 cells and fits a 40-column sidebar with no horizontal pan (AC3).
 - **Click-to-pin and keyboard (R11); hover deliberately absent.** A click resolves through the drawing's
-  own hit rectangle and pins that task; the pinned body sits under the drawing and prints ten facts in a
-  fixed order, `—` for any the record does not carry: `id`, `kind`, `visual`, `verdict`, `failedBy`,
-  `owner`, `attempt`, `round`, `blockedBy`, `dependents`. Keys: `↑↓/jk` move the focus, `Enter` pins,
-  `Esc` unpins. There is NO hover surface, because a terminal has no pointer-move and the user dropped
-  that requirement explicitly.
-- **Scrolling, and one KNOWN OPEN DEFECT.** The body is self-windowed with a PERMANENT proportional
+  own hit rectangle — **COLUMN included** (AC4). Rows alone are not enough: every box of a rank shares
+  one row band, so a row-only lookup pins the LEFTMOST box of that rank — measured, and the reason a
+  user clicking a task watched both the `▶` and the highlighted chain land on its neighbour (and, once
+  the leftmost box was panned out of view, saw nothing at all). The pointer's own column plus the
+  current pan offset selects the box; a click that lands on no box CLEARS the pin. The pinned body sits
+  under the drawing and prints ten facts in a fixed order, `—` for any the record does not carry: `id`,
+  `kind`, `visual`, `verdict`, `failedBy`, `owner`, `attempt`, `round`, `blockedBy`, `dependents`.
+  Keys: `↑↓/jk` move the focus, `Enter` pins, `Esc` unpins. There is NO hover surface, because a
+  terminal has no pointer-move and the user dropped that requirement explicitly.
+- **What a pin LOOKS like (AC5).** The pinned task and every task on its upstream dependency chain render
+  **BOLD**; everything else carries the muted tone **AND** the host's `dimColor` flag. Colour alone was
+  not enough: the dark theme's `inactive` (`#8991A0`) against `subtle` (`#A6ADBA`) is close to invisible,
+  and the only non-colour signal used to be the single `▶` glyph. **A measured bound, stated rather than
+  implied:** the installed 0.13.0 host resolves `dimColor` to `theme.inactive` — the same theme key
+  `DAG_TONE_THEME.dim` already names — so on this host the flag is a SEMANTIC channel that changes no
+  pixel, and the visible non-colour separator is the BOLD on the focus and the chain. The grey-out the
+  user asked for is the real `subtle` → `inactive` step.
+- **A second click opens that member's work page (AC6).** Clicking the ALREADY-pinned task opens MPD's
+  full-screen `mpd-tui-subagents` scene positioned on the detail view of the task's owner. The owner
+  (`assignee`) is matched against the host's curated subagent rows through `agentIdForOwner`; when
+  nothing matches, the page says so through the host's `toast` and the scene opens on its LIST — never a
+  silent no-op. The scene takes its target from a module-level one-shot request in `subagent-scene.ts`
+  (`requestSubagentDetail` / `takeSubagentDetailRequest`): destructive, freshness-bounded, and cleared
+  when an open is refused, so a stale id cannot ambush a later open.
+- **Scrolling, and both rails DRAG (AC7).** The body is self-windowed with a PERMANENT proportional
   gutter while content overflows, plus wheel and `PgUp`/`PgDn`/`Home`/`End`. Permanence is the host's
   own rule: an auto-hiding gutter changes the content width and rewraps every row the moment it appears.
-  The defect: an unbounded `PgDn` run can drive the window to zero rows, because the offset accumulates
-  across renders. It is diagnosed, bounded and recorded — the scrollbar is functional, NOT flawless.
+  The VERTICAL gutter and the HORIZONTAL rail (drawn only while the drawing is wider than the panel)
+  each scrub under a mouse drag through the host's own drag protocol — `onDragStart`/`onDragMove`/
+  `onDragEnd` with the `localRow`/`localCol` the host recomputes from the element's own rect — mapped
+  through the SAME absolute track arithmetic the click uses, exactly as the host's own
+  `components/ScrollbarGutter.js` does. No grabbed-thumb offset: a drag is a continuous run of
+  click-to-position jumps. A host that ignores the drag props simply does not drag; nothing is lost,
+  because click, wheel and keyboard stay bound.
+- **Each page draws its own fullscreen control (AC8).** Every MPD page renders a clickable `⤢` that opens
+  that page's existing full-screen scene. It is MPD's own control and not the host's **because the host
+  cannot draw one for a plugin panel**: dsh-tui 0.13.0's descriptor validator freezes a plugin definition
+  carrying `{id, title, icon, order, minColumns, source, pluginId, mountPolicy, component, compact}` —
+  **no `capabilities`** — while `components/sidePanel/SidePanelColumn.js`'s `canExpand` reads
+  `definition.capabilities?.fullscreen === true`. Declaring `capabilities` would therefore draw a button
+  that does nothing, which this bundle does not ship.
 - **Badge, empty state, cycle.** A failed task badges `error`, a task waiting on an unfinished blocker
   `warning`, a running board `info`, and a board with nothing to report clears the badge (a stale badge
   is worse than none). With no team the page names the call that fills it:
@@ -557,9 +611,12 @@ only when no logger exists to `stderr`, with `debug` gated behind
     restart. A host whose language is pinned by `cordis.yml`'s `lang` is a KNOWN gap: that key is read
     by the host's own `plugin.apply` and is invisible to a plugin.
 16. **A sidebar page appears only with the HOST's two switches, and MPD can never observe a render.**
-    Measured on the frozen revision: with `sidePanel.panels` carrying the page ids and the sidebar open,
-    the 120-column PTY capture's bars read `≡ ▸ ◆ ‹ MPD › ◈ ◆`, `≡ ▸ ◆ M ‹ MPD DAG › ◆` and
-    `≡ ▸ ◆ M ◈ ‹ MPD workmate ›` (`mpdTab=true`); without them the bar carries only the host's own three
+    Measured on the DAG-highlight wave's real-PTY capture: with `sidePanel.panels` carrying the page ids
+    and the sidebar open, the bar reads `≡ ▸ ◆ ❖ ‹ MPD DAG › ⬢`. The PRIOR wave's capture read
+    `≡ ▸ ◆ ‹ MPD › ◈ ◆`, `≡ ▸ ◆ M ‹ MPD DAG › ◆` and `≡ ▸ ◆ M ◈ ‹ MPD workmate ›` (`mpdTab=true`); it is
+    kept as provenance and is NOT what this build draws, because the workmate icon changed (`◆` was the
+    host's own `agents` tab) and the merged page gained `❖`. Without them the bar carries only the host's
+    own three
     tabs, and at 80/48 columns the host reports `split=false`, so there is no panel column at all. The
     page ids are DYNAMIC (`<activationId>:<slug>`; measured `act1:team`, `act1:dag`, `act1:workmate`), and
     a patch row may not id-target the host's row to set either switch, so the remedy is documented user
@@ -580,11 +637,14 @@ only when no logger exists to `stderr`, with `debug` gated behind
     its geometry, which is why every size in the TUI is computed from the measured panel. The WEB DAG is
     the REFERENCE for those semantics and is not itself modified beyond the rank-derivation and
     edge-routing repairs its own legibility required.
-19. **The DAG page's scrollbar is functional but NOT flawless.** An unbounded `PgDn` run can drive the
-    window to zero rows, because the scroll offset accumulates across renders; `clampScroll` bounds the
-    band but the accumulation itself is open. It is diagnosed and recorded — at the frozen revision the
-    two failing `bun test ./packages` arms are exactly the offset-accumulation arms
-    (`evidence/tui/dag-port/freeze/FROZEN-REVISION.md`).
+19. **The DAG page's scrollbar: the offset-accumulation defect is FIXED; the RENDER stays unobservable.**
+    The accumulating-offset defect recorded by the dag-port wave (an unbounded `PgDn` run driving the
+    window to zero rows) is closed: the offset is held in a ref that is the single live authority and
+    every read is clamped against the CURRENT render's own sizes, which is what `panel-core.ts`'s
+    `usePanelViewport` exists for. What is NOT claimed is a render: MPD composes a panel id and observes
+    the host ACCEPT an open request, but the host's event set has no `opened`/`focused`, so no surface
+    here claims to have watched itself paint. A full-screen PTY capture is the closest thing and is
+    evidence of the RENDER, never of the delivery.
 
 ## Build and test
 

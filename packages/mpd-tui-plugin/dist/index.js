@@ -4081,6 +4081,14 @@ function toneColor(tone) {
   const key = DAG_TONE_THEME[tone];
   return typeof key === "string" && key !== "" ? key : DAG_TONE_THEME.blank;
 }
+function spanEmphasis(tone) {
+  const color = toneColor(tone);
+  if (tone === "focus" || tone === "chain")
+    return { color, bold: true };
+  if (tone === "dim")
+    return { color, dimColor: true };
+  return { color };
+}
 function textRow(kit, text, options) {
   const shown = panelText(text, options.maxCells ?? PANEL_ROW_MAX_CELLS);
   return kit.React.createElement(kit.ui.Text, {
@@ -4113,7 +4121,7 @@ function clampRowSpans(spans, cols) {
 }
 function graphRow(kit, spans, options) {
   const fitted = clampRowSpans(spans, options.cols);
-  const drawn = fitted.map((span, at) => kit.React.createElement(kit.ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
+  const drawn = fitted.map((span, at) => kit.React.createElement(kit.ui.Text, { key: `s${at}`, ...spanEmphasis(span.tone) }, span.text));
   const row = kit.React.createElement(kit.ui.Text, { key: `t-${options.key}` }, ...drawn);
   if (options.onClick === undefined || typeof kit.ui.Box !== "function")
     return row;
@@ -4314,13 +4322,45 @@ function usePanelViewport(kit, read, initialOffset = 0) {
   };
   return handle;
 }
+function localCell(event, axis) {
+  const raw = event === null || event === undefined ? undefined : event[axis === "row" ? "localRow" : "localCol"];
+  return typeof raw === "number" && Number.isFinite(raw) ? Math.floor(raw) : 0;
+}
+function railTravel(extent, max) {
+  const cells = Math.max(1, Math.floor(Number.isFinite(extent) ? extent : 1));
+  const span = Math.max(0, Math.floor(Number.isFinite(max) ? max : 0));
+  const content = cells + span;
+  const thumb = Math.min(cells, Math.max(1, Math.floor(cells * cells / content)));
+  return cells - thumb;
+}
+function railOffset(position, travel, max) {
+  const span = Math.max(0, Math.floor(Number.isFinite(max) ? max : 0));
+  if (span === 0)
+    return 0;
+  const cell = Math.floor(Number.isFinite(position) ? position : 0);
+  if (cell <= 0)
+    return 0;
+  if (cell >= travel)
+    return span;
+  return Math.round(cell / travel * span);
+}
 function viewportGutter(kit, viewport, onTrackClick) {
   const cells = gutterCells(viewport.offset, viewport.contentRows, viewport.viewportRows);
   if (cells.length === 0)
     return;
   const rows = cells.map((cell, at) => kit.React.createElement(kit.ui.Text, { key: `g${at}`, color: cell === DAG_CHROME.barFull ? toneColor("chain") : toneColor("dim") }, cell));
+  const travel = railTravel(viewport.viewportRows, viewport.max);
+  const scrubTo = (event) => {
+    const row = localCell(event, "row");
+    if (onTrackClick !== undefined) {
+      onTrackClick(row);
+      return;
+    }
+    viewport.scrollTo(railOffset(row, travel, viewport.max));
+  };
+  const dragging = { onDragStart: scrubTo, onDragMove: scrubTo, onDragEnd: scrubTo };
   if (onTrackClick === undefined)
-    return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1 }, ...rows);
+    return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1, ...dragging }, ...rows);
   return kit.React.createElement(kit.ui.Box, {
     key: "gutter",
     flexDirection: "column",
@@ -4328,8 +4368,24 @@ function viewportGutter(kit, viewport, onTrackClick) {
     onClick: (event) => {
       const row = typeof event?.localRow === "number" ? Math.floor(event.localRow) : 0;
       onTrackClick(row);
-    }
+    },
+    ...dragging
   }, ...rows);
+}
+function viewportRail(kit, viewport, cols) {
+  if (!viewport.colOverflow)
+    return;
+  const extent = Math.max(1, Math.floor(Number.isFinite(cols) ? cols : 1));
+  const contentCols = extent + viewport.colMax;
+  const cells = gutterCellsX(viewport.colOffset, contentCols, extent);
+  if (cells === "")
+    return;
+  const travel = railTravel(extent, viewport.colMax);
+  const scrubTo = (event) => {
+    viewport.scrollToCol(railOffset(localCell(event, "col"), travel, viewport.colMax));
+  };
+  const row = textRow(kit, cells, { key: "hrail", tone: "edge", maxCells: extent });
+  return kit.React.createElement(kit.ui.Box, { key: "hrail-track", flexDirection: "row", onDragStart: scrubTo, onDragMove: scrubTo, onDragEnd: scrubTo }, row);
 }
 function panelViewportBody(kit, children, viewport, reserveGutter = true, rowWrapper) {
   const visible = children.slice(viewport.offset, viewport.offset + viewport.viewportRows);
@@ -4496,7 +4552,6 @@ var GRAPH_THEME = Object.freeze({
   blank: "text"
 });
 var GLYPH = DAG_TONE_GLYPH;
-var KIND_ABBREV = DAG_KIND_ABBREV;
 var ARROW_DOWN = DAG_CHARS.arrowDown;
 var ARROW_RIGHT = DAG_CHARS.arrowRight;
 var FOCUS_MARKER = DAG_CHARS.focusMarker;
@@ -4533,9 +4588,9 @@ function legendLines(cols) {
   return lines;
 }
 var NATURAL_RAIL_FALLBACK_COLS = 80;
-var MIN_NODE_WIDTH = 16;
 var NODE_GAP = 3;
 var NATURAL_MAX_NODE_WIDTH = 64;
+var NATURAL_MIN_NODE_WIDTH = 10;
 var MAX_BOX_RANKS = 12;
 var UP = 1;
 var DOWN = 2;
@@ -4576,11 +4631,6 @@ function clampSpans(spans, cols) {
   }
   return kept;
 }
-function graphSafeLabel(subject, ordinal) {
-  const runs = subject.match(/[\x20-\x7E]+/g);
-  const joined = runs === null ? "" : runs.join(" ").replace(/\s+/g, " ").trim();
-  return joined === "" ? `#${ordinal}` : joined;
-}
 function sliceSpans(spans, offset, cols) {
   const width = Math.floor(Number.isFinite(cols) ? cols : 0);
   if (width <= 0)
@@ -4609,25 +4659,14 @@ function sliceSpans(spans, offset, cols) {
     kept.push({ text: " ".repeat(width - used), tone: "blank" });
   return kept;
 }
-function labelOf(task, focus, ordinal) {
+function labelOf(task, focus) {
   const marker = task.id === focus ? FOCUS_MARKER : GLYPH[task.visual] ?? "?";
-  const kind = KIND_ABBREV[task.kind ?? ""] ?? "";
-  const subject = graphSafeLabel(task.subject, ordinal);
-  return (kind === "" ? [marker, task.id, subject] : [marker, task.id, kind, subject]).join(" ");
-}
-function ordinalOf(tasks) {
-  const ordinals = new Map;
-  tasks.forEach((task, index) => {
-    if (!ordinals.has(task.id))
-      ordinals.set(task.id, index + 1);
-  });
-  return ordinals;
+  return `${marker} ${task.id}`;
 }
 function widestLabelCells(tasks, focus) {
-  const ordinals = ordinalOf(tasks);
   let widest = 0;
   for (const task of tasks)
-    widest = Math.max(widest, cellWidth(labelOf(task, focus, ordinals.get(task.id) ?? 1)));
+    widest = Math.max(widest, cellWidth(labelOf(task, focus)));
   return widest;
 }
 function toneOf(task, focus, chain) {
@@ -4762,26 +4801,18 @@ function layoutBoxesNatural(tasks, focus, budget) {
     return;
   const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1);
   const label = widestLabelCells(tasks, focus);
-  const nodeWidth = Math.max(MIN_NODE_WIDTH, Math.min(NATURAL_MAX_NODE_WIDTH, label + 3));
+  const nodeWidth = Math.max(NATURAL_MIN_NODE_WIDTH, Math.min(NATURAL_MAX_NODE_WIDTH, label + 4));
   if (tasks.length === 0) {
     const empty = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [], ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
     if (focus !== undefined)
       empty.focus = focus;
     return empty;
   }
-  const stride = boxRowsOf(ranks.length, budget) === 5 ? 8 : 6;
-  const form = stride === 8 ? 5 : 3;
-  return drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, label);
-}
-function boxRowsOf(ranks, budget) {
-  const roomy = ranks * 8 + 2;
-  const rows = budget?.rows === undefined || !Number.isFinite(budget.rows) ? Number.POSITIVE_INFINITY : Math.floor(budget.rows);
-  return rows >= roomy ? 5 : 3;
+  return drawBoxes(tasks, ranks, widest, nodeWidth, 3, focus, plan, label);
 }
 function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLabel) {
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
   const width = widest * (nodeWidth + NODE_GAP) - NODE_GAP;
-  const ordinals = ordinalOf(tasks);
   const padTop = form === 5 ? 1 : 0;
   const labelCells = nodeWidth - 2;
   const contentRow = padTop + 1;
@@ -4858,7 +4889,7 @@ function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLab
         link(top + bottomRow, col, LEFT | RIGHT, at);
       link(top + bottomRow, left, RIGHT | UP, at);
       link(top + bottomRow, right, LEFT | UP, at);
-      const body = labelOf(task, focus, ordinals.get(task.id) ?? 1);
+      const body = labelOf(task, focus);
       let cursor = left + 1;
       for (const char of clampCells(stripControl(" " + body), labelCells)) {
         label(top + contentRow, cursor, char, at);
@@ -4959,14 +4990,13 @@ function layoutRail(tasks, cols, focus) {
     walk(task, "", true, 0);
   const lines = [];
   const hits = [];
-  const ordinals = ordinalOf(tasks);
   drawn.forEach((entry, index) => {
     const at = toneOf(entry.task, focus, chain);
     const extra2 = entry.task.dependencies.length > 1 ? `  ⇠ ${entry.task.dependencies.join("+")}` : "";
     const tail = `${at === "dim" ? "" : entry.task.assignee ?? ""}${entry.task.attempt === undefined ? "" : ` a${entry.task.attempt}`}${extra2}`;
     const elbow = entry.leaf ? "└─" : "├─";
     const connector = entry.depth === 0 ? "" : `${entry.prefix}${elbow}${ARROW_RIGHT} `;
-    const label = labelOf(entry.task, focus, ordinals.get(entry.task.id) ?? 1);
+    const label = labelOf(entry.task, focus);
     const tailWidth = tail === "" ? 0 : cellWidth(tail) + 2;
     const useTail = tailWidth > 0 && cols - cellWidth(connector) - tailWidth >= 10;
     const labelRoom = Math.max(0, cols - cellWidth(connector) - (useTail ? tailWidth : 0));
@@ -4991,14 +5021,13 @@ function layoutList(tasks, cols, focus) {
   const ranks = plan.ranks;
   const lines = [];
   const hits = [];
-  const ordinals = ordinalOf(tasks);
   for (let rank = 0;rank < ranks.length; rank++) {
     const rule = "─".repeat(Math.max(0, cols - 8));
     lines.push(clampSpans([{ text: `rank ${rank} `, tone: "edge" }, { text: rule, tone: "edge" }], cols));
     for (const task of ranks[rank]) {
       const at = toneOf(task, focus, chain);
       const suffix = task.dependencies.length === 0 ? "" : ` ⇠${task.dependencies.join(",")}`;
-      const head = labelOf(task, focus, ordinals.get(task.id) ?? 1);
+      const head = labelOf(task, focus);
       const tail = `${task.visual}${task.attempt === undefined ? "" : ` a${task.attempt}`}${task.assignee === undefined ? "" : `  @${task.assignee}`}${suffix}`;
       const shown = clampCells(stripControl(head), Math.max(8, cols - cellWidth(tail) - 3));
       lines.push(clampSpans([{ text: "  " + shown + " ".repeat(Math.max(0, cols - 2 - cellWidth(shown) - cellWidth(tail) - 1)), tone: at }, { text: tail, tone: at }], cols));
@@ -5949,7 +5978,26 @@ function interruptSubagent(channel, agentId) {
     return false;
   }
 }
-function createSubagentSceneComponent(readWorkflow, onHostKit) {
+var SUBAGENT_DETAIL_REQUEST_TTL_MS = 5000;
+var pendingDetailRequest;
+function requestSubagentDetail(agentId, atMs = Date.now()) {
+  pendingDetailRequest = { agentId, at: atMs };
+}
+function takeSubagentDetailRequest(nowMs = Date.now()) {
+  const request = pendingDetailRequest;
+  pendingDetailRequest = undefined;
+  if (request === undefined)
+    return;
+  if (request.agentId === "")
+    return;
+  if (!Number.isFinite(nowMs))
+    return;
+  const age = nowMs - request.at;
+  if (age < 0 || age > SUBAGENT_DETAIL_REQUEST_TTL_MS)
+    return;
+  return request.agentId;
+}
+function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail = takeSubagentDetailRequest) {
   return function MpdTuiSubagents(props) {
     const kit = hostKit(props?.React, props?.ui);
     if (kit === undefined) {
@@ -5971,7 +6019,7 @@ function createSubagentSceneComponent(readWorkflow, onHostKit) {
     const noticeState = React.useState("");
     const notice = noticeState[0];
     const setNotice = noticeState[1];
-    const detailState = React.useState(undefined);
+    const detailState = React.useState(() => takePendingDetail());
     const detailAgentId = detailState[0];
     const setDetailAgentId = detailState[1];
     const detailScrollState = React.useState(0);
@@ -6912,6 +6960,7 @@ function registerDashboardKey(ctx, tui, deps) {
 // packages/mpd-tui-plugin/src/panel.ts
 var PANEL_SLUG = "team";
 var PANEL_TITLE = "MPD";
+var PANEL_ICON = "❖";
 var PANEL_MIN_COLUMNS = 28;
 var PANEL_ORDER = 10;
 var PANEL_REFRESH_MS = 1000;
@@ -6920,9 +6969,38 @@ var PANEL_DESCRIPTOR_FROZEN = {
   apiVersion: 1,
   id: PANEL_SLUG,
   title: PANEL_TITLE,
+  icon: PANEL_ICON,
   minColumns: PANEL_MIN_COLUMNS,
   order: PANEL_ORDER
 };
+var PANEL_FULLSCREEN_GLYPH = "⤢";
+var PANEL_FULLSCREEN_CELLS = 2;
+var PANEL_TITLE_ROW_ROWS = 1;
+function swallowPointerEvent(event) {
+  if (event === null || typeof event !== "object")
+    return;
+  const stop = event.stopImmediatePropagation;
+  if (typeof stop === "function")
+    stop.call(event);
+}
+function usePanelTitleRow(kit, options) {
+  const hoverState = kit.React.useState(false);
+  const hovered = hoverState[0] === true;
+  const setHovered = hoverState[1];
+  const title = panelText(options.title, Math.max(1, options.cols - PANEL_FULLSCREEN_CELLS));
+  return kit.React.createElement(kit.ui.Box, { key: options.key, flexDirection: "row", justifyContent: "space-between", flexShrink: 0 }, kit.React.createElement(kit.ui.Box, { key: `${options.key}-title`, flexShrink: 1, overflow: "hidden" }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-text`, color: toneColor("dim") }, title)), kit.React.createElement(kit.ui.Box, {
+    key: `${options.key}-fullscreen`,
+    flexShrink: 0,
+    onMouseEnter: () => setHovered(true),
+    onMouseLeave: () => setHovered(false),
+    ...options.open === undefined ? {} : {
+      onClick: (event) => {
+        swallowPointerEvent(event);
+        options.open?.();
+      }
+    }
+  }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-glyph`, bold: hovered, color: hovered ? toneColor("focus") : toneColor("dim") }, PANEL_FULLSCREEN_GLYPH)));
+}
 function takeoverArmed(seamBound, savedKnob, floor) {
   if (seamBound)
     return false;
@@ -6950,7 +7028,7 @@ function wrapPanelLines(text, cols) {
     lines.push(current);
   return lines;
 }
-function createPanelComponent(readWorkflow) {
+function createPanelComponent(readWorkflow, options) {
   return function MpdTuiPanel(props) {
     const kit = panelKit(props?.React, props?.ui);
     if (kit === undefined) {
@@ -6979,7 +7057,7 @@ function createPanelComponent(readWorkflow) {
     const sizes = { contentRows: 1, viewportRows: 1 };
     sizes.contentCols = view === undefined ? width : view.width;
     sizes.viewportCols = width;
-    const windowRows = Math.max(1, (measured.rows ?? MERGED_FALLBACK_ROWS) - PANEL_CHROME_ROWS);
+    const windowRows = Math.max(1, (measured.rows ?? MERGED_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS);
     const viewport = usePanelViewport(kit, () => sizes);
     const drawnLines = view === undefined ? [] : view.lines;
     usePanelKeys(kit, props?.host, keysArmed, (event) => {
@@ -7091,7 +7169,7 @@ function createPanelComponent(readWorkflow) {
     for (let index = 0;index < legend.length; index += 1) {
       children.push(textRow(kit, legend[index], { key: `legend-${index}`, dim: true, maxCells: width }));
     }
-    children.push(textRow(kit, "merged view · /mpd panel opens it full-screen", { key: "keys", dim: true, maxCells: width }));
+    children.push(textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · /mpd panel`, { key: "keys", dim: true, maxCells: width }));
     const contentRows = Math.max(children.length, 1);
     const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows);
     sizes.contentRows = contentRows;
@@ -7099,13 +7177,14 @@ function createPanelComponent(readWorkflow) {
     const scroller = viewport;
     const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...rows);
     const body = panelViewportBody(kit, children, scroller, true, wheelBound);
-    return panelFrame(kit, PANEL_TITLE, body);
+    const titleRow = usePanelTitleRow(kit, { key: "title", title: PANEL_TITLE, cols: width, ...options?.openFullscreen === undefined ? {} : { open: options.openFullscreen } });
+    return panelFrame(kit, PANEL_TITLE, [titleRow, ...body]);
   };
 }
 function registerPanelSurface(tui, deps) {
   const panel = deps.enabled ? tui.registerPanel({
     ...PANEL_DESCRIPTOR_FROZEN,
-    component: createPanelComponent(deps.readWorkflow)
+    component: createPanelComponent(deps.readWorkflow, { openFullscreen: () => deps.openMergedScene() })
   }) : undefined;
   return {
     panel,
@@ -7304,7 +7383,92 @@ function headerFacts(page, cols) {
     bar: DAG_CHROME.barFull.repeat(filled) + DAG_CHROME.barEmpty.repeat(Math.max(0, barCells2 - filled))
   };
 }
-function createDagPanelComponent(readWorkflow) {
+function dagRowClick(view, row, colOffset, event) {
+  const localCol = pointerCol(event);
+  if (localCol !== undefined) {
+    const col = (Number.isFinite(colOffset) ? Math.max(0, Math.floor(colOffset)) : 0) + localCol;
+    const taskId = hitTest(view, row, col);
+    return { ...taskId === undefined ? {} : { taskId }, byColumn: true };
+  }
+  const band = view.hits.find((candidate) => row >= candidate.row && row <= candidate.rowEnd);
+  return { ...band === undefined ? {} : { taskId: band.taskId }, byColumn: false };
+}
+function pointerCol(event) {
+  if (event === null || typeof event !== "object")
+    return;
+  const col = event.localCol;
+  if (typeof col !== "number" || !Number.isFinite(col) || col < 0)
+    return;
+  return Math.floor(col);
+}
+var NAME_CHAR = /[a-z0-9_]/u;
+function foldName(value) {
+  return typeof value === "string" ? value.toLowerCase().replace(/\s+/gu, " ").trim() : "";
+}
+function nameInside(description, name) {
+  let from2 = 0;
+  for (;; ) {
+    const at = description.indexOf(name, from2);
+    if (at < 0)
+      return false;
+    const before = description.slice(Math.max(0, at - 1), at);
+    const after = description.slice(at + name.length, at + name.length + 1);
+    if (!NAME_CHAR.test(before) && !NAME_CHAR.test(after))
+      return true;
+    from2 = at + 1;
+  }
+}
+function agentIdForOwner(snapshot, owner) {
+  const wanted = foldName(owner);
+  if (wanted === "")
+    return;
+  try {
+    const raw = snapshot?.subagents;
+    if (!Array.isArray(raw))
+      return;
+    let contained;
+    for (const entry of raw) {
+      if (entry === null || typeof entry !== "object")
+        continue;
+      const row = entry;
+      const agentId = typeof row.agentId === "string" && row.agentId !== "" ? row.agentId : undefined;
+      if (agentId === undefined)
+        continue;
+      const description = foldName(typeof row.description === "string" ? row.description : undefined);
+      if (description === "")
+        continue;
+      if (description === wanted)
+        return agentId;
+      if (contained === undefined && nameInside(description, wanted))
+        contained = agentId;
+    }
+    return contained;
+  } catch {
+    return;
+  }
+}
+function hostToast(host, message) {
+  if (host === null || host === undefined)
+    return;
+  const api = host;
+  if (typeof api.toast !== "function")
+    return;
+  try {
+    api.toast(message);
+  } catch {}
+}
+function openAgentWorkPage(host, task, options) {
+  const owner = task?.assignee;
+  const agentId = agentIdForOwner(panelSnapshot(host), owner);
+  if (agentId === undefined) {
+    hostToast(host, owner === undefined || owner === "" ? `no owner on ${task?.id ?? "that task"} — no agent page` : `no subagent page matches ${owner}`);
+    return;
+  }
+  const reached = options?.openAgentPage?.(agentId) === true;
+  if (!reached)
+    hostToast(host, `no agent page for ${agentId}`);
+}
+function createDagPanelComponent(readWorkflow, options) {
   return function MpdTuiDagPanel(props) {
     const kit = panelKit(props?.React, props?.ui);
     if (kit === undefined) {
@@ -7324,6 +7488,13 @@ function createDagPanelComponent(readWorkflow) {
     const cursor = kit.React.useState(undefined);
     const pinned = typeof focused[0] === "string" ? focused[0] : undefined;
     const setPinned = focused[1];
+    const pinLive = kit.React.useRef(undefined);
+    const pinnedNow = () => typeof pinLive?.current === "string" ? pinLive.current : pinned;
+    const movePin = (next) => {
+      if (pinLive !== null && pinLive !== undefined)
+        pinLive.current = next;
+      setPinned(next);
+    };
     const cursorId = typeof cursor[0] === "string" ? cursor[0] : undefined;
     const setCursor = cursor[1];
     const cursorLive = kit.React.useRef(undefined);
@@ -7333,8 +7504,8 @@ function createDagPanelComponent(readWorkflow) {
         cursorLive.current = next;
       setCursor(next);
     };
-    const focus = pinned ?? cursorNow();
-    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS);
+    const focus = pinnedNow() ?? cursorNow();
+    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS);
     const sizes = { contentRows: 1, viewportRows: 1, contentCols, viewportCols: contentCols };
     const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows);
     sizes.contentCols = layout?.view.width ?? contentCols;
@@ -7380,9 +7551,9 @@ function createDagPanelComponent(readWorkflow) {
           scrollRowIntoView(viewport, at);
       }
       if (action.pin === true)
-        setPinned(cursorNow());
+        movePin(cursorNow());
       if (action.pin === false)
-        setPinned(undefined);
+        movePin(undefined);
     });
     const children = [];
     const viewport = usePanelViewport(kit, () => sizes);
@@ -7410,18 +7581,29 @@ function createDagPanelComponent(readWorkflow) {
         const running = row.some((span) => span.tone === "running");
         const phased = running && breathing ? row.map((span) => span.text.includes(baseGlyph) ? { text: span.text.replace(baseGlyph, breathe), tone: span.tone } : span) : row;
         const spans = sliceSpans(phased, viewport.colOffset, contentCols);
-        const hit = layout.view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd);
-        children.push(hit === undefined ? graphRow(kit, spans, { key: `row-${index}`, cols: contentCols }) : graphRow(kit, spans, {
+        children.push(graphRow(kit, spans, {
           key: `row-${index}`,
           cols: contentCols,
-          onClick: () => {
-            setPinned(hit.taskId);
-            moveCursor(hit.taskId);
+          onClick: (event) => {
+            const resolved = dagRowClick(layout.view, index, viewport.colOffset, event);
+            if (resolved.taskId === undefined) {
+              movePin(undefined);
+              return;
+            }
+            if (resolved.taskId === pinnedNow()) {
+              openAgentWorkPage(props?.host, page?.tasks.find((task) => task.id === resolved.taskId), options);
+              return;
+            }
+            movePin(resolved.taskId);
+            moveCursor(resolved.taskId);
           }
         }));
       }
       if (viewport.colOverflow) {
-        children.push(textRow(kit, gutterCellsX(viewport.colOffset, sizes.contentCols ?? contentCols, contentCols), { key: "hrail", tone: "edge", maxCells: contentCols }));
+        const coreRail = viewportRail;
+        const rail = typeof coreRail === "function" ? coreRail(kit, viewport, contentCols) : textRow(kit, gutterCellsX(viewport.colOffset, sizes.contentCols ?? contentCols, contentCols), { key: "hrail", tone: "edge", maxCells: contentCols });
+        if (rail !== undefined)
+          children.push(rail);
       }
       children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${layout.ranksDerived ? "derived" : "served"}`, { key: "mode", dim: true, maxCells: contentCols }));
       if (layout.unresolved.length > 0) {
@@ -7452,15 +7634,16 @@ function createDagPanelComponent(readWorkflow) {
     sizes.viewportRows = windowRows;
     const scroller = viewport;
     const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...rows);
-    const footer = textRow(kit, `↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
+    const footer = textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · ↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
     const body = panelViewportBody(kit, children, scroller, true, wheelBound);
-    return panelFrame(kit, DAG_PANEL_TITLE, [...body, footer]);
+    const titleRow = usePanelTitleRow(kit, { key: "title", title: DAG_PANEL_TITLE, cols: contentCols, ...options?.openFullscreen === undefined ? {} : { open: options.openFullscreen } });
+    return panelFrame(kit, DAG_PANEL_TITLE, [titleRow, ...body, footer]);
   };
 }
 function registerDagPanel(tui, deps) {
   const panel = deps.enabled ? tui.registerPanel({
     ...DAG_PANEL_DESCRIPTOR_FROZEN,
-    component: createDagPanelComponent(deps.readWorkflow)
+    component: createDagPanelComponent(deps.readWorkflow, { openAgentPage: deps.openAgentPage, openFullscreen: deps.openFullscreen })
   }) : undefined;
   return {
     panel,
@@ -7480,7 +7663,7 @@ import { lstatSync, readdirSync as readdirSync4, readFileSync as readFileSync4 }
 import { join as join6 } from "node:path";
 var WORKMATE_PANEL_ID = WORKMATE_PANEL_SLUG;
 var WORKMATE_PANEL_TITLE = "MPD workmate";
-var WORKMATE_PANEL_ICON = DAG_CHROME.pinMarker;
+var WORKMATE_PANEL_ICON = "⬢";
 var WORKMATE_PANEL_ORDER = 12;
 var WORKMATE_PANEL_REFRESH_MS = 2000;
 var WORKMATE_PANEL_DESCRIPTOR_FROZEN = {
@@ -7614,7 +7797,7 @@ function entryLines(entry, cols) {
     rows.push(entry.note);
   return rows.map((row) => panelText(row, cols));
 }
-function createWorkmatePanelComponent(readLibrary) {
+function createWorkmatePanelComponent(readLibrary, options) {
   return function MpdTuiWorkmatePanel(props) {
     const kit = panelKit(props?.React, props?.ui);
     if (kit === undefined) {
@@ -7636,7 +7819,7 @@ function createWorkmatePanelComponent(readLibrary) {
     const order = library.entries.map((entry) => entry.key);
     const rowIndex = new Map;
     const sizes = { contentRows: 1, viewportRows: 1 };
-    const windowRows = Math.max(1, (measured.rows ?? WORKMATE_FALLBACK_ROWS) - PANEL_CHROME_ROWS);
+    const windowRows = Math.max(1, (measured.rows ?? WORKMATE_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS);
     const viewport = usePanelViewport(kit, () => sizes);
     usePanelKeys(kit, props?.host, keysArmed, (event) => {
       const bare = event;
@@ -7701,15 +7884,16 @@ function createWorkmatePanelComponent(readLibrary) {
     sizes.viewportRows = windowRows;
     const scroller = viewport;
     const scrolled = kit.React.createElement(kit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows));
-    const footer = textRow(kit, `↑↓/jk move · PgUp/PgDn scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
+    const footer = textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · ↑↓/jk move · PgUp/PgDn${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
     const body = panelViewportBody(kit, [scrolled], scroller);
-    return panelFrame(kit, WORKMATE_PANEL_TITLE, [...body, footer]);
+    const titleRow = usePanelTitleRow(kit, { key: "title", title: WORKMATE_PANEL_TITLE, cols: contentCols, ...options?.openFullscreen === undefined ? {} : { open: options.openFullscreen } });
+    return panelFrame(kit, WORKMATE_PANEL_TITLE, [titleRow, ...body, footer]);
   };
 }
 function registerWorkmatePanel(tui, deps) {
   const panel = deps.enabled ? tui.registerPanel({
     ...WORKMATE_PANEL_DESCRIPTOR_FROZEN,
-    component: createWorkmatePanelComponent(() => readWorkmateLibrary(deps.home()))
+    component: createWorkmatePanelComponent(() => readWorkmateLibrary(deps.home()), { openFullscreen: () => deps.openScene() })
   }) : undefined;
   return {
     panel,
@@ -9242,10 +9426,20 @@ function apply(ctx, config = {}) {
     openMergedScene: () => scene.openSubagents(),
     log
   });
+  const openAgentPage = (agentId) => {
+    requestSubagentDetail(agentId);
+    if (scene.openSubagents())
+      return true;
+    takeSubagentDetailRequest();
+    log.debug(`openAgentPage(${agentId}): no subagent scene is reachable here; the request was cleared`);
+    return false;
+  };
   const dagPanel = registerDagPanel(tui, {
     enabled: resolved.panel,
     readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
     openScene: () => scene.openSubagents(),
+    openFullscreen: () => scene.openSubagents(),
+    openAgentPage,
     log
   });
   const workmatePanel = registerWorkmatePanel(tui, {

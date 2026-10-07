@@ -60,6 +60,7 @@ import {
   panelText,
   panelViewportBody,
   textRow,
+  toneColor,
   usePanelKeys,
   usePanelSize,
   usePanelTick,
@@ -74,6 +75,20 @@ export const PANEL_SLUG = "team"
 
 /** The panel's display title, drawn by the host in the sidebar's own panel bar. */
 export const PANEL_TITLE = "MPD"
+
+/**
+ * The merged page's OWN panel icon: EXACTLY ONE display cell, which the host enforces at registration.
+ *
+ * WHY `❖` (U+2756), measured on the installed dsh-tui 0.13.0: the host's `dsh-adapter/panels.js`
+ * REJECTS a descriptor whose icon is not exactly one display cell (`stringWidth(d.icon) !== 1`), and
+ * its seven built-in tabs already own `≡`, `▸`, `◆`, `ⓘ`, `∿`, `⌗` and `♥`. Before this wave the
+ * merged page declared NO icon at all, so the host fell back to the letter `M` and the three MPD
+ * pages were not told apart at a glance. This glyph is one cell under the plugin's own
+ * `sanitize.cellWidth` AND under the host's own `stringWidth` — both were measured, because the two
+ * measures disagree about some symbols and the host's answer is the one that decides a registration.
+ * The other two pages carry their own: `◈` (DAG) and `⬢` (workmate).
+ */
+export const PANEL_ICON = "❖"
 
 /**
  * The sidebar width floor the descriptor ASKS THE HOST FOR: the host's own minimum, never more.
@@ -125,11 +140,134 @@ export const PANEL_DESCRIPTOR_FROZEN = {
   id: PANEL_SLUG,
   /** The title the host stores and draws (non-empty, at most 80 cells). */
   title: PANEL_TITLE,
+  /** The one-cell icon the host draws in its panel bar. */
+  icon: PANEL_ICON,
   /** The sidebar width floor: an integer in the host's own 12..64 range. */
   minColumns: PANEL_MIN_COLUMNS,
   /** The ordering hint inside the host's panel bar. */
   order: PANEL_ORDER,
 } as const
+
+/**
+ * The full-screen affordance every MPD page draws ITSELF: `⤢`, the host's own glyph for the gesture.
+ *
+ * WHY IT IS OURS — measured on the installed dsh-tui 0.13.0: `dsh-adapter/panels.js` freezes a plugin
+ * descriptor into a definition carrying `{id, title, icon, order, minColumns, source, pluginId,
+ * mountPolicy, component, compact}` — NO `capabilities` field — while
+ * `components/sidePanel/SidePanelColumn.js`'s `canExpand` reads `definition.capabilities?.fullscreen
+ * === true` and `Chat.js` maps BUILT-IN ids only. The host can therefore NEVER draw its own `⤢` for an
+ * MPD page, and declaring a `capabilities` field would be a promise the host silently drops. So the
+ * page draws the control in its own title row and gives it the host PanelBar's own treatment: the
+ * glyph is the panel's dim tone at rest and BOLD in the focus tone while the pointer is over it.
+ */
+export const PANEL_FULLSCREEN_GLYPH = "⤢"
+
+/** The cells the control reserves at the right of a page's title row: one gap plus the glyph itself. */
+export const PANEL_FULLSCREEN_CELLS = 2
+
+/** How many rows a page's title row costs: ONE, drawn OUTSIDE the page's scrolling window. */
+export const PANEL_TITLE_ROW_ROWS = 1
+
+/** What one page's title row needs to draw itself. */
+export interface PanelTitleRowOptions {
+  /** The row's React key, unique inside this page's child list. */
+  key: string
+  /** The page's own title, drawn at the left of the row. */
+  title: string
+  /** The cells the row may draw in — the page's measured content width. */
+  cols: number
+  /** Opens the page's full-screen scene. Absent when the caller has no full-screen surface to offer. */
+  open?: () => boolean
+}
+
+/**
+ * Stop one pointer event from also reaching the host's own click handling.
+ *
+ * The host's PanelBar does exactly this for its own `⤢` (`event.stopImmediatePropagation()`), and the
+ * same need exists here for the same reason: the panel column has a click-to-focus fallback, so a
+ * control that let the event bubble would both open the full-screen scene and re-focus the column.
+ * @param event - the host's pointer event, of unknown shape at this boundary.
+ */
+function swallowPointerEvent(event: unknown): void {
+  if (event === null || typeof event !== "object") return
+  /** The host event's own propagation stopper, when this build carries one. */
+  const stop = (event as { stopImmediatePropagation?: unknown }).stopImmediatePropagation
+  if (typeof stop === "function") (stop as () => void).call(event)
+}
+
+/**
+ * The page's own title row: the title at the left, MPD's `⤢` at the right.
+ *
+ * It is drawn OUTSIDE the page's scrolling window, so the control stays at the same cell no matter
+ * where the page is scrolled — a control that scrolls away is one the reader cannot find twice.
+ *
+ * THE ROW IS UNCONDITIONAL; only its HANDLER needs an opener. Every MPD page draws the same chrome —
+ * the user learns one affordance and finds it in the same cell on all three pages — and the one
+ * construction that has no full-screen surface to offer (a unit arm, never the registered page) draws
+ * the glyph without a click target rather than a page whose chrome silently differs. Registration
+ * always passes an opener, so the form the user meets is always the clickable one.
+ *
+ * A HELPER THAT OPENS A HOOK: it is called from a page's render body in the same position on every
+ * render, so the state cell it opens (the hover flag) is that page's own hook slot.
+ * @param kit - the proved host kit.
+ * @param options - the row's key, title, width and full-screen opener.
+ * @returns the title row element, one host row high.
+ */
+export function usePanelTitleRow(kit: PanelKit, options: PanelTitleRowOptions): unknown {
+  /** The control's hover flag (the host PanelBar's own feedback device). */
+  const hoverState = kit.React.useState(false)
+  /** Whether the pointer is over the control right now. */
+  const hovered = hoverState[0] === true
+  /** Sets the hover flag. */
+  const setHovered = hoverState[1] as (next: unknown) => void
+  // The title is clamped to what is LEFT of the two reserved cells: a long title must not push the
+  // control off the row's right edge, which is the one cell the control is reached by.
+  /** The title as this page may draw it. */
+  const title = panelText(options.title, Math.max(1, options.cols - PANEL_FULLSCREEN_CELLS))
+  return kit.React.createElement(
+    kit.ui.Box,
+    // THE ROW MUST NOT DECLARE `width: "100%"` — MEASURED, and this is the whole reason the control was
+    // invisible on a real terminal while every prop-recording double passed. The frame around this row
+    // is itself `width: "100%"` with a border, so a child asking for `100%` resolves to the frame's
+    // BORDER box (28 cells at the floor) rather than to its 26-cell interior: the row then lays out two
+    // cells too wide, the title's `flexGrow` eats the whole of it, and the control is pushed past the
+    // right border and CLIPPED. The headless probe
+    // (`evidence/tui/dag-highlight/chrome-layout/probe-row.ts`, the host's own ink) prints, at 28
+    // columns, `│MPD DAG                   │` for that shape against `│MPD DAG                  ⤢│` for
+    // this one. `justifyContent: "space-between"` with an auto width spreads the two children to the
+    // row's real edges, which is what "the control at the right of the title row" has to mean.
+    { key: options.key, flexDirection: "row", justifyContent: "space-between", flexShrink: 0 },
+    kit.React.createElement(
+      kit.ui.Box,
+      { key: `${options.key}-title`, flexShrink: 1, overflow: "hidden" },
+      kit.React.createElement(kit.ui.Text, { key: `${options.key}-text`, color: toneColor("dim") }, title),
+    ),
+    kit.React.createElement(
+      kit.ui.Box,
+      {
+        key: `${options.key}-fullscreen`,
+        flexShrink: 0,
+        // NO `marginLeft`: `space-between` owns the gap, and a margin here would be a second, invisible
+        // claim on the same two cells — the row has exactly one owner for its spacing.
+        onMouseEnter: (): void => setHovered(true),
+        onMouseLeave: (): void => setHovered(false),
+        ...(options.open === undefined
+          ? {}
+          : {
+              onClick: (event: unknown): void => {
+                swallowPointerEvent(event)
+                options.open?.()
+              },
+            }),
+      },
+      kit.React.createElement(
+        kit.ui.Text,
+        { key: `${options.key}-glyph`, bold: hovered, color: hovered ? toneColor("focus") : toneColor("dim") },
+        PANEL_FULLSCREEN_GLYPH,
+      ),
+    ),
+  )
+}
 
 /**
  * Whether the LEGACY Ctrl+A host-input contact may intercept a press.
@@ -202,13 +340,27 @@ function wrapPanelLines(text: string, cols: number): string[] {
 }
 
 /**
+ * What a PAGE needs to draw its own chrome — the same contract on all three MPD pages.
+ *
+ * It exists so the full-screen control is not a per-page invention: a page that receives no opener
+ * still draws the row (the chrome stays identical everywhere) but the glyph carries no handler.
+ */
+export interface PanelPageOptions {
+  /** Opens this page's full-screen scene; the same surface `/mpd panel` falls back to. */
+  openFullscreen?: () => boolean
+}
+
+/**
  * Build the merged sidebar-panel component.
  * @param readWorkflow - reads the MPD team projection for this session's workspace; the wiring in
  *   `index.ts` passes the same reader the team surfaces use, so the two cannot drift. It is injected
  *   rather than imported so this file stays free of the scene-registration module.
+ * @param options - this page's own chrome: the full-screen opener its `⤢` control calls. Optional so
+ *   a caller that only wants the body (a unit arm) still gets a component; the registered page always
+ *   passes one, so the control the user sees is always wired.
  * @returns a component matching the host's panel props contract.
  */
-export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefined): unknown {
+export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefined, options?: PanelPageOptions): unknown {
   return function MpdTuiPanel(props: PanelPropsLike): unknown {
     /** The host's React instance and ui kit, proved usable before a single hook is called. */
     const kit: PanelKit | undefined = panelKit(props?.React, props?.ui)
@@ -272,9 +424,9 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
     // full width and are never cut or moved sideways.
     sizes.contentCols = view === undefined ? width : view.width
     sizes.viewportCols = width
-    /** The window height this page affords, from the height the host reported (its legend and footer are
-     * drawn OUTSIDE the window, which is why they are subtracted here). */
-    const windowRows = Math.max(1, (measured.rows ?? MERGED_FALLBACK_ROWS) - PANEL_CHROME_ROWS)
+    /** The window height this page affords, from the height the host reported (its title row, legend
+     * and footer are drawn OUTSIDE the window, which is why they are subtracted here). */
+    const windowRows = Math.max(1, (measured.rows ?? MERGED_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS)
     /** The body's ONE scroll position: this page's keys and wheel both drive this handle. */
     const viewport = usePanelViewport(kit, () => sizes)
     /** The lines the page actually drew, which is what the keymap walks. */
@@ -435,8 +587,11 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
       children.push(textRow(kit, legend[index], { key: `legend-${index}`, dim: true, maxCells: width }))
     }
     // THE FOOTER (frozen clause R6): the one hint this panel actually has. It does NOT claim keys the
-    // merged page never handles — the "+"/"-" pair stays `/mpd`'s and the host's own.
-    children.push(textRow(kit, "merged view · /mpd panel opens it full-screen", { key: "keys", dim: true, maxCells: width }))
+    // merged page never handles — the "+"/"-" pair stays `/mpd`'s and the host's own. The `⤢` hint
+    // LEADS the row on purpose: a 28-cell panel has 26 content cells, the host clamps a row from its
+    // END, and a hint that trailed the sentence would be the first thing cut at the width this page
+    // asks for.
+    children.push(textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · /mpd panel`, { key: "keys", dim: true, maxCells: width }))
     // ── THE SELF-WINDOWED BODY ──────────────────────────────────────────────
     // Same device as the other two pages, and here it is also what makes the SCROLLBAR possible at all:
     // the host strips `ref` from the panel's `ScrollBox`, so a panel can neither read a scroll position
@@ -460,7 +615,11 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
       boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...rows)
     /** The visible slice plus its reserved gutter column. */
     const body = panelViewportBody(kit, children, scroller, true, wheelBound)
-    return panelFrame(kit, PANEL_TITLE, body as unknown[])
+    // THE TITLE ROW IS OUTSIDE THE WINDOW, immediately under the frame's top border: the page's own
+    // name and MPD's `⤢`, both pinned, so the control is at the same cell however far the body scrolls.
+    /** This page's chrome row: its title and the full-screen control. */
+    const titleRow = usePanelTitleRow(kit, { key: "title", title: PANEL_TITLE, cols: width, ...(options?.openFullscreen === undefined ? {} : { open: options.openFullscreen }) })
+    return panelFrame(kit, PANEL_TITLE, [titleRow, ...(body as unknown[])])
   }
 }
 
@@ -531,7 +690,10 @@ export function registerPanelSurface(tui: TuiAdapter, deps: PanelDeps): PanelSea
   const panel: PanelRegistrationHandle | undefined = deps.enabled
     ? tui.registerPanel({
         ...PANEL_DESCRIPTOR_FROZEN,
-        component: createPanelComponent(deps.readWorkflow),
+        // The `⤢` control the page draws itself calls THIS opener — the same full-screen merged scene
+        // every other routed open falls back to, so the button and the fallback cannot name two
+        // different surfaces.
+        component: createPanelComponent(deps.readWorkflow, { openFullscreen: () => deps.openMergedScene() }),
       })
     : undefined
   return {

@@ -18,10 +18,13 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
   createSubagentSceneComponent,
+  requestSubagentDetail,
+  SUBAGENT_DETAIL_REQUEST_TTL_MS,
   subagentDetailFacts,
   subagentDetailRows,
   subagentRows,
   subagentSectionRows,
+  takeSubagentDetailRequest,
   teamGraphView,
 } from "../src/subagent-scene"
 import { legendLines } from "../src/graph"
@@ -856,5 +859,109 @@ describe("the merged panel draws the graph legend under its DAG", () => {
     const team = readFileSync(join(import.meta.dir, "..", "src", "scenes.ts"), "utf8")
     expect(merged).toContain("legendLines(measured.cols)")
     expect(team).toContain("legendLines(graphWidth)")
+  })
+})
+
+// ── AC6 (scene side): open ON one member's detail, from the DAG page's click ─
+//
+// The page's second click asks for a member's work page; the page it reaches IS this scene. The two
+// halves meet at ONE slot (`requestSubagentDetail` -> the scene's third parameter), so these arms pin
+// the slot's own three properties (fresh, one-shot, destructive) and the two ways the scene can come
+// up: ON the requested member's detail, or on its LIST when nobody asked.
+
+describe("AC6 · the scene opens on the requested member's detail", () => {
+  test("a request is consumed ONCE, and a second take returns nothing (destructive)", () => {
+    // The slot is cleared by TAKING it, not by reading it: a scene opened later must not re-enter a
+    // detail the user has already left.
+    requestSubagentDetail("agent-detail", 1_000)
+    expect(takeSubagentDetailRequest(1_000)).toBe("agent-detail")
+    expect(takeSubagentDetailRequest(1_000)).toBeUndefined()
+    // And an EMPTY id is not a request: the detail is keyed by the host's own agent id, and "" names
+    // no row.
+    requestSubagentDetail("", 1_000)
+    expect(takeSubagentDetailRequest(1_000)).toBeUndefined()
+  })
+
+  test("the freshness bound is DECLARED and enforced: a stale request never opens a detail", () => {
+    /** The instant every request in this arm is made at. */
+    const at = 5_000_000
+    // FRESH AT THE BOUNDARY: the request is still the one the user made.
+    requestSubagentDetail("agent-fresh", at)
+    expect(takeSubagentDetailRequest(at + SUBAGENT_DETAIL_REQUEST_TTL_MS)).toBe("agent-fresh")
+    // …AND DROPPED ONE MILLISECOND PAST IT. A scene that mounted long after the click must not ambush
+    // the user with a detail nobody asked for; it opens on the LIST, which is the honest surface.
+    requestSubagentDetail("agent-stale", at)
+    expect(takeSubagentDetailRequest(at + SUBAGENT_DETAIL_REQUEST_TTL_MS + 1)).toBeUndefined()
+    // A clock that ran BACKWARDS is not evidence of freshness either.
+    requestSubagentDetail("agent-backwards", at)
+    expect(takeSubagentDetailRequest(at - 1)).toBeUndefined()
+    // The stale takes left nothing behind: the slot is empty for whoever opens the scene next.
+    expect(takeSubagentDetailRequest(at)).toBeUndefined()
+  })
+
+  test("the third parameter seeds the detail on the FIRST render, with no keypress", () => {
+    // The reader is injected, so the arm is about the SEEDING and never about the module's store.
+    /** How many times the injected reader was consulted. */
+    let reads = 0
+    /** The scene under test, seeded with the fixture member. */
+    const component = createSubagentSceneComponent(
+      () => workflowFixture(),
+      undefined,
+      () => {
+        reads += 1
+        return DETAIL_ROW.agentId
+      },
+    )
+    /** The kit whose channel carries that member. */
+    const kit = makeKit(channelFixture([DETAIL_ROW]))
+    /** The FIRST render, with nothing pressed. */
+    const text = render(kit, component)
+    // The detail owns the body: its mode footer and its facts are drawn, and the LIST is gone.
+    expect(text).toContain("esc/backspace/q back to the list")
+    expect(text).toContain("status      completed")
+    expect(text).not.toContain("task dependency graph")
+    // CONSUMED ONCE PER MOUNT — the lazy initializer is evaluated on the mount only, so a re-render
+    // does not consult the destructive reader again.
+    expect(reads).toBe(1)
+    // A SECOND render of the same mount keeps the detail (the state it seeded is the scene's own).
+    expect(render(kit, component)).toContain("status      completed")
+    expect(reads).toBe(1)
+  })
+
+  test("with no pending request the scene opens on its LIST, exactly as it did before", () => {
+    /** The scene under test, with a reader that answers nothing. */
+    const component = createSubagentSceneComponent(() => workflowFixture(), undefined, () => undefined)
+    /** The rendered surface. */
+    const text = render(makeKit(channelFixture([DETAIL_ROW])), component)
+    expect(text).toContain("subagents  1 total · 0 running · 1 completed · 0 failed")
+    expect(text).toContain("task dependency graph")
+    expect(text).not.toContain("esc/backspace/q back to the list")
+  })
+
+  test("the DEFAULT reader is the module's own slot, which is how the page's click reaches a scene `scenes.ts` built", () => {
+    // `scenes.ts` constructs this component with TWO arguments at apply time, while the click happens
+    // much later — so the default reader is what makes the hand-off possible without a third argument
+    // at every construction site. This arm exercises exactly that path.
+    requestSubagentDetail(DETAIL_ROW.agentId, Date.now())
+    /** The scene built the way the wiring builds it: no third argument. */
+    const component = createSubagentSceneComponent(() => workflowFixture())
+    /** Its first render. */
+    const text = render(makeKit(channelFixture([DETAIL_ROW])), component)
+    expect(text).toContain("status      completed")
+    expect(text).toContain("esc/backspace/q back to the list")
+    // The slot is empty afterwards: the ONE request served exactly one mount.
+    expect(takeSubagentDetailRequest(Date.now())).toBeUndefined()
+  })
+
+  test("a request for a member the channel no longer carries lands on the honest notice, not a throw", () => {
+    // The scene opens with the id it was handed, and the id is matched against the channel THIS render
+    // carries. A member that settled away is the vanishing case the scene already answers.
+    requestSubagentDetail("agent-gone", Date.now())
+    /** The scene under test. */
+    const component = createSubagentSceneComponent(() => workflowFixture())
+    /** The surface, over a channel that carries a different member. */
+    const text = render(makeKit(channelFixture([DETAIL_ROW])), component)
+    expect(text).toContain("details: that subagent is no longer in the channel")
+    expect(text).toContain("task dependency graph")
   })
 })

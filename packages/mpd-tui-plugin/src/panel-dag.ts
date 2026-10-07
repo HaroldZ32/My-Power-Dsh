@@ -33,7 +33,11 @@ import type { PanelRegistrationHandle, SeamOutcome, TuiAdapter } from "./types.j
 import type { Log } from "./log.js"
 import { cellWidth } from "./sanitize.js"
 import { DAG_CHROME, DAG_KIND_ABBREV, DAG_PANEL_MIN_COLUMNS, DAG_PANEL_SLUG, DAG_TONE_GLYPH } from "./dag-theme.js"
-import { layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
+// THE CHROME COMES FROM THE MERGED PAGE, not a second implementation of it: the `⤢` control, its hover
+// treatment and the title row it sits in are ONE definition, so the three MPD pages cannot drift into
+// three different-looking affordances (and the host cannot draw one for any of them).
+import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow } from "./panel.js"
+import { hitTest, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
 import type { TeamWorkflow } from "./team-state.js"
 import {
   clampScroll,
@@ -64,6 +68,13 @@ import {
   type PanelKit,
   type PanelPropsLike,
 } from "./panel-core.js"
+// THE CORE LANE'S NAMESPACE, for the ONE frozen cross-lane export this page must CALL but does not own:
+// `viewportRail(kit, viewport, cols)` (plan §3). It is reached by PROPERTY rather than by a named import
+// because the two lanes land in either order, and a named import of an export that has not landed yet is
+// a LINK-TIME failure in Bun (measured: `SyntaxError: Export named 'x' not found`) — it would take down
+// every importer of this file, the package's whole suite and the row's own boot until Core lands. A
+// property read costs one lookup per render and degrades to this page's own rail row in the meantime.
+import * as core from "./panel-core.js"
 
 /** The slug this page registers under; the HOST prefixes it with this activation's plugin id. */
 export const DAG_PANEL_ID = DAG_PANEL_SLUG
@@ -478,14 +489,219 @@ function headerFacts(page: DagPage, cols: number): { facts: HeaderFact[]; bar: s
   }
 }
 
+/** The task one pointer event on a drawing row resolved to, and the rule that resolved it. */
+export interface DagRowClick {
+  /** The task under the pointer, or absent when the pointer resolved to no task at all. */
+  taskId?: string
+  /**
+   * True when the COLUMN-aware rectangle decided this, false when the row band did.
+   *
+   * The distinction is the caller's, and it is the whole of AC4: a column-aware miss means the pointer
+   * was over blank space and the pin must be CLEARED, while a band miss means the host delivered no
+   * position to be sure about. Both carry no `taskId`; only one of them is a decision.
+   */
+  byColumn: boolean
+}
+
+/**
+ * Resolve a pointer event on one drawing row to a task (frozen clause AC4).
+ *
+ * THE ROW BAND IS NOT ENOUGH, and that defect is the wave's own: every box of a rank shares one row
+ * band, so a row-only predicate always lands on the LEFTMOST box of that rank — which the natural
+ * width routinely pans out of view. `graph.ts` already computes one rectangle per box and exports
+ * `hitTest` for exactly this lookup, so the fix is a call and not a second layout.
+ * @param view - the drawing the row belongs to.
+ * @param row - the ROW'S OWN drawing index (the loop variable of the drawing), never a page row and
+ *   never arithmetic on the event.
+ * @param colOffset - the page's horizontal pan in cells, added to the pointer's own column.
+ * @param event - the host's pointer event, when the host delivered one.
+ * @returns the task under the pointer and which rule found it; `taskId` is absent when this row
+ *   resolved to no task.
+ */
+export function dagRowClick(view: GraphView, row: number, colOffset: number, event: unknown): DagRowClick {
+  /** The pointer's own column inside this row, when the host delivered a usable one. */
+  const localCol = pointerCol(event)
+  if (localCol !== undefined) {
+    /** The pointer's column in the DRAWING's own coordinates: the same pan the rows were cut with. */
+    const col = (Number.isFinite(colOffset) ? Math.max(0, Math.floor(colOffset)) : 0) + localCol
+    /** The task whose rectangle holds the pointer. */
+    const taskId = hitTest(view, row, col)
+    return { ...(taskId === undefined ? {} : { taskId }), byColumn: true }
+  }
+  // NO USABLE COORDINATES: the row-band resolution this page used before the column existed, kept so a
+  // host that delivers a click without a position still pins rather than doing nothing at all.
+  /** The rectangle whose row band holds this row, in the drawing's own order. */
+  const band = view.hits.find((candidate) => row >= candidate.row && row <= candidate.rowEnd)
+  return { ...(band === undefined ? {} : { taskId: band.taskId }), byColumn: false }
+}
+
+/**
+ * The pointer's column inside the row it landed on.
+ *
+ * The host recomputes `localCol` per handler from the row element's own rect, so this is a position
+ * INSIDE the row that was clicked rather than a screen coordinate — which is why the page never has to
+ * know where the panel is on screen.
+ * @param event - the host's pointer event, when the host delivered one.
+ * @returns the column in cells, or undefined when this event carries none this page can trust.
+ */
+function pointerCol(event: unknown): number | undefined {
+  if (event === null || typeof event !== "object") return undefined
+  /** The event's own `localCol`, before it is trusted. */
+  const col = (event as { localCol?: unknown }).localCol
+  if (typeof col !== "number" || !Number.isFinite(col) || col < 0) return undefined
+  return Math.floor(col)
+}
+
+/** The characters that make a name part of a LONGER word, so a whole-name match cannot be a substring. */
+const NAME_CHAR = /[a-z0-9_]/u
+
+/**
+ * Fold a name for comparison: lower-case, whitespace runs collapsed, both ends trimmed.
+ * @param value - the raw name, when the record carried one.
+ * @returns the folded name, or "" when there is nothing to compare.
+ */
+function foldName(value: string | undefined): string {
+  return typeof value === "string" ? value.toLowerCase().replace(/\s+/gu, " ").trim() : ""
+}
+
+/**
+ * Whether one folded name appears in a folded description as a WHOLE name.
+ *
+ * The boundary test keeps a name from matching in the MIDDLE of a longer word, which is the accident a
+ * plain `includes` would make routine. **Honest bound**: a name that is a whole WORD of a longer name
+ * still matches (`Engineer` inside `Panel Engineer`), which is the tolerance a caller wants when a
+ * record names a role rather than a member; {@link agentIdForOwner} prefers an EXACT match over this one.
+ * @param description - the folded description to search.
+ * @param name - the folded name to find.
+ * @returns true when the name appears delimited by non-name characters.
+ */
+function nameInside(description: string, name: string): boolean {
+  /** Where the next search starts, so every occurrence is tried rather than only the first. */
+  let from = 0
+  for (;;) {
+    /** This occurrence's index, or -1 when none is left. */
+    const at = description.indexOf(name, from)
+    if (at < 0) return false
+    /** The character before it, "" at the start of the description. */
+    const before = description.slice(Math.max(0, at - 1), at)
+    /** The character after it, "" at the end. */
+    const after = description.slice(at + name.length, at + name.length + 1)
+    if (!NAME_CHAR.test(before) && !NAME_CHAR.test(after)) return true
+    from = at + 1
+  }
+}
+
+/**
+ * The live subagent id behind a task's owner name (frozen clause AC6).
+ *
+ * THE HOST'S OWN CURATED ROWS ARE THE ONLY SOURCE: `snapshot().subagents` lists the subagents this
+ * session really started, each carrying an `agentId` and a `description`, and a team record's owner is
+ * the NAME the captain addressed that member by — which is the name the description carries. Nothing
+ * here invents an id and nothing reads a second source, so a task whose owner the host does not report
+ * resolves to undefined and the caller SAYS SO rather than opening an unrelated page.
+ * @param snapshot - the host's snapshot (`host.snapshot()`), of unknown shape.
+ * @param owner - the task's owner name, when the record carried one.
+ * @returns the matching row's `agentId`, or undefined when no row matches.
+ */
+export function agentIdForOwner(snapshot: unknown, owner: string | undefined): string | undefined {
+  /** The owner name, folded for a comparison that ignores case and runs of whitespace. */
+  const wanted = foldName(owner)
+  if (wanted === "") return undefined
+  try {
+    /** The host's own subagent rows, when this composition projects them at all. */
+    const raw = (snapshot as { subagents?: unknown } | undefined)?.subagents
+    if (!Array.isArray(raw)) return undefined
+    /** The first row that matched by CONTAINMENT, kept in case no row matches by equality. */
+    let contained: string | undefined
+    for (const entry of raw) {
+      if (entry === null || typeof entry !== "object") continue
+      /** This entry as a record; both fields stay unknown until they are narrowed. */
+      const row = entry as { agentId?: unknown; description?: unknown }
+      /** The id this row can be opened by; a row without one is not a target. */
+      const agentId = typeof row.agentId === "string" && row.agentId !== "" ? row.agentId : undefined
+      if (agentId === undefined) continue
+      /** The row's own description, folded the same way as the name. */
+      const description = foldName(typeof row.description === "string" ? row.description : undefined)
+      if (description === "") continue
+      if (description === wanted) return agentId
+      if (contained === undefined && nameInside(description, wanted)) contained = agentId
+    }
+    return contained
+  } catch {
+    // A hostile snapshot (a throwing getter, a proxy) resolves to NO id, and the caller reports that
+    // through the host's toast: the alternative is a click that throws inside the host's reconciler.
+    return undefined
+  }
+}
+
+/**
+ * Show one transient line through the host's own chrome — AC6's "never a silent no-op".
+ * @param host - the host API, when the page was handed one.
+ * @param message - the line to show; a host that exposes no `toast` simply does not show it.
+ */
+function hostToast(host: unknown, message: string): void {
+  if (host === null || host === undefined) return
+  /** The host API, before its `toast` member is trusted. */
+  const api = host as { toast?: unknown }
+  if (typeof api.toast !== "function") return
+  try {
+    // Called AS A METHOD on the host's own object, the documented form and the one that cannot lose a
+    // receiver the implementation may rely on (the same rule `panelSnapshot` follows).
+    ;(api as { toast: (text: string) => unknown }).toast(message)
+  } catch {
+    // A host that refuses the line costs the HINT, never the click: the page still did the one thing it
+    // could do, and a throw here would land inside the host's reconciler.
+  }
+}
+
+/**
+ * Open one task's owner work page, and say so through the host when no page can be reached (AC6).
+ *
+ * The order is the contract's own: the pin is held (the user has already seen the detail body), the
+ * owner resolves through {@link agentIdForOwner} against a snapshot read AT CLICK TIME — a render may
+ * be many seconds old by now — and a refusal from the row's opener is as loud as a missing one.
+ * @param host - the host API, for its `toast`.
+ * @param task - the task whose owner the second click asked for.
+ * @param options - the page's own deps.
+ */
+function openAgentWorkPage(host: unknown, task: DagPanelTask | undefined, options: DagPageOptions | undefined): void {
+  /** The owner name the task carries; a task without one has no page to open. */
+  const owner = task?.assignee
+  /** The live subagent id the owner name resolves to, when the host reports one. */
+  const agentId = agentIdForOwner(panelSnapshot(host), owner)
+  if (agentId === undefined) {
+    hostToast(host, owner === undefined || owner === "" ? `no owner on ${task?.id ?? "that task"} — no agent page` : `no subagent page matches ${owner}`)
+    return
+  }
+  /** Whether the row's opener reached a page; an absent opener is a refusal, never a silent success. */
+  const reached = options?.openAgentPage?.(agentId) === true
+  if (!reached) hostToast(host, `no agent page for ${agentId}`)
+}
+
+/** What the DAG page needs from the plugin row, beyond its reader. */
+export interface DagPageOptions {
+  /** Opens the agent work page for a live subagent id; false when no page was reached. */
+  openAgentPage?: (agentId: string) => boolean
+  /**
+   * Opens this page's full-screen scene; absent when the row has no such surface to offer.
+   *
+   * The `⤢` control in the page's title row calls THIS, exactly as the merged page's and the workmate
+   * page's controls call their own row's opener: the button and the page's declared fallback must name
+   * one surface, never two.
+   */
+  openFullscreen?: () => boolean
+}
+
 /**
  * Build the DAG page component.
  * @param readWorkflow - reads the MPD team projection for this session's workspace; the wiring passes
  *   the same reader the merged panel and the scenes use, so no two surfaces can describe one team
  *   differently. It is injected (rather than imported) so this file stays free of the row module.
+ * @param options - the row's own deps for this page; omitted by every caller that has no agent page to
+ *   open, which is why the parameter is optional and why the second click then says so through a toast.
  * @returns a component matching the host's panel props contract.
  */
-export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undefined): unknown {
+export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undefined, options?: DagPageOptions): unknown {
   return function MpdTuiDagPanel(props: PanelPropsLike): unknown {
     /** The host's React instance and ui kit, proved usable before a single hook is called. */
     const kit = panelKit(props?.React, props?.ui)
@@ -520,6 +736,19 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
     const pinned = typeof focused[0] === "string" ? (focused[0] as string) : undefined
     /** Moves the click pin. */
     const setPinned = focused[1] as (next: unknown) => void
+    // THE PIN NEEDS THE SAME LIVE AUTHORITY THE CURSOR HAS, and for AC6 specifically: "clicking the
+    // ALREADY-pinned task opens its owner's page" is decided AGAINST the pin, and a handler born in an
+    // earlier render reads the pin of THAT render — so a second click arriving before the host
+    // re-rendered would re-pin the same task instead of opening the page it asked for. The ref is what
+    // the next click reads; the state cell stays the host's reason to re-render.
+    const pinLive = kit.React.useRef(undefined)
+    /** The pinned task id as the NEXT click must see it: what this turn has already pinned. */
+    const pinnedNow = (): string | undefined => (typeof pinLive?.current === "string" ? (pinLive.current as string) : pinned)
+    /** Record the click pin in BOTH places, in the order the two authorities need. */
+    const movePin = (next: string | undefined): void => {
+      if (pinLive !== null && pinLive !== undefined) pinLive.current = next
+      setPinned(next)
+    }
     /** The focused task id, when the state cell holds one. */
     const cursorId = typeof cursor[0] === "string" ? (cursor[0] as string) : undefined
     /** Moves the keyboard cursor. */
@@ -539,9 +768,10 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
       setCursor(next)
     }
     /** The task the drawing lights: the CLICK PIN outranks the keyboard cursor while it exists. */
-    const focus = pinned ?? cursorNow()
-    /** The window height this panel affords, from the height the host reported. */
-    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS)
+    const focus = pinnedNow() ?? cursorNow()
+    /** The window height this panel affords, from the height the host reported (its title row and footer
+     * are drawn OUTSIDE the window, which is why they are subtracted here). */
+    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS)
     // THE LAYOUT IS TOLD THE ROWS, so the drawing can choose the roomy five-row box when the panel has
     // the room for it and the compressed three-row one when it does not — one decision per drawing, made
     // before any box is placed, which is what keeps two boxes in one rank from having different heights.
@@ -618,8 +848,8 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
       }
       // A PIN OUTRANKS THE CURSOR while it exists, so pinning takes the same live value the walk just
       // moved to — pinning the RENDERED focus would pin the previous task on a fast walk.
-      if (action.pin === true) setPinned(cursorNow())
-      if (action.pin === false) setPinned(undefined)
+      if (action.pin === true) movePin(cursorNow())
+      if (action.pin === false) movePin(undefined)
     })
 
     /** The rows, in draw order. */
@@ -682,29 +912,55 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
         // the DAG's rows — see R8, which is why the legend, the detail body and the footer below are
         // pushed unwindowed.
         const spans = sliceSpans(phased, viewport.colOffset, contentCols)
-        /** The task this row belongs to, when the pointer could land on one. */
-        const hit = layout.view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd)
+        // THE TASK THIS ROW BELONGS TO IS NO LONGER RESOLVED HERE, and that is the fix: the row band
+        // cannot tell two boxes of one rank apart. The handler below resolves the pointer THROUGH THE
+        // DRAWING at click time, with this row's own index and the pointer's own column.
+        //
+        // EVERY DRAWING ROW CARRIES THE HANDLER, blank rows included: a pointer on blank space is what
+        // CLEARS the pin (AC4), and a row with no handler could only ever be a silent no-op. The chrome
+        // rows — header, mode line, detail body, legend, footer — are NOT drawing rows and carry none.
         children.push(
-          hit === undefined
-            ? graphRow(kit, spans, { key: `row-${index}`, cols: contentCols })
-            : graphRow(kit, spans, {
-                key: `row-${index}`,
-                cols: contentCols,
-                onClick: (): void => {
-                  // THE CLICK RESOLVES THROUGH THE DRAWING'S OWN HIT RECTANGLE (never arithmetic on the
-                  // event): the closure already knows which task this row belongs to, and the layout is
-                  // the one that produced the row on screen.
-                  setPinned(hit.taskId)
-                  moveCursor(hit.taskId)
-                },
-              }),
+          graphRow(kit, spans, {
+            key: `row-${index}`,
+            cols: contentCols,
+            onClick: (event: unknown): void => {
+              /** The task this pointer resolved to, and which rule resolved it. */
+              const resolved = dagRowClick(layout.view, index, viewport.colOffset, event)
+              if (resolved.taskId === undefined) {
+                // NOTHING UNDER THE POINTER: a column-aware miss on blank space, or a band miss on a row
+                // that belongs to no box. Either way the pin is CLEARED rather than kept — the drawing
+                // the user pointed at has nothing to pin.
+                movePin(undefined)
+                return
+              }
+              // THE PIN THE USER SEES IS THE PIN THIS DECIDES AGAINST (`focus` reads the same live value),
+              // so a second click on the task that is ALREADY pinned opens its owner's work page instead
+              // of re-pinning it (AC6). The pin itself is left alone: the chain stays lit behind the page.
+              if (resolved.taskId === pinnedNow()) {
+                openAgentWorkPage(props?.host, page?.tasks.find((task) => task.id === resolved.taskId), options)
+                return
+              }
+              movePin(resolved.taskId)
+              moveCursor(resolved.taskId)
+            },
+          }),
         )
       }
       // THE HORIZONTAL RAIL, DIRECTLY BENEATH THE DRAWING (R8) and driven by the SAME `colOffset` the
       // rows above were cut with — one position, one scroller, two views of it (clause T4). It is drawn
       // only while the drawing is wider than the panel, so a sidebar that fits keeps its rows.
       if (viewport.colOverflow) {
-        children.push(textRow(kit, gutterCellsX(viewport.colOffset, sizes.contentCols ?? contentCols, contentCols), { key: "hrail", tone: "edge", maxCells: contentCols }))
+        // THE ELEMENT BELONGS TO THE CORE LANE (frozen cross-lane export `viewportRail`, plan §3 — the
+        // draggable rail is its, not this page's). The call is written here as the contract freezes it;
+        // the property read is the landing-order bridge and the page's own row is its ONE-LINE fallback,
+        // drawn only while that export is missing (see the namespace import at the top of this file).
+        /** The Core lane's rail builder, on a build of `panel-core.ts` that exports it. */
+        const coreRail = core.viewportRail
+        // DELETE THIS ONE ARM once Core's export is integrated for good: the replacement is
+        // `coreRail(kit, viewport, contentCols)` and nothing else in this file changes with it.
+        /** The rail to draw: Core's element when the export exists, this page's own row while it does not. */
+        const rail = typeof coreRail === "function" ? coreRail(kit, viewport, contentCols) : textRow(kit, gutterCellsX(viewport.colOffset, sizes.contentCols ?? contentCols, contentCols), { key: "hrail", tone: "edge", maxCells: contentCols })
+        if (rail !== undefined) children.push(rail)
       }
       // THE MODE LINE: which view was drawn AND WHERE ITS RANKS CAME FROM, said out loud — the view is
       // a fact about the width and the reader is the one who can change the width, while the rank
@@ -770,13 +1026,29 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
     /** The wheel binding, applied by the body to the rows it is about to draw. */
     const wheelBound = (boundKit: PanelKit, rows: readonly unknown[]): unknown =>
       boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...rows)
-    // THE FOOTER KEY HINTS (R6/R11): the keys this page actually handles, and nothing else — a hint row
-    // that named a key the page ignores is worse than no hint row.
+    // THE FOOTER HINTS (R6/R11): the keys this page handles, and the panel's own `⤢` full-screen control
+    // — named here because this hint row is the only place a reader learns that control exists.
+    //
+    // THE `⤢` HINT LEADS THE ROW (AC8b, measured): the host clamps a row from its END, and at the
+    // 28-column floor this page has 26 content cells while the key hints alone run past 40 — so a hint
+    // that trailed them was the first thing cut, and the control was invisible exactly at the width
+    // where a reader is most likely to want the full-screen escape. Leading with it costs the tail of
+    // the key hints at the narrowest widths and nothing at all at every width where they fit.
     /** The pinned footer, carrying the scroll position so the reader can see where they are. */
-    const footer = textRow(kit, `↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols })
+    const footer = textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · ↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols })
     /** The visible slice plus its reserved gutter column. */
     const body = panelViewportBody(kit, children, scroller, true, wheelBound)
-    return panelFrame(kit, DAG_PANEL_TITLE, [...body, footer])
+    // THE TITLE ROW IS OUTSIDE THE WINDOW, immediately under the frame's top border: the page's own
+    // name and MPD's `⤢`, both pinned, so the control sits at the same cell however far the drawing
+    // scrolls. It is the SAME implementation the merged and workmate pages use — one definition of the
+    // chrome, so the three pages cannot drift into three different-looking affordances.
+    //
+    // WHY THE PAGE DRAWS IT AND THE HOST CANNOT: measured on dsh-tui 0.13.0, `dsh-adapter/panels.js`
+    // freezes a plugin descriptor WITHOUT `capabilities`, while `SidePanelColumn.js`'s `canExpand` reads
+    // `definition.capabilities?.fullscreen === true` — so no plugin panel ever gets the host's own `⤢`.
+    /** This page's chrome row: its title and the full-screen control. */
+    const titleRow = usePanelTitleRow(kit, { key: "title", title: DAG_PANEL_TITLE, cols: contentCols, ...(options?.openFullscreen === undefined ? {} : { open: options.openFullscreen }) })
+    return panelFrame(kit, DAG_PANEL_TITLE, [titleRow, ...body, footer])
   }
 }
 
@@ -788,6 +1060,21 @@ export interface DagPanelDeps {
   readWorkflow(): TeamWorkflow | undefined
   /** The existing full-screen scene, opened when the host cannot serve a panel at all. */
   openScene(): boolean
+  /**
+   * Opens the agent work page for a live subagent id (AC6); false when no page was reached.
+   *
+   * Optional because the row's wiring may have no such surface; a page without it still SAYS SO through
+   * the host's toast rather than ignoring the second click.
+   */
+  openAgentPage?: (agentId: string) => boolean
+  /**
+   * Opens this page's full-screen scene (AC8b); false when no page was reached.
+   *
+   * It is the page's own `openScene` surface, reached from the `⤢` control the page draws in its title
+   * row — the host cannot draw one for a plugin panel. Optional for the same reason as the dep above:
+   * a page given no opener still draws the control row, but its glyph carries no click handler.
+   */
+  openFullscreen?: () => boolean
   /** Diagnostics: the file sink, never a terminal. */
   log: Log
 }
@@ -818,7 +1105,12 @@ export function registerDagPanel(tui: TuiAdapter, deps: DagPanelDeps): DagPanelS
   const panel: PanelRegistrationHandle | undefined = deps.enabled
     ? tui.registerPanel({
         ...DAG_PANEL_DESCRIPTOR_FROZEN,
-        component: createDagPanelComponent(deps.readWorkflow),
+        // THE AGENT-PAGE DEP IS FORWARDED HERE and nowhere else: the component is built by this row, so a
+        // dep the row received but did not pass would leave the second click (AC6) silently dead — the
+        // exact no-op the criterion forbids. THE FULL-SCREEN OPENER RIDES THE SAME RULE (AC8b): the
+        // `⤢` control is drawn by the page, so a dep that stopped here would leave a visible button that
+        // does nothing.
+        component: createDagPanelComponent(deps.readWorkflow, { openAgentPage: deps.openAgentPage, openFullscreen: deps.openFullscreen }),
       })
     : undefined
   return {
