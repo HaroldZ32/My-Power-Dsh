@@ -1,0 +1,542 @@
+===================================================================
+Lane E — T12 / LANE A independent verification — OUTPUT.LOG
+recordId : lane-e-lane-a-2026-10-07T1035Z
+verdict  : PASS (3 minor findings; 3 declared bounds)
+revision : cae00e5a952e16daef7ad4aac99c79e373d635ff
+settle   : all six Lane A scope paths identical 10:35:20Z -> 10:37:23Z
+discipline: verdict recorded before any implementation read; unlockedReads empty
+===================================================================
+
+--- RESIDUAL BOUND (verify-law-spec (c)), verbatim ---
+the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).
+
+--- ANCHOR: the gate's own verdict line, repeated in every arm ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+
+===================================================================
+=== LOG: ev-a3-delta.log
+===================================================================
+cmd: per-package FILE-NAME delta, snapshot vs pristine checkout (names only)
+--- ast-grep-mcp ---
+    0a1
+    > ./AGENTS.md
+--- git-bash-mcp ---
+    0a1
+    > ./AGENTS.md
+--- lsp-daemon ---
+    0a1
+    > ./AGENTS.md
+--- lsp-core ---
+    0a1
+    > ./AGENTS.md
+--- mcp-stdio-core ---
+    0a1
+    > ./AGENTS.md
+--- omo-config-core ---
+    0a1
+    > ./AGENTS.md
+--- utils ---
+    0a1
+    > ./AGENTS.md
+
+cmd: tree hash over the COMMON file set only (isolates content drift from the missing file)
+  ast-grep-mcp     common-set snapshot=08dee2f58d87c871 upstream=08dee2f58d87c871 IDENTICAL
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  git-bash-mcp     common-set snapshot=0750f5060d38b37f upstream=0750f5060d38b37f IDENTICAL
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  lsp-daemon       common-set snapshot=ea2a8017accb0fd3 upstream=ea2a8017accb0fd3 IDENTICAL
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  lsp-core         common-set snapshot=8d16b90af157eceb upstream=8d16b90af157eceb IDENTICAL
+  mcp-stdio-core   common-set snapshot=540d7c347d24f08f upstream=540d7c347d24f08f IDENTICAL
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  omo-config-core  common-set snapshot=18462e5440f6be60 upstream=18462e5440f6be60 IDENTICAL
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  utils            common-set snapshot=64999a23ca65ab06 upstream=64999a23ca65ab06 IDENTICAL
+
+cmd: the lsp entry + package layout (names/data only)
+  bin: {"omo-lsp-daemon":"./dist/cli.js"}
+  scripts: {"build":"node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && bun build src/cli.ts src/index.ts src/client.ts --outdir dist --target node --format esm && node scripts/stamp-dist-version.mjs","smoke:client-package":"node scripts/client-package-smoke.mjs","test":"vitest --run","test:watch":"vitest","typecheck":"tsc --noEmit","lint":"biome check .","lint:fix":"biome check --write .","check":"tsc --noEmit && biome check . && npm run build"}
+  packages/mpd-mcp-lsp contents:
+    README.md
+    README.zh-CN.md
+    dist
+    overlay
+    package.json
+    src
+  packages/mpd-mcp-lsp/src exists? YES
+
+cmd: upstream LICENSE.md licence name (A3's SUL-1.0 claim)
+    # License
+    
+    Portions of this software are licensed as follows:
+    
+    - All third party components incorporated into the oh-my-opencode Software are licensed under the original license
+    SUL mentions: 1
+
+===================================================================
+=== LOG: ev-a3-drift.log
+===================================================================
+cmd: is the committed dist PRE-EXISTING or touched by this wave? (read-only git history)
+  packages/mpd-mcp-astgrep/dist/cli.js         working-tree-modified=  last commit: 7d8f910e 2026-08-27 chore(scrub): remove omo/opencode traces everywhere outside README.md (provenance only)
+  packages/mpd-mcp-gitbash/dist/cli.js         working-tree-modified=  last commit: ff1932f2 2026-09-14 chore(naming): land the OMO/Codex/OpenCode to DSH naming wave
+  packages/mpd-mcp-lsp/dist/cli.js             working-tree-modified=  last commit: 010d9ef6 2026-09-22 fix(windows): make the bundle resolve, boot and verify on win32
+  packages/mpd-mcp-codegraph/dist/serve.js     working-tree-modified=  last commit: 3c1a8507 2026-09-14 fix(agent-teams,qa): amend guards, member read-only deny, and QA isolation/auth drift
+
+cmd: packages/mpd-mcp-lsp layout (names only)
+    src/launch.ts
+    overlay:
+      lsp
+    package scripts: {"test":"bun test","build":"cd \"$(git rev-parse --show-toplevel)\" && bun build packages/mpd-mcp-lsp/src/launch.ts --target node --format esm --outfile packages/mpd-mcp-lsp/dist/launch.js"}
+
+cmd: bun build reproduce attempt to /tmp (NON-destructive: outfile outside the repo)
+  installed bun: 1.4.2   (package.json buildToolchain: "bun@1.4.0")
+  entry=src/cli.ts exit=1 built_bytes=0 sha=
+    (committed dist: 234916 bytes sha=555d6bf2b940ea2c)
+    /tmp path occurrences in artifact: 0
+  entry=src/index.ts exit=1 built_bytes=0 sha=
+    (committed dist: 234916 bytes sha=555d6bf2b940ea2c)
+    /tmp path occurrences in artifact: 0
+
+===================================================================
+=== LOG: ev-a3-rebuild.log
+===================================================================
+cmd: snapshot package entries (bin/main) + a rebuild attempt per MCP server, outfile OUTSIDE the repo
+  ast-grep-mcp bin={"omo-ast-grep":"dist/cli.js"} main=null module=null
+  git-bash-mcp bin={"omo-git-bash":"dist/cli.js"} main=null module=null
+  lsp-daemon bin={"omo-lsp-daemon":"./dist/cli.js"} main=null module=null
+
+  astgrep                                              exit=1  (no artifact)
+    first error lines:
+      24 | } from "@oh-my-opencode/mcp-stdio-core";
+                  ^
+      error: Could not resolve: "@oh-my-opencode/mcp-stdio-core". Maybe you need to "bun install"?
+          at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/vendor/mcp-src/ast-grep-mcp/src/mcp.ts:24:8
+  gitbash                                              exit=1  (no artifact)
+    first error lines:
+      2 | import { errorResponse, isPlainRecord, jsonRpcId, runJsonRpcStdioServer, successResponse } from "@oh-my-opencode/mcp-stdio-core";
+                                                                                                          ^
+      error: Could not resolve: "@oh-my-opencode/mcp-stdio-core". Maybe you need to "bun install"?
+          at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/vendor/mcp-src/git-bash-mcp/src/mcp.ts:2:97
+  lsp                                                  exit=1  (no artifact)
+    first error lines:
+      4 | import { handleLspMcpRequest, type JsonRpcId, type JsonRpcResponse } from "@oh-my-opencode/lsp-core/mcp";
+                                                                                    ^
+      error: Could not resolve: "@oh-my-opencode/lsp-core/mcp". Maybe you need to "bun install"?
+          at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/vendor/mcp-src/lsp-daemon/src/proxy.ts:4:75
+
+===================================================================
+=== LOG: ev-a3-source-and-licence.log
+===================================================================
+cmd: the 7 snapshotted packages — name / version / license field / entry
+  ast-grep-mcp     name=@oh-my-opencode/ast-grep-mcp version=0.1.0 license=<ABSENT> bin=omo-ast-grep main=-
+  git-bash-mcp     name=@oh-my-opencode/git-bash-mcp version=0.0.0 license=<ABSENT> bin=omo-git-bash main=-
+  lsp-daemon       name=@code-yeongyu/lsp-daemon version=0.1.0 license="MIT" bin=omo-lsp-daemon main=-
+  lsp-core         name=@oh-my-opencode/lsp-core version=0.1.0 license=<ABSENT> bin=- main=-
+  mcp-stdio-core   name=@oh-my-opencode/mcp-stdio-core version=0.1.0 license=<ABSENT> bin=- main=-
+  omo-config-core  name=@oh-my-opencode/omo-config-core version=0.1.0 license=<ABSENT> bin=- main=-
+  utils            name=@oh-my-opencode/utils version=0.1.0 license=<ABSENT> bin=- main=-
+
+cmd: per-package tree hash — snapshot vs the PRISTINE pinned checkout (same recipe: sorted relpath + raw sha256)
+  ast-grep-mcp     snapshot=08dee2f58d87c871 upstream=aebb6964a42d73b2 files(snap=23, up=24) DIFFERS
+  git-bash-mcp     snapshot=0750f5060d38b37f upstream=ef733fa8a289beb1 files(snap=14, up=15) DIFFERS
+  lsp-daemon       snapshot=ea2a8017accb0fd3 upstream=a44adadab163f0c5 files(snap=54, up=55) DIFFERS
+  lsp-core         snapshot=8d16b90af157eceb upstream=bbb921a5fd612bfa files(snap=93, up=94) DIFFERS
+  mcp-stdio-core   snapshot=540d7c347d24f08f upstream=58b8dde3e3c8b9b8 files(snap=10, up=11) DIFFERS
+  omo-config-core  snapshot=18462e5440f6be60 upstream=160fc2b77b4d69f3 files(snap=79, up=80) DIFFERS
+  utils            snapshot=64999a23ca65ab06 upstream=286f71dde093ad7f files(snap=184, up=185) DIFFERS
+
+cmd: the licence section of vendor/mcp-src/README.md (doc read)
+## License and attribution — measured, never assumed
+
+The upstream repository's own `LICENSE.md` (at the pinned commit) licenses its content under the
+**Sustainable Use License 1.0 (SUL-1.0)**, and states that "All third party components incorporated
+into the oh-my-opencode Software are licensed under the original license provided by the owner of the
+applicable component". That is the same SUL-1.0 this repository inherits (see `LICENSE.md` and
+`LICENSE-NOTICES.md`).
+
+Per-package declaration, read from each snapshot's own `package.json`:
+
+| Package | `license` field |
+|---|---|
+| `lsp-daemon` (`@code-yeongyu/lsp-daemon`) | `MIT` — self-declared by the package |
+| the other six (`@oh-my-opencode/*`) | absent — they fall under the repository's SUL-1.0 |
+
+**A correction, stated rather than silently resolved:** the wave plan's clause A3 asks this snapshot to
+carry "its provenance + MIT notice". Measured against the pinned sources, that wording is wrong for
+this snapshot — the MCP sources are SUL-1.0 (with `lsp-daemon` self-declaring MIT), and labelling them
+MIT would be a false provenance claim. The MIT acknowledgement the plan refers to belongs to the
+`dsh-agent-teams` body, which is a DIFFERENT upstream relocated by a different lane. This file records
+the measured licence instead. Attribution for both upstreams survives in `LICENSE-NOTICES.md` and in
+the bilingual `README.md` pair, as clause A5 requires.
+
+===================================================================
+=== LOG: ev-ac2-and-writer-logs.log
+===================================================================
+cmd: AC2 — does .github/workflows/gates.yml still fetch the pinned baseline? (token counts + step names)
+  MPD_UPSTREAM_ROOT    3
+  upstream             6
+  VENDOR_LOCK          3
+  checkout             5
+  RUNNER_TEMP          0
+0
+  --- step names in gates.yml ---
+    1:name: gates
+    61:    name: Static gates
+    64:      - name: Check out the repository
+    66:      - name: Set up Node.js
+    70:      - name: Set up Bun
+    78:      - name: "Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)"
+    84:      - name: Install the harness the row-config gate validates against
+    94:      - name: Static gate aggregate
+    97:      - name: Plugin manifest install-time rules and packaging contract
+    100:      - name: Declaration comments and explicit signatures
+
+cmd: AC2 — token counts in Lane A's scripts (content-free)
+  scripts/verify-vendor.ts     oh-my-openagent=3 MPD_UPSTREAM_ROOT=2 ci-rehearsal=0
+0 upstream=14 vendor/mcp-src=0
+0
+  scripts/build-mcp.ts         oh-my-openagent=1 MPD_UPSTREAM_ROOT=1 ci-rehearsal=0
+0 upstream=23 vendor/mcp-src=8
+  scripts/bootstrap.ts         oh-my-openagent=0
+0 MPD_UPSTREAM_ROOT=0
+0 ci-rehearsal=0
+0 upstream=1 vendor/mcp-src=0
+0
+  scripts/repin-vendor.ts      oh-my-openagent=0
+0 MPD_UPSTREAM_ROOT=0
+0 ci-rehearsal=0
+0 upstream=0
+0 vendor/mcp-src=0
+0
+
+cmd: identity surface recount (was 1442 tracked / 92 code+config at pre-flight)
+  tracked_total=1388
+  code_config_surface=38
+  --- which of the four Lane A identity carriers still match ---
+    scripts/verify-vendor.ts       MATCHES
+    scripts/build-mcp.ts           MATCHES
+    scripts/bootstrap.ts           clean
+    VENDOR_LOCK.json               MATCHES
+    .github/workflows/gates.yml    MATCHES
+    scripts/repin-vendor.ts        clean
+
+cmd: writer's negative-arm evidence present in its own log?
+3:[verify-vendor] FAIL - asset skills treeSha mismatch
+14:[verify-vendor] FAIL - asset skills treeSha mismatch
+23:[verify-vendor] FAIL - asset skills treeSha mismatch
+32:[verify-vendor] FAIL - asset skills treeSha mismatch
+70:[verify-vendor] FAIL - asset skills treeSha mismatch
+71:[verify-vendor] FAIL - asset vendor/mcp-src treeSha mismatch
+79:[verify-vendor] FAIL - asset skills treeSha mismatch
+80:[verify-vendor] FAIL - asset vendor/mcp-src count drifted: 460 vs 459
+81:[verify-vendor] FAIL - asset vendor/mcp-src treeSha mismatch
+89:[verify-vendor] FAIL - asset skills treeSha mismatch
+101:VERDICT: MPD_UPSTREAM_ROOT has NO effect on the gate's output - the env var is not read
+102:NOTE: all three exits are 1 for ONE reason, named in the output: 'asset skills treeSha mismatch'
+652:[verify-vendor] FAIL - asset skills treeSha mismatch
+664:[verify-vendor] FAIL - asset skills treeSha mismatch
+
+cmd: LANE-B-HANDOFF.md (cross-lane note, doc read) head
+# LANE A → LANE B HANDOFF (verbatim text to place)
+
+From: Lane A (Senior Engineer), task T4.
+To: Lane B (Deep Worker) — **relay requested from the captain**: the official team mailbox in this
+composition holds a PREVIOUS wave's members (`ToolDefects Engineer`, `Independence Engineer`,
+`TuiAdapter Engineer`, `doc-scribe`, `panel-surface`, `tui-visuals`, `Lead`) and `agent_teams_plan
+status` reports `members 0`, so Lane A cannot address "Deep Worker" by name. The captain owns the
+relay.
+
+Per the captain's write-scope correction, `README.md` / `README.zh-CN.md` / `LICENSE-NOTICES.md` /
+`docs/**` belong to Lane B this wave. **Lane A edited none of them** — verified with
+`git status --porcelain README.md README.zh-CN.md LICENSE-NOTICES.md docs/` (no Lane A modification).
+
+---
+
+## 1. A NOW-FALSE CLAIM — fix required
+
+`docs/development.md` (Gates table) and `docs/development.zh-CN.md` (same row) still say the vendor
+gate needs `MPD_UPSTREAM_ROOT`. It no longer does: the rewritten `scripts/verify-vendor.ts` reads **no
+environment variable at all**.
+
+English — replace the Vendor row:
+
+```
+| Vendor | `node scripts/verify-vendor.ts` (fingerprints the assets this repo ships; resolves NO upstream checkout) |
+
+===================================================================
+=== LOG: ev-arm1-unset.log
+===================================================================
+cmd: env -u MPD_UPSTREAM_ROOT node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+EXIT=1
+
+===================================================================
+=== LOG: ev-arm2-nonexistent.log
+===================================================================
+cmd: MPD_UPSTREAM_ROOT=/nonexistent/surely/absent node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+EXIT=1
+
+===================================================================
+=== LOG: ev-arm3-realpath.log
+===================================================================
+cmd: MPD_UPSTREAM_ROOT=$PWD/.mpd/ci-rehearsal/upstream node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+EXIT=1
+
+===================================================================
+=== LOG: ev-env-independence.log
+===================================================================
+cmd: three arms of node scripts/verify-vendor.ts, GATE OUTPUT ONLY (no shell headers, no exit lines)
+  arm1 = env -u MPD_UPSTREAM_ROOT
+  arm2 = MPD_UPSTREAM_ROOT=/nonexistent/surely/absent
+  arm3 = MPD_UPSTREAM_ROOT=<the real checkout that flipped the OLD gate green>
+sha256 arm1: fa5dcba89e966e434de4f481a0675043
+sha256 arm2: fa5dcba89e966e434de4f481a0675043
+sha256 arm3: fa5dcba89e966e434de4f481a0675043
+arm1 vs arm2: IDENTICAL
+arm1 vs arm3: IDENTICAL
+arm2 vs arm3: IDENTICAL
+
+===================================================================
+=== LOG: ev-flag-bogus.log
+===================================================================
+cmd: node scripts/verify-vendor.ts --bogus-flag
+[verify-vendor] FAIL - unknown argument: --bogus-flag
+usage: node scripts/verify-vendor.ts [--help]
+  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker
+  --help              print this text and exit 0
+  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)
+EXIT=1
+
+===================================================================
+=== LOG: ev-flag-help.log
+===================================================================
+cmd: node scripts/verify-vendor.ts --help
+usage: node scripts/verify-vendor.ts [--help]
+  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker
+  --help              print this text and exit 0
+  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)
+EXIT=0
+
+===================================================================
+=== LOG: ev-flag-require-upstream.log
+===================================================================
+cmd: node scripts/verify-vendor.ts --require-upstream
+[verify-vendor] REFUSED - --require-upstream: this gate has NO upstream subject any more.
+[verify-vendor] the oh-my-openagent checkout is retired from the composition (de-vendored 2026-10-07):
+[verify-vendor]   * no MPD_UPSTREAM_ROOT is read, no .mpd-dsh/upstream is looked for, no fallback exists;
+[verify-vendor]   * the upstream commit/version/statistics checks were DELETED, not skipped - nothing is left to require;
+[verify-vendor]   * upstream attribution lives in LICENSE-NOTICES.md, README.md and README.zh-CN.md, where no gate owns it.
+[verify-vendor] re-run without the flag to fingerprint the assets this repository ships, or revert the de-vendoring commit.
+EXIT=1
+
+===================================================================
+=== LOG: ev-flag-selftest.log
+===================================================================
+cmd: node scripts/verify-vendor.ts --self-test
+[verify-vendor] FAIL - unknown argument: --self-test
+usage: node scripts/verify-vendor.ts [--help]
+  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker
+  --help              print this text and exit 0
+  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)
+EXIT=1
+
+===================================================================
+=== LOG: ev-lock-and-dists.log
+===================================================================
+cmd: node -e '<enumerate VENDOR_LOCK.json shape>'
+top-level keys: _note, assets, verification, lockedAt
+  identity field present? upstream = false
+  identity field present? upstreamCommitSha = false
+  identity field present? upstreamVersion = false
+  identity field present? upstreamStats = false
+  identity field present? upstreamStatsLoc = false
+  identity field present? upstreamRepo = false
+  identity field present? baselineCommit = false
+assets keys: _note | skills | vendor/mcp-src | packages/mpd-mcp-astgrep/dist/cli.js | packages/mpd-mcp-gitbash/dist/cli.js | packages/mpd-mcp-lsp/dist/cli.js | packages/mpd-mcp-codegraph/dist/serve.js
+  _note -> files=undefined treeSha=
+  skills -> files=335 treeSha=f8d30d9665d8ca98fb9f6e05
+  vendor/mcp-src -> files=459 treeSha=05979e8a3fcb273486b9e56a
+  packages/mpd-mcp-astgrep/dist/cli.js -> files=1 treeSha= sha256=f06bba310cad306b5638efb9
+  packages/mpd-mcp-gitbash/dist/cli.js -> files=1 treeSha= sha256=6458a82ee2cfcec319a03d2f
+  packages/mpd-mcp-lsp/dist/cli.js -> files=1 treeSha= sha256=555d6bf2b940ea2c76c01540
+  packages/mpd-mcp-codegraph/dist/serve.js -> files=1 treeSha= sha256=ab287cdc058f031cf59347e4
+_deps present? false
+skills treeSha: f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1
+verification: "node scripts/verify-vendor.ts: asset count and fingerprint mismatches are blockers; a zero-subject run is refused; NO upstream identity is checked, and a flag that would require one is refused by name"
+_note: "HISTORICAL REFERENCE ONLY - the upstream project oh-my-openagent (https://github.com/code-yeongyu/oh-my-openagent, commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29, v5.0.0-beta.20, SUL-1.0) is NOT a checked baseline. De-vendored 2026-10-07 (wave de-vendor-and-verify-law): no gate resolves, fetches, copies from, fingerprints or audits that checkout any more, and this file carries no upstream identi
+
+cmd: node scripts/repin-vendor.ts --check   (independent recomputation of every asset fingerprint)
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (4011 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 fileCount=335
+[repin-vendor]   computed (LF) : treeSha=512a5743e8fcda2e83333c7020f6bf9cdb4db874e89f5c7c7a7650a466dd9755 fileCount=335 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 625f4ab3c873a5c0ed01580191a937d7142252eaee315bd8d82771c9661e4f18   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 -> 512a5743e8fcda2e83333c7020f6bf9cdb4db874e89f5c7c7a7650a466dd9755
+
+[repin-vendor] asset          : vendor/mcp-src
+[repin-vendor]   locked       : treeSha=05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4 fileCount=459
+[repin-vendor]   computed (LF) : treeSha=05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4 fileCount=459 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : RED - lock does not match the working tree (drift=1, problems=0)
+REPIN_EXIT=0
+
+cmd: bun --version ; sha256+bytes of the four shipped dist targets
+1.4.2
+84651  f06bba310cad306b5638efb9
+22137  6458a82ee2cfcec319a03d2f
+234916  555d6bf2b940ea2c76c01540
+336424  ab287cdc058f031cf59347e4
+
+===================================================================
+=== LOG: ev-preconditions.log
+===================================================================
+cmd: ruling-A preconditions re-probed INSIDE this record (captured 2026-10-07T10:38Z, after the verification work)
+2026-10-07T10:37:56Z
+--- A2: the frozen contract on disk ---
+e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610  .mpd/plans/de-vendor-and-verify-law.md
+bytes=10277 mtime=2026-10-07 18:35:14.185707077 +0800
+--- A2b: the amended spec on disk (docs[].sha256 copied from THIS line) ---
+65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74  .mpd/plans/verify-law-spec.md
+--- A3: the law's boot marker (F.3 re-probe) ---
+ABSENT - a pre-plugin record is admissible (the exemption has not closed)
+--- A1/A4: attestation inputs ---
+unlockedReads in this seat: 0 (no implementation read was needed; see verdict.md discipline)
+--- settle: Lane A's six scope paths, START(10:35:20Z) vs END ---
+  gates.yml      start=1466ab91096f654f end=1466ab91096f654f
+  VENDOR_LOCK    start=b2aa620dff8c8216 end=b2aa620dff8c8216
+  bootstrap.ts   start=a70fee1918a8d123 end=a70fee1918a8d123
+  build-mcp.ts   start=d996b40fad00b4b9 end=d996b40fad00b4b9
+  verify-vendor  start=93e81d6299ffc9ae end=93e81d6299ffc9ae
+  vendor/        start=6c09cadd2ee97e2f(459) end=6c09cadd2ee97e2f(459)
+--- the two MCP dists the writer claims reproduce byte-identically (mtime = rebuilt today; git = unmodified) ---
+  packages/mpd-mcp-astgrep/dist/cli.js       mtime=2026-10-07 18:32:54 git=
+  packages/mpd-mcp-gitbash/dist/cli.js       mtime=2026-10-07 18:32:54 git=
+  packages/mpd-mcp-lsp/dist/cli.js           mtime=2026-10-02 20:34:41 git=
+
+===================================================================
+=== LOG: ev-settle-and-final.log
+===================================================================
+cmd: the 3 MPD_UPSTREAM_ROOT lines in .github/workflows/gates.yml (is it an env export, or prose?)
+  22:#   pinned `oh-my-openagent` checkout by SHA and export `MPD_UPSTREAM_ROOT` for the `vendor` member,
+  25:#   and reads no `MPD_UPSTREAM_ROOT`, so the fetch step is GONE (not disabled) and a run on a bare
+  92:      # checkout and reads NO `MPD_UPSTREAM_ROOT`, so this job needs neither a fetch step nor an env
+
+cmd: is the baseline-fetch step or any env export still present?
+
+cmd: the handoff's open docs item — do the docs still carry the now-false vendor row?
+  docs/development.md              MPD_UPSTREAM_ROOT mentions=1
+  docs/development.zh-CN.md        MPD_UPSTREAM_ROOT mentions=1
+
+cmd: SETTLE re-hash of Lane A's six scope paths (START was 2026-10-07T10:35:20Z)
+2026-10-07T10:37:23Z
+  .github/workflows/gates.yml      1466ab91096f654f
+  VENDOR_LOCK.json                 b2aa620dff8c8216
+  scripts/bootstrap.ts             a70fee1918a8d123
+  scripts/build-mcp.ts             d996b40fad00b4b9
+  scripts/verify-vendor.ts         93e81d6299ffc9ae
+  vendor                           DIR files=459 tree=6c09cadd2ee97e2f
+  START values were: gates.yml=1466ab91096f654f VENDOR_LOCK=b2aa620dff8c8216 bootstrap=a70fee1918a8d123 build-mcp=d996b40fad00b4b9 verify-vendor=93e81d6299ffc9ae vendor=6c09cadd2ee97e2f(459 files)
+
+===================================================================
+=== LOG: ev-token-probe.log
+===================================================================
+cmd: token counts in scripts/verify-vendor.ts (content-free counts)
+MPD_UPSTREAM_ROOT        2
+oh-my-openagent          3
+upstreamCommitSha        0
+0
+upstreamVersion          0
+0
+upstream                 14
+identity                 4
+NOT.CHECKED              1
+require-upstream         2
+

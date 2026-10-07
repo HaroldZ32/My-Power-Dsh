@@ -1,0 +1,11 @@
+cmd: token counts in scripts/verify-vendor.ts (content-free counts)
+MPD_UPSTREAM_ROOT        2
+oh-my-openagent          3
+upstreamCommitSha        0
+0
+upstreamVersion          0
+0
+upstream                 14
+identity                 4
+NOT.CHECKED              1
+require-upstream         2

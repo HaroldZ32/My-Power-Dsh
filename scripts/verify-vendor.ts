@@ -1,21 +1,29 @@
 #!/usr/bin/env node
-// Verify the vendor baseline: upstream commit/version are blockers; stats drift is a warning; asset counts are blockers.
-import { execFileSync } from "node:child_process"
-import { existsSync, readFileSync } from "node:fs"
-import { dirname, join, sep } from "node:path"
-import { fileURLToPath } from "node:url"
-
-/** The upstream checkout's recorded statistics, whose drift is only a warning. */
-interface VendorUpstreamStats {
-  /** Number of tracked files at the recorded snapshot. */
-  trackedFiles: number
-  /** Σ `split("\n").length` over those files — the same method this gate recomputes. */
-  trackedLoc: number
-  /** ISO timestamp of the recording (provenance, not verified). */
-  recordedAt: string
-  /** Human note describing how `trackedLoc` was measured. */
-  note: string
-}
+// Verify the vendored-asset fingerprints this repository SHIPS: every non-`_` asset entry in
+// VENDOR_LOCK.json is checked by required file count plus its sha256 (single-file asset) or its
+// treeSha (directory asset). Every mismatch is a BLOCKER, and a run with no asset subject at all is
+// refused rather than reported green.
+//
+// WHAT THIS GATE NO LONGER IS (de-vendored 2026-10-07, wave `de-vendor-and-verify-law`): it checks
+// NO upstream identity. The `code-yeongyu/oh-my-openagent` baseline's commit, version and statistics
+// used to be blockers here, read out of a pinned checkout resolved from `MPD_UPSTREAM_ROOT` or
+// `.mpd-dsh/upstream`. The composition no longer reads that checkout at all, so the baseline is now a
+// HISTORICAL REFERENCE kept for attribution, never a checked subject. There is deliberately no
+// resolution path, no identity section and no fallback: this gate reads VENDOR_LOCK.json and the
+// working tree and nothing else, and it PRINTS that named fact on every run instead of skipping
+// silently. A caller asking for the retired behaviour (`--require-upstream` and any other
+// upstream-shaped flag) is REFUSED by name, because accepting and ignoring it would report a pass for
+// a check that no longer exists.
+//
+// The remaining subject is the asset half: the bytes THIS repository ships (the served skill corpus,
+// the in-repo MCP source snapshot, the committed MCP dists).
+//
+// The fingerprint algorithm below is MIRRORED by scripts/repin-vendor.ts, which re-reads this file on
+// every run and refuses to work when one of its decisive tokens has moved. Edit the two together.
+import { createHash } from "node:crypto"
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
+import { join, sep } from "node:path"
+import { readJson, repoRootFrom } from "./lib/repo.ts"
 
 /** One vendored asset's fingerprint declaration. */
 interface VendorAssetMeta {
@@ -29,88 +37,56 @@ interface VendorAssetMeta {
   source?: string
 }
 
-/** The parsed `VENDOR_LOCK.json`: the pinned upstream identity plus the fingerprint table. */
+/** The parsed `VENDOR_LOCK.json`: the asset fingerprint table plus its `_`-prefixed commentary keys. */
 interface VendorLock {
-  /** Upstream repository slug (provenance). */
-  upstream: string
-  /** The pinned commit sha; a mismatch is a blocker. */
-  upstreamCommitSha: string
-  /** The pinned version string; a mismatch is a blocker. */
-  upstreamVersion: string
-  /** Recorded upstream statistics; drift is only a warning. */
-  upstreamStats: VendorUpstreamStats
   /** Asset relpath → fingerprint, plus the `_`-prefixed string commentary keys. */
   assets: Record<string, VendorAssetMeta | string>
 }
 
-/** The upstream `package.json` subset this gate compares against the lock. */
-interface UpstreamPackage {
-  /** The upstream package version. */
-  version: string
-}
-
 /** The repository root, derived from this gate's own URL (`<root>/scripts/verify-vendor.ts`). */
 const repoRoot: string = repoRootFrom(import.meta.url)
-// Legacy layout assumed repoRoot = <the upstream checkout>/.mpd/port/mpd-dsh. Auto-detect the
-// pinned checkout at .mpd-dsh/upstream; point MPD_UPSTREAM_ROOT at the checkout explicitly
-// when it lives elsewhere (or keep the old relative default).
-/** The upstream checkout to verify: the explicit `MPD_UPSTREAM_ROOT`, else the auto-detected one. */
-const upstreamRoot: string = process.env.MPD_UPSTREAM_ROOT || (existsSync(join(repoRoot, ".mpd-dsh", "upstream", ".git")) ? join(repoRoot, ".mpd-dsh", "upstream") : join(repoRoot, "..", "..", ".."))
-if (!existsSync(join(upstreamRoot, ".git"))) {
-  console.error("[verify-vendor] FAIL - upstream checkout not found at " + upstreamRoot)
-  console.error("[verify-vendor] set MPD_UPSTREAM_ROOT to the oh-my-openagent checkout pinned to " + readJson<VendorLock>(join(repoRoot, "VENDOR_LOCK.json")).upstreamCommitSha)
+/** The usage text, which also names the refusal this gate performs. */
+const USAGE: string = [
+  "usage: node scripts/verify-vendor.ts [--help]",
+  "  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker",
+  "  --help              print this text and exit 0",
+  "  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)",
+].join("\n")
+
+// The argv contract is part of the acceptance, not a nicety: the retired flag must FAIL LOUDLY and
+// explain itself, so nobody can read a green exit code as "the upstream baseline was verified".
+for (const arg of process.argv.slice(2)) {
+  if (arg === "--help" || arg === "-h") {
+    console.log(USAGE)
+    process.exit(0)
+  }
+  if (/upstream/i.test(arg)) {
+    console.error("[verify-vendor] REFUSED - " + arg + ": this gate has NO upstream subject any more.")
+    console.error("[verify-vendor] the oh-my-openagent checkout is retired from the composition (de-vendored 2026-10-07):")
+    console.error("[verify-vendor]   * no MPD_UPSTREAM_ROOT is read, no .mpd-dsh/upstream is looked for, no fallback exists;")
+    console.error("[verify-vendor]   * the upstream commit/version/statistics checks were DELETED, not skipped - nothing is left to require;")
+    console.error("[verify-vendor]   * upstream attribution lives in LICENSE-NOTICES.md, README.md and README.zh-CN.md, where no gate owns it.")
+    console.error("[verify-vendor] re-run without the flag to fingerprint the assets this repository ships, or revert the de-vendoring commit.")
+    process.exit(1)
+  }
+  console.error("[verify-vendor] FAIL - unknown argument: " + arg)
+  console.error(USAGE)
   process.exit(1)
 }
+
+// The named fact, printed on EVERY run: a green exit code here never means "the upstream was checked".
+console.log("[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)")
+
 /** The parsed lock document every comparison below reads. */
 const lock: VendorLock = readJson<VendorLock>(join(repoRoot, "VENDOR_LOCK.json"))
-
-/** Run one git command in the pinned upstream checkout and return its trimmed stdout. */
-function git(args: string[]): string {
-  return execFileSync("git", args, { cwd: upstreamRoot, encoding: "utf8" }).trim()
-}
 
 /** Whether any blocker has failed so far; the process exit code is derived from it at the end. */
 let failed: boolean = false
 /** Record a blocking failure and keep going, so one run reports every violation. */
 function fail(msg: string): void { console.error("[verify-vendor] FAIL -", msg); failed = true }
-/** Record a non-blocking drift warning. */
-function warn(msg: string): void { console.warn("[verify-vendor] WARN -", msg) }
 
-// 1) commit lock
-/** The upstream checkout's current HEAD, compared against the lock's pin. */
-const head: string = git(["rev-parse", "HEAD"])
-if (head !== lock.upstreamCommitSha) {
-  fail("upstream commit mismatch: HEAD=" + head + " lock=" + lock.upstreamCommitSha)
-} else {
-  console.log("[verify-vendor] commit OK:", head)
-}
-
-// 2) version lock
-/** The upstream package document, read only for its version. */
-const upstreamPkg: UpstreamPackage = readJson<UpstreamPackage>(join(upstreamRoot, "package.json"))
-if (upstreamPkg.version !== lock.upstreamVersion) {
-  fail("upstream version mismatch: " + upstreamPkg.version + " vs " + lock.upstreamVersion)
-} else {
-  console.log("[verify-vendor] version OK:", upstreamPkg.version)
-}
-
-// 3) stats drift (warning)
-/** Tracked file count in the upstream checkout (one line per path from `git ls-files`). */
-const tracked: number = Number(git(["ls-files"]).split("\n").length)
-/** Total lines across those tracked files; an unreadable file contributes 0, as before. */
-const loc: number = Number(git(["ls-files", "-z"]).split("\0").filter(Boolean)
-  .map((f: string): number => { try { return readFileSync(join(upstreamRoot, f), "utf8").split("\n").length } catch { return 0 } })
-  .reduce((a: number, b: number): number => a + b, 0))
-if (tracked !== lock.upstreamStats.trackedFiles || loc !== lock.upstreamStats.trackedLoc) {
-  warn("stats drift: tracked=" + tracked + " loc=" + loc + " (lock=" + lock.upstreamStats.trackedFiles + "/" + lock.upstreamStats.trackedLoc + ")")
-} else {
-  console.log("[verify-vendor] stats OK:", tracked, "files /", loc, "loc")
-}
-
-// 4) vendored assets: count + sha256, both blockers
-import { createHash } from "node:crypto"
-import { readdirSync, statSync } from "node:fs"
-import { readJson, repoRootFrom } from "./lib/repo.ts"
+// The vendored-asset half: the ONE subject this gate still has. Everything below is the fingerprint
+// algorithm scripts/repin-vendor.ts mirrors.
 
 // Read a vendored file as bytes, normalizing text (no NUL) to LF. The repo's
 // .gitattributes declares eol=lf for text files, so tree hashes must be
@@ -207,4 +183,4 @@ for (const [rel, meta] of assetEntries) {
 }
 
 if (failed) process.exit(1)
-console.log("[verify-vendor] PASS")
+console.log("[verify-vendor] PASS - " + assetEntries.length + " shipped asset(s) fingerprinted, upstream identity not checked")

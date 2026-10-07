@@ -1,44 +1,30 @@
 {
-  "upstream": "code-yeongyu/oh-my-openagent",
-  "upstreamCommitSha": "8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29",
-  "upstreamVersion": "5.0.0-beta.20",
-  "previousSnapshot": {
-    "commitSha": "f3642fcda303b214cc88784094da327fedab3fea",
-    "fileCount": 9009,
-    "loc": 151433,
-    "source": "legacy snapshot metadata (see README provenance)"
-  },
-  "upstreamStats": {
-    "trackedFiles": 9131,
-    "trackedLoc": 1470231,
-    "recordedAt": "2026-08-26T03:46:26.867Z",
-    "note": "loc = Σ split('\\n').length over tracked files (same method as verify-vendor)"
-  },
+  "_note": "HISTORICAL REFERENCE ONLY - the upstream project oh-my-openagent (https://github.com/code-yeongyu/oh-my-openagent, commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29, v5.0.0-beta.20, SUL-1.0) is NOT a checked baseline. De-vendored 2026-10-07 (wave de-vendor-and-verify-law): no gate resolves, fetches, copies from, fingerprints or audits that checkout any more, and this file carries no upstream identity field. The commit is recorded here as attribution only; attribution also survives in LICENSE-NOTICES.md, README.md and README.zh-CN.md. This file's real subject is the `assets` half: the bytes THIS repository ships.",
   "assets": {
-    "_note": "skills corpus and agent-teams _deps closure: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate — verified by scripts/verify-vendor.mjs; dist: sha256 gate",
+    "_note": "directory assets: fileCount + treeSha (sorted relpath + LF-normalized per-file sha256 aggregation) double gate; single-file assets: fileCount + sha256 gate - both verified by scripts/verify-vendor.ts, which refuses a zero-subject run",
     "skills": {
       "fileCount": 335,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, extension-template, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe + the five TUI lanes and their shared harness: scripts/tui-mount.mjs, tui-panels.mjs, tui-admission.mjs, tui-distribution.mjs, tui-spec-conformance.mjs, lib/tui-lane.mjs + the settings-bridge lanes and their shared engine: scripts/tui-settings-bridge.mjs, web-settings-bridge.mjs, lib/settings-bridge-lane.mjs + the six team-watchdog lanes and their shared harness: scripts/team-watchdog-{heartbeat,fault,scene,config,notify,boot}.mjs, lib/watchdog-lane.mjs + the real-dsh boot lane); whole-dir refresh from upstream, keep provenance links",
       "treeSha": "f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1"
     },
-    "packages/mpd-agent-teams-plugin/_deps": {
-      "fileCount": 635,
-      "source": "server-side runtime closure of the adopted dsh-agent-teams plugin, materialized by scripts/vendor-agent-teams.mjs (exact host versions, bare imports rewritten)",
-      "treeSha": "946d2ac2ed8d431bf40b95e2d270911338576a7ff5755dae7ef2f5db6313a11a"
+    "vendor/mcp-src": {
+      "fileCount": 459,
+      "source": "in-repo source snapshot of the three MCP servers and their four shared packages, copied at the pinned upstream commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29; this is the ONLY source scripts/build-mcp.ts reads (no external checkout, no network). Its origin, the one-time sparse fetch that produced it, the declared omission of the upstream AGENTS.md instruction files and the MEASURED licence (SUL-1.0; lsp-daemon self-declares MIT - NOT the MIT the wave plan assumed) are recorded in vendor/mcp-src/README.md",
+      "treeSha": "05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4"
     },
     "packages/mpd-mcp-astgrep/dist/cli.js": {
       "fileCount": 1,
-      "source": "built offline via scripts/build-mcp.mjs from packages/ast-grep-mcp",
+      "source": "built offline via scripts/build-mcp.ts from the vendor/mcp-src/ast-grep-mcp snapshot",
       "sha256": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5"
     },
     "packages/mpd-mcp-gitbash/dist/cli.js": {
       "fileCount": 1,
-      "source": "built offline via scripts/build-mcp.mjs from packages/git-bash-mcp",
+      "source": "built offline via scripts/build-mcp.ts from the vendor/mcp-src/git-bash-mcp snapshot",
       "sha256": "6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5"
     },
     "packages/mpd-mcp-lsp/dist/cli.js": {
       "fileCount": 1,
-      "source": "built offline via scripts/build-mcp.mjs from packages/lsp-daemon",
+      "source": "built offline via scripts/build-mcp.ts from the vendor/mcp-src/lsp-daemon snapshot",
       "sha256": "555d6bf2b940ea2c76c0154092e78ba1517d608a2aa5c7c84568f70f123b3720"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
@@ -47,6 +33,6 @@
       "sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"
     }
   },
-  "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
-  "lockedAt": "2026-09-15T09:52:10Z"
+  "verification": "node scripts/verify-vendor.ts: asset count and fingerprint mismatches are blockers; a zero-subject run is refused; NO upstream identity is checked, and a flag that would require one is refused by name",
+  "lockedAt": "2026-10-07T10:30:31Z"
 }

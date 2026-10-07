@@ -1,0 +1,262 @@
+{
+  "version": 1,
+  "recordId": "lane-e-lane-a-2026-10-07T1035Z",
+  "loopId": "waveloop-lane-a",
+  "taskId": "T12",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "lane-a-senior-engineer (T4)",
+  "verifierId": "lane-e-verifier",
+  "basis": {
+    "kind": "pre-plugin",
+    "attestation": "no-guard-in-process",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/verify-law-spec.md",
+        "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+      },
+      {
+        "path": "AGENTS.md",
+        "sha256": "b3c6b4b1b1ee3df2fffd3f52a23ffd1747b64393fa714fe3593e8c57cd5f04dd"
+      },
+      {
+        "path": "VENDOR_LOCK.json",
+        "sha256": "b2aa620dff8c821688ca7b77a1e7f4d6db215f2ffa9f2cb07b624563e834120b"
+      },
+      {
+        "path": ".github/workflows/gates.yml",
+        "sha256": "1466ab91096f654feddc19c7e7816b46715664057b3fc67e7a3e41b70f6521de"
+      },
+      {
+        "path": "vendor/mcp-src/README.md",
+        "sha256": "e45d12020f427e24b72a2edf83989a8c0ebec73b2edcd7229616978d500d9e4e"
+      }
+    ],
+    "probe": [
+      {
+        "path": "vendor/mcp-src/README.md",
+        "bytes": 6025,
+        "sha256": "e45d12020f427e24b72a2edf83989a8c0ebec73b2edcd7229616978d500d9e4e",
+        "mtime": "2026-10-07T10:26:09.014Z"
+      },
+      {
+        "path": "packages/mpd-mcp-lsp/dist/cli.js",
+        "bytes": 234916,
+        "sha256": "555d6bf2b940ea2c76c0154092e78ba1517d608a2aa5c7c84568f70f123b3720",
+        "mtime": "2026-10-02T12:34:41.710Z"
+      },
+      {
+        "path": "packages/mpd-mcp-astgrep/dist/cli.js",
+        "bytes": 84651,
+        "sha256": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5",
+        "mtime": "2026-10-07T10:32:54.046Z"
+      },
+      {
+        "path": "packages/mpd-mcp-gitbash/dist/cli.js",
+        "bytes": 22137,
+        "sha256": "6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5",
+        "mtime": "2026-10-07T10:32:54.055Z"
+      },
+      {
+        "path": "packages/mpd-mcp-codegraph/dist/serve.js",
+        "bytes": 336424,
+        "sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375",
+        "mtime": "2026-10-02T12:34:41.709Z"
+      },
+      {
+        "path": "scripts/verify-vendor.ts",
+        "bytes": 10956,
+        "sha256": "93e81d6299ffc9ae6e62527f3bf02ee342ad8984e7bb88a8da5374da08a98981",
+        "mtime": "2026-10-07T10:30:13.194Z"
+      },
+      {
+        "path": ".mpd/ci-rehearsal/upstream/LICENSE.md",
+        "bytes": 3973,
+        "sha256": "b61ac928f152d13517328263e6bee9175b928f9ab696a2d2ca2b6cfd961ddc32",
+        "mtime": "2026-10-02T13:34:33.409Z"
+      },
+      {
+        "path": ".mpd/verify/boot.json",
+        "exists": false
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "VENDOR_LOCK.json",
+      "sha256": "b2aa620dff8c821688ca7b77a1e7f4d6db215f2ffa9f2cb07b624563e834120b"
+    },
+    {
+      "path": ".github/workflows/gates.yml",
+      "sha256": "1466ab91096f654feddc19c7e7816b46715664057b3fc67e7a3e41b70f6521de"
+    },
+    {
+      "path": "scripts/verify-vendor.ts",
+      "sha256": "93e81d6299ffc9ae6e62527f3bf02ee342ad8984e7bb88a8da5374da08a98981"
+    },
+    {
+      "path": "vendor/mcp-src/README.md",
+      "sha256": "e45d12020f427e24b72a2edf83989a8c0ebec73b2edcd7229616978d500d9e4e"
+    },
+    {
+      "path": "evidence/gates/upstream-decouple/20261007T103121Z/result.json",
+      "sha256": "dceada8d18abbf7c9caecd00e9f123577b76e458da6b949130f74db5e304fed1"
+    },
+    {
+      "path": "evidence/gates/upstream-decouple/20261007T103121Z/output.log",
+      "sha256": "a23feeca6c37cb8f00b5c6ae9158b45d0d70b1083b5610eef3169446afd89414"
+    },
+    {
+      "path": "evidence/gates/upstream-decouple/20261007T103121Z/LANE-B-HANDOFF.md",
+      "sha256": "6497e20194199c5de0798b542b6028abb5e3448baa9a8c5a492f415261294c3f"
+    },
+    {
+      "path": "packages/mpd-mcp-lsp/dist/cli.js",
+      "sha256": "555d6bf2b940ea2c76c0154092e78ba1517d608a2aa5c7c84568f70f123b3720"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "cmd": "env -u MPD_UPSTREAM_ROOT node scripts/verify-vendor.ts",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-arm1-unset.log",
+      "logSha256": "c7eab11956dd72cf2f1f24a24c70b470759fb51b56487fdeef6ef1cc13cee1f3"
+    },
+    {
+      "cmd": "MPD_UPSTREAM_ROOT=/nonexistent/surely/absent node scripts/verify-vendor.ts",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-arm2-nonexistent.log",
+      "logSha256": "b2a6430246860041493c556454f9dc2d1631cf9ecb8eb82daaf0328e62829349"
+    },
+    {
+      "cmd": "MPD_UPSTREAM_ROOT=$PWD/.mpd/ci-rehearsal/upstream node scripts/verify-vendor.ts",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-arm3-realpath.log",
+      "logSha256": "173886468d11c55ca0f5a65c2593235677fa55261ed64f8d829ff2cbcd2a9fbe"
+    },
+    {
+      "cmd": "three-arm output comparison: env unset vs nonexistent vs real checkout (byte-identical) + poisoned-env run",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-env-independence.log",
+      "logSha256": "ac2789dc9e05d76254cea0749516bcff505ad4ebe30284a4c99661eb0104b9d3"
+    },
+    {
+      "cmd": "node scripts/verify-vendor.ts --require-upstream",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-flag-require-upstream.log",
+      "logSha256": "0a76c05fbd6e946101f2558c00434f5d790b2258c85747ba80a6eebc0ecbadcd"
+    },
+    {
+      "cmd": "node scripts/verify-vendor.ts --bogus-flag",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-flag-bogus.log",
+      "logSha256": "7fc090fa2d11ba80abef7c69517ea6d9fcd4e440c4e3bef91b58735c4d09a7e2"
+    },
+    {
+      "cmd": "node scripts/verify-vendor.ts --help",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-flag-help.log",
+      "logSha256": "54372a77461fb8aff169209e8f5b8553cde9aa76458d086521966faeacd39a8d"
+    },
+    {
+      "cmd": "node scripts/verify-vendor.ts --self-test",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-flag-selftest.log",
+      "logSha256": "81dcbc3dabb9e29f5f13718f3b952271138b2f4d4c08c1d815166cb48ffd08e1"
+    },
+    {
+      "cmd": "token-count probe over scripts/{verify-vendor,build-mcp,bootstrap,repin-vendor}.ts (content-free counts)",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-token-probe.log",
+      "logSha256": "c3d575ed722e67727d2bba24f02b85b43b74d968607f9d9a16701cbbe64894f4"
+    },
+    {
+      "cmd": "node -e <VENDOR_LOCK.json shape> && node scripts/repin-vendor.ts --check && stat/sha256 of the four shipped dists",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-lock-and-dists.log",
+      "logSha256": "7d467d69fbac3a2f82ff23b8fae64c8af9773ba1d5227d51ac254981eee467d3"
+    },
+    {
+      "cmd": "per-package tree hashes snapshot vs pristine checkout + license fields + vendor/mcp-src README licence section",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-a3-source-and-licence.log",
+      "logSha256": "897c5dc1f8c4449aff91898e5ce3d7082f95d9afd14437866c2f8fcebdccade2"
+    },
+    {
+      "cmd": "per-package FILE-NAME delta + common-set hashes + lsp entry discovery + upstream LICENSE.md",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-a3-delta.log",
+      "logSha256": "5e640ab046f88a4cfa458f63dcb604264767c72f8038993184635e304d7f4548"
+    },
+    {
+      "cmd": "dist git-history/mtime probe + first rebuild attempt",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-a3-drift.log",
+      "logSha256": "848e048bb1dc84cf9bb693e2db6765c71d6e8079dbb80f30028d76c31cce1d50"
+    },
+    {
+      "cmd": "three per-entry rebuild attempts to /tmp (all blocked: unresolved workspace imports)",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-a3-rebuild.log",
+      "logSha256": "21c2f826082876a22209d104a49ab7730d43f20dbb890833e06ff4c3c1d773ff"
+    },
+    {
+      "cmd": "AC2 token counts (gates.yml + Lane A scripts) + identity-surface recount + writer-log cross-check",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-ac2-and-writer-logs.log",
+      "logSha256": "0abc34275ee8cea982234b5623569190b66392cda0117ce9bedb15872b4b43de"
+    },
+    {
+      "cmd": "settle re-hash of the six Lane A scope paths",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-settle-and-final.log",
+      "logSha256": "6e0e49e1ff0cb7ce19751a3e5a2ee3b97d8621d63535be8d9138e1cf031409e5"
+    },
+    {
+      "cmd": "ruling-A preconditions: contract/spec sha256, boot.json probe, settle table, MCP dist mtimes",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-a/2026-10-07T1035Z/logs/ev-preconditions.log",
+      "logSha256": "e4bf4bd278a84f68e9f7389ac45a55edc87a8300803226907121f7faee21672f"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "minor",
+      "symptom": "The snapshot's provenance record is INCOMPLETE: `vendor/mcp-src/README.md` documents the pinned commit, the 7-package subtree and the exact sparse-fetch recipe, but not the exclusion it actually made. Measured: every one of the 7 packages is EXACTLY one file short of its upstream counterpart, and the missing file is that package's own `AGENTS.md` (23 vs 24, 14 vs 15, 54 vs 55, 93 vs 94, 10 vs 11, 79 vs 80, 184 vs 185 — 459 shipped vs 464 upstream package files + 2 READMEs = 459). So the documented recipe, followed verbatim, does NOT reproduce the shipped 459-file tree and its locked treeSha.",
+      "expected": "One line in the Origin table: the per-package `AGENTS.md` files (7) are deliberately excluded — which also prevents upstream agent instructions from being injected into this repository's instruction chain. The exclusion itself is reasonable; leaving it unstated is what breaks the re-derivability claim the same table makes.",
+      "docSource": "contract §Acceptance criteria AC1 (the shipped asset fingerprints must bind) + AC2 (no file copies/audits upstream sources); vendor/mcp-src/README.md §Origin (re-derivable)"
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "symptom": "AC1's falsifiable half (\"a corrupted fingerprint still FAILS\") has no shipped, non-destructive falsifier: `node scripts/verify-vendor.ts --self-test` is REFUSED ('FAIL - unknown argument: --self-test', exit 1) and the gate accepts only --help / --require-upstream. Today the arm rests on the writer's mutate-and-revert probes, which the verifier cannot re-run without editing a shipped artifact.",
+      "expected": "Either a fixture-driven `--self-test` that drives the fingerprint loop against a temp tree, or an explicit statement in the PR body that the corrupted-fingerprint arm is demonstrated by the writer's two negative probes plus the live `skills` mismatch. NOT a regression — no such arm existed before this wave — so declaring it a non-goal is an acceptable resolution.",
+      "docSource": "contract §Acceptance criteria AC1; AGENTS.md §4 (gate table) + §7 (provability: assert a real result, never just that it ran)"
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "symptom": "Three Lane A carriers still match a naive identity grep (`scripts/verify-vendor.ts`, `scripts/build-mcp.ts`, `VENDOR_LOCK.json`) because they NAME the retired upstream inside refusal/notice text and the lock's `_note`. AC2 is a behavioural clause — reads, copies, patches, fingerprints, audits — and every one of those is disproven here (env-independence proven byte-identical across three arms and a poisoned env; no fetch machinery in the workflow; the snapshot is a sanctioned copy under owner decision 2; the lock carries no identity field).",
+      "expected": "The bilingual PR body states this explicitly so a grep-only auditor does not report a false positive, and so the deliberate mentions are distinguishable from the ones Lane A actually deleted.",
+      "docSource": "contract §Acceptance criteria AC2; contract §Captain's amendments, recorded mid-wave #1 ('A licence claim must never outrun the bytes' — the same standard applies to an identity claim)"
+    }
+  ],
+  "unlockedReads": [],
+  "notes": [
+    "RESIDUAL BOUND (verify-law-spec §(c), verbatim): the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).",
+    "DOCKER DECLARED BOUND (captain ruling D): the Docker lane's evidence is INTEGRATION-borne and declared in the PR body; a verifier seat is not expected to run it (the envelope denies `bash`) — a declared bound, never a hole.",
+    "DECLARED BOUND 1 — AC1's literal exit 0 is not yet demonstrable. Measured: all three arms exit 1 with ONE cause, 'asset skills treeSha mismatch' (the gate's own line 4 and the writer's log line 102 both name it); the four shipped assets it can judge are OK. That red is Lane C's owed single re-pin (the wave's dirty skills corpus), which the captain's known-red list assigns away from Lane A — so it is NOT counted against this verdict.",
+    "DECLARED BOUND 2 — the rebuild numbers were NOT independently reproduced by this verifier, and the reason is structural, not laziness: the snapshot's sources import workspace packages by NAME ('@oh-my-opencode/mcp-stdio-core', '@oh-my-opencode/lsp-core/mcp'), which do not resolve from the repo root, so a naive per-entry `bun build` fails (exit 1, three attempts). The canonical rebuild runs through Lane A's `scripts/build-mcp.ts`, which would REWRITE committed dists — outside the verifier's write scope. Substituted independent evidence: (a) all 7 snapshot packages' common file sets are BYTE-IDENTICAL to the pristine pinned checkout, so the snapshot did not change the lsp build input; (b) no MCP dist is modified in git, the lsp dist carries its pre-wave mtime (2026-10-02) while astgrep+gitbash carry TODAY's rebuild mtime 10:32:54 with clean git status — i.e. the two the writer claims reproduce byte-identically DID reproduce, byte-identically; (c) the committed lsp dist (234916 B, sha256 555d6bf2…) matches the lock exactly. CONCLUSION: the drift, if real, cannot have been introduced by Lane A — the attribution is sound on its premise, and its unverifiable half stays declared.",
+    "DECLARED BOUND 3 — the destructive negative arms were NOT re-run by this verifier: appending a byte to or adding a file under a shipped asset is an edit, which the verifier cannot make. They are cited from the writer's own gate output (its log lines 71 'asset vendor/mcp-src treeSha mismatch' and 80 'count drifted: 460 vs 459'), and the mismatch PATH is independently demonstrated live by the skills red at line 3/14/23.",
+    "OBSERVATION — the frozen contract was amended mid-wave at 2026-10-07T10:35:14Z (8747 B / 1e580d23… -> 10277 B / e9464a36…). The new section is the captain's own 'amendments, recorded mid-wave'; AC1–AC7 are BYTE-IDENTICAL to the pre-flight text, so this verdict judges the current clauses and cites the CURRENT contract hash. Flagged so the amendment's authorship is on the record.",
+    "OBSERVATION (cross-lane, still owed) — `docs/development.md` and `docs/development.zh-CN.md` each still carry 1 mention of MPD_UPSTREAM_ROOT: the vendor row still claims the gate needs it. Lane A's handoff (`evidence/gates/upstream-decouple/20261007T103121Z/LANE-B-HANDOFF.md`) supplies the replacement text and the captain's contract amendment #4 assigns the LIVE-docs correction to Lane B. If it does not land, AC2's docs surface and the docs-parity gate both keep a false claim.",
+    "MEASUREMENT — the identity surface shrank from 1442 to 1388 tracked matches, and from 92 to 38 on the code+config surface. Lane A's own contribution is visible: `scripts/bootstrap.ts` and `scripts/repin-vendor.ts` are now clean of every identity token, and `scripts/build-mcp.ts` keeps 1 deliberate mention.",
+    "METHOD — the verdict was reached before any implementation read and needed none: no .ts/.js source and no dist/** was opened. Evidence used: the contract + spec + human docs, the writer's own evidence/logs, read-only git history, content-free probes (file-name deltas, token counts, existence, bytes, sha256, mtime) and the acceptance-named commands with their exits."
+  ],
+  "createdAt": "2026-10-07T10:38:00Z"
+}

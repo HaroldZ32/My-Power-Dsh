@@ -1,0 +1,23 @@
+cmd: git rev-parse HEAD; git status --porcelain --untracked-files=no
+at: 2026-10-07T10:28:16Z
+cae00e5a952e16daef7ad4aac99c79e373d635ff
+--- tracked state ---
+ M packages/mpd-bundle-plugin/client.js
+ M packages/mpd-config-plugin/src/index.ts
+ M packages/mpd-config-plugin/src/settings-schema.ts
+ M packages/mpd-dsh-adapter-plugin/test/adapter.test.ts
+ M packages/mpd-mcp-astgrep/dist/BUILD.lock
+ M packages/mpd-mcp-gitbash/dist/BUILD.lock
+ M packages/mpd-roles-plugin/src/complexity-gate.ts
+ M packages/mpd-roles-plugin/src/session-gate.ts
+ M packages/mpd-team-core-plugin/src/dispatch.ts
+ M packages/mpd-team-core-plugin/src/index.ts
+ M packages/mpd-team-core-plugin/src/team-store.ts
+ M packages/mpd-team-watchdog-plugin/src/index.ts
+ M packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts
+ M packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts
+ M packages/mpd-tui-plugin/src/index.ts
+ M packages/mpd-tui-plugin/test/plugin.test.ts
+ M packages/mpd-ulw-plugin/test/engine.test.ts
+ M scripts/build-mcp.ts
+ M scripts/build-mpd-client.ts

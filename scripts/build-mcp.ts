@@ -1,7 +1,11 @@
 #!/usr/bin/env node
-// Offline build of ast-grep/git-bash MCP: copy source from the upstream oh-my-openagent checkout (read-only) into a temp workspace,
-// use bun cache for external dependencies, then after bun build copy dist artifacts into the mpd-dsh plugin package.
-// The original repo stays untouched; artifacts go into the plugin package (plugin-form) with SHA256 recorded in BUILD.lock.
+// Offline build of the ast-grep / git-bash / lsp MCP servers: copy their sources from the IN-REPO
+// snapshot at vendor/mcp-src/ (read-only) into a temp workspace, resolve external dependencies from
+// the bun cache, then after bun build copy the dist artifacts into the mpd-dsh plugin package.
+// NO upstream checkout and NO network are needed: the snapshot IS the build input, and every path
+// below resolves from the repository root alone. The snapshot's origin, the one-time fetch that
+// produced it and the license it carries are recorded in vendor/mcp-src/README.md.
+// Artifacts go into the plugin package (plugin-form) with SHA256 recorded in BUILD.lock.
 import { spawnSync } from "node:child_process"
 import { createHash, randomUUID } from "node:crypto"
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, symlinkSync, mkdtempSync } from "node:fs"
@@ -12,20 +16,22 @@ import { repoRootFrom } from "./lib/repo.ts"
 
 /** The repository root, derived from this script's own URL (`<root>/scripts/build-mcp.ts`). */
 const repoRoot = repoRootFrom(import.meta.url)
-// The default is the legacy layout repoRoot = <upstream checkout>/.mpd/port/mpd-dsh. Override with
-// MPD_UPSTREAM_ROOT when the checkout lives elsewhere; the actual upstream checkout layout used here is
-// <repo>/.mpd-dsh/upstream (gitignored), whose packages/ hold ast-grep-mcp / git-bash-mcp /
-// lsp-daemon / lsp-core / mcp-stdio-core / utils / omo-config-core.
-/** The upstream checkout whose `packages/*` are copied, resolved relative to the repository root unless overridden. */
-const mpdRoot = process.env.MPD_UPSTREAM_ROOT || join(repoRoot, "..", "..", "..")
+// The build input is the IN-REPO snapshot whose seven package directories are the verbatim sources of
+// ast-grep-mcp / git-bash-mcp / lsp-daemon / lsp-core / mcp-stdio-core / utils / omo-config-core. The
+// retired form read them out of an external `oh-my-openagent` checkout; nothing outside this
+// repository is consulted any more, so MPD_UPSTREAM_ROOT is no longer read at all.
+/** The in-repo source snapshot (`<root>/vendor/mcp-src/`) every copied package directory comes from. */
+const mcpSrcRoot = join(repoRoot, "vendor", "mcp-src")
+/** Snapshot package directories this build requires; a missing one is a loud FAIL, never an ENOENT stack. */
+const REQUIRED_SNAPSHOT_PACKAGES: readonly string[] = ["ast-grep-mcp", "git-bash-mcp", "lsp-daemon", "lsp-core", "mcp-stdio-core", "utils", "omo-config-core"]
 /** bun's install cache, from which every external dependency is linked instead of re-downloaded. */
 const cacheRoot = join(homedir(), ".bun", "install", "cache")
 
-/** One MCP server this build produces: its upstream package and the plugin package that receives the dist. */
+/** One MCP server this build produces: its snapshot package and the plugin package that receives the dist. */
 interface ServerSpec {
   /** Server name, which is also the key into the MPD scrub table below. */
   readonly name: string
-  /** Package directory name inside the upstream checkout. */
+  /** Package directory name inside the in-repo snapshot (`vendor/mcp-src/`). */
   readonly src: string
   /** This repository's plugin package that receives `dist/cli.js`. */
   readonly pkg: string
@@ -41,12 +47,11 @@ const SERVERS: readonly ServerSpec[] = [
   { name: "git-bash", src: "git-bash-mcp", pkg: "mpd-mcp-gitbash", entry: "src/cli.ts", argv: [] },
   { name: "lsp", src: "lsp-daemon", pkg: "mpd-mcp-lsp", entry: "src/cli.ts", argv: ["mcp"] }
 ]
-// Hotfix (t3 Phase B, captain-approved): upstream checkout keeps the original
-// package dir name omo-config-core (upstream is never renamed). The scrub
-// renamed this reference to mpd-config-core but the dir does not exist there,
-// which broke the offline build (ENOENT). Matches fix/repo-scan-20260830 F-16;
-// remove this duplicate once that branch is merged into dev.
-/** Upstream shared packages copied alongside each server so the bun build can resolve their imports. */
+// The snapshot keeps the upstream package directory names verbatim (upstream files are never
+// renamed), so the shared config package is the directory `omo-config-core` even though the plugin
+// package that ships a built server is named `mpd-mcp-*`. Spelling it `mpd-config-core` here matches
+// no directory in the snapshot and breaks the offline build with ENOENT.
+/** Snapshot packages copied alongside each server so the bun build can resolve their imports. */
 const CORE = ["mcp-stdio-core", "utils", "omo-config-core", "lsp-core"]
 /** External dependencies linked from the bun cache, keyed by the specifier the built code imports. */
 const EXTERNAL: Readonly<Record<string, string>> = { "js-yaml": "js-yaml@4.3.1", "jsonc-parser": "jsonc-parser@3.3.1", "zod": "zod@4.4.3" }
@@ -81,21 +86,21 @@ const LSP_OVERLAY_FILES: readonly LspOverlayFile[] = [
   { name: "language-mappings.ts", rel: "src/lsp/language-mappings.ts", baselineExport: "EXT_TO_LANG" },
 ]
 
-// Apply the in-repo LSP overlay over the freshly-copied upstream lsp-core
-// source (inside the temp build workspace). Overlay missing/stale or upstream
-// baseline drifted -> FAIL loudly instead of producing a silently wrong dist.
+// Apply the in-repo LSP overlay over the freshly-copied snapshot lsp-core source (inside the temp
+// build workspace). Overlay missing/stale or snapshot baseline drifted -> FAIL loudly instead of
+// producing a silently wrong dist.
 /**
  * Apply every overlay file over the copied lsp-core source, failing loudly when the overlay is
- * missing/stale or the upstream baseline has drifted.
+ * missing/stale or the snapshot baseline has drifted.
  *
- * @param srcRoot - The temp workspace's `src` directory holding the copied upstream packages.
+ * @param srcRoot - The temp workspace's `src` directory holding the copied snapshot packages.
  */
 function applyLspOverlay(srcRoot: string): void {
-  // Each overlay file is checked on both sides (overlay anchor, upstream export) before it is copied.
+  // Each overlay file is checked on both sides (overlay anchor, snapshot export) before it is copied.
   for (const f of LSP_OVERLAY_FILES) {
     /** The in-repo patched copy of this lsp-core file. */
     const overlayPath = join(LSP_OVERLAY_DIR, f.name)
-    /** The freshly copied upstream file the overlay replaces. */
+    /** The freshly copied snapshot file the overlay replaces. */
     const sourcePath = join(srcRoot, "lsp-core", f.rel)
     if (!existsSync(overlayPath)) {
       console.error("[build-mcp] FAIL - mpd LSP overlay file missing: " + overlayPath)
@@ -108,13 +113,13 @@ function applyLspOverlay(srcRoot: string): void {
       process.exit(1)
     }
     if (!existsSync(sourcePath)) {
-      console.error("[build-mcp] FAIL - upstream lsp-core source missing: " + sourcePath)
+      console.error("[build-mcp] FAIL - snapshot lsp-core source missing: " + sourcePath)
       process.exit(1)
     }
-    /** Upstream baseline content, scanned for the export the overlay is expected to replace. */
+    /** Snapshot baseline content, scanned for the export the overlay is expected to replace. */
     const sourceText = readFileSync(sourcePath, "utf8")
     if (!sourceText.includes(f.baselineExport)) {
-      console.error(`[build-mcp] FAIL - upstream ${sourcePath} no longer exports ${f.baselineExport} (upstream baseline drifted?)`)
+      console.error(`[build-mcp] FAIL - snapshot ${sourcePath} no longer exports ${f.baselineExport} (snapshot baseline drifted?)`)
       process.exit(1)
     }
     cpSync(overlayPath, sourcePath)
@@ -400,9 +405,10 @@ export function assertBrandClean(artifact: string, text: string, allowlist: read
 // spellings. The token allowlist above stays as a LAYERED check (a bare `[Oo][Mm][Oo]` shape scan
 // would reject the legitimate committed bytes: lsp carries the upstream OpenCode
 // identifier and no brand token, git-bash none).
-// Practical limit, stated rather than hidden: a full rebuild needs the upstream checkout at
-// MPD_UPSTREAM_ROOT plus bun, so this function is exported and is exercisable as a pure function
-// over artifact bytes (committed files + seeded mutants) when a rebuild must not run.
+// Practical limit, stated rather than hidden: a full rebuild needs the in-repo snapshot at
+// vendor/mcp-src/ plus bun and the external dependencies in the bun cache, so this function is
+// exported and is exercisable as a pure function over artifact bytes (committed files + seeded
+// mutants) when a rebuild must not run.
 /**
  * Index of the first differing character of two texts.
  *
@@ -485,20 +491,29 @@ const byteTotals: ByteTotals = { compared: 0, bytes: 0 }
 /** Temp build workspace, removed in the finally below whatever the outcome. */
 const work = mkdtempSync(join(tmpdir(), "mpd-dsh-mcp-build-"))
 try {
-  /** Copied upstream sources, laid out as one fake workspace package root. */
+  /** Copied snapshot sources, laid out as one fake workspace package root. */
   const srcRoot = join(work, "src")
   mkdirSync(srcRoot, { recursive: true })
+  // Refuse a half-materialized snapshot by name: without this the first cpSync throws a bare ENOENT
+  // and a reader cannot tell a missing snapshot from a missing single package.
+  for (const p of REQUIRED_SNAPSHOT_PACKAGES) {
+    if (!existsSync(join(mcpSrcRoot, p))) {
+      console.error("[build-mcp] FAIL - in-repo source snapshot is incomplete: " + join(mcpSrcRoot, p) + " does not exist")
+      console.error("[build-mcp] the snapshot is vendor/mcp-src/ and its origin is recorded in vendor/mcp-src/README.md")
+      process.exit(1)
+    }
+  }
   // The shared CORE packages are copied first: each server build resolves its imports from here.
   for (const c of CORE) {
-    cpSync(join(mpdRoot, "packages", c), join(srcRoot, c), { recursive: true, filter: (s: string) => !s.includes("node_modules") && !s.includes("dist") && !s.includes(".git") })
+    cpSync(join(mcpSrcRoot, c), join(srcRoot, c), { recursive: true, filter: (s: string) => !s.includes("node_modules") && !s.includes("dist") && !s.includes(".git") })
   }
   // mpd LSP overlay: apply the in-repo patched copies over the copied
   // lsp-core source (drift-guarded). Must run after the lsp-core copy and
   // before any bun build so the patched registry is what gets baked in.
   applyLspOverlay(srcRoot)
-  // Each server's own source package is copied next, under its upstream directory name.
+  // Each server's own source package is copied next, under its snapshot directory name.
   for (const s of SERVERS) {
-    cpSync(join(mpdRoot, "packages", s.src), join(srcRoot, s.src), { recursive: true, filter: (p: string) => !p.includes("node_modules") && !p.includes("dist") && !p.includes(".git") })
+    cpSync(join(mcpSrcRoot, s.src), join(srcRoot, s.src), { recursive: true, filter: (p: string) => !p.includes("node_modules") && !p.includes("dist") && !p.includes(".git") })
   }
   // node_modules layout (mimic a bun workspace)
   /** Directory holding the linked shared packages, mimicking a bun workspace install. */
@@ -550,9 +565,10 @@ try {
     byteTotals.bytes += byteScan.bytes
     writeFileSync(join(out, "cli.js"), builtText)
     writeFileSync(join(out, "BUILD.lock"), JSON.stringify({
-      // Provenance, not prose: the upstream commit this dist was built from (VENDOR_LOCK.json
-      // pins the same 8c57e46 baseline). It used to hold a scrub artefact, not a real value.
-      source: "8c57e46", sourceDir: "packages/" + s.src, builtAt: new Date().toISOString(),
+      // Provenance, not prose: the snapshot commit this dist was built from (VENDOR_LOCK.json
+      // pins the same 8c57e46 baseline and fingerprints the vendor/mcp-src snapshot itself). It
+      // used to hold a scrub artefact, not a real value.
+      source: "8c57e46", sourceDir: "vendor/mcp-src/" + s.src, builtAt: new Date().toISOString(),
       build: ["bun build " + s.entry + " --outdir dist --target node --format esm"],
       externalDeps: resolvedExternals,
       artifact: { file: "cli.js", sha256: sha(join(out, "cli.js")), bytes: builtText.length }

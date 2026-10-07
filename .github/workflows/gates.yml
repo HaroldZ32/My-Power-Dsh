@@ -2,33 +2,36 @@ name: gates
 
 # The repository's static gates, run on every push and pull request against the integration and
 # release lines. They are the fast half of AGENTS.md §4: no dsh BOOT, no credentials and no plugin
-# execution — exactly the checks a reviewer can reproduce on a fresh clone. Two of them read state a
-# bare runner does not carry (the installed harness, the pinned upstream baseline), so the two setup
-# steps below provide it; nothing here starts a session or applies a patch.
+# execution — exactly the checks a reviewer can reproduce on a fresh clone. One of them reads state a
+# bare runner does not carry (the installed harness), so the setup step below provides it; nothing
+# here starts a session or applies a patch.
 #
 # WHY NODE 24 AND NOT 20: every gate is a TypeScript entry point (`scripts/*.ts`) executed directly
 # by Node's type stripping, which is on by default from Node 22.18 on. The package's own `engines`
 # field states the same floor; a runner below it cannot start the checkers at all.
 #
-# WHY THE HARNESS AND THE UPSTREAM BASELINE ARE SET UP FIRST — both were MEASURED red on 2026-10-02
-# while the code under test was correct:
+# WHY THE HARNESS IS SET UP FIRST — it was MEASURED red on 2026-10-02 while the code under test was
+# correct:
 #   * `preset-conformance --self-test` FAILS outright when no `dsh` is on PATH ("dsh is not on PATH —
 #     the case cannot verify the installed harness"): it validates every row config against the
 #     INSTALLED packages' own schemastery schemas, which is the only thing that sees a required key
 #     go missing. The version is deliberately NOT written here — it is read from `package.json`'s
 #     `@deepseek-ai/dsh-experimental-agent-team` pin, the same declaration the profile mechanism
 #     installs, so the two cannot drift apart.
-#   * `vendor` needs the pinned upstream checkout (its commit and version are blockers, and the
-#     vendored asset fingerprints are compared against `VENDOR_LOCK.json`). It is fetched by SHA at
-#     `--depth 1` (measured: ~10 s, 9131 tracked files — the same count the lock records), and the
-#     gate FAILS BY NAME rather than skipping when the checkout is absent.
+# WHY THE UPSTREAM BASELINE IS *NOT* SET UP (de-vendored 2026-10-07): this job used to fetch the
+#   pinned `oh-my-openagent` checkout by SHA and export `MPD_UPSTREAM_ROOT` for the `vendor` member,
+#   whose commit and version were blockers. That baseline is now a HISTORICAL REFERENCE for
+#   attribution only: `vendor` reads `VENDOR_LOCK.json` and the working tree, resolves no checkout
+#   and reads no `MPD_UPSTREAM_ROOT`, so the fetch step is GONE (not disabled) and a run on a bare
+#   runner with no network is exactly the case the gate is now designed for.
 # WHY BUN IS PINNED TO THE RECORDED BUILD TOOLCHAIN: `verify-dist-fresh` rebuilds every
 # `packages/*/dist` entry and compares BYTES, and a different bun minor rewrites the injected helper
 # preamble. Measured 2026-10-02: bun 1.4.2 reported 21 of 23 targets STALE against the committed
 # dists that the pinned bun 1.4.0 (`buildToolchain` in `package.json`) reproduces 23/23.
 #
 # WHAT EACH STEP PROVES (`bun run verify:gates` is the aggregate over all of them):
-#   * vendor            — the pinned upstream baseline's item counts and fingerprints;
+#   * vendor            — the file count and fingerprint of every asset THIS repository ships
+#                         (`VENDOR_LOCK.json`); no upstream baseline is fetched, resolved or checked;
 #   * dist-fresh        — every committed `packages/*/dist` entry is the byte-identical rebuild of
 #                         its source, and every `dist/` file is covered by a source entry;
 #   * rows-parity       — the bundle patch and the preset patch agree with the row ids they target;
@@ -85,23 +88,10 @@ jobs:
           npm i -g "@deepseek-ai/dsh@${HARNESS_VERSION}"
           dsh --version
 
-      # The vendor gate's SUBJECT: the pinned upstream checkout. Fetched by SHA (the lock's commit is
-      # a blocker, so a branch tip would fail the gate by design), shallow, into $RUNNER_TEMP so it
-      # never lands in the workspace the gates walk.
-      - name: Check out the pinned upstream baseline
-        run: |
-          UPSTREAM_SLUG="$(node -p "require('./VENDOR_LOCK.json').upstream")"
-          UPSTREAM_SHA="$(node -p "require('./VENDOR_LOCK.json').upstreamCommitSha")"
-          git init -q "${RUNNER_TEMP}/upstream"
-          git -C "${RUNNER_TEMP}/upstream" remote add origin "https://github.com/${UPSTREAM_SLUG}"
-          git -C "${RUNNER_TEMP}/upstream" fetch -q --depth 1 origin "${UPSTREAM_SHA}"
-          git -C "${RUNNER_TEMP}/upstream" checkout -q FETCH_HEAD
-          echo "upstream baseline at $(git -C "${RUNNER_TEMP}/upstream" rev-parse HEAD)"
-
+      # The vendor gate's subject is `VENDOR_LOCK.json` and the working tree. It resolves NO
+      # checkout and reads NO `MPD_UPSTREAM_ROOT`, so this job needs neither a fetch step nor an env
+      # block here — that pair was removed with the upstream baseline on 2026-10-07.
       - name: Static gate aggregate
-        env:
-          # Without this the `vendor` member looks for a legacy sibling path and fails by name.
-          MPD_UPSTREAM_ROOT: ${{ runner.temp }}/upstream
         run: bun run verify:gates
 
       - name: Plugin manifest install-time rules and packaging contract
