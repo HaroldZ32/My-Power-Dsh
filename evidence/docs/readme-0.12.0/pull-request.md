@@ -74,11 +74,15 @@ The bundle's public front door is rebuilt, and the release that ships it is 0.12
 | `node scripts/verify-dist-fresh.ts` | PASS — 30/30 targets fresh |
 | `bun run verify:rows` | PASS — 34 row ids match the 2-file patch layer |
 | `bun run verify:comments` | PASS — 358 files, 31 571 declarations |
+| `bun run verify-vendor.ts` | PASS — 6 shipped assets fingerprinted |
 | `bun run verify:manifest` | PASS — 10 rows including `packed-content` (the `--pack` arm, restored by this wave) |
 | `bun run verify:docs` | **PASS — `pairs=47 failed=0 violations=0 links=424 dead=0`** |
 | `bun run verify:gates` | **PASS — 8/8 member gates green** |
 | `node scripts/verify-no-host-override.ts` | PASS — 0 of 0 id-targets collide with 205 host-declared row ids |
+| `node scripts/verify-manual-paths.ts` | PASS — 151 resolved |
 | `node scripts/verify-pack-closure.ts` | **PASS — 553 files compared, 553 identical, 0 drift, 0 expected-after-pack; 456 of 457 declared sources present, 1 declared exemption exercised** |
+| `bun run test:qa` | PASS — all self-tests passed (incl. `mpd-ext --self-test` 53 checks) |
+| `preset-conformance.ts --self-test` | PASS — 32 rows conform, 4/4 negative controls reddened |
 | `node scripts/docker-e2e.ts --mode source --require-docker` | UNMEASURED at time of writing |
 | `node scripts/docker-e2e.ts --mode oneclick --require-docker` | UNMEASURED — it installs the PUBLISHED package, so it runs after the npm publish |
 
