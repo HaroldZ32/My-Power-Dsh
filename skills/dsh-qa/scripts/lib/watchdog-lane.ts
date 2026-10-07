@@ -28,8 +28,6 @@ export interface WatchdogLanePaths {
   readonly watchdogDist: string
   /** The watchdog plugin source, whose freshness some lanes assert. */
   readonly watchdogSrc: string
-  /** The verified fault fixture the fault lane drives. */
-  readonly fixture: string
   /** The built TUI plugin dist. */
   readonly tuiDist: string
   /** The TUI plugin's watchdog source. */
@@ -49,7 +47,6 @@ export const PATHS: WatchdogLanePaths = {
   adapterDist: join(REPO, "packages", "mpd-dsh-adapter-plugin", "dist", "index.js"),
   watchdogDist: join(REPO, "packages", "mpd-team-watchdog-plugin", "dist", "index.js"),
   watchdogSrc: join(REPO, "packages", "mpd-team-watchdog-plugin", "src", "index.ts"),
-  fixture: join(REPO, "packages", "mpd-team-watchdog-plugin", "test", "fixtures", "inject.ts"),
   tuiDist: join(REPO, "packages", "mpd-tui-plugin", "dist", "index.js"),
   tuiWatchdog: join(REPO, "packages", "mpd-tui-plugin", "src", "watchdog.ts"),
   webClient: join(REPO, "packages", "mpd-bundle-plugin", "client.js"),

@@ -34,21 +34,6 @@
   "immutabilityRule": "Every lane entry carries a MANDATORY `immutabilityGuard` declaration: \"required\" means the runner asserts the driver source contains the literal specifier ./lib/immutable-output.ts; anything else must be \"exempt: <reason>\". An omitted or malformed declaration reddens (the same declare-never-omit rule as outsideSuites), the resolved required set is printed on every run including required=0, and an EMPTY required set is a RED. Enforced by --check-drift, so the qa-lane-drift gate carries it.",
   "lanes": [
     {
-      "case": "agent-teams-adopt",
-      "script": "skills/dsh-qa/scripts/agent-teams-adopt.ts",
-      "suites": [
-        "all"
-      ],
-      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
-    },
-    {
-      "case": "agent-teams-messaging",
-      "script": "skills/dsh-qa/scripts/agent-teams-messaging.ts",
-      "suites": [],
-      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
-      "outsideSuites": "live fix lane (R1 message channel): plants real team records and re-runs a RED arm against a pre-fix tools.ts, so it is heavier than the standing sweep — run it explicitly: node scripts/run-qa-lanes.ts --only=agent-teams-messaging"
-    },
-    {
       "case": "bundle-lifecycle",
       "script": "skills/dsh-qa/scripts/bundle-lifecycle.ts",
       "suites": [
@@ -207,6 +192,21 @@
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
     },
     {
+      "case": "goal-bridge",
+      "script": "skills/dsh-qa/scripts/goal-bridge.ts",
+      "suites": [
+        "all"
+      ],
+      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
+    },
+    {
+      "case": "verify-law",
+      "script": "skills/dsh-qa/scripts/verify-law.ts",
+      "suites": [],
+      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
+      "outsideSuites": "the verification law's boot-level falsifier (AGENTS.md §4/§5): a mounted `mpd-verify` row in an isolated DSH_HOME + sandbox HOME + sandbox workspace, heavier than the standing self-test sweep (which the glob already runs) — run it explicitly: node skills/dsh-qa/scripts/verify-law.ts"
+    },
+    {
       "case": "skill-catalog-probe",
       "script": "skills/dsh-qa/scripts/skill-catalog-probe.ts",
       "suites": [
@@ -240,13 +240,6 @@
       "outsideSuites": "team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.ts --only=team-watchdog-config"
     },
     {
-      "case": "team-watchdog-fault",
-      "script": "skills/dsh-qa/scripts/team-watchdog-fault.ts",
-      "suites": [],
-      "immutabilityGuard": "required",
-      "outsideSuites": "team-watchdog lane: in-process over the built plugin dists and the verified fault fixture — run it explicitly: node scripts/run-qa-lanes.ts --only=team-watchdog-fault"
-    },
-    {
       "case": "team-watchdog-heartbeat",
       "script": "skills/dsh-qa/scripts/team-watchdog-heartbeat.ts",
       "suites": [],
@@ -259,13 +252,6 @@
       "suites": [],
       "immutabilityGuard": "required",
       "outsideSuites": "team-watchdog lane: payloads and built bytes only, in-process — run it explicitly: node scripts/run-qa-lanes.ts --only=team-watchdog-notify"
-    },
-    {
-      "case": "team-watchdog-scene",
-      "script": "skills/dsh-qa/scripts/team-watchdog-scene.ts",
-      "suites": [],
-      "immutabilityGuard": "required",
-      "outsideSuites": "team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.ts --only=team-watchdog-scene"
     },
     {
       "case": "tool-output-validation",
@@ -285,6 +271,18 @@
         "absent-fixture"
       ],
       "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary plus a TUI sandbox profile (absent on a headless host) — run it explicitly: node scripts/run-qa-lanes.ts --only=tui-admission"
+    },
+    {
+      "case": "tui-deps-ctrla",
+      "script": "skills/dsh-qa/scripts/tui-deps-ctrla.ts",
+      "suites": [],
+      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
+      "prereq": [
+        "absent-dsh-binary",
+        "absent-runtime",
+        "absent-fixture"
+      ],
+      "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile (a real TTY) — run it explicitly: node scripts/run-qa-lanes.ts --only=tui-deps-ctrla"
     },
     {
       "case": "tui-distribution",
@@ -406,14 +404,6 @@
     {
       "case": "workmate-library",
       "script": "skills/dsh-qa/scripts/workmate-library.ts",
-      "suites": [
-        "all"
-      ],
-      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
-    },
-    {
-      "case": "workmate-team-member",
-      "script": "skills/dsh-qa/scripts/workmate-team-member.ts",
       "suites": [
         "all"
       ],

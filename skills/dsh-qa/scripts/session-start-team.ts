@@ -12,8 +12,22 @@
 // the BUILT dist the live boot really runs.
 //
 // THE CONTRACT THIS CASE ASSERTS (the shipped implementation is read as the source of truth):
-//   * the frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)`, four signals A-D, and
-//     the marker `[AgentTeams] Session-start team rule`;
+//   * the frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)`, five signals A-E, and
+//     the marker `[AgentTeams] Session-start team rule`. E is the CJK-SCALE signal added by wave
+//     `de-vendor-and-verify-law` (2026-10-07): A-D are English-centric by construction (B/C count
+//     CLAUSES and VERBS, and a Chinese one-liner enumerates with `、，。；：`), so the user's own
+//     159-Han-character instruction measured B=0, C=0, D=absent and staged NOTHING. E reads scale
+//     (`CJK_CHAR_MIN` Han characters) AND intent (`CJK_ACTION_VERB_MIN` distinct action verbs), both
+//     calibrated over the frozen corpus: the positive carries 159 Han characters, the longest control
+//     52, and the bound sits at 60;
+//   * a session ALREADY LEADING A TEAM is never sent to stage one (C7): the guard reads the team
+//     RECORD (`leadSessionId` + a non-empty `members[]`), never a "did the gate fire before" flag,
+//     and injects NO notice in any mode — the measured defect staged `plan-20261007102357` while the
+//     session was already leading `team-20261007102205`;
+//   * an INBOUND AGENT MESSAGE is never judged as the human turn (C8): the goal selection skips every
+//     message carrying a producer-owned `source.kind` — the official team plugin's `team-message`,
+//     the harness's `agent-message`/`runtime-context` — while `user` and an UNTAGGED message stay
+//     eligible, so a host that tags nothing keeps its gate;
 //   * signal D means "an ACTIVE boulder work exists" (`.mpd/boulder.json` with `status:"active"`),
 //     read through `readBoulderGate`. The RETIRED plan-file probe is asserted ABSENT: a workspace
 //     holding a `.mpd/plans/*.md` artifact but NO active work must read `active:false` — the retired
@@ -33,14 +47,19 @@
 //   * scope: a top-level session of a configured preset only, never a child session.
 //
 // 1) `--self-test` (offline, no boot): imports the SHIPPED pure module and drives the frozen predicate
-//    over four frozen prompt sets in BOTH directions, plus the boulder-reader matrix, the mode
-//    resolver, the shell builder, both notice builders, and THREE negative controls that must redden
-//    (an always-trigger gate, an always-silent one, and a mechanical notice that only advises) through
-//    the SAME `contractProblems()` the real gate is judged by — so a green self-test cannot be
-//    vacuous. It also asserts the wiring (the bundle mounts `mpd-roles`, the retired rows are gone,
-//    the preset carries the SESSION STARTUP RULE).
+//    over six frozen prompt sets in BOTH directions (the English four plus the CJK positive and the
+//    CJK negative controls), plus the boulder-reader matrix, the CJK calibration band, the C7 team
+//    reader, the C8 goal selection, the mode resolver, the shell builder, both notice builders, and
+//    FOUR negative controls that must redden (an always-trigger gate, an always-silent one, a
+//    mechanical notice that only advises, and a gate that is BLIND TO CJK) through the SAME
+//    `contractProblems()` the real gate is judged by — so a green self-test cannot be vacuous. It
+//    also asserts the wiring (the bundle mounts `mpd-roles`, the retired rows are gone, the preset
+//    carries the SESSION STARTUP RULE) and PRINTS the whole corpus table (case, Han count, verdict)
+//    so the evidence file carries the calibration instead of a claim about it.
 // 2) real run: isolated DSH_HOME + sandboxed HOME + SEEDED sandbox workspace, one headless boot per
-//    prompt side; the notices, the staged plan slot and the absence of team records are read from the
+//    prompt side — INCLUDING the CJK sides: the user's verbatim Chinese instruction must stage a
+//    shell and name its plan id (`cjk-positive`), while the three Chinese controls stage nothing and
+//    are injected no notice (`cjk-negative`); the notices, the staged plan slot and the absence of team records are read from the
 //    side's own workspace and from the HARNESS session log through the sanctioned reader
 //    (`lib/session-evidence.ts`), never from the model's prose (AGENTS.md §7).
 //
@@ -123,6 +142,16 @@ const COMPLETED_STATUS: string = "completed"
 const SEEDED_PLAN_PATH: string = ".mpd/plans/x.md"
 /** The plan id this case's own notice probe carries — never an id claimed from the product. */
 const PROBE_PLAN_ID: string = "plan-20260101000000"
+/** Signal E's restated scale bound (Han characters), so a threshold moved by taste reddens here. */
+const CJK_CHAR_MIN_RESTATED: number = 60
+/** Signal E's restated intent bound (distinct action verbs). */
+const CJK_ACTION_VERB_MIN_RESTATED: number = 2
+/** The source kind the official team plugin tags an INBOUND TEAMMATE MESSAGE with (C8's reproducer). */
+const TEAM_MESSAGE_KIND: string = "team-message"
+/** The source kind the harness tags a RELAYED SUBAGENT message with (C8's second producer). */
+const AGENT_MESSAGE_KIND: string = "agent-message"
+/** The source kind the harness tags its own runtime-context snapshot with (the P2 defect's subject). */
+const RUNTIME_CONTEXT_KIND: string = "runtime-context"
 /** The shipped PURE gate source, imported directly so the case reads the implementation itself. */
 const GATE_SOURCE: string = join(repoRoot, "packages", "mpd-roles-plugin", "src", "complexity-gate.ts")
 /** The shipped WIRING module: never imported (it pulls the adapter), only hashed into the settle window. */
@@ -159,11 +188,46 @@ export const EXPLICIT_PROMPTS: readonly string[] = [
   "team: fix the flaky test",
 ]
 /**
+ * The user's VERBATIM Chinese instruction (the wave's frozen contract, quoted, never paraphrased).
+ * Held as its own constant so BOTH negatives and the live side reference ONE byte string.
+ */
+export const VERBATIM_ZH_INSTRUCTION: string = "脱去该项目对于Oh-my-openagent与dsh-agent-teams项目的源码的所有依赖及检查，文档里只写参考鸣谢与License；验证当前工作量门，现在貌似用户只要不提，不论如何都不会建队；不论如何工作量，帮我找一个办法尽量避免面向用户的主代理去直接写/验证代码，做这些事情由子代理去干，并且该插件的PRESET硬要求无论什么模式下，A写出来的一部分代码必须由B验证，两agent必须独立，且要求不直接看代码只看文档，若有问题打回去改"
+/** The user's verbatim instruction's Han-character count, restated so the calibration margins can be asserted. */
+export const VERBATIM_ZH_HAN: number = 159
+
+/**
  * The signal-D probe prompt: a turn whose ONLY possible signal is D. It is booted twice with the
  * SAME bytes, once over an ACTIVE boulder ledger and once over a COMPLETED one, so the pair isolates D
  * from every other signal — the exact discrimination the retired case could not make.
  */
 export const BOULDER_PROBE_PROMPT: string = "Reply with exactly: boulder-ok"
+
+/**
+ * The CJK POSITIVE: the user's VERBATIM instruction, byte-for-byte from the wave's frozen contract
+ * (`.mpd/plans/de-vendor-and-verify-law.md`, the `> ` blockquote line minus its marker).
+ *
+ * WHY IT IS A CORPUS CASE AND NOT A COMMENT (W3, MEASURED 2026-10-07): the predicate's signals B/C
+ * count CLAUSES and VERBS, and this instruction splits on `、，。；：` — none of which the ASCII
+ * separator set carried — so it measured B=0, C=0, D=absent and staged NOTHING, whatever the
+ * workload. Its 159 Han characters are the scale signal E reads, and its 3 distinct lexicon verbs
+ * are E's second conjunct.
+ */
+export const CJK_COMPLEX_PROMPTS: readonly string[] = [
+  VERBATIM_ZH_INSTRUCTION,
+]
+
+/**
+ * The Chinese NEGATIVE controls: a short question, a one-line lookup, and a SCALE-ONLY question.
+ *
+ * The third is the load-bearing one: 52 Han characters, ZERO lexicon verbs, so it fails signal E's
+ * SECOND conjunct (measured; the scale bound alone is 60). Without it, an implementation that fired
+ * on "60+ Han characters" would pass every other arm of this corpus.
+ */
+export const CJK_SIMPLE_PROMPTS: readonly string[] = [
+  "这个函数是干什么的？",
+  "读一下 AGENTS.md 的第一节，然后告诉我它说了什么",
+  "请解释一下这个项目里 preset 和 profile 到底有什么区别，为什么会这样设计，以及这样做对我们有什么好处和坏处，最后用三句话总结一下",
+]
 
 /** Report one failed case assertion and end the run with exit 1; never returns. */
 function fail(msg: string): never { console.error("[session-start-team] FAIL: " + msg); process.exit(1) }
@@ -179,6 +243,20 @@ function errorDetail(error: unknown): string {
   // no narrowing can reach from `unknown`; anything else falls through to `String(value)` as before.
   const detail = (error as { readonly message?: unknown } | undefined)?.message ?? error
   return String(detail)
+}
+
+/**
+ * The Han characters in one text — signal E's scale measure, counted by OCCURRENCE.
+ *
+ * Deliberately the SAME measure the shipped module uses (`\p{Script=Han}`), restated here so the
+ * calibration margins are asserted by the case rather than trusted from the implementation.
+ * @param text The text whose Han characters are counted.
+ * @returns How many Han characters the text carries.
+ */
+function hanCount(text: string): number {
+  // `match` with the global flag answers every occurrence, or null when there is none.
+  const matches = String(text ?? "").match(/\p{Script=Han}/gu)
+  return matches === null ? 0 : matches.length
 }
 
 /**
@@ -319,7 +397,7 @@ interface BoulderReadOptions {
 interface MechanicalNoticeInput {
   /** The plan id the staging call returned; the empty string is the "call reported none" arm. */
   readonly planId: string
-  /** The fired signal letters, in A-D order. */
+  /** The fired signal letters, in A-E order. */
   readonly signals: readonly string[]
   /** Whether an explicit `team:` / `!team` marker was consumed from the goal text. */
   readonly explicit: boolean
@@ -335,6 +413,24 @@ interface GatePlanShell {
   readonly description: string
   /** Always `required`: the gate can never auto-approve a plan it could not decompose. */
   readonly approval: string
+}
+
+/** What one workspace's team records say about a session already leading a team (C7). */
+interface LeadingTeamRead {
+  /** Whether THIS session's own team record names at least one member. */
+  readonly leading: boolean
+  /** The team id of the record that decided the verdict, when one was found. */
+  readonly teamId?: string
+  /** How many members that record named; `0` when no record for this session was found. */
+  readonly members: number
+}
+
+/** The seams `readLeadingTeam` accepts, which is how the offline arm drives it without a workspace. */
+interface LeadingTeamOptions {
+  /** The injected file reader. */
+  readonly readFile?: (path: string) => Promise<string>
+  /** The injected directory lister. */
+  readonly readDir?: (path: string) => Promise<readonly string[]>
 }
 
 /** The shipped gate module's surface, as this case drives it. */
@@ -369,6 +465,16 @@ interface GateModule {
   readonly resolveGateMode: (value: unknown) => string
   /** Whether an ACTIVE boulder work exists for one workspace (never throws). */
   readonly readBoulderGate: (workspace: string, opts?: BoulderReadOptions) => Promise<BoulderRead>
+  /** The source kind that marks the caller's OWN turn; any other tagged kind is producer-owned. */
+  readonly HUMAN_SOURCE_KIND: string
+  /** Signal E's scale bound, in Han characters. */
+  readonly CJK_CHAR_MIN: number
+  /** Signal E's intent bound, in distinct action-verb matches. */
+  readonly CJK_ACTION_VERB_MIN: number
+  /** The user's OWN turn among the candidates, or `undefined` when none of them is the caller's. */
+  readonly latestUserMessage: (candidates: readonly unknown[]) => { readonly message: unknown; readonly text: string } | undefined
+  /** Whether THIS session already leads a team, read from the workspace's team records (never throws). */
+  readonly readLeadingTeam: (workspace: string, sessionId: string, opts?: LeadingTeamOptions) => Promise<LeadingTeamRead>
   /** Build the 0-member / 0-task plan shell a trigger stages. */
   readonly gatePlanShell: (input: { readonly signals: readonly string[]; readonly goal: string; readonly planPath?: string }) => GatePlanShell
   /** The advisory notice text for one fired signal set. */
@@ -680,6 +786,103 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
     rmSync(probe, { recursive: true, force: true })
   }
 
+  // ── DIRECTION 5 — THE CJK CORPUS (W3): the language blindness that made the user's OWN
+  // instruction stage nothing. The positive fires, every control stays silent, and the CALIBRATION
+  // BAND is asserted rather than described: a threshold moved by taste reddens here. ──
+  for (const prompt of CJK_COMPLEX_PROMPTS) {
+    /** This CJK positive's verdict from the shipped predicate. */
+    const verdict = gate.evaluateComplexityGate(prompt)
+    if (verdict.trigger !== true || !verdict.signals.includes("E")) {
+      problems.push(at("cjk-positive") + JSON.stringify(prompt.slice(0, 20)) + " must trigger with signal E, got " + JSON.stringify(verdict))
+    }
+  }
+  for (const prompt of CJK_SIMPLE_PROMPTS) {
+    /** This CJK negative control's verdict from the shipped predicate. */
+    const verdict = gate.evaluateComplexityGate(prompt)
+    if (verdict.trigger !== false || verdict.signals.length !== 0) {
+      problems.push(at("cjk-negative") + JSON.stringify(prompt.slice(0, 20)) + " must stay untriggered with no signal, got " + JSON.stringify(verdict))
+    }
+  }
+  // The restated bounds: a threshold that drifts away from the calibration below reddens HERE.
+  if (gate.CJK_CHAR_MIN !== CJK_CHAR_MIN_RESTATED) problems.push(at("cjk-calibration") + "CJK_CHAR_MIN must be " + String(CJK_CHAR_MIN_RESTATED) + ", got " + String(gate.CJK_CHAR_MIN))
+  if (gate.CJK_ACTION_VERB_MIN !== CJK_ACTION_VERB_MIN_RESTATED) problems.push(at("cjk-calibration") + "CJK_ACTION_VERB_MIN must be " + String(CJK_ACTION_VERB_MIN_RESTATED) + ", got " + String(gate.CJK_ACTION_VERB_MIN))
+  /** The Han-character counts of the positive corpus. */
+  const hanPositive = CJK_COMPLEX_PROMPTS.map((prompt) => hanCount(prompt))
+  /** The Han-character counts of the negative controls. */
+  const hanNegative = CJK_SIMPLE_PROMPTS.map((prompt) => hanCount(prompt))
+  if (Math.min(...hanPositive) < gate.CJK_CHAR_MIN) problems.push(at("cjk-calibration") + "every positive must CLEAR the scale bound, got " + JSON.stringify(hanPositive))
+  if (hanPositive[0] !== VERBATIM_ZH_HAN) problems.push(at("cjk-calibration") + "the verbatim instruction must carry " + String(VERBATIM_ZH_HAN) + " Han characters, got " + String(hanPositive[0]))
+  if (Math.max(...hanNegative) >= gate.CJK_CHAR_MIN) problems.push(at("cjk-calibration") + "every negative control must stay UNDER the scale bound (" + String(gate.CJK_CHAR_MIN) + "), got " + JSON.stringify(hanNegative))
+  // BOTH conjuncts, each isolated: scale with no action verb stays silent (the longest control), and
+  // two action verbs with no scale stay silent too — so neither conjunct alone can carry the signal.
+  if (gate.evaluateComplexityGate("修复并验证").trigger !== false) problems.push(at("cjk-calibration") + "two action verbs with no scale must stay silent")
+  if (gate.evaluateComplexityGate(CJK_SIMPLE_PROMPTS[CJK_SIMPLE_PROMPTS.length - 1] ?? "").trigger !== false) problems.push(at("cjk-calibration") + "the scale-only control must stay silent")
+
+  // ── DIRECTION 6 — THE TWO MEASURED DEFECTS OF 2026-10-07: an INBOUND AGENT MESSAGE judged as the
+  // human turn (C8), and a session ALREADY LEADING A TEAM being sent to stage one (C7). ──
+  /** A teammate report that signal C WOULD fire on if it were judged as a human turn. */
+  const reportText = "1. Audit the gates\n2. Implement the change\n3. Verify the boot"
+  if (gate.evaluateComplexityGate(reportText).signals.join("/") !== "C") {
+    problems.push(at("c8") + "the fixture report must be a text signal C fires on, else this arm is vacuous, got " + JSON.stringify(gate.evaluateComplexityGate(reportText)))
+  }
+  /** The fixture report as the OFFICIAL team plugin delivers it to the lead. */
+  const deliveredReport = { id: "m-1", role: "user", content: [{ type: "text", text: reportText }], source: { kind: TEAM_MESSAGE_KIND } }
+  /** A message tagged with each producer-owned kind this case knows, which must NEVER be the goal. */
+  const producerOwned: Array<[string, unknown]> = [
+    [TEAM_MESSAGE_KIND, deliveredReport],
+    [AGENT_MESSAGE_KIND, { id: "m-2", role: "user", content: [{ type: "text", text: reportText }], source: { kind: AGENT_MESSAGE_KIND } }],
+    [RUNTIME_CONTEXT_KIND, { id: "m-3", role: "user", content: [{ type: "text", text: "Current runtime context." }], source: { kind: RUNTIME_CONTEXT_KIND } }],
+  ]
+  for (const [kind, message] of producerOwned) {
+    if (gate.latestUserMessage([message]) !== undefined) problems.push(at("c8") + "a `" + kind + "` message must NOT be selected as the human turn")
+  }
+  // FALSIFIABILITY: the SAME bytes tagged as the caller's own turn ARE selected (and would fire) —
+  // without this twin, "never select anything" would pass every arm above.
+  /** The very same report text, tagged with the ONE human source kind. */
+  const humanTurn = { id: "m-4", role: "user", content: [{ type: "text", text: reportText }], source: { kind: gate.HUMAN_SOURCE_KIND } }
+  if (gate.latestUserMessage([humanTurn])?.text !== reportText) {
+    problems.push(at("c8") + "the SAME text tagged `" + gate.HUMAN_SOURCE_KIND + "` MUST be selected as the human turn")
+  }
+  // …and the human turn beside an inbound report still wins, whatever the order.
+  if (gate.latestUserMessage([humanTurn, deliveredReport])?.text !== reportText) problems.push(at("c8") + "the human turn must win with the report after it")
+  if (gate.latestUserMessage([deliveredReport, humanTurn])?.text !== reportText) problems.push(at("c8") + "the human turn must win with the report before it")
+  // The no-tag host keeps its gate: an untagged message stays eligible.
+  /** An untagged user-role turn, which is what a host that tags nothing records. */
+  const untagged = { id: "m-5", role: "user", content: [{ type: "text", text: "do the thing" }] }
+  if (gate.latestUserMessage([untagged])?.text !== "do the thing") problems.push(at("c8") + "an UNTAGGED human turn must stay eligible (the no-tag host fallback)")
+  // C7 — decided from the TEAM RECORD through the injected seams, never from a heuristic.
+  /** A team record as `mpd-team-core` writes it, with only the fields the reader judges. */
+  const teamRecord = (leadSessionId: string, members: number): string => JSON.stringify({
+    version: 1,
+    teamId: "team-probe",
+    leadSessionId,
+    members: Array.from({ length: members }, (_, index) => ({ id: "M" + String(index + 1) })),
+    tasks: [],
+  })
+  /** The seams for one directory listing and the record bodies it holds. */
+  const teamSeams = (files: Record<string, string>): LeadingTeamOptions => ({
+    readDir: async (): Promise<readonly string[]> => Object.keys(files),
+    readFile: async (path: string): Promise<string> => {
+      /** The record file name this read asked for. */
+      const name = path.slice(path.lastIndexOf("/") + 1)
+      if (!(name in files)) throw new Error("ENOENT " + path)
+      return files[name]
+    },
+  })
+  /** This session's OWN record with members — the live state that staged the spurious shell. */
+  const mine = await gate.readLeadingTeam("/ws", "sess-1", teamSeams({ "team-probe.json": teamRecord("sess-1", 7) }))
+  if (mine.leading !== true || mine.members !== 7) problems.push(at("c7") + "a record led by THIS session with 7 members must read leading, got " + JSON.stringify(mine))
+  // The three falsifiability twins: another session, a 0-member SHELL, and a missing directory.
+  /** Another session's record with 7 members: it must NOT read leading for THIS session. */
+  const other = await gate.readLeadingTeam("/ws", "sess-1", teamSeams({ "team-probe.json": teamRecord("sess-2", 7) }))
+  if (other.leading !== false) problems.push(at("c7") + "another session's record must NOT read leading, got " + JSON.stringify(other))
+  /** A 0-member record for THIS session: the staged SHELL, which must NOT read leading either. */
+  const stagedShell = await gate.readLeadingTeam("/ws", "sess-1", teamSeams({ "team-probe.json": teamRecord("sess-1", 0) }))
+  if (stagedShell.leading !== false) problems.push(at("c7") + "a 0-member record is a STAGED SHELL, not a team — it must NOT read leading, got " + JSON.stringify(stagedShell))
+  /** A workspace with NO team directory: the every-session case, driven through a THROWING lister. */
+  const missing = await gate.readLeadingTeam("/ws", "sess-1", { readDir: async (): Promise<readonly string[]> => { throw new Error("ENOENT") } })
+  if (missing.leading !== false) problems.push(at("c7") + "a workspace with no team directory must read NOT leading, got " + JSON.stringify(missing))
+
   // ── the ADVISORY notice: the ONLY text that may say "NO team was staged" ──
   const advisories: Array<[string, string]> = [
     ["advisory", gate.advisoryNoticeText(["C"], false)],
@@ -794,6 +997,15 @@ async function selfTest(): Promise<void> {
     ...gate,
     mechanicalNoticeText: (): string => gate.advisoryNoticeText(["A"], true),
   }
+  // A gate that is BLIND TO CJK (the pre-wave behaviour reproduced): the real predicate, run over
+  // the text with every Han character and every full-width separator STRIPPED — which is exactly
+  // what the ASCII separator set plus the tiny lexicon left visible of a Chinese instruction. The
+  // corpus arm must redden, so the fix is FALSIFIABLE rather than merely demonstrated.
+  const cjkBlind = {
+    ...gate,
+    evaluateComplexityGate: (text: string, input?: GateInputs): ComplexityVerdict =>
+      gate.evaluateComplexityGate(String(text ?? "").replace(/\p{Script=Han}/gu, "").replace(/[、，。；：！？（）「」『』“”‘’【】]/gu, ""), input),
+  }
   // The violations the always-triggering stub produced, proving the simple arm is falsifiable.
   const triggerProblems = await contractProblems(alwaysTrigger)
   if (triggerProblems.length === 0) fail("negative control: a gate that triggers on EVERYTHING passed the contract")
@@ -803,6 +1015,12 @@ async function selfTest(): Promise<void> {
   // The violations the notice-confused stub produced, proving the taxonomy clauses are falsifiable.
   const confusedProblems = await contractProblems(confusedNotice)
   if (confusedProblems.length === 0) fail("negative control: a mechanical notice that only ADVISES passed the contract")
+  // The CJK-blind stub must redden the CORPUS arm specifically, not merely fail somewhere.
+  const blindProblems = await contractProblems(cjkBlind)
+  if (blindProblems.length === 0) fail("negative control: a gate BLIND TO CJK passed the contract — the corpus arm is not falsifiable")
+  if (!blindProblems.some((problem) => problem.startsWith("cjk-positive"))) {
+    fail("negative control: the CJK-blind stub must fail the CJK POSITIVE arm, got: " + blindProblems.join(" | "))
+  }
 
   // ── the LIVE verdict's own falsifiability, driven offline through the SAME `evaluateSide()` ──
   // A mechanical side that staged ONE matching shell and spawned nobody must PASS…
@@ -862,12 +1080,40 @@ async function selfTest(): Promise<void> {
   if (!preset.includes("spawn_teammate")) fail("the mpd preset must name the OFFICIAL staging tool `spawn_teammate`")
   if (/MUST start inside a team|MUST begin inside a team/.test(preset)) fail("the mpd preset still carries the retired mandatory-team invariant")
 
+  // THE CORPUS TABLE: every frozen case with the SHIPPED predicate's verdict, printed so the evidence
+  // file carries the calibration instead of a claim about it. Han is counted with `\p{Script=Han}`.
+  console.log("[session-start-team self-test] corpus (verdicts from the SHIPPED predicate):")
+  /** Every frozen case, labelled with the set it belongs to and the verdict it MUST have. */
+  const corpus: Array<[string, string, boolean]> = [
+    ...SIMPLE_PROMPTS.map((prompt): [string, string, boolean] => ["simple", prompt, false]),
+    ...SOFT_COMPLEX_PROMPTS.map((prompt): [string, string, boolean] => ["soft-complex", prompt, true]),
+    ...EXPLICIT_PROMPTS.map((prompt): [string, string, boolean] => ["explicit", prompt, true]),
+    ...CJK_COMPLEX_PROMPTS.map((prompt): [string, string, boolean] => ["cjk-positive", prompt, true]),
+    ...CJK_SIMPLE_PROMPTS.map((prompt): [string, string, boolean] => ["cjk-negative", prompt, false]),
+  ]
+  for (const [label, prompt, want] of corpus) {
+    // An EXPLICIT case is driven the way the WIRING drives it: the marker is consumed FIRST and the
+    // consumption's own flag is what the predicate reads — never the raw text alone.
+    /** This case's text with any explicit marker consumed, and whether one was there. */
+    const consumed = label === "explicit" ? gate.consumeExplicitFlag(prompt) : { flagged: false, text: prompt }
+    /** The shipped predicate's verdict for this case. */
+    const verdict = gate.evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged })
+    console.log("  " + (verdict.trigger === want ? "ok " : "MISMATCH ") + label.padEnd(13)
+      + " han=" + String(hanCount(prompt)).padStart(3) + " trigger=" + String(verdict.trigger).padEnd(5)
+      + " signals=" + JSON.stringify(verdict.signals).padEnd(8) + " " + JSON.stringify(prompt.slice(0, 60)))
+  }
+  console.log("  calibration: positives han=" + JSON.stringify(CJK_COMPLEX_PROMPTS.map((prompt) => hanCount(prompt)))
+    + " negatives han=" + JSON.stringify(CJK_SIMPLE_PROMPTS.map((prompt) => hanCount(prompt)))
+    + " bound=" + String(gate.CJK_CHAR_MIN) + " verbs>=" + String(gate.CJK_ACTION_VERB_MIN))
+
   console.log("[session-start-team self-test] ok: the shipped PURE gate module conforms to the MECHANICAL contract ("
-    + SIMPLE_PROMPTS.length + " simple / " + SOFT_COMPLEX_PROMPTS.length + " soft-complex / " + EXPLICIT_PROMPTS.length + " explicit / 1 boulder-probe prompt, both ways; "
+    + SIMPLE_PROMPTS.length + " simple / " + SOFT_COMPLEX_PROMPTS.length + " soft-complex / " + EXPLICIT_PROMPTS.length + " explicit / "
+    + CJK_COMPLEX_PROMPTS.length + " cjk-positive / " + CJK_SIMPLE_PROMPTS.length + " cjk-negative / 1 boulder-probe prompt, both ways; "
     + "signal D through the INJECTED reader AND the real filesystem, the mode FAIL-SAFE, the shell builder's honest bounds, "
     + "both notices with the retired vocabulary scoped per text, and the session scope)"
-    + "; THREE negative controls reddened (always-trigger " + triggerProblems.length + ", always-silent " + silentProblems.length
-    + ", advisory-only-mechanical " + confusedProblems.length + " problem(s))"
+    + "; FOUR negative controls reddened (always-trigger " + triggerProblems.length + ", always-silent " + silentProblems.length
+    + ", advisory-only-mechanical " + confusedProblems.length + ", CJK-blind " + blindProblems.length + " problem(s))"
+    + "; C7 (a session already leading a team) and C8 (an inbound `team-message`/`agent-message` is never the human turn) each driven BOTH ways"
     + "; the LIVE verdict and the REAL `.mpd/team` stage scan were each driven offline BOTH ways (a matching shell passes; a spawned record, a plan-id mismatch, a leaked notice and a non-shell staged plan all redden)"
     + "; bundle mounts mpd-roles with the retired rows gone; preset carries the SESSION STARTUP RULE")
 }
@@ -921,7 +1167,7 @@ function classifyNotices(texts: readonly string[]): NoticeClassification {
   // The marked texts that name any `agent_teams_*` token but the staging tool.
   const retiredVocabulary = marked.filter((text) => retiredToolTokens(text).length > 0)
   // The fired-signal runs every marked notice named, in record order (both taxonomies share the prefix).
-  const signals = marked.map((text) => /complexity signals ([A-D](?:\/[A-D])*)/.exec(text)?.[1]).filter((value): value is string => value !== undefined)
+  const signals = marked.map((text) => /complexity signals ([A-E](?:\/[A-E])*)/.exec(text)?.[1]).filter((value): value is string => value !== undefined)
   // Every plan id any marked notice named, in record order.
   const planIds = marked.flatMap((text) => planIdsIn(text))
   return {
@@ -1290,6 +1536,17 @@ async function runReal(): Promise<void> {
   // The four sides the retired case already had: the negative control, the soft-complex trigger, and
   // the explicit request (whose marker must be consumed) — all mechanical now, since the FAIL-SAFE
   // default is what a workspace with no `mpd.jsonc` gets.
+  //
+  // THE CJK CORPUS RUNS FIRST, and the order is deliberate rather than incidental: the CJK positive is
+  // this wave's acceptance arm AND the slowest boot of the run (a work-shaped 222-character
+  // instruction), so it must not sit behind thirteen other headless boots. The side order itself
+  // carries no contract meaning.
+  //
+  // W3's acceptance: the user's VERBATIM Chinese instruction must stage a shell and name its plan id
+  // — the exact scenario that staged NOTHING before the repair — and the three Chinese NEGATIVE
+  // controls must each leave the session silent, so "fires on Chinese" is not the property under test.
+  steps.cjkPositiveSide = runSide("cjk-positive", CJK_COMPLEX_PROMPTS, { expect: "stage", expectedMode: GATE_MODE_MECHANICAL })
+  steps.cjkNegativeSide = runSide("cjk-negative", CJK_SIMPLE_PROMPTS, { expect: "none", expectedMode: GATE_MODE_MECHANICAL })
   steps.simpleSide = runSide("simple", SIMPLE_PROMPTS, { expect: "none", expectedMode: GATE_MODE_MECHANICAL })
   steps.softComplexSide = runSide("soft-complex", SOFT_COMPLEX_PROMPTS, { expect: "stage", expectedMode: GATE_MODE_MECHANICAL })
   steps.explicitSide = runSide("explicit", EXPLICIT_PROMPTS, { expect: "stage", expectedMode: GATE_MODE_MECHANICAL, explicit: true })
@@ -1316,6 +1573,7 @@ async function runReal(): Promise<void> {
     ...steps.simpleSide, ...steps.softComplexSide, ...steps.explicitSide,
     ...steps.boulderActiveSide, ...steps.boulderCompletedSide,
     ...steps.advisorySide, ...steps.offSide,
+    ...steps.cjkPositiveSide, ...steps.cjkNegativeSide,
   ]
   steps.verdicts = {
     ok: sides.every((r) => r.ok),
@@ -1329,6 +1587,8 @@ async function runReal(): Promise<void> {
     boulderCompleted: steps.boulderCompletedSide.map((r) => ({ notices: r.notices, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords })),
     advisory: steps.advisorySide.map((r) => ({ notices: r.notices, advisory: r.advisory, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords })),
     off: steps.offSide.map((r) => ({ notices: r.notices, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords, modeLine: r.bootLine })),
+    cjkPositive: steps.cjkPositiveSide.map((r) => ({ notices: r.notices, signals: r.signals, stagedPlans: r.stagedPlans, planIds: r.planIds, teamRecords: r.teamRecords, firedLine: r.firedLine })),
+    cjkNegative: steps.cjkNegativeSide.map((r) => ({ notices: r.notices, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords })),
   }
 
   // The run's single verdict: every ledger entry that carries an `ok` must have held.

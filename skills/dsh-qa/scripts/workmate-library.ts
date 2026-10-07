@@ -2,8 +2,8 @@
 // Case workmate-library: prove the mpd-workmate plugin is mounted and functional
 // end-to-end in a real headless boot, with the workmate library rooted at a SANDBOX
 // HOME (~/.mpd/workmate) so the real home is never touched:
-//   1) offline self-test: dist exists, bundle patch row, memberPersona injection patch,
-//      preset guidance, package name;
+//   1) offline self-test: dist exists, bundle patch row, preset guidance (the CAPTAIN-DRIVEN
+//      workmate path — match -> delegate -> report -> reflect), package name;
 //   2) real boot (isolated DSH_HOME + sandbox HOME): init -> list -> spawn (real model)
 //      -> reflect -> match; assert output markers, the sandbox ~/.mpd/workmate files, and
 //      that the real ~/.mpd/workmate was NOT created.
@@ -72,9 +72,16 @@ interface ChildRun {
 const dumpJsonText = (text: string): string => { try { return (JSON.parse(text) as DumpCapture).stdout ?? "" } catch { return String(text ?? "") } }
 // .../skills/dsh-qa/scripts/workmate-library.ts -> the repository root.
 const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-/** The live prompt: drives the workmate flow init -> list -> spawn -> reflect -> match. */
+/**
+ * The live prompt: drives the workmate flow init -> list -> spawn -> reflect -> match.
+ *
+ * The BASE must be a functional NAME (`Deep Worker`), never an internal stable id: the roster
+ * refuses `base:"hephaestus"` with `unknown base — use a functional NAME from mpd_roles_list`, which
+ * MEASURABLY turned this lane red (2026-10-07, evidence/plan-f/workmate-library/2026-10-07T10-38-04.837Z)
+ * whenever the model copied the prompt's spelling verbatim instead of substituting a valid name.
+ */
 const PROMPT: string = `Use the workmate tools in this exact order and report each result:
-1) mpd_workmate_init {base:"hephaestus", name:"alice", note:"Verilog counter specialist"}
+1) mpd_workmate_init {base:"Deep Worker", name:"alice", note:"Verilog counter specialist"}
 2) mpd_workmate_list
 3) mpd_workmate_spawn {name:"alice", task:"Read the file README.md in the workspace and summarize it in one sentence"}
 4) mpd_workmate_reflect {name:"alice", task:"summarize README", outcome:"provided a one-sentence summary"}
@@ -100,9 +107,20 @@ function selfTest(): void {
   // halves are asserted: the retired sentence must not linger in the patch, and
   // the PRESET must carry the consult/anti-weak-match rule.
   checks.push(["bundle patch no longer carries the retired roster workmate guidance", !patch.includes("never force a weak note match")])
-  // The retired adopted plugin's member-persona source, where the injection patch lives.
-  const members = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "members.ts"), "utf8")
-  checks.push(["memberPersona workmate injection", members.includes("function workmateBacking") && members.includes("mpd_workmate_reflect") && members.includes("Durable workmate backing")])
+  // DROPPED ARM (wave `de-vendor-and-verify-law`, 2026-10-07): the `memberPersona workmate
+  // injection` check read `packages/mpd-agent-teams-plugin/lib/members.ts`, so its SUBJECT — the
+  // adopted plugin's member-persona patch — was DELETED with the vendored body.
+  //
+  // THE REASON MATTERS, and it is NOT "this wave broke a working capability": that automatic
+  // injection was a patch on the ADOPTED body, which has been mounted by NO loader row since the
+  // 2026-09-27 retirement — it was ALREADY INERT before this wave, and deleting the code changed no
+  // runtime behaviour. The check is dropped because its SOURCE path cannot exist any more, not
+  // because a live path regressed.
+  //
+  // WHAT REPLACES IT is the CAPTAIN-DRIVEN path this case already asserts end to end in its live arm:
+  // `mpd_workmate_match` → delegate → the member reports → `mpd_workmate_reflect` (the REQUIRED_TOOLS
+  // flow below, read from the harness session log). Re-establishing the automatic injection on the
+  // OFFICIAL path (`mpd-roster-provider-plugin`) is recorded as a follow-up and is NOT this wave's.
   // 0.1.7-rc.2 ROW MODEL: the mpd composition is an inline `config.plugins` list in
   // the `preset-mpd` row of the manifest's second bundle patch — there is no
   // `presets/mpd/` directory any more. Read the DECLARED source, never a path.
@@ -209,7 +227,9 @@ function runReal(): void {
   // The invariant this case must prove is that it never TOUCHES the real library — NOT that the
   // real library is absent (it exists on any machine that ever used one; measured on this host:
   // /root/.mpd/workmate). The library under test lives under the SANDBOX HOME, and the real one is
-  // snapshot before/after — the same shape workmate-team-member.ts uses. The product resolves the
+  // snapshot before/after — the shape `workmate-team-member.ts` used until that case was DELETED with
+  // the vendored body (wave `de-vendor-and-verify-law`, 2026-10-07); this case keeps the invariant.
+  // The product resolves the
   // root as `$HOME/.mpd/workmate` (mpd-workmate src/index.ts `homeDir(): process.env.HOME || homedir()`),
   // so sandboxing HOME is what keeps it out of the real home.
   const realWmBefore = existsSync(realWm) ? readdirSync(realWm).sort().join(",") : null
