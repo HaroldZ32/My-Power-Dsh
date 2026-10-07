@@ -83,7 +83,7 @@ The bundle's public front door is rebuilt, and the release that ships it is 0.12
 | `node scripts/verify-pack-closure.ts` | **PASS — 553 files compared, 553 identical, 0 drift, 0 expected-after-pack; 456 of 457 declared sources present, 1 declared exemption exercised** |
 | `bun run test:qa` | PASS — all self-tests passed (incl. `mpd-ext --self-test` 53 checks) |
 | `preset-conformance.ts --self-test` | PASS — 32 rows conform, 4/4 negative controls reddened |
-| `node scripts/docker-e2e.ts --mode source --require-docker` | UNMEASURED at time of writing |
+| `node scripts/docker-e2e.ts --mode source --require-docker` | **2 of 94 FAIL** (`tui.teamGraphContent`, `tui.laneExit`); 62 PASS, 30 declared-NULL. **Not this wave's doing and not environmental** — it reproduces IDENTICALLY on the pre-wave commit `c905894`, and the mechanism is a lane assertion left stale by commit `6fdfc012` at 12:39 UTC while the last green lane run was 10:58 UTC. Differential experiment + the two environment hypotheses it falsifies: `evidence/docker/lane-staleness/tui-teamGraphContent.md` |
 | `node scripts/docker-e2e.ts --mode oneclick --require-docker` | UNMEASURED — it installs the PUBLISHED package, so it runs after the npm publish |
 
 ### Honest bounds
