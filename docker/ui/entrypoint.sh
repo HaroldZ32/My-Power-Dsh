@@ -27,10 +27,16 @@ export DEBIAN_FRONTEND=noninteractive
 # `bun install` and its first `dsh plugin … add` with "command not found", and the container sat
 # there looking healthy while the Web log held 63 bytes. A health guard that asks about a DIFFERENT
 # tool than the ones it installs is not a guard.
-if ! command -v bun >/dev/null 2>&1 || ! command -v dsh >/dev/null 2>&1 || ! command -v tmux >/dev/null 2>&1; then
-  log "apt + bun + pnpm + dsh (one or more of them were missing)"
+if ! command -v bun >/dev/null 2>&1 || ! command -v dsh >/dev/null 2>&1 || ! command -v tmux >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; then
+  log "apt + bun + pnpm + dsh + python3 (one or more of them were missing)"
   apt-get update -qq >"$LOG_DIR/apt.log" 2>&1
-  apt-get install -y -qq --no-install-recommends curl git ca-certificates unzip xz-utils tmux socat >>"$LOG_DIR/apt.log" 2>&1
+  # `python3` + Pillow + the fonts are the README capture's rasterizer dependencies, and they are
+  # installed HERE rather than in the image because the UI-VIEW stack is the only consumer: without
+  # them `docker/ui/tui-capture.sh` cannot paint a single pane. `fonts-noto-cjk` is not decoration —
+  # DejaVuSansMono carries no CJK coverage, so the 简体中文 status line renders as EMPTY BOXES (tofu)
+  # under the mono face alone. `python3` is in the guard condition above for that reason.
+  apt-get install -y -qq --no-install-recommends curl git ca-certificates unzip xz-utils tmux socat \
+    python3 python3-pil fonts-dejavu-core fonts-noto-cjk >>"$LOG_DIR/apt.log" 2>&1
   # `node` itself may already exist (baked into the image); it is installed only when absent, because
   # overwriting the image's own node under a different prefix is how two `node`s end up disagreeing.
   if ! command -v node >/dev/null 2>&1; then
@@ -50,7 +56,7 @@ if ! command -v bun >/dev/null 2>&1 || ! command -v dsh >/dev/null 2>&1 || ! com
 fi
 export PATH="/opt/toolchain/node/bin:/root/.bun/bin:$PATH"
 # Fail LOUDLY and EARLY rather than booting into a silently half-built container.
-for tool in node bun pnpm dsh tmux; do
+for tool in node bun pnpm dsh tmux python3; do
   command -v "$tool" >/dev/null 2>&1 || { log "FATAL: $tool is still not on PATH after the toolchain step — see ${LOG_DIR}/apt.log"; }
 done
 
@@ -150,6 +156,19 @@ cp -f /opt/mpd-e2e/run-capture.sh "$LOG_DIR/run-capture.sh" 2>/dev/null || true
 # MPD_UI_TUI_LANG=en for the English render. The same variable is pinned in restart-tui.sh, so a
 # restart cannot change the language under a reviewer.
 # A second sandbox HOME so a TUI boot can never disturb the Web profile, and its own DSH_HOME.
+# ONBOARDING IS NEUTRALISED BEFORE THE FIRST TUI BOOT, and that is a precondition rather than a
+# convenience. A TUI home that has never completed setup is walked through dsh-tui's first-run WIZARD
+# instead of reaching a chat session, and the wizard draws the same `❯` a chat composer does — so every
+# surface a capture opens would land on the wizard and the figure would be of the wrong screen. The
+# persisted shape is the one the installed `lib/types/onboardingPrefs.js` requires: it stays armed until
+# `{completed:true, version:>=1}`. `DSH_TUI_NO_LAUNCHPAD=1` is the same class of fix on the same boot:
+# without it the ASCII splash precedes the chat surface and is captured as the first scene. Both are the
+# pair `docker/ui/restart-tui.sh` writes, kept here so a container that is never captured still comes up
+# on a chat screen instead of a wizard.
+mkdir -p /data/home-tui/.dsh-tui
+printf '{\n  "completed": true,\n  "version": 1\n}\n' >/data/home-tui/.dsh-tui/onboarding.json
+printf '{\n  "preset": "mpd"\n}\n' >/data/home-tui/.dsh-tui/agent-preset.json
+export DSH_TUI_NO_LAUNCHPAD=1
 log "starting the TUI inside tmux (socket /data/tui.sock)"
 npm i -g "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.13.0}" >>"$LOG_DIR/tui-install.log" 2>&1
 DSH_HOME=/data/dsh-tui HOME=/data/home-tui mkdir -p /data/dsh-tui /data/home-tui /data/ws
@@ -158,7 +177,7 @@ DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add "@de
 tmux -f /dev/null -S /data/tui.sock new-session -d -s tui -x 220 -y 50 -c /data/ws
 tmux -S /data/tui.sock pipe-pane -t tui -o "cat > /data/tui-pane.log" 2>/dev/null || true
 tmux -S /data/tui.sock send-keys -t tui \
-  "env -i 'PATH=$PATH' 'DSH_HOME=/data/dsh-tui' 'HOME=/data/home-tui' 'TERM=xterm-256color' 'DSH_TUI_LANG=${MPD_UI_TUI_LANG:-zh}' 'DSH_TUI_WORKSPACE_TARGET=/data/ws' dsh-tui" Enter
+  "env -i 'PATH=$PATH' 'DSH_HOME=/data/dsh-tui' 'HOME=/data/home-tui' 'TERM=xterm-256color' 'DSH_TUI_LANG=${MPD_UI_TUI_LANG:-zh}' 'DSH_TUI_NO_LAUNCHPAD=1' 'DSH_TUI_WORKSPACE_TARGET=/data/ws' dsh-tui" Enter
 
 # Keep the container alive and publish where the surfaces are, so an inspector (or the
 # ui-view driver) can find them without guessing.
@@ -173,6 +192,30 @@ log "ready — web=:${MPD_UI_PORT} (token in ${LOG_DIR}/web.log), tui=/data/tui.
 # flag, and every log written to /data went with it) — the logs are also mirrored to the
 # bind mount so a post-mortem survives the container.
 mkdir -p /data-out
+# ── 6. the README capture, WIRED BUT NEVER LOAD-BEARING ───────────────────────
+# ONE `docker compose … up -d --build` is meant to produce the whole terminal set, so the capture is
+# wired HERE — and guarded, because this container is an INSPECTION harness: a capture that fails must
+# leave a usable container, never a container that exited. Four guards, each deliberate:
+#   * a BACKGROUND subshell, so nothing in the boot waits on it;
+#   * every failure swallowed with `||` and logged, so no capture exit status can reach the container's;
+#   * the renderer and the interpreter checked FIRST, so a missing dependency SKIPS with a sentence
+#     rather than failing halfway through a scene and leaving half a set behind;
+#   * `MPD_UI_CAPTURE_README=0` turns the whole thing off.
+# The locale order ends on the stack's own `MPD_UI_TUI_LANG`, because the LAST capture restarts the
+# session — leaving the container holding the language a reader arriving afterwards expects.
+if [ "${MPD_UI_CAPTURE_README:-1}" = "1" ] && [ -f /src/docker/ui/tui-capture.sh ] && command -v python3 >/dev/null 2>&1; then
+  (
+    mkdir -p /data-out/readme
+    for one in ${MPD_UI_CAPTURE_LANGS:-en zh}; do
+      bash /src/docker/ui/tui-capture.sh --lang "$one" --out /data-out/readme \
+        >>"$LOG_DIR/tui-capture.log" 2>&1 \
+        || log "README capture ($one) FAILED — see ${LOG_DIR}/tui-capture.log; the container stays up"
+    done
+    log "README capture finished — the TUI session is left in the last locale's language"
+  ) &
+else
+  log "README capture skipped (MPD_UI_CAPTURE_README=${MPD_UI_CAPTURE_README:-1}; renderer $([ -f /src/docker/ui/tui-capture.sh ] && echo 'present' || echo 'absent'), python3 $(command -v python3 >/dev/null 2>&1 && echo 'present' || echo 'absent'))"
+fi
 ( while :; do sleep 5; cp -f "$LOG_DIR"/web.log "$LOG_DIR"/relay.log "$LOG_DIR"/surfaces.txt /data-out/ 2>/dev/null; done ) &
 log "holding the container open; surfaces at /data (mirrored to /data-out)"
 while :; do

@@ -18,13 +18,22 @@
 > **基线状态 —— 引用任何团队行之前请先读这段（0.1.7-rc.2）。** 本台账所对照的 Web 一侧是**内置的
 > `agent-teams` 插件，它现已从组合中退役**：没有任何 loader 行挂载它，因此它的路由
 > （`/plugins/dsh-agent-teams/**`）、它的 `.mpd/team` 记录与它的侧边栏面板都不存在于随包会话中。
-> 下文每一行与每一节都是那一波对该基线的**实测** —— 是历史，而不是当前能力。
+> 采用的整棵代码树此后也已被**删除**（de-vendor 波次，2026-10-07），因此下文引用的每一处
+> `packages/mpd-agent-teams-plugin/**` 路径都是**历史测量的锚点** —— 读者可以引用它所记录的字节，
+> 却再也打不开那个文件。下文每一行与每一节都是那一波对该基线的**实测** —— 是历史，而不是当前能力。
 >
-> 两个后果在此明说，而不是留给读者在引用某一行团队条目时自行推断：**整个计划批准族已不存在**
-> （暂存计划、`approve <teamId>` + `Ctrl+X`、`Ctrl+D` 丢弃、计划成员/任务编辑器、`plan-continue`），
-> 因为本 bundle 挂载的**官方** Agent Teams 插件**没有暂存计划、也没有批准步骤** —— Lead 用
-> `spawn_teammate` 创建队友、用 `team_task_create` 开通道，共享任务板**就是**计划；而 TUI 场景所能
-> 读取的团队状态是 Lead 的会话日志，不是 `.mpd/team/team.json`。当前团队能力请读
+> 两个后果在此明说，而不是留给读者在引用某一行团队条目时自行推断：**本表所测的计划批准族运行在那个
+> 已删除的内置插件上，并随它一同消失**（它的暂存计划、它的 `approve <teamId>` + `Ctrl+X`、它的
+> `Ctrl+D` 丢弃、它的计划成员/任务编辑器、它的 `plan-continue`），因为本 bundle 挂载的**官方**
+> Agent Teams 插件**没有暂存计划、也没有批准步骤** —— Lead 用 `spawn_teammate` 创建队友、用
+> `team_task_create` 开通道，共享任务板**就是**计划。**但这只是官方平台：本 bundle 在自己的平台上
+> 重新拥有了暂存计划** —— `mpd-team-core` 的 `agent_teams_plan`（`create` → `add_member` /
+> `create_task` → `approve`，拒绝 0 成员、0 任务的计划），在 TUI 里由 `/mpd plan` 进入，并渲染在 Web
+> 面板的计划投影中（`packages/mpd-bundle-plugin/src/team-view.ts`，由 `/plugins/mpd-team/plan`
+> 提供）—— 它的契约写在 `docs/tui.zh-CN.md` §3.2，应当引用的是它，而不是下文中已退役的那些行。而
+> **TUI 场景读取的团队状态**是本 bundle 自有的团队记录
+> （`.mpd/team/teams/<teamId>.json`，`packages/mpd-tui-plugin/src/team-state.ts`），官方实时读数只作
+> **回退** —— 不再以 Lead 的会话日志为来源，也不是已退役的 `.mpd/team/team.json`。当前团队能力请读
 > `docs/user-guide.zh-CN.md` §6、`docs/tui.zh-CN.md` §3.2 与 `docs/plan-0.1.7-adaptation.md`。
 
 这是一份长期维护且面向人的台账，回答一个问题：**本 bundle 的 Web 版提供的每一个界面，DSH-TUI 版对应提供什么；如果答案是“什么都没有”，为什么这是可接受的？** 这里的“一致”从不意味着布局、样式、动画、拖拽、缩放、面板几何或本地化相同，而是指同样的**事实**与同样的**操作**可以到达。该边界冻结在契约的 NOT-CLAIMED #1 中，并在下文 §5 重申。
@@ -75,7 +84,7 @@
 | `plan-task-editor`（主题/负责人/依赖） | `lib/index.ts:426`（`update_task`） | absent | — | — | NOT-CLAIMED #2 |
 | `plan-add-task` | `lib/index.ts:443`（`add_task`） | absent | — | — | NOT-CLAIMED #2 |
 | `plan-remove-task` | `lib/index.ts:458`（`remove_task`） | absent | — | — | NOT-CLAIMED #2 |
-| `plan-pre-approval editing / merge` | `lib/index.ts:405-475`（编辑器动作块）；`lib/tools.ts:759`（该插件的 edit-plan 工具） | absent | — | — | NOT-CLAIMED #2；契约中该行标签 `merge-autonomous-plan` 在采用的客户端字节里找不到可定位锚点——见偏差 D2。（整个计划批准族已退役 —— 见顶部横幅。） |
+| `plan-pre-approval editing / merge` | `lib/index.ts:405-475`（编辑器动作块）；`lib/tools.ts:759`（该插件的 edit-plan 工具） | absent | — | — | NOT-CLAIMED #2；契约中该行标签 `merge-autonomous-plan` 在采用的客户端字节里找不到可定位锚点——见偏差 D2。（Web 一列来自那个已删除的插件；而计划批准族本身已回到本 bundle 自己的平台上 —— 见顶部横幅与 `docs/tui.zh-CN.md` §3.2。） |
 | `activity-panel/archived-teams view (?archived=1)` | `lib/index.ts:255-272`；`lib/client.js:360-367` | absent | — | — | 实测：TUI 只读活动状态根目录，并只选取一条最新记录（`packages/mpd-tui-plugin/src/state.ts:107-109`）；归档团队不被投影 |
 | `activity-panel/panel-geometry + drag/resize` | `lib/client/panel-geometry.ts:121` | not-applicable | — | — | 终端场景没有浮动几何（§7.1） |
 | `activity-panel/localization (t())` | `lib/client/locales.ts` | not-applicable | 注入的 `tuiCommandTrees` 携带 `descriptions.zh`（`src/command-trees.ts:18-25`）；场景文案保持英文 | E4（`16-command-completion.pane.txt`） | §5.1 与 §7.1 —— 不声称任何场景文案本地化 |
@@ -107,7 +116,7 @@
 
 **D1 —— 真实提交后批准判定行曾不可见（严重度 medium；先实测为未修复，后由 t8 关闭——这里把**两种状态**都记录下来，因为第一种状态正是本波次发现的东西）。** 契约 §4.5 把成功渲染钉为 `approved: <teamId> running · members <n> · tasks <n>`。在真实宿主上实测（E1 Arm 2 的首次运行）：批准**确实提交**——记录从 `phase: staged → running`、`approvedAt` 被写入、`planReviewState` 被删除，这是只有采用的 `approveStagedTeam` 才会留下的签名——而面板显示的是提交后的空状态，因为调用后的重新读取已看不到 staged 记录。Arm 1（录制替身）**确实**渲染了工具的结构化结果，这正是为什么它是真实宿主的偏差、而不是场景的渲染缺陷。**修复（t8，`repair`，Senior Engineer）：** 已结束但不再可用的记录现在会把运行时产出的消息渲染为第一行正文（`packages/mpd-tui-plugin/src/scenes.ts:731-750`），并重建了该包的 dist。**修复后重新实测：** 本波次自己的通道重跑报告 `arm2.outcome = approved-by-the-adopted-runtime/verdict-visible`、`outcomeLines.approved = "approved: mpd-fixture-1 running · members 2 · tasks 2"`、`findings: []`（`evidence/tui/team-surface-verify/2026-09-16T14-24-22.312Z/result.json`）。首次读数作为这次测量的历史保留在本台账中，而不作为当前状态。
 
-**D2 —— 一个冻结行标签在 Web 侧找不到可定位锚点（严重度 low；责任方：冻结契约；仍未修复）。** 强制行 `activity-panel/merge-autonomous-plan` 被保留（漏掉一行就是缺陷），但该标签本身在采用的客户端字节里无法定位：对 `packages/mpd-agent-teams-plugin/lib/client.js` 与 `lib/client/**` 做 `autonomous|merge` 的大小写不敏感搜索，命中数为零。因此该行锚定到最近的**实测** Web 界面——批准前的计划编辑器动作块（`lib/index.ts:405-475`）与该插件的 edit-plan 工具（`lib/tools.ts:759`）。这里选择记录而不是悄悄改名：把本页与契约对照的读者能够看到这处不一致及其原因。
+**D2 —— 一个冻结行标签在 Web 侧找不到可定位锚点（严重度 low；责任方：冻结契约；仍未修复）。** 强制行 `activity-panel/merge-autonomous-plan` 被保留（漏掉一行就是缺陷），但该标签本身在采用的客户端字节里无法定位：对 `packages/mpd-agent-teams-plugin/lib/client.js` 与 `lib/client/**` 做 `autonomous|merge` 的大小写不敏感搜索，在该树被删除之前命中数为零（这些路径是历史锚点 —— 见顶部横幅）。因此该行锚定到最近的**实测** Web 界面——批准前的计划编辑器动作块（`lib/index.ts:405-475`）与该插件的 edit-plan 工具（`lib/tools.ts:759`）。这里选择记录而不是悄悄改名：把本页与契约对照的读者能够看到这处不一致及其原因。
 
 **D3 —— 该通道的受认可判定运行描述的是过期的通道字节（严重度 medium；实测后在同一波次内解决）。** t3 第一次尝试的判定运行记录了测量它的通道摘要 `skills/dsh-qa/scripts/tui-team-surface.ts` → `21a9eb5c14a30410…`，而磁盘上的文件摘要是 `91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f`，其修改时间（UTC 14:16:22）**晚于** t3 自身的最后更新（UTC 14:14:56）。因此在活动树上重新计算的语料库指纹是 `303e1631…`，而**不是** t3 报告要求 captain 固定的 `303e163148af…`。当时记录了两项后果：固定 `303e163148af…` 会让 `verify-vendor` 继续为红；该判定运行已不再描述磁盘上的通道字节。**解决（实测而非假定）：** 采用了本页的独立重算值——captain 把 `VENDOR_LOCK.json` 的 `assets.skills` 重新固定为 `fileCount 319 / treeSha 303e1631…`，与 `skills/**` 变更同处一次提交；`verify-vendor` 现于冻结树上报告 PASS；t3 也按当前通道字节**重试**（第二次尝试）并转绿。留下来的是一条规则而不是缺陷：判定运行中的通道摘要把该判定绑定到测量它的那些字节上，之后的任何改动都会让这个绑定失效。证据：`evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/raw/fingerprint.log`、`REVISION.json`，以及同目录的 `gates.result.json`（`verifyVendor.exitCode = 0`）。
 
@@ -131,15 +140,15 @@
 
 ## 6. 如何打开每一个 TUI 界面
 
-**下表中的团队行描述的是已退役的基线（见顶部横幅）：暂存计划、`approve <teamId>` + `Ctrl+X` 与
-`team-plan …` 面板行在随包会话中都已不存在。** 当前会话能打开的是 `/mpd team`、`/mpd board`、
+**本表列出的是当前会话能打开的东西；§2 的台账（见顶部横幅）才是历史测量，而其中的计划批准行已在本
+bundle 自己的平台上重新上线。** 当前会话能打开的是 `/mpd team`、`/mpd plan`、`/mpd board`、
 `/mpd status`、`/mpd workmates`、`/settings` 与 `/mpd` 语法 —— TUI 动作清单就是
-`packages/mpd-tui-plugin/src/command-trees.ts`。
+`packages/mpd-tui-plugin/src/command-trees.ts`，其中 `plan` 子项写的是“审阅并批准待定计划”。
 
 | 界面 | 如何打开 | 接下来 |
 |---|---|---|
 | 团队工作流 | `/mpd team`（或 `/mpd` → 选择器，或在 `mpd-tui-board` 中按 `a`） | `p` 跳到面板；`r` 重新读取 |
-| ~~计划批准~~（已退役 —— 不存在暂存计划；请用官方 `team_task_*` 工具） | — | — |
+| 计划批准 | `/mpd plan`（或在 `mpd-tui-team` 中按 `a`，前提是读到过待定团队） | 逐字输入面板提供的确切短语（`approve plan-…`，来自 Web 面板所渲染的同一份计划投影），然后按 `Ctrl+X`；10 秒内按两次 `Ctrl+D` 丢弃待定计划，`Ctrl+R` 重新读取，`esc` 返回 |
 | 面板 | `/mpd board`、配置的快捷键，或从选择器进入面板 | `team-hold held (…)` 行（仅当看门狗 hold 持续期间） |
 | workmate 库（清单） | `/mpd workmates` | 打印数量与名称；变更只在 Web 侧（第 24 行） |
 | 状态行 | `/mpd status`（或配置的状态接缝） | 一行团队摘要，hold 持续期间也包含它 |

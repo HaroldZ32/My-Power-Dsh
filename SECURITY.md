@@ -8,7 +8,7 @@ transmits model credentials — DSH owns those.
 
 ## Supported versions
 
-Security fixes land on the newest release on `master` (`v0.11.1` at the time of writing). Older
+Security fixes land on the newest release on `master` (`v0.12.0` at the time of writing). Older
 releases are not maintained; install the newest tag before reporting.
 
 ## Reporting a vulnerability

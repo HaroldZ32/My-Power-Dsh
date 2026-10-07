@@ -14,7 +14,89 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
-## Unreleased — the gate contract is stated, not drifted
+## v0.12.0 — the product page, and one bundle on two surfaces
+
+### `README.md` becomes a product page, and the manual moves to the user guide
+
+**Changed.**
+
+- **The root README is rebuilt as a product page** in the shape the `dsh-tui` project's README uses:
+  a language switch, three short paragraphs, a hero capture of the running product, `Features`,
+  `Install`, `Quick start`, `Usage`, **`Status and known limitations`**, the documentation index, and
+  the provenance/license sections. It was 68 524 B of manual; it is 18 429 B, and the long form lives
+  where a long form belongs — [`docs/user-guide.md`](./docs/user-guide.md) (57 770 B, with its
+  `zh-CN` twin), which already existed and is why **no `docs/manual.md` was created**: a second copy
+  would have been a third overlapping document. `README.zh-CN.md` is the 简体中文 twin and is updated
+  in the SAME change, as the language policy requires.
+- **No section of the old manual was lost.** Every `##`-level section of the pre-wave README maps to
+  an existing home — a RETAINED section of the new page, or a named section of the user guide, the
+  design document or the parity ledger. The per-section table is
+  [`evidence/docs/readme-0.12.0/README-section-map.md`](./evidence/docs/readme-0.12.0/README-section-map.md),
+  and the three pieces that existed nowhere else were given a home in this wave: the **MCP
+  literal-call recipes** (user guide §13.11, new), the **two symptom rows** for a missing
+  `comment-checker` binary and a silent CodeGraph (user guide §11), and the **roster sizing
+  guidance** (user guide §4).
+- **The dual-surface story is the spine of both files.** A `Web | TUI` comparison table sits in the
+  top half of the page: one row per concrete surface — the team roster, the task graph, the watchdog
+  banner, plan approval, the workmate library, the settings card, the terminal status line — with the
+  Web column, the TUI column, and a parity column. **Every parity claim is one the existing ledger
+  already records**, and the rows that are *not* at parity are the ledger's own open deviations,
+  named in the table rather than smoothed over. [`docs/tui-parity.md`](./docs/tui-parity.md) stays
+  the authority; the README now points at it in the sentence right under the table.
+- Long-form content is reachable from the README through `docs/user-guide.md`, `docs/index.md`, the
+  design document and the parity ledger; the sections the README used to carry that had no other home
+  were moved into `docs/user-guide.md` rather than dropped (see *Content preservation* below).
+
+**Added.**
+
+- **A real screenshot set, captured on a real machine and cropped to THIS bundle's surfaces.** The
+  README's images are produced by the Docker UI lane under [`docker/ui/`](./docker/ui/):
+  - the **Web** tiles by headless Chromium driving the real app, captured as tight crops around the
+    bundle's own Team view, settings card, preset card and plugin row rather than as full-window
+    frames of the harness chrome;
+  - the **DSH-TUI** tiles by rasterizing the **ANSI byte stream the real TUI emitted on a real PTY**
+    (`tmux capture-pane -e`, which carries the TUI's own colours) at the character grid tmux computed
+    — previously the TUI was only ever captured as plain text, and the repository shipped **zero**
+    terminal images;
+  - a paired **hero** composite showing the same bundle on both surfaces side by side;
+  - both sets in **English and 简体中文**, so the Chinese README does not show an English app.
+- **The images have a stated provenance**, not just a directory: see
+  [`evidence/docs/readme-0.12.0/image-provenance.md`](./evidence/docs/readme-0.12.0/image-provenance.md).
+  It records the exact method, the fixture that makes every surface render populated, and — stated
+  rather than implied — that the terminal tiles' PAGE BACKGROUND is the lane's choice because the TUI
+  deliberately never paints one; every foreground colour comes from the byte stream.
+  It also records three dead ends a future lane must not re-pay for: this image's X server accepts a
+  connection and never answers (`import`, `xwd` and `xdpyinfo` all return exit 124 with zero bytes);
+  `xterm -sb 0` is invalid (`-sb` is a boolean, so the `0` becomes the shell argument); and
+  `pkill -f <pattern>` self-matches the calling shell.
+- `docker/ui/` gains the capture steps that produce the set, so the images are REPRODUCIBLE from the
+  tree instead of being hand-taken artifacts. The lane stays an INSPECTION harness: it holds the two
+  surfaces open and asserts nothing about the product.
+
+**Fixed — a marker that was not unique to its surface.** The terminal capture gates every scene on a
+marker read out of the live pane. The marker first chosen for the team scene — the fixture's team
+name — is ALSO printed by the chat screen's keyed status line, so one capture fired on the chat
+screen and produced an image of the wrong surface. The shipped tiles were each confirmed by looking
+at them; the lesson (a readiness marker must be unique to the surface it gates) is recorded in the
+lane's own comments so the next lane inherits it rather than rediscovering it.
+
+**Removed.**
+
+- **The five full-window `docs/assets/images/web-ui-*.png` captures are gone** (476 KB). The new set
+  supersedes them: each of the five showed the harness chrome around the part that mattered, and the
+  product page now shows the bundle's own surfaces, cropped. Nothing is lost — the raw full-window
+  frames stay tracked under `docker/ui/out/shots/` and the deleted files remain in this file's own
+  git history. `assets/images/` is a CURATED set documented by `docs/index.md`, so leaving five
+  files no table described was rot rather than a safety net.
+
+**Declared bounds (named, not silent).**
+
+- The Web tiles are Chromium at a fixed viewport; a different browser size lays out differently. The
+  terminal tiles are one terminal emulator's rendering of the same bytes. The claim is the **facts on
+  screen**, not pixel identity — and the README says so in its own *Status and known limitations*.
+- The three authored SVG diagrams (`architecture`, `ulw-loop`, `team-lifecycle`) no longer sit in the
+  README; they remain in this repository, are still rendered by `docs/index.md`, and are linked from
+  the README's documentation index through the documents that own them.
 
 ### The vendored `dsh-agent-teams` body is DELETED, and what still ships has moved
 

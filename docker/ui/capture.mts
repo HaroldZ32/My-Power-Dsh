@@ -76,8 +76,8 @@ interface PageLike {
   goto(url: string, options?: { waitUntil?: string; timeout?: number }): Promise<unknown>
   /** Settle time for the SPA's own async rendering. */
   waitForTimeout(ms: number): Promise<void>
-  /** Capture the viewport to a PNG file. */
-  screenshot(options: { path: string }): Promise<unknown>
+  /** Capture the viewport to a PNG file, or — with `clip` — just one rectangle of it. */
+  screenshot(options: { path: string; clip?: { x: number; y: number; width: number; height: number } }): Promise<unknown>
   /** Locator by CSS selector (only `body` is used here, for the rendered-text dump). */
   locator(selector: string): LocatorLike
   /** Locator by ARIA role — how a person finds a control, and how the first-run gates are closed. */
@@ -150,6 +150,77 @@ interface ClickOptions {
 }
 
 /**
+ * ONE README crop rule: which surface to cut out of the full-window shot, and how the driver SEES it.
+ *
+ * WHY A TABLE AND NOT A RECTANGLE PER CALL SITE. Two of these surfaces are ADDRESSABLE — this bundle
+ * puts a `data-mpd-*` attribute on the nodes it renders — and two are NOT, because they are host
+ * screens this bundle only contributes a row to. A selector is used wherever one exists; a RECTANGLE
+ * derived from a text anchor is used only where none does, and every such fallback names the anchor
+ * it walks up from. Keeping all four decisions in ONE place is what makes them reviewable: a
+ * reader can see at a glance which crops are pinned to a contract attribute and which are pinned to
+ * a host's rendered text, and the second kind is the kind that rots when the host is restyled.
+ */
+interface ReadmeCropRule {
+  /** The file basename this crop writes, without the extension. */
+  name: string
+  /** A CSS selector this bundle's own markup carries — preferred, because it is a contract. */
+  selector?: string
+  /** The visible text to anchor on, used only when {@link selector} is absent. */
+  needle?: string
+  /**
+   * How many ANCESTOR levels above the deepest element carrying {@link needle} the crop starts.
+   *
+   * This is the one heuristic in the table, and it exists because the host renders a settings list
+   * as bare nested `div`s with no stable attribute to select. 0 would cut the needle itself (an
+   * unusable sliver); too high would swallow the page's own chrome. The value is per-row because
+   * the two host screens nest differently, and each row says why its number is the one it is.
+   */
+  up?: number
+  /** Extra pixels on every side, so the crop does not touch its own content. */
+  pad: number
+  /** A cap on the crop's height, for a surface taller than a README figure can usefully be. */
+  maxHeight?: number
+  /** Why this rule is shaped the way it is; read by a reviewer, never by the code. */
+  note: string
+}
+
+/**
+ * The README's own images, each cut from the state the step BEFORE it has already put on screen.
+ *
+ * These are taken INSIDE the existing steps rather than by a second navigation pass: the steps
+ * already reach these screens and already assert their content, so re-driving them would be a second
+ * chance to land somewhere else. The crop is therefore a cut of a state this driver has proof of.
+ */
+const README_CROPS: readonly ReadmeCropRule[] = [
+  {
+    name: "web-plugins-installed",
+    selector: 'li[data-plugin-package="@mpd-dsh/mpd"]',
+    pad: 16,
+    note: "the plugin row carries the package name AND the live status as data attributes, so this crop is pinned to the manifest rather than to how the list happens to be styled",
+  },
+  {
+    name: "web-settings-mpd",
+    selector: "[data-mpd-row-key],[data-mpd-disclosure]",
+    pad: 16,
+    maxHeight: 660,
+    note: "the union of this bundle's own settings rows and disclosures IS the MPD card; the height cap keeps a 26-row section inside a figure, and the crop is anchored at the card's own top edge so the cap never cuts the section's title off",
+  },
+  {
+    name: "web-agent-presets",
+    needle: "MPD (Main Working Agent)",
+    up: 3,
+    pad: 16,
+    note: "HOST screen with no mpd attribute to select; 3 levels is the preset row (name -> row body -> row card -> list), read off the live DOM rather than guessed, and the crop is clamped to the viewport so a taller ancestor cannot overflow the clip",
+  },
+  {
+    name: "web-team-board",
+    selector: "[data-mpd-team-tab]",
+    pad: 0,
+    note: "the panel root this bundle registers; pad 0 because the panel IS the surface and a margin would pull the host's sidebar chrome back into the picture",
+  },
+]
+
+/**
  * The whole capture report. The required members are exactly the keys of the initial literal (their
  * order is the key order of `report.json`, so no key may be moved or pre-declared); every field the
  * run fills in later is optional and is appended in the order the steps reach it.
@@ -167,6 +238,8 @@ interface CaptureReport {
   viewport: readonly number[]
   /** One entry per driven step, in run order. */
   steps: CaptureStep[]
+  /** One entry per README crop, in the order the steps took them; empty when `--readme` is unset. */
+  readmeShots: { name: string; ok: boolean; file?: string; rect?: readonly number[]; error?: string }[]
   /** Console errors the page produced (first 250 characters each). */
   consoleErrors: string[]
   /** Uncaught page errors (first 250 characters each). */
@@ -334,6 +407,14 @@ const BASE: string = arg("base", "http://127.0.0.1:3080")
 const TOKEN: string = arg("token", "")
 /** The directory the PNGs and `report.json` are written to (the host bind mount). */
 const OUT: string = arg("out", "/data-out/shots")
+// Where the README-grade CROPS go. Empty (the default) SKIPS the crop step entirely, so an existing
+// caller of this driver — the QA lane that only wants the full-window shots — is unaffected by the
+// README's needs, and the crop cannot fail a run that never asked for one.
+const README_OUT: string = arg("readme", "")
+// Created HERE, before any step runs: the crops are written from inside the steps, and a missing
+// directory would surface as a per-crop failure long after the cause. Recursive, so the caller may
+// name a nested locale directory (`…/readme/zh-CN`) without preparing it first.
+if (README_OUT !== "") mkdirSync(README_OUT, { recursive: true })
 /** The workspace directory the created session runs in — must be a REGISTERED workspace. */
 const WORKSPACE: string = arg("workspace", "/data/ws")
 /** A session to REUSE instead of creating one, so a pre-seeded team is the one rendered. */
@@ -361,7 +442,7 @@ const HEIGHT: number = Number(arg("height", "1000"))
 mkdirSync(OUT, { recursive: true })
 
 /** The report being assembled; the first seven keys are the shape every run carries. */
-const report: CaptureReport = { base: BASE, workspace: WORKSPACE, viewport: [WIDTH, HEIGHT], steps: [], consoleErrors: [], pageErrors: [], failedRequests: [] }
+const report: CaptureReport = { base: BASE, workspace: WORKSPACE, viewport: [WIDTH, HEIGHT], steps: [], readmeShots: [], consoleErrors: [], pageErrors: [], failedRequests: [] }
 /** The headless browser; `--no-sandbox` is required inside the container and CI has no /dev/shm. */
 const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-dev-shm-usage"] })
 /**
@@ -409,6 +490,99 @@ const step = async (name: string, fn: () => Promise<string>): Promise<CaptureSte
   report.steps.push(entry)
   return entry
 }
+/**
+ * Resolve a crop rule to a viewport rectangle, or null when this screen does not carry the surface.
+ *
+ * The two branches are the table's two kinds of anchor. A SELECTOR branch unions every match, so a
+ * surface rendered as many nodes (the MPD card's rows) crops as one block instead of as whichever
+ * node happened to sort first. The NEEDLE branch walks up from the deepest element carrying the
+ * text, because a host screen offers nothing else to hold on to.
+ * @param rule - the crop rule to resolve.
+ * @returns the rectangle in viewport coordinates, or null when nothing on screen matched.
+ */
+const cropRect = (rule: ReadmeCropRule): Promise<{ x: number; y: number; width: number; height: number } | null> => page.evaluate((r: { selector?: string; needle?: string; up?: number }) => {
+  // SYNC ARGUMENT: playwright SERIALIZES this body and runs it in the PAGE (see readSettingsControls
+  // for the measured reason it must reach the DOM through its own global names).
+  /** The viewport's own size, which the returned rectangle is clamped to. */
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  /** The rectangle accumulated so far; null until the first match is seen. */
+  let box: { x0: number; y0: number; x1: number; y1: number } | null = null
+  /** Grow the box by one element's viewport rectangle. */
+  const grow = (el: Element): void => {
+    const r = el.getBoundingClientRect()
+    if (r.width <= 0 || r.height <= 0) return
+    /** The box as it stands; a local alias so the null check narrows for the mutation below. */
+    const current = box
+    if (current === null) box = { x0: r.x, y0: r.y, x1: r.right, y1: r.bottom }
+    else {
+      current.x0 = Math.min(current.x0, r.x); current.y0 = Math.min(current.y0, r.y)
+      current.x1 = Math.max(current.x1, r.right); current.y1 = Math.max(current.y1, r.bottom)
+    }
+  }
+  if (r.selector !== undefined) {
+    for (const el of Array.from(document.querySelectorAll(r.selector))) grow(el)
+  } else if (r.needle !== undefined) {
+    /** Every element carrying the needle; the DEEPEST ones are the anchors (a parent contains it too). */
+    const carriers = Array.from(document.querySelectorAll("*")).filter((el) => (el.textContent || "").includes(r.needle as string))
+    for (const deepest of carriers.filter((el) => !Array.from(el.children).some((c) => (c.textContent || "").includes(r.needle as string)))) {
+      /** The ancestor `up` levels above the anchor, which is the row the crop is meant to show. */
+      let node: Element | null = deepest
+      for (let i = 0; i < (r.up ?? 0) && node !== null; i++) node = node.parentElement
+      if (node !== null) grow(node)
+    }
+  }
+  if (box === null) return null
+  // The clamp is against the VIEWPORT, not the document: a clip reaching past it is refused by the
+  // browser, and a surface whose ancestor is taller than the window would otherwise fail outright.
+  const x = Math.max(0, Math.floor(box.x0))
+  const y = Math.max(0, Math.floor(box.y0))
+  return { x, y, width: Math.max(1, Math.min(vw, Math.ceil(box.x1)) - x), height: Math.max(1, Math.min(vh, Math.ceil(box.y1)) - y) }
+}, { selector: rule.selector, needle: rule.needle, up: rule.up })
+
+/**
+ * Cut one README crop out of the screen the calling step has ALREADY put up, and record what happened.
+ *
+ * WHY IT NEVER THROWS. This is a figure for a document, not an assertion about the bundle: a crop
+ * that cannot be resolved must leave the other crops intact and say so in `report.json`, because the
+ * alternative — aborting a step — would trade a real assertion (the panel rendered) for a cosmetic
+ * one. The record names the rule's own anchor, so an absent crop is diagnosable from the report
+ * without re-running the lane.
+ * @param name - the crop rule's name; also the file basename it writes.
+ */
+const readmeShot = async (name: string): Promise<void> => {
+  if (README_OUT === "") return
+  /** The rule this call belongs to; a name with no rule is a programming error, not a crop. */
+  const rule = README_CROPS.find((r) => r.name === name)
+  if (rule === undefined) { report.readmeShots.push({ name, ok: false, error: "no crop rule with this name" }); return }
+  /** The record appended either way, so an absent crop is visible in the artifact. */
+  const entry: { name: string; ok: boolean; file?: string; rect?: readonly number[]; error?: string } = { name, ok: false }
+  try {
+    /** The resolved rectangle, or null when this screen does not carry the surface. */
+    const rect = await cropRect(rule)
+    if (rect === null) {
+      entry.error = "the anchor resolved to nothing on this screen"
+    } else {
+      /** The padded and height-capped rectangle the clip actually uses. */
+      const clipped = {
+        x: Math.max(0, rect.x - rule.pad),
+        y: Math.max(0, rect.y - rule.pad),
+        width: rect.width + rule.pad * 2,
+        height: Math.min(rule.maxHeight ?? Number.MAX_SAFE_INTEGER, rect.height + rule.pad * 2),
+      }
+      clipped.width = Math.min(clipped.width, WIDTH - clipped.x)
+      clipped.height = Math.min(clipped.height, HEIGHT - clipped.y)
+      entry.file = join(README_OUT, name + ".png")
+      await page.screenshot({ path: entry.file, clip: clipped })
+      entry.ok = true
+      entry.rect = [clipped.x, clipped.y, clipped.width, clipped.height]
+    }
+  } catch (e) {
+    entry.error = messageOf(e).slice(0, 200)
+  }
+  report.readmeShots.push(entry)
+}
+
 /** The page's rendered text, newline-collapsed and capped — the evidence that a screen is not blank. */
 const bodyText = async (limit: number = 2500): Promise<string> => (await page.locator("body").innerText().catch(() => "")).replace(/\n{2,}/g, "\n").slice(0, limit)
 
@@ -652,6 +826,7 @@ await step("02-home", async () => {
 await step("03-plugins", async () => {
   report.pluginsClick = await clickText(/^(plugins|插件)$/i)
   report.pluginsText = await bodyText(2000)
+  await readmeShot("web-plugins-installed")
   return shot("03-plugins")
 })
 
@@ -682,6 +857,7 @@ await step("04-settings-mpd", async () => {
   // rows are read as live control values instead — that is the difference between "the card rendered"
   // and "the card is bound to the real config entry".
   report.mpdControls = await readSettingsControls(page)
+  await readmeShot("web-settings-mpd")
   return shot("04-settings-mpd")
 })
 
@@ -690,6 +866,7 @@ await step("04-settings-mpd", async () => {
 await step("05-settings-agent-presets", async () => {
   report.presetsClick = await clickText(/^(Agent presets|Agent 预设|智能体预设)$/i)
   report.agentPresetsText = await bodyText(3000)
+  await readmeShot("web-agent-presets")
   return shot("05-settings-agent-presets")
 })
 
@@ -834,6 +1011,7 @@ await step("06b-team-board-seed", async () => {
   const drawn = await page.locator("[data-mpd-node]").count()
   report.teamPanelNodesAfterSeed = drawn
   if (drawn === 0) throw new Error("the board never reached the rendered session — the panel is still on its empty state")
+  await readmeShot("web-team-board")
   return shot("06b-team-board")
 })
 
