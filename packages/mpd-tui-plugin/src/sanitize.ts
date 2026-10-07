@@ -50,6 +50,60 @@ export function clampCells(value: string, maxCells: number): string {
 }
 
 /**
+ * Cut one row to a COLUMN window, never splitting a wide glyph.
+ *
+ * THE INVARIANT, postcondition-shaped and asserted at every call site that draws a panned row: the
+ * result occupies EXACTLY `cols` cells — the visible window is always full, never short and never
+ * over, which is the only way a horizontal pan can keep a box's right border on its own column.
+ *
+ * The three decisions a per-character `slice` gets wrong, and this function's answer to each:
+ *   - a character whose cells lie entirely BEFORE `offset` is dropped;
+ *   - a wide glyph STRADDLING the left edge is not half-emitted — ONE SPACE takes its place, so the
+ *     window keeps its cell count and shows a gap rather than a sheared glyph;
+ *   - a wide glyph STRADDLING the right edge is DROPPED, and the row is space-padded to `cols`.
+ * A window that runs past the text's own end is padding, and one of zero cells is the empty string.
+ * @param text - the row's characters, in draw order.
+ * @param offset - the first column to show, in cells; a negative value reads as zero.
+ * @param cols - how many cells the window shows.
+ * @returns exactly `cols` cells (fewer only when `cols` is not positive).
+ */
+export function sliceCells(text: string, offset: number, cols: number): string {
+  /** The window's width, floored; below one cell there is nothing to show. */
+  const width = Math.floor(Number.isFinite(cols) ? cols : 0)
+  if (width <= 0) return ""
+  /** The first visible column, floored; a window starting before the row is the row's own start. */
+  const from = Math.max(0, Math.floor(Number.isFinite(offset) ? offset : 0))
+  /** The cells accepted so far. */
+  let out = ""
+  /** Cells emitted so far, padding included. */
+  let used = 0
+  /** The cells of the row consumed so far, over its WHOLE run and not only its visible part. */
+  let cursor = 0
+  for (const character of text) {
+    if (used >= width) break
+    /** The cells this glyph needs: two for an East-Asian wide glyph, one otherwise. */
+    const span = WIDE.test(character) ? 2 : 1
+    /** Where this glyph sits, relative to the window. */
+    const at = cursor - from
+    cursor += span
+    // ENTIRELY BEFORE THE WINDOW: nothing of this glyph is visible, so it contributes nothing.
+    if (at + span <= 0) continue
+    // STRADDLING THE LEFT EDGE: its leading cells are off-window, and half a wide glyph is a sheared
+    // glyph, so the visible half is drawn as a space instead.
+    if (at < 0) {
+      out += " "
+      used += 1
+      continue
+    }
+    // STRADDLING THE RIGHT EDGE: the glyph cannot be shown whole, so it is dropped and the row padded.
+    if (used + span > width) break
+    out += character
+    used += span
+  }
+  return out + " ".repeat(width - used)
+}
+
+/**
  * Normalize one untrusted scalar into renderable text.
  * @param value - the candidate value; strings, numbers and booleans are accepted.
  * @param maxCells - the cell clamp.

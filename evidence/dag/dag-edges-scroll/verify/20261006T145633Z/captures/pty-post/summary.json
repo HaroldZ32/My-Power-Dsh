@@ -1,0 +1,178 @@
+{
+  "root": "evidence/dag/dag-edges-scroll/verify/20261006T145633Z/captures/pty-post",
+  "widths": [
+    100,
+    140,
+    220
+  ],
+  "verdicts": [
+    {
+      "cols": 100,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "‹ 待办 › ▸ ◆ M ◈ ◆"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": false,
+      "boxRound": false,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 0,
+      "railRendered": true,
+      "panSignatures": [
+        {
+          "step": "panback",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        },
+        {
+          "step": "pan2",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        },
+        {
+          "step": "pan3",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        },
+        {
+          "step": "pan1",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        }
+      ],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩…    "
+      ],
+      "panStatic": true,
+      "cjkInDrawing": [],
+      "cjkInDetail": [
+        " Esc 聊天 · ←/→ 切换 · z 缩…    "
+      ],
+      "cjkOutsideDrawing": [
+        " Esc 聊天 · ←/→ 切换 · z 缩…    ",
+        " ‹ 待办 › ▸ ◆ M ◈ ◆             ",
+        " Ctrl+B 聚焦侧栏                "
+      ],
+      "chineseSubjectsInDetail": [],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    },
+    {
+      "cols": 140,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "‹ 待办 › ▸ ◆ M ◈ ◆"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": false,
+      "boxRound": false,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 0,
+      "railRendered": true,
+      "panSignatures": [
+        {
+          "step": "panback",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,35,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0"
+        },
+        {
+          "step": "pan2",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,35,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0"
+        },
+        {
+          "step": "pan3",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,35,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0"
+        },
+        {
+          "step": "pan1",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,35,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0"
+        }
+      ],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     "
+      ],
+      "panStatic": true,
+      "cjkInDrawing": [],
+      "cjkInDetail": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     "
+      ],
+      "cjkOutsideDrawing": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     ",
+        " ‹ 待办 › ▸ ◆ M ◈ ◆                          ",
+        " Ctrl+B 聚焦侧栏                             "
+      ],
+      "chineseSubjectsInDetail": [],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    },
+    {
+      "cols": 220,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "‹ 待办 › ▸ ◆ M ◈ ◆"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": false,
+      "boxRound": false,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 0,
+      "railRendered": true,
+      "panSignatures": [
+        {
+          "step": "panback",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,42,0,61,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        },
+        {
+          "step": "pan2",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,42,0,61,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        },
+        {
+          "step": "pan3",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,42,0,61,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        },
+        {
+          "step": "pan1",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,42,0,61,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        }
+      ],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               "
+      ],
+      "panStatic": true,
+      "cjkInDrawing": [],
+      "cjkInDetail": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               "
+      ],
+      "cjkOutsideDrawing": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               ",
+        " ‹ 待办 › ▸ ◆ M ◈ ◆                                                    ",
+        " Ctrl+B 聚焦侧栏                                                       "
+      ],
+      "chineseSubjectsInDetail": [],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    }
+  ]
+}

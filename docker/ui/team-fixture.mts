@@ -4,7 +4,7 @@
 // THE CLI HALF. The board SHAPES live as values in `team-fixture-records.mts` so a test can assert
 // them; this file only parses the arguments, writes the record and updates the workspace index. It is
 // copied into the container by `docker/ui/seed-team-fixture.sh` and run there:
-//   node team-fixture.mts <sessionId> <workspace> [normal|malformed]
+//   node team-fixture.mts <sessionId> <workspace> [normal|malformed|cjk]
 //
 // IT IS A FIXTURE AND IS DECLARED AS ONE: it hand-writes the shape `TeamRecord` /
 // `TeamMemberRecord` / `TeamTaskRecord` declare in `packages/mpd-team-core-plugin/src/team-store.ts`,
@@ -62,11 +62,11 @@ if (process.argv[1] !== undefined && process.argv.slice(2).length >= 2) {
   /** The `[sessionId, workspace, board]` this run was invoked with. */
   const [sessionId, workspace, boardArgument]: (string | undefined)[] = process.argv.slice(2)
   if (workspace === undefined) {
-    process.stderr.write("usage: node team-fixture.mts <sessionId> <workspace> [normal|malformed]\n")
+    process.stderr.write("usage: node team-fixture.mts <sessionId> <workspace> [normal|malformed|cjk]\n")
     process.exit(2)
   }
   /** The validated board shape; anything else is the normal board. */
-  const board: FixtureBoard = boardArgument === "malformed" ? "malformed" : "normal"
+  const board: FixtureBoard = boardArgument === "malformed" ? "malformed" : boardArgument === "cjk" ? "cjk" : "normal"
   /** The record this run writes; the CLI is a thin wrapper over {@link seedBoard}. */
   const record: FixtureRecord = seedBoard(board, sessionId, workspace)
   process.stdout.write(`seeded ${record.teamId} (board=${board}) for session ${sessionId}: ${record.tasks.length} tasks, ${record.members.length} members\n`)

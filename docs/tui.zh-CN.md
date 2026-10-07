@@ -191,6 +191,27 @@ id 是**从宿主自身的 `list()` 回读中发现的**，绝不自行拼接：
    读 `/mpd panel` / `/mpd dag` / `/mpd workmate` 打印的那一行）；
 2. 打开侧栏——`Ctrl+B`——或开启 *启动时展开侧栏*。
 
+**启用列表还必须挺过宿主自己的配置重应用；现在它挺得住，靠的是两条路径。** 宿主自己会追加注册成功的 id
+（`enablePanelIdInStore`），但**实测约 +5.4 秒**时 `dsh-tui` 行会经一次 `Fiber._reload` 重新应用它的配置
+（`applySidePanelPanels(config.sidePanel?.panels)`），所以那次追加是瞬时的，全新配置最终只剩下宿主自带的三个
+标签页。（注意这次重置**实际**做了什么：它恢复的是**配置里写的那个列表**——只有在用户层未设置时才是
+`todo,jobs,agents`；一个列出页面 id 的配置会在结算后仍然带着这些 id、并且不带宿主自带的三个。）现在有两条
+互相独立的路径守住列表：
+
+* **有界、在插件内** —— `packages/mpd-tui-adapter-plugin` 的沉降守卫只重新断言**宿主自己的 `list()` 回读
+  产出的那些 id**，而且只在列表里**一个我们的 id 都没有**时才动作：它把整组一次性追加在用户列表之后，从不
+  删除也从不改变任何一个 token 的顺序。若列表里出现**任何一个**我们的 id，那就说明配置已经就本 bundle 表态
+  了 —— 在 `/settings` 里启用过、由下面的脚本写入过、或者用户故意只删掉了部分 —— 此时守卫**主动退让**，因此
+  它绝不会把用户本想丢掉的页面放回去。它在约 25 秒内走完六个 tick 后永久停止。这是该适配器的**第二处**宿主
+  内部接触，与 `Ctrl+A` 的 `useStdin` 触点并列（AGENTS.md §6 给这类接触计数，因此两处都在该文件里点名）；
+  它发现的 id 记录在 `<workspace>/.mpd/logs/mpd-tui-panels.json`。**残留风险明码标出**：若用户故意把我们
+  **全部**移除，剩下的列表与全新配置无法区分，因此每个启动周期仍会把整组加回一次；要区分这两种情况必须读到
+  配置里写的那个值本身，也就是第三处宿主内部接触 —— 那是 §6 的计数决策，本轮刻意不做；
+* **持久、一条命令** —— `node scripts/mpd-tui-panels.ts` 把 `dsh-tui.sidePanel.panels` 写进 profile 的
+  patch 文件，而它就是设置用户层（`dsh-config-editor` 的 `documentPath` 返回
+  `profileContext.patchPath`；`dsh-app-boot` 把它拼成 `<profileDir>/cordis.patch.yml`）。这两个读法都取自
+  已安装的源码，脚本在无法证明该路径时拒绝写入；默认试运行，`--apply` 才写，会留 `.bak`，只补缺失的 id。
+
 **未设**时的实测：标签栏读作 `‹ 待办 › ▸ ◆`，宿主活的启用列表是 `toggle, focus, zoom, todo, jobs,
 agents`。**设好**时的实测（120 列）：标签栏出现 `‹ MPD ›`、`‹ MPD DAG ›` 与 `‹ MPD workmate ›`，页面正文
 渲染出来（`evidence/tui/dag-port/verification/pty/frozen/`）。面板列只在宿主分栏处存在——同一份抓取在 80 列

@@ -21,6 +21,7 @@
 import { describe, expect, test } from "bun:test"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import { createLog } from "../src/log"
+import { DAG_CHARS } from "../src/dag-theme"
 import { createPanelComponent, PANEL_DESCRIPTOR_FROZEN, PANEL_MIN_COLUMNS, PANEL_ORDER, PANEL_SLUG, PANEL_TITLE, panelStatusLine, registerPanelSurface, takeoverArmed } from "../src/panel"
 import { legendLines } from "../src/graph"
 import { pick, TUI_TEXT, t } from "../src/i18n"
@@ -682,23 +683,31 @@ describe("the panel component (both sections, props kit only)", () => {
     expect(indexOfRow("subagents  2 total")).toBeLessThan(indexOfRow("task dependency graph"))
     expect(indexOfRow("🟡 Panel Engineer")).toBeLessThan(indexOfRow("task dependency graph"))
     expect(indexOfRow("🟢 Plan Reviewer")).toBeLessThan(indexOfRow("task dependency graph"))
-    // The DAG is drawn for the width the PANEL measured and never wider: every box row fits the
-    // budget the props' own `useTerminalSize()` reported.
-    /** The drawn box rows of this render. */
-    const boxRows = drawOrder.filter((row) => /^[┌│└]/.test(row))
+    // THE ASSERTION MOVED FROM THE LAYOUT'S WIDTH TO THE WINDOW'S (frozen clause T1, captain's ruling
+    // R6 — the second-most consequential re-point of the wave). Under NATURAL width the drawing is NO
+    // LONGER bounded by the panel, so "every box row fits the panel" stopped being true BY DESIGN: the
+    // panel draws the picture at its own width and WINDOWS it. What must hold is that the VISIBLE window
+    // is exactly the panel's measured width, which is the user's own requirement — the whole DAG,
+    // reached by panning, never a sheared or truncated box.
+    /** The drawn box rows of this render, through the CONTRACT's corners rather than literals. */
+    const boxRows = drawOrder.filter((row) => [DAG_CHARS.cornerDownRight, DAG_CHARS.cornerUpRight, DAG_CHARS.vertical].some((mark) => row.startsWith(mark)))
     expect(boxRows.length).toBeGreaterThan(3)
     for (const row of boxRows) expect(row.length).toBeLessThanOrEqual(34)
-    // …and the GEOMETRY IS THE PANEL'S OWN: the host's `useTerminalSize` is the only width source a
-    // panel has, so the same fixture rendered in a NARROW panel draws a narrower box than this one —
-    // a hard-coded scene width could not do that.
+    // …and the GEOMETRY IS STILL THE PANEL'S OWN: the host's `useTerminalSize` is the only width source
+    // a panel has, so a NARROW panel windows the SAME drawing to a narrower view. It is the same picture
+    // rather than a re-laid-out one, which is what the natural-width entry point guarantees.
     /** A second kit whose panel measures a narrow sidebar. */
     const narrow = makeKit(20)
     /** The same component rendered through it. */
     const narrowTree = component({ React: narrow.React, ui: narrow.ui, host: { snapshot: () => ({ subagents: [LIVE_ROW, DONE_ROW] }) } })
     /** The narrower render's box rows. */
-    const narrowBoxRows = drawnRowTexts(narrowTree).filter((row) => /^[┌│└]/.test(row))
-    expect(narrowBoxRows[0].length).toBeLessThan(boxRows[0].length)
+    const narrowBoxRows = drawnRowTexts(narrowTree).filter((row) => [DAG_CHARS.cornerDownRight, DAG_CHARS.cornerUpRight, DAG_CHARS.vertical].some((mark) => row.startsWith(mark)))
+    expect(narrowBoxRows.length).toBeGreaterThan(0)
+    // THE WINDOW IS THE PANEL'S WIDTH, at both sizes: a narrower panel shows FEWER cells of the same
+    // drawing, and no row of it is ever wider than the sidebar it is drawn in.
     for (const row of narrowBoxRows) expect(row.length).toBeLessThanOrEqual(20)
+    for (const row of boxRows) expect(row.length).toBeLessThanOrEqual(34)
+    expect(narrowBoxRows[0]).toBe(boxRows[0].slice(0, narrowBoxRows[0].length))
   })
 
   test("renders the host's empty state instead of inventing rows, and says when there is no team", () => {

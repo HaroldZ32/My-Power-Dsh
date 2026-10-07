@@ -527,6 +527,31 @@ export function scrollByWheel(event: unknown, offset: number, contentRows: numbe
 }
 
 /**
+ * Apply one HORIZONTAL wheel event to a column offset.
+ *
+ * The same discipline as {@link scrollByWheel}, on the axis the user's trackpad names `deltaX`: a page
+ * that fits is a no-op, a non-numeric delta is not a gesture, and the result is clamped into the band
+ * `clampScroll` computes from the drawing's own width. The two functions exist separately because the
+ * DELTA they read is the axis (reading `deltaY` here would make a vertical wheel pan the picture
+ * sideways, which is precisely the T4 defect in a different costume).
+ * @param event - the wheel event, as the host delivered it.
+ * @param offset - the current column offset.
+ * @param contentCols - how many columns the drawing has in total.
+ * @param viewportCols - how many columns the window shows at once.
+ * @returns the clamped next column offset.
+ */
+export function scrollByWheelX(event: unknown, offset: number, contentCols: number, viewportCols: number): number {
+  /** The band this drawing is in right now. */
+  const band = clampScroll(offset, contentCols, viewportCols)
+  if (!band.overflow) return band.offset
+  if (event === null || event === undefined || typeof event !== "object") return band.offset
+  /** The event, before its delta is trusted. */
+  const raw = event as PanelWheelEvent
+  if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX)) return band.offset
+  return clampScroll(band.offset + raw.deltaX, contentCols, viewportCols).offset
+}
+
+/**
  * The scrollbar gutter's cells, one per viewport row.
  *
  * THE HOST'S OWN SEMANTICS (`components/ScrollbarGutter`), because a panel cannot use its component:
@@ -538,8 +563,7 @@ export function scrollByWheel(event: unknown, offset: number, contentRows: numbe
  * @param contentRows - how many rows the page has in total.
  * @param viewportRows - how many rows the panel can show at once.
  * @returns one string per viewport row; empty when everything fits, so NO column is reserved.
- */
-export function gutterCells(offset: number, contentRows: number, viewportRows: number): string[] {
+ */export function gutterCells(offset: number, contentRows: number, viewportRows: number): string[] {
   /** The band this page is in right now. */
   const band = clampScroll(offset, contentRows, viewportRows)
   if (!band.overflow) return []
@@ -558,16 +582,64 @@ export function gutterCells(offset: number, contentRows: number, viewportRows: n
 }
 
 /**
+ * What one scroll gesture asks a page to do, on either axis.
+ *
+ * The four VERTICAL members are the ones {@link panelScrollKey} has always answered; the four `col*`
+ * members are the second axis's, and they are named as their own members rather than folded into a
+ * `{ axis, delta }` pair so a page's `switch` cannot silently fall through to the wrong axis when a
+ * key is added.
+ */
+export type PanelScrollGesture = "top" | "bottom" | "pageUp" | "pageDown" | "colPageUp" | "colPageDown" | "colUp" | "colDown" | "colLeft" | "colRight"
+
+/**
+ * The HORIZONTAL gutter's cells: the same rail transposed into ONE row.
+ *
+ * THE ARITHMETIC IS `clampScroll`'S OWN, deliberately — the second axis must not have a second band
+ * definition (clause T4). Three numbers in, three numbers out: `cols` is called `offset`,
+ * `viewportCols` is called `contentRows` and `viewportRows` alike, and the thumb comes back the length
+ * and at the position the vertical rail would have drawn. A caller that re-derived the band here would
+ * be one edit away from a thumb that disagrees with the window it claims to describe.
+ *
+ * WHY IT IS DRAWN AT ALL (R8): the horizontal window belongs to the DAG DRAWING. The rail is what
+ * tells a reader that the picture continues past the edge, and it is drawn directly BENEATH the
+ * drawing rather than beneath the page, because every other row of the page is at its full width.
+ * @param colOffset - the current (already clamped) column offset.
+ * @param contentCols - how many columns the drawing has in total.
+ * @param viewportCols - how many columns the window shows at once.
+ * @returns the rail as one string of `viewportCols` cells; empty when the drawing fits.
+ */
+export function gutterCellsX(colOffset: number, contentCols: number, viewportCols: number): string {
+  /** The window's width, floored; a window of no cells has no rail to draw. */
+  const viewport = Math.max(1, Math.floor(Number.isFinite(viewportCols) ? viewportCols : 1))
+  /** The band, from the ONE definition: the viewport width IS this axis's "content" length. */
+  const band = clampScroll(colOffset, contentCols, viewport)
+  if (!band.overflow) return ""
+  /** The cells the rail shows, capped at the drawing's own length. */
+  const span = Math.min(viewport, Math.max(1, Math.floor(Number.isFinite(contentCols) ? contentCols : 1)))
+  /** The thumb's length: the fraction of the drawing the window shows, at least one cell. */
+  const thumb = Math.min(span, Math.max(1, Math.floor((span * span) / Math.max(1, Math.floor(contentCols)))))
+  /** The band the thumb's LEFT edge can occupy; zero when the thumb fills the rail. */
+  const travel = span - thumb
+  /** How far along that band the thumb sits, from the offset's own fraction of the range. */
+  const left = travel === 0 ? 0 : Math.round((band.offset / band.max) * travel)
+  /** One cell per column: the thumb where it sits, the track everywhere else. */
+  let rail = ""
+  for (let col = 0; col < span; col += 1) rail += col >= left && col < left + thumb ? DAG_CHROME.barFull : DAG_CHROME.barEmpty
+  return rail
+}
+
+/**
  * The scroll gesture a key press asks for, when it asks for one.
  *
- * Only the keys that are UNAMBIGUOUSLY viewport-only are handled: a page that also moves a TASK focus
- * with `↑↓`/`jk` must keep them (see `panel-dag.ts`, where focus movement auto-scrolls so the focused
- * node cannot leave the screen), so this function deliberately does not answer them. The keys it does
- * answer — `PgUp`, `PgDn`, `Home`, `End` — have no other meaning inside a panel.
+ * ONE ANSWERS THE WHOLE KEY MAP, both axes, because the two must not be able to disagree about which
+ * key belongs to whom: `←/→` with Shift is the horizontal scroll, `↑/↓` with Shift is the vertical one,
+ * `PgUp`/`PgDn` page vertically and their Shift forms horizontally, and `Home`/`End` are the vertical
+ * ends. {@link panelScrollKey} keeps its old, vertical-only contract by filtering this one, so a page
+ * that never opts into the second axis keeps exactly the behaviour it had.
  * @param event - the narrowed host key event, or undefined for a value that was not a key event.
  * @returns the gesture, or undefined when the key is not a scroll gesture.
  */
-export function panelScrollKey(event: unknown): "top" | "bottom" | "pageUp" | "pageDown" | undefined {
+export function panelScrollGesture(event: unknown): PanelScrollGesture | undefined {
   if (event === null || event === undefined || typeof event !== "object") return undefined
   /** The event, before its members are trusted. */
   const raw = event as { input?: unknown; key?: unknown }
@@ -577,13 +649,44 @@ export function panelScrollKey(event: unknown): "top" | "bottom" | "pageUp" | "p
   const input = typeof raw.input === "string" ? raw.input : ""
   /** Whether a modifier that changes a key's meaning was held. */
   const ctrl = flags.ctrl === true
+  /** Whether the SHIFT modifier was held, which is what makes an arrow mean "scroll" rather than "move". */
+  const shift = flags.shift === true
   // THE FLAG NAMES ARE THE HOST'S OWN. Its `SidePanelKeyFlags` carries `pageUp`/`pageDown`/`home`/`end`
   // for the arrow-less keys, and the ink generation underneath spells Enter as `return_`; `input` is
   // read only as the escape-sequence fallback, so a host that reports neither still answers `Home`.
-  if (flags.pageUp === true || input === "\u001b[5~") return "pageUp"
-  if (flags.pageDown === true || input === "\u001b[6~") return "pageDown"
+  if (flags.pageUp === true || input === "\u001b[5~") return shift ? "colPageUp" : "pageUp"
+  if (flags.pageDown === true || input === "\u001b[6~") return shift ? "colPageDown" : "pageDown"
   if (flags.home === true || (ctrl && input === "a")) return "top"
   if (flags.end === true || (ctrl && input === "e")) return "bottom"
+  // THE ARROWS CARRY TWO MEANINGS AND SHIFT IS THE SWITCH (the scene's own convention, clause T5).
+  // Without Shift they stay UNANSWERED on purpose: a page that moves a task focus with them must keep
+  // them, and the `dag` panel's `←/→` are the host's own panel navigation.
+  if (!shift) return undefined
+  if (flags.upArrow === true || input === "K") return "colUp"
+  if (flags.downArrow === true || input === "J") return "colDown"
+  if (flags.leftArrow === true || input === "H") return "colLeft"
+  if (flags.rightArrow === true || input === "L") return "colRight"
+  return undefined
+}
+
+/**
+ * The scroll gesture a key press asks for, when it asks for one.
+ *
+ * THE VERTICAL-ONLY CONTRACT, kept for every caller that never opted into the second axis. Only the
+ * keys that are UNAMBIGUOUSLY viewport-only are handled: a page that also moves a TASK focus
+ * with `↑↓`/`jk` must keep them (see `panel-dag.ts`, where focus movement auto-scrolls so the focused
+ * node cannot leave the screen), so this function deliberately does not answer them. The keys it does
+ * answer — `PgUp`, `PgDn`, `Home`, `End` — have no other meaning inside a panel.
+ *
+ * It is a FILTER over {@link panelScrollGesture} rather than a second key map, so the two can never
+ * disagree about what `PgDn` means; the horizontal members are the ones it drops.
+ * @param event - the narrowed host key event, or undefined for a value that was not a key event.
+ * @returns the gesture, or undefined when the key is not a vertical scroll gesture.
+ */
+export function panelScrollKey(event: unknown): "top" | "bottom" | "pageUp" | "pageDown" | undefined {
+  /** What the one key map answered. */
+  const gesture = panelScrollGesture(event)
+  if (gesture === "top" || gesture === "bottom" || gesture === "pageUp" || gesture === "pageDown") return gesture
   return undefined
 }
 
@@ -609,6 +712,25 @@ export interface PanelViewport {
   scrollTo(next: number): void
   /** Moves the offset by a relative amount, clamped into the band. */
   scrollBy(delta: number): void
+  /**
+   * The HORIZONTAL offset, in cells — the second axis, on the SAME handle.
+   *
+   * ON THE SAME HANDLE BY DESIGN (frozen clause T4): "a second scroller whose position the page cannot
+   * see" is exactly what a second `usePanelViewport` would be, so both axes are committed through the
+   * same `commit` and clamped through the same `clampScroll`. A page reads `colOffset` and draws its
+   * window from it; nothing else may hold a column position.
+   */
+  readonly colOffset: number
+  /** The furthest column offset that still fills the window; zero when the drawing fits. */
+  readonly colMax: number
+  /** Whether the drawing is wider than the window, and therefore whether the horizontal rail is drawn. */
+  readonly colOverflow: boolean
+  /** Moves the column offset to an absolute position, clamped into the band. */
+  scrollToCol(next: number): void
+  /** Moves the column offset by a relative amount, clamped into the band. */
+  scrollColBy(delta: number): void
+  /** The `onWheel` handler for a row that pans HORIZONTALLY (`deltaX`); `deltaY` is `onWheel`'s. */
+  onWheelX(event: unknown): void
   /** The `onWheel` handler a scrollable row carries. */
   onWheel(event: unknown): void
   /**
@@ -641,14 +763,22 @@ export interface PanelViewport {
  *
  * NO SNAPSHOT IS RETURNED: `offset`, `max` and `max` are derived inside `band()`, which runs on every read
  * and every render, so a caller can never hold a stale copy of the position.
+ *
+ * THE SECOND AXIS IS ON THIS HANDLE, not on a second hook (frozen clause T4). It adds ONE more ref — the
+ * live column offset — and NOT one more band definition: `colBand()` calls the same `clampScroll` with
+ * the drawing's width in place of the page's height, which is all a horizontal band is. A page that
+ * needed `contentCols`/`viewportCols` reports them on the same `read()`; a page that does not leaves them
+ * undefined and the horizontal axis reads as "nothing overflows", which is the honest answer for a page
+ * with one axis.
  * @param kit - the proved host kit (its `React` holds the ref and the state cell).
- * @param read - the page's live `{ contentRows, viewportRows }`, read at every clamp and every scroll.
+ * @param read - the page's live sizes: rows always, the DAG drawing's columns when the page pans
+ *   horizontally. `contentCols`/`viewportCols` describe the DRAWING, never the page (captain's ruling R8).
  * @param initialOffset - where the window starts; zero for every page here.
  * @returns the viewport handle.
  */
 export function usePanelViewport(
   kit: PanelKit,
-  read: () => { contentRows: number; viewportRows: number },
+  read: () => { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number },
   initialOffset: number = 0,
 ): PanelViewport {
   // THE REF IS THE FIRST HOOK ON PURPOSE. It is the live authority, so it must occupy a stable slot that
@@ -657,6 +787,10 @@ export function usePanelViewport(
   // was written into one object and read out of another.
   /** The live offset: what a gesture between renders moves, and what every read clamps. */
   const live = kit.React.useRef(initialOffset)
+  // The SECOND axis is a second ref because it is a second POSITION, and the same argument applies to it:
+  // it must occupy its own stable slot, created before any handler that reads it.
+  /** The live COLUMN offset: the horizontal window's single authority. */
+  const liveCol = kit.React.useRef(0)
   /** The state cell, whose value MIRRORS the ref and exists to make the host re-render this page. */
   const cell = kit.React.useState(initialOffset)
   /** The setter, proved callable before any handler is built around it. */
@@ -666,12 +800,14 @@ export function usePanelViewport(
    * still clamps against the CURRENT page. The assignment runs on every render, which is what keeps it
    * from lagging behind the ref the offset lives in.
    */
-  const facts = kit.React.useRef({ contentRows: 1, viewportRows: 1 }) as { current: { contentRows: number; viewportRows: number } }
-  /** The row count and window height the page is reporting right now. */
+  const facts = kit.React.useRef({ contentRows: 1, viewportRows: 1 }) as { current: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } }
+  /** The sizes the page is reporting right now. */
   const measured = read()
   if (facts !== null && facts !== undefined) facts.current = measured
   /** The current offset, re-proved on every read so a kit that hands back something odd cannot throw. */
   const position = (): number => (typeof live?.current === "number" && Number.isFinite(live.current) ? (live.current as number) : initialOffset)
+  /** The current COLUMN offset, re-proved on every read for the same reason as the row one. */
+  const colPosition = (): number => (typeof liveCol?.current === "number" && Number.isFinite(liveCol.current) ? (liveCol.current as number) : 0)
   /** The live sizes, re-proved on every read. */
   const sizes = (): { contentRows: number; viewportRows: number } => {
     /** The captured value, when the kit gave one back. */
@@ -694,6 +830,27 @@ export function usePanelViewport(
     const now = sizes()
     return clampScroll(position(), now.contentRows, now.viewportRows)
   }
+  /**
+   * This render's clamped COLUMN band, from the same three-number arithmetic as the row one.
+   *
+   * `clampScroll(offset, content, viewport)` is axis-agnostic, so the horizontal band IS that function
+   * with the drawing's width as its "content". A page that reported no columns answers `{0, 0, false}` —
+   * nothing overflows, nothing is reserved — which is what keeps every page that never opted in byte-for-
+   * byte unchanged.
+   * @returns the column offset, the furthest column offset and whether the drawing is wider than the window.
+   */
+  const colBand = (): { offset: number; max: number; overflow: boolean } => {
+    /** The captured sizes. */
+    const value = facts?.current
+    /** The drawing's own width, floored at one cell. */
+    const contentCols = typeof value?.contentCols === "number" && Number.isFinite(value.contentCols) ? Math.max(1, Math.floor(value.contentCols)) : 1
+    /** The window's width, floored at one cell. */
+    const viewportCols = typeof value?.viewportCols === "number" && Number.isFinite(value.viewportCols) ? Math.max(1, Math.floor(value.viewportCols)) : 1
+    // NO COLUMNS REPORTED MEANS NO HORIZONTAL AXIS, not "a one-cell drawing": a page that never opted in
+    // must not have a rail reserved for it, and `content === viewport === 1` is exactly "nothing overflows".
+    if (value?.contentCols === undefined || value?.viewportCols === undefined) return { offset: 0, max: 0, overflow: false }
+    return clampScroll(colPosition(), contentCols, viewportCols)
+  }
   /** Record a new offset: the ref first (the live authority), then the cell (the re-render trigger). */
   const commit = (next: number): void => {
     /** The live sizes, so a request is clamped against the page as it stands. */
@@ -702,6 +859,25 @@ export function usePanelViewport(
     const clamped = clampScroll(next, now.contentRows, now.viewportRows).offset
     if (live !== null && live !== undefined) live.current = clamped
     set(clamped)
+  }
+  /**
+   * Record a new COLUMN offset, through the same two-step shape as {@link commit}.
+   *
+   * It writes the row cell's setter after the column ref, which is deliberate: the host re-renders on the
+   * VALUE change, and a column move IS a state change the page must draw. Writing `liveCol` first keeps
+   * the ref the authority, so a handler from an earlier render that reads `colOffset` sees the new number
+   * even before the re-render lands.
+   * @param next - the requested column offset.
+   */
+  const commitCol = (next: number): void => {
+    /** The clamped target, from the live band. */
+    const clamped = colBand()
+    /** The requested column offset, floored and made finite. */
+    const wanted = Math.floor(Number.isFinite(next) ? next : 0)
+    /** Where the column position lands. */
+    const target = Math.min(clamped.max, Math.max(0, wanted))
+    if (liveCol !== null && liveCol !== undefined) liveCol.current = target
+    set(target)
   }
   /**
    * The handle every caller addresses, with LIVE getters.
@@ -737,10 +913,37 @@ export function usePanelViewport(
       // RELATIVE TO THE LIVE POSITION, which is the whole reason the offset lives in a ref.
       commit(position() + delta)
     },
+    /** The column offset the drawing's window starts at, clamped into its band. */
+    get colOffset(): number {
+      return colBand().offset
+    },
+    /** The furthest column offset that still fills the window; zero when the drawing fits. */
+    get colMax(): number {
+      return colBand().max
+    },
+    /** Whether the drawing is wider than the window, and therefore whether the rail is drawn. */
+    get colOverflow(): boolean {
+      return colBand().overflow
+    },
+    scrollToCol: (next: number): void => {
+      commitCol(next)
+    },
+    scrollColBy: (delta: number): void => {
+      commitCol(colPosition() + delta)
+    },
     onWheel: (event: unknown): void => {
       /** The live sizes, so the wheel clamps exactly like every other gesture. */
       const now = sizes()
       commit(scrollByWheel(event, position(), now.contentRows, now.viewportRows))
+    },
+    onWheelX: (event: unknown): void => {
+      /** The captured sizes, read once so the three numbers below belong to one generation. */
+      const value = facts?.current
+      if (value?.contentCols === undefined || value?.viewportCols === undefined) return
+      /** The delta this event carries on the horizontal axis; a non-numeric one is not a gesture. */
+      const raw = (event ?? {}) as PanelWheelEvent
+      if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX)) return
+      commitCol(colPosition() + raw.deltaX)
     },
     /**
      * Kept for API compatibility, and now a NO-OP: the hook reads the page's sizes through `read()`, so
@@ -809,6 +1012,9 @@ export function viewportGutter(kit: PanelKit, viewport: PanelViewport, onTrackCl
  * @param children - the page's rows, in draw order.
  * @param viewport - this render's viewport.
  * @param reserveGutter - whether to draw and reserve the gutter column (a page may draw its own rail).
+ * @param rowWrapper - wraps the VISIBLE slice, when the page needs one element around the rows it drew
+ *   (the `dag` page binds its single wheel handler this way). It is applied AFTER the slice, so the
+ *   wrapper never participates in the windowing and cannot window the page a second time.
  * @returns the body's rows, ready to spread into the page's frame.
  */
 export function panelViewportBody(
@@ -816,16 +1022,29 @@ export function panelViewportBody(
   children: readonly unknown[],
   viewport: PanelViewport,
   reserveGutter: boolean = true,
+  rowWrapper?: (kit: PanelKit, rows: readonly unknown[]) => unknown,
 ): unknown[] {
-  /** The visible slice, exactly one page tall. */
-  const window = children.slice(viewport.offset, viewport.offset + viewport.viewportRows)
-  if (!reserveGutter) return [...window]
+  // THE SLICE IS ONE PAGE TALL, and it is NOT called `window`: a local with that name shadows the
+  // global one inside this function, which is a trap rather than a style preference — it made the rows
+  // vanish across a whole debugging pass because every `window.x` read here answered `undefined`.
+  /** The visible slice. */
+  const visible = children.slice(viewport.offset, viewport.offset + viewport.viewportRows)
+  // THE WRAPPER IS APPLIED HERE, to the SLICE — never around the whole column. A page that wrapped the
+  // full list and handed that wrapper back in as the body (which is how the wheel was bound) windowed
+  // TWICE: this function then sliced a one-element array at the row offset and rendered an EMPTY page,
+  // measured as a blank panel whose footer still read `6/82`. One slice, one place, and the wrapper is
+  // a parameter so the wheel can still be bound once in the dispatch path.
+  /** The rows as the caller wants them drawn, the slice included. */
+  const rows = (rowWrapper === undefined ? undefined : rowWrapper(kit, visible)) ?? undefined
+  /** The body's own rows: the wrapped slice where the page asked for one, the bare slice otherwise. */
+  const drawn: unknown[] = rowWrapper === undefined ? [...visible] : [rows]
+  if (!reserveGutter) return drawn
   /** The rail, absent when everything fits. */
   const rail = viewportGutter(kit, viewport)
-  if (rail === undefined) return [...window]
+  if (rail === undefined) return drawn
   // THE ROWS AND THE RAIL ARE SIBLINGS in a row-direction box, so the rail reserves its ONE column for
   // the whole page: the rows keep their own widths and the gutter never rewraps them.
-  return [kit.React.createElement(kit.ui.Box, { key: "window", flexDirection: "row" }, kit.React.createElement(kit.ui.Box, { key: "rows", flexDirection: "column" }, ...window), rail)]
+  return [kit.React.createElement(kit.ui.Box, { key: "window", flexDirection: "row" }, kit.React.createElement(kit.ui.Box, { key: "rows", flexDirection: "column" }, ...drawn), rail)]
 }
 
 /**

@@ -250,11 +250,14 @@ describe("the invariants the geometry keeps, on a board that exercises every pat
     const view = layoutBoxes(DERIVED_BOARD, 200) as NonNullable<ReturnType<typeof layoutBoxes>>
     /** The drawing as text, one string per row. */
     const lines = linesOf(view)
-    /** The centre column of a task's box, in the module's OWN convention: half its width, floored. */
+    /** The centre column of a task's box, in the module's OWN convention: the box's mid-line. */
     const centreOf = (id: string): number => {
       /** The task's rectangle. */
       const hit = boxOf(view, id)
-      return hit.col + Math.floor((hit.colEnd - hit.col + 1) / 2)
+      // THE BOX'S MID-LINE, which on an EVEN width is its LEFT-middle cell — the cell the drawing itself
+      // enters from. This used to be `col + floor((colEnd - col + 1) / 2)`, which rounds the other way
+      // and disagreed with the drawing by one column on every even-width box.
+      return Math.floor((hit.col + hit.colEnd) / 2)
     }
     // THE ARROW SITS ON THE DEPENDENT'S CENTRE, in the cell directly above its box, and the blocker's
     // bottom border carries the `┬` the stub leaves from — the pair of facts that say a drawn edge

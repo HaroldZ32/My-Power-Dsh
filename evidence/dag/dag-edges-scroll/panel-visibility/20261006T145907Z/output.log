@@ -1,0 +1,169 @@
+=== [panel-visibility] EVIDENCE LOG — 2026-10-06T15:22:35Z ===
+
+--- DEFECT (user report, verbatim) ---
+「这边 TUI 侧边栏依旧没有 TEAM 栏的显示（只有任务/待办/代理）」
+
+--- ARM A (STOCK, pre-fix): the transition, captured in-process ---
+2026-10-06T15:06:07.894Z +1056ms pid=253 CHANGE todo,jobs,agents,act1:team
+2026-10-06T15:06:07.895Z +1057ms pid=253 CHANGE todo,jobs,agents,act1:team,act1:dag
+2026-10-06T15:06:07.895Z +1057ms pid=253 CHANGE todo,jobs,agents,act1:team,act1:dag,act1:workmate
+2026-10-06T15:06:12.241Z +5403ms pid=253 CHANGE todo,jobs,agents
+
+--- ARM A: the reset's own stack, naming the writer ---
+2026-10-06T15:06:12.241Z +5403ms pid=253 STACK at apply (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/pv/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/tuiDisplayPrefs.js:158:21)
+2026-10-06T15:06:12.241Z +5403ms pid=253 STACK at apply (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/pv/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/plugin.js:586:5)
+2026-10-06T15:06:12.241Z +5403ms pid=253 STACK at async Fiber._reload (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1356:5)
+2026-10-06T15:06:12.242Z +5404ms pid=253 STACK at async Fiber.await (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1400:24)
+
+--- ARM A summary ---
+arm=a
+sandbox=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/pv
+panels=none
+bootBar="‹ 待办 › ▸ ◆"
+sidebarBar="‹ 待办 › ▸ ◆"
+bars=["‹ 待办 › ▸ ◆","≡ ‹ 任务 › ◆                                                      ⤢","≡ ▸ ‹ 代理 ›                                                      ⤢"]
+registeredIds=["act1:team","act1:dag","act1:workmate","todo","info","jobs","trajectory","agents","workspace","companion"]
+mpdRegisteredIds=["act1:team","act1:dag","act1:workmate"]
+csvDistinct=["todo,jobs,agents,act1:team","todo,jobs,agents,act1:team,act1:dag","todo,jobs,agents,act1:team,act1:dag,act1:workmate","todo,jobs,agents"]
+csvEvents=["todo,jobs,agents,act1:team","todo,jobs,agents,act1:team,act1:dag","todo,jobs,agents,act1:team,act1:dag,act1:workmate","todo,jobs,agents"]
+mpdIdsSettledEnabled=false
+failures=[]
+
+--- ARM B (forced ids) summary: the POSITIVE CONTROL ---
+arm=b
+sandbox=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/pv
+panels=todo,jobs,agents,act1:team,act1:dag,act1:workmate
+bootBar="‹ 待办 › ▸ ◆ M ◈ ◆"
+sidebarBar="‹ 待办 › ▸ ◆ M ◈ ◆"
+bars=["‹ 待办 › ▸ ◆ M ◈ ◆","≡ ‹ 任务 › ◆ M ◈ ◆                                                ⤢","≡ ▸ ‹ 代理 › M ◈ ◆                                                ⤢","≡ ▸ ◆ ‹ MPD › ◈ ◆"]
+registeredIds=["act1:team","act1:dag","act1:workmate","todo","info","jobs","trajectory","agents","workspace","companion"]
+mpdRegisteredIds=["act1:team","act1:dag","act1:workmate"]
+csvDistinct=["todo,jobs,agents,act1:team","todo,jobs,agents,act1:team,act1:dag","todo,jobs,agents,act1:team,act1:dag,act1:workmate","todo,jobs,agents"]
+csvEvents=["todo,jobs,agents,act1:team","todo,jobs,agents,act1:team,act1:dag","todo,jobs,agents,act1:team,act1:dag,act1:workmate"]
+mpdIdsSettledEnabled=true
+failures=[]
+
+--- ARM E (STEP 3 script route) summary: the GREEN fix ---
+arm=e
+sandbox=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/pv
+panels=keep
+bootBar="‹ MPD › ◈ ◆"
+sidebarBar="‹ MPD › ◈ ◆"
+settledBar="‹ MPD › ◈ ◆"
+bars=["‹ MPD › ◈ ◆","M ‹ MPD DAG › ◆","M ◈ ‹ MPD workmate ›"]
+registeredIds=["act1:team","act1:dag","act1:workmate","todo","info","jobs","trajectory","agents","workspace","companion"]
+mpdRegisteredIds=["act1:team","act1:dag","act1:workmate"]
+csvDistinct=["todo,jobs,agents,act1:team","todo,jobs,agents,act1:team,act1:dag","todo,jobs,agents,act1:team,act1:dag,act1:workmate","act1:team,act1:dag,act1:workmate"]
+csvEvents=["todo,jobs,agents,act1:team","todo,jobs,agents,act1:team,act1:dag","todo,jobs,agents,act1:team,act1:dag,act1:workmate","act1:team,act1:dag,act1:workmate"]
+mpdIdsSettledEnabled=true
+keeperLines=[]
+recordedIds=[]
+
+--- ARM C (STEP 4 keeper arm): BLOCKED ---
+arm=c
+sandbox=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/pv
+panels=none
+bootBar="‹ 待办 › ▸ ◆"
+sidebarBar="‹ 待办 › ▸ ◆"
+settledBar="‹ 待办 › ▸ ◆"
+bars=["‹ 待办 › ▸ ◆","≡ ‹ 任务 › ◆                                                      ⤢","≡ ▸ ‹ 代理 ›                                                      ⤢"]
+registeredIds=["act1:team","act1:dag","act1:workmate","todo","info","jobs","trajectory","agents","workspace","companion"]
+mpdRegisteredIds=["act1:team","act1:dag","act1:workmate"]
+csvDistinct=["todo,jobs,agents,act1:team","todo,jobs,agents,act1:team,act1:dag","todo,jobs,agents,act1:team,act1:dag,act1:workmate","todo,jobs,agents"]
+csvEvents=["todo,jobs,agents,act1:team","todo,jobs,agents,act1:team,act1:dag","todo,jobs,agents,act1:team,act1:dag,act1:workmate","todo,jobs,agents"]
+mpdIdsSettledEnabled=false
+keeperLines=[]
+recordedIds=[]
+
+--- adapter log from ARM C: the mounted row RAN, and bound its host contact ---
+[mpd-tui-adapter] mpdTui provided (one deferred inject per seam, inject-free row)
+TUI_SEAMS=(none composed)
+[mpd-tui-adapter] host contact bound: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/pv/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui (lib/types/ui.js)
+--- the mounted adapter's id record: 0 bytes, i.e. it received NO registration ---
+0 .mpd/recon/pv/ws/.mpd/logs/mpd-tui-panels.json
+--- the inlined copy the TUI row actually runs predates the fix ---
+0
+
+--- GATES ---
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 34ms
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=45 failed=0 violations=0 exempt=23 derived=3 links=439 dead=0 — PASS
+
+--- TESTS ---
+ 15 pass
+ 0 fail
+ 55 expect() calls
+Ran 15 tests across 1 file. [100.00ms]
+--- SCRIPT SELF-TEST ---
+  ok   (e) the predicted document is the file the profile template creates
+[mpd-tui-panels] SELF-TEST PASS (all arms held)
+=== ARM C + ARM D APPENDED — 2026-10-06T16:29:09Z ===
+DIFF FINAL RESULT: 0
+0
+
+--- ARM C (GREEN) result ---
+{
+  "bars": [
+    "‹ 待办 › ▸ ◆ M ◈ ◆",
+    "≡ ‹ 任务 › ◆ M ◈ ◆                                                ⤢",
+    "≡ ▸ ‹ 代理 › M ◈ ◆                                                ⤢",
+    "≡ ▸ ◆ ‹ MPD › ◈ ◆"
+  ],
+  "mpdTabSeen": true,
+  "settledEnabled": true,
+  "csvEvents": [
+    "todo,jobs,agents,act1:team",
+    "todo,jobs,agents,act1:team,act1:dag",
+    "todo,jobs,agents,act1:team,act1:dag,act1:workmate",
+    "todo,jobs,agents",
+    "todo,jobs,agents,act1:team,act1:dag,act1:workmate"
+  ],
+  "keeperLines": [
+    "mpd-tui panel enable keeper: confirmed — standing down: the enable list already names act1:team,act1:dag,act1:workmate, so the configuration has taken a position on this bundle; 1 write(s) over 6 tick(s); ids act1:team,act1:dag,act1:workmate"
+  ],
+  "recordedIds": [
+    "act1:team",
+    "act1:dag",
+    "act1:workmate"
+  ],
+  "settingsFilePresent": false,
+  "failures": []
+}
+
+--- ARM C: adapter log, the keeper's own settle line ---
+mpd-tui panel enable keeper: confirmed — standing down: the enable list already names act1:team,act1:dag,act1:workmate, so the configuration has taken a position on this bundle; 1 write(s) over 6 tick(s); ids act1:team,act1:dag,act1:workmate
+[NOTE] the line above is ARM C's OWN recorded settle line; the live mpd-tui.log now holds ARM D's (each arm truncates the sink before its boot).
+
+--- ARM D (negative control) result ---
+{
+  "bars": [
+    "‹ 待办 › ▸ ◆",
+    "≡ ‹ 任务 › ◆                                                      ⤢",
+    "≡ ▸ ‹ 代理 ›                                                      ⤢"
+  ],
+  "mpdTabSeen": false,
+  "settledEnabled": false,
+  "csvEvents": [
+    "todo,jobs,agents,act1:team",
+    "todo,jobs,agents,act1:team,act1:dag",
+    "todo,jobs,agents,act1:team,act1:dag,act1:workmate",
+    "todo,jobs,agents"
+  ],
+  "keeperLines": [
+    "mpd-tui panel enable keeper: absent — no candidate carried a readable lib/types/tuiDisplayPrefs.js (1 probed); 0 write(s) over 6 tick(s); ids act1:team,act1:dag,act1:workmate"
+  ],
+  "failures": []
+}
+
+--- ARM D: the chat screen DID render (boot succeeded) ---
+mpd: 团队 fidelity-cjk-dag 4·2/7 · 计划 0 · workmate 1                                                                                            
+
+--- DIST IDENTITY (sandwiched) ---
+ca40ecefa0282a7795d23724a759ebb3757eb458832ae245316c9450eae60d2c  packages/mpd-tui-adapter-plugin/dist/index.js
+5318b500dc222b7f56d69f23ccf64a8ebcc697e7ae315644d40f8d0c4f640cdb  packages/mpd-tui-plugin/dist/index.js
+=== ARM C + ARM D RE-VERIFIED ON 00e82b38 — 2026-10-06T16:46:32Z ===
+tui plugin dist sha256: 00e82b38fc37d13d9b1aa99dbd239a970333264a7bbeb268d65a663fa6f9ed23 (386256 B), keepPanelEnable=3
+adapter dist sha256: ca40ecefa0282a7795d23724a759ebb3757eb458832ae245316c9450eae60d2c (unchanged across both builds)
+sandwich: 16:44:32Z -> 16:46:21Z
+
+IDENTICAL to the 5318b500 run: C settled=true/mpdTabSeen=true/failures=[]/1 write over 6 ticks; D failures=[]/keeper absent/0 writes/no tabs.

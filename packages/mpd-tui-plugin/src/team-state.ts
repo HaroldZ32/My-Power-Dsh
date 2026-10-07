@@ -52,6 +52,15 @@ export interface TeamTaskRow {
   id: string
   /** The board's subject, sanitized; empty when the board carries none. */
   subject: string
+  /**
+   * The task's acceptance text, sanitized — the record's own `description`, carried through.
+   *
+   * IT IS CARRIED FOR CLAUSE C3, and it is the reason the projection keeps it at all: the CJK ban
+   * governs the DRAWING, while the click/pin detail body must keep the original subject AND description
+   * untouched. A projection that dropped the description could not honour that half of the clause no
+   * matter what the detail body did with it — the text would no longer exist to show.
+   */
+  description?: string
   /** Optional in the durable record — a hand-written fixture may omit it (§3.1 item 4). */
   kind?: string
   /** The official board status; `pending` when the board carries none. */
@@ -683,6 +692,7 @@ export function readRecordWorkflow(workspace: string, holds: readonly string[], 
   const tasks: TeamTaskRow[] = board.map((task) => ({
     id: scalarText(task.id, 40) ?? "",
     subject: scalarText(task.subject, 160) ?? "",
+    description: scalarText(task.description, 400),
     kind: scalarText(task.kind, 24),
     status: scalarText(task.status, 40) ?? "pending",
     visual: "open",

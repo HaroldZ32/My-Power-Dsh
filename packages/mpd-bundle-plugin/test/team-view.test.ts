@@ -209,6 +209,10 @@ interface ViewModule {
   TeamView: (props?: unknown) => unknown
   /** The pure geometry the panel draws with. */
   layout: (tasks: Array<Record<string, unknown>>) => GraphGeometry
+  /** The graph-safe label rule itself (clause C4), exposed so the drawing's one composer is provable. */
+  graphSafeLabel: (subject: string, ordinal: number) => string
+  /** The curve builder itself, exposed so its `radius = 0` control can be driven directly (clause W6). */
+  curveOf: (waypoints: Array<{ x: number; y: number }>, radius: number) => { d: string; points: Array<{ x: number; y: number }> }
 }
 
 /** The geometry `layout` returns, as this file reads it. */
@@ -224,9 +228,18 @@ interface GraphGeometry {
   /** The column-major grid template. */
   gridTemplateColumns: string
   /** Every node's box, in column-major order. */
-  nodes: Array<{ task: { id: string }; rank: number; row: number; top: number }>
+  nodes: Array<{ task: { id: string }; rank: number; row: number; ordinal: number; top: number }>
   /** One ROUTED edge per drawable dependency, which is what the render paints and the arms assert. */
-  edges: Array<{ parent: string; child: string; witness: string; segments: Array<{ key: string; rect: Rect }>; marker: Rect; pointsLeft: boolean }>
+  edges: Array<{
+    parent: string
+    child: string
+    witness: string
+    segments: Array<{ key: string; rect: Rect }>
+    /** The painted form: the SVG `d`, its flattened polyline, the arrival POINT and the radius used. */
+    curve: { d: string; points: Array<{ x: number; y: number }>; tip: { x: number; y: number }; radius: number }
+    marker: Rect
+    pointsLeft: boolean
+  }>
   /** The inset every box keeps inside its column, widened by the lane count it must pay for. */
   inset: number
   /** The measured gutter between two neighbouring columns' boxes. */
@@ -317,7 +330,7 @@ async function renderView(options: { routes?: Record<string, CannedRoute>; props
 const UNAVAILABLE: CannedRoute = { ok: false, status: 503, body: null }
 
 describe("team-view factory shape", () => {
-  test("stays a single factory body: one arrow expression, no import/export, no JSX, no SVG", () => {
+  test("stays a single factory body: one arrow expression, no import/export, no JSX, no MEASUREMENT", () => {
     expect(SOURCE.startsWith("// mpd bundle web client")).toBe(true)
     expect(SOURCE.trimEnd().endsWith("}")).toBe(true)
     // THE BUILD'S OWN BOUNDARY RULE, read off the SOURCE: the factory opener is the ONE line at COLUMN
@@ -326,18 +339,49 @@ describe("team-view factory shape", () => {
     const openers = SOURCE.split("\n").filter((line) => !line.startsWith(" ") && line.trimEnd().endsWith("=> {"))
     expect(openers.length).toBe(1)
     expect(openers[0].startsWith("(require: ")).toBe(true)
-    // A module would break the splice; JSX has no transform here; an SVG or a canvas would be a
-    // measuring pass by another name, which the frozen contract forbids.
+    // A module would break the splice; JSX has no transform here. The plane itself is now an SVG (clause
+    // W1), so the pin is NOT "no SVG" any more — the prohibition that SURVIVES the wave's contract
+    // amendment is MEASUREMENT (clause W2): the route is computed in the pure layout, so no DOM read, no
+    // box measurement and no layout-scheduled work may appear anywhere in this file.
     expect(/^\s*(import|export)\b/m.test(SOURCE)).toBe(false)
-    expect(SOURCE).not.toContain("createElement(" + "svg")
     expect(SOURCE).not.toContain("getBoundingClientRect")
     expect(SOURCE).not.toContain("requestAnimationFrame")
     expect(SOURCE).not.toContain("ResizeObserver")
+    expect(SOURCE).not.toContain("getComputedStyle")
+    expect(SOURCE).not.toContain("offsetWidth")
+    // AND THE POSITIVE HALF, because a pin that can only go green on absence is not evidence: the drawn
+    // plane is really an SVG, and the pure builder that shapes it is really there.
+    expect(SOURCE).toContain('createElement("svg"')
+    expect(SOURCE).toContain("const curveOf = (waypoints: CurvePoint[], radius: number)")
   })
 
-  test("takes an OPTIONAL translator and a task route, and exposes the pure layout", () => {
+  test("the layout and the painted edge carry no DOM access at all", () => {
+    // W2's own shape: the ROUTE (the `layout` function) and the PAINT composed from it reach the screen
+    // through nothing but arithmetic. `sessionIdFromPane` is excluded on purpose — it reads the host's
+    // own sidebar marker, which is session identity, never geometry — so this arm slices the two regions
+    // the clause is about rather than scanning the file and calling a documented read a violation.
+    /** The layout's own body, from its declaration to the curve builder that follows it. */
+    const layoutBody = SOURCE.slice(SOURCE.indexOf("const layout = (tasks: TeamTask[]"), SOURCE.indexOf("const focusChain = (tasks: TeamTask[]"))
+    /** The paint, from `edgeOf` to the detail body that follows it. */
+    const paintBody = SOURCE.slice(SOURCE.indexOf("const edgeOf = (edge: DrawnEdge"), SOURCE.indexOf("const rectText = (rect: EdgeRect)"))
+    expect(layoutBody.length).toBeGreaterThan(1000)
+    expect(paintBody.length).toBeGreaterThan(500)
+    for (const region of [layoutBody, paintBody]) {
+      expect(region).not.toContain("document.")
+      expect(region).not.toContain("getBoundingClientRect")
+      expect(region).not.toContain("offsetWidth")
+      expect(region).not.toContain("getComputedStyle")
+      expect(region).not.toContain("querySelector")
+    }
+  })
+
+  test("takes an OPTIONAL translator and a task route, and exposes the pure layout and its builders", () => {
     expect(SOURCE).toContain("planPath?: string; taskPath?: string; pollMs?: number; t?: Translator")
-    expect(SOURCE).toContain("layout: (tasks: TeamTask[]) => GraphGeometry")
+    // THE W6 CONTROL TRAVELS ON THE SIGNATURE: `radius` is optional, so every existing caller keeps the
+    // shipped 6px while a test can drive the same pure layout with `0` and get the orthogonal path back.
+    expect(SOURCE).toContain("layout: (tasks: TeamTask[], radius?: number) => GraphGeometry")
+    expect(SOURCE).toContain("graphSafeLabel: (subject: string, ordinal: number) => string")
+    expect(SOURCE).toContain("curveOf: (waypoints: CurvePoint[], radius: number)")
   })
 })
 
@@ -588,9 +632,9 @@ describe("team-view panels", () => {
 })
 
 describe("team-view drawn edges", () => {
-  test("draws one absolutely-positioned three-segment edge per blockedBy entry ON the board", async () => {
-    /** The settled render of the fixture board. */
-    const { tree } = await renderView()
+  test("draws one SVG path per blockedBy entry, and the painted `d` IS the layout's own", async () => {
+    /** The settled render of the fixture board, plus the pure module it rendered from. */
+    const { tree, view } = await renderView()
     /** The edge layer, which every drawn edge lives in. */
     const layer = one(tree, "data-edges", "1")
     /** The edges themselves, one per drawable `blockedBy` entry. */
@@ -603,63 +647,75 @@ describe("team-view drawn edges", () => {
     expect(one(tree, "data-mpd-graph", "ranks=4 edges=3").props["data-mpd-graph"]).toBe("ranks=4 edges=3")
     expect(collect(tree, "data-mpd-edge").length).toBe(3)
     expect(collect(tree, "data-mpd-node").map((node) => node.props["data-mpd-node"])).toEqual(["T1", "T2", "T3", "T4"])
-    /** The three segments of the T1→T2 edge: lead-out, riser, lead-in. */
-        /** The T1→T2 edge, located by its own key; its children are the three segments. */
+    // ONE `<path>` PER DRAWN EDGE (clause W1): the layer is a single painting plane, so a rectangle per
+    // run is gone for good — `data-mpd-curve` appears exactly once per edge, and the arrowhead is a
+    // polygon that KEEPS its `data-mpd-head` name (clause W4: no published mark is removed) beside the
+    // zero-width tip rect.
+    expect(collect(layer, "data-mpd-curve").length).toBe(3)
+    expect(collect(layer, "data-mpd-tip").length).toBe(3)
+    expect(collect(layer, "data-mpd-head").length).toBe(3)
+    /** The T1→T2 edge, located by its own key; its children are the curve and the arrowhead. */
     const edge = collectByKey(layer, "edge:T1>T2")
     expect(edge.length).toBe(1)
-    /** The edge's three segments, in draw order. */
-    const segments = (edge[0].props.children as ElementNode[])
-    // The lead-out, the riser, the lead-in — and the ARRIVAL MARKER, which is the fourth child: the
-    // WEB view used to draw no arrowhead at all, so with several edges meeting one node there was no
-    // way to read which way the dependency ran. The marker is a sibling of the runs, never a run.
-    expect(segments.map((segment) => segment.key)).toEqual(["out", "riser", "in", "head"])
+    /** The edge's two painted children, in draw order. */
+    const painted = edge[0].props.children as ElementNode[]
+    expect(painted.map((child) => child.key)).toEqual(["curve", "head"])
+    expect(painted[0].type).toBe("path")
+    expect(painted[1].type).toBe("polygon")
+    // THE PAINTED `d` IS THE LAYOUT'S OWN, character for character: the string the browser draws and the
+    // string the containment arm flattens come out of the SAME pure call, so the picture cannot be a
+    // different curve than the one that was proven (clause W2 read as a fact rather than a promise).
+    /** The geometry of this board, which the relations below are read off. */
+    const graph = view.layout(TASKS)
+    /** The geometry's own T1→T2 edge. */
+    const drawn = graph.edges.find((candidate) => candidate.witness === "T2<-T1")
+    expect(drawn).toBeDefined()
+    /** The curve that pure layout published for it. */
+    const curve = (drawn as { curve: { d: string; points: Array<{ x: number; y: number }>; tip: { x: number; y: number }; radius: number } }).curve
+    expect(painted[0].props["data-mpd-curve"]).toBe(curve.d)
+    expect(painted[0].props.d).toBe(curve.d)
+    // The TIP travels as its own ZERO-WIDTH rect, so the host reads the arrival without knowing MARK_W.
+    expect(painted[1].props["data-mpd-tip"]).toBe(curve.tip.x + "," + (curve.tip.y - 4) + ",0,8")
+    // THE ROUTE STAYS THE ROUTE (clause W4): the layout's own runs keep their names and their order.
+    expect((drawn as { segments: Array<{ key: string }> }).segments.map((segment) => segment.key)).toEqual(["out", "riser", "in"])
     // MERMAID-STYLE ROUTING, so the numbers are the boxes' own borders rather than a fixed inset.
-    // A node is `COLUMN_PAD` (4) inside its 168px column, so column 0's box spans 4..164 and column 1's
-    // spans 172..332. Both boxes' vertical middle is their top (4) plus half a node (21) = 25.
-    //
-    // T1->T2 is a forward edge, so it LEAVES T1's right border (164) and ARRIVES at T2's left border
-    // (172), with the riser in the 8px gap between them — one lane at the gap's centre, 168.
-    expect(styleOf(segments[0], "left")).toBe("164px")
-    expect(styleOf(segments[0], "top")).toBe("25px")
-    // The stub spans the GAP only (164 -> 168), so nothing it draws can reach under a node.
     // THE PROPERTY, NOT THE PIXELS. Pinning the four literals would re-couple this arm to the sizes it
     // is supposed to be independent of — the reviewer's point that a scale change must not detach the
     // edges. What has to hold is the RELATION, read off the same accessors the layout renders the boxes
-    // with: a node sits `GEO.inset` inside a `GEO.column`-wide column, so column 0's box spans 4..164 and
-    // column 1's spans 172..332, and T1->T2 is a forward edge at one row, so it leaves T1's RIGHT border
-    // and arrives at T2's LEFT border with the riser between them.
-    /** The four sizes the layout derives every position from, restated so the relation is checkable. */
-    const DIMS = { column: 168, inset: 4, nodeHeight: 42, nodeGap: 10, pad: 4 }
+    // with: a node sits `inset` inside a `column`-wide column, the lane stands in the gutter between two
+    // columns, and a forward edge leaves the blocker's RIGHT border for the dependant's LEFT one. The
+    // INSET IS READ OFF THE GEOMETRY rather than restated: it is DERIVED (the lane count widens it) and
+    // a literal here would need editing on every gutter tune — the drift this arm exists to catch.
+    /** The four sizes the layout derives every position from; the inset is the geometry's own. */
+    const DIMS = { column: 168, inset: graph.inset, nodeHeight: 42, nodeGap: 10, pad: 4 }
     /** One node's borders, derived from the sizes rather than written down. */
     const borders = (rank: number): { left: number; right: number } =>
       ({ left: rank * DIMS.column + DIMS.inset, right: rank * DIMS.column + DIMS.column - DIMS.inset })
     /** The vertical middle of the one row this fixture puts both nodes on. */
     const middle = DIMS.pad + DIMS.nodeHeight / 2
-    /** The edge's three painted segments. */
-    /** One painted segment's box, as numbers. */
-    const geo = (index: number): { left: number; top: number; width: number } =>
-      ({ left: Number.parseFloat(styleOf(segments[index], "left")), top: Number.parseFloat(styleOf(segments[index], "top")), width: Number.parseFloat(styleOf(segments[index], "width")) })
-    /** The lead-out the edge paints: from the parent's right border to the riser. */
-    const out = geo(0)
-    /** The vertical run joining the two rows, inside the boxes' gap. */
-    const riser = geo(1)
-    /** The lead-in: from the riser to the child's left border. */
-    const into = geo(2)
-    // The lead-out STARTS on the parent's right border and ENDS on the riser.
-    expect(out.left).toBe(borders(0).right)
-    expect(out.left + out.width).toBe(riser.left)
-    // The riser is a vertical line INSIDE the two boxes' gap, never on either border.
-    expect(riser.left).toBeGreaterThan(borders(0).right)
-    expect(riser.left).toBeLessThan(borders(1).left)
-    expect(riser.width).toBe(1)
-    // The lead-in starts on the riser and ENDS on the child's left border.
-    expect(into.left).toBe(riser.left)
-    expect(into.left + into.width).toBe(borders(1).left + 1)
-    // Every segment runs along ONE box's vertical middle, so an edge meets a border at its midpoint.
-    expect([out.top, riser.top, into.top]).toEqual([middle, middle, middle])
-    // Nothing an edge paints reaches under a box: every segment lives in the gap between the borders.
-    expect(out.left).toBeGreaterThanOrEqual(borders(0).right)
-    expect(into.left + into.width).toBeLessThanOrEqual(borders(1).left + 1)
+    // The route's own runs are still published, which is what keeps `data-mpd-route` the routing truth:
+    // the lead-out STARTS on the parent's right border and the lead-in ENDS on the child's first pixel.
+    /** The edge's route as published: its runs, then `R`/`L` and the arrowhead's own box. */
+    const [route, marker] = String(edge[0].props["data-mpd-route"]).split("|")
+    /** Those runs, in draw order. */
+    const runs = route.split(";").map(parseRect)
+    expect(runs[0].left).toBe(borders(0).right)
+    expect(runs[runs.length - 1].left + runs[runs.length - 1].width).toBe(borders(1).left + 1)
+    // Every run lies on the one row's middle, so an edge meets a border at its midpoint.
+    for (const run of runs) expect(run.top).toBe(middle)
+    // The route `data-mpd-route` publishes is the layout's own, run for run and pixel for pixel.
+    expect(route.split(";")).toEqual((drawn as { segments: Array<{ rect: Rect }> }).segments.map((segment) => rectTextOf(segment.rect)))
+    // THE CURVE TRAVELS THE SAME TWO POINTS: it leaves the blocker's border middle and lands on the
+    // dependant's, which is what makes the painted form a parametrisation of the route, not a redraw.
+    expect(curve.points[0]).toEqual({ x: borders(0).right, y: middle })
+    expect(curve.points[curve.points.length - 1]).toEqual({ x: borders(1).left, y: middle })
+    expect(curve.points[curve.points.length - 1]).toEqual({ x: curve.tip.x, y: curve.tip.y })
+    // The arrowhead points RIGHT (the edge arrives from the left) and its tip is the child's border.
+    expect(marker.startsWith("R")).toBe(true)
+    /** The arrowhead's box, which `data-mpd-route` still carries. */
+    const head = parseRect(marker.slice(1))
+    expect(head.left + head.width).toBe(borders(1).left)
+    expect(head.height).toBe(8)
   })
 
   test("draws a riser that spans the two rows when a blocker sits below its dependant", async () => {
@@ -669,23 +725,39 @@ describe("team-view drawn edges", () => {
       { id: "T2", subject: "b", kind: "work", status: "open", visual: "blocked", blockedBy: ["T3"], failedBy: [], depth: 0 },
       { id: "T3", subject: "c", kind: "work", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 1 },
     ]
-    /** The settled render of that board. */
-    const { tree } = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board) } } })
-    /** The single drawn edge. */
+    /** The settled render of that board, plus the pure module behind it. */
+    const { tree, view } = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board) } } })
+    /** The single drawn edge, as the DOM carries it. */
     const edge = one(one(tree, "data-edges", "1"), "data-mpd-edge", "T2<-T3")
-    /** Its riser, the segment that has to span the rows. */
-    const riser = (edge.props.children as ElementNode[])[1]
+    // THE RISER IS READ OFF THE LAYOUT, which is where it has always been computed: the painted curve
+    // only rounds it. `segments` keeps its names and its rectangles (clause W4), so this arm keeps its
+    // exact numbers and only changes the accessor.
+    /** The geometry's own T2←T3 edge: its route runs AND the curve painted over them. */
+    const drawn = view.layout(board).edges.find((candidate) => candidate.witness === "T2<-T3") as {
+      segments: Array<{ key: string; rect: Rect }>
+      curve: { points: Array<{ x: number; y: number }> }
+    }
+    /** Its riser, the run that has to span the rows. */
+    const riser = drawn.segments.filter((segment) => segment.key === "riser")[0].rect
     // Row 1's centre is 4 + 52 + 21 = 77; row 0's is 25, so the riser is 52px tall starting at 25.
-    expect(styleOf(riser, "top")).toBe("25px")
-    expect(styleOf(riser, "height")).toBe("52px")
+    expect(riser.top).toBe(25)
+    expect(riser.height).toBe(52)
+    // AND THE PAINTED CURVE SPANS THE SAME ROWS: the sweep bends the leg, it does not shorten it.
+    const ys = drawn.curve.points.map((point) => point.y)
+    expect(Math.min(...ys)).toBe(25)
+    expect(Math.max(...ys)).toBe(77)
+    // The DOM's own path is that geometry's, which the main edge arm proves character for character.
+    expect(String(collect(edge, "data-mpd-curve")[0].props["data-mpd-curve"]).startsWith("M ")).toBe(true)
   })
 
-  test("a cycle's back-edge keeps a non-negative width instead of drawing NaN", async () => {
+  test("a cycle's back-edge keeps a non-negative width and a finite curve instead of drawing NaN", async () => {
     // The store resolves a revisited node to rank 0, so a back-edge can point RIGHT TO LEFT: its riser
     // then sits at a negative offset, and a width taken from the difference alone would go negative.
     // The trap is that a negative width is not a crash — it is an edge that silently vanishes — so the
-    // geometry has to clamp, and this arm pins the clamp.
-    /** The settled render of the two-task cycle. */
+    // geometry has to clamp, and this arm pins the clamp on BOTH outputs of the one loop.
+    /** The view module, built without rendering, for the pure geometry. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The settled render of the two-task cycle, for the witness set the DOM carries. */
     const { tree } = await renderView({
       routes: {
         [STATE_PATH]: { ok: true, status: 200, body: stateOf(CYCLE_TASKS, { total: 2, completed: 0, running: 0, ready: 0, blocked: 2 }, ["T1", "T2"]) },
@@ -696,18 +768,198 @@ describe("team-view drawn edges", () => {
     // A cycle's two tasks resolve to the SAME rank, so the drawn order is the board's own order — the
     // arm pins the SET of edges, which is the fact the geometry can guarantee.
     expect(edges.map((edge) => edge.props["data-mpd-edge"]).sort()).toEqual(["T1<-T2", "T2<-T1"])
-    for (const edge of edges) {
-      for (const segment of edge.props.children as ElementNode[]) {
-        // THE MARKER IS NOT A RUN: it is a CSS triangle whose box is zero-wide by construction (the
-        // border widths are its size), so the "every run has a px width" rule applies to the runs.
-        if (segment.key === "head") continue
-        /** This segment's own width, which must never be negative or unparsable. */
-        const width = styleOf(segment, "width")
-        expect(width.endsWith("px")).toBe(true)
-        expect(Number.parseInt(width, 10) >= 0).toBe(true)
-        expect(width).not.toContain("NaN")
+    /** The same board's geometry, where every run and every curve is checkable as a number. */
+    const graph = view.layout(CYCLE_TASKS)
+    expect(graph.edges.length).toBe(2)
+    for (const edge of graph.edges) {
+      /** Every rect the route publishes, which must never be negative or unparsable. */
+      for (const segment of edge.segments) {
+        expect(Number.isFinite(segment.rect.width)).toBe(true)
+        expect(segment.rect.width).toBeGreaterThanOrEqual(0)
+        expect(Number.isFinite(segment.rect.height)).toBe(true)
+        expect(segment.rect.height).toBeGreaterThanOrEqual(0)
       }
+      // THE CURVE GUARD: the painted form is a string of numbers, and one NaN in it is an edge that
+      // silently disappears — the failure mode a rect-only assertion would have missed entirely.
+      expect(edge.curve.d).not.toContain("NaN")
+      expect(edge.curve.d).not.toContain("undefined")
+      for (const token of edge.curve.d.replace(/[MLQC]/g, " ").trim().split(/\s+/)) expect(Number.isFinite(Number(token))).toBe(true)
+      for (const point of edge.curve.points) {
+        expect(Number.isFinite(point.x)).toBe(true)
+        expect(Number.isFinite(point.y)).toBe(true)
+      }
+      expect(Number.isFinite(edge.curve.tip.x)).toBe(true)
+      expect(Number.isFinite(edge.curve.tip.y)).toBe(true)
+      // The tip is the route's last vertex, which is the arrival border.
+      expect(edge.curve.points[edge.curve.points.length - 1]).toEqual(edge.curve.tip)
     }
+  })
+
+  test("the curve builder degrades to the straight orthogonal route at radius = 0 (clause W6)", () => {
+    // THE FALSIFIABILITY CONTROL FOR THE WHOLE LANE. Every claim about the curve rests on it being a
+    // parametrisation of the route: at `radius = 0` the builder must give the route back EXACTLY — the
+    // same vertices, in the same order, joined by straight lines — so the fillet and the closing sweep
+    // are the only difference between the proven route and the painted curve.
+    /** The view module, built without rendering, for the pure builder. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** One realistic route: right along a lane, down it, then into the dependant's border. */
+    const waypoints = [{ x: 164, y: 25 }, { x: 168, y: 25 }, { x: 168, y: 77 }, { x: 172, y: 77 }]
+    /** The control: the same route with every corner radius removed. */
+    const flat = view.curveOf(waypoints, 0)
+    // BYTE-COMPARABLE, not merely "renders the same": the path is `M`/`L` only …
+    expect(flat.d).toBe("M 164 25 L 168 25 L 168 77 L 172 77")
+    expect(/[QC]/.test(flat.d)).toBe(false)
+    // … and the flattened polyline IS the waypoint list, point for point and in order. This is the
+    // control the reviewer can re-run without knowing anything about the curve's own construction.
+    expect(flat.points).toEqual(waypoints)
+    // AND THE CURVE ITSELF, at the declared radius: a `Q` at the elbow and a `C` into the arrival —
+    // clause W6's grammar, read off the string the browser would draw.
+    /** The same route with the shipped radius. */
+    const curved = view.curveOf(waypoints, 6)
+    expect(curved.d).toContain(" Q ")
+    expect(curved.d).toContain(" C ")
+    expect(curved.d).not.toContain("NaN")
+    // It ends on the same border point, and it bends only BETWEEN the two ends: the fillet and the sweep
+    // round the route's own corners, they never move where the edge starts or stops.
+    expect(curved.points[0]).toEqual({ x: 164, y: 25 })
+    expect(curved.points[curved.points.length - 1]).toEqual({ x: 172, y: 77 })
+    // The arcs are DENSE, which is what W3's instrument needs: the curved form carries more samples than
+    // the four vertices it was built from, while the flat form carried exactly those four.
+    expect(curved.points.length).toBeGreaterThan(waypoints.length)
+    // Every sample stays inside the corridor its own route occupies: no fillet or sweep may leave the
+    // bounding box of the waypoints — the property the containment arm then measures against real boxes.
+    for (const point of curved.points) {
+      expect(point.x).toBeGreaterThanOrEqual(164)
+      expect(point.x).toBeLessThanOrEqual(172)
+      expect(point.y).toBeGreaterThanOrEqual(25)
+      expect(point.y).toBeLessThanOrEqual(77)
+    }
+  })
+
+  test("the arrowhead's tip lands ON the border it arrives at, by arithmetic (clause W5)", async () => {
+    /**
+     * Check every drawn edge of one rendered board, and report how the arrivals split by border.
+     *
+     * The tip mark is a ZERO-WIDTH rect whose left edge IS the tip, so this needs no knowledge of the
+     * head's own width — which is exactly why the mark is zero-width.
+     * @param tree - one settled render of a board.
+     * @returns how many edges arrived at the right border, out of every edge checked.
+     */
+    const checkArrivals = (tree: ElementNode): { left: number; right: number } => {
+      /** Every box as published, keyed by task id. */
+      const boxes = new Map<string, Rect>()
+      for (const node of collect(tree, "data-mpd-node")) boxes.set(String(node.props["data-mpd-node"]), parseRect(String(node.props["data-mpd-box"])))
+      /** How many edges arrived at a LEFT border. */
+      let left = 0
+      /** How many arrived at a RIGHT border — the back edges and the same-rank ones. */
+      let right = 0
+      for (const edge of collect(tree, "data-mpd-edge")) {
+        /** `child<-parent`, the witness the edge publishes. */
+        const mark = String(edge.props["data-mpd-edge"])
+        /** The box the edge arrives at. */
+        const box = boxes.get(mark.split("<-")[0]) as Rect
+        // The direction travels with the ROUTE, which is still the routing truth: `L` means the head
+        // points left and the edge therefore arrives at the dependant's RIGHT border.
+        /** Whether this edge arrives at its child's right border. */
+        const arrivesAtRight = String(edge.props["data-mpd-route"]).split("|")[1].startsWith("L")
+        /** The arrival point as published: `left,top,width,height` with a zero width. */
+        const tip = parseRect(String(collect(edge, "data-mpd-tip")[0].props["data-mpd-tip"]))
+        expect(tip.width).toBe(0)
+        expect(tip.height).toBe(8)
+        /** The border this edge must touch: the box's first pixel from the left, its right edge from the right. */
+        const border = arrivesAtRight ? box.left + box.width : box.left
+        expect(tip.left).toBe(border)
+        // The head is CENTRED on the arrival row, so its tip touches the border at the point the edge's
+        // own last sample does — a head floating above or below the line would read as another edge.
+        expect(tip.top + tip.height / 2).toBeGreaterThan(box.top)
+        expect(tip.top + tip.height / 2).toBeLessThan(box.top + box.height)
+        if (arrivesAtRight) right += 1
+        else left += 1
+      }
+      return { left, right }
+    }
+    // THE FORWARD BOARD: every dependency runs downhill, so every arrival is on a left border.
+    /** The five-rank board's render. */
+    const downhill = (await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(LONG_EDGE_TASKS) } } })).tree
+    /** That board's arrivals. */
+    const forward = checkArrivals(downhill)
+    expect(forward.left).toBe(collect(downhill, "data-mpd-edge").length)
+    // THE CYCLIC BOARD: a revisited node resolves to rank 0, so its back edge comes back around the
+    // column and arrives on the RIGHT border — the other half of W5, without which this arm would be a
+    // claim about one direction only.
+    /** The two-task cycle's render. */
+    const cyclic = (await renderView({
+      routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(CYCLE_TASKS, { total: 2, completed: 0, running: 0, ready: 0, blocked: 2 }, ["T1", "T2"]) } },
+    })).tree
+    /** That board's arrivals, at least one of which must land on a right border. */
+    const back = checkArrivals(cyclic)
+    expect(back.right).toBeGreaterThan(0)
+  })
+
+  test("the graph-safe label rule is clause C4 exactly", () => {
+    /** The view module, built without rendering, for the pure composer. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    // THE RULE, clause by clause: the maximal printable-ASCII runs, joined by ONE space, whitespace
+    // collapsed, trimmed. An English subject is therefore unchanged.
+    expect(view.graphSafeLabel("Build the parser", 3)).toBe("Build the parser")
+    expect(view.graphSafeLabel("   spaced   out   ", 1)).toBe("spaced out")
+    // A non-ASCII separator is DROPPED and the runs around it are JOINED — the `·` here is U+00B7, which
+    // is outside `\x20`-`\x7E`, so the label reads as two runs rather than as the original sentence.
+    expect(view.graphSafeLabel("T1 · REV #2", 2)).toBe("T1 REV #2")
+    // A subject whose ASCII leaves nothing but the SPACES around the Chinese still falls back: the runs
+    // are joined, collapsed and trimmed away, which is the branch a naive `runs.length === 0` test misses.
+    expect(view.graphSafeLabel("修复 登录 页面", 4)).toBe("#4")
+    expect(view.graphSafeLabel("修复登录页面", 4)).toBe("#4")
+    expect(view.graphSafeLabel("！？。", 9)).toBe("#9")
+    expect(view.graphSafeLabel("", 12)).toBe("#12")
+    // THE ORDINAL IS THE BOARD'S OWN POSITION, not the drawn row: the columns are re-ordered by rank and
+    // id, so a node that numbered itself off the picture would name a different task.
+    /** A board whose ids sort unlike their served order. */
+    const board = [
+      { id: "T9", subject: "中文标题", kind: "work", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T2", subject: "second", kind: "work", status: "open", visual: "open", blockedBy: ["T9"], failedBy: [], depth: 0 },
+    ]
+    /** The geometry's own ordinals, which the label composer is handed. */
+    const ordinals = view.layout(board).nodes.map((node) => [node.task.id, node.ordinal]).sort()
+    expect(ordinals).toEqual([["T2", 2], ["T9", 1]])
+  })
+
+  test("a Chinese subject is drawn graph-safe, while the detail and the tooltip keep the original", async () => {
+    /** A board whose subjects are pure Chinese, which is exactly what the drawing may not carry. */
+    const board = [
+      { id: "T1", subject: "冻结验收契约", kind: "requirement", status: "completed", visual: "completed", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T2", subject: "构建头部与进度条", kind: "work", status: "running", visual: "running", blockedBy: ["T1"], failedBy: [], depth: 1 },
+    ]
+    /** The settled render of that board, plus the handles a click needs. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board) } } })
+    /** That render's tree. */
+    const { tree } = rendered
+    /**
+     * The text the DRAWING carries for one node.
+     *
+     * The node's own element is read whole — every glyph, id, kind and label it draws — because clause C1
+     * is a statement about the picture rather than about one div.
+     */
+    const drawn = (id: string): string => flatText(one(tree, "data-mpd-node", id))
+    expect(drawn("T1")).toContain("#1")
+    expect(drawn("T2")).toContain("#2")
+    // CLAUSE C1's OWN FORM, over the whole drawing: no codepoint in any of the declared CJK/full-width
+    // ranges survives into it. The declared glyphs (✓ ◐ ✗ ○ ⊘) are outside those ranges by design.
+    /** The drawing's own text: every node and every edge, with nothing of the panel's chrome. */
+    const picture = collect(tree, "data-mpd-node").map((node) => flatText(node)).join(" ")
+    expect(/[\u2E80-\u2FFF\u3000-\u303F\u3040-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/.test(picture)).toBe(false)
+    // NEGATIVE CONTROL: the same assertion over the PRE-RULE text — the raw subjects — MUST fail, or the
+    // check above could be passing because it is looking at the wrong string.
+    /** The board's subjects as served, which is what the drawing used to carry. */
+    const before = board.map((task) => task.subject).join(" ")
+    expect(/[\u2E80-\u2FFF\u3000-\u303F\u3040-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/.test(before)).toBe(true)
+    // CLAUSE C3: the hover TOOLTIP is not drawing text, so it keeps the original subject verbatim.
+    expect(String(one(tree, "data-mpd-node", "T1").props.title)).toContain("冻结验收契约")
+    // And so does the pinned DETAIL body, which is where the Chinese belongs.
+    ;(one(tree, "data-mpd-node", "T1").props.onClick as () => void)()
+    /** The tree after the click pinned T1. */
+    const pinned = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(flatText(one(pinned, "data-mpd-detail", "T1"))).toContain("冻结验收契约")
   })
 })
 
@@ -730,17 +982,20 @@ describe("team-view interaction", () => {
     expect(styleOf(one(hovered, "data-mpd-node", "T2"), "opacity")).toBe("1")
     expect(styleOf(one(hovered, "data-mpd-node", "T3"), "opacity")).toBe("1")
     expect(styleOf(one(hovered, "data-mpd-node", "T4"), "opacity")).toBe("1")
-    // The focused edge is tinted brighter than an unfocused one.
-    /** The focused edge's segments. */
-    const focused = (collectByKey(hovered, "edge:T1>T2")[0].props.children as ElementNode[])
-    expect(styleOf(focused[0], "background")).toBe("var(--dsw-alias-label-secondary, #5b6472)")
+    // The focused edge is tinted brighter than an unfocused one — AS A STROKE (clause W7), because a
+    // curve has no background to colour: the tint travels through the path's stroke and the head's fill.
+    /** The focused edge's two painted children: the curve and its arrowhead. */
+    const focused = collectByKey(hovered, "edge:T1>T2")[0].props.children as ElementNode[]
+    expect(focused[0].props.stroke).toBe("var(--dsw-alias-label-secondary, #5b6472)")
+    expect(focused[1].props.fill).toBe("var(--dsw-alias-label-secondary, #5b6472)")
+    expect(focused[0].props.fill).toBe("none")
     // Leaving clears the halo, so every node is full again.
     ;(one(hovered, "data-mpd-node", "T2").props.onMouseLeave as () => void)()
     /** The tree after the pointer left. */
     const left = await hooks.act(rendered.component, { sessionId: "s1" } as never)
     expect(styleOf(one(left, "data-mpd-node", "T4"), "opacity")).toBe("1")
     expect(one(left, "data-mpd-graph", "ranks=4 edges=3").props["data-mpd-focus"]).toBe("none")
-    expect(styleOf((collectByKey(left, "edge:T1>T2")[0].props.children as ElementNode[])[0], "background")).not.toBe("var(--dsw-alias-label-secondary, #5b6472)")
+    expect((collectByKey(left, "edge:T1>T2")[0].props.children as ElementNode[])[0].props.stroke).not.toBe("var(--dsw-alias-label-secondary, #5b6472)")
   })
 
   test("marks the root with the team id, and with an empty marker when there is no team", async () => {
@@ -906,14 +1161,19 @@ function parseRect(text: string): Rect {
   return { left: parts[0], top: parts[1], width: parts[2], height: parts[3] }
 }
 
+/** Write one rectangle as the comma-joined text the view publishes it with — the inverse of `parseRect`. */
+function rectTextOf(rect: Rect): string {
+  return rect.left + "," + rect.top + "," + rect.width + "," + rect.height
+}
+
 /**
- * Whether a run enters a box's INTERIOR.
+ * Whether a ROUTE RUN enters a box's INTERIOR.
  *
  * The tolerance is deliberate and is the only honest one: a run may ABUT the border it attaches to
  * (that is what "the edge arrives here" means, and the lead-in covers that border's own pixel), so the
  * comparison is against the box shrunk by one pixel on every side. A run that crosses a box enters
- * its interior and is caught; a line stopping one pixel short of the box it describes would show up in
- * the separate "every edge reaches both of its boxes" arm.
+ * its interior and is caught; a line stopping one pixel short of the box it describes shows up in the
+ * separate "every edge reaches both of its boxes" arm.
  */
 function entersInterior(run: Rect, box: Rect): boolean {
   /** The box without its one-pixel border, which is the area a drawing may never cover. */
@@ -922,10 +1182,69 @@ function entersInterior(run: Rect, box: Rect): boolean {
     && run.top < inner.top + inner.height && inner.top < run.top + run.height
 }
 
+/**
+ * Whether the SEGMENT between two consecutive curve samples enters a box's interior.
+ *
+ * THIS IS THE W3 INSTRUMENT, and it measures SEGMENTS rather than points on purpose. A curve makes the
+ * route's rectangles an elbow SKELETON rather than the painted line, so a rect test keeps passing while
+ * the curve crosses a box — the vacuous green clause W3 forbids. A point-only sample test has the
+ * mirror hole: a 1px line can thread a box BETWEEN two samples. Measuring the segment between
+ * consecutive samples is exact for a straight leg, needs no sampling-density assumption and still
+ * catches a bulge, which is why `curve.points` can stay the waypoint list at `radius = 0`.
+ *
+ * The 1px shrink carries the same tolerance {@link entersInterior} declares: a curve may ABUT the
+ * border it attaches to, and the segment test uses the classic parametric slab clip, so it is exact
+ * for any orientation rather than only for the axis-aligned runs the rect test was written for.
+ * @param from - the segment's first sample.
+ * @param to - its second sample.
+ * @param box - the box as the render published it.
+ * @returns whether any part of the segment lies inside the box's interior.
+ */
+function segmentEntersInterior(from: { x: number; y: number }, to: { x: number; y: number }, box: Rect): boolean {
+  /** The box without its one-pixel border: the area a drawing may never cover. */
+  const inner = { left: box.left + 1, top: box.top + 1, width: box.width - 2, height: box.height - 2 }
+  /** The segment's own direction. */
+  const dx = to.x - from.x
+  /** That direction's y. */
+  const dy = to.y - from.y
+  /** The clipped parameter interval still inside the slab, starting as the whole segment. */
+  let enter = 0
+  /** The other end of that interval. */
+  let exit = 1
+  /**
+   * Clip the segment against one slab of the interior.
+   * @param p - the direction's component along the slab's normal.
+   * @param q - the distance from the slab's boundary along that normal.
+   * @returns whether any of the segment survives this slab.
+   */
+  const clip = (p: number, q: number): boolean => {
+    if (p === 0) return q >= 0
+    /** Where the segment meets the slab's boundary. */
+    const at = q / p
+    if (p < 0) {
+      if (at > exit) return false
+      if (at > enter) enter = at
+    } else {
+      if (at < enter) return false
+      if (at < exit) exit = at
+    }
+    return true
+  }
+  return clip(-dx, from.x - inner.left) && clip(dx, inner.left + inner.width - from.x)
+    && clip(-dy, from.y - inner.top) && clip(dy, inner.top + inner.height - from.y)
+}
+
 describe("team-view edge legibility (the reported tangle)", () => {
-  test("NO drawn run enters any node box, on the five-rank board from the screenshot", async () => {
-    /** The settled render of the screenshot's board. */
-    const { tree } = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(LONG_EDGE_TASKS) } } })
+  // WHAT THIS ARM IS WORTH, stated before it is read: containment here is STRUCTURAL, not merely tested.
+  // `curveOf` clamps every fillet to half of its shorter adjacent leg, so a leg can never be overshot and
+  // the painted curve cannot leave the corridor its orthogonal route was proven to occupy — the property
+  // holds by CONSTRUCTION. This arm is therefore a REGRESSION GUARD: it catches a future change to the
+  // clamp, to the lane assignment or to the waypoint list, and it is the only thing that would catch a
+  // curve crossing a box if that construction were ever weakened. It is NOT a live proof that today's
+  // curve was lucky enough to stay clear, and a reader must not trust it for more than the guard it is.
+  test("NO drawn CURVE enters any node box, on the five-rank board from the screenshot", async () => {
+    /** The settled render of the screenshot's board, plus the pure module whose curves it painted. */
+    const { tree, view } = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(LONG_EDGE_TASKS) } } })
     // The witness counts first: 16 drawable dependencies on this board, in 5 ranks. The docker capture
     // reads exactly these, so the geometric arm below is asserting the picture the user sees.
     expect(one(tree, "data-mpd-graph", "ranks=5 edges=16").props["data-mpd-graph"]).toBe("ranks=5 edges=16")
@@ -933,30 +1252,61 @@ describe("team-view edge legibility (the reported tangle)", () => {
     const boxes = new Map<string, Rect>()
     for (const node of collect(tree, "data-mpd-node")) boxes.set(String(node.props["data-mpd-node"]), parseRect(String(node.props["data-mpd-box"])))
     expect(boxes.size).toBe(LONG_EDGE_TASKS.length)
-    /** Every run of every drawn edge, each tagged with the edge that painted it. */
-    const runs: Array<{ edge: string; rect: Rect }> = []
-    for (const edge of collect(tree, "data-mpd-edge")) {
-      /** The witness value, which names the edge a run belongs to. */
-      const mark = String(edge.props["data-mpd-edge"])
-      /** The route as published: the runs, then `R`/`L` and the marker's own box. */
-      const [route] = String(edge.props["data-mpd-route"]).split("|")
-      for (const text of route.split(";")) runs.push({ edge: mark, rect: parseRect(text) })
+    // THE SAMPLES COME FROM THE PURE LAYOUT, not from a re-derivation in this file: the polyline the
+    // containment claim is about is the one the layout published as `points`.
+    /** The routed geometry of the screenshot's board. */
+    const graph = view.layout(LONG_EDGE_TASKS)
+    expect(graph.edges.length).toBe(16)
+    // THE BRIDGE, without which samples and paint could drift apart and this arm would be proving a
+    // drawing nobody rendered: every edge's RENDERED `data-mpd-curve` must BE the layout's own `d`.
+    /** What each rendered edge actually painted, keyed by its witness. */
+    const painted = new Map<string, string>()
+    for (const edge of collect(tree, "data-mpd-edge")) painted.set(String(edge.props["data-mpd-edge"]), String(collect(edge, "data-mpd-curve")[0].props["data-mpd-curve"]))
+    expect(painted.size).toBe(graph.edges.length)
+    for (const edge of graph.edges) expect(painted.get(edge.witness)).toBe(edge.curve.d)
+    // NON-VACUITY, ASSERTED: the instrument is fed a real sample set, and the arcs really were flattened
+    // — an edge carrying no more points than its own legs would mean the curve was never sampled.
+    /** Every sample of every drawn edge. */
+    let samples = 0
+    /** How many edges carry MORE points than their route has legs, which only an arc can do. */
+    let flattened = 0
+    for (const edge of graph.edges) {
+      samples += edge.curve.points.length
+      if (edge.curve.points.length > edge.segments.length + 1) flattened += 1
     }
-    expect(collect(tree, "data-mpd-edge").length).toBe(16)
-    expect(runs.length).toBeGreaterThan(16)
-    /** How many (run, box) pairs overlap, which must be none. */
+    expect(samples).toBeGreaterThan(graph.edges.length * 2)
+    expect(flattened).toBeGreaterThan(0)
+    // THE MEASUREMENT: every segment between consecutive samples of every drawn curve, against every box
+    // as the RENDER published it. None may enter an interior.
+    /** How many (segment, box) pairs the drawn curves enter, which must be none. */
     let crossings = 0
-    for (const run of runs) for (const box of boxes.values()) if (entersInterior(run.rect, box)) crossings += 1
+    for (const edge of graph.edges) {
+      for (let index = 1; index < edge.curve.points.length; index += 1) {
+        for (const box of boxes.values()) if (segmentEntersInterior(edge.curve.points[index - 1], edge.curve.points[index], box)) crossings += 1
+      }
+    }
     expect(crossings).toBe(0)
-    // POSITIVE CONTROL: the same check must FLAG the run the OLD router drew for T2→T7, or this arm
-    // could pass by measuring nothing at all. The old formula put that edge's riser at the centre of
-    // the band between T2's right border (164) and T7's left border (340) — x=252, inside rank 1 — and
-    // ran it from the parent's middle (25) down to the child's (77).
+    // POSITIVE CONTROL 1 — THE OLD ROUTER: the same instrument fed the pre-fix run must FLAG it, or this
+    // arm could pass by measuring nothing at all. That formula put T2→T7's riser at the centre of the
+    // band between T2's right border (164) and T7's left border (340) — x=252, inside rank 1 — and ran
+    // it from the parent's middle (25) down to the child's (77).
     /** The pre-fix T2→T7 riser, reconstructed from the removed formula, which the check MUST catch. */
     const oldRiser: Rect = { left: 252, top: 25, width: 1, height: 52 }
     /** The boxes that riser stood inside, which is the tangle the user photographed. */
-    const caught = [...boxes].filter(([, box]) => entersInterior(oldRiser, box)).map(([id]) => id)
-    expect(caught.length).toBeGreaterThan(0)
+    expect([...boxes].filter(([, box]) => entersInterior(oldRiser, box)).length).toBeGreaterThan(0)
+    // POSITIVE CONTROL 2 — THE CURVE DOMAIN: the SAME segment instrument, fed a polyline that bends
+    // through a column. This is the control the rect skeleton cannot give: it proves the arm can fail on
+    // a sample path, which is exactly the failure mode a curve introduces. (The per-vertex clamp to half
+    // a leg is what makes a real curve unable to bulge, so an injected path — not a huge radius — is the
+    // honest way to make this instrument fail in its own domain.)
+    /** The pre-fix route's shape, emitted as a curve at a radius far larger than any leg it has. */
+    const bulging = view.curveOf([{ x: 164, y: 25 }, { x: 252, y: 25 }, { x: 252, y: 77 }, { x: 340, y: 77 }], 400).points
+    /** How many boxes that injected curve enters, which must be at least one. */
+    let caught = 0
+    for (let index = 1; index < bulging.length; index += 1) {
+      for (const box of boxes.values()) if (segmentEntersInterior(bulging[index - 1], bulging[index], box)) caught += 1
+    }
+    expect(caught).toBeGreaterThan(0)
   })
 
   test("a rank-skipping edge is routed as a CHAIN of adjacent-rank hops, not one riser through a column", async () => {
@@ -989,6 +1339,12 @@ describe("team-view edge legibility (the reported tangle)", () => {
     /** The bottom edge of the lowest box the DRAWING placed in rank 1. */
     const rank1Bottom = Math.max(...graph.nodes.filter((node) => node.rank === 1).map((node) => node.top + 42))
     expect(crossing.top).toBeGreaterThanOrEqual(rank1Bottom)
+    // AND THE PAINTED CURVE CROSSES ON THAT SAME ROW: the fillets round the turns but never move the
+    // crossing, so the polyline must carry samples ON the reserved row itself. Without this the curve
+    // could satisfy every rect assertion above while being drawn somewhere else entirely.
+    /** That edge's flattened polyline, which is what the renderer painted. */
+    const curve = long as { curve: { points: Array<{ x: number; y: number }> } }
+    expect(curve.curve.points.some((point) => point.y === crossing.top)).toBe(true)
   })
 
   test("every gutter lane gets its OWN column: one x per hop, none on a border", async () => {
@@ -1085,6 +1441,13 @@ describe("team-view edge legibility (the reported tangle)", () => {
       // right edge from the right — so a reader can see which way the dependency runs.
       expect(arrivesAtRight ? head.left : head.left + head.width).toBe(arrivesAtRight ? into.left + into.width : into.left)
       expect(head.height).toBe(8)
+      // THE CURVE TWIN (clause W5 over the PAINT rather than over the route): the tip mark names the
+      // same border the route does, and the flattened polyline ENDS on the arrival point — so the drawn
+      // curve lands exactly where the arrowhead points.
+      /** The arrival point as the zero-width tip mark publishes it. */
+      const tip = parseRect(String(collect(edge, "data-mpd-tip")[0].props["data-mpd-tip"]))
+      expect(tip.left).toBe(arrivesAtRight ? into.left + into.width : into.left)
+      expect(tip.height).toBe(8)
     }
   })
 })

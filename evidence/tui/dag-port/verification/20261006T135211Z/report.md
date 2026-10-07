@@ -1,11 +1,11 @@
 # Independent verification — wave `tui-dag-port` (clauses R1..R27)
 
 **INSTRUMENTS I WROTE (my only product files, both green):**
-`packages/mpd-tui-plugin/test/dag-fidelity.test.ts` — 28 arms (WEB parity, R17 derivation + the three
-fallback arms, R19 ordering, R22 CJK-by-cell, geometry invariants, adversarial widths/boards).
-`packages/mpd-tui-plugin/test/panel-visibility.test.ts` — 7 arms pinning the host's panel-enablement
+`packages/mpd-tui-plugin/test/dag-fidelity.test.ts` — **31 arms** (WEB parity, R17 derivation + the three
+served-depth fallback arms, R20's WEB derivation with a control and a flat-board arm, R19 ordering, R22
+CJK-by-cell, geometry invariants, adversarial widths/boards).
+`packages/mpd-tui-plugin/test/panel-visibility.test.ts` — **7 arms** pinning the host's panel-enablement
 chain and the split thresholds, read from the INSTALLED host package.
-
 
 **Seat:** `fidelity-verifier` (Reviewer). I wrote no implementation file. Every claim below is either a
 command I ran and quote, or a file I read and cite by symbol.
@@ -26,7 +26,7 @@ workspace cwd `<root>/ws`, private tmux socket, `env -i`. `bun skills/dsh-qa/scr
 
 ---
 
-## 1. The R1..R21 status table
+## 1. The R1..R27 status table
 
 | Clause | Verdict | Evidence (what I actually ran/read) |
 |---|---|---|
@@ -94,6 +94,31 @@ can name. Artefacts: `pty/frozen/{w120,w80,w48,w32}/`, `pty/frozen-cjk/…`, `pt
 | R9's badge | **no badge set** in this capture (no `●`/`!`/`×` beside our tabs) — consistent with a clean board, and NOT proof of the path | all |
 | R14's whole-surface redesign | **NOT VERIFIED** — I ran no scene capture, so the scenes/status line are outside what these frames judge | — |
 | the rail's legibility defect | **FIXED** — 24 rows for 12 tasks → 12 rows, assignees inline | `interim/w120/tab1` vs `frozen/w120/tab1` |
+
+**The frame rectangle, measured in CELLS on every frame (the correct instrument):**
+
+```
+frozen/w120       divider cell 80 | frame left border cell 81 | right border cell 117 | 118 cells/line
+                  every one of the 42 content rows agrees — a single distinct value for the right border
+frozen-cjk/w120   identical geometry, on a 7-task all-CJK board
+frozen-pin/w120   identical geometry on the pinned frame
+```
+
+So the frozen panels are clean rectangles on BOTH fixtures, and the retraction in FINDING 11 holds: the
+"displaced border" was my code-point slice, and my later `badR=6` on the CJK frame was the same mistake
+made a second time inside the CHECK (a code-point index compared against a cell constant). Both are
+recorded so the next reader does not repeat the third iteration.
+
+**Widths.** 120 → `split=true` with all three MPD tabs on BOTH fixtures; 80/48/32 → `split=false` on
+both, because the sidebar cannot split below 93 content columns at all (FINDING 3). `mpdTab=false` at
+those widths is the HOST refusing a split, not our panel failing to register.
+
+**Gates re-run at THIS revision:** `tsgo --noEmit` **exit 0** · `verify:comments` **PASS** ·
+`verify-dist-fresh` **ok 29/29 fresh** · `verify:rows` **PASS (33 row ids)** · `verify:docs` **PASS** ·
+`verify:manifest` **PASS** · `bun test ./packages` **1794 tests, 2 fail, 3 skip** — the two reds are
+`panel-surface`'s recorded offset-accumulation signatures (`FOCUS AUTO-SCROLL…` and `the offset clamps
+to [0, max(0, content - viewport)]…`), real, diagnosed and deliberately not fixed, with bounded impact
+stated by their author and not reachable from the first screen.
 
 ## 1b. INTERIM BUILD CAPTURE — `dist/index.js` 368005 B, sha256 `584b02f34c1da39a46a134a1`, mtime 22:10
 
@@ -453,24 +478,23 @@ is recorded here so a future reader does not rediscover it as a defect.
 
 ## 3. The ONE thing I would change first
 
-**Make the panel's reachability an honest, verifiable fact: implement R26 (stop claiming an open the
-plugin cannot verify) and make the composed id discoverable, so the enablement step R25 requires can
-actually be typed by a user.**
+**At the frozen revision the panels render and the sentences are honest — so the first thing left is the
+INSTRUMENT that let R13 hide for a whole wave: `skills/dsh-qa/scripts/tui-panels.ts` declares its
+`tuiPanels` surface `source: "store"`, and it reported `tuiPanels=rendered` while NO pane showed the tab.**
 
-Concretely, in order: (a) `panel.ts PanelSeam.openOrScene` must not route on `opened() === true` alone —
-the host's `open` reports the BRIDGE consuming the request while `useSidePanel.openPanel` silently drops
-it for an id outside the enable CSV (measured: the frame after `/mpd panel` has no divider, the next
-`C-b` frame has one at column 80), so the sentence must say what is known and name the step that makes
-the panel visible; (b) make the composed id PREDICTABLE — give the row a Component identity so the host
-composes `mpd-tui:<slug>` instead of `act1:<slug>` (`panels.js pluginIdFor` falls back only when the
-identity is underivable), because R25 requires the id to be READ from the session and today it is not
-guessable; (c) give `skills/dsh-qa/scripts/tui-panels.ts` a PANE-sourced `tuiPanels` surface — it is
-`source: "store"` today and reported `tuiPanels=rendered` while no pane showed the tab, which is exactly
-how this class passed every gate for a whole wave.
+That is not merely a coverage gap. In this wave the same lane passed on a store record while the user
+could not see the feature at all, and two independent lanes (mine and `seam-guard`'s) read the resulting
+empty panes as "the panel does not render". A pane-sourced arm — assert the tab strip CONTAINS the
+composed id after `/mpd panel`, with the enable switches set per R25 — would have failed on day one and
+named the cause in one line. It is recorded as the first post-wave follow-up; it is deliberately NOT in
+this wave because `skills/**` carries a single-writer rule and would force a `VENDOR_LOCK` re-pin in the
+same commit (§9).
 
-Rationale: R1, R9, R11, R12, R13, R14 and R26 all terminate in "is it on screen and does the ticket say
-so". Today the rendering works once the switches are set, and the surfaces still tell the user it opened
-when it did not.
+Two smaller items I would put beside it, in order: (a) make the composed id PREDICTABLE — give the row a
+Component identity so the host composes `mpd-tui:<slug>` instead of `act1:<slug>` (`panels.js
+pluginIdFor` falls back only when the identity is underivable), because R25 requires the id to be READ
+from the session and today a user cannot guess it; and (b) the two offset-accumulation arms, which are
+the only reds at the frozen revision.
 
 ## 4. Pre-refactor verification — exact commands and expected outputs
 
@@ -485,8 +509,8 @@ bun test ./packages/mpd-tui-plugin/test/panel-visibility.test.ts # expect 7 pass
 #    `bun test ./packages/mpd-tui-plugin/test/dag-fidelity.test.ts 2>&1 | tail -3`
 
 # 2. The whole suite — the wave's own red set must not grow (FINDING 5).
-bun test ./packages            # FINAL: 1764 pass / 2 fail / 3 skip -> $D/gate-bun-test-final.log
-                               # (first sweep: 1704 pass / 9 fail -> $D/gate-bun-test.log)
+bun test ./packages            # FROZEN: 1794 tests / 2 fail / 3 skip -> $D/gate-bun-test-frozen.log
+                               # the 2 are panel-surface's recorded offset-accumulation arms
 
 # 3. Static gates I ran, with their observed verdicts.
 bun run typecheck              # PASS (tsgo --noEmit, no output, exit 0) -> gate-typecheck-final.log
@@ -494,8 +518,7 @@ bun run verify:rows            # PASS — 33 row ids match the 2-file bundle pat
 bun run verify:docs            # PASS — pairs=45 failed=0 violations=0 links=439 dead=0
 bun run verify:manifest        # PASS — version coherence, 2 patch files, 26 module paths, allowlist
 bun run verify:comments        # FINAL PASS; first sweep FAIL with 15 violations across 7 lane files
-node scripts/verify-dist-fresh.ts  # FAIL — packages/mpd-tui-plugin/dist/index.js STALE (1 of 29); the
-                               # captain also reports mpd-team-core-plugin/dist stale mid-edit (his call)
+node scripts/verify-dist-fresh.ts  # FROZEN: ok 29/29 fresh (earlier: FAIL with mpd-tui-plugin/dist STALE)
 ```
 
 **A gate that must be run BEFORE any of the above is trusted, because it bounds all of them:**
@@ -551,11 +574,26 @@ functions quoted in `panel-visibility.test.ts`, and the two per-width frame sets
 | `verification/pty/width-panel-capture.ts` | the PTY driver (repo harness; `--self-test` = 10 arms) |
 | `verification/pty/run/w{200,120,105,104,96,80,48,32}/` | plain-fixture frames: `boot`, `panel`, `sidebar`, `tab1..tab3` |
 | `verification/pty/run-cjk/w{200,120,80,48,32}/` | CJK-fixture frames (7-task board, real blockers) |
-| `verification/pty/run-enabled/w{120,80,48,32}/` | **enabled-sidebar** frames (R25 protocol): the live 12-task board, all six tab frames |
+| `verification/pty/frozen/w{120,80,48,32}/` | **FROZEN** frames, sha `c8b87a32…`: the live 12-task board, tab walk + `back` + `pin` |
+| `verification/pty/frozen-cjk/w{120,80,48,32}/` | **FROZEN** CJK frames (7-task all-CJK board, real blockers) at all four required widths |
+| `verification/pty/frozen-pin/w120/` | the R11 pin: `◆ T2` + the full detail body incl. `dependents T11,T7,T9` |
+| `verification/pty/interim-368005/w120/` | the INTERIM BEFORE pane: the wrapped rail (24 rows) and the title-less frame |
+| `verification/pty/run-enabled/w{120,80,48,32}/` | enabled-sidebar frames (R25 protocol) on the pre-freeze build |
 | `verification/pty/run-cjk-enabled/w{120,80,48,32}/` | enabled-sidebar CJK frames at each of the four required widths |
 | `verification/pty/run/summary.json`, `run-cjk/summary.json`, `run-enabled/summary.json`, `run-cjk-enabled/summary.json` | per-width verdicts incl. every tab strip seen |
 
-### The build identity of every capture (READ FIRST — see FINDING 1b)
+### FROZEN revision (the captures this report's FINAL verdicts rest on)
+
+```
+packages/mpd-tui-plugin/dist/index.js           c8b87a32dafde0c9   368228 bytes   (verified at read time)
+packages/mpd-bundle-plugin/client.js            2fbd0e26da6e898c   640774 bytes   (verified at read time)
+packages/mpd-team-core-plugin/dist/index.js     a6b96536dbfdf3bf   136550 bytes   (verified at read time)
+```
+All three matched the captain's declared sha and size before the capture started. The INTERIM pane at
+368005 B is deliberately preserved beside it as the BEFORE of two defects (FINDING 11's wrap and
+FINDING 12's missing title).
+
+### The build identity of the EARLIER captures (see FINDING 1b)
 
 `packages/mpd-tui-plugin/dist/index.js` was **306516 B, built 21:34** while `src/panel-dag.ts` was last
 written **22:09** (`grep -c 'dagPanel' dist/index.js` → **0**). The captain then rebuilt (368005 B) and

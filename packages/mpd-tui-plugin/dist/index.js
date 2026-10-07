@@ -2996,6 +2996,152 @@ function defaultHostInputLog(line) {
     createFileSink({ root: defaultLogRoot }).write(line);
   } catch {}
 }
+var HOST_PREFS_MODULE = "lib/types/tuiDisplayPrefs.js";
+async function probeHostPrefs(candidates) {
+  let skew = "";
+  if (candidates.length === 0)
+    return { detail: `no candidate host root (no DSH profile carries ${HOST_PACKAGE_PATH.join("/")})` };
+  for (const root of candidates) {
+    const file = join3(root, HOST_PREFS_MODULE);
+    try {
+      if (!statSync2(file).isFile())
+        continue;
+    } catch {
+      continue;
+    }
+    try {
+      const mod = await import(pathToFileURL(file).href);
+      if (typeof mod.getSidePanelPanels !== "function" || typeof mod.applySidePanelPanels !== "function") {
+        skew = `${file} carries no getSidePanelPanels/applySidePanelPanels pair`;
+        continue;
+      }
+      const read = mod.getSidePanelPanels;
+      const write = mod.applySidePanelPanels;
+      return { prefs: { getSidePanelPanels: () => read(), applySidePanelPanels: (value) => write(value) }, root };
+    } catch (error) {
+      skew = `${file}: ${String(error?.message ?? error)}`;
+    }
+  }
+  return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_PREFS_MODULE} (${candidates.length} probed)` };
+}
+function mergePanelEnableIds(existing, ours) {
+  const tokens = [];
+  for (const token of (typeof existing === "string" ? existing : "").split(",")) {
+    const id = token.trim().toLowerCase();
+    if (id !== "" && !tokens.includes(id))
+      tokens.push(id);
+  }
+  const added = ours.filter((id) => !tokens.includes(id));
+  return { csv: [...tokens, ...added].join(","), added, present: ours.filter((id) => tokens.includes(id)) };
+}
+var PANEL_KEEPER_LADDER_MS = [1000, 2500, 5500, 9000, 16000, 25000];
+function createPanelEnableKeeper(options) {
+  const ours = [];
+  const ladder = options.ladder ?? PANEL_KEEPER_LADDER_MS;
+  const pending = [];
+  let armed = false;
+  let ticks = 0;
+  let reasserted = 0;
+  let state = "requested";
+  let detail = "no panel registered yet";
+  const announce = () => {
+    if (options.onChange === undefined)
+      return;
+    try {
+      options.onChange({ state, detail, ids: [...ours], reasserted, ticks });
+    } catch {}
+  };
+  const settle = (next, nextDetail) => {
+    state = next;
+    detail = nextDetail;
+    announce();
+    if (ticks < ladder.length)
+      return;
+    options.log?.(`mpd-tui panel enable keeper: ${next} — ${nextDetail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`);
+  };
+  const runTick = () => {
+    ticks += 1;
+    options.loadPrefs().then((probe) => {
+      if (probe.prefs === undefined) {
+        settle("absent", probe.detail ?? "the host exposes no side-panel enable store");
+        return;
+      }
+      const prefs = probe.prefs;
+      try {
+        const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours);
+        if (merge.present.length > 0) {
+          settle("confirmed", `standing down: the enable list already names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`);
+          return;
+        }
+        if (merge.added.length === 0) {
+          settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
+          return;
+        }
+        prefs.applySidePanelPanels(merge.csv);
+        reasserted += 1;
+        settle("confirmed", `re-asserted ${merge.added.join(",")} (none of our ids was present)`);
+      } catch (error) {
+        settle("refused", String(error?.message ?? error));
+      }
+    }, (error) => {
+      settle("absent", `the host store could not be read: ${String(error?.message ?? error)}`);
+    });
+  };
+  const arm = () => {
+    if (armed)
+      return;
+    armed = true;
+    for (const delayMs of ladder) {
+      try {
+        pending.push(options.schedule(runTick, delayMs));
+      } catch {
+        break;
+      }
+    }
+  };
+  return {
+    observe(id) {
+      if (id.length === 0 || ours.includes(id))
+        return;
+      ours.push(id);
+      state = "requested";
+      detail = `settling ${String(ladder.length)} tick(s) for ${ours.join(",")}`;
+      arm();
+      announce();
+    },
+    outcome() {
+      return { state, detail, ids: [...ours], reasserted, ticks };
+    },
+    stop() {
+      for (const cancel of pending.splice(0)) {
+        try {
+          cancel();
+        } catch {}
+      }
+    }
+  };
+}
+function defaultPanelKeeperSchedule(run, delayMs) {
+  const timer = setTimeout(run, delayMs);
+  timer.unref?.();
+  return () => {
+    clearTimeout(timer);
+  };
+}
+var PANEL_IDS_RECORD_NAME = "mpd-tui-panels.json";
+function recordPanelIds(outcome) {
+  try {
+    const file = join3(defaultLogRoot(), ".mpd", "logs", PANEL_IDS_RECORD_NAME);
+    mkdirSync2(dirname(file), { recursive: true });
+    writeFileSync(file, `${JSON.stringify({
+      version: 1,
+      panelIds: [...outcome.ids],
+      slugs: outcome.ids.map((id) => id.slice(id.indexOf(":") + 1)),
+      updatedAt: new Date().toISOString()
+    }, null, 2)}
+`);
+  } catch {}
+}
 function readableService(scoped, id) {
   if (scoped === undefined || scoped === null)
     return;
@@ -3096,6 +3242,18 @@ function createTuiAdapter(ctx, options = {}) {
   let hostContact = options.hostInput;
   let hostState = options.hostInput !== undefined ? { state: "bound", kit: "probed", detail: "injected by the caller" } : options.probeHostContact === true ? { state: "pending" } : { state: "absent", detail: "this adapter did not probe for the host contact" };
   const hostWaiters = [];
+  const panelKeeperOptions = {
+    loadPrefs: () => probeHostPrefs(hostRootCandidates()),
+    schedule: defaultPanelKeeperSchedule,
+    ...options.panelEnableLadder === undefined ? {} : { ladder: options.panelEnableLadder },
+    log: options.panelEnableLog ?? options.hostInputLog ?? defaultHostInputLog,
+    onChange: options.keepPanelEnable === true ? recordPanelIds : undefined
+  };
+  const panelKeeper = options.keepPanelEnable === true ? createPanelEnableKeeper(panelKeeperOptions) : {
+    observe: () => {},
+    outcome: () => ({ state: "absent", detail: "this adapter did not keep the host panel enable list", ids: [], reasserted: 0, ticks: 0 }),
+    stop: () => {}
+  };
   let rememberedHook;
   const currentHostInput = () => rememberedHook === undefined ? hostContact : { useStdin: () => rememberedHook?.() };
   const wakeHostWaiters = () => {
@@ -3471,6 +3629,8 @@ function createTuiAdapter(ctx, options = {}) {
             finalId = (readBack() ?? []).map((row) => row.id).find((id) => !before.has(id));
           }
           handle.record(finalId !== undefined ? { state: "confirmed", detail: `${finalId} registered` } : readBack !== undefined ? { state: "refused", detail: `${descriptor.id} refused (the host added no id to its own list() read-back)` } : { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` });
+          if (finalId !== undefined)
+            panelKeeper.observe(finalId);
         } catch (error) {
           handle.record({ state: "refused", detail: String(error?.message ?? error) });
         }
@@ -3602,7 +3762,10 @@ function createTuiAdapter(ctx, options = {}) {
         if (live)
           bound += 1;
       }
-      return { seams, bound, total: TUI_SEAM_KEYS.length, hostInput: { ...hostState } };
+      return { seams, bound, total: TUI_SEAM_KEYS.length, hostInput: { ...hostState }, panelEnable: panelKeeper.outcome() };
+    },
+    panelEnableOutcome() {
+      return panelKeeper.outcome();
     },
     seamOutcomes() {
       return TUI_SEAM_KEYS.map((key) => {
@@ -3636,7 +3799,7 @@ function resolveTuiAdapter(ctx) {
         return mounted;
     } catch {}
   }
-  return createTuiAdapter(ctx);
+  return createTuiAdapter(ctx, { keepPanelEnable: true });
 }
 
 // packages/mpd-tui-plugin/src/state.ts
@@ -3672,6 +3835,34 @@ function clampCells(value, maxCells) {
     width += next;
   }
   return out;
+}
+function sliceCells(text, offset, cols) {
+  const width = Math.floor(Number.isFinite(cols) ? cols : 0);
+  if (width <= 0)
+    return "";
+  const from = Math.max(0, Math.floor(Number.isFinite(offset) ? offset : 0));
+  let out = "";
+  let used = 0;
+  let cursor = 0;
+  for (const character of text) {
+    if (used >= width)
+      break;
+    const span = WIDE.test(character) ? 2 : 1;
+    const at = cursor - from;
+    cursor += span;
+    if (at + span <= 0)
+      continue;
+    if (at < 0) {
+      out += " ";
+      used += 1;
+      continue;
+    }
+    if (used + span > width)
+      break;
+    out += character;
+    used += span;
+  }
+  return out + " ".repeat(width - used);
 }
 function scalarText(value, maxCells = 200) {
   const type = typeof value;
@@ -3992,6 +4183,25 @@ var DAG_KIND_ABBREV = Object.freeze({
   repair: "FIX",
   integration: "INT"
 });
+var DAG_CHARS = Object.freeze({
+  cornerDownRight: "╭",
+  cornerDownLeft: "╮",
+  cornerUpRight: "╰",
+  cornerUpLeft: "╯",
+  vertical: "│",
+  horizontal: "─",
+  teeRight: "├",
+  teeLeft: "┤",
+  teeUp: "┴",
+  teeDown: "┬",
+  cross: "┼",
+  arrowDown: "▼",
+  arrowRight: "▸",
+  focusMarker: "▶",
+  railElbowLast: "└─",
+  railElbowMid: "├─"
+});
+var DAG_CHARS_ONE_CELL = Object.values(DAG_CHARS).every((glyph) => [...glyph].every((character) => cellWidth(character) === 1));
 var DAG_CHROME = Object.freeze({
   nodeBorder: "round",
   frameBorder: "single",
@@ -4173,25 +4383,57 @@ function gutterCells(offset, contentRows, viewportRows) {
     cells.push(row >= top && row < top + thumb ? DAG_CHROME.barFull : DAG_CHROME.barEmpty);
   return cells;
 }
-function panelScrollKey(event) {
+function gutterCellsX(colOffset, contentCols, viewportCols) {
+  const viewport = Math.max(1, Math.floor(Number.isFinite(viewportCols) ? viewportCols : 1));
+  const band = clampScroll(colOffset, contentCols, viewport);
+  if (!band.overflow)
+    return "";
+  const span = Math.min(viewport, Math.max(1, Math.floor(Number.isFinite(contentCols) ? contentCols : 1)));
+  const thumb = Math.min(span, Math.max(1, Math.floor(span * span / Math.max(1, Math.floor(contentCols)))));
+  const travel = span - thumb;
+  const left = travel === 0 ? 0 : Math.round(band.offset / band.max * travel);
+  let rail = "";
+  for (let col = 0;col < span; col += 1)
+    rail += col >= left && col < left + thumb ? DAG_CHROME.barFull : DAG_CHROME.barEmpty;
+  return rail;
+}
+function panelScrollGesture(event) {
   if (event === null || event === undefined || typeof event !== "object")
     return;
   const raw = event;
   const flags = raw.key !== null && raw.key !== undefined && typeof raw.key === "object" ? raw.key : {};
   const input = typeof raw.input === "string" ? raw.input : "";
   const ctrl = flags.ctrl === true;
+  const shift = flags.shift === true;
   if (flags.pageUp === true || input === "\x1B[5~")
-    return "pageUp";
+    return shift ? "colPageUp" : "pageUp";
   if (flags.pageDown === true || input === "\x1B[6~")
-    return "pageDown";
+    return shift ? "colPageDown" : "pageDown";
   if (flags.home === true || ctrl && input === "a")
     return "top";
   if (flags.end === true || ctrl && input === "e")
     return "bottom";
+  if (!shift)
+    return;
+  if (flags.upArrow === true || input === "K")
+    return "colUp";
+  if (flags.downArrow === true || input === "J")
+    return "colDown";
+  if (flags.leftArrow === true || input === "H")
+    return "colLeft";
+  if (flags.rightArrow === true || input === "L")
+    return "colRight";
+  return;
+}
+function panelScrollKey(event) {
+  const gesture = panelScrollGesture(event);
+  if (gesture === "top" || gesture === "bottom" || gesture === "pageUp" || gesture === "pageDown")
+    return gesture;
   return;
 }
 function usePanelViewport(kit, read, initialOffset = 0) {
   const live = kit.React.useRef(initialOffset);
+  const liveCol = kit.React.useRef(0);
   const cell = kit.React.useState(initialOffset);
   const set = cell[1];
   const facts = kit.React.useRef({ contentRows: 1, viewportRows: 1 });
@@ -4199,6 +4441,7 @@ function usePanelViewport(kit, read, initialOffset = 0) {
   if (facts !== null && facts !== undefined)
     facts.current = measured;
   const position = () => typeof live?.current === "number" && Number.isFinite(live.current) ? live.current : initialOffset;
+  const colPosition = () => typeof liveCol?.current === "number" && Number.isFinite(liveCol.current) ? liveCol.current : 0;
   const sizes = () => {
     const value = facts?.current;
     const contentRows = typeof value?.contentRows === "number" && Number.isFinite(value.contentRows) ? Math.max(1, Math.floor(value.contentRows)) : 1;
@@ -4209,12 +4452,28 @@ function usePanelViewport(kit, read, initialOffset = 0) {
     const now = sizes();
     return clampScroll(position(), now.contentRows, now.viewportRows);
   };
+  const colBand = () => {
+    const value = facts?.current;
+    const contentCols = typeof value?.contentCols === "number" && Number.isFinite(value.contentCols) ? Math.max(1, Math.floor(value.contentCols)) : 1;
+    const viewportCols = typeof value?.viewportCols === "number" && Number.isFinite(value.viewportCols) ? Math.max(1, Math.floor(value.viewportCols)) : 1;
+    if (value?.contentCols === undefined || value?.viewportCols === undefined)
+      return { offset: 0, max: 0, overflow: false };
+    return clampScroll(colPosition(), contentCols, viewportCols);
+  };
   const commit = (next) => {
     const now = sizes();
     const clamped = clampScroll(next, now.contentRows, now.viewportRows).offset;
     if (live !== null && live !== undefined)
       live.current = clamped;
     set(clamped);
+  };
+  const commitCol = (next) => {
+    const clamped = colBand();
+    const wanted = Math.floor(Number.isFinite(next) ? next : 0);
+    const target = Math.min(clamped.max, Math.max(0, wanted));
+    if (liveCol !== null && liveCol !== undefined)
+      liveCol.current = target;
+    set(target);
   };
   const handle = {
     get contentRows() {
@@ -4238,9 +4497,33 @@ function usePanelViewport(kit, read, initialOffset = 0) {
     scrollBy: (delta) => {
       commit(position() + delta);
     },
+    get colOffset() {
+      return colBand().offset;
+    },
+    get colMax() {
+      return colBand().max;
+    },
+    get colOverflow() {
+      return colBand().overflow;
+    },
+    scrollToCol: (next) => {
+      commitCol(next);
+    },
+    scrollColBy: (delta) => {
+      commitCol(colPosition() + delta);
+    },
     onWheel: (event) => {
       const now = sizes();
       commit(scrollByWheel(event, position(), now.contentRows, now.viewportRows));
+    },
+    onWheelX: (event) => {
+      const value = facts?.current;
+      if (value?.contentCols === undefined || value?.viewportCols === undefined)
+        return;
+      const raw = event ?? {};
+      if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX))
+        return;
+      commitCol(colPosition() + raw.deltaX);
     },
     sync() {
       return handle;
@@ -4265,14 +4548,16 @@ function viewportGutter(kit, viewport, onTrackClick) {
     }
   }, ...rows);
 }
-function panelViewportBody(kit, children, viewport, reserveGutter = true) {
-  const window = children.slice(viewport.offset, viewport.offset + viewport.viewportRows);
+function panelViewportBody(kit, children, viewport, reserveGutter = true, rowWrapper) {
+  const visible = children.slice(viewport.offset, viewport.offset + viewport.viewportRows);
+  const rows = (rowWrapper === undefined ? undefined : rowWrapper(kit, visible)) ?? undefined;
+  const drawn = rowWrapper === undefined ? [...visible] : [rows];
   if (!reserveGutter)
-    return [...window];
+    return drawn;
   const rail = viewportGutter(kit, viewport);
   if (rail === undefined)
-    return [...window];
-  return [kit.React.createElement(kit.ui.Box, { key: "window", flexDirection: "row" }, kit.React.createElement(kit.ui.Box, { key: "rows", flexDirection: "column" }, ...window), rail)];
+    return drawn;
+  return [kit.React.createElement(kit.ui.Box, { key: "window", flexDirection: "row" }, kit.React.createElement(kit.ui.Box, { key: "rows", flexDirection: "column" }, ...drawn), rail)];
 }
 function publishBadge(host, badge, previous) {
   if (host === null || host === undefined)
@@ -4427,24 +4712,11 @@ var GRAPH_THEME = Object.freeze({
   chain: "accent",
   blank: "text"
 });
-var GLYPH = Object.freeze({
-  completed: "✓",
-  running: "◐",
-  failed: "✗",
-  blocked: "○",
-  cancelled: "⊘",
-  open: "○"
-});
-var KIND_ABBREV = Object.freeze({
-  requirement: "REQ",
-  work: "WRK",
-  review: "REV",
-  repair: "FIX",
-  integration: "INT"
-});
-var ARROW_DOWN = "▼";
-var ARROW_RIGHT = "▸";
-var FOCUS_MARKER = "▶";
+var GLYPH = DAG_TONE_GLYPH;
+var KIND_ABBREV = DAG_KIND_ABBREV;
+var ARROW_DOWN = DAG_CHARS.arrowDown;
+var ARROW_RIGHT = DAG_CHARS.arrowRight;
+var FOCUS_MARKER = DAG_CHARS.focusMarker;
 var LEGEND_ENTRY = Object.freeze([
   `${ARROW_DOWN}/${ARROW_RIGHT} blocker above → dependent below · ${FOCUS_MARKER} focus lights its chain`,
   `${ARROW_DOWN}/${ARROW_RIGHT} blocker → dependent · ${FOCUS_MARKER} focus`,
@@ -4477,9 +4749,10 @@ function legendLines(cols) {
   }
   return lines;
 }
+var NATURAL_RAIL_FALLBACK_COLS = 80;
 var MIN_NODE_WIDTH = 16;
 var NODE_GAP = 3;
-var MAX_NODE_WIDTH = 34;
+var NATURAL_MAX_NODE_WIDTH = 64;
 var MAX_BOX_RANKS = 12;
 var UP = 1;
 var DOWN = 2;
@@ -4487,21 +4760,21 @@ var LEFT = 4;
 var RIGHT = 8;
 var JUNCTION = Object.freeze({
   0: " ",
-  [UP]: "│",
-  [DOWN]: "│",
-  [UP | DOWN]: "│",
-  [LEFT]: "─",
-  [RIGHT]: "─",
-  [LEFT | RIGHT]: "─",
-  [DOWN | RIGHT]: "┌",
-  [DOWN | LEFT]: "┐",
-  [UP | RIGHT]: "└",
-  [UP | LEFT]: "┘",
-  [UP | DOWN | RIGHT]: "├",
-  [UP | DOWN | LEFT]: "┤",
-  [UP | LEFT | RIGHT]: "┴",
-  [DOWN | LEFT | RIGHT]: "┬",
-  [UP | DOWN | LEFT | RIGHT]: "┼"
+  [UP]: DAG_CHARS.vertical,
+  [DOWN]: DAG_CHARS.vertical,
+  [UP | DOWN]: DAG_CHARS.vertical,
+  [LEFT]: DAG_CHARS.horizontal,
+  [RIGHT]: DAG_CHARS.horizontal,
+  [LEFT | RIGHT]: DAG_CHARS.horizontal,
+  [DOWN | RIGHT]: DAG_CHARS.cornerDownRight,
+  [DOWN | LEFT]: DAG_CHARS.cornerDownLeft,
+  [UP | RIGHT]: DAG_CHARS.cornerUpRight,
+  [UP | LEFT]: DAG_CHARS.cornerUpLeft,
+  [UP | DOWN | RIGHT]: DAG_CHARS.teeRight,
+  [UP | DOWN | LEFT]: DAG_CHARS.teeLeft,
+  [UP | LEFT | RIGHT]: DAG_CHARS.teeUp,
+  [DOWN | LEFT | RIGHT]: DAG_CHARS.teeDown,
+  [UP | DOWN | LEFT | RIGHT]: DAG_CHARS.cross
 });
 function clampSpans(spans, cols) {
   const kept = [];
@@ -4520,10 +4793,59 @@ function clampSpans(spans, cols) {
   }
   return kept;
 }
-function labelOf(task, focus) {
+function graphSafeLabel(subject, ordinal) {
+  const runs = subject.match(/[\x20-\x7E]+/g);
+  const joined = runs === null ? "" : runs.join(" ").replace(/\s+/g, " ").trim();
+  return joined === "" ? `#${ordinal}` : joined;
+}
+function sliceSpans(spans, offset, cols) {
+  const width = Math.floor(Number.isFinite(cols) ? cols : 0);
+  if (width <= 0)
+    return [];
+  const from = Math.max(0, Math.floor(Number.isFinite(offset) ? offset : 0));
+  const kept = [];
+  let cursor = 0;
+  let used = 0;
+  for (const span of spans) {
+    if (used >= width)
+      break;
+    const celly = cellWidth(span.text);
+    const enter = Math.max(from, cursor);
+    const skip = enter - cursor;
+    if (skip >= celly) {
+      cursor += celly;
+      continue;
+    }
+    const cut = sliceCells(span.text, skip, Math.min(celly - skip, width - used));
+    if (cut !== "")
+      kept.push({ text: cut, tone: span.tone });
+    used += cellWidth(cut);
+    cursor += celly;
+  }
+  if (used < width)
+    kept.push({ text: " ".repeat(width - used), tone: "blank" });
+  return kept;
+}
+function labelOf(task, focus, ordinal) {
   const marker = task.id === focus ? FOCUS_MARKER : GLYPH[task.visual] ?? "?";
   const kind = KIND_ABBREV[task.kind ?? ""] ?? "";
-  return (kind === "" ? [marker, task.id, task.subject] : [marker, task.id, kind, task.subject]).join(" ");
+  const subject = graphSafeLabel(task.subject, ordinal);
+  return (kind === "" ? [marker, task.id, subject] : [marker, task.id, kind, subject]).join(" ");
+}
+function ordinalOf(tasks) {
+  const ordinals = new Map;
+  tasks.forEach((task, index) => {
+    if (!ordinals.has(task.id))
+      ordinals.set(task.id, index + 1);
+  });
+  return ordinals;
+}
+function widestLabelCells(tasks, focus) {
+  const ordinals = ordinalOf(tasks);
+  let widest = 0;
+  for (const task of tasks)
+    widest = Math.max(widest, cellWidth(labelOf(task, focus, ordinals.get(task.id) ?? 1)));
+  return widest;
 }
 function toneOf(task, focus, chain) {
   if (task.id === focus)
@@ -4650,23 +4972,38 @@ function cycleIds(tasks) {
     visit(task.id);
   return [...cyclic].sort();
 }
-function layoutBoxes(tasks, cols, focus) {
+function layoutBoxesNatural(tasks, focus, budget) {
   const plan = rankPlan(tasks);
-  if (tasks.length === 0) {
-    const empty = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [], ranksDerived: plan.derived, unresolved: plan.unresolved };
-    if (focus !== undefined)
-      empty.focus = focus;
-    return empty;
-  }
   const ranks = plan.ranks;
   if (ranks.length > MAX_BOX_RANKS)
     return;
   const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1);
-  const nodeWidth = Math.min(MAX_NODE_WIDTH, Math.floor((cols - NODE_GAP * (widest - 1)) / widest));
-  if (nodeWidth < MIN_NODE_WIDTH)
-    return;
+  const label = widestLabelCells(tasks, focus);
+  const nodeWidth = Math.max(MIN_NODE_WIDTH, Math.min(NATURAL_MAX_NODE_WIDTH, label + 3));
+  if (tasks.length === 0) {
+    const empty = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [], ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
+    if (focus !== undefined)
+      empty.focus = focus;
+    return empty;
+  }
+  const stride = boxRowsOf(ranks.length, budget) === 5 ? 8 : 6;
+  const form = stride === 8 ? 5 : 3;
+  return drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, label);
+}
+function boxRowsOf(ranks, budget) {
+  const roomy = ranks * 8 + 2;
+  const rows = budget?.rows === undefined || !Number.isFinite(budget.rows) ? Number.POSITIVE_INFINITY : Math.floor(budget.rows);
+  return rows >= roomy ? 5 : 3;
+}
+function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLabel) {
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
   const width = widest * (nodeWidth + NODE_GAP) - NODE_GAP;
+  const ordinals = ordinalOf(tasks);
+  const padTop = form === 5 ? 1 : 0;
+  const labelCells = nodeWidth - 2;
+  const contentRow = padTop + 1;
+  const bottomRow = form === 5 ? 4 : 2;
+  const RANK_STRIDE = bottomRow + 4;
   const column = new Map;
   for (const rank of ranks) {
     const ordered = rank.map((task, index) => {
@@ -4718,8 +5055,7 @@ function layoutBoxes(tasks, cols, focus) {
       wide[row][over] = true;
     }
   };
-  const centreOf = (id) => (column.get(id) ?? 0) + Math.floor(nodeWidth / 2);
-  const RANK_STRIDE = 6;
+  const centreOf = (id) => (column.get(id) ?? 0) + Math.floor((nodeWidth - 1) / 2);
   const hits = [];
   for (let rank = 0;rank < ranks.length; rank++) {
     const top = rank * RANK_STRIDE;
@@ -4731,32 +5067,35 @@ function layoutBoxes(tasks, cols, focus) {
         link(top, col, LEFT | RIGHT, at);
       link(top, left, RIGHT | DOWN, at);
       link(top, right, LEFT | DOWN, at);
-      link(top + 1, left, UP | DOWN, at);
-      link(top + 1, right, UP | DOWN, at);
-      const body = labelOf(task, focus);
-      let cursor = left + 1;
-      for (const char of clampCells(stripControl(" " + body), nodeWidth - 2)) {
-        label(top + 1, cursor, char, at);
-        cursor += cellWidth(char);
+      for (let row = top + 1;row < top + bottomRow; row++) {
+        link(row, left, UP | DOWN, at);
+        link(row, right, UP | DOWN, at);
       }
       for (let col = left + 1;col < right; col++)
-        link(top + 2, col, LEFT | RIGHT, at);
-      link(top + 2, left, RIGHT | UP, at);
-      link(top + 2, right, LEFT | UP, at);
+        link(top + bottomRow, col, LEFT | RIGHT, at);
+      link(top + bottomRow, left, RIGHT | UP, at);
+      link(top + bottomRow, right, LEFT | UP, at);
+      const body = labelOf(task, focus, ordinals.get(task.id) ?? 1);
+      let cursor = left + 1;
+      for (const char of clampCells(stripControl(" " + body), labelCells)) {
+        label(top + contentRow, cursor, char, at);
+        cursor += cellWidth(char);
+      }
       if (ranks[rank + 1]?.some((child) => child.dependencies.includes(task.id)) === true)
-        link(top + 2, centreOf(task.id), DOWN, at);
-      hits.push({ taskId: task.id, row: top, rowEnd: top + 2, col: left, colEnd: right });
+        link(top + bottomRow, centreOf(task.id), DOWN, at);
+      hits.push({ taskId: task.id, row: top, rowEnd: top + bottomRow, col: left, colEnd: right });
     }
     if (rank + 1 >= ranks.length)
       break;
-    const stubTop = top + 3, bus = top + 4, stubBottom = top + 5;
+    const stubTop = top + bottomRow + 1, bus = top + bottomRow + 2, stubBottom = top + bottomRow + 3;
+    const childTop = top + RANK_STRIDE;
     for (const child of ranks[rank + 1]) {
       const parents = child.dependencies.filter((id) => ranks[rank].some((parent) => parent.id === id));
       if (parents.length === 0)
         continue;
       const centre = centreOf(child.id);
       const entryTone = toneOf(child, focus, chain);
-      link(top + 6, centre, UP, entryTone);
+      link(childTop, centre, UP, entryTone);
       label(stubBottom, centre, ARROW_DOWN, entryTone);
       for (const id of parents) {
         const from = centreOf(id);
@@ -4796,9 +5135,11 @@ function layoutBoxes(tasks, cols, focus) {
   while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === ""))
     lines.pop();
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved };
+  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: form };
   if (focus !== undefined)
     view.focus = focus;
+  if (widestLabel !== undefined)
+    view.labelOverflow = widestLabel > labelCells - 1;
   return view;
 }
 function layoutRail(tasks, cols, focus) {
@@ -4835,13 +5176,14 @@ function layoutRail(tasks, cols, focus) {
     walk(task, "", true, 0);
   const lines = [];
   const hits = [];
+  const ordinals = ordinalOf(tasks);
   drawn.forEach((entry, index) => {
     const at = toneOf(entry.task, focus, chain);
     const extra = entry.task.dependencies.length > 1 ? `  ⇠ ${entry.task.dependencies.join("+")}` : "";
     const tail = `${at === "dim" ? "" : entry.task.assignee ?? ""}${entry.task.attempt === undefined ? "" : ` a${entry.task.attempt}`}${extra}`;
     const elbow = entry.leaf ? "└─" : "├─";
     const connector = entry.depth === 0 ? "" : `${entry.prefix}${elbow}${ARROW_RIGHT} `;
-    const label = labelOf(entry.task, focus);
+    const label = labelOf(entry.task, focus, ordinals.get(entry.task.id) ?? 1);
     const tailWidth = tail === "" ? 0 : cellWidth(tail) + 2;
     const useTail = tailWidth > 0 && cols - cellWidth(connector) - tailWidth >= 10;
     const labelRoom = Math.max(0, cols - cellWidth(connector) - (useTail ? tailWidth : 0));
@@ -4855,7 +5197,7 @@ function layoutRail(tasks, cols, focus) {
     hits.push({ taskId: entry.task.id, row: index, rowEnd: index, col: 0, colEnd: Math.max(0, cols - 1) });
   });
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved };
+  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
   if (focus !== undefined)
     view.focus = focus;
   return view;
@@ -4866,13 +5208,14 @@ function layoutList(tasks, cols, focus) {
   const ranks = plan.ranks;
   const lines = [];
   const hits = [];
+  const ordinals = ordinalOf(tasks);
   for (let rank = 0;rank < ranks.length; rank++) {
     const rule = "─".repeat(Math.max(0, cols - 8));
     lines.push(clampSpans([{ text: `rank ${rank} `, tone: "edge" }, { text: rule, tone: "edge" }], cols));
     for (const task of ranks[rank]) {
       const at = toneOf(task, focus, chain);
       const suffix = task.dependencies.length === 0 ? "" : ` ⇠${task.dependencies.join(",")}`;
-      const head = labelOf(task, focus);
+      const head = labelOf(task, focus, ordinals.get(task.id) ?? 1);
       const tail = `${task.visual}${task.attempt === undefined ? "" : ` a${task.attempt}`}${task.assignee === undefined ? "" : `  @${task.assignee}`}${suffix}`;
       const shown = clampCells(stripControl(head), Math.max(8, cols - cellWidth(tail) - 3));
       lines.push(clampSpans([{ text: "  " + shown + " ".repeat(Math.max(0, cols - 2 - cellWidth(shown) - cellWidth(tail) - 1)), tone: at }, { text: tail, tone: at }], cols));
@@ -4880,14 +5223,13 @@ function layoutList(tasks, cols, focus) {
     }
   }
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width: cols, mode: "list", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved };
+  const view = { lines, hits, width: cols, mode: "list", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
   if (focus !== undefined)
     view.focus = focus;
   return view;
 }
-function layoutGraph(tasks, cols, focus) {
-  const width = Math.max(8, Math.floor(cols));
-  return layoutBoxes(tasks, width, focus) ?? layoutRail(tasks, width, focus);
+function layoutGraphNatural(tasks, focus, budget) {
+  return layoutBoxesNatural(tasks, focus, budget) ?? layoutRail(tasks, NATURAL_RAIL_FALLBACK_COLS, focus);
 }
 function hitTest(view, row, col) {
   for (const hit of view.hits) {
@@ -5195,6 +5537,7 @@ function readRecordWorkflow(workspace, holds, record) {
   const tasks = board.map((task) => ({
     id: scalarText(task.id, 40) ?? "",
     subject: scalarText(task.subject, 160) ?? "",
+    description: scalarText(task.description, 400),
     kind: scalarText(task.kind, 24),
     status: scalarText(task.status, 40) ?? "pending",
     visual: "open",
@@ -5551,6 +5894,7 @@ function surfaceHints(kit, key, hints) {
 var SUBAGENT_SCENE_ID = "mpd-tui-subagents";
 var MERGED_ROW_MAX_CELLS = 4000;
 var FALLBACK_COLS = 100;
+var FALLBACK_ROWS = 24;
 var REFRESH_MS = 2000;
 var DETAIL_TAIL_LINES = 12;
 var DETAIL_LABEL_WIDTH = 12;
@@ -5589,7 +5933,7 @@ function hostKit(React, ui) {
 }
 function measureTerminal(ui) {
   if (typeof ui.useTerminalSize !== "function")
-    return { size: "", cols: FALLBACK_COLS };
+    return { size: "", cols: FALLBACK_COLS, rows: FALLBACK_ROWS };
   let columns = "?";
   let rows = "?";
   const measured = ui.useTerminalSize();
@@ -5598,9 +5942,11 @@ function measureTerminal(ui) {
     rows = measured.rows ?? "?";
   }
   const cols = Number(columns);
+  const height = Number(rows);
   return {
     size: `${String(columns)}x${String(rows)}`,
-    cols: Number.isFinite(cols) && cols > 20 ? cols : FALLBACK_COLS
+    cols: Number.isFinite(cols) && cols > 20 ? cols : FALLBACK_COLS,
+    rows: Number.isFinite(height) && height > 5 ? Math.floor(height) : FALLBACK_ROWS
   };
 }
 function isReturn(input, key) {
@@ -5801,11 +6147,11 @@ function graphTasksOf(workflow) {
     ...task.attempt === undefined ? {} : { attempt: task.attempt }
   }));
 }
-function teamGraphView(workflow, cols) {
+function teamGraphView(workflow, cols, rows) {
   if (workflow === undefined || workflow.tasks.length === 0)
     return;
   try {
-    return layoutGraph(graphTasksOf(workflow), cols);
+    return layoutGraphNatural(graphTasksOf(workflow), undefined, rows === undefined ? {} : { rows });
   } catch {
     return;
   }
@@ -5848,6 +6194,12 @@ function createSubagentSceneComponent(readWorkflow, onHostKit) {
     const detailScrollState = React.useState(0);
     const detailScroll = detailScrollState[0];
     const setDetailScroll = detailScrollState[1];
+    const graphXState = React.useState(0);
+    const graphX = graphXState[0];
+    const setGraphX = graphXState[1];
+    const graphYState = React.useState(0);
+    const graphY = graphYState[0];
+    const setGraphY = graphYState[1];
     const refresh = () => {
       let next;
       try {
@@ -5881,6 +6233,9 @@ function createSubagentSceneComponent(readWorkflow, onHostKit) {
       } catch {}
     }
     const measured = measureTerminal(ui);
+    const dagView = teamGraphView(workflow, measured.cols);
+    const dagXMax = dagView === undefined ? 0 : Math.max(0, dagView.width - measured.cols);
+    const dagYMax = dagView === undefined ? 0 : Math.max(0, dagView.lines.length - 1);
     const pairs = subagentRowEntries(channel);
     const rows = pairs.map((pair) => pair.view);
     const selectedIndex = rows.length === 0 ? -1 : Math.min(Math.max(focus, 0), rows.length - 1);
@@ -5944,6 +6299,46 @@ function createSubagentSceneComponent(readWorkflow, onHostKit) {
         }
         if (key?.escape === true || input === "q") {
           close();
+          return;
+        }
+        if (dagView !== undefined && key?.shift === true && key?.leftArrow === true) {
+          setGraphX(Math.max(0, Math.min(dagXMax, graphX - 1)));
+          return;
+        }
+        if (dagView !== undefined && key?.shift === true && key?.rightArrow === true) {
+          setGraphX(Math.max(0, Math.min(dagXMax, graphX + 1)));
+          return;
+        }
+        if (dagView !== undefined && key?.shift === true && key?.upArrow === true) {
+          setGraphY(Math.max(0, Math.min(dagYMax, graphY - 1)));
+          return;
+        }
+        if (dagView !== undefined && key?.shift === true && key?.downArrow === true) {
+          setGraphY(Math.max(0, Math.min(dagYMax, graphY + 1)));
+          return;
+        }
+        if (dagView !== undefined && key?.shift === true && key?.pageUp === true) {
+          setGraphX(Math.max(0, Math.min(dagXMax, graphX - measured.cols)));
+          return;
+        }
+        if (dagView !== undefined && key?.shift === true && key?.pageDown === true) {
+          setGraphX(Math.max(0, Math.min(dagXMax, graphX + measured.cols)));
+          return;
+        }
+        if (dagView !== undefined && key?.pageUp === true) {
+          setGraphY(Math.max(0, Math.min(dagYMax, graphY - measured.rows)));
+          return;
+        }
+        if (dagView !== undefined && key?.pageDown === true) {
+          setGraphY(Math.max(0, Math.min(dagYMax, graphY + measured.rows)));
+          return;
+        }
+        if (dagView !== undefined && key?.home === true) {
+          setGraphY(0);
+          return;
+        }
+        if (dagView !== undefined && key?.end === true) {
+          setGraphY(dagYMax);
           return;
         }
         if (key?.upArrow === true) {
@@ -6010,12 +6405,19 @@ function createSubagentSceneComponent(readWorkflow, onHostKit) {
         const overrides = { tasks: teamTone };
         children.push(surfaceBodyRow(kit, `team-${index}`, teamLines[index], overrides));
       }
-      const view = teamGraphView(workflow, measured.cols);
+      const view = dagView;
       if (view !== undefined) {
-        children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}`)));
-        for (let index = 0;index < view.lines.length; index += 1) {
-          const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
+        const graphXAt = Math.min(Math.max(0, graphX), dagXMax);
+        const graphYAt = Math.min(Math.max(0, graphY), dagYMax);
+        children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}${dagXMax > 0 ? ` ⇠${graphXAt}/${view.width}→` : ""}`)));
+        for (let index = graphYAt;index < view.lines.length; index += 1) {
+          const spans = sliceSpans(view.lines[index], graphXAt, measured.cols).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
           children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans));
+        }
+        if (dagXMax > 0) {
+          const rail = gutterCellsX(graphXAt, view.width, measured.cols);
+          if (rail !== "")
+            children.push(surfaceText(kit, "hrail", rail, { dim: true }));
         }
         let arrow = [];
         try {
@@ -6793,6 +7195,8 @@ function createPanelComponent(readWorkflow) {
     const pinnedTask = pinnedId === undefined ? undefined : (workflow?.tasks ?? []).find((task) => task.id === pinnedId);
     const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
     const sizes = { contentRows: 1, viewportRows: 1 };
+    sizes.contentCols = view === undefined ? width : view.width;
+    sizes.viewportCols = width;
     const windowRows = Math.max(1, (measured.rows ?? MERGED_FALLBACK_ROWS) - PANEL_CHROME_ROWS);
     const viewport = usePanelViewport(kit, () => sizes);
     const drawnLines = view === undefined ? [] : view.lines;
@@ -6805,6 +7209,19 @@ function createPanelComponent(readWorkflow) {
       const input = bare.input;
       const down = flags.downArrow === true || input === "j" || input === "J";
       const up = flags.upArrow === true || input === "k" || input === "K";
+      const both = panelScrollGesture(bare);
+      if (flags.shift === true && (both === "colLeft" || both === "colRight" || both === "colUp" || both === "colDown")) {
+        if (bare.preventDefault !== undefined)
+          bare.preventDefault();
+        viewport.scrollColBy(both === "colLeft" || both === "colUp" ? -1 : 1);
+        return;
+      }
+      if (flags.shift === true && (both === "colPageUp" || both === "colPageDown")) {
+        if (bare.preventDefault !== undefined)
+          bare.preventDefault();
+        viewport.scrollColBy(both === "colPageUp" ? -width : width);
+        return;
+      }
       if (gesture !== undefined || down || up) {
         if (bare.preventDefault !== undefined)
           bare.preventDefault();
@@ -6851,14 +7268,18 @@ function createPanelComponent(readWorkflow) {
     } else {
       children.push(textRow(kit, `task dependency graph${view.mode === "rail" ? " (rail)" : ""}`, { key: "graphhead", dim: true, maxCells: width }));
       for (let index = 0;index < view.lines.length; index += 1) {
+        const spans = sliceSpans(view.lines[index], viewport.colOffset, width);
         const hit = view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd);
-        children.push(hit === undefined ? graphRow(kit, view.lines[index], { key: `graph-${index}`, cols: width }) : graphRow(kit, view.lines[index], {
+        children.push(hit === undefined ? graphRow(kit, spans, { key: `graph-${index}`, cols: width }) : graphRow(kit, spans, {
           key: `graph-${index}`,
           cols: width,
           onClick: () => {
             setPinned(hit.taskId);
           }
         }));
+      }
+      if (viewport.colOverflow) {
+        children.push(textRow(kit, gutterCellsX(viewport.colOffset, sizes.contentCols ?? width, width), { key: "hrail", tone: "edge", maxCells: width }));
       }
       if (pinnedTask !== undefined) {
         children.push(textRow(kit, `◆ ${pinnedTask.id}`, { key: "pin-head", tone: "focus", bold: true, maxCells: width }));
@@ -6894,8 +7315,8 @@ function createPanelComponent(readWorkflow) {
     sizes.contentRows = contentRows;
     sizes.viewportRows = windowRows;
     const scroller = viewport;
-    const scrolled = React.createElement(ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows));
-    const body = panelViewportBody(kit, [scrolled], scroller);
+    const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...rows);
+    const body = panelViewportBody(kit, children, scroller, true, wheelBound);
     return panelFrame(kit, PANEL_TITLE, body);
   };
 }
@@ -6966,6 +7387,7 @@ function dagPageOf(workflow) {
     tasks.push({
       id,
       subject: panelField(task.subject, 200) ?? "",
+      ...task.description === undefined ? {} : { description: panelField(task.description, 400) ?? "" },
       ...task.kind === undefined ? {} : { kind: panelField(task.kind, 20) ?? "" },
       visual: panelField(task.visual, 20) ?? "open",
       ...task.assignee === undefined ? {} : { assignee: panelField(task.assignee, 60) ?? "" },
@@ -6997,67 +7419,11 @@ function viewFacts(view) {
   };
 }
 var LIST_ROWS = 24;
-var MIN_BOX_LABEL_CELLS = 32;
-var NODE_GAP2 = 3;
-function widestLabel(tasks) {
-  let widest = 0;
-  for (const task of tasks) {
-    const abbrev = DAG_KIND_ABBREV[task.kind ?? ""] ?? "";
-    const label = ` ${visualGlyphFor(task.visual)} ${task.id}${abbrev === "" ? "" : ` ${abbrev}`} ${task.subject}`;
-    widest = Math.max(widest, panelCellWidth(label));
-  }
-  return widest;
-}
-function boxGrid(tasks, cols) {
-  if (tasks.length === 0)
-    return;
-  const rankOf = new Map;
-  for (const task of tasks)
-    rankOf.set(task.id, 0);
-  for (let pass = 0;pass < tasks.length; pass += 1) {
-    let moved = false;
-    for (const task of tasks) {
-      let deepest = -1;
-      for (const blocker of task.dependencies) {
-        const at = rankOf.get(blocker);
-        if (at !== undefined && at > deepest)
-          deepest = at;
-      }
-      if (deepest + 1 > (rankOf.get(task.id) ?? 0)) {
-        rankOf.set(task.id, deepest + 1);
-        moved = true;
-      }
-    }
-    if (!moved)
-      break;
-  }
-  const ranks = Math.max(0, ...[...rankOf.values()].map((rank) => rank + 1));
-  if (ranks === 0)
-    return;
-  let widestRank = 1;
-  const perRank = new Map;
-  for (const rank of rankOf.values())
-    perRank.set(rank, (perRank.get(rank) ?? 0) + 1);
-  for (const count of perRank.values())
-    widestRank = Math.max(widestRank, count);
-  const nodeWidth = Math.min(34, Math.floor((cols - NODE_GAP2 * (widestRank - 1)) / widestRank));
-  return { ranks, nodeWidth };
-}
-function panelCellWidth(value) {
-  return cellWidth(panelText(value));
-}
-function visualGlyphFor(visual) {
-  return DAG_TONE_GLYPH[visual] ?? "?";
-}
-function dagPanelLayout(tasks, cols, focus) {
+function dagPanelLayout(tasks, cols, focus, rows) {
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8));
-  const grid = boxGrid(tasks, width);
-  const label = widestLabel(tasks);
-  if (grid !== undefined && grid.nodeWidth - 2 >= label && grid.nodeWidth - 2 >= MIN_BOX_LABEL_CELLS) {
-    const boxes = layoutBoxes(tasks, width, focus);
-    if (boxes !== undefined)
-      return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) };
-  }
+  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows });
+  if (boxes !== undefined && boxes.labelOverflow !== true)
+    return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) };
   if (tasks.length > LIST_ROWS) {
     const dense = layoutList(tasks, width, focus);
     return { view: dense, mode: "list", list: true, ...viewFacts(dense) };
@@ -7095,6 +7461,8 @@ function dagBadge(tasks) {
 function pinnedDetailLines(task, tasks, cols) {
   const dependents = tasks.filter((other) => other.dependencies.includes(task.id)).map((other) => other.id);
   const facts = [
+    ["subject", task.subject === "" ? "—" : task.subject],
+    ...task.description === undefined || task.description === "" ? [] : [["description", task.description]],
     ["id", task.id],
     ["kind", task.kind ?? "—"],
     ["visual", task.visual],
@@ -7136,8 +7504,9 @@ function scrollRowIntoView(viewport, row) {
     viewport.scrollTo(row);
     return;
   }
-  if (row >= viewport.offset + viewport.viewportRows)
-    viewport.scrollTo(row - viewport.viewportRows + 1);
+  if (row >= viewport.offset + viewport.viewportRows) {
+    viewport.scrollTo(Math.min(row - viewport.viewportRows + 1, viewport.max));
+  }
 }
 function headerFacts(page, cols) {
   const total = Math.max(1, page.total);
@@ -7175,8 +7544,18 @@ function createDagPanelComponent(readWorkflow) {
     const setPinned = focused[1];
     const cursorId = typeof cursor[0] === "string" ? cursor[0] : undefined;
     const setCursor = cursor[1];
-    const focus = pinned ?? cursorId;
-    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus);
+    const cursorLive = kit.React.useRef(undefined);
+    const cursorNow = () => typeof cursorLive?.current === "string" ? cursorLive.current : cursorId;
+    const moveCursor = (next) => {
+      if (cursorLive !== null && cursorLive !== undefined)
+        cursorLive.current = next;
+      setCursor(next);
+    };
+    const focus = pinned ?? cursorNow();
+    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS);
+    const sizes = { contentRows: 1, viewportRows: 1, contentCols, viewportCols: contentCols };
+    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows);
+    sizes.contentCols = layout?.view.width ?? contentCols;
     usePanelTick(kit, DAG_PANEL_REFRESH_MS, true);
     const animate = layout !== undefined && layout.view.lines.some((row) => row.some((span) => span.tone === "running"));
     const phase = useRunningPhase(kit.ui, animate);
@@ -7189,7 +7568,7 @@ function createDagPanelComponent(readWorkflow) {
     const rowIndex = new Map;
     usePanelKeys(kit, props?.host, keysArmed, (event) => {
       const bare = panelKeyEvent(event);
-      const gesture = panelScrollKey(bare);
+      const gesture = panelScrollGesture(bare);
       if (gesture !== undefined) {
         if (bare?.preventDefault !== undefined)
           bare.preventDefault();
@@ -7197,29 +7576,33 @@ function createDagPanelComponent(readWorkflow) {
           viewport.scrollTo(0);
         else if (gesture === "bottom")
           viewport.scrollTo(Number.MAX_SAFE_INTEGER);
-        else
+        else if (gesture === "pageUp" || gesture === "pageDown")
           viewport.scrollBy((gesture === "pageUp" ? -1 : 1) * viewport.viewportRows);
+        else if (gesture === "colLeft" || gesture === "colUp")
+          viewport.scrollColBy(-1);
+        else if (gesture === "colRight" || gesture === "colDown")
+          viewport.scrollColBy(1);
+        else
+          viewport.scrollColBy((gesture === "colPageUp" ? -1 : 1) * contentCols);
         return;
       }
-      const action = dagPanelKeyAction(bare, order, cursorId);
+      const action = dagPanelKeyAction(bare, order, cursorNow());
       if (!action.consumed)
         return;
       if (bare?.preventDefault !== undefined)
         bare.preventDefault();
       if (action.focus !== undefined) {
-        setCursor(action.focus);
+        moveCursor(action.focus);
         const at = rowIndex.get(action.focus);
         if (at !== undefined)
           scrollRowIntoView(viewport, at);
       }
       if (action.pin === true)
-        setPinned(focus);
+        setPinned(cursorNow());
       if (action.pin === false)
         setPinned(undefined);
     });
     const children = [];
-    const sizes = { contentRows: 1, viewportRows: 1 };
-    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS);
     const viewport = usePanelViewport(kit, () => sizes);
     const header = page === undefined ? undefined : headerFacts(page, contentCols);
     if (header !== undefined) {
@@ -7239,20 +7622,24 @@ function createDagPanelComponent(readWorkflow) {
       for (let index = 0;index < layout.view.lines.length; index += 1) {
         for (const candidate of layout.view.hits) {
           if (index >= candidate.row && index <= candidate.rowEnd && !rowIndex.has(candidate.taskId))
-            rowIndex.set(candidate.taskId, index);
+            rowIndex.set(candidate.taskId, children.length);
         }
         const row = layout.view.lines[index];
         const running = row.some((span) => span.tone === "running");
-        const spans = running && breathing ? row.map((span) => span.text.includes(baseGlyph) ? { text: span.text.replace(baseGlyph, breathe), tone: span.tone } : span) : row;
+        const phased = running && breathing ? row.map((span) => span.text.includes(baseGlyph) ? { text: span.text.replace(baseGlyph, breathe), tone: span.tone } : span) : row;
+        const spans = sliceSpans(phased, viewport.colOffset, contentCols);
         const hit = layout.view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd);
         children.push(hit === undefined ? graphRow(kit, spans, { key: `row-${index}`, cols: contentCols }) : graphRow(kit, spans, {
           key: `row-${index}`,
           cols: contentCols,
           onClick: () => {
             setPinned(hit.taskId);
-            setCursor(hit.taskId);
+            moveCursor(hit.taskId);
           }
         }));
+      }
+      if (viewport.colOverflow) {
+        children.push(textRow(kit, gutterCellsX(viewport.colOffset, sizes.contentCols ?? contentCols, contentCols), { key: "hrail", tone: "edge", maxCells: contentCols }));
       }
       children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${layout.ranksDerived ? "derived" : "served"}`, { key: "mode", dim: true, maxCells: contentCols }));
       if (layout.unresolved.length > 0) {
@@ -7282,9 +7669,9 @@ function createDagPanelComponent(readWorkflow) {
     sizes.contentRows = contentRows;
     sizes.viewportRows = windowRows;
     const scroller = viewport;
-    const scrolled = kit.React.createElement(kit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows));
-    const footer = textRow(kit, `↑↓/jk move · Enter pin · Esc unpin · PgUp/PgDn scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
-    const body = panelViewportBody(kit, [scrolled], scroller);
+    const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...rows);
+    const footer = textRow(kit, `↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
+    const body = panelViewportBody(kit, children, scroller, true, wheelBound);
     return panelFrame(kit, DAG_PANEL_TITLE, [...body, footer]);
   };
 }
@@ -7748,6 +8135,9 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const scrollState = React.useState(0);
     const scroll = scrollState[0];
     const setScroll = scrollState[1];
+    const scrollXState = React.useState(0);
+    const scrollX = scrollXState[0];
+    const setScrollX = scrollXState[1];
     const latestRef = React.useRef?.(undefined);
     const viewRef = React.useRef?.(undefined);
     const clock = useSurfaceClock(ui);
@@ -7793,7 +8183,10 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const focus = hover ?? pinned;
     const measured = measureTerminal2(ui);
     const graphWidth = Math.max(20, measured.cols - 4);
-    const view = layoutGraph(graphTasks, graphWidth, focus);
+    const graphWindow = Math.max(3, measured.window - 4);
+    const view = layoutGraphNatural(graphTasks, focus, { rows: graphWindow });
+    const scrollXMax = Math.max(0, view.width - graphWidth);
+    const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax);
     if (viewRef !== undefined && viewRef !== null)
       viewRef.current = view;
     const ordered = view.hits.map((hit) => hit.taskId);
@@ -7816,13 +8209,27 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           close();
         else if (input === "r") {
           setScroll(0);
+          setScrollX(0);
           refresh();
         } else if (key?.upArrow === true || input === "k")
           key?.shift === true ? setScroll(Math.max(0, scroll - 1)) : moveFocus(-1);
         else if (key?.downArrow === true || input === "j")
           key?.shift === true ? setScroll(scroll + 1) : moveFocus(1);
+        else if (key?.leftArrow === true || input === "h")
+          key?.shift === true ? setScrollX(Math.max(0, scrollXAt - 1)) : moveFocus(-1);
+        else if (key?.rightArrow === true || input === "l")
+          key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + 1)) : moveFocus(1);
+        else if (key?.pageUp === true)
+          key?.shift === true ? setScrollX(Math.max(0, scrollXAt - graphWidth)) : setScroll(Math.max(0, scroll - graphWindow));
+        else if (key?.pageDown === true)
+          key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + graphWidth)) : setScroll(scroll + graphWindow);
+        else if (key?.home === true)
+          setScroll(0);
+        else if (key?.end === true)
+          setScroll(Number.MAX_SAFE_INTEGER);
         else if (input === "g") {
           setScroll(0);
+          setScrollX(0);
         } else if (input === "p") {
           nav.planFromTeam = false;
           openScene(BOARD_SCENE_ID);
@@ -7868,10 +8275,10 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         children.push(surfaceBodyRow(surface, "hold", `watchdog   HELD (${workflow.holds.join(", ")})`));
       const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`;
       children.push(surfaceText(surface, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`, { dim: true }));
-      const graphWindow = Math.max(3, measured.window - 4);
+      const graphWindow2 = Math.max(3, measured.window - 4);
       const graphRows = [];
-      for (let index = scroll;index < Math.min(view.lines.length, scroll + graphWindow); index += 1) {
-        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
+      for (let index = scroll;index < Math.min(view.lines.length, scroll + graphWindow2); index += 1) {
+        const spans = sliceSpans(view.lines[index], scrollXAt, graphWidth).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
         graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans));
       }
       children.push(React.createElement(ui.Box, {
@@ -7881,7 +8288,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           const drawn = viewRef?.current;
           if (drawn === undefined)
             return;
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1));
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1) + scrollXAt);
           setHover(under);
         },
         onMouseLeave: () => setHover(undefined),
@@ -7889,16 +8296,24 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           const drawn = viewRef?.current;
           if (drawn === undefined)
             return;
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1));
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1) + scrollXAt);
           setPinned(under === undefined || under === pinned ? undefined : under);
           setHover(under);
         },
         onWheel: (event) => {
-          const delta = Number(event?.deltaY ?? 0);
-          if (delta !== 0)
-            setScroll(Math.max(0, scroll + (delta > 0 ? 1 : -1)));
+          const deltaY = Number(event?.deltaY ?? 0);
+          if (deltaY !== 0)
+            setScroll(Math.max(0, scroll + (deltaY > 0 ? 1 : -1)));
+          const deltaX = Number(event?.deltaX ?? 0);
+          if (deltaX !== 0)
+            setScrollX(Math.max(0, Math.min(scrollXMax, scrollXAt + (deltaX > 0 ? 1 : -1))));
         }
       }, graphRows));
+      if (scrollXMax > 0) {
+        const rail = gutterCellsX(scrollXAt, view.width, graphWidth);
+        if (rail !== "")
+          children.push(surfaceText(surface, "hrail", rail, { dim: true }));
+      }
       let arrow = [];
       try {
         arrow = legendLines(graphWidth);

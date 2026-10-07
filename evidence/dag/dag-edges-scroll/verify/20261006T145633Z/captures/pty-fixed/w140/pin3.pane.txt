@@ -1,0 +1,50 @@
+
+                                                                                              │ ≡ ▸ ◆ M ‹ MPD DAG › ◆
+  ✦ dsh-TUI  v0.13.0                                                                          ├───────────────────────────────────────────
+  ██▀▀▄▄ ██▀▀▀▀ ██▀▀▀▀ ██▀▀▄▄ ██▀▀▀▀ ██▀▀▀▀ ██▀▀▀▀ ██  ██                                     │┌MPD DAG──────────────────────────────────┐
+  █   █  █      █      █   █  ██     █      █      █  ██                                      ││team dag-edges-scroll-verify  phase activ│
+  █   █  █ ▀▀▀  █ ▀▀▀  █ ▄▄▀▀  ▀▀▀▀▄ █ ▀▀▀  █ ▀▀▀  █ █                                        ││✓ T1 WRK REQ DAG TUI               verify│
+  █   █  █      █      █          █  █      █      █  ██                                      ││├─▸ ○ T2 WRK W1 natural width  unassigned│
+  ██▄▄▀▀ ██▄▄▄▄ ██▄▄▄▄ ██     ██▄▄▄▀ ██▄▄▄▄ ██▄▄▄▄ ██  ██                                     │││  └─▸ ▶ T4 WRK REV   unassigned  ⇠ T2+T3│
+                                                                                              │││     └─▸ ○ T5 WRK #5                    │
+  ██  ██   ▄▀▀▄   ██▀▀▄▄  ██  ██  ██▀▀▀▀  ██▀▀▀▀  ██▀▀▀▀                                      ││└─▸ ○ T3 WRK W2 termaid round  unassigned│
+  █   █   ██  ██  █   █   █ █ █   █       ██      ██                                          ││view rail · 5 tasks · ranks derived      │
+  █ ▀▀█   █ ▀▀█   █ ▄▄▀▀  █  ██   █ ▀▀▀    ▀▀▀▀▄   ▀▀▀▀▄                                      ││◆ T4                                     │
+  █   █   █   █   █  ██   █   █   █           █       █                                       ││subject REV — 独立验证：真实 PTY 与真实浏│
+  ██  ██  ██  ██  ██  ██  ██  ██  ██▄▄▄▄  ██▄▄▄▀  ██▄▄▄▀                                      ││description Task T4 of the dag-edges-scro│
+  deepseek-flash · Max effort                                                                 ││id T4                                    │
+  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/dag-verify/ws          ││kind work                                │
+  提示：Ctrl+V 或 Alt+V 粘贴文本、文件路径或图片附件；/settings 可改快捷键 · /tips 更多技巧   ││visual blocked                           │
+                                                                                              ││verdict —                                │
+    探索未至之境！                                                                            ││failedBy —                               │
+                                                                                              ││owner unassigned                         │
+                                                                                              ││attempt —                                │
+   ▶ （Ctrl+P 展开） 已加载上下文 · 系统提示词 19 段 · 运行时上下文 2 项 · 技能 20 · 工具 93  ││round —                                  │
+                                                                                              ││blockedBy T2,T3                          │
+                                                                                              ││dependents T5                            │
+                                                                                              ││▼/▸ blocker → dependent · ▶ focus        │
+                                                                                              ││✓ completed · ◐ running · ○ open=blocked │
+                                                                                              ││✗ failed · ○ blocked=open · ⊘ cancelled  │
+                                                                                              ││↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/│
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+  mpd: 团队 dag-edges-scroll-verify 1·1/5 · 计划 0 · workmate 1                               ││                                         │
+                                                                                              ││                                         │
+  ╭──────────────────────────────────────────────────────────────────────────────────────────╮││                                         │
+  ⌸ ❯                                                                                        ⛶││                                         │
+  ╰──────────────────────────────────────────────────────────────────────────────────────────╯│└─────────────────────────────────────────┘
+   deepseek-flash · max · ws                                                                  ├───────────────────────────────────────────
+                                                                                              │ Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽
+

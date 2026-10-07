@@ -39,7 +39,7 @@
 import type { Log } from "./log.js"
 import type { PanelOpenResult, PanelRegistrationHandle, SeamOutcome, TuiAdapter } from "./types.js"
 import { cellWidth } from "./sanitize.js"
-import { legendLines } from "./graph.js"
+import { legendLines, sliceSpans } from "./graph.js"
 import { subagentSectionRows, teamGraphView } from "./subagent-scene.js"
 import type { TeamWorkflow } from "./team-state.js"
 import {
@@ -53,6 +53,8 @@ import {
   panelKeyEvent,
   panelContentWidth,
   panelFloorColumns,
+  gutterCellsX,
+  panelScrollGesture,
   panelScrollKey,
   panelSnapshot,
   panelText,
@@ -262,7 +264,14 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
     const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host)
     /** The page's self-windowed viewport (see the body's own note: the host's ScrollBox has no `ref`). */
     /** The sizes the hook and every later closure read; written by this render, before anything reads it. */
-    const sizes = { contentRows: 1, viewportRows: 1 }
+    const sizes: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } = { contentRows: 1, viewportRows: 1 }
+    // THE HORIZONTAL AXIS BELONGS TO THE DRAWING, NEVER TO THE PAGE (captain's ruling R8): `contentCols`
+    // is the DAG's own width and `viewportCols` is the cells this panel can show of it, so the rail
+    // describes the picture rather than the sidebar. The purpose, said once: the pan exists so the WHOLE
+    // DAG can be seen — the member rows, the description, the legend and the footer stay at the panel's
+    // full width and are never cut or moved sideways.
+    sizes.contentCols = view === undefined ? width : view.width
+    sizes.viewportCols = width
     /** The window height this page affords, from the height the host reported (its legend and footer are
      * drawn OUTSIDE the window, which is why they are subtracted here). */
     const windowRows = Math.max(1, (measured.rows ?? MERGED_FALLBACK_ROWS) - PANEL_CHROME_ROWS)
@@ -290,6 +299,22 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
       const down = flags.downArrow === true || input === "j" || input === "J"
       /** Whether this press moves the window UP by one row. */
       const up = flags.upArrow === true || input === "k" || input === "K"
+      // THE HORIZONTAL AXIS IS ANSWERED FIRST (clause T5): `⇧←→` scroll it one cell and `⇧PgUp/PgDn` one
+      // page, and they must not fall through to the row handlers below, which would scroll the PAGE on a
+      // key the user aimed at the DRAWING. Bare `←/→` stay free for the host's own panel navigation —
+      // this page binds no focus keys at all, so it has no claim on them.
+      /** The gesture on EITHER axis, which is the one map both keys and both axes agree by. */
+      const both = panelScrollGesture(bare)
+      if (flags.shift === true && (both === "colLeft" || both === "colRight" || both === "colUp" || both === "colDown")) {
+        if (bare.preventDefault !== undefined) bare.preventDefault()
+        viewport.scrollColBy(both === "colLeft" || both === "colUp" ? -1 : 1)
+        return
+      }
+      if (flags.shift === true && (both === "colPageUp" || both === "colPageDown")) {
+        if (bare.preventDefault !== undefined) bare.preventDefault()
+        viewport.scrollColBy(both === "colPageUp" ? -width : width)
+        return
+      }
       if (gesture !== undefined || down || up) {
         if (bare.preventDefault !== undefined) bare.preventDefault()
         if (gesture === "top") viewport.scrollTo(0)
@@ -349,12 +374,16 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
         // The spans go through WITHOUT a second cell clamp, exactly as the full-screen scene draws them:
         // `graph.ts` already applies `clampCells(stripControl(...))` at layout time, and re-clamping here
         // would cut the row's own multi-span geometry twice.
+        // THE HORIZONTAL WINDOW IS APPLIED HERE AND NOWHERE ELSE — this is the DAG's own row list, and
+        // every other row this page draws keeps the panel's full width (R8).
+        /** The DAG's horizontal offset for this render, clamped — the one value the rows and the rail read. */
+        const spans = sliceSpans(view.lines[index], viewport.colOffset, width)
         /** The task this row belongs to, when the pointer could land on one. */
         const hit = view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd)
         children.push(
           hit === undefined
-            ? graphRow(kit, view.lines[index], { key: `graph-${index}`, cols: width })
-            : graphRow(kit, view.lines[index], {
+            ? graphRow(kit, spans, { key: `graph-${index}`, cols: width })
+            : graphRow(kit, spans, {
                 key: `graph-${index}`,
                 cols: width,
                 onClick: (): void => {
@@ -364,6 +393,11 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
                 },
               }),
         )
+      }
+      // THE HORIZONTAL RAIL, DIRECTLY BENEATH THE DRAWING (R8) and driven by the SAME offset the rows
+      // above were cut with (clause T4). Drawn only while the drawing is wider than the panel.
+      if (viewport.colOverflow) {
+        children.push(textRow(kit, gutterCellsX(viewport.colOffset, sizes.contentCols ?? width, width), { key: "hrail", tone: "edge", maxCells: width }))
       }
       // THE PINNED DETAIL BODY (frozen clause R11): the same ten facts the DAG page prints, in the same
       // fixed order, read from the board rather than from the drawing (the drawing carries no verdict).
@@ -418,10 +452,14 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
     sizes.viewportRows = windowRows
     /** The same handle, named for what it does here: the window this render draws. */
     const scroller = viewport
-    /** The visible slice of the body, inside this page's own wheel handler. */
-    const scrolled = React.createElement(ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows))
+    // ONE SLICE, TAKEN BY `panelViewportBody` — see the `dag` page's note: wrapping the whole column and
+    // handing the wrapper back in made the body cut a one-element array at the row offset, which renders
+    // an EMPTY page. The wrapper is a parameter so the wheel is still bound once, around the slice.
+    /** The wheel binding, applied by the body to the rows it is about to draw. */
+    const wheelBound = (boundKit: PanelKit, rows: readonly unknown[]): unknown =>
+      boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...rows)
     /** The visible slice plus its reserved gutter column. */
-    const body = panelViewportBody(kit, [scrolled], scroller)
+    const body = panelViewportBody(kit, children, scroller, true, wheelBound)
     return panelFrame(kit, PANEL_TITLE, body as unknown[])
   }
 }

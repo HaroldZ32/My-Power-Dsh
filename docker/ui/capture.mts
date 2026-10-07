@@ -58,6 +58,8 @@ interface LocatorLike {
   click(options?: { timeout?: number; force?: boolean }): Promise<void>
   /** The element's rendered text, used to prove a screen is populated rather than blank. */
   innerText(): Promise<string>
+  /** Map EVERY match through one in-page function, which reads a whole list in one round trip. */
+  evaluateAll<T>(fn: (elements: Element[]) => T): Promise<T>
   /** The match's box in viewport coordinates, or null while it is not rendered. */
   boundingBox(): Promise<{ x: number; y: number; width: number; height: number } | null>
 }
@@ -227,6 +229,12 @@ interface CaptureReport {
   teamNodes?: string[]
   /** The dependency edges the graph actually DREW, as `<child><-<parent>` (`data-mpd-edge`). */
   teamEdges?: string[]
+  /** The seeded board's own subjects, read from the fixture — the negative control's input. */
+  teamFixtureSubjects?: string[]
+  /** The CJK codepoints the SAME test finds in those subjects: non-empty proves the check can fail. */
+  teamFixtureSubjectsCjk?: string[]
+  /** The fixture's own tasks as `{id, subject}`, which is what lets step 08 CHOOSE a detail pin. */
+  teamFixtureTasks?: { id: string; subject: string }[]
   /** The graph container's own counts, as rendered: `ranks=` and `edges=`. */
   teamGraph?: string
   /** The value of `data-mpd-focus` WHILE a node was hovered (`chain` proves the focus chain fired). */
@@ -247,6 +255,31 @@ interface CaptureReport {
   teamHoverTarget?: string
   /** Whether a hoverable node was reachable in the viewport (false on a board too wide to hover). */
   teamHoverReachable?: boolean
+  /** One entry per drawn edge: its witness, its route, its curve `d` and its arrowhead's marks. */
+  dagCurves?: { edge: string; route: string; d: string; tip: string; head: string }[]
+  /**
+   * Every node's box in BOTH coordinate systems, plus the text it draws.
+   *
+   * `lx/ly/lw/lh` are the LAYOUT rect the view itself published (`data-mpd-box`) and `vx/vy/vw/vh` the
+   * viewport rect a browser measured; an arrival claim is made in LAYOUT coordinates, because that is
+   * where the arrowhead's own mark is published. Reading both off one element is what makes them
+   * comparable instead of two unrelated measurements.
+   */
+  dagNodeBoxes?: { id: string; lx: number; ly: number; lw: number; lh: number; vx: number; vy: number; vw: number; vh: number; text: string }[]
+  /** The graph container's own subtree text — the DRAWING clause C1 is about, node boxes and all. */
+  dagDrawingText?: string
+  /** The pinned detail body's text, which clause C3 requires to keep the original subject verbatim. */
+  dagDetailText?: string
+  /**
+   * The detail pins step 08 took DELIBERATELY, one entry per chosen task.
+   *
+   * Each entry records the subject the fixture declares, whether it carries ideographs, and the text the
+   * pinned detail body actually rendered — so the C3 claim is decided by a CHOSEN pin rather than by
+   * whichever node the hover walk happened to end on.
+   */
+  dagDetailPins?: { id: string; subject: string; ideographs: boolean; text: string; keeps: boolean }[]
+  /** The graph scroller's own box, so "the pan is on the DAG box alone" is measurable (the user's ruling). */
+  dagScroller?: { clientWidth: number; scrollWidth: number; clientHeight: number; scrollHeight: number } | null
   /** The headline claims as booleans the run is graded on. */
   checks?: Record<string, boolean>
   /** True when every check held AND every step completed. */
@@ -305,8 +338,22 @@ const OUT: string = arg("out", "/data-out/shots")
 const WORKSPACE: string = arg("workspace", "/data/ws")
 /** A session to REUSE instead of creating one, so a pre-seeded team is the one rendered. */
 const SESSION: string = arg("session", "")
-/** Which board the capture seeds: `normal` (the chain) or `malformed` (absent blocker + cycle). */
-const SEED_BOARD: "normal" | "malformed" = arg("board", "normal") === "malformed" ? "malformed" : "normal"
+/**
+ * Which board the capture seeds.
+ *
+ * `normal` is the chain, `malformed` the absent blocker plus a cycle, and `cjk` the board whose subjects
+ * mix Chinese with ASCII — the one this driver grades the DRAWING against clause C1 with.
+ */
+const SEED_BOARD: "normal" | "malformed" | "cjk" = arg("board", "normal") === "malformed" ? "malformed" : arg("board", "normal") === "cjk" ? "cjk" : "normal"
+/**
+ * The declared CJK/full-width range set, MODULE level because two different scopes assert on it.
+ *
+ * The drawing scan (step 07/08) and the detail scan (the checks block, which is outside every step
+ * callback) must agree on what counts as CJK, so the pattern lives in exactly ONE place. It is a `g`
+ * pattern for `.match()`; a caller that needs a boolean builds a FRESH regex from it, because a `g`
+ * regex's own `lastIndex` would otherwise make repeated `.test()` calls alternate.
+ */
+const CJK_RANGES = /[\u2E80-\u2FFF\u3000-\u303F\u3040-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/g
 /** Viewport width in CSS pixels; wide enough to show the composer and the sidebar together. */
 const WIDTH: number = Number(arg("width", "1600"))
 /** Viewport height in CSS pixels. */
@@ -689,7 +736,7 @@ await step("06-team-panel", async () => {
   if (usedSession !== "") {
     try {
       /** The board module, present when the tooling directory was shipped into the container. */
-      const fixture = await import("/tmp/mpd-fixture/team-fixture.mts") as { seedBoard?: (board: "normal" | "malformed", sessionId: string, workspace: string) => unknown }
+      const fixture = await import("/tmp/mpd-fixture/team-fixture.mts") as { seedBoard?: (board: "normal" | "malformed" | "cjk", sessionId: string, workspace: string) => unknown }
       if (typeof fixture.seedBoard === "function") {
         // EVERY SESSION, not just this one. The session created just above is NOT necessarily the one
         // the app will display — measured 2026-10-05, it renders a session of its own choosing — and
@@ -767,7 +814,7 @@ await step("06b-team-board-seed", async () => {
   if (report.teamPanelSession !== "") {
     try {
       /** The board module, present when the tooling directory was shipped into the container. */
-      const fixture = await import("/tmp/mpd-fixture/team-fixture.mts") as { seedBoard?: (board: "normal" | "malformed", sessionId: string, workspace: string) => unknown }
+      const fixture = await import("/tmp/mpd-fixture/team-fixture.mts") as { seedBoard?: (board: "normal" | "malformed" | "cjk", sessionId: string, workspace: string) => unknown }
       if (typeof fixture.seedBoard === "function") {
         fixture.seedBoard(SEED_BOARD, report.teamPanelSession, WORKSPACE)
         console.log(`[capture] re-seeded the ${SEED_BOARD} board for the panel's own session ${report.teamPanelSession}`)
@@ -803,6 +850,29 @@ await step("07-team-graph-interaction", async () => {
   report.teamGraph = before.graph ?? ""
   report.teamNodes = before.nodes
   report.teamEdges = before.edges
+  // ── CLAUSE C1, MEASURED ON THE RENDERED DRAWING (with its negative control) ──────────────────────
+  // The drawing's text is read from the node boxes THEMSELVES; the codepoints of the declared
+  // CJK/full-width ranges may not appear in any of them. The negative control is the same test over the
+  // SEEDED BOARD'S OWN SUBJECTS, read back out of the fixture rather than typed here: on the `cjk`
+  // board it MUST find CJK, which is what proves the check can fail. On an English board there is
+  // nothing for it to find, and it reports that honestly instead of claiming a pass it never made.
+  /** The fixture's own subjects for this board, or an empty list when the module cannot be reached. */
+  let subjects: string[] = []
+  /** The fixture's own tasks as `{id, subject}`, which is what lets step 08 CHOOSE a detail pin. */
+  let fixtureTasks: { id: string; subject: string }[] = []
+  try {
+    /** The pure board module beside the seeder, which is where the subjects are declared. */
+    const records = await import("/tmp/mpd-fixture/team-fixture-records.mts") as { buildRecord?: (board: "normal" | "malformed" | "cjk", sessionId: string) => { tasks?: { id?: string; subject?: string }[] } }
+    if (typeof records.buildRecord === "function") {
+      fixtureTasks = (records.buildRecord(SEED_BOARD, "probe").tasks ?? []).map((task) => ({ id: String(task.id ?? ""), subject: String(task.subject ?? "") }))
+      subjects = fixtureTasks.map((task) => task.subject)
+    }
+  } catch (error) {
+    console.log("[capture] could not read the fixture's own subjects for the CJK control (" + messageOf(error).slice(0, 80) + ")")
+  }
+  report.teamFixtureSubjects = subjects
+  report.teamFixtureTasks = fixtureTasks
+  report.teamFixtureSubjectsCjk = subjects.join(" ").match(CJK_RANGES) ?? []
   // THE HOVERED NODE IS CHOSEN FOR HAVING A PARENT, not by position. MEASURED 2026-10-05 on the
   // malformed board: hovering the LAST node failed the chain assertion because that board's last node
   // (T6, an integration task with no downstream) has no INCOMING edge, so there is genuinely no chain to
@@ -915,6 +985,103 @@ await step("07-team-graph-interaction", async () => {
   return hoverShot
 })
 
+await step("08-dag-curve", async () => {
+  // ONE READING OF THE WHOLE EDGE LAYER, taken from the DOM the view really painted. This step is the
+  // wave's own instrument: every claim below is about the CURVE, so it reads the curve's own marks
+  // rather than the route's rectangles — those are asserted elsewhere, and a rect test would keep
+  // passing while the painted curve crossed a box.
+  /** One drawn edge: its witness, its route, its curve `d` and its arrowhead's own marks. */
+  interface CurveRow {
+    /** The `<child><-<parent>` witness the group publishes. */
+    edge: string
+    /** The orthogonal route rectangles, still the routing truth (clause W4). */
+    route: string
+    /** The `<path>`'s own `d` (clause W1). */
+    d: string
+    /** The zero-width tip rect the head publishes (clause W4). */
+    tip: string
+    /** The head polygon's own mark. */
+    head: string
+  }
+  report.dagCurves = await page.evaluate(() => Array.from(document.querySelectorAll("[data-mpd-edge]")).map((group) => ({
+    edge: String(group.getAttribute("data-mpd-edge")),
+    route: String(group.getAttribute("data-mpd-route") ?? ""),
+    d: String(group.querySelector("[data-mpd-curve]")?.getAttribute("data-mpd-curve") ?? ""),
+    tip: String(group.querySelector("[data-mpd-tip]")?.getAttribute("data-mpd-tip") ?? ""),
+    head: String(group.querySelector("[data-mpd-head]")?.getAttribute("data-mpd-head") ?? ""),
+  }))) as CurveRow[]
+  // EACH NODE'S BOX, IN BOTH COORDINATE SYSTEMS. `data-mpd-box` is the LAYOUT rect and
+  // `getBoundingClientRect` the viewport one; the tip is published in LAYOUT coordinates, so an arrival
+  // claim must be made in those. Reading both from the same element is what makes the two comparable.
+  report.dagNodeBoxes = await page.locator("[data-mpd-node]").evaluateAll((els: Element[]) => els.map((el) => {
+    /** The node's viewport rect, which is what a person actually sees. */
+    const rect = el.getBoundingClientRect()
+    /** The node's layout rect, published by the view itself. */
+    const box = String(el.getAttribute("data-mpd-box") ?? "").split(",").map((part) => Number(part))
+    return {
+      id: String(el.getAttribute("data-mpd-node")),
+      lx: box[0] ?? 0, ly: box[1] ?? 0, lw: box[2] ?? 0, lh: box[3] ?? 0,
+      vx: Math.round(rect.x), vy: Math.round(rect.y), vw: Math.round(rect.width), vh: Math.round(rect.height),
+      text: (el.textContent ?? "").trim(),
+    }
+  }))
+  // THE DRAWING'S OWN TEXT: the graph container's subtree. This surface renders no legend line, so the
+  // node-box text plus the SVG edge layer IS the whole WEB drawing — which is why this scan can be
+  // ASSERTED rather than merely reported.
+  report.dagDrawingText = await page.evaluate(() => String(document.querySelector("[data-mpd-graph]")?.textContent ?? ""))
+  // THE PINNED DETAIL BODY, which clause C3 exempts and requires to keep the original subject verbatim.
+  report.dagDetailText = await page.evaluate(() => String(document.querySelector("[data-mpd-detail]")?.parentElement?.textContent ?? ""))
+  // ── THE DETAIL PIN IS CHOSEN, NOT INHERITED (clause C3) ──────────────────────────────────────────
+  // Step 07 pins whichever node its forward-edge walk ends on, so a C3 claim hung on THAT subject is a
+  // claim about WALK ORDER. MEASURED on the `cjk` board: the walk ends on T6, whose subject is `！？。` —
+  // full-width punctuation with no ideograph — so a detail check written for ideographs alone REDDENED on
+  // a correct implementation while the body really did keep the original. Two pins are therefore taken
+  // here from the FIXTURE'S OWN SUBJECTS: one carrying an ideograph, and one whose subject leaves no
+  // printable-ASCII run at all (the punctuation/emoji branch of clause C4). Neither branch can then
+  // silently become the only thing tested on this board.
+  /** The IDEOGRAPH ranges, a SUBSET of the declared set, used only to pick a representative pin. */
+  const IDEOGRAPHS = /[\u3040-\u9FFF\uAC00-\uD7AF]/
+  /** Every fixture task that also has a rendered node, so a pin can actually be clicked. */
+  const pinnable = (report.teamFixtureTasks ?? []).filter((task) => (report.teamNodes ?? []).includes(task.id))
+  // THE TWO PINS ARE CHOSEN BY COMPLEMENTARY PREDICATES, which is the whole point: one subject that
+  // CARRIES an ideograph and one that carries NONE. (An earlier draft took the second pin from a subject
+  // whose C4 label is empty — but the emoji case `完成 ✅ 收尾` IS such a subject and it also carries
+  // ideographs, so both pins landed on the same branch and the check went red for the wrong reason
+  // again, measured offline before the capture was re-run.)
+  /** The pins this step takes: an ideograph-carrying subject, and one carrying no ideograph at all. */
+  const chosenPins = [
+    pinnable.find((task) => task.subject.trim().length > 0 && IDEOGRAPHS.test(task.subject)),
+    pinnable.find((task) => task.subject.trim().length > 0 && !IDEOGRAPHS.test(task.subject)),
+  ].filter((task): task is { id: string; subject: string } => task !== undefined)
+  report.dagDetailPins = []
+  for (const chosen of chosenPins) {
+    // THE CLICK TOGGLES: re-clicking the node the walk already pinned would UNPIN it, so the current pin
+    // is read first and only a DIFFERENT node is clicked.
+    /** The task currently pinned, as the detail mark publishes it. */
+    const pinnedNow = String(await page.evaluate(() => String(document.querySelector("[data-mpd-detail]")?.getAttribute("data-mpd-detail") ?? "")))
+    if (pinnedNow !== chosen.id) {
+      await page.locator('[data-mpd-node="' + chosen.id + '"]').first().click({ timeout: 6000, force: true }).catch(() => {})
+      await page.waitForTimeout(900)
+    }
+    /** The pinned detail body's OWN text, read from the mark's own subtree. */
+    const text = String(await page.evaluate(() => String(document.querySelector("[data-mpd-detail]")?.textContent ?? "")))
+    report.dagDetailPins.push({ id: chosen.id, subject: chosen.subject, ideographs: IDEOGRAPHS.test(chosen.subject), text, keeps: text.includes(chosen.subject) })
+  }
+  // The scroller's own geometry, so "the pan is on the DAG box alone and no sibling rides along" is
+  // measurable rather than asserted (the user's ruling R8).
+  report.dagScroller = await page.evaluate(() => {
+    /** The graph's own scroll container. */
+    const el = document.querySelector("[data-mpd-graph]")
+    if (el === null) return null
+    return { clientWidth: el.clientWidth, scrollWidth: el.scrollWidth, clientHeight: el.clientHeight, scrollHeight: el.scrollHeight }
+  })
+  /** The PNG this step writes: the edge layer in its settled state. */
+  const curveShot: string = await shot("08-dag-curve")
+  // The claim this step exists for: something was drawn, and it is a CURVE.
+  if ((report.dagCurves ?? []).length === 0) throw new Error("no [data-mpd-edge] group carried a [data-mpd-curve] child — the curved layer is absent")
+  return curveShot + " curves=" + (report.dagCurves ?? []).length
+})
+
 // The report is not a caption contest: each capture is paired with the text the page actually
 // rendered, so a reader can tell an empty/blocked screen from a populated one without opening the
 // PNG. `checks` turns the three headline claims into booleans the run is graded on.
@@ -962,6 +1129,62 @@ const checks: Record<string, boolean> = {
   // dependency rendering and proving that some text appeared: the seeded board's chain is
   // T1,T3 -> T4 -> T5 -> T6, so a panel that rendered nodes but no edges FAILS here.
   teamGraphDrewEdges: (report.teamEdges ?? []).length > 0 && (report.teamNodes ?? []).length >= 2,
+  // ── the wave's own claims, each read out of the DOM the view painted ────────────────────────────
+  // W1/W6: the route is a CURVE, not a rectangle. MEASURED, and the reason this check is not simply
+  // "every `d` carries a Q or a C": a dependency whose two boxes sit on the SAME ROW has a degenerate
+  // riser, so its route has no corner to round and its `d` is a straight horizontal `M`/`L` line — by
+  // construction, not by defect. The check therefore demands (a) at least one edge that really bends
+  // and carries a fillet or a sweep, (b) every `d` built from `M`/`L`/`Q`/`C` alone — no arc/curve
+  // shorthand, no junk — and (c) a straight edge ONLY where its own route has no corner at all.
+  dagEdgesAreCurves: (report.dagCurves ?? []).length > 0
+    && (report.dagCurves ?? []).some((row) => /[QC]/.test(row.d))
+    && (report.dagCurves ?? []).every((row) => !/[A-Za-z]/.test(row.d.replace(/[MLQC]/g, "")))
+    && (report.dagCurves ?? []).every((row) => /[QC]/.test(row.d) || (() => {
+      /** The edge's orthogonal runs, which are the routing truth (clause W4). */
+      const runs = (row.route.split("|")[0] ?? "").split(";")
+      /** Every run's own top y: a route with no corner has exactly one of them. */
+      const tops = runs.map((text) => Number(text.split(",")[1]))
+      return tops.length > 0 && tops.every((top) => Number.isFinite(top) && top === tops[0])
+    })()),
+  // W1: ONE `<path data-mpd-curve>` per drawn edge, so the layer is countable rather than merely present.
+  dagOnePathPerEdge: (report.dagCurves ?? []).length === (report.teamEdges ?? []).length
+    && (report.dagCurves ?? []).every((row) => row.d.length > 0),
+  // W4: `data-mpd-tip` is a ZERO-WIDTH rect, which is what makes W5 a DOM-only equality — the apex is
+  // published without anyone having to know MARK_W.
+  dagTipIsZeroWidth: (report.dagCurves ?? []).length > 0
+    && (report.dagCurves ?? []).every((row) => (row.tip.split(",")[2] ?? "") === "0" && row.head === "1"),
+  // W5: THE ARROW TIP TOUCHES THE BORDER IT ARRIVES AT. Both rects are LAYOUT rects, so this is the
+  // arithmetic the clause asks for: the tip's x equals the dependant's own left or right border.
+  dagTipTouchesBorder: (report.dagCurves ?? []).length > 0 && (report.dagCurves ?? []).every((row) => {
+    /** The dependent whose border the edge arrives at. */
+    const child = (report.dagNodeBoxes ?? []).find((node) => node.id === row.edge.split("<-")[0])
+    if (child === undefined) return false
+    /** The tip's x, as `left,top,width,height` publishes it. */
+    const tipX = Number(row.tip.split(",")[0])
+    return tipX === child.lx || tipX === child.lx + child.lw
+  }),
+  // C1 on THIS surface: no CJK anywhere in the graph container's subtree, while the same characters are
+  // still in the pinned detail body (C3). Asserting one without the other proves nothing: a panel that
+  // dropped the subject everywhere would pass a drawing-only scan. On the `cjk` board two further
+  // halves are demanded — the NEGATIVE CONTROL (the board's own subjects really do carry CJK, so the
+  // scan above can fail) and the FALLBACK (a subject that leaves no ASCII run draws `#<ordinal>`).
+  dagDrawingHasNoCjk: (report.dagDrawingText ?? "").length > 0
+    && !/[\u2e80-\u2fff\u3000-\u303f\u3040-\u9fff\uac00-\ud7af\uf900-\ufaff\ufe30-\ufe4f\uff00-\uffef]/.test(report.dagDrawingText ?? "")
+    && (SEED_BOARD !== "cjk" || ((report.teamFixtureSubjectsCjk ?? []).length > 0
+      && (report.dagNodeBoxes ?? []).some((node) => /#\d+/.test(node.text))
+      && (report.dagNodeBoxes ?? []).some((node) => /fix styles/.test(node.text)))),
+  // C3, decided from a CHOSEN pin rather than from the node the hover walk happened to end on. The
+  // range set is the SAME declared set the drawing scan uses, so the two halves cannot disagree about
+  // what counts as CJK: on the `cjk` board the walk ends on the PUNCTUATION-only task (`！？。`), and a
+  // check written for ideographs alone reddened on a correct implementation while the body really did
+  // keep the original. Every chosen pin must keep its subject verbatim, and on the `cjk` board both
+  // branches must be present — one pin carrying an ideograph and one whose subject has none — so neither
+  // can silently become the only thing tested.
+  dagDetailKeepsCjk: (report.dagDetailText ?? "").length > 0
+    && (SEED_BOARD !== "cjk" || new RegExp(CJK_RANGES).test(report.dagDetailText ?? ""))
+    && (report.dagDetailPins ?? []).every((pin) => pin.keeps && pin.text.length > 0)
+    && (SEED_BOARD !== "cjk" || ((report.dagDetailPins ?? []).some((pin) => pin.ideographs)
+      && (report.dagDetailPins ?? []).some((pin) => !pin.ideographs))),
   // Every drawn edge must name BOTH of its endpoints among the rendered nodes. This is the
   // endpoint-less-edge defect (a `blockedBy` id absent from the board) expressed as an assertion:
   // an edge to a node that does not exist would otherwise render as a dangling line nobody checks.

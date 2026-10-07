@@ -1,0 +1,82 @@
+{
+  "lane": "web",
+  "wave": "dag-edges-scroll",
+  "collected": "2026-10-06T15:18:13Z",
+  "change_1": "GEO.inset 4 -> 12 (the captain's ruling): a one-lane forward edge now gets its FULL 6px fillet",
+  "change_2": "the router's redundant waypoint removed (reviewer finding 4), proven byte-identical on data-mpd-route",
+  "sha256": {
+    "packages/mpd-bundle-plugin/src/team-view.ts": "e99450e04ac3506ccd3fd57e62ab7bc7f7c10cc3427ced7ebf615707b8b1366f",
+    "packages/mpd-bundle-plugin/test/team-view.test.ts": "e2a66b1e56fb92df91c3d9d5fe7aed46642e152adb452714feb55bdd2a1ce356"
+  },
+  "geometry": {
+    "gutter_px": 24,
+    "node_width_px": 144,
+    "node_width_before_px": 160,
+    "fillet_px": 6,
+    "fillet_before_px": 2,
+    "lane_widening": {
+      "1_lane": {
+        "inset": 12,
+        "gutter": 24,
+        "nodeWidth": 144,
+        "laneOverflow": 0
+      },
+      "6_lanes": {
+        "inset": 12,
+        "gutter": 24,
+        "nodeWidth": 144,
+        "laneOverflow": 0
+      },
+      "16_lanes": {
+        "inset": 24,
+        "gutter": 48,
+        "nodeWidth": 120,
+        "laneOverflow": 0
+      },
+      "24_lanes": {
+        "inset": 24,
+        "gutter": 48,
+        "nodeWidth": 120,
+        "laneOverflow": 0
+      }
+    },
+    "one_lane_bending_d": "M 156 77 L 162 77 Q 168 77 168 71 L 168 31 C 168 31 174 25 180 25"
+  },
+  "route_identity_proof": {
+    "instrument": "evidence/dag/dag-edges-scroll/web/20261006T151605Z/route-dump.mjs",
+    "rows": 10,
+    "identical": true,
+    "repeated_vertices_before": 3,
+    "repeated_vertices_after": 0,
+    "degenerate_edge_before_r0": "M 156 25 L 168 25 L 168 25 L 180 25",
+    "degenerate_edge_after_r0": "M 156 25 L 168 25 L 180 25",
+    "degenerate_edge_route_both_sides": "156,25,12,1;168,25,1,1;168,25,13,1|R175,21,5,8"
+  },
+  "gates": {
+    "bun_test_bundle": "159 pass / 0 fail",
+    "bun_test_bundle_plus_team_core": "295 pass / 0 fail",
+    "verify_comments": "PASS (repo-wide)",
+    "typecheck": "RED only in packages/mpd-tui-plugin/src/panel-dag.ts (sibling lane, in flight)",
+    "containment_control": "FAIL as required — Expected: 0 / Received: 470 on the broken route; PASS after the revert; sha unchanged"
+  },
+  "bounds": [
+    "The gutter change moves every box and therefore every route COORDINATE; the route ALGORITHM (waypoints, lanes, dummy rows, segments) is untouched, and the containment arm still proves what it proved (470 crossings under the injected break, 0 on the real board).",
+    "The node interior narrowed 160 -> 144px; at 16+ lanes it narrows to 120px (MAX_INSET=24 still caps it, so a busy board cannot shrink a box away).",
+    "containment is STRUCTURAL, not merely tested: curveOf clamps every fillet to half the shorter leg, so a curve cannot leave its corridor — the W3 arm is a REGRESSION GUARD against a future change to the clamp or the route, and a documented-as-such comment now says so.",
+    "dist/** and client.js are NOT rebuilt here (the captain owns both)."
+  ],
+  "arm_worth_note": "the W3 arm now carries the captain's R3 sentence in its own comment: containment is STRUCTURAL (the clamp guarantees it), so the arm is a REGRESSION GUARD rather than a live proof",
+  "final_gates": {
+    "bun_test_bundle": "159 pass / 0 fail (3068 expect calls)",
+    "verify_comments": "PASS repo-wide",
+    "containment_control": "FAIL 470 on the broken route / PASS restored, sha unchanged"
+  },
+  "capture_fix": {
+    "defect": "dagDetailKeepsCjk was a FALSE red: it tested ideographs only while step 07's walk-order pin is T6 ('！？。', full-width punctuation, no ideograph) — reproduced offline: old rule = false on a CORRECT implementation",
+    "fix_1": "CJK_RANGES hoisted to module scope; the detail check now uses the SAME declared range set as the drawing scan",
+    "fix_2": "step 08 chooses its own pins (one subject WITH an ideograph, one WITHOUT) instead of inheriting the walk-order pin, and requires both branches on the cjk board",
+    "fix_3": "report.dagDetailPins {id,subject,ideographs,text,keeps} + report.teamFixtureTasks make the verdict auditable",
+    "evidence": "detail-pin-check.mjs — offline replay over the real cjk fixture: OLD=false (the false red), NEW=true, DRAFT(false, both pins on the ideograph branch — found and fixed before the browser re-run), NEGATIVE CONTROL(subjects dropped)=false",
+    "needs": "capture.mts is baked as /data/capture.mts: the captain/verifier must copy it in or rebuild the image (NOT done by this lane)"
+  }
+}

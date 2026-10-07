@@ -76,6 +76,32 @@ id 指向宿主拥有的行）：
 2. **侧栏必须打开** —— 按 `Ctrl+B`（宿主的三态切换），或打开 *启动时展开侧栏*
    （`dsh-tui.sidePanel.open`，默认 `false`）。
 
+**为什么开关 1 以前会自己失效，以及现在守住它的两条路径。** 宿主自己的注册通路**确实**会把注册成功的 id
+追加进列表（`lib/types/dsh-adapter/panels.js` 的 `enablePanelIdInStore`），所以刚启动时列表读作
+`todo,jobs,agents,act1:team,…` —— 然后在**实测约 +5.4 秒**时，`dsh-tui` 行会重新应用它的**配置**
+（`applySidePanelPanels(config.sidePanel?.panels)`，经一次 `Fiber._reload` 抵达），追加进去的 id 就没了。
+正是这次「瞬时追加」让全新配置只显示宿主自带三个标签页。现在有两条**互相独立**的路径守住这个列表：
+
+* **自动、有界** —— TUI 适配器（`packages/mpd-tui-adapter-plugin`）带一个沉降守卫：它只重新断言**宿主
+  自己的 `list()` 回读产出的那些 id**，而且只在启用列表里**一个我们的 id 都没有**时才动作；它把整组 id
+  **一次性追加在用户列表之后**，从不删除任何一个 token，也从不改变顺序。如果列表里出现了**任何一个**我们的
+  id，那就说明**配置已经就本 bundle 表态了** —— 你在 `/settings` 里启用了我们、或跑了下面的脚本、或故意
+  只删掉了其中几个而留下其余的 —— 此时守卫**主动退让**，因此它绝不会把你本想移除的页面又放回去。它在启动后
+  的前 ~25 秒内走完六个 tick 然后**永久停止**。它发现的 id 会记录到
+  `<workspace>/.mpd/logs/mpd-tui-panels.json`，因为没有任何源码常量能知道它们。这是该适配器的**第二处**
+  宿主内部接触（第一处是 `Ctrl+A` 的 `useStdin` 触点；AGENTS.md §6 明确给这类接触计数，因此两处都在该文件里
+  点名）。
+  **明码标出的残留风险**：如果一个用户故意把我们**全部**移除，剩下的列表与全新配置**无法区分**，因此守卫
+  每个启动周期仍会把整组加回一次。要区分这两种情况就必须读到**配置里写的那个值** —— 也就是第三处宿主内部
+  接触，而这属于 AGENTS.md §6 的计数决策，本轮**刻意不做**。让某个 bundle 页面永久消失是用户层的事，而那
+  正是脚本所写的东西；写进去之后守卫就不再动它。
+* **持久、一条命令** —— `node scripts/mpd-tui-panels.ts` 把 `dsh-tui.sidePanel.panels` 写进 **profile
+  自己的 patch 文件**，而它就是宿主的设置用户层：`dsh-config-editor` 的 `documentPath` 返回
+  `profileContext.patchPath`，`dsh-app-boot` 把它拼成 `<profileDir>/cordis.patch.yml`。脚本会读取**这两个
+  已安装源码**，在无法证明该路径时**拒绝写入**。它默认是**试运行**，会打印将要改动的那个叶子节点，支持
+  `--apply`，会留一份 `.bak`，并且只补列表里缺的 id。当设置层来得太晚、超出有界守卫的视野时，或者你希望
+  这个选择跨重启保留时，就用它。
+
 两个开关就位后，`/panel <id>` 切到该页（`/panel toggle`、`focus`、`zoom` 是另外几种形式），`Alt+Z`
 缩放当前面板。**未设**时的实测：标签栏读作 `│ ‹ 待办 › ▸ ◆`，宿主活的启用列表是
 `toggle, focus, zoom, todo, jobs, agents`。**设好**时的实测（120 列）：标签栏出现

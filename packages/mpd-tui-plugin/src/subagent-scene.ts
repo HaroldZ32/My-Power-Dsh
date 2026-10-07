@@ -48,10 +48,10 @@
 // form), so it cannot drag a second React copy under the host's reconciler.
 import type { TuiScenePropsLike } from "./types.js"
 import { clampCells, stripControl } from "./sanitize.js"
-import { layoutGraph, legendLines, type GraphTask, type GraphView } from "./graph.js"
+import { layoutGraphNatural, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
 import { teamWorkflowLines, type TeamWorkflow } from "./team-state.js"
 import { t } from "./i18n.js"
-import { legendLinesFor, panelKit, textRow, toneColor, visualGlyph, type PanelKit } from "./panel-core.js"
+import { gutterCellsX, legendLinesFor, panelKit, textRow, toneColor, visualGlyph, type PanelKit } from "./panel-core.js"
 import { DAG_ANIM, DAG_CHROME, DAG_TONE_GLYPH, type DagTone } from "./dag-theme.js"
 
 // ── THE SHARED SURFACE VISUAL SYSTEM ────────────────────────────────────────
@@ -459,6 +459,9 @@ export const MERGED_ROW_MAX_CELLS = 4000
 /** The column count the DAG is laid out for before the host has measured one. */
 const FALLBACK_COLS = 100
 
+/** The rows a scene assumes when the host cannot measure its terminal; the DAG's own vertical page step. */
+const FALLBACK_ROWS = 24
+
 /** The team projection's refresh cadence, shared with the board and team surfaces. */
 const REFRESH_MS = 2000
 
@@ -561,6 +564,18 @@ interface SceneKey {
   meta?: boolean
   /** Shift, read by the bare-Enter test for the same reason as `meta`. */
   shift?: boolean
+  /** Left arrow — the horizontal pan's own key when Shift is held, a focus walk otherwise. */
+  leftArrow?: boolean
+  /** Right arrow — the same, in the other direction. */
+  rightArrow?: boolean
+  /** Page up — pages the DAG vertically, and horizontally with Shift. */
+  pageUp?: boolean
+  /** Page down — the same, downwards. */
+  pageDown?: boolean
+  /** Home — the top of the DAG. */
+  home?: boolean
+  /** End — the bottom of the DAG. */
+  end?: boolean
   /** Super/Cmd, which extended-key terminals deliver and the host's own guard treats like ctrl. */
   super?: boolean
   /** True when this event is a bracketed PASTE: pasted line breaks are content, never a key press. */
@@ -601,6 +616,8 @@ interface Measured {
   size: string
   /** The column count the DAG lays itself out for. */
   cols: number
+  /** The row count, which is the DAG's vertical page step; the fallback when the host measured none. */
+  rows: number
 }
 
 /** A no-op store subscription, so the hook order stays stable without a channel. */
@@ -663,7 +680,7 @@ function hostKit(React: unknown, ui: unknown): HostKit | undefined {
  * @returns the size label and the column count, each with a documented fallback.
  */
 function measureTerminal(ui: UiLike): Measured {
-  if (typeof ui.useTerminalSize !== "function") return { size: "", cols: FALLBACK_COLS }
+  if (typeof ui.useTerminalSize !== "function") return { size: "", cols: FALLBACK_COLS, rows: FALLBACK_ROWS }
   /** The measured column count, `?` until the host hook answers. */
   let columns: unknown = "?"
   /** The measured row count, `?` until the host hook answers. */
@@ -676,9 +693,12 @@ function measureTerminal(ui: UiLike): Measured {
   }
   /** The column count as a number; NaN when the host measured none. */
   const cols = Number(columns)
+  /** The row count as a number; NaN when the host measured none. */
+  const height = Number(rows)
   return {
     size: `${String(columns)}x${String(rows)}`,
     cols: Number.isFinite(cols) && cols > 20 ? cols : FALLBACK_COLS,
+    rows: Number.isFinite(height) && height > 5 ? Math.floor(height) : FALLBACK_ROWS,
   }
 }
 
@@ -1048,15 +1068,22 @@ function graphTasksOf(workflow: TeamWorkflow): GraphTask[] {
 }
 
 /**
- * The DAG box for one render.
+ * The DAG box for one render, at its NATURAL width (frozen clauses T1/T2).
+ *
+ * THE SIGNATURE IS UNCHANGED ON PURPOSE and its second argument has CHANGED MEANING: `cols` is now the
+ * VIEWPORT the drawing will be windowed to, not the width the drawing is squeezed into. Every caller
+ * keeps working, and the difference is that `GraphView.width` may now exceed `cols` — the caller cuts
+ * the rows with `sliceSpans` and pans. This is the SHARED entry point: the merged panel and the
+ * full-screen subagent scene both come through here, so they cannot describe one team differently.
  * @param workflow - the team projection, when it is readable.
- * @param cols - the measured terminal width.
+ * @param cols - the measured terminal width, which is the VIEWPORT rather than the drawing's width.
+ * @param rows - the rows the surface can show, which buys the roomy box form when there is room.
  * @returns the laid-out graph, or undefined when there is no team or no task to draw.
  */
-export function teamGraphView(workflow: TeamWorkflow | undefined, cols: number): GraphView | undefined {
+export function teamGraphView(workflow: TeamWorkflow | undefined, cols: number, rows?: number): GraphView | undefined {
   if (workflow === undefined || workflow.tasks.length === 0) return undefined
   try {
-    return layoutGraph(graphTasksOf(workflow), cols)
+    return layoutGraphNatural(graphTasksOf(workflow), undefined, rows === undefined ? {} : { rows })
   } catch {
     // A pathological record must cost the DAG, not the surface.
     return undefined
@@ -1161,6 +1188,21 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
     const detailScroll = detailScrollState[0] as number
     /** Moves the detail's output window. */
     const setDetailScroll = detailScrollState[1] as (next: number) => void
+    // THE DAG'S OWN HORIZONTAL WINDOW (frozen clauses T2/T5, captain's ruling R8). It is the DRAWING's
+    // offset and nothing else: the team rows, the legend, the detail pane and the hints all stay at the
+    // terminal's width. The purpose, said once: the pan exists so the WHOLE DAG can be seen.
+    /** The DAG's horizontal scroll offset, in cells. */
+    const graphXState = React.useState(0)
+    /** The DAG's horizontal scroll offset, in cells. */
+    const graphX = graphXState[0] as number
+    /** Moves the DAG's horizontal offset. */
+    const setGraphX = graphXState[1] as (next: number) => void
+    /** The DAG's vertical scroll offset, in rows — this scene windows the drawing on both axes. */
+    const graphYState = React.useState(0)
+    /** The DAG's vertical scroll offset. */
+    const graphY = graphYState[0] as number
+    /** Moves the DAG's vertical offset. */
+    const setGraphY = graphYState[1] as (next: number) => void
 
     /** Re-read the team projection; the render path itself stays free of I/O. */
     const refresh = (): void => {
@@ -1217,6 +1259,16 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
 
     /** The host's measured geometry, through its own hook (unconditional, once per render). */
     const measured = measureTerminal(ui)
+    // THE DAG'S OWN WINDOW, computed ONCE per render and ABOVE the key handler, because the handler must
+    // answer `⇧←→`/`⇧PgUp`/`⇧PgDn` against the same bounds the rows are cut with (clause T4: one offset,
+    // one band). `undefined` when the team has no task to draw, which is also the key handler's "no DAG
+    // on screen" signal.
+    /** The DAG box for this render, at its natural width. */
+    const dagView = teamGraphView(workflow, measured.cols)
+    /** The furthest horizontal offset that still fills the viewport; zero when the drawing fits. */
+    const dagXMax = dagView === undefined ? 0 : Math.max(0, dagView.width - measured.cols)
+    /** The furthest vertical offset; zero when the drawing fits the terminal. */
+    const dagYMax = dagView === undefined ? 0 : Math.max(0, dagView.lines.length - 1)
     /** The host's own rows for this render, each with the raw entry the detail re-reads. */
     const pairs = subagentRowEntries(channel)
     /** The drawn row views, in the host's own order. */
@@ -1307,6 +1359,60 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
         }
         if (key?.escape === true || input === "q") {
           close()
+          return
+        }
+        // THE DAG'S OWN PAN KEYS GO FIRST (frozen clause T5) — and they MUST, because `↑/↓` are this
+        // scene's SELECTION keys: a `⇧↑` that fell through to the branch below would move the selection
+        // instead of the drawing, which is the opposite of what the user asked for. `⇧←→`/`⇧↑↓` pan the
+        // DRAWING one cell, `⇧PgUp/PgDn` one page, `PgUp/PgDn` page it vertically and `Home`/`End` go to
+        // its vertical ends — each clamped to the bounds the rows above were actually cut with, so a key
+        // can never ask for a window that does not exist. Every direction is its own branch: an `a || b`
+        // condition narrows BOTH flags and the second read then fails to typecheck.
+        // THE DAG'S OWN PAN KEYS (frozen clause T5), answered before the plain keys and only when a DAG
+        // is on screen. `⇧←→` scroll the DRAWING horizontally, `⇧↑↓` vertically, `⇧PgUp/PgDn` page it
+        // horizontally and `Home`/`End` go to its vertical ends — all of them clamped to the bounds the
+        // rows above were actually cut with, so a key can never ask for a window that does not exist.
+        // EACH DIRECTION IS ITS OWN BRANCH, never an `a || b` with a ternary inside: TypeScript narrows
+        // BOTH flags to `false | undefined` inside such a condition, so re-reading either one is a
+        // comparison the type checker rejects (and a reader has to work out which leg is reachable).
+        if (dagView !== undefined && key?.shift === true && key?.leftArrow === true) {
+          setGraphX(Math.max(0, Math.min(dagXMax, graphX - 1)))
+          return
+        }
+        if (dagView !== undefined && key?.shift === true && key?.rightArrow === true) {
+          setGraphX(Math.max(0, Math.min(dagXMax, graphX + 1)))
+          return
+        }
+        if (dagView !== undefined && key?.shift === true && key?.upArrow === true) {
+          setGraphY(Math.max(0, Math.min(dagYMax, graphY - 1)))
+          return
+        }
+        if (dagView !== undefined && key?.shift === true && key?.downArrow === true) {
+          setGraphY(Math.max(0, Math.min(dagYMax, graphY + 1)))
+          return
+        }
+        if (dagView !== undefined && key?.shift === true && key?.pageUp === true) {
+          setGraphX(Math.max(0, Math.min(dagXMax, graphX - measured.cols)))
+          return
+        }
+        if (dagView !== undefined && key?.shift === true && key?.pageDown === true) {
+          setGraphX(Math.max(0, Math.min(dagXMax, graphX + measured.cols)))
+          return
+        }
+        if (dagView !== undefined && key?.pageUp === true) {
+          setGraphY(Math.max(0, Math.min(dagYMax, graphY - measured.rows)))
+          return
+        }
+        if (dagView !== undefined && key?.pageDown === true) {
+          setGraphY(Math.max(0, Math.min(dagYMax, graphY + measured.rows)))
+          return
+        }
+        if (dagView !== undefined && key?.home === true) {
+          setGraphY(0)
+          return
+        }
+        if (dagView !== undefined && key?.end === true) {
+          setGraphY(dagYMax)
           return
         }
         if (key?.upArrow === true) {
@@ -1429,19 +1535,35 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
         const overrides: Readonly<Record<string, DagTone>> = { tasks: teamTone }
         children.push(surfaceBodyRow(kit, `team-${index}`, teamLines[index], overrides))
       }
+      // THE DAG BOX, at its NATURAL width and WINDOWED (clauses T1/T2). `view.width` may exceed the
+      // terminal; the two offsets below are the DRAWING's own window and are read by the header, the
+      // rows, the rail and the wheel alike, so the four cannot disagree (clause T4).
       /** The DAG box, absent when the team has no task to draw. */
-      const view = teamGraphView(workflow, measured.cols)
+      const view = dagView
       if (view !== undefined) {
-        children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}`)))
-        for (let index = 0; index < view.lines.length; index += 1) {
+        /** The horizontal offset for THIS render, clamped — the one value every row and the rail read. */
+        const graphXAt = Math.min(Math.max(0, graphX), dagXMax)
+        /** The VERTICAL offset for this render, clamped to the drawing — the other axis of the same window. */
+        const graphYAt = Math.min(Math.max(0, graphY), dagYMax)
+        children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}${dagXMax > 0 ? ` ⇠${graphXAt}/${view.width}→` : ""}`)))
+        for (let index = graphYAt; index < view.lines.length; index += 1) {
           // The spans go through WITHOUT `safeRow`, exactly as the team scene draws them: `graph.ts`
           // already applies `clampCells(stripControl(...))` at layout time, and re-clamping here would
           // cut the row's own multi-span geometry twice. The COLOUR is resolved through the frozen
           // contract's table, which is the table `graph.ts`'s own `GRAPH_THEME` mirrors — the drawing
           // and the panels therefore cannot drift apart (asserted in `test/scene-visuals.test.ts`).
-          /** The spans of this row, each drawn in its own theme colour. */
-          const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
+          // THE HORIZONTAL WINDOW IS APPLIED HERE AND NOWHERE ELSE: this is the DAG's own row list, so
+          // every other row this scene draws keeps the terminal's full width (R8).
+          /** The spans of this row, cut to the viewport and each drawn in its own theme colour. */
+          const spans = sliceSpans(view.lines[index], graphXAt, measured.cols).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
           children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans))
+        }
+        // THE HORIZONTAL RAIL, DIRECTLY BENEATH THE DRAWING (R8), from the SAME offset the rows were cut
+        // with — one position, two views of it (clause T4). Drawn only while the drawing is wider.
+        if (dagXMax > 0) {
+          /** The rail's cells, from `panel-core.ts`'s ONE horizontal-gutter function. */
+          const rail = gutterCellsX(graphXAt, view.width, measured.cols)
+          if (rail !== "") children.push(surfaceText(kit, "hrail", rail, { dim: true }))
         }
         // THE LEGEND sits directly under the DAG, in the SAME width budget the graph was laid out
         // for, so a line can never claim more cells than the drawing above it used. It is COMPOSED, not
