@@ -21,9 +21,12 @@
 #   tui.mpdTuiRow        the bundle's `mpd-tui` row is composed
 #   tui.agentTeamRows    the three official Agent Teams rows are composed
 #   tui.teamSceneOpened  the /mpd team scene opens on a real terminal
-#   tui.teamGraphDrawn   the team DAG boxes are DRAWN on a real terminal
+#   tui.teamGraphDrawn   the team DAG BOXES are drawn, one per task the record carries (the ROUNDED
+#                        corner census equals that count; the square corners are the scene FRAME's)
 #   tui.teamGraphEdges   the dependency edges are drawn with box-drawing junctions
-#   tui.teamGraphContent the boxes carry the record's own task ids and subjects
+#   tui.teamGraphContent every task id READ OUT OF THE LANE'S OWN RECORD is drawn as a node label (a
+#                        literal id could not catch a dropped task), and the record's own subject is
+#                        reachable one keystroke away in the pinned detail body clause AC1 moved it to
 #   tui.mergedPanelOpens the MPD combo (alt+a / `M-a`) opens the MERGED panel: its own title, the
 #                        host's subagent section, AND the team body the team-scene arm proves
 #   tui.mergedPanelOrder on the CAPTURED pane, the subagent section sits ABOVE the team section
@@ -135,6 +138,16 @@ pane_line_of() {
 pane_hits() {
   local count
   count="$(grep -cE "$1" "$2" 2>/dev/null || true)"
+  printf '%s' "${count:-0}"
+}
+
+# pane_glyphs <glyph> <file> — how many times ONE glyph OCCURS, or 0 for a missing file or no match.
+# An OCCURRENCE count, deliberately not `pane_hits`' line count: two boxes in the SAME rank are drawn
+# side by side on ONE row, so a line count would read two drawn boxes as one. `-F`, because a corner
+# glyph is a character to find and never a pattern.
+pane_glyphs() {
+  local count
+  count="$(grep -oF "$1" "$2" 2>/dev/null | wc -l || true)"
   printf '%s' "${count:-0}"
 }
 
@@ -333,14 +346,115 @@ tmux -S "$SOCK" send-keys -t tui "/mpd team" Enter 2>/dev/null || true
 sleep 6
 capture_pane team
 TEAM_PANE="$(cat "$TUI_DIR/pane-team.txt" 2>/dev/null || true)"
+
+# ── THE RECORD'S OWN TASK TABLE, read ONCE for the two arms that judge the drawing ──
+# Both arms take their expected values from the fixture this lane just wrote, never from a literal: a
+# hard-coded id, or a hard-coded `3`, keeps passing after the renderer silently drops a task — which is
+# exactly how the arm this replaces outlived the drawing it was written for.
+TEAM_TASKS_PROBE="$TUI_DIR/team-tasks.ts"
+cat > "$TEAM_TASKS_PROBE" <<'TEAMTASKS_EOF'
+// One `<id>\t<subject>` line per task in the lane's OWN team fixture: the assertions below read their
+// expected values from the record, so no literal can stand in for a value the record does not carry.
+import { readFileSync } from "node:fs"
+const [recordPath] = process.argv.slice(2)
+const record = JSON.parse(readFileSync(recordPath, "utf8"))
+for (const task of record.tasks ?? []) process.stdout.write(`${task.id}\t${task.subject ?? ""}\n`)
+TEAMTASKS_EOF
+TEAM_TASKS="$(node "$TEAM_TASKS_PROBE" "$WORK_DIR/ws/.mpd/team/teams/tui-scene.json" 2>"$TUI_DIR/team-tasks.err" || true)"
+# The record's own task COUNT and id list, from the table above: the number a box census is compared
+# against, and the list the label arm walks. Zero tasks means the record itself was unreadable.
+TEAM_TASK_COUNT=0
+TEAM_IDS_SEEN=""
+while IFS=$'\t' read -r id subject; do
+  [ -n "$id" ] || continue
+  TEAM_TASK_COUNT=$((TEAM_TASK_COUNT + 1))
+  TEAM_IDS_SEEN="${TEAM_IDS_SEEN}${TEAM_IDS_SEEN:+,}${id}"
+done <<<"$TEAM_TASKS"
+
 record tui.teamSceneOpened "$(printf '%s' "$TEAM_PANE" | grep -q 'task dependency graph' && echo true || echo false)" \
   "the /mpd team scene opened on a real terminal" "chars=$(printf '%s' "$TEAM_PANE" | wc -c)"
-record tui.teamGraphDrawn "$(printf '%s' "$TEAM_PANE" | grep -qE '┌.*┐' && printf '%s' "$TEAM_PANE" | grep -qE '└.*┘' && echo true || echo false)" \
-  "the LAYERED BOXES were drawn: a top border, a bottom border, and the subjects inside them" "graph=boxes"
+# ── THE BOXES, COUNTED — the FRAME is not the drawing ─────────────────────────
+# The arm this replaces grepped `┌.*┐`/`└.*┘`, and the scene FRAME satisfies BOTH of those on its own:
+# measured on the captured pane (2026-10-07) there is exactly ONE `┌…┐` row and ONE `└…┘` row — the
+# frame's own top and bottom, rows 2 and 49 — against three boxes, so it stayed green with every box
+# gone and never looked at the rounded corner set (`╭ ╮ ╰ ╯`, the theme's `DAG_CHARS`) the boxes are
+# actually drawn with. A box IS its four corners, and `drawBoxes` writes exactly one of each per task
+# it draws, so the census must EQUAL the record's own task count: a dropped box loses all four of its
+# corners. The SUBJECT is not asserted here — clause AC1 took it out of the boxes, and
+# `tui.teamGraphContent` below is the arm that proves where it went. One reach is stated rather than
+# tested: a board whose ranks exceed the boxed path's cap (12) falls back to the RAIL, which draws no
+# boxes at all and so reddens this arm deliberately, not by accident.
+TEAM_BOX_TL="$(pane_glyphs '╭' "$TUI_DIR/pane-team.txt")"
+TEAM_BOX_TR="$(pane_glyphs '╮' "$TUI_DIR/pane-team.txt")"
+TEAM_BOX_BL="$(pane_glyphs '╰' "$TUI_DIR/pane-team.txt")"
+TEAM_BOX_BR="$(pane_glyphs '╯' "$TUI_DIR/pane-team.txt")"
+TEAM_BOX_RAW="corners=╭${TEAM_BOX_TL} ╮${TEAM_BOX_TR} ╰${TEAM_BOX_BL} ╯${TEAM_BOX_BR} tasksFromRecord=${TEAM_TASK_COUNT} ids=${TEAM_IDS_SEEN:-none} pane=pane-team.txt"
+if [ "$TEAM_TASK_COUNT" -gt 0 ] \
+  && [ "$TEAM_BOX_TL" = "$TEAM_TASK_COUNT" ] && [ "$TEAM_BOX_TR" = "$TEAM_TASK_COUNT" ] \
+  && [ "$TEAM_BOX_BL" = "$TEAM_TASK_COUNT" ] && [ "$TEAM_BOX_BR" = "$TEAM_TASK_COUNT" ]; then
+  record tui.teamGraphDrawn true \
+    "the LAYERED BOXES were drawn: the ROUNDED corner census equals the record's own task count, one box per task, which a dropped box reddens (the square corners the old arm matched belong to the scene FRAME; the subjects are NOT claimed here, because clause AC1 moved them to the pinned detail body that tui.teamGraphContent asserts)" \
+    "$TEAM_BOX_RAW"
+else
+  record tui.teamGraphDrawn false \
+    "the boxes were NOT drawn one per task: the record carries ${TEAM_TASK_COUNT} task(s) and the pane's rounded corners are ╭${TEAM_BOX_TL} ╮${TEAM_BOX_TR} ╰${TEAM_BOX_BL} ╯${TEAM_BOX_BR}, each of which must equal the task count" \
+    "$TEAM_BOX_RAW"
+fi
 record tui.teamGraphEdges "$(printf '%s' "$TEAM_PANE" | grep -qE '┬|┴|│' && echo true || echo false)" \
   "the dependency EDGES were drawn with box-drawing junctions" "junctions=$(printf '%s' "$TEAM_PANE" | grep -coE '┬|┴|│' || echo 0)"
-record tui.teamGraphContent "$(printf '%s' "$TEAM_PANE" | grep -q 'T1' && printf '%s' "$TEAM_PANE" | grep -q 'build the graph' && echo true || echo false)" \
-  "the boxes carry the record's own task ids and subjects" "ids=T1 subject=build the graph"
+# ── THE CONTENT ARM: the RECORD's own ids and subject ─────────────────────────
+# The values come from the task table read above, never from a literal. Commit 6fdfc012 froze clause
+# AC1, which limits a node label to `<marker> <id>` and moves the subject into the PINNED DETAIL BODY;
+# the subject is therefore asserted THERE — the body a reader reaches — and not in a box that no longer
+# draws it (the arm above counts the boxes and claims no subject inside them).
+# (a) EVERY id the record carries must be DRAWN — as a NODE LABEL, not as a string somewhere on the
+# screen: the label is `<marker> <id>` inside a box (AC1), so the id sits after a marker and before the
+# box's own right border. A later detail row (`T1 · …`) cannot satisfy this, because there the id is
+# followed by `·` rather than by the border.
+TEAM_MISSING=""
+while IFS=$'\t' read -r id subject; do
+  [ -n "$id" ] || continue
+  printf '%s' "$TEAM_PANE" | grep -qE "[^ ] $id +│" || TEAM_MISSING="${TEAM_MISSING}${TEAM_MISSING:+,}${id}"
+done <<<"$TEAM_TASKS"
+
+# (b) THE SUBJECT IS REACHABLE, one keystroke away. `j` is the scene's OWN alias for one step down the
+# drawing order (`scenes.ts` `moveFocus`: `input === "j"` → `setPinned(...)`), and `moveFocus` leaves a
+# PIN behind — the same state a click leaves, and the state the detail body renders (`focus = hover ??
+# pinned`). It is a plain character, so nothing in the tmux transport has to be parsed as a key.
+tmux -S "$SOCK" send-keys -t tui j 2>/dev/null || true
+sleep 3
+capture_pane teamPinned
+TEAM_PINNED_PANE="$(cat "$TUI_DIR/pane-teamPinned.txt" 2>/dev/null || true)"
+TEAM_FOCUS_ID=""
+TEAM_DETAIL=""
+while IFS=$'\t' read -r id subject; do
+  [ -n "$id" ] && [ -n "$subject" ] || continue
+  # The body's own row is `<id> · <kind> · <subject>` (`scenes.ts`): the id LEADS it and the record's
+  # own subject follows on the SAME row. Both tests are fixed-string, so punctuation in a subject stays
+  # literal — and the pane must also NAME this id as the focus, so the row is the pinned task's own body
+  # rather than a coincidence elsewhere on the screen.
+  TEAM_DETAIL_LINE="$(printf '%s' "$TEAM_PINNED_PANE" | grep -F "$id · " | grep -F "$subject" | head -n1 || true)"
+  if [ -n "$TEAM_DETAIL_LINE" ] && printf '%s' "$TEAM_PINNED_PANE" | grep -qF "focus $id "; then
+    TEAM_FOCUS_ID="$id"
+    TEAM_DETAIL="$(printf '%s' "$TEAM_DETAIL_LINE" | sed -e 's/^[[:space:]]*│[[:space:]]*//' -e 's/│[[:space:]]*$//' -e 's/[[:space:]]*$//')"
+  fi
+done <<<"$TEAM_TASKS"
+# THE PIN IS A MODE, and the lane's own `Escape` below closes the scene only while NOTHING is pinned
+# (`scenes.ts`: the escape arm unpins while a task IS pinned and closes otherwise), so this arm releases
+# its own pin here and leaves the scene exactly as it found it — the `Escape` below still closes it.
+tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+sleep 2
+
+TEAM_CONTENT_RAW="ids=${TEAM_IDS_SEEN:-none} fromRecord=${TEAM_TASK_COUNT} labelsExpected=${TEAM_TASK_COUNT} missing=[${TEAM_MISSING:-none}] pane=pane-team.txt chars=$(printf '%s' "$TEAM_PANE" | wc -c) pinnedFocus=${TEAM_FOCUS_ID:-none} detail=[${TEAM_DETAIL:-none}] pinnedPane=pane-teamPinned.txt"
+if [ "$TEAM_TASK_COUNT" -gt 0 ] && [ -z "$TEAM_MISSING" ] && [ -n "$TEAM_FOCUS_ID" ]; then
+  record tui.teamGraphContent true \
+    "every task id the lane's OWN record carries is drawn as a node label AND the record's own subject is reachable one keystroke away in the pinned detail body, where clause AC1 moved it (a literal id would keep passing after a dropped task)" \
+    "$TEAM_CONTENT_RAW"
+else
+  record tui.teamGraphContent false \
+    "the pane does not carry the record's own data: ids read from the record=${TEAM_TASK_COUNT} missing=[${TEAM_MISSING:-none}] pinnedFocus=[${TEAM_FOCUS_ID:-none}] — each record id must be DRAWN, and one 'j' keystroke must reach a task's own subject in the pinned detail body" \
+    "$TEAM_CONTENT_RAW"
+fi
 
 # ── 4b. THE MERGED PANEL: the host's own subagent rows ABOVE the MPD team body ──
 # WHAT OPENS IT, AND WHAT MUST NOT — two arms below pin the split:
@@ -354,7 +468,7 @@ record tui.teamGraphContent "$(printf '%s' "$TEAM_PANE" | grep -q 'T1' && printf
 # browser) own the keyboard while open; shortcuts match only in the plain chat state"
 # (`lib/types/dsh-adapter/shortcuts.js`), so the combo is sent from the CHAT state. The team scene's
 # `Escape` closes it because nothing is pinned (`scenes.ts`: the escape arm unpins only while a task
-# IS pinned, and closes otherwise).
+# IS pinned, and closes otherwise) — the content arm above released its own pin before this point.
 tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
 sleep 2
 capture_pane teamClosed

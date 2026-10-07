@@ -80,6 +80,34 @@ screen and produced an image of the wrong surface. The shipped tiles were each c
 at them; the lesson (a readiness marker must be unique to the surface it gates) is recorded in the
 lane's own comments so the next lane inherits it rather than rediscovering it.
 
+**Fixed — a Docker-lane assertion that had been stale for four hours, found by this wave's release
+sweep.** `node scripts/docker-e2e.ts --mode source --require-docker` failed 2 of its 94 assertions
+(`tui.teamGraphContent` and the abort it caused). It is **not** this wave's doing: the same two arms
+fail identically when the same lane is run against the PRE-wave commit, and the mechanism is that
+commit `6fdfc012` (12:39 UTC) froze clause AC1 — every node reads `<marker> <id>` and nothing else,
+with the subject moved into the pinned detail body — while the lane still asserted the OLD drawing
+shape. The last green lane run was 10:58 UTC; nobody re-ran it in between. The arm is repaired to
+assert what the contract now says, and strengthened while it was open: the expected ids are read out
+of the RECORD the lane itself wrote rather than hard-coded, each id must appear as a NODE LABEL
+(which a detail row cannot satisfy), and the record's own subject is asserted where AC1 moved it.
+The differential experiment, and the two plausible environment hypotheses it falsifies, are recorded
+in [`evidence/docker/lane-staleness/tui-teamGraphContent.md`](./evidence/docker/lane-staleness/tui-teamGraphContent.md).
+
+**A second, WORSE defect found in the same file: an assertion that proved nothing.**
+`tui.teamGraphDrawn` claimed to prove the DAG boxes were drawn, but it matched the square corners
+`┌ ┐ └ ┘` — and the boxes have been ROUNDED (`╭ ╮ ╰ ╯`) since the same wave. Measured on the lane's
+own pane: the square corners appear exactly ONCE each, on the scene FRAME, while the rounded ones
+appear three times each, one set per box. So the arm passed on frame chrome and **stayed green with
+every box deleted**. It now counts the rounded corners against the record's own task count. The
+vacuity is demonstrated rather than asserted: on one pane with the `T2` box removed, the new arm
+answers `false` (`corners=╭2 ╮2 ╰2 ╯2 tasksFromRecord=3`) while the OLD arm on that same pane still
+answers `true` — and three further mutations (frame-only, a record with one more task than the pane
+draws, a pane re-drawn with the pre-wave square corners) flip the new arm while leaving the old one
+green. Both graph arms now read their expected values out of the record the lane writes, and both
+report measured values (`corners=╭3 ╮3 ╰3 ╯3 tasksFromRecord=3`; `ids=T1,T2,T3 fromRecord=3
+labelsExpected=3 missing=[none] pinnedFocus=T1 detail=[T1 · requirement · freeze the contract]`)
+instead of the literal strings they used to carry.
+
 **Removed.**
 
 - **The five full-window `docs/assets/images/web-ui-*.png` captures are gone** (476 KB). The new set
