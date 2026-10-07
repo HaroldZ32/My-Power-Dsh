@@ -1,0 +1,225 @@
+{
+  "slug": "panel-visibility",
+  "domain": "dag/dag-edges-scroll",
+  "question": "Why does the TUI sidebar show only the host builtins (todo/jobs/agents) and never the MPD panels?",
+  "revision": {
+    "branch": "feature/dag-edges-scroll",
+    "base": "52cd964f",
+    "tree": "UNCOMMITTED working tree (the wave commits at the end)",
+    "distState": "packages/mpd-tui-adapter-plugin/dist/index.js is STALE by design after the ruling change and needs the captain's pinned-toolchain rebuild; packages/mpd-tui-plugin/dist/index.js is the ARM C/D blocker"
+  },
+  "host": {
+    "package": "@deepseek-harness-tui/dsh-tui",
+    "version": "0.13.0",
+    "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh-tui"
+  },
+  "isolation": {
+    "dshHome": ".mpd/recon/pv/dshhome (sandbox)",
+    "home": ".mpd/recon/pv/home (sandbox)",
+    "workspace": ".mpd/recon/pv/ws (sandbox; both DSH_TUI_WORKSPACE_TARGET and the tmux pane cwd)",
+    "note": "The sandbox root is a copy of the captain-provisioned .mpd/recon/tui-013-fv, moved to a SHORT path because the tmux socket path exceeded sun_path at the evidence path (measured: `error connecting to ...sock (File name too long)`).",
+    "realHomeTouched": "no boot read or wrote ~/.dsh or ~/.dsh-tui"
+  },
+  "cause": {
+    "verdict": "CONFIRMED with a correction: the composed ids are act<N>:<slug>, not mpd-tui:<slug>.",
+    "mechanism": "the host appends every registered id (enablePanelIdInStore) and the dsh-tui row re-applies its CONFIG about 4.3 s later, which is the schema default todo,jobs,agents while the user layer is unset",
+    "transition": {
+      "appendEvents": [
+        "todo,jobs,agents,act1:team",
+        "todo,jobs,agents,act1:team,act1:dag",
+        "todo,jobs,agents,act1:team,act1:dag,act1:workmate",
+        "todo,jobs,agents"
+      ],
+      "resetAt": null
+    },
+    "resetStack": [
+      "at apply (lib/types/tuiDisplayPrefs.js:158:21)",
+      "at apply (lib/types/dsh-adapter/plugin.js:586:5)  <- applySidePanelPanels(config.sidePanel?.panels)",
+      "at async Fiber._reload (@deepseek-ai/cordis/lib/index.js:1356:5)",
+      "at async Fiber.await (@deepseek-ai/cordis/lib/index.js:1400:24)"
+    ],
+    "composedIds": {
+      "measured": [
+        "act1:team",
+        "act1:dag",
+        "act1:workmate"
+      ],
+      "source": "the host PanelStore read-back; NOT the plugin name, because componentIdentityOf() is undefined for a plain loader row"
+    }
+  },
+  "arms": {
+    "arm-a-stock": {
+      "purpose": "STEP 1 reproduction, STOCK profile (sidePanel.panels ABSENT), PRE-FIX dist",
+      "verdict": "RED reproduced",
+      "bars": [
+        "‹ 待办 › ▸ ◆",
+        "≡ ‹ 任务 › ◆                                                      ⤢",
+        "≡ ▸ ‹ 代理 ›                                                      ⤢"
+      ],
+      "csvEvents": [
+        "todo,jobs,agents,act1:team",
+        "todo,jobs,agents,act1:team,act1:dag",
+        "todo,jobs,agents,act1:team,act1:dag,act1:workmate",
+        "todo,jobs,agents"
+      ],
+      "registeredIds": [
+        "act1:team",
+        "act1:dag",
+        "act1:workmate",
+        "todo",
+        "info",
+        "jobs",
+        "trajectory",
+        "agents",
+        "workspace",
+        "companion"
+      ],
+      "mpdTabSeen": false,
+      "mpdIdsSettledEnabled": false,
+      "failures": []
+    },
+    "arm-b-forced": {
+      "purpose": "POSITIVE CONTROL: the same boot with sidePanel.panels forced to the three measured ids",
+      "verdict": "GREEN control",
+      "bars": [
+        "‹ 待办 › ▸ ◆ M ◈ ◆",
+        "≡ ‹ 任务 › ◆ M ◈ ◆                                                ⤢",
+        "≡ ▸ ‹ 代理 › M ◈ ◆                                                ⤢",
+        "≡ ▸ ◆ ‹ MPD › ◈ ◆"
+      ],
+      "csvEvents": [
+        "todo,jobs,agents,act1:team",
+        "todo,jobs,agents,act1:team,act1:dag",
+        "todo,jobs,agents,act1:team,act1:dag,act1:workmate"
+      ],
+      "mpdTabSeen": false,
+      "mpdIdsSettledEnabled": true,
+      "failures": [],
+      "conclusion": "the ids are correct and the config route works; only the transient append is the defect"
+    },
+    "arm-c-fixed": {
+      "purpose": "STEP 4 ARM C: STOCK profile on the rebuilt dist, whole ladder window elapsed",
+      "verdict": "GREEN (re-verified across a rebuild: identical readings on 5318b500 and 00e82b38)",
+      "bars": [
+        "‹ 待办 › ▸ ◆ M ◈ ◆",
+        "≡ ‹ 任务 › ◆ M ◈ ◆                                                ⤢",
+        "≡ ▸ ‹ 代理 › M ◈ ◆                                                ⤢",
+        "≡ ▸ ◆ ‹ MPD › ◈ ◆"
+      ],
+      "mpdTabSeen": true,
+      "mpdIdsSettledEnabled": true,
+      "csvEvents": [
+        "todo,jobs,agents,act1:team",
+        "todo,jobs,agents,act1:team,act1:dag",
+        "todo,jobs,agents,act1:team,act1:dag,act1:workmate",
+        "todo,jobs,agents",
+        "todo,jobs,agents,act1:team,act1:dag,act1:workmate"
+      ],
+      "keeperLines": [
+        "mpd-tui panel enable keeper: confirmed — standing down: the enable list already names act1:team,act1:dag,act1:workmate, so the configuration has taken a position on this bundle; 1 write(s) over 6 tick(s); ids act1:team,act1:dag,act1:workmate"
+      ],
+      "recordedIds": [
+        "act1:team",
+        "act1:dag",
+        "act1:workmate"
+      ],
+      "settingsFilePresent": false,
+      "failures": [],
+      "note": "the set settled to the CONFIGURED value, which is the schema default plus our ids; the builtins are present, not removed"
+    },
+    "arm-e-script": {
+      "purpose": "STEP 4 ARM E: STEP 3 proven end to end — the script wrote the user layer, then a real PTY boot on the SAME stock profile",
+      "verdict": "GREEN: the user complaint is answered by a one-command remedy, independently of the keeper",
+      "bars": [
+        "‹ MPD › ◈ ◆",
+        "M ‹ MPD DAG › ◆",
+        "M ◈ ‹ MPD workmate ›"
+      ],
+      "csvEvents": [
+        "todo,jobs,agents,act1:team",
+        "todo,jobs,agents,act1:team,act1:dag",
+        "todo,jobs,agents,act1:team,act1:dag,act1:workmate",
+        "act1:team,act1:dag,act1:workmate"
+      ],
+      "mpdTabSeen": true,
+      "mpdIdsSettledEnabled": true,
+      "failures": [],
+      "hostPid": "285",
+      "probePids": [
+        "264",
+        "271",
+        "278",
+        "285",
+        "297",
+        "298",
+        "304",
+        "318",
+        "324",
+        "325"
+      ]
+    },
+    "arm-d-negative": {
+      "purpose": "STEP 4 ARM D: negative control - the host-internals import is unavailable",
+      "verdict": "GREEN control (re-verified across a rebuild: identical readings on 5318b500 and 00e82b38)",
+      "bars": [
+        "‹ 待办 › ▸ ◆",
+        "≡ ‹ 任务 › ◆                                                      ⤢",
+        "≡ ▸ ‹ 代理 ›                                                      ⤢"
+      ],
+      "mpdTabSeen": false,
+      "mpdIdsSettledEnabled": false,
+      "csvEvents": [
+        "todo,jobs,agents,act1:team",
+        "todo,jobs,agents,act1:team,act1:dag",
+        "todo,jobs,agents,act1:team,act1:dag,act1:workmate",
+        "todo,jobs,agents"
+      ],
+      "keeperLines": [
+        "mpd-tui panel enable keeper: absent — no candidate carried a readable lib/types/tuiDisplayPrefs.js (1 probed); 0 write(s) over 6 tick(s); ids act1:team,act1:dag,act1:workmate"
+      ],
+      "failures": [],
+      "bootRendered": true
+    }
+  },
+  "measurementBugsFoundAndFixed": [
+    "the probe arms in EVERY node child, each with its own copy of the host store; 1223 poll lines, most of them a foreign process reporting todo,jobs,agents, made `settledEnabled` read FALSE on an arm whose sidebar plainly painted the MPD tab. The driver now derives the host pid from the CHANGE records and filters every series to it (ARM E flipped false -> true with no other change).",
+    "the tmux socket path exceeded sun_path at the evidence path, so the sandbox had to move to a short scratch root.",
+    "a .mjs probe carrying TypeScript annotations is a SyntaxError under `--import` and took the whole boot down."
+  ],
+  "commands": [
+    "bun evidence/dag/dag-edges-scroll/panel-visibility/20261006T145907Z/repro.ts --sandbox-root <sandbox> --out <arm> --label <a|b|c|e> --panels <csv|none|keep>",
+    "node scripts/mpd-tui-panels.ts --self-test",
+    "node scripts/mpd-tui-panels.ts --dsh-home .mpd/recon/pv/dshhome --profile dsh-tui --workspace .mpd/recon/pv/ws --ids act1:team,act1:dag,act1:workmate [--apply]",
+    "bun test packages/mpd-tui-plugin/test/panel-visibility.test.ts",
+    "node scripts/verify-dist-fresh.ts --only mpd-tui-adapter-plugin",
+    "bun run verify:comments ; bun run verify:docs"
+  ],
+  "keeperRule": {
+    "condition": "append the WHOLE set only when the enable list names NONE of our registered ids; if it names ANY of them, stand down and write nothing",
+    "why": "the CSV itself carries the user's position: a list naming any of ours means the configuration has taken a position on this bundle (enabled via /settings, written by scripts/mpd-tui-panels.ts, or a deliberate partial removal). No third host-internals contact is needed to read that.",
+    "partialWrite": "never - the set goes in as one write, so a half-repaired list cannot make the next tick stand down mid-repair",
+    "residualNamed": {
+      "case": "a user who removes ALL of ours on purpose leaves a list indistinguishable from a fresh profile's",
+      "effect": "the set is re-added once per boot",
+      "remedy": "would need the CONFIGURED value, i.e. a third host-internals contact - a section 6 count decision DELIBERATELY DEFERRED by the captain to its own change"
+    },
+    "arms": [
+      "R13c · it STANDS DOWN when the configuration already names ANY of ours",
+      "R13c · the whole set goes in at once, so a partial write can never make the next tick stand down mid-repair"
+    ]
+  },
+  "distIdentity": {
+    "adapter": {
+      "sha256": "ca40ecefa0282a7795d23724a759ebb3757eb458832ae245316c9450eae60d2c",
+      "bytes": 40295
+    },
+    "tuiPlugin": {
+      "sha256": "00e82b38fc37d13d9b1aa99dbd239a970333264a7bbeb268d65a663fa6f9ed23",
+      "bytes": 386256,
+      "superseded": "5318b500dc222b7f56d69f23ccf64a8ebcc697e7ae315644d40f8d0c4f640cdb (385962 B) - the FIRST C/D capture, kept as provenance"
+    },
+    "keepPanelEnableGrep": "3 on BOTH builds",
+    "sandwich": "C/D first run 16:26:57Z-16:28:53Z on 5318b500; C/D re-verified 16:44:32Z-16:46:21Z on 00e82b38; adapter sha unchanged across both"
+  },
+  "blockedBy": null
+}

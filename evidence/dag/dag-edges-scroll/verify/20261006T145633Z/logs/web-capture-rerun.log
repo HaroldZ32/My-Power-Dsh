@@ -1,0 +1,118 @@
+seeded workspace ws-mpd-ui -> /data/ws
+token-len=43
+[capture] bound the board to 100 session(s)
+[capture] browser locale="" board="cjk" out="/data-out/shots"
+seeded team-2026-10-05T22-30-00.000Z (board=normal) for session --base: 6 tasks, 5 members
+[capture] seeded the cjk board for 102 session(s), including session-acc0f32f-e954-49cf-aa33-b06f78f4fc00
+[capture] the panel has not named a session yet; relying on the preamble's per-session seed
+[capture] ranks={"T1":0,"T2":0,"T3":1,"T4":1,"T5":2,"T6":2} forward=["T3<-T1","T4<-T1","T4<-T2","T5<-T3","T5<-T4","T6<-T3"] hover=T6
+{
+ "ok": true,
+ "checks": {
+  "mpdPresetOffered": true,
+  "pluginsShowsInstalledBundle": true,
+  "presetsShowMpdDefault": true,
+  "mpdSectionRendered": true,
+  "sessionCreatedOnMpdPreset": true,
+  "teamPanelShowsRoster": true,
+  "teamGraphDrewEdges": true,
+  "dagEdgesAreCurves": true,
+  "dagOnePathPerEdge": true,
+  "dagTipIsZeroWidth": true,
+  "dagTipTouchesBorder": true,
+  "dagDrawingHasNoCjk": true,
+  "dagDetailKeepsCjk": true,
+  "teamGraphEdgesResolve": true,
+  "teamGraphHoverFocusChain": true,
+  "teamGraphNodesDoNotOverlap": true,
+  "teamGraphClickPinsDetail": true,
+  "mpdControlsBound": true
+ },
+ "steps": [
+  {
+   "name": "01-first-run",
+   "ok": true,
+   "file": "/data-out/shots/01-first-run.png"
+  },
+  {
+   "name": "02-home",
+   "ok": true,
+   "file": "/data-out/shots/02-home.png"
+  },
+  {
+   "name": "03-plugins",
+   "ok": true,
+   "file": "/data-out/shots/03-plugins.png"
+  },
+  {
+   "name": "04-settings-mpd",
+   "ok": true,
+   "file": "/data-out/shots/04-settings-mpd.png"
+  },
+  {
+   "name": "05-settings-agent-presets",
+   "ok": true,
+   "file": "/data-out/shots/05-settings-agent-presets.png"
+  },
+  {
+   "name": "06-team-panel",
+   "ok": true,
+   "file": "/data-out/shots/06-team-panel.png"
+  },
+  {
+   "name": "06b-team-board-seed",
+   "ok": true,
+   "file": "/data-out/shots/06b-team-board.png"
+  },
+  {
+   "name": "07-team-graph-interaction",
+   "ok": true,
+   "file": "/data-out/shots/07-team-graph-hover.png"
+  },
+  {
+   "name": "08-dag-curve",
+   "ok": true,
+   "file": "/data-out/shots/08-dag-curve.png curves=6"
+  }
+ ],
+ "sessionCreate": {
+  "status": 200,
+  "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791301556319\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-acc0f32f-e954-49cf-aa33-b06f78f4fc00\",\"agentPreset\":\"mpd\"}}}"
+ },
+ "settingsNav": [
+  "General",
+  "Models",
+  "Built-in plugins",
+  "Agent presets",
+  "MPD"
+ ],
+ "mpdBindingProbe": {
+  "diffLimit": "20000",
+  "autoCheck": "true",
+  "controls": 28
+ },
+ "teamGraph": {
+  "nodes": [
+   "T1",
+   "T2",
+   "T3",
+   "T4",
+   "T5",
+   "T6"
+  ],
+  "edges": [
+   "T3<-T1",
+   "T4<-T1",
+   "T4<-T2",
+   "T5<-T3",
+   "T5<-T4",
+   "T6<-T3"
+  ],
+  "graph": "ranks=3 edges=6",
+  "focusWhileHovered": "chain",
+  "focusAfterLeave": "none",
+  "detailAfterClick": "T6"
+ },
+ "consoleErrors": []
+}
+[exit=0]

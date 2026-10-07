@@ -46,8 +46,8 @@ import {
   type SubagentRowView,
   type SurfaceKit,
 } from "../src/subagent-scene"
-import { DAG_ANIM, DAG_CHROME, DAG_STATE_TONES, DAG_TONE_GLYPH, DAG_TONE_THEME, type DagTone } from "../src/dag-theme"
-import { GRAPH_THEME, legendLines } from "../src/graph"
+import { DAG_ANIM, DAG_CHARS, DAG_CHROME, DAG_STATE_TONES, DAG_TONE_GLYPH, DAG_TONE_THEME, type DagTone } from "../src/dag-theme"
+import { GRAPH_THEME, layoutGraphNatural, legendLines } from "../src/graph"
 import { legendLinesFor } from "../src/panel-core"
 import { cellWidth } from "../src/sanitize"
 import { readBoardState, statusLine } from "../src/state"
@@ -610,6 +610,12 @@ describe("a CJK fixture does not shear the layout", () => {
     // THE ASSERTION THE REVIEWER ASKED FOR, and the reason a length check alone cannot replace it: a
     // cursor that advances one SLOT per wide glyph leaves the right border UNWRITTEN. The row is then not
     // too long — it is missing its border, and only "the last cell IS the border column" catches that.
+    //
+    // IT IS ASSERTED ON THE DRAWING, NOT ON THE WINDOWED SCENE ROW (re-pointed for clauses T1/T2): under
+    // natural width the viewport may CUT a row before its right border, so a scene row legitimately ends
+    // on whatever cell the window reached. The shear this arm exists to catch is a property of the
+    // drawing, so it is read from the layout itself — and the windowed rows get their own invariant in
+    // the second half, which is that the window is EXACTLY the viewport.
     /** A board whose subjects are entirely wide characters. */
     const record = fixtureRecord([
       { id: "T1", subject: "冻结验收契约", status: "completed", kind: "requirement" },
@@ -619,22 +625,37 @@ describe("a CJK fixture does not shear the layout", () => {
       /** This width's mount. */
       const { components, kit } = mountScenes(record, { columns, timer: "none" })
       render(kit, components[TEAM_SCENE_ID])
-      /** The drawing, row by row. */
+      /** The drawing as the SCENE windowed it: every row is the viewport's own width. */
       const drawn = graphRows(kit.last())
+      for (const row of drawn) expect(cellWidth(row)).toBeLessThanOrEqual(columns)
+      // THE DRAWING ITSELF, read from the layout, where the borders are still closed. The board is the
+      // SAME one the scene drew, in the drawing's own vocabulary — built here rather than read back out
+      // of the record, whose `blockedBy` is the STORE's field name and not the layout's.
+      /** The two wide-subject tasks, as the drawing sees them: `T2` depends on `T1`. */
+      const tasks = [
+        { id: "T1", subject: "冻结验收契约", kind: "requirement", visual: "completed", dependencies: [] as string[], depth: 0 },
+        { id: "T2", subject: "构建插件表面", kind: "work", visual: "open", dependencies: ["T1"], depth: 1 },
+      ]
+      /** The boxed drawing. */
+      const view = layoutGraphNatural(tasks)
+      if (view === undefined) continue
+      /** The drawing as text, one string per line. */
+      const lines = view.lines.map((row) => row.map((span) => span.text).join(""))
       /** The rows that are a boxed line: they must close at both ends. */
-      const boxed = drawn.filter((row) => /^[┌└│]/u.test(row))
+      const boxed = lines.filter((row) => [DAG_CHARS.cornerDownRight, DAG_CHARS.cornerUpRight, DAG_CHARS.vertical].some((mark) => row.startsWith(mark)))
       expect(boxed.length).toBeGreaterThan(0)
       for (const row of boxed) {
         /** The row's final character. */
         const last = [...row].at(-1)
-        if (/^[┌└]/u.test(row)) {
+        if (row.startsWith(DAG_CHARS.cornerDownRight) || row.startsWith(DAG_CHARS.cornerUpRight)) {
           // A box's top or bottom border closes on its own corner.
-          expect(["┐", "┘"].includes(String(last))).toBe(true)
-        } else {
-          // A body row closes on ITS OWN right border — the cell a sheared cursor leaves blank.
-          expect(last).toBe("│")
+          expect(([DAG_CHARS.cornerDownLeft, DAG_CHARS.cornerUpLeft] as readonly string[]).includes(String(last))).toBe(true)
+        } else if (row.startsWith(DAG_CHARS.vertical)) {
+          // A body row closes on ITS OWN right border — the cell a sheared cursor leaves blank. A row cut
+          // by the WINDOW is excluded by this same test: the window pads with spaces, never with a `│`.
+          expect(last).toBe(DAG_CHARS.vertical)
         }
-        expect(cellWidth(row)).toBeLessThanOrEqual(columns)
+        expect(cellWidth(row)).toBeLessThanOrEqual(view.width)
       }
     }
   })
@@ -648,7 +669,15 @@ describe("a CJK fixture does not shear the layout", () => {
     const { components, kit } = mountScenes(record, { columns: 60, timer: "none" })
     /** The team scene's rows. */
     const rows = render(kit, components[TEAM_SCENE_ID])
-    expect(rows.join("\n")).toContain("冻结验收契约")
+    // THE DRAWING NO LONGER CARRIES THE CJK SUBJECT, AND THAT IS THE WAVE'S CONTRACT (clauses C1/C4):
+    // the node's label is the graph-safe form of the subject, so a pure-CJK subject draws its composer's
+    // fallback instead. What this arm proves is the part that outlives the rule — the WIDE-GLYPH clamp:
+    // the CJK still reads in the CHROME, where the panel's own text is allowed (clause C3), and it
+    // survives the scene's clamps whole rather than shearing.
+    expect(rows.join("\n")).not.toContain("冻结验收契约")
+    /** The DAG's own rows as one string, which is the drawing the CJK ban is asserted over. */
+    const drawn = graphRows(kit.last()).join("\n")
+    expect(drawn).not.toContain("冻结验收契约")
     for (const row of layoutRows(kit.last())) expect(cellWidth(rowText(row))).toBeLessThanOrEqual(60)
     /** The border title, which carries the CJK team name. */
     const title = String((elementByKey(kit.last(), "frame")?.props?.borderText as { content?: string } | undefined)?.content ?? "")

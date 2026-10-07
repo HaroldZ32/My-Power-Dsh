@@ -1,0 +1,5 @@
+listeners: 1
+press 1: pinKeys=9 [pin-head,pin-subject 冻结验收契约与验收标准] chineseSubjectsPresent=1 chineseInDetail=true
+press 2: pinKeys=9 [pin-head,pin-subject 建立头部与进度条的双向滚轴] chineseSubjectsPresent=1 chineseInDetail=true
+press 3: pinKeys=9 [pin-head,pin-subject 绘制依赖图的连线与圆角节点盒] chineseSubjectsPresent=1 chineseInDetail=true
+press 4: pinKeys=9 [pin-head,pin-subject 修复被截断的成员路由中文对齐] chineseSubjectsPresent=1 chineseInDetail=true

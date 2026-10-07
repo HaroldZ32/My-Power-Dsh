@@ -216,6 +216,14 @@
     rank: number
     /** Its row inside that column. */
     row: number
+    /**
+     * The task's 1-based position in the BOARD ORDER the layout was handed — clause C4's ordinal.
+     *
+     * Not the drawn row: the columns are re-ordered by rank and id, so a node that read its position
+     * off the picture would number the picture. The fallback label `<glyph> <id> <KIND> #<ordinal>`
+     * has to name the task's place in the board the reader is looking at.
+     */
+    ordinal: number
     /** Its offset from the column's top edge. */
     top: number
   }
@@ -230,6 +238,41 @@
     width: number
     /** The height in pixels; a horizontal run is one pixel tall. */
     height: number
+  }
+
+  /** One point of a flattened curve, in the canvas's own pixels — the sample a containment test reads. */
+  interface CurvePoint {
+    /** The offset from the canvas's left edge, in pixels. */
+    x: number
+    /** The offset from the canvas's top edge, in pixels. */
+    y: number
+  }
+
+  /**
+   * One route's PAINTED form: the SVG path that draws it, the polyline that proves it, and its head.
+   *
+   * `points` is a flattened SAMPLE of exactly the path `d` describes — built in the same closed-form
+   * call, at the same radius — so "this edge never enters a node box" is a statement about the DRAWN
+   * curve that a test can prove arithmetically, without a browser, a canvas or a measuring pass. The
+   * drawing and the proof are therefore one object rather than two that must agree.
+   */
+  interface EdgeCurve {
+    /** The `<path>` `d`: the route's own vertices, filleted, with a cubic sweep into the final approach. */
+    d: string
+    /**
+     * The FLATTENED polyline of exactly that path — W3's sample, and the one thing that makes the
+     * drawing provable: consecutive points form segments a containment test can measure against a box's
+     * interior, so "this edge never enters a node" is a statement about the PAINTED curve.
+     *
+     * A straight leg contributes its two ends and nothing else (a segment test is exact, so sampling a
+     * line would only invent points); each `Q`/`C` arc contributes its own samples at ≤1px steps. At
+     * `radius = 0` there are no arcs at all, so this list IS the route's waypoint list, point for point.
+     */
+    points: CurvePoint[]
+    /** The ARRIVAL POINT the arrowhead's tip stands on, so W5 is a pure equality against `toX`/`toY`. */
+    tip: CurvePoint
+    /** The corner radius the path was built with, echoed so the `radius = 0` control is observable here. */
+    radius: number
   }
 
   /**
@@ -248,6 +291,13 @@
     witness: string
     /** The painted runs, in draw order: the lead-out first, the lead-in last. */
     segments: Array<{ key: string; rect: EdgeRect }>
+    /**
+     * The PAINTED form of those same runs: one SVG path, its flattened polyline and its arrowhead.
+     *
+     * Derived from the SAME waypoints the segments were cut from, never re-routed: `segments` stay the
+     * routing truth `data-mpd-route` publishes, and this is their parametrisation into a curve.
+     */
+    curve: EdgeCurve
     /** The arrival marker whose tip touches the blocked task's border, so the direction is readable. */
     marker: EdgeRect
     /** Whether the marker points LEFT, which is how a back edge (a cycle) arrives. */
@@ -421,8 +471,19 @@
   const GEO = {
     /** One rank column's width. */
     column: 168,
-    /** How far a node's box sits inside its column, per side — the box is `column - 2 * inset` wide. */
-    inset: 4,
+    /**
+     * How far a node's box sits inside its column, per side — the box is `column - 2 * inset` wide.
+     *
+     * TWELVE, AND THE NUMBER IS LOAD-BEARING. Two neighbouring boxes stand `2 * inset` apart, and an
+     * edge's vertical run stands in the MIDDLE of that gutter, so each of its two horizontal legs is
+     * `inset` long — and `curveOf` clamps a fillet to half of its shorter leg. At the old base of 4 the
+     * legs were 4px, the radius clamped to 2px, and the "curves" read as an orthogonal line with a nick
+     * in it: the user's ask was a mermaid-style curve, and 2px does not discharge it. A base of 12 gives
+     * an ordinary one-lane forward edge its FULL 6px fillet, which is the smallest change that makes the
+     * declared radius visible. The price is 24px of the box (160 → 144 wide), paid knowingly because the
+     * subject line is now the graph-safe ASCII label rather than a full task title.
+     */
+    inset: 12,
     /** One node box's height. */
     nodeHeight: 42,
     /** The vertical gap between two nodes of one column. */
@@ -440,6 +501,28 @@
   const MARK_W = 5
   /** The arrival marker's height in pixels, which is the triangle's base. */
   const MARK_H = 8
+  /**
+   * The corner radius every bend of a drawn edge is filleted with, in pixels — the ONE declared knob.
+   *
+   * Read only through {@link curveOf}'s `radius` argument, and echoed on every drawn curve so the control
+   * is observable in the LAYOUT rather than only in the DOM. `radius = 0` collapses every fillet and the
+   * closing sweep into plain `L` commands, which is what makes the curve's one non-trivial claim — that
+   * a rounded path still stays inside the corridor its orthogonal route was proven to occupy —
+   * falsifiable rather than assumed.
+   *
+   * The per-vertex clamp to HALF of the shorter adjacent leg is derived, never declared, and it is what
+   * makes 6px safe here: two lanes in a crowded gutter stand `LANE_STEP` apart, so an unclamped radius
+   * would overshoot into its neighbour's corridor.
+   */
+  const EDGE_RADIUS = 6
+  /**
+   * The shortest leg a SWEEP is drawn across, in pixels.
+   *
+   * Below it the final approach degrades to the orthogonal `L`+`L` the radius-0 control emits: a lane a
+   * single pixel wide cannot carry a curve, and pretending it can would push the sweep's control points
+   * out of the corridor the route was proven to occupy.
+   */
+  const EDGE_SWEEP_MIN = 2
   /** The x of the LEFT border of a node in one column, for a column inset — the box's own border. */
   const borderLeft = (rank: number, inset: number): number => rank * GEO.column + inset
   /** The x of the RIGHT border of a node in one column, for that same inset. */
@@ -506,7 +589,21 @@
       /** Read the routes once, resolving to the payloads or a failure. */
       read: (sessionId: string) => Promise<TeamStore>
       /** The DAG geometry of one board, exposed so the layout is provable without rendering. */
-      layout: (tasks: TeamTask[]) => GraphGeometry
+      layout: (tasks: TeamTask[], radius?: number) => GraphGeometry
+      /**
+       * The graph-safe label rule itself (clause C4), exposed so the drawing's one composer is provable.
+       * @param subject - the subject as served.
+       * @param ordinal - the task's 1-based position in the board order.
+       * @returns the label the drawing writes.
+       */
+      graphSafeLabel: (subject: string, ordinal: number) => string
+      /**
+       * The curve builder itself, exposed so its `radius = 0` control can be driven directly (W6).
+       * @param waypoints - the route's vertices, in travel order.
+       * @param radius - the corner radius; `0` emits the straight orthogonal polyline.
+       * @returns the path's `d` and the flattened polyline of exactly that path.
+       */
+      curveOf: (waypoints: CurvePoint[], radius: number) => { d: string; points: CurvePoint[] }
     } {
       /** The dependencies this closure reads on every call, plus the plan and task routes when given. */
       const { react, statePath, planPath, taskPath } = deps
@@ -679,6 +776,176 @@
       }
 
       /**
+       * The GRAPH-SAFE label of one task: the printable-ASCII content of its subject, or its ordinal.
+       *
+       * THE RULE IS EXACT (clause C4): take the maximal runs of printable ASCII (`\x20`-`\x7E`), join
+       * the runs with a single space, collapse whitespace, trim. A subject that leaves nothing — pure
+       * CJK, punctuation, an empty string — draws `#<ordinal>` instead, so the node still carries a
+       * number a reader can match against the board's own order rather than an empty line.
+       *
+       * WHY THE DRAWING AND NOT THE DATA: CJK is unreadable at these widths (the user's own report),
+       * while the pinned detail body and the hover `title` keep the ORIGINAL subject — that is where
+       * the Chinese belongs (clause C3). ONE composer, named the same on both surfaces, called by every
+       * drawing site: a renderer that composed a label of its own from `subject` is exactly how the two
+       * would come to disagree (clause C2).
+       * @param subject - the subject exactly as the route served it.
+       * @param ordinal - the task's 1-based position in the board order the surface was handed.
+       * @returns the label to DRAW, never empty.
+       */
+      const graphSafeLabel = (subject: string, ordinal: number): string => {
+        /** The subject as text, so a payload that served no string draws the ordinal instead of crashing. */
+        const text = typeof subject === "string" ? subject : ""
+        /** Every maximal run of printable ASCII in the subject, in order. */
+        const runs = text.match(/[\x20-\x7E]+/g) ?? []
+        /** Those runs joined, their whitespace collapsed and trimmed — the rule's whole arithmetic. */
+        const label = runs.join(" ").replace(/\s+/g, " ").trim()
+        return label === "" ? "#" + ordinal : label
+      }
+
+      /**
+       * The painted form of one routed edge: an SVG path over the route's own vertices, plus its sample.
+       *
+       * THE GRAMMAR (clause W6). `M` starts on the blocker's border. Every INTERIOR vertex gets both its
+       * legs shortened by `r = min(EDGE_RADIUS, legIn / 2, legOut / 2)` and the join is closed by a `Q`
+       * through the corner itself — the exact circular-arc approximation at a right angle, with none of
+       * an `A` command's sweep-flag bookkeeping across mixed directions. The corner that opens the FINAL
+       * APPROACH is the one place a cubic earns its keep: from the same shortened entry point,
+       * `C entry exit W` lands on the arrival border with a HORIZONTAL tangent, so the arrowhead points
+       * into the box instead of arriving at an angle (the user's 入盒前一段曲线).
+       *
+       * `radius = 0` takes the `L` branch at every vertex, so `d` is a pure `M`/`L` orthogonal polyline
+       * and `points` EQUALS the waypoint list — a byte-comparable control rather than a visual claim.
+       * @param waypoints - the route's vertices, in travel order, every leg axis-aligned.
+       * @param radius - the corner radius in pixels; `0` (or less) emits the straight polyline.
+       * @returns the path's `d` and the flattened polyline of exactly that path.
+       */
+      const curveOf = (waypoints: CurvePoint[], radius: number): { d: string; points: CurvePoint[] } => {
+        /** The path commands, in emission order. */
+        const commands: string[] = []
+        /** The flattened polyline: every vertex the pen reaches, plus the samples each arc appends. */
+        const points: CurvePoint[] = []
+        /**
+         * One coordinate as the path writes it: absolute, two decimals, never `-0`, never an exponent.
+         *
+         * The formatting is FROZEN because an arm compares `data-mpd-curve` to `curve.d` by exact string
+         * equality — leaving float printing to the renderer is how that comparison starts failing for
+         * reasons that have nothing to do with the geometry.
+         */
+        const at = (value: number): string => {
+          /** The value at the declared precision, with its negative zero normalised away. */
+          const rounded = Math.round(value * 100) / 100
+          return String(rounded === 0 ? 0 : rounded)
+        }
+        /** Append one vertex or sample to the polyline, as a copy. */
+        const push = (point: CurvePoint): void => { points.push({ x: point.x, y: point.y }) }
+        /** Lift the pen to a vertex without drawing it: the path's `M`. */
+        const moveTo = (point: CurvePoint): void => {
+          commands.push("M " + at(point.x) + " " + at(point.y))
+          push(point)
+        }
+        /**
+         * Draw a straight leg: its `L`, and the leg's own endpoint as the polyline's next vertex.
+         *
+         * NOTHING is sampled along it, on purpose. W3's instrument measures SEGMENTS between consecutive
+         * samples, which is exact for a straight leg and needs no density assumption, while sampling
+         * would break the radius-0 control's promise that `points` is the waypoint list itself.
+         */
+        const lineTo = (point: CurvePoint): void => {
+          commands.push("L " + at(point.x) + " " + at(point.y))
+          push(point)
+        }
+        /** Draw one corner's quadratic fillet: the `Q` through the corner, plus the arc's own samples. */
+        const quadTo = (control: CurvePoint, point: CurvePoint): void => {
+          /** The vertex the fillet starts from. */
+          const from = points[points.length - 1]
+          /** The control polygon's length, an upper bound of the arc, which sets the sample count. */
+          const span = Math.abs(control.x - from.x) + Math.abs(control.y - from.y) + Math.abs(point.x - control.x) + Math.abs(point.y - control.y)
+          /** How many samples the arc is cut into — a step of a pixel or less, whatever the leg's length. */
+          const steps = Math.max(2, Math.ceil(span))
+          for (let step = 1; step <= steps; step += 1) {
+            /** The curve parameter at this sample. */
+            const t = step / steps
+            /** Its complement, so each weight costs one subtraction. */
+            const s = 1 - t
+            push({ x: s * s * from.x + 2 * s * t * control.x + t * t * point.x, y: s * s * from.y + 2 * s * t * control.y + t * t * point.y })
+          }
+          commands.push("Q " + at(control.x) + " " + at(control.y) + " " + at(point.x) + " " + at(point.y))
+        }
+        /** Draw the closing cubic sweep into the arrival border, with its own samples. */
+        const cubicTo = (first: CurvePoint, second: CurvePoint, point: CurvePoint): void => {
+          /** The vertex the sweep starts from. */
+          const from = points[points.length - 1]
+          /** The control polygon's length, an upper bound of the arc, which sets the sample count. */
+          const span = Math.abs(first.x - from.x) + Math.abs(first.y - from.y) + Math.abs(second.x - first.x) + Math.abs(second.y - first.y) + Math.abs(point.x - second.x) + Math.abs(point.y - second.y)
+          /** How many samples the arc is cut into. */
+          const steps = Math.max(2, Math.ceil(span))
+          for (let step = 1; step <= steps; step += 1) {
+            /** The curve parameter at this sample. */
+            const t = step / steps
+            /** Its complement. */
+            const s = 1 - t
+            push({
+              x: s * s * s * from.x + 3 * s * s * t * first.x + 3 * s * t * t * second.x + t * t * t * point.x,
+              y: s * s * s * from.y + 3 * s * s * t * first.y + 3 * s * t * t * second.y + t * t * t * point.y,
+            })
+          }
+          commands.push("C " + at(first.x) + " " + at(first.y) + " " + at(second.x) + " " + at(second.y) + " " + at(point.x) + " " + at(point.y))
+        }
+        /** The vertex the path leaves from: the blocker's own border. */
+        const start = waypoints[0]
+        moveTo(start)
+        // EVERY VERTEX BUT THE FIRST AND LAST IS A CORNER. The last one opens the FINAL APPROACH and is
+        // the only one that sweeps; the others are filleted, which is what turns the right angles the
+        // route was computed from into the rounded elbows the user asked for.
+        for (let index = 1; index < waypoints.length - 1; index += 1) {
+          /** The vertex the leg into this corner came from. */
+          const previous = waypoints[index - 1]
+          /** The corner itself. */
+          const corner = waypoints[index]
+          /** The vertex the leg out of this corner runs to. */
+          const next = waypoints[index + 1]
+          /** The incoming leg's length — Manhattan, because every leg here is axis-aligned. */
+          const legIn = Math.abs(corner.x - previous.x) + Math.abs(corner.y - previous.y)
+          /** The outgoing leg's length, measured the same way. */
+          const legOut = Math.abs(next.x - corner.x) + Math.abs(next.y - corner.y)
+          /** The fillet actually drawn: the declared radius, clamped to half of the shorter leg. */
+          const fillet = Math.max(0, Math.min(radius, legIn / 2, legOut / 2))
+          /** Whether this corner is the one the closing sweep opens from. */
+          const sweeping = index === waypoints.length - 2
+          // THE `L` BRANCH: a zero radius, a leg too short to carry one, or — for the sweep alone — a
+          // lane narrower than `EDGE_SWEEP_MIN`, where a curve's controls would leave the corridor.
+          if (fillet <= 0 || (sweeping && (legIn < EDGE_SWEEP_MIN || legOut < EDGE_SWEEP_MIN))) { lineTo(corner); continue }
+          /** The incoming leg's direction, as a unit vector. */
+          const intoX = (corner.x - previous.x) / legIn
+          /** That same direction's y. */
+          const intoY = (corner.y - previous.y) / legIn
+          /** The outgoing leg's direction, which the join's second control point follows. */
+          const outX = (next.x - corner.x) / legOut
+          /** That same direction's y. */
+          const outY = (next.y - corner.y) / legOut
+          /** The vertex the join begins at: the corner pulled back along the incoming leg. */
+          const entry: CurvePoint = { x: corner.x - intoX * fillet, y: corner.y - intoY * fillet }
+          /** The vertex it ends at: the corner pushed on along the outgoing leg. */
+          const exit: CurvePoint = { x: corner.x + outX * fillet, y: corner.y + outY * fillet }
+          lineTo(entry)
+          if (sweeping) {
+            // THE FINAL APPROACH. Both controls stand on the route's own legs — the entry on the riser,
+            // the exit on the lead-in — so the curve leaves downward and lands horizontally: the
+            // arrowhead points INTO the border rather than arriving at an angle.
+            cubicTo(entry, exit, next)
+          } else {
+            quadTo(corner, exit)
+          }
+        }
+        /** The route's last vertex: the border the dependency arrives at. */
+        const end = waypoints[waypoints.length - 1]
+        /** Where the polyline currently ends, which the sweep may already have carried to `end`. */
+        const tail = points[points.length - 1]
+        if (tail !== undefined && (tail.x !== end.x || tail.y !== end.y)) lineTo(end)
+        return { d: commands.join(" "), points }
+      }
+
+      /**
        * Compute the whole DAG geometry from the board alone: rank columns, node boxes, and every
        * drawn edge ROUTED as a chain of adjacent-rank hops.
        *
@@ -709,9 +976,11 @@
        *   3. THE ROUTES TRAVEL OUT OF THIS FUNCTION, so the render paints them and a test can assert
        *      them: the geometry is one object, and `data-mpd-box`/`data-mpd-route` publish it.
        * @param tasks - the board, in the order the route served it.
+       * @param radius - the corner radius the painted curves are built with, defaulting to
+       *   {@link EDGE_RADIUS}; `0` is clause W6's control and emits the straight orthogonal polyline.
        * @returns the columns, the canvas size, every node's box and every routed edge.
        */
-      const layout = (tasks: TeamTask[]): GraphGeometry => {
+      const layout = (tasks: TeamTask[], radius: number = EDGE_RADIUS): GraphGeometry => {
         // ── R20: THE RANK IS DERIVED FROM THE `blockedBy` GRAPH, NOT TRUSTED FROM `depth` ──────────
         // WHAT WAS WRONG, and it is the defect the user photographed: this function bucketed the
         // columns by `task.depth` verbatim. `team-store.ts` resolves a blocker by exact task id or
@@ -819,11 +1088,20 @@
         for (const column of columns) column.sort((left, right) => ID_ORDER.compare(left.id, right.id))
         /** The grid's width in columns: one per rank, never zero. */
         const rankCount = Math.max(columns.length, 1)
+        /**
+         * Each task's 1-based position in the board order this layout was handed.
+         *
+         * The ordinal clause C4's fallback label prints, taken HERE because this is the one place that
+         * still holds the served order: `columns` is re-ordered by rank and id, so a node that read its
+         * own position off the drawing would number the picture rather than the board.
+         */
+        const ordinalOf: Record<string, number> = {}
+        for (let index = 0; index < tasks.length; index += 1) ordinalOf[tasks[index].id] = index + 1
         /** Every node's box, before the reserved rows are known — its `row` is final, its `top` is not. */
         const nodes: GraphNode[] = []
         for (let rank = 0; rank < columns.length; rank += 1) {
           for (let row = 0; row < columns[rank].length; row += 1) {
-            nodes.push({ task: columns[rank][row], rank, row, top: boxTop(row) })
+            nodes.push({ task: columns[rank][row], rank, row, ordinal: ordinalOf[columns[rank][row].id] ?? 0, top: boxTop(row) })
           }
         }
         /** The node each task id names, so an edge resolves both of its boxes in one lookup. */
@@ -986,6 +1264,30 @@
           let risers = 0
           /** How many intermediate-column crossings have been painted, which numbers their keys. */
           let crossings = 0
+          /**
+           * The route's own VERTICES, in travel order, starting on the blocker's border.
+           *
+           * Recorded here because this is where the route is walked: the painted curve is a
+           * parametrisation of THESE points, never a second routing of its own, so a change to a lane or
+           * a reserved row moves the picture and the assertion together.
+           */
+          const waypoints: CurvePoint[] = [{ x: fromX, y: fromY }]
+          /**
+           * Record one vertex, skipping a visit that did not MOVE the pen.
+           *
+           * A dependency whose two boxes sit on the same row walks to its lane and then "down" to the
+           * row it never leaves, which used to append the SAME point twice: a no-op entry in `points`
+           * and a redundant `L` in the radius-0 path. Nothing about containment depended on it (a
+           * zero-length segment hides nothing); it is removed because a route with no repeated vertex is
+           * the cleaner statement of what was walked. The RECTS are untouched by this — they are cut from
+           * the pen's own arithmetic, not from this list — so `data-mpd-route` stays byte-identical.
+           */
+          const mark = (point: CurvePoint): void => {
+            /** The vertex the list currently ends on, which is where the pen already stands. */
+            const last = waypoints[waypoints.length - 1]
+            if (last !== undefined && last.x === point.x && last.y === point.y) return
+            waypoints.push(point)
+          }
           if (level) {
             // A SAME-RANK DEPENDENCY: no gutter lies between its ends, so the path leaves the blocker's
             // right border, steps into the inset space to the RIGHT of the column — which no box
@@ -995,7 +1297,9 @@
             /** The x that slot stands at, one clearance off the column's own boxes. */
             const lane = rightOf(want.parent.rank) + LANE_CLEARANCE + slot
             segments.push({ key: "out", rect: run(x, lane, y) })
+            mark({ x: lane, y })
             segments.push({ key: "riser", rect: runV(lane, y, toY) })
+            mark({ x: lane, y: toY })
             x = lane
             y = toY
           } else {
@@ -1014,39 +1318,58 @@
                 crossings += 1
                 segments.push({ key: "cross" + crossings, rect: run(x, lane, y) })
               }
+              mark({ x: lane, y })
               /** The y this hop ends at: the blocked task's middle last, a reserved row in between. */
               const next = index === walk.length - 1
                 ? toY
                 : boxMiddle(mine?.get(forward ? walk[index] + 1 : walk[index]) ?? 0)
               risers += 1
               segments.push({ key: risers === 1 ? "riser" : "riser" + risers, rect: runV(lane, y, next) })
+              mark({ x: lane, y: next })
               x = lane
               y = next
             }
           }
           // The lead-in lands ON the blocked task's border — covering that border's pixel, because this
-          // end meets a BOX rather than another run — and the arrival marker's tip sits on the same x.
+          // end meets a BOX rather than another run — and the arrowhead's tip sits on the same x.
           segments.push({ key: "in", rect: reach(x, toX, y) })
+          mark({ x: toX, y })
           // THE MARKER POINTS ALONG THE TRAVEL: it points LEFT when the path's last leg ran leftward,
           // which is what a back edge does and what a same-rank edge does when it comes back around its
           // own column. A marker that pointed the other way would read as an edge leaving the task.
           /** Whether the arrowhead points left, i.e. the edge arrives from the right. */
           const pointsLeft = level || toX < fromX
-          /** The arrival marker: a triangle whose tip touches the border the edge arrives at. */
-          // CLAMPED INTO THE GRID, so the last column's own marker cannot open a horizontal scrollbar.
-          /** The furthest left a marker may start and still fit inside the canvas. */
+          /**
+           * The arrowhead's BOUNDING BOX, whose tip end is the border the dependency arrives at.
+           *
+           * `headMax` is kept exactly as it was: `data-mpd-route` serializes this rect and clause W4 pins
+           * that string, so the head's own geometry may not move underneath it. The clamp never binds on
+           * a real board — the inset is capped far below a column's width — and the horizontal-scrollbar
+           * intent it carries is now held by the canvas being exactly `graph.width` wide, one clipping
+           * rule for the whole plane rather than a per-head correction.
+           */
           const headMax = Math.max(0, rankCount * GEO.column - MARK_W)
+          /** The x of the arrowhead's TIP, which IS the border the edge arrives at (clause W5). */
+          const tipX = toX
+          /** The arrowhead's own box: its tip on the arrival border, its base one head-length behind it. */
+          const marker: EdgeRect = {
+            left: Math.min(headMax, pointsLeft ? tipX : tipX - MARK_W),
+            top: toY - Math.floor(MARK_H / 2),
+            width: MARK_W,
+            height: MARK_H,
+          }
+          // THE ARRIVAL IS A POINT (W5): `toX` is already the border this edge lands on in all three
+          // cases — forward, same-rank and back — so the tip is the route's own last vertex and the
+          // assertion is a pure equality with no knowledge of the head's width.
+          /** The PAINTED form of this route: the same waypoints, filleted and swept (clause W6). */
+          const shape = curveOf(waypoints, radius)
           edges.push({
             parent: want.parent.task.id,
             child: want.child.task.id,
             witness: want.child.task.id + "<-" + want.parent.task.id,
             segments,
-            marker: {
-              left: Math.min(headMax, pointsLeft ? toX : toX - MARK_W),
-              top: toY - Math.floor(MARK_H / 2),
-              width: MARK_W,
-              height: MARK_H,
-            },
+            curve: { d: shape.d, points: shape.points, tip: { x: toX, y: toY }, radius },
+            marker,
             pointsLeft,
           })
         }
@@ -1160,43 +1483,67 @@
       }
 
       /**
-       * Paint one routed edge: its runs, plus the arrival marker that says which way it runs.
+       * Paint one routed edge: ONE SVG path over the layout's own waypoints, plus its arrowhead.
        *
-       * NO GEOMETRY IS COMPUTED HERE. The layout routed the edge — dummy rows, gutters, lanes and all —
-       * and this function only decides the colour and emits the divs, so the drawing and the asserted
-       * geometry cannot drift apart. A CSS triangle carries the marker: an SVG here would be a second
-       * drawing plane with its own measuring rules, and the frozen contract forbids one.
+       * NO GEOMETRY IS COMPUTED HERE. The layout routed the edge and derived its painted form — the
+       * fillets, the closing sweep, the flattened polyline, the arrowhead's box — and this function only
+       * decides the colour and emits the two elements, so the drawing and the asserted geometry cannot
+       * drift apart. The SVG is a PAINTING plane, never a second source of truth: nothing below reads
+       * the DOM, measures a box or resolves a style, which is the one prohibition that SURVIVES this
+       * wave's contract amendment (the prohibition was always measurement, never SVG).
        * @param edge - the routed edge, straight off the geometry.
        * @param tinted - whether BOTH of its ends are inside the hover halo.
-       * @returns the edge element, its runs and its arrival marker.
+       * @returns the edge's group, its path and its arrival arrowhead.
        */
       const edgeOf = (edge: DrawnEdge, tinted: boolean): unknown => {
         /** The colour every run of this edge draws in; a focused edge reads brighter. */
         const base = tinted ? FOCUS_EDGE : CSS.edge.background
-        /** One run's style: the shared edge box, this edge's colour, then its own rectangle. */
-        const runStyle = (rect: EdgeRect): Record<string, string> =>
-          ({ ...CSS.edge, background: base, left: rect.left + "px", top: rect.top + "px", width: rect.width + "px", height: rect.height + "px" })
-        /** The arrival marker: a triangle whose tip touches the border the edge arrives at. */
-        const headStyle: Record<string, string> = {
-          position: "absolute",
-          left: edge.marker.left + "px",
-          top: edge.marker.top + "px",
-          width: "0",
-          height: "0",
-          borderTop: Math.floor(MARK_H / 2) + "px solid transparent",
-          borderBottom: Math.ceil(MARK_H / 2) + "px solid transparent",
-        }
-        headStyle[edge.pointsLeft ? "borderRight" : "borderLeft"] = MARK_W + "px solid " + base
-        return react.createElement("div", {
+        /** The arrowhead's own box, whose tip end is the border the dependency arrives at. */
+        const head = edge.marker
+        /** The x of the TIP: the box's right end for a right-pointing head, its left one otherwise. */
+        const tipX = edge.pointsLeft ? head.left : head.left + head.width
+        /** The x its base stands at, which is the box's other end. */
+        const baseX = edge.pointsLeft ? head.left + head.width : head.left
+        /** The y the head is centred on, which is the arrival row. */
+        const tipY = head.top + head.height / 2
+        /** The arrowhead as an SVG polygon: the tip first, then the base's two corners. */
+        const headShape = tipX + "," + tipY + " " + baseX + "," + head.top + " " + baseX + "," + (head.top + head.height)
+        // THE TIP MARK IS A ZERO-WIDTH RECT (clause W4): `toX` is the border the edge lands on, and a
+        // zero width means an arm can read the apex without knowing `MARK_W` — the width the old CSS
+        // triangle published nowhere, which is exactly why the arrival was unreadable from the DOM.
+        /** The arrival point, serialized in the same `left,top,width,height` grammar as every other mark. */
+        const tipText = edge.curve.tip.x + "," + (edge.curve.tip.y - Math.floor(MARK_H / 2)) + ",0," + MARK_H
+        return react.createElement("g", {
           key: "edge:" + edge.parent + ">" + edge.child,
           // THE WITNESSABLE MARK: `capture.mts` (docker/ui) reads `data-mpd-edge` and counts `data-mpd-graph`'s
           // `edges=` against exactly these, so one edge per DRAWN dependency is what must appear here.
           "data-mpd-edge": edge.witness,
+          // STILL THE ROUTING TRUTH: the orthogonal runs the layout cut, in draw order, with the
+          // direction and the arrowhead's box — the curve below is a parametrisation of these.
           "data-mpd-route": routeText(edge),
-          style: CSS.edgeLayer,
         },
-          ...edge.segments.map((segment) => react.createElement("div", { key: segment.key, style: runStyle(segment.rect) })),
-          react.createElement("div", { key: "head", "data-mpd-head": "1", style: headStyle }),
+          react.createElement("path", {
+            key: "curve",
+            // THE PAINTED FORM, published so a test can prove the drawn path is the proven one: the
+            // flattened polyline the containment arm measures is built from exactly this `d`.
+            "data-mpd-curve": edge.curve.d,
+            d: edge.curve.d,
+            fill: "none",
+            // THE TINT IS THE STROKE (clause W7): the box this edge used to fill with a colour is now
+            // painted by a line, so the focus halo has to travel through the stroke and the head's fill.
+            stroke: base,
+            strokeWidth: "1",
+            strokeLinecap: "round",
+          }),
+          react.createElement("polygon", {
+            key: "head",
+            // THE HEAD IS A POLYGON, NOT A PATH, so "one `<path>` per drawn edge" stays countable.
+            "data-mpd-head": "1",
+            "data-mpd-tip": tipText,
+            points: headShape,
+            fill: base,
+            stroke: "none",
+          }),
         )
       }
 
@@ -1383,6 +1730,15 @@
         /** The node each task id draws in, so an edge is placed from the board alone. */
         const nodeOf: Record<string, GraphNode> = {}
         for (const node of graph.nodes) nodeOf[node.task.id] = node
+        /**
+         * The GRAPH-SAFE label of every node, keyed by task id — clause C4, composed in ONE place.
+         *
+         * Built here rather than inline because it is the ONLY text the drawing takes from a task: the
+         * ordinal comes off the geometry's own nodes (which hold the served board's order), and the
+         * pinned detail body and the hover `title` keep the original subject untouched (clause C3).
+         */
+        const labelOf: Record<string, string> = {}
+        for (const node of graph.nodes) labelOf[node.task.id] = graphSafeLabel(node.task.subject, node.ordinal)
         // THE RANKS THE DRAWING USED, handed to the hover halo so it cannot measure a different relation
         // than the columns draw: the node's own `rank` IS the derived rank (R20), never the served value.
         /** The drawn rank of every task, straight off the geometry. */
@@ -1464,10 +1820,10 @@
           }
           children.push(react.createElement("div", { key: "m-" + member.id, "data-member": member.id, style: CSS.card }, card))
         }
-        // THE DAG, in the form a 380px column can carry: one rank column per `depth`, one node per task,
-        // and one DRAWN edge (three absolutely-positioned divs) per `blockedBy` entry that names a task
-        // on this board. The reference GUI draws SVG curves; at this width the arithmetic form is both
-        // readable and impossible to disagree with the data.
+        // THE DAG, in the form a 380px column can carry: one rank column per rank, one node per task,
+        // and one DRAWN edge per `blockedBy` entry that names a task on this board. The edge layer is a
+        // PAINTING plane over the layout's own arithmetic — one SVG path per edge, no measurement
+        // anywhere — so the curve cannot disagree with the data it was routed from.
         children.push(react.createElement("div", { key: "tasks-head", style: CSS.subHead }, t("task.title") + " (" + tasks.length + ")"))
         if (tasks.length === 0) {
           // The empty state NAMES THE CALL that fills it, so a captain reading an empty board knows
@@ -1488,17 +1844,32 @@
             "data-mpd-graph": "ranks=" + graph.rankCount + " edges=" + edges.length,
             // A chain is active only when the halo holds a RELATED node, not merely the hovered one.
             "data-mpd-focus": chainActive ? "chain" : "none",
+            // THE ONLY SCROLLER, ON PURPOSE (the user's ruling): the pan exists so the WHOLE DAG can be
+            // seen, which is a property of this box alone. Its width stays the PANEL's — `100%` — while
+            // the canvas inside it is `graph.width` wide, so a wide board scrolls HERE and never pushes
+            // a sibling row sideways, never widens the panel and never clips the text around it.
             style: { ...CSS.scroll, width: "100%", height: Math.min(graph.height, 260) + "px" },
           },
             // The grid WRAPS the canvas: the wrapper carries the vertical breathing room as padding, so
             // the origin an edge's absolute coordinates are measured from stays the grid itself.
             react.createElement("div", { style: { position: "relative", width: graph.width + "px", padding: GEO.pad + "px 0" } },
               react.createElement("div", { style: { ...CSS.grid, width: graph.width + "px", height: graph.height + "px", gridTemplateColumns: graph.gridTemplateColumns } },
-              // THE EDGES LAYER IS THE GRID'S FIRST CHILD, so every run paints BEHIND the boxes. The
+              // THE EDGES LAYER IS THE GRID'S FIRST CHILD, so every path paints BEHIND the boxes. The
               // routes no longer cross a box (the layout reserves a row for each long edge's hops),
               // but this is the safety net that makes an overlap impossible rather than merely
               // unlikely: a mis-routed line can only be hidden by a node, never cover a task.
-              react.createElement("div", { key: "edges", "data-edges": "1", style: { ...CSS.edgeLayer, width: graph.width + "px", height: graph.height + "px" } }, edges),
+              // ONE `<svg>` IS THE WHOLE PLANE: one canvas, one coordinate space — the layout's own —
+              // with `width`/`height`/`viewBox` all saying the same thing, so a path's numbers ARE the
+              // pixels the geometry was asserted in and SVG's default clipping keeps a head that sits
+              // on the canvas edge from opening a scrollbar.
+              react.createElement("svg", {
+                key: "edges",
+                "data-edges": "1",
+                width: graph.width,
+                height: graph.height,
+                viewBox: "0 0 " + graph.width + " " + graph.height,
+                style: { ...CSS.edgeLayer, width: graph.width + "px", height: graph.height + "px" },
+              }, edges),
               graph.columns.map((column, rank) => react.createElement("div", {
                 key: "col-" + rank,
                 "data-mpd-rank": String(rank),
@@ -1542,7 +1913,7 @@
                   react.createElement("span", { key: "glyph", style: { color: toneOf(task.visual), fontWeight: 700 } }, glyphOf(task.visual)),
                   react.createElement("span", { key: "id", style: { fontWeight: 700 } }, task.id),
                   react.createElement("span", { key: "kind", style: CSS.dim }, kindOf(task.kind))),
-                react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, task.subject),
+                react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, labelOf[task.id]),
                 // The closers, in order: the node, the column's node map, the column, the grid's column
                 // map, the grid, the padded wrapper, the graph element, and `children.push`.
                 ))))))))
@@ -1554,7 +1925,7 @@
         return react.createElement("div", { "data-mpd-team-tab": team.id, style: CSS.panel }, children)
       }
 
-      return { TeamView, start, read, layout }
+      return { TeamView, start, read, layout, graphSafeLabel, curveOf }
     },
   }
 }

@@ -1,0 +1,40 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/dag-label-parity.test.ts:
+(pass) C4 · the graph-safe label rule, implemented from the frozen text > the adversarial table: every class the decision named, including the near misses [0.13ms]
+(pass) C4 · the graph-safe label rule, implemented from the frozen text > every produced label is non-empty ONLY when the rule found ASCII, and carries no banned character [0.23ms]
+(pass) C4 · the graph-safe label rule, implemented from the frozen text > NEGATIVE CONTROL: the pre-rule pass-through VIOLATES the same table, so the check can fail [0.12ms]
+(pass) C1/C3 · the WEB drawing is CJK-free while the pinned detail keeps the Chinese > the fixture really is the reported case: the RAW subjects carry banned characters [0.04ms]
+(pass) C1/C3 · the WEB drawing is CJK-free while the pinned detail keeps the Chinese > ZERO banned characters inside the rendered drawing [117.25ms]
+TypeError: undefined is not an object (evaluating 'task.failedBy.length')
+      at detailSection (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/dag-label-parity.test.ts:1222:41)
+      at TeamView (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/dag-label-parity.test.ts:1536:48)
+      at act (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bundle-plugin/test/client-harness.ts:737:23)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/dag-label-parity.test.ts:437:41)
+(fail) C1/C3 · the WEB drawing is CJK-free while the pinned detail keeps the Chinese > C3: the pinned detail body still carries the ORIGINAL Chinese subject [42.21ms]
+(pass) C1/C3 · the WEB drawing is CJK-free while the pinned detail keeps the Chinese > POSITIVE CONTROL: the pre-rule drawing of the SAME board is measurably not CJK-free [0.09ms]
+(pass) C4/R3 · both surfaces implement the SAME composer > the WEB factory exposes `graphSafeLabel`, and it implements the frozen rule over the whole table [34.76ms]
+(pass) C4/R3 · both surfaces implement the SAME composer > the TUI exports the SAME name and the SAME answers (R3: one concept, one name) [36.22ms]
+(pass) C4/R3 · both surfaces implement the SAME composer > C2: on the WEB the composer is the ONLY thing that turns a subject into drawing text [35.77ms]
+(pass) C4/R3 · both surfaces implement the SAME composer > the ordinal is the 1-based BOARD index, never the rank or the drawn order [31.85ms]
+(pass) C1 · the TUI drawing carries no banned character in ANY of its three modes > boxes, rail and list all draw the pure-Chinese board without one CJK glyph [2.50ms]
+(pass) C1 · the TUI drawing carries no banned character in ANY of its three modes > the legend lines are part of the drawing and are CJK-free too [0.24ms]
+655 |     /** The list drawing, whose rows are one task each and therefore readable per ordinal. */
+656 |     const view = surface.layoutList(TUI_CHINESE_BOARD, 60)
+657 |     /** The drawing's text. */
+658 |     const text = tuiText(view)
+659 |     for (const [index] of TUI_CHINESE_BOARD.entries()) {
+660 |       expect(`${index + 1} in drawing: ${text.includes(`#${index + 1}`)}`).toBe(`${index + 1} in drawing: true`)
+                                                                                 ^
+error: expect(received).toBe(expected)
+
+Expected: "1 in drawing: true"
+Received: "1 in drawing: false"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/dag-label-parity.test.ts:660:76)
+(fail) C1 · the TUI drawing carries no banned character in ANY of its three modes > the drawing really uses the ordinal fallback, per mode, in the same order as the board [0.47ms]
+
+ 12 pass
+ 2 fail
+ 138 expect() calls
+Ran 14 tests across 1 file. [654.00ms]

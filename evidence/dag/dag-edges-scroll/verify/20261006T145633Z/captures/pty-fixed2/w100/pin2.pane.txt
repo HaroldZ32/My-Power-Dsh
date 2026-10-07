@@ -1,0 +1,50 @@
+
+                                                                   │ ≡ ▸ ◆ M ‹ MPD DAG › ◆
+  ✦ dsh-TUI  v0.13.0                                               ├──────────────────────────────
+  ██▀▀▄▄ ██▀▀▀▀ ██▀▀▀▀ ██▀▀▄▄ ██▀▀▀▀ ██▀▀▀▀ ██▀▀▀▀ ██  ██          │┌MPD DAG─────────────────────┐
+  █   █  █      █      █   █  ██     █      █      █  ██           ││team dag-edges-scroll-verify│
+  █   █  █ ▀▀▀  █ ▀▀▀  █ ▄▄▀▀  ▀▀▀▀▄ █ ▀▀▀  █ ▀▀▀  █ █             ││✓ T1 WRK REQ DAG TUI  verify│
+  █   █  █      █      █          █  █      █      █  ██           ││├─▸ ▶ T2 WRK W1   unassigned│
+  ██▄▄▀▀ ██▄▄▄▄ ██▄▄▄▄ ██     ██▄▄▄▀ ██▄▄▄▄ ██▄▄▄▄ ██  ██          │││  └─▸ ○ T4 WRK R    ⇠ T2+T3│
+                                                                   │││     └─▸ ○ T5 WRK #5       │
+  ██  ██   ▄▀▀▄   ██▀▀▄▄  ██  ██  ██▀▀▀▀  ██▀▀▀▀  ██▀▀▀▀           ││└─▸ ○ T3 WRK W2 termaid roun│
+  █   █   ██  ██  █   █   █ █ █   █       ██      ██               ││view rail · 5 tasks · ranks │
+  █ ▀▀█   █ ▀▀█   █ ▄▄▀▀  █  ██   █ ▀▀▀    ▀▀▀▀▄   ▀▀▀▀▄           ││◆ T2                        │
+  █   █   █   █   █  ██   █   █   █           █       █            ││subject W1 natural width and│
+  ██  ██  ██  ██  ██  ██  ██  ██  ██▄▄▄▄  ██▄▄▄▀  ██▄▄▄▀           ││description Task T2 of the d│
+  deepseek-flash · Max effort                                      ││id T2                       │
+  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-l…││kind work                   │
+  提示：Ctrl+O 展开/收起思考全文与工具详情 · /tips 更多技巧        ││visual open                 │
+                                                                   ││verdict —                   │
+    探索未至之境！                                                 ││failedBy —                  │
+                                                                   ││owner unassigned            │
+                                                                   ││attempt —                   │
+   ▶ （Ctrl+P 展开） 已加载上下文 · 系统提示词 19 段 · 运行时上下… ││round —                     │
+                                                                   ││blockedBy T1                │
+                                                                   ││dependents T4               │
+                                                                   ││▼/▸ arrow · ▶ focus         │
+                                                                   ││✓ completed · ◐ running     │
+                                                                   ││○ open=blocked · ✗ failed   │
+                                                                   ││○ blocked=open · ⊘ cancelled│
+                                                                   ││↑↓/jk move · Enter pin · Esc│
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+                                                                   ││                            │
+  mpd: 团队 dag-edges-scroll-verify 1·1/5 · 计划 0 · workmate 1    ││                            │
+                                                                   ││                            │
+  ╭───────────────────────────────────────────────────────────────╮││                            │
+  ⌸ ❯                                                             ⛶││                            │
+  ╰───────────────────────────────────────────────────────────────╯│└────────────────────────────┘
+   deepseek-flash · max · ws                                       ├──────────────────────────────
+                                                                   │ Esc 聊天 · ←/→ 切换 · z 缩…
+

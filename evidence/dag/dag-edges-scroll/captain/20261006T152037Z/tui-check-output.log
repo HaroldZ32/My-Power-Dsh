@@ -1,0 +1,25 @@
+== 1. THE PANEL MODE AT THE CAPTURE'S OWN WIDTHS (the capture read: view rail) ==
+  fixture     cols= 44 -> mode=boxes width= 63
+  fixture     cols= 80 -> mode=boxes width= 63
+  fixture     cols=140 -> mode=boxes width= 63
+  fixture     cols=220 -> mode=boxes width= 63
+  pathological cols= 44 -> mode=rail  width= 44  (the safety net must fire)
+  pathological cols=220 -> mode=rail  width=220  (the safety net must fire)
+
+== 2. DOES EVERY COMPOSED LABEL APPEAR WHOLE IN THE BOXES? ==
+  T1 whole=YES  label="natural width and bidirectional panning for the DAG"
+  T2 whole=YES  label="termaid rounded node boxes with rounded corners"
+  T3 whole=YES  label="the graph-safe label rule on every drawing surface"
+  T4 whole=YES  label="the horizontal window is the drawing's own"
+  T5 whole=YES  label="prove the tip touches the border by arithmetic"
+  drawing width=63 · boxRows=3
+
+== 3. THE SLICER AT THE CAPTURE'S WIDTH ==
+  exactly 44 cells: 81;  not exactly: 0
+
+== 4. THE PINNED DETAIL BODY (clause C3) AND THE DRAWING (C1) ==
+  subject 冻结验收契约与验收标准 | description 验收说明 1：必须保持原样 | id T1 | kind work
+  subject kept verbatim:      true
+  description kept verbatim:  true
+  CJK inside the DRAWING:     false   <- must be false
+  CJK inside the DETAIL:      true   <- must be true

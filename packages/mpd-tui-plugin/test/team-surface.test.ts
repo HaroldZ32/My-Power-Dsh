@@ -28,6 +28,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createLog } from "../src/log"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
+import { DAG_CHARS, DAG_CHROME } from "../src/dag-theme"
+import { cellWidth } from "../src/sanitize"
 import {
   BOARD_SCENE_ID,
   PLAN_MUTATION_UNAVAILABLE,
@@ -1204,7 +1206,10 @@ describe("the team scene's focus", () => {
     const scene = components[TEAM_SCENE_ID]
     /** The scene before any scroll. */
     const before = render(kit, scene)
-    expect(before).toContain("┌")
+    // THE CORNERS COME FROM THE CONTRACT, never from a literal (T7/R6): the boxed drawing's corners are
+    // the ROUNDED set now, and a test that spelled `┌` itself would pin the OLD drawing while the code
+    // moved on — the drift the one glyph table exists to prevent.
+    expect(before).toContain(DAG_CHARS.cornerDownRight)
     expect(kit.pointer("onWheel", { deltaY: 1 })).toBe(true)
     // Scrolling moves the WINDOW over the drawing, so the FIRST row leaves the view — asserted on
     // the graph's own first character, because later rows legitimately still draw a `┌`.
@@ -1212,18 +1217,22 @@ describe("the team scene's focus", () => {
     const scrolled = render(kit, scene)
     /** Everything after the graph's header, which is the drawing itself. */
     const drawingOf = (value: string): string => value.slice(value.indexOf("task dependency graph") + "task dependency graph".length)
-    expect(drawingOf(before).startsWith("┌")).toBe(true)
-    expect(drawingOf(scrolled).startsWith("│")).toBe(true)
+    expect(drawingOf(before).startsWith(DAG_CHARS.cornerDownRight)).toBe(true)
+    expect(drawingOf(scrolled).startsWith(DAG_CHARS.vertical)).toBe(true)
     // Back up, and the first row returns: the offset CLAMPS at zero rather than going negative.
     kit.pointer("onWheel", { deltaY: -1 })
     expect(render(kit, scene)).toBe(before)
   })
 
-  test("a NARROW terminal falls back to the rail rather than clipping the boxes", () => {
-    // The fallback is the reason the graph is safe at any width: `layoutBoxes` refuses rather than
-    // squeezing, so this is a fact about the geometry instead of a guess about the terminal. What
-    // makes boxes impossible is a WIDE RANK in a narrow viewport — a chatty chain fits at any width,
-    // because its widest rank holds one box.
+  test("a NARROW terminal draws the SAME boxes and windows them rather than clipping them", () => {
+    // THE ARM'S PREMISE CHANGED WITH CLAUSE T1, so the arm is RE-POINTED rather than dropped. It used to
+    // prove that a narrow terminal makes `layoutBoxes` refuse and the rail takes over. Under NATURAL
+    // width the drawing is no longer bounded by the terminal at all, so the narrow case is answered by
+    // WINDOWING the same picture — which is the user's request — and the rail is now reached only when
+    // the BOXES themselves are impossible (more ranks than a boxed drawing stays legible in), not when
+    // the terminal is small. Both halves are asserted: the SAME drawing appears narrow and wide, every
+    // windowed row is exactly the viewport, and the horizontal rail is drawn so the reader can tell the
+    // picture continues.
     /** This arm's fixture workspace: one rank with four parallel tasks. */
     const workspace = teamFixture({
       id: "wide-1",
@@ -1237,19 +1246,34 @@ describe("the team scene's focus", () => {
         { id: "d", subject: "four", status: "pending", dependencies: [] },
       ],
     })
-    /** This arm's kit, narrow enough that four boxes cannot fit. */
+    /** This arm's kit, narrow enough that four boxes could never have fitted. */
     const { kit, components } = mountScenes(workspace, { terminal: { columns: 44, rows: 24 } })
     /** The rendered scene. */
     const text = render(kit, components[TEAM_SCENE_ID])
-    expect(text).toContain("task dependency graph (rail)")
-    // The rail names every task and draws no box.
+    // THE DRAWING IS STILL BOXES AT 44 COLUMNS, and that is the wave's headline: the boxes are sized by
+    // their labels, so a narrow terminal windows them instead of refusing them.
+    expect(text).toContain("task dependency graph")
+    expect(text).not.toContain("(rail)")
     for (const id of ["a", "b", "c", "d"]) expect(text).toContain(id)
-    expect(text).not.toContain("┌")
-    // The SAME board at a comfortable width draws boxes, so the fallback is a decision about the
-    // geometry and not a property of the fixture.
-    /** This arm's kit at a width the boxes fit. */
+    // THE HORIZONTAL RAIL IS DRAWN, because this viewport cannot show the whole drawing — it is the one
+    // row beneath the DAG that says so, and it is the DAG's own row rather than the page's (R8).
+    // The rail's own cells are `█`/`░`; asserted through the CONTRACT's chrome constants rather than as
+    // literals, so a theme of bars is one edit and this arm follows it.
+    expect(text).toContain(DAG_CHROME.barFull)
+    // EVERY DRAWN ROW FITS THE VIEWPORT: the drawing is wider than 44 cells, so a scene that drew it
+    // whole would shear the frame. The window is what keeps that honest.
+    // THE SCENE DRAWS ONE ROW PER TERMINAL ROW and the double flattens them into ONE string, so the
+    // cell budget is stated over the whole render: 24 rows of at most 44 cells. A row that overflowed
+    // would push this past the budget, which is what makes the arm falsifiable.
+    expect(cellWidth(text)).toBeLessThanOrEqual(44 * 24)
+    // The SAME board at a comfortable width draws the SAME picture, unwindowed — so the narrow case is a
+    // property of the viewport and not a second layout.
+    /** This arm's kit at a width the whole drawing fits. */
     const wide = mountScenes(workspace, { terminal: { columns: 120, rows: 30 } })
-    expect(render(wide.kit, wide.components[TEAM_SCENE_ID])).toContain("┌")
+    /** The drawing at the comfortable width. */
+    const wideText = render(wide.kit, wide.components[TEAM_SCENE_ID])
+    expect(wideText).toContain(DAG_CHARS.cornerDownRight)
+    expect(wideText).not.toContain(DAG_CHROME.barFull)
   })
 })
 

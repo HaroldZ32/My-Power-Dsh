@@ -1,0 +1,14 @@
+== reviewer re-check 2026-10-06T15:12:17Z ==
+boxes has #undefined: false | has #1: true | cjk: false
+rail has #undefined: false | has #1: true | cjk: false
+○ T1 WRK #1
+└─▸ ○ T2 WRK #2
+   └─▸ ○ T3 WRK #3
+list has #undefined: false | has #1: true | cjk: false
+rank 0 ────────────────────────────────────────────────────
+  ○ T1 WRK #1                                          open
+rank 1 ────────────────────────────────────────────────────
+o=3 c=2 sliceSpans=[" T"] sliceCells=[" T"]
+o=2 c=3 sliceSpans=["○ T"] sliceCells=["○ T"]
+o=4 c=2 sliceSpans=["T1"] sliceCells=["T1"]
+boxRows at rows=5 for 4 ranks: 3

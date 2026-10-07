@@ -1,0 +1,83 @@
+{
+  "lane": "web",
+  "wave": "dag-edges-scroll",
+  "status": "green for the lane's own deliverables; two REPO-WIDE gates are red on sibling lanes' in-flight files (named above)",
+  "collected": "2026-10-06T15:13:15Z",
+  "branch": "feature/dag-edges-scroll",
+  "head": "52cd964f",
+  "sha256": {
+    "packages/mpd-bundle-plugin/src/team-view.ts": "378e15aa26a3dc1c914c3b42a03ac4b979bc10d627650d5b316681b9c6ede0fe",
+    "packages/mpd-bundle-plugin/test/team-view.test.ts": "b245759490d20ced40c07bb9feed2aaa952ac13052b84c4327f717cf1371ca29",
+    "docker/ui/team-fixture-records.mts": "bdc77391f680434275381e23231d532a45625aefcebbb9a581bf750fa60ca734",
+    "docker/ui/team-fixture.mts": "2a38cf5bc38403948d6dfbc8009c9e5a30842c686baae9d5022f95dcec45a635",
+    "docker/ui/seed-team-fixture.sh": "0f763247e407c385fcbb9831c631c2dcae608e939b8b8fb20db63f21724a2731",
+    "docker/ui/capture.mts": "9de14abb9c92bfc384e51fa62d4b478e90bb31d08c658e2de154f05f21e4874a"
+  },
+  "commands": [
+    {
+      "cmd": "bun test packages/mpd-bundle-plugin",
+      "result": "159 pass / 0 fail (7 files, 3038 expect calls)"
+    },
+    {
+      "cmd": "bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin",
+      "result": "295 pass / 0 fail (17 files)"
+    },
+    {
+      "cmd": "bun run typecheck",
+      "result": "RED on the REPO at collection time — all four errors are in SIBLING lanes' files (packages/mpd-tui-plugin/src/panel-dag.ts x3 at that instant, and mpd-tui-adapter-plugin/src/index.ts earlier); this lane's files typecheck clean"
+    },
+    {
+      "cmd": "bun run verify:comments",
+      "result": "RED on the REPO: 10 violations, ALL in sibling lanes' files (packages/mpd-tui-plugin/test/dag-fidelity.test.ts x7, mpd-tui-adapter-plugin/src/index.ts x3); every file this lane owns is CLEAN"
+    },
+    {
+      "cmd": "W3 POSITIVE CONTROL: lanes shifted +40px, arm re-run",
+      "result": "FAIL as required — crossings 470, expect(crossings).toBe(0)"
+    },
+    {
+      "cmd": "W3 control restored: same arm re-run",
+      "result": "PASS (41/41 in the file; sha identical to the pre-break read)"
+    },
+    {
+      "cmd": "node docker/ui/team-fixture.mts <s> <ws> cjk",
+      "result": "6 tasks, labels ['fix styles','#2','login','#4','#5','#6'], zero CJK in the labels, CJK present in the subjects (the negative control)"
+    },
+    {
+      "cmd": "bunx tsgo --ignoreConfig ... docker/ui/*.mts",
+      "result": "only the three /tmp/mpd-fixture dynamic imports are unresolvable (the module exists only inside the container); the driver's own LocatorLike gained the evaluateAll member its step-07 code already used"
+    }
+  ],
+  "clauses": {
+    "W1": "one <path data-mpd-curve> per drawn edge inside one <svg data-edges=\"1\">; the head is a <polygon data-mpd-head>; arm 'draws one SVG path per blockedBy entry' asserts 3 curves / 3 heads / 3 tips for 3 edges",
+    "W2": "route + paint contain no document/measure call (arm 'the layout and the painted edge carry no DOM access at all' slices both regions); the layout is pure and the paint only reads its output",
+    "W3": "curve.points is the closed-form flatten published by the layout; arm 'NO drawn CURVE enters any node box' measures SEGMENTS against the DOM-published boxes, bridges data-mpd-curve to curve.d, asserts a sample floor and a flattened-edge count, and carries TWO controls (the old router's riser, and a curve-domain injected polyline)",
+    "W4": "data-mpd-edge / data-mpd-route / data-mpd-graph counts byte-identical; data-mpd-curve and data-mpd-tip added; data-mpd-head kept on the polygon",
+    "W5": "curve.tip = {x:toX,y:toY}; arm 'the arrowhead's tip lands ON the border' asserts tip.left equals the child's left border or its right edge, over a forward board AND a cyclic board",
+    "W6": "EDGE_RADIUS=6, EDGE_SWEEP_MIN=2; arm 'the curve builder degrades to the straight orthogonal route at radius = 0' asserts flat.d === 'M 164 25 L 168 25 L 168 77 L 172 77', no Q/C, and flat.points toEqual(waypoints)",
+    "W7": "the tint is the path's stroke and the head's fill; node dimming unchanged (arm 'hover tints the transitive chain')",
+    "C1": "arm 'a Chinese subject is drawn graph-safe' scans the whole drawing for the declared CJK ranges with a negative control over the raw subjects",
+    "C2": "ONE composer graphSafeLabel(subject, ordinal), exposed and called at the only drawing site",
+    "C3": "the hover title and the pinned detail body keep the original subject verbatim (asserted)",
+    "C4": "arm 'the graph-safe label rule is clause C4 exactly' pins the rule on eight inputs plus the board-order ordinal"
+  },
+  "dom_shape": {
+    "before": "div[data-mpd-edge][data-mpd-route] > (3 x div{position:absolute,left,top,width,height,background} + div[data-mpd-head]{border-*-width triangle})",
+    "after": "svg[data-edges=\"1\"][width][height][viewBox] > g[data-mpd-edge][data-mpd-route] > (path[data-mpd-curve][d][stroke][fill=none] + polygon[data-mpd-head=\"1\"][data-mpd-tip=\"x,toY-4,0,8\"][points])",
+    "one_edge_frozen": {
+      "radius_0": "M 164 77 L 168 77 L 168 25 L 172 25  (points = 4 = the waypoints)",
+      "radius_6": "M 164 77 L 166 77 Q 168 77 168 75 L 168 27 C 168 27 170 25 172 25  (points = 13)",
+      "tip": {
+        "x": 172,
+        "y": 25
+      }
+    }
+  },
+  "bounds": [
+    "verify:comments is RED on the repo: 10 violations in packages/mpd-tui-plugin/test/dag-fidelity.test.ts (7) and packages/mpd-tui-adapter-plugin/src/index.ts (3) — both sibling lanes' files, untouched by this lane.",
+    "bun run typecheck is RED on the repo at times during the wave for the same reason (measured: dag-label-parity.test.ts, then mpd-tui-adapter-plugin/src/index.ts). This lane's files typecheck clean.",
+    "The freeze's arm-3 instruction says the LAYOUT's segments carry keys [out,riser,in,head]; the layout has never had a head segment (the head was a DOM child). Asserted [out,riser,in] on the layout and ['curve','head'] on the group instead.",
+    "The freeze's positive-control example (a huge radius bulging a sweep into a box) cannot fail: curveOf clamps every fillet to half the shorter leg, so a real curve cannot leave its corridor. The curve-domain control is therefore an INJECTED polyline measured by the same segment instrument.",
+    "Docker/browser capture NOT run by this lane: the mpd-ui-view image bakes /src at build time, so the canonical driver's new 08-dag-curve step needs a rebuild before it means anything. Reported to the captain.",
+    "docker/**/*.mts is OUTSIDE the root type program (tsconfig includes docker/**/*.ts, which does not match .mts): a real coverage gap, reported. The three imports of /tmp/mpd-fixture/*.mts are untyped by construction (the module only exists inside the container)."
+  ]
+}

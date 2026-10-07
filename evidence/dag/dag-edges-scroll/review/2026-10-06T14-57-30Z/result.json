@@ -1,0 +1,169 @@
+{
+  "task": "T6 REVIEW · independent fidelity instrument + adversarial findings",
+  "wave": "dag-edges-scroll",
+  "branch": "feature/dag-edges-scroll",
+  "head_at_review": "52cd964fd8f1398709b268273221033852892e3b",
+  "reviewed_at_utc": "2026-10-06T15:33Z",
+  "seat": "Reviewer",
+  "files_written": [
+    "packages/mpd-tui-plugin/test/dag-label-parity.test.ts",
+    "packages/mpd-tui-plugin/test/dag-fidelity.test.ts"
+  ],
+  "product_files_written": [],
+  "commands": {
+    "suite": {
+      "cmd": "bun test packages/mpd-tui-plugin",
+      "exit": 1,
+      "summary": "373 pass / 6 fail / 379 tests (15:33Z, final)",
+      "log": "output.log",
+      "note": "all six remaining failures are in lane-owned files; none in this seat's instrument"
+    },
+    "own_instrument": {
+      "cmd": "bun test packages/mpd-tui-plugin/test/dag-label-parity.test.ts packages/mpd-tui-plugin/test/dag-fidelity.test.ts",
+      "exit": 0,
+      "summary": "66 pass / 0 fail / 66 tests (15:33Z, final)",
+      "log": "own-files.log"
+    },
+    "baseline_before_lanes": {
+      "cmd": "bun test packages/mpd-tui-plugin",
+      "exit": 1,
+      "summary": "332 pass / 2 fail / 334 tests",
+      "log": "baseline-before-lanes.log",
+      "head": "52cd964fd8f1398709b268273221033852892e3b"
+    },
+    "comment_gate": {
+      "cmd": "node scripts/verify-comment-coverage.ts",
+      "exit": 1,
+      "violations_in_my_files": 0,
+      "violations": {
+        "packages/mpd-tui-adapter-plugin/src/index.ts": 3,
+        "scripts/mpd-tui-panels.ts": 2
+      },
+      "note": "scripts/mpd-tui-panels.ts is UNTRACKED: a file this wave introduced; verify:comments is a STANDING user-mandated gate"
+    }
+  },
+  "clause_verdicts": {
+    "C1_web": "PASS",
+    "C1_tui_all_three_modes": "PASS",
+    "C2_behavioural": "PASS",
+    "C3": "PASS",
+    "C4_rule_and_parity": "PASS",
+    "C4_ordinal_is_board_index": "PASS",
+    "C5_negative_control": "PASS",
+    "W3_six_steps": "PASS",
+    "W5": "PASS",
+    "W6": "PASS",
+    "T3": "PASS",
+    "T7": "PASS",
+    "T5_keys": "NOT_COVERED",
+    "T6_two_axis_autoscroll": "NOT_COVERED",
+    "T4_R2_R8": "NOT_COVERED",
+    "T1_T2_scene_call_sites": "NOT_COVERED",
+    "W7": "NOT_COVERED",
+    "W2_measurement_ban": "NOT_COVERED",
+    "W4_route_byte_identity": "PARTIAL"
+  },
+  "measurements": {
+    "widest_published_chord_px": 304.5,
+    "declared_flattening_step_px": 1,
+    "chord_note": "a long chord IS a straight leg by design: the emitter samples the arcs and emits each straight run as one L. The earlier chord < nodeHeight bound was WRONG and is retired in place; the surviving bound is the canvas diagonal.",
+    "containment_segments_tested": 541,
+    "containment_invasions": 0,
+    "containment_samples": 555,
+    "curved_edges_of_14": 11,
+    "oversized_radius_invasions": {
+      "radius_6": 0,
+      "radius_20": 0,
+      "radius_60": 0,
+      "radius_200": 0,
+      "note": "the freeze's suggested curve-domain control cannot fire: the per-vertex clamp bounds the fillet; substituted controls are implemented"
+    },
+    "edges_with_repeated_sample": 6,
+    "edges_total": 14,
+    "pre_rule_banned_chars_rendered": 28,
+    "adversarial_label_rows": 13,
+    "cjk_ranges": [
+      "U+2E80-U+2FFF",
+      "U+3000-U+303F",
+      "U+3040-U+9FFF",
+      "U+AC00-U+D7AF",
+      "U+F900-U+FAFF",
+      "U+FE30-U+FE4F",
+      "U+FF00-U+FFEF"
+    ],
+    "canvas_diagonal_px": 936.5,
+    "chords_checked": 666
+  },
+  "findings": [
+    {
+      "n": 1,
+      "severity": "major",
+      "state": "FOUND+FIXED+REVERIFIED",
+      "what": "TUI printed #undefined instead of #<ordinal> in all three modes"
+    },
+    {
+      "n": 2,
+      "severity": "major",
+      "state": "FOUND+FIXED+REVERIFIED",
+      "what": "sliceSpans lagged sliceCells by one cell"
+    },
+    {
+      "n": 3,
+      "severity": "major",
+      "state": "FOUND+FIXED+REVERIFIED",
+      "what": "the compressed 3-row boxRows form was never selected"
+    },
+    {
+      "n": 4,
+      "severity": "resolved",
+      "state": "FIXED BY THE LANE + ARM REFORMULATED + GREEN",
+      "what": "the router's redundant waypoint push is gone (data-mpd-route byte-identical, repeated vertices 3 to 0); the arm's own chord < nodeHeight bound was also wrong and was replaced by the canvas bound plus a reported measurement"
+    },
+    {
+      "n": 5,
+      "severity": "major",
+      "state": "FINDING ABOUT THE FREEZE",
+      "what": "the proposed oversized-radius curve-domain control cannot fire (0 invasions at radius 6/20/60/200); two reachable controls substituted"
+    },
+    {
+      "n": 6,
+      "severity": "resolved",
+      "state": "FIXED BY THE LANE",
+      "what": "the viewport block's deliberate red arm was replaced by the measurement it stood for; panel-dag.test.ts is 39 pass / 0 fail"
+    },
+    {
+      "n": 7,
+      "severity": "major",
+      "state": "LANE-OWNED, OPEN",
+      "what": "bun run verify:comments is RED on this wave's own new files (scripts/mpd-tui-panels.ts untracked: 2 violations; mpd-tui-adapter-plugin/src/index.ts: 3)"
+    },
+    {
+      "n": 8,
+      "severity": "nit",
+      "state": "RELAYED+ACCEPTED",
+      "what": "team-view.test.ts's no-SVG arm is false by construction once W1 lands"
+    },
+    {
+      "n": 9,
+      "severity": "nit",
+      "state": "DISCLOSED",
+      "what": "the ten-line CJK predicate is duplicated across the two test files on purpose (write scope)"
+    }
+  ],
+  "one_thing_to_change_first": "nothing of mine: the instrument is GREEN. In the wave, amend the freeze's curve-domain control (finding 5), which cannot fire on this implementation.",
+  "artifacts": [
+    "output.log",
+    "own-files.log",
+    "baseline-before-lanes.log",
+    "head-before.txt",
+    "mid-flight-label-parity.log",
+    "mid-flight-dag-fidelity.log",
+    "mid-flight-2.log",
+    "recheck.log",
+    "probe-dom-marks.log",
+    "probe-dom-marks.ts",
+    "probe-bulge.ts",
+    "probe-boxes2.ts",
+    "probe/probe-web-loader.ts"
+  ]
+}

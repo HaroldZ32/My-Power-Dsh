@@ -1,0 +1,15 @@
+[dag-verify] w100 split=true rail=true boxRows=0 round=false head=true vGut=false hGut=false panMoved=false panStatic=true dagPanelLocated=true cjkInDrawing=0 detailKept=0
+    STATIC(R8):     " Esc 聊天 · ←/→ 切换 · z 缩…    "
+    CJK-OUTSIDE:    " Esc 聊天 · ←/→ 切换 · z 缩…    "
+    CJK-OUTSIDE:    " ‹ 待办 › ▸ ◆ M ◈ ◆             "
+    CJK-OUTSIDE:    " Ctrl+B 聚焦侧栏                "
+[dag-verify] w140 split=true rail=true boxRows=0 round=false head=true vGut=false hGut=false panMoved=false panStatic=true dagPanelLocated=true cjkInDrawing=0 detailKept=0
+    STATIC(R8):     " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     "
+    CJK-OUTSIDE:    " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     "
+    CJK-OUTSIDE:    " ‹ 待办 › ▸ ◆ M ◈ ◆                          "
+    CJK-OUTSIDE:    " Ctrl+B 聚焦侧栏                             "
+[dag-verify] w220 split=true rail=true boxRows=0 round=false head=true vGut=false hGut=false panMoved=false panStatic=true dagPanelLocated=true cjkInDrawing=0 detailKept=0
+    STATIC(R8):     " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               "
+    CJK-OUTSIDE:    " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               "
+    CJK-OUTSIDE:    " ‹ 待办 › ▸ ◆ M ◈ ◆                                                    "
+    CJK-OUTSIDE:    " Ctrl+B 聚焦侧栏                                                       "

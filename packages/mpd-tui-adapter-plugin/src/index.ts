@@ -556,6 +556,408 @@ function defaultHostInputLog(line: string): void {
   }
 }
 
+// ── the SECOND host-internals contact: the live side-panel ENABLE list ──────────────────────────
+//
+// WHY A SECOND CONTACT IS UNAVOIDABLE, and which two contacts §6 counts. The host's sidebar paints a
+// panel only when that panel's final id is in the `dsh-tui.sidePanel.panels` CSV, and that CSV lives
+// in a module-level live setting inside the host package (`lib/types/tuiDisplayPrefs.js`) that NO
+// seam exposes. MEASURED against the installed 0.13.0 host on a real PTY (evidence
+// `evidence/dag/dag-edges-scroll/panel-visibility/20261006T145907Z/`, the probe's `CHANGE` records):
+//   * +1056 ms — the host's OWN `tuiPanels.register` appends every successfully registered id
+//     (`enablePanelIdInStore` in `lib/types/dsh-adapter/panels.js`), so the CSV becomes
+//     `todo,jobs,agents,<id>,<id>,<id>`;
+//   * +5403 ms — the `dsh-tui` row's apply path RE-APPLIES THE CONFIG value
+//     (`applySidePanelPanels(config.sidePanel?.panels)` in `lib/types/dsh-adapter/plugin.js`,
+//     reached through `Fiber._reload`), rewriting the CSV to the schema default `todo,jobs,agents`
+//     and dropping all three ids — the sidebar then paints the host's three builtins only, which is
+//     the reported defect (「只有任务/待办/代理」).
+// The append is therefore TRANSIENT and nothing in the seam surface can make it stick, which is why
+// this package — the ONE file allowed to reach host internals (§6) — carries the re-assert.
+//
+// SO THIS PACKAGE NOW HOLDS EXACTLY TWO host-internals contacts, and §6 counts that class on purpose
+// so a new one cannot hide:
+//   1. the `dashboard` contact — `<root>/lib/types/ui.js`'s `useStdin`, by absolute file URL since
+//      0.12.0 ({@link probeHostInput}, {@link HOST_UI_MODULE}); and
+//   2. THIS one — `<root>/lib/types/tuiDisplayPrefs.js`'s `getSidePanelPanels` /
+//      `applySidePanelPanels` ({@link HOST_PREFS_MODULE}, {@link probeHostPrefs}).
+// A THIRD contact must not be added without moving that count.
+//
+// The import goes through an ABSOLUTE FILE URL for the reason contact 1 already documents: the
+// host's `exports` map has no `./lib/*` subpath, and Node caches ESM by resolved URL — which is also
+// what guarantees this is the SAME store instance the host itself writes. A second instance would be
+// its own empty list, and every read would answer the default while the real sidebar kept its own.
+
+/** The host module owning the live side-panel enable CSV, relative to a host package root. */
+export const HOST_PREFS_MODULE = "lib/types/tuiDisplayPrefs.js"
+
+/** The host's live display-preference store, as the keeper uses it (one read, one write). */
+export interface TuiHostPrefsLike {
+  /** The enable CSV as it stands right now; anything at all, narrowed by the merge. */
+  getSidePanelPanels(): unknown
+  /** Applies one CSV and returns the value the store ended up holding. */
+  applySidePanelPanels(value: unknown): unknown
+}
+
+/** What one enable-list contact probe found. */
+export interface HostPrefsProbeResult {
+  /** The host store, when a candidate exported both members as functions. */
+  prefs?: TuiHostPrefsLike
+  /** The host root the store was loaded from. */
+  root?: string
+  /** The ONE reason no contact bound, when none did. */
+  detail?: string
+}
+
+/**
+ * Load the host's live display-preference store from the FIRST candidate that carries it.
+ *
+ * VERSION-GATED exactly like {@link probeHostInput}: an install that merely exists is not a contact,
+ * a candidate whose module lacks EITHER member is a version-skew host, and an import that throws is
+ * skipped. Every failure is a MISS carried back as a reason — never a throw, never a silent success.
+ * A host without this module leaves the keeper `absent`, which is a LEGAL outcome: the panel is then
+ * reachable only by enabling it by hand under `/settings`, exactly as before this contact existed.
+ * @param candidates - the candidate host roots, in probe order.
+ * @returns the bound store plus its root, or the ONE reason no contact bound.
+ */
+export async function probeHostPrefs(candidates: readonly string[]): Promise<HostPrefsProbeResult> {
+  /** The last candidate that existed but could not provide the store, for the one-line reason. */
+  let skew = ""
+  if (candidates.length === 0) return { detail: `no candidate host root (no DSH profile carries ${HOST_PACKAGE_PATH.join("/")})` }
+  for (const root of candidates) {
+    /** The host module file this candidate would be loaded from. */
+    const file = join(root, HOST_PREFS_MODULE)
+    try {
+      if (!statSync(file).isFile()) continue
+    } catch {
+      // Not this candidate; an unreadable path is a miss, never an error.
+      continue
+    }
+    try {
+      /** The host module namespace, loaded from this candidate by absolute file URL. */
+      const mod = (await import(pathToFileURL(file).href)) as { getSidePanelPanels?: unknown; applySidePanelPanels?: unknown }
+      if (typeof mod.getSidePanelPanels !== "function" || typeof mod.applySidePanelPanels !== "function") {
+        skew = `${file} carries no getSidePanelPanels/applySidePanelPanels pair`
+        continue
+      }
+      /** The host's reader, called with no receiver so a `this`-dependent export stays its own. */
+      const read = mod.getSidePanelPanels as () => unknown
+      /** The host's writer, called the same way. */
+      const write = mod.applySidePanelPanels as (value: unknown) => unknown
+      return { prefs: { getSidePanelPanels: (): unknown => read(), applySidePanelPanels: (value: unknown): unknown => write(value) }, root }
+    } catch (error) {
+      skew = `${file}: ${String((error as Error)?.message ?? error)}`
+    }
+  }
+  return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_PREFS_MODULE} (${candidates.length} probed)` }
+}
+
+/** One merge of the host's live enable CSV with the ids this activation registered. */
+export interface PanelEnableMerge {
+  /** The CSV to apply: the user's list in its ORIGINAL order, then every missing id, in OUR order. */
+  csv: string
+  /** The ids that were missing and are therefore appended; empty means "nothing to write". */
+  added: readonly string[]
+  /** The ids that were already enabled. */
+  present: readonly string[]
+}
+
+/**
+ * Merge this activation's panel ids into the host's live enable CSV.
+ *
+ * THE INVARIANTS THIS PURE FUNCTION EXISTS TO HOLD. It NEVER removes a token and NEVER reorders one:
+ * the user's list — including panels of other plugins and ids this bundle does not own — comes back
+ * in its original order, and our ids are APPENDED after it. Duplicates collapse the way the host's
+ * own `normalizeSidePanelPanels` collapses them (trim + lowercase + first-wins), so a merge never
+ * fights the host's normalizer into a second, different list. Removal is deliberately NOT offered:
+ * a user who turns one of our panels off in `/settings` loses nothing to this function, because the
+ * merge only ever finds the id missing and appends it — which is what lets the caller's bounded
+ * ladder end without ever having to undo a removal.
+ * @param existing - the host's current CSV; anything at all (a non-string reads as the empty list).
+ * @param ours - the ids this activation registered, in registration order.
+ * @returns the CSV to apply, plus what was added and what was already there.
+ */
+export function mergePanelEnableIds(existing: unknown, ours: readonly string[]): PanelEnableMerge {
+  /** The user's tokens, normalized and deduped exactly as the host normalizes them. */
+  const tokens: string[] = []
+  for (const token of (typeof existing === "string" ? existing : "").split(",")) {
+    /** One normalized token; the empty string is dropped so a trailing comma adds no slot. */
+    const id = token.trim().toLowerCase()
+    if (id !== "" && !tokens.includes(id)) tokens.push(id)
+  }
+  /** The registered ids the CSV does not carry yet, in registration order. */
+  const added = ours.filter((id) => !tokens.includes(id))
+  return { csv: [...tokens, ...added].join(","), added, present: ours.filter((id) => tokens.includes(id)) }
+}
+
+/**
+ * The settle ladder's delays, in milliseconds FROM ARMING, which is the first observed registration.
+ *
+ * MEASURED, not guessed. On the installed 0.13.0 host the `dsh-tui` row re-applies its config at
+ * +5403 ms from ITS boot, while panels register at about +1056 ms, so the losing write lands roughly
+ * 4.3 s after arming. The ladder therefore does NOT stop at the first clean read — a read taken
+ * before +4.3 s legitimately finds nothing missing and would report success while the panel was
+ * about to disappear. It keeps sampling past that instant, and the sixth tick is the LAST one: the
+ * keeper then stops FOR GOOD, so a panel a user removes in `/settings` afterwards stays removed.
+ * A tick that finds ANY of our ids already present WRITES NOTHING and stands down (see
+ * {@link createPanelEnableKeeper}), so the bounded window only ever repairs a list that names none
+ * of us — the fresh-profile case — and never overrules a configured choice.
+ */
+export const PANEL_KEEPER_LADDER_MS: readonly number[] = [1000, 2500, 5500, 9000, 16000, 25000]
+
+/** How the sidebar enable-list keeper settled, as the adapter and a boot line report it. */
+export interface PanelEnableOutcome {
+  /** The keeper's measured state, in the same vocabulary every other surface uses. */
+  state: SeamState
+  /** What the last tick measured, as one line. */
+  detail: string
+  /** The ids this activation registered and is therefore allowed to re-assert. */
+  ids: readonly string[]
+  /** How many times the keeper actually WROTE the CSV (a clean read writes nothing). */
+  reasserted: number
+  /** How many ladder ticks ran; a keeper that never armed reports 0. */
+  ticks: number
+}
+
+/** Everything {@link createPanelEnableKeeper} needs, with the clock and the store injectable. */
+export interface PanelEnableKeeperOptions {
+  /** Loads the host store; retried on every tick, because a host may expose it late. */
+  loadPrefs: () => Promise<HostPrefsProbeResult>
+  /** Schedules one tick and returns its canceller (injectable so a test owns the clock). */
+  schedule: (run: () => void, delayMs: number) => () => void
+  /** Receives the ONE settle line; omitted means the keeper is silent. */
+  log?: (line: string) => void
+  /** The ladder to walk; defaults to {@link PANEL_KEEPER_LADDER_MS}. */
+  ladder?: readonly number[]
+  /**
+   * Called whenever the keeper's own state changes (a new id observed, a tick settled).
+   *
+   * This is how the DISCOVERED ids leave the host process. The host composes a plugin panel's final
+   * id from the caller's Component identity, and a loader ROW has none, so the id is the host's
+   * `act<N>` fallback and is knowable ONLY from the host's own registration read-back at run time —
+   * never from a source constant, and never from the plugin's package name. A remedy that has to
+   * write the ids somewhere durable therefore reads them from this hook's consumer, not from a guess.
+   * @param outcome - the keeper's state at the change.
+   */
+  onChange?: (outcome: PanelEnableOutcome) => void
+}
+
+/** The bounded re-assert of this activation's panel ids into the host's live enable CSV. */
+export interface PanelEnableKeeper {
+  /** Records one id this activation successfully registered, and arms the ladder on the first one. */
+  observe(id: string): void
+  /** The keeper's state right now, sampled. */
+  outcome(): PanelEnableOutcome
+  /** Cancels every pending tick; the keeper then never writes again. */
+  stop(): void
+}
+
+/**
+ * Build the bounded re-assert that keeps this activation's panels in the host's enable CSV.
+ *
+ * WHY A LADDER RATHER THAN A SUBSCRIPTION. The host holds the CSV in a module-level store with no
+ * owner, so a subscription has to reason about every rewrite, including the ones that ARE the user's
+ * decision. A BOUNDED ladder that samples the store a few times instead reads the OUTCOME of those
+ * rewrites, which is where the user's position actually becomes visible: a list that names ANY of our
+ * ids is a configuration that has taken a position on this bundle, and the keeper stands down. The
+ * repair therefore applies to exactly one shape — a list that names NONE of ours, which is what a
+ * fresh profile's schema default looks like after the host re-applies it — and the ladder stops for
+ * good after its last tick, so nothing here reopens a settled question later in the session.
+ *
+ * Nothing here ever throws — a tick is contained, and a failure is recorded as the outcome.
+ * @param options - the store loader, the clock and the ladder.
+ * @returns the keeper.
+ */
+export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): PanelEnableKeeper {
+  /** The ids registered by this activation, in registration order — the ONLY ids ever written. */
+  const ours: string[] = []
+  /** The ladder this keeper walks, from arming. */
+  const ladder = options.ladder ?? PANEL_KEEPER_LADDER_MS
+  /** Every pending tick's canceller, so `stop()` releases all of them. */
+  const pending: (() => void)[] = []
+  /** Whether the ladder was already armed; arming is once per keeper. */
+  let armed = false
+  /** How many ticks ran. */
+  let ticks = 0
+  /** How many ticks actually wrote the CSV. */
+  let reasserted = 0
+  /** The measured state; `requested` until the keeper has something to say. */
+  let state: SeamState = "requested"
+  /** The measured detail behind {@link state}. */
+  let detail = "no panel registered yet"
+
+  /**
+   * Record one tick's verdict and emit the ONE settle line when the ladder is exhausted.
+   * @param next - the state this tick measured.
+   * @param nextDetail - the one-line reason.
+   */
+  /** Hand the current state to the consumer's `onChange`; a throwing consumer cannot break a tick. */
+  const announce = (): void => {
+    if (options.onChange === undefined) return
+    try {
+      options.onChange({ state, detail, ids: [...ours], reasserted, ticks })
+    } catch {
+      // The consumer's own bookkeeping is never allowed to fail a registration or a tick.
+    }
+  }
+
+  /**
+   * Record one tick's verdict and emit the ONE settle line when the ladder is exhausted.
+   * @param next - the state this tick measured.
+   * @param nextDetail - the one-line reason.
+   */
+  const settle = (next: SeamState, nextDetail: string): void => {
+    state = next
+    detail = nextDetail
+    announce()
+    if (ticks < ladder.length) return
+    options.log?.(`mpd-tui panel enable keeper: ${next} — ${nextDetail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`)
+  }
+
+  /**
+   * Run one tick: read the CSV, and re-assert the whole set only when the configuration has clearly
+   * NOT taken a position on this bundle.
+   *
+   * THE CONDITION IS THE WHOLE CONTRACT, and it is what keeps the keeper from overruling its user:
+   *   * NONE of our ids present — the host's own config re-apply has just restored a list that does
+   *     not mention us at all (`todo,jobs,agents` on a fresh profile). That is the reported defect, and
+   *     the whole set is appended in one write.
+   *   * ANY of our ids present — the configuration NAMES US. Either the user enabled us through
+   *     `/settings` or `scripts/mpd-tui-panels.ts`, or the user deliberately removed some of us and the
+   *     rest survived the re-apply. Either way the user's position is READABLE from the CSV, and the
+   *     keeper STANDS DOWN. It therefore never re-adds an id a user removed on purpose, WITHOUT needing
+   *     a third host-internals contact to ask for the configured value.
+   *   * A partial write is never performed: the ids go in as a set, so a half-applied list cannot make
+   *     the next tick read "the configuration names one of us" and stand down mid-repair.
+   *
+   * NAMED RESIDUAL, not papered over: a user who removes ALL of ours on purpose leaves a CSV that is
+   * INDISTINGUISHABLE from a fresh profile's, so this tick re-adds the set once per boot. Only the
+   * CONFIGURED value can separate those two cases, and reading it would mean a third host-internals
+   * contact — a §6 count decision deliberately NOT taken in this wave.
+   */
+  const runTick = (): void => {
+    ticks += 1
+    void options.loadPrefs().then((probe) => {
+      if (probe.prefs === undefined) {
+        settle("absent", probe.detail ?? "the host exposes no side-panel enable store")
+        return
+      }
+      /** The store, narrowed once so the two calls below share one receiver. */
+      const prefs = probe.prefs
+      try {
+        /** What this tick measured, before any decision is taken. */
+        const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours)
+        if (merge.present.length > 0) {
+          settle("confirmed", `standing down: the enable list already names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`)
+          return
+        }
+        if (merge.added.length === 0) {
+          // No id of ours is registered yet: there is nothing this keeper may write.
+          settle("confirmed", "no id of ours is registered, so there is nothing to re-assert")
+          return
+        }
+        prefs.applySidePanelPanels(merge.csv)
+        reasserted += 1
+        settle("confirmed", `re-asserted ${merge.added.join(",")} (none of our ids was present)`)
+      } catch (error) {
+        settle("refused", String((error as Error)?.message ?? error))
+      }
+    }, (error: unknown) => {
+      settle("absent", `the host store could not be read: ${String((error as Error)?.message ?? error)}`)
+    })
+  }
+
+  /** Arm the ladder once, from the first observed registration. */
+  const arm = (): void => {
+    if (armed) return
+    armed = true
+    for (const delayMs of ladder) {
+      try {
+        pending.push(options.schedule(runTick, delayMs))
+      } catch {
+        // A clock that refuses a tick ends the ladder here rather than failing the registration.
+        break
+      }
+    }
+  }
+
+  return {
+    /** Records one id this activation successfully registered; see {@link PanelEnableKeeper.observe}. */
+    observe(id: string): void {
+      if (id.length === 0 || ours.includes(id)) return
+      ours.push(id)
+      state = "requested"
+      detail = `settling ${String(ladder.length)} tick(s) for ${ours.join(",")}`
+      arm()
+      announce()
+    },
+    /** The keeper's state right now; see {@link PanelEnableKeeper.outcome}. */
+    outcome(): PanelEnableOutcome {
+      return { state, detail, ids: [...ours], reasserted, ticks }
+    },
+    /** Cancels every pending tick; see {@link PanelEnableKeeper.stop}. */
+    stop(): void {
+      for (const cancel of pending.splice(0)) {
+        try {
+          cancel()
+        } catch {
+          // A canceller that throws must not break an unload.
+        }
+      }
+    },
+  }
+}
+
+/**
+ * The default tick clock: one `setTimeout`, `unref`ed so a keeper never holds a TUI process open.
+ * @param run - the tick.
+ * @param delayMs - the delay from arming.
+ * @returns the canceller.
+ */
+function defaultPanelKeeperSchedule(run: () => void, delayMs: number): () => void {
+  /** The pending timer; `unref` is optional so a non-Node clock still works. */
+  const timer = setTimeout(run, delayMs)
+  ;(timer as { unref?: () => void }).unref?.()
+  return () => { clearTimeout(timer) }
+}
+
+/**
+ * The file the keeper records the ids it discovered in, under the WORKSPACE.
+ *
+ * WHY A RECORD AND NOT A CONSTANT. A panel's final id is `<pluginId>:<slug>` and the `<pluginId>`
+ * half is the HOST's: for a loader row with no Component identity the host composes its own `act<N>`
+ * fallback, so `mpd-tui:team` — the spelling every document used before this was measured — is not
+ * what the sidebar ever receives. The only authority on the id is the host's registration read-back,
+ * which exists only DURING a boot; this record is how that reading survives the process, so
+ * `scripts/mpd-tui-panels.ts` can write a settings value that actually names the running panels.
+ * It sits beside the adapter's log because it is written by the same surface for the same reader.
+ */
+export const PANEL_IDS_RECORD_NAME = "mpd-tui-panels.json"
+
+/**
+ * Write the discovered panel ids under the workspace, for the remedy script to read.
+ *
+ * Never throws: a record that cannot be written is a missing convenience, never a failed boot, and
+ * the keeper's outcome is what the boot line reports either way.
+ * @param outcome - the keeper's state at the change.
+ */
+function recordPanelIds(outcome: PanelEnableOutcome): void {
+  try {
+    /** The record's absolute path: `<root>/.mpd/logs/<name>`. */
+    const file = join(defaultLogRoot(), ".mpd", "logs", PANEL_IDS_RECORD_NAME)
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, `${JSON.stringify({
+      version: 1,
+      // The ids ONLY: the record exists so a settings value can name real panels, and every other
+      // field would be a claim a reader could find nowhere else to check.
+      panelIds: [...outcome.ids],
+      slugs: outcome.ids.map((id) => id.slice(id.indexOf(":") + 1)),
+      updatedAt: new Date().toISOString(),
+    }, null, 2)}\n`)
+  } catch {
+    // Never a failed boot for a convenience file.
+  }
+}
+
 /** Options of {@link createTuiAdapter}: the host-contact wiring plus the test seams. */
 export interface TuiAdapterOptions {
   /** The host contact to use instead of probing (unit tests, embedders). */
@@ -568,6 +970,16 @@ export interface TuiAdapterOptions {
   probeHostContact?: boolean
   /** Where the probe's ONE degradation line goes; defaults to the file sink. */
   hostInputLog?: (line: string) => void
+  /**
+   * Run the sidebar enable-list keeper (the second host-internals contact). OPT-IN and passed ONLY
+   * by the mounted adapter row, for the same reason as {@link TuiAdapterOptions.probeHostContact}:
+   * a row-private fallback adapter must not schedule timers or touch the user's live sidebar.
+   */
+  keepPanelEnable?: boolean
+  /** Where the keeper's ONE settle line goes; defaults to {@link TuiAdapterOptions.hostInputLog}. */
+  panelEnableLog?: (line: string) => void
+  /** The ladder the keeper walks; defaults to {@link PANEL_KEEPER_LADDER_MS} (unit tests only). */
+  panelEnableLadder?: readonly number[]
 }
 
 // ── the host service shapes (moved here from the TUI plugin's types.ts) ─────────────────────────
@@ -1273,6 +1685,12 @@ export interface TuiCapabilities {
    * without guessing from a consumer's behaviour.
    */
   hostInput: HostInputState
+  /**
+   * The sidebar enable-list keeper's state. ALSO not a seam: it is the second — and, by §6's count,
+   * the LAST — load-time reach into the installed DSH-TUI (see {@link probeHostPrefs}), reported
+   * here so a boot can tell whether the panels were kept enabled without reading the pane.
+   */
+  panelEnable: PanelEnableOutcome
 }
 
 /** The DSH-TUI seam adapter: typed members, registrations and the capability/outcome readouts. */
@@ -1422,6 +1840,12 @@ export interface TuiAdapter {
   capabilities(): TuiCapabilities
   /** One outcome per seam key, in table order: `available` when bound, `absent` otherwise. */
   seamOutcomes(): readonly SeamOutcome[]
+  /**
+   * How the sidebar enable-list keeper settled: which ids this activation registered, whether the
+   * host store bound, and how many times the enable CSV had to be re-asserted. Reported separately
+   * from {@link TuiAdapter.seamOutcomes} because it is NOT a seam — see {@link probeHostPrefs}.
+   */
+  panelEnableOutcome(): PanelEnableOutcome
   /** The file sink a consumer's diagnostics fall back to; never throws, never writes a terminal. */
   diagnosticSink(options?: { root?: string | (() => string); name?: string; capBytes?: number }): DiagnosticSink
 }
@@ -1494,6 +1918,33 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
       : { state: "absent", detail: "this adapter did not probe for the host contact" }
   /** Listeners waiting for the contact; each runs once and is then dropped. */
   const hostWaiters: ((input: TuiHostInput | undefined) => void)[] = []
+
+  // ── the sidebar enable-list keeper: the SECOND host-internals contact, armed by a registration ──
+  //
+  // The keeper is created for EVERY adapter but ARMS only when the mounted row opted in, so a
+  // row-private fallback adapter schedules nothing and touches no sidebar. Its ONE settle line goes
+  // to the same file sink the host-contact probe uses (never a terminal — requirement R5).
+  /** The ladder's clock; a caller-supplied one lets a unit test own the timing. */
+  const panelKeeperOptions: PanelEnableKeeperOptions = {
+    loadPrefs: (): Promise<HostPrefsProbeResult> => probeHostPrefs(hostRootCandidates()),
+    schedule: defaultPanelKeeperSchedule,
+    ...(options.panelEnableLadder === undefined ? {} : { ladder: options.panelEnableLadder }),
+    log: options.panelEnableLog ?? options.hostInputLog ?? defaultHostInputLog,
+    // The DISCOVERED ids leave the host process through this record; the mounted row is the only
+    // adapter that writes it, so a unit test never touches the workspace.
+    onChange: options.keepPanelEnable === true ? recordPanelIds : undefined,
+  }
+  /** The bounded re-assert of the ids this activation registered; see {@link createPanelEnableKeeper}. */
+  const panelKeeper: PanelEnableKeeper = options.keepPanelEnable === true
+    ? createPanelEnableKeeper(panelKeeperOptions)
+    : {
+      observe: (): void => {
+        // Not opted in: the id is deliberately forgotten, so `panelEnableOutcome()` reports `absent`
+        // instead of a settler that could never have run.
+      },
+      outcome: (): PanelEnableOutcome => ({ state: "absent", detail: "this adapter did not keep the host panel enable list", ids: [], reasserted: 0, ticks: 0 }),
+      stop: (): void => {},
+    }
   /**
    * The `useStdin` hook of the host kit a SCENE render handed us (see `rememberHostKit`).
    *
@@ -2051,6 +2502,10 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
             : readBack !== undefined
               ? { state: "refused", detail: `${descriptor.id} refused (the host added no id to its own list() read-back)` }
               : { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` })
+          // ONLY an id the host's own read-back produced is handed to the keeper. A descriptor whose
+          // registration was refused (or a host without a read-back) contributes nothing, so the
+          // keeper can never write an id this activation does not actually own.
+          if (finalId !== undefined) panelKeeper.observe(finalId)
         } catch (error) {
           handle.record({ state: "refused", detail: String((error as Error)?.message ?? error) })
         }
@@ -2228,7 +2683,12 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
         seams[key] = live
         if (live) bound += 1
       }
-      return { seams, bound, total: TUI_SEAM_KEYS.length, hostInput: { ...hostState } }
+      return { seams, bound, total: TUI_SEAM_KEYS.length, hostInput: { ...hostState }, panelEnable: panelKeeper.outcome() }
+    },
+
+    /** How the sidebar enable-list keeper settled; see {@link PanelEnableOutcome}. */
+    panelEnableOutcome(): PanelEnableOutcome {
+      return panelKeeper.outcome()
     },
 
     /** One outcome per seam key, in table order: `available` when bound, `absent` otherwise. */
@@ -2290,7 +2750,17 @@ export function resolveTuiAdapter(ctx: PluginContextLike): TuiAdapter {
       // A ctx that cannot answer is a miss, never a crash.
     }
   }
-  return createTuiAdapter(ctx)
+  // THE FALLBACK IS A REAL COMPOSITION, and it opts the enable keeper in.
+  //
+  // MEASURED (2026-10-06, evidence `evidence/dag/dag-edges-scroll/panel-visibility/20261006T145907Z/arm-c-fixed/`):
+  // the loader applies sibling rows without a guaranteed order, so the consumer row can reach this
+  // function BEFORE the adapter row's `apply()` has provided the service. It then keeps its OWN
+  // adapter — and every registration lands on THAT instance, which is why the mounted adapter's id
+  // record stayed 0 bytes while the host's `PanelStore` carried the three registered ids. Opting in
+  // HERE as well as in `apply()` means the keeper runs on whichever instance actually registers,
+  // instead of silently depending on a race. Only `createTuiAdapter` called DIRECTLY (a unit test, an
+  // embedder) stays inert.
+  return createTuiAdapter(ctx, { keepPanelEnable: true })
 }
 
 /** Options for {@link createLazyTuiAdapter}: the row label and an optional warning sink. */
@@ -2382,7 +2852,9 @@ export function apply(
   /** The adapter instance every later `ctx.get("mpdTui")` resolves. */
   // THIS is the one construction that probes for the host contact: the mounted row owns the single
   // load-time reach into the installed DSH-TUI, and a row-private fallback adapter stays silent.
-  const adapter = createTuiAdapter(ctx, { probeHostContact: true })
+  // It is ALSO the one construction that arms the enable-list keeper — the second, and last, reach
+  // (see {@link HOST_PREFS_MODULE} and §6's contact count).
+  const adapter = createTuiAdapter(ctx, { probeHostContact: true, keepPanelEnable: true })
   try {
     /** The context's `provide`, when this composition exposes one. */
     const provide = (ctx as { provide?: unknown }).provide

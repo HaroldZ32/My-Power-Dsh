@@ -11,16 +11,23 @@
 // over — the user's decision for this wave is "纵向，但不要固定尺寸" (vertical ranks, no fixed sizes),
 // so every size in the TUI layout is COMPUTED from the measured panel and never named here.
 //
+// THE ONE IMPORT, and why it is safe: `sanitize.ts` is a leaf (it imports nothing), so this file's
+// only edge is a one-way one and no cycle can form. It is needed because `DAG_CHARS` must prove its
+// own glyphs are one CELL each — a wide glyph in that table would shear every border it touched, and
+// re-deriving "how many cells is this character" here is exactly the drift `cellWidth` exists to stop.
+//
 // WHY THE WEB HEXES ARE STILL RECORDED. They are provenance, not styling: a reviewer can see that the
 // six host theme keys were chosen to mean the same thing as the WEB tones, and a test can assert the
 // mapping is total and 1:1 without asserting a single size. A colour is a meaning; a size is a layout.
+import { cellWidth } from "./sanitize.js"
+
 /**
  * The host THEME KEYS this contract is allowed to name.
  *
- * Declared as a literal union rather than imported as the host's whole `Theme` type, so this file has
- * NO import and no cross-lane dependency: the contract is the captain's, it must compile before any
- * other lane's file exists, and the host's 73-key `Theme` interface is another package's shape (the
- * adapter re-exports it, and `types.ts` belongs to a different writer this wave). Every member of this
+ * Declared as a literal union rather than imported as the host's whole `Theme` type, so this file
+ * depends on NO other package: the contract is the captain's, it must compile before any other lane's
+ * file exists, and the host's 73-key `Theme` interface is another package's shape (the adapter
+ * re-exports it, and `types.ts` belongs to a different writer this wave). Every member of this
  * union is a key the installed host declares — the six state keys, the two focus keys, the border and
  * background keys — which is what keeps a typo a compile-time error here in practice.
  */
@@ -96,6 +103,69 @@ export const DAG_TONE_GLYPH: Readonly<Record<string, string>> = Object.freeze({
 export const DAG_KIND_ABBREV: Readonly<Record<string, string>> = Object.freeze({
   requirement: "REQ", work: "WRK", review: "REV", repair: "FIX", integration: "INT",
 })
+
+/**
+ * THE DAG's GLYPH TABLE — every box-drawing character the drawing may paint, as DECLARED DATA.
+ *
+ * WHY DATA AND NOT LITERALS AT THE CALL SITES. The rounded corners are the change the user asked for
+ * ("渲染可以参考 fasouto/termaid"), and they touch the node borders, the edge turns and the legend at
+ * once. A literal `╭` in the layout, another in the test that reads the box, and a third in the
+ * fidelity instrument is three places to drift; here there is one. The key names follow the mask the
+ * drawing ORs into a cell, so `graph.ts`'s `JUNCTION` table is BUILT from this object rather than
+ * restating it.
+ *
+ * THE ROUNDED TWINS ARE THE SHARP ENTRIES' REPLACEMENTS, one for one: `╭` takes `┌` (`DOWN|RIGHT`),
+ * `╮` takes `┐` (`DOWN|LEFT`), `╰` takes `└` (`UP|RIGHT`), `╯` takes `┘` (`UP|LEFT`). The runs and
+ * tees are unchanged, because `─ │ ├ ┤ ┬ ┴ ┼` carry no corner and rounding them would be a lie about
+ * the geometry.
+ */
+export const DAG_CHARS = Object.freeze({
+  /** `DOWN|RIGHT`: a node's TOP-LEFT corner, and any edge turning from a downward into a rightward run. */
+  cornerDownRight: "╭",
+  /** `DOWN|LEFT`: a node's TOP-RIGHT corner. */
+  cornerDownLeft: "╮",
+  /** `UP|RIGHT`: a node's BOTTOM-LEFT corner. */
+  cornerUpRight: "╰",
+  /** `UP|LEFT`: a node's BOTTOM-RIGHT corner. */
+  cornerUpLeft: "╯",
+  /** `UP|DOWN`: a vertical run, one cell per row. */
+  vertical: "│",
+  /** `LEFT|RIGHT`: a horizontal run, one cell per column. */
+  horizontal: "─",
+  /** `UP|DOWN|RIGHT`: a vertical run branching right. */
+  teeRight: "├",
+  /** `UP|DOWN|LEFT`: a vertical run branching left. */
+  teeLeft: "┤",
+  /** `UP|LEFT|RIGHT`: the cell DIRECTLY BELOW a `▼`, on the dependent's own top border. */
+  teeUp: "┴",
+  /** `DOWN|LEFT|RIGHT`: a box's bottom border where an edge LEAVES, read as "this box has children". */
+  teeDown: "┬",
+  /** All four directions: a genuine crossing of two edges. */
+  cross: "┼",
+  /** The arrowhead every drawn edge ENDS in, at the dependent's entry cell. */
+  arrowDown: "▼",
+  /** The rail's directional marker: the same "into this task" reading in the rail's own geometry. */
+  arrowRight: "▸",
+  /** The marker a FOCUSED task draws instead of its state glyph. */
+  focusMarker: "▶",
+  /** The rail's elbow into the last child (`└─`) and into the others (`├─`); declared together so the
+   * pair can never be half-rounded — the rail is T9's narrow fallback and keeps its SHARP elbows. */
+  railElbowLast: "└─",
+  /** The rail's elbow into a non-last child. */
+  railElbowMid: "├─",
+} as const)
+
+/**
+ * The cells each declared glyph occupies, so the layout can prove what it paints.
+ *
+ * EVERY member must be ONE cell per character (`DAG_CHARS.arrowDown` is `▼`, one cell; the rail elbows
+ * are two-character strings of two one-cell glyphs, which is why the measurement is per character and
+ * not per string). A wide glyph sneaking into this table would shear every box border it touched, so
+ * the fact is asserted rather than assumed.
+ */
+export const DAG_CHARS_ONE_CELL: boolean = Object.values(DAG_CHARS).every((glyph) =>
+  [...glyph].every((character) => cellWidth(character) === 1),
+)
 
 /**
  * The chrome every DAG surface draws with.

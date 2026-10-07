@@ -1,0 +1,81 @@
+{
+  "probe": "the PTY capture's fixture, rendered through the REAL panel component",
+  "captureClaim": "view rail · 5 tasks · ranks derived at 140 and 220",
+  "componentRenders": [
+    {
+      "columns": 44,
+      "modeLine": "view boxes · 5 tasks · ranks derived",
+      "drawingLooksBoxed": true,
+      "rowCount": 92,
+      "firstRows": [
+        "team capture  phase active  tasks 1/5  mem",
+        "team "
+      ]
+    },
+    {
+      "columns": 140,
+      "modeLine": "view boxes · 5 tasks · ranks derived",
+      "drawingLooksBoxed": true,
+      "rowCount": 116,
+      "firstRows": [
+        "team capture  phase active  tasks 1/5  members 0  ███░░░░░░░░░░░░░",
+        "team "
+      ]
+    },
+    {
+      "columns": 220,
+      "modeLine": "view boxes · 5 tasks · ranks derived",
+      "drawingLooksBoxed": true,
+      "rowCount": 116,
+      "firstRows": [
+        "team capture  phase active  tasks 1/5  members 0  ███░░░░░░░░░░░░░",
+        "team "
+      ]
+    }
+  ],
+  "dagPanelLayoutAt44": "boxes",
+  "labelCut": [
+    {
+      "label": "requirements contract",
+      "mode": "boxes",
+      "nodeWidth": 33,
+      "whole": true,
+      "overflow": false,
+      "borders": "││"
+    },
+    {
+      "label": "W1 natural width and bidirectional panni…(42)",
+      "mode": "boxes",
+      "nodeWidth": 54,
+      "whole": true,
+      "overflow": false,
+      "borders": "││"
+    },
+    {
+      "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…(200)",
+      "mode": "rail",
+      "nodeWidth": 44,
+      "whole": false,
+      "overflow": true,
+      "borders": "(no box)"
+    }
+  ],
+  "c3Detail": [
+    "subject 冻结验收契约与验收标准",
+    "description 验收说明 1：必须保持原样",
+    "id T1",
+    "kind work",
+    "visual completed",
+    "verdict —",
+    "failedBy —",
+    "owner —",
+    "attempt —",
+    "round —",
+    "blockedBy —",
+    "dependents T2"
+  ],
+  "c3SubjectKept": true,
+  "c3DescriptionKept": true,
+  "drawingCjkFree": true,
+  "widestLabelAt44": 22
+}

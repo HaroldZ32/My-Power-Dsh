@@ -87,8 +87,17 @@ it is in scope for the per-member "unread" figure.
    - one node per task: `id`, the `kind` abbreviation (`REQ/WRK/REV/FIX/INT` — the vocabulary
      `team-view.ts#KIND` already declares), the state glyph, and the subject truncated;
    - one **drawn edge** per `blockedBy` entry that names a task on this board. Horizontal lead-in,
-     vertical riser, horizontal lead-in — plain absolutely-positioned divs, no SVG, no measuring pass,
-     so the drawing cannot disagree with the data. `rank(child) > rank(parent)` always holds for a
+     vertical riser, horizontal lead-in, **rounded orthogonal elbows and a cubic sweep into the final
+     approach — drawn as an SVG path** (AMENDED 2026-10-06 by the `dag-edges-scroll` wave, at the
+     user's instruction: *"优化WEB界面的依赖DAG的连线渲染（可以参考mermaid那种连线渲染，可以用曲线）"*.
+     The clause this bullet used to carry — *"plain absolutely-positioned divs, no SVG, no measuring
+     pass"* — is **superseded by**: *"drawn as an SVG path whose route is computed in the pure layout —
+     no DOM read, no measuring pass, so the drawing still cannot disagree with the data."* The
+     prohibition that SURVIVES is **measurement**; the prohibition on SVG does not. The route stays the
+     same lanes and the same reserved rows, and the legibility proof moves from "no rect crosses a box"
+     to "no sample of the flattened curve enters a box interior", with a positive control that fails on
+     an injected bad route — see `evidence/dag/dag-edges-scroll/requirements.md` clauses W1–W7.)
+     `rank(child) > rank(parent)` always holds for a
      well-formed board, so the riser never crosses a column;
    - `cycles` non-empty ⇒ the entry is reported, never hidden (the payload already carries the cycle).
    - **HOVER FOCUS CHAIN** — hovering a node tints its transitive ancestors and descendants and dims

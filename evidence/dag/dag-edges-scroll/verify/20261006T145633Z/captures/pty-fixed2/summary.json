@@ -1,0 +1,191 @@
+{
+  "root": "evidence/dag/dag-edges-scroll/verify/20261006T145633Z/captures/pty-fixed2",
+  "widths": [
+    100,
+    140,
+    220
+  ],
+  "verdicts": [
+    {
+      "cols": 100,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "‹ 待办 › ▸ ◆ M ◈ ◆"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": false,
+      "boxRound": false,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 0,
+      "railRendered": true,
+      "panSignatures": [
+        {
+          "step": "panback",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        },
+        {
+          "step": "pan2",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        },
+        {
+          "step": "pan3",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        },
+        {
+          "step": "pan1",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        }
+      ],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩…    "
+      ],
+      "panStatic": true,
+      "cjkInDrawing": [],
+      "cjkInDetail": [
+        "│subject REV — 独立验证：真实│  ",
+        " Esc 聊天 · ←/→ 切换 · z 缩…    ",
+        "│subject REQ · 冻结验收契约：│  ",
+        "│subject 完全中文的任务标题：│  "
+      ],
+      "cjkOutsideDrawing": [
+        " Esc 聊天 · ←/→ 切换 · z 缩…    ",
+        " ‹ 待办 › ▸ ◆ M ◈ ◆             ",
+        " Ctrl+B 聚焦侧栏                "
+      ],
+      "chineseSubjectsInDetail": [],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    },
+    {
+      "cols": 140,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "‹ 待办 › ▸ ◆ M ◈ ◆"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": false,
+      "boxRound": false,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 0,
+      "railRendered": true,
+      "panSignatures": [
+        {
+          "step": "panback",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,35,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0"
+        },
+        {
+          "step": "pan2",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,35,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0"
+        },
+        {
+          "step": "pan3",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,35,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0"
+        },
+        {
+          "step": "pan1",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,35,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0"
+        }
+      ],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     "
+      ],
+      "panStatic": true,
+      "cjkInDrawing": [],
+      "cjkInDetail": [
+        "│subject REV — 独立验证：真实 PTY 与真实浏│  ",
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     ",
+        "│subject REQ · 冻结验收契约：DAG 曲线与 TU│  ",
+        "│subject 完全中文的任务标题：圆角盒与拐角 │  "
+      ],
+      "cjkOutsideDrawing": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     ",
+        " ‹ 待办 › ▸ ◆ M ◈ ◆                          ",
+        " Ctrl+B 聚焦侧栏                             "
+      ],
+      "chineseSubjectsInDetail": [],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    },
+    {
+      "cols": 220,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "‹ 待办 › ▸ ◆ M ◈ ◆"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": false,
+      "boxRound": false,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 0,
+      "railRendered": true,
+      "panSignatures": [
+        {
+          "step": "panback",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,51,0,61,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        },
+        {
+          "step": "pan2",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,51,0,61,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        },
+        {
+          "step": "pan3",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,51,0,61,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        },
+        {
+          "step": "pan1",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,51,0,61,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        }
+      ],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               "
+      ],
+      "panStatic": true,
+      "cjkInDrawing": [],
+      "cjkInDetail": [
+        "│subject REV — 独立验证：真实 PTY 与真实浏览器抓图                  │  ",
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               ",
+        "│subject REQ · 冻结验收契约：DAG 曲线与 TUI 双向滚动                │  ",
+        "│subject 完全中文的任务标题：圆角盒与拐角渲染                       │  "
+      ],
+      "cjkOutsideDrawing": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               ",
+        " ‹ 待办 › ▸ ◆ M ◈ ◆                                                    ",
+        " Ctrl+B 聚焦侧栏                                                       "
+      ],
+      "chineseSubjectsInDetail": [
+        "REQ · 冻结验收契约：DAG 曲线与 TUI 双向滚动",
+        "REV — 独立验证：真实 PTY 与真实浏览器抓图",
+        "完全中文的任务标题：圆角盒与拐角渲染"
+      ],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    }
+  ]
+}

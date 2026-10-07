@@ -1,0 +1,169 @@
+{
+  "root": "evidence/dag/dag-edges-scroll/verify/20261006T145633Z/captures/pty",
+  "widths": [
+    100,
+    140,
+    220
+  ],
+  "verdicts": [
+    {
+      "cols": 100,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "≡ ▸ ‹ 代理 › M ◈ ◆         ⤢",
+        "‹ 待办 › ▸ ◆ M ◈ ◆"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": false,
+      "boxRound": false,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 0,
+      "railRendered": true,
+      "panSignatures": [
+        {
+          "step": "panback",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        },
+        {
+          "step": "pan3",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,22,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        }
+      ],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩…    "
+      ],
+      "panStatic": true,
+      "cjkInDrawing": [
+        "│▶ T1 WRK REQ · 冻结   verify│  ",
+        "││     └─▸ ○ T5 WRK 完全中文 │  ",
+        "│✓ T1 WRK REQ · 冻结   verify│  ",
+        "││  └─▸ ○ T4 WRK REV — 独立验│  "
+      ],
+      "cjkInDetail": [
+        " Esc 聊天 · ←/→ 切换 · z 缩…    "
+      ],
+      "cjkOutsideDrawing": [
+        " Esc 聊天 · ←/→ 切换 · z 缩…    ",
+        " ≡ ▸ ‹ 代理 › M ◈ ◆         ⤢   ",
+        " 0 运行中   0 已完成            ",
+        "前会话暂无子代理        ",
+        "    让主代理发起 Task           ",
+        " ↑/↓ 选择 · Enter 查看详情 ·    ",
+        " Esc 回到聊天                   ",
+        " ‹ 待办 › ▸ ◆ M ◈ ◆             ",
+        " Ctrl+B 聚焦侧栏                "
+      ],
+      "chineseSubjectsInDetail": [],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    },
+    {
+      "cols": 140,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "‹ 待办 › ▸ ◆ M ◈ ◆",
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "≡ ‹ 任务 › ◆ M ◈ ◆                      ⤢"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": false,
+      "boxRound": false,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 0,
+      "railRendered": true,
+      "panSignatures": [
+        {
+          "step": "pan2",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,11,0,35,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0"
+        }
+      ],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     "
+      ],
+      "panStatic": false,
+      "cjkInDrawing": [
+        "│✓ T1 WRK REQ · 冻结验收契约：DAG   verify│  ",
+        "││     └─▸ ○ T5 WRK 完全中文的  unassigned│  "
+      ],
+      "cjkInDetail": [],
+      "cjkOutsideDrawing": [
+        " ‹ 待办 › ▸ ◆ M ◈ ◆                          ",
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽     ",
+        " ≡ ‹ 任务 › ◆ M ◈ ◆                      ⤢   ",
+        " 0 运行中 0 已完成                           ",
+        "           当前会话暂无后台任务              ",
+        " Ctrl+B 聚焦侧栏                             "
+      ],
+      "chineseSubjectsInDetail": [],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    },
+    {
+      "cols": 220,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "≡ ▸ ◆ M ◈ ‹ MPD workmate ›",
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "≡ ▸ ◆ ‹ MPD › ◈ ◆",
+        "‹ 待办 › ▸ ◆ M ◈ ◆",
+        "≡ ‹ 任务 › ◆ M ◈ ◆                                                ⤢"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": false,
+      "boxRound": false,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 0,
+      "railRendered": true,
+      "panSignatures": [],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               "
+      ],
+      "panStatic": false,
+      "cjkInDrawing": [
+        "│✓ T1 WRK REQ · 冻结验收契约：DAG 曲线与 TUI 双向滚动         verify│  ",
+        "││  └─▸ ○ T4 WRK REV — 独立验证：真实 PTY 与真   unassigned  ⇠ T2+T3│  ",
+        "││     └─▸ ○ T5 WRK 完全中文的任务标题：圆角盒与拐角渲染  unassigned│  "
+      ],
+      "cjkInDetail": [],
+      "cjkOutsideDrawing": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               ",
+        " ‹ 待办 › ▸ ◆ M ◈ ◆                                                    ",
+        " Ctrl+B 聚焦侧栏                                                       ",
+        " ≡ ‹ 任务 › ◆ M ◈ ◆                                                ⤢   ",
+        " 0 运行中 0 已完成                                                     ",
+        "                        当前会话暂无后台任务                           "
+      ],
+      "chineseSubjectsInDetail": [],
+      "chineseSubjectsInBox": [
+        "REQ · 冻结验收契约：DAG 曲线与 TUI 双向滚动",
+        "完全中文的任务标题：圆角盒与拐角渲染"
+      ],
+      "tooNarrow": false,
+      "failures": []
+    }
+  ]
+}
