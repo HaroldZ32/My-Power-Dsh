@@ -15,7 +15,7 @@ body:
     attributes:
       label: Bundle version
       description: The `version` field in `package.json`, or the release tag you installed.
-      placeholder: "0.11.1"
+      placeholder: "0.12.0"
     validations:
       required: true
   - type: dropdown

@@ -1,0 +1,7 @@
+panel seam: host 0.13.0 declares the dsh-tui-panels row and ships lib/types/dsh-adapter/panels.js — the panel seam is PRESENT, so the Ctrl+A contact must stay inert
+dsh-tui home fixture=.mpd/recon/qa/tui-lanes/dag-verify/home/.dsh-tui/onboarding.json, .mpd/recon/qa/tui-lanes/dag-verify/home/.dsh-tui/agent-preset.json preset=mpd
+seeded team fixture at .mpd/recon/qa/tui-lanes/dag-verify/ws/.mpd/team/teams/mpd-fixture-1.json
+records removed for the control arm: .mpd/recon/qa/tui-lanes/dag-verify/ws/.mpd/team/teams/mpd-fixture-1.json, .mpd/recon/qa/tui-lanes/dag-verify/ws/.mpd/team/teams/team-dag-verify.json
+host contact: bound to /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui, not the launched profile copy /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/dag-verify/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+store arm: ok=false id=或开启“启动时展开侧栏”
+panel body bound: on a host with the tuiPanels seam the merged view is the SIDEBAR panel: a host-accepted open changed ZERO bytes of the captured pane, and both MPD entry points route to it — so this lane proves the registration and the accepted open, and does NOT claim the panel body (or its arrow) renders

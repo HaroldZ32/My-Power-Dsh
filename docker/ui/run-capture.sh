@@ -90,4 +90,10 @@ mkdir -p "$OUT_DIR"
 # over the English one. An array cannot word-split or vanish.
 LANG_ARGS=()
 [ -n "$LANG_KIND" ] && LANG_ARGS=(--lang "$LANG_KIND")
-node /data/capture.mts --base http://127.0.0.1:3080 --token "$TOKEN" --out "$OUT_DIR" --workspace /data/ws --board "$BOARD_KIND" "${LANG_ARGS[@]}"
+# THE README CROPS GO BESIDE THE FULL SHOTS, NOT INSIDE THEM: `--out` is a step-by-step QA record
+# whose file names must stay stable for the lanes that compare them, while `--readme` is the curated
+# figure set the page links, and it carries the SAME locale split so the two language sets cannot
+# overwrite each other.
+README_DIR=/data-out/readme
+[ -n "$LANG_KIND" ] && README_DIR="/data-out/readme/$LANG_KIND"
+node /data/capture.mts --base http://127.0.0.1:3080 --token "$TOKEN" --out "$OUT_DIR" --readme "$README_DIR" --workspace /data/ws --board "$BOARD_KIND" "${LANG_ARGS[@]}"

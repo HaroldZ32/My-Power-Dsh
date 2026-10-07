@@ -13,7 +13,7 @@ mechanism behind a feature matters.
 
 ![Layered architecture diagram: the DeepSeek Harness host, the bundle's two patch layers, the single adapter seam, the user surfaces and the state roots.](./assets/images/architecture.svg)
 
-*The bundle at a glance. §3–§7 below take the same picture apart layer by layer: the package structure, the patch layers and boot chain, the plugin inventory, the interaction flows and the state layout. A shorter version of this diagram is in the [README](../README.md#architecture).*
+*The bundle at a glance. §3–§7 below take the same picture apart layer by layer: the package structure, the patch layers and boot chain, the plugin inventory, the interaction flows and the state layout. The shortened version of this diagram that the [documentation hub](index.md) renders is the same file.*
 
 Reading order: what is designed → design principles → bundle and package structure → patch layer
 and boot chain → plugin inventory → interaction flows → state layout → web client wiring → TUI
@@ -27,12 +27,12 @@ shells and the base row set. `@mpd-dsh/mpd` designs what is added ON TOP of that
 is added:
 
 - a **patch layer** that inserts the bundle's rows into any profile the bundle is installed into,
-  and one id-target plus a second patch file that make the bundle's own `mpd` preset the default
-  there,
-- **28 inserted plugin rows** (6 MCP client rows, 18 `mpd-*` plugin rows including the
+  plus a second patch file that ships the bundle's own `mpd` preset ADDITIVELY there — the bundle
+  id-targets no host row, so making `mpd` the deployment default is a user action (§2, §6c),
+- **33 inserted plugin rows** (6 MCP client rows, 23 `mpd-*` plugin rows including the
   `mpd-web-compat` self-row, the 3 official Agent Teams rows, and the `mpd-better-sidebar` host row
-  that mounts the bundle's declared sidebar dependency), and the services, tools, commands, routes
-  and state each one owns (§4),
+  that mounts the bundle's OPTIONAL sidebar peer where it is resolvable), and the services, tools,
+  commands, routes and state each one owns (§4),
 - a **web client** and a **TUI surface** that render the bundle's surfaces inside the host's own
   shells (§7, §7b),
 - the **state layout** the bundle writes under the session workspace and under the user home (§6),
@@ -53,10 +53,11 @@ even when it works on the happy path.
    limits (§8b) instead of leaving them to be discovered.
 2. **One seam contact surface.** Exactly one package (`mpd-dsh-adapter`) touches the host's
    tool/agent/skill/preset seams; every other row calls through the `mpdDsh` service. A host
-   release that reshapes a seam is absorbed there instead of across the tree (§6b). The RETAINED
-   (retired-from-composition) upstream `agent-teams` body is not an exception either: its `lib/`
-   still reaches those seams through the adapter, behind the mpd-owned bridge
-   `lib/mpd-adapter-ctx.ts` (§6b) — which is why that code is kept rather than deleted.
+   release that reshapes a seam is absorbed there instead of across the tree (§6b). The adopted
+   `agent-teams` body used to be the exception that proved it — its `lib/` reached the seams through
+   this adapter, behind the mpd-owned bridge `lib/mpd-adapter-ctx.ts` (§6b) — but that code was
+   DELETED in the de-vendor wave (2026-10-07); what survives is the adopted browser bundle, a VIEW
+   library the client factory drives and no seam contact at all (§7).
 3. **Plugin form, config by reference.** Every capability is a Cordis plugin row or a configured
    host plugin instance; no logic lives in profiles or scripts. Assets (the skill corpus, the
    `mpd` preset) are SERVED by the bundle rather than copied into `$DSH_HOME`, so uninstall leaves
@@ -81,14 +82,15 @@ session's request header. my-power-dsh ships as an **npm bundle** (`@mpd-dsh/mpd
 `dsh.bundle.patch` array (`cordis.patch.yml` then `presets/mpd.patch.yml`)
 adds rows to any profile it is installed into. It contributes:
 
-- **28 inserted rows** in TWO additive patch layers: 6 MCP client rows (local ast-grep,
-  git-bash [disabled by default], LSP, codegraph; remote context7, grep.app), 18 `mpd-*`
+- **33 inserted rows** in TWO additive patch layers: 6 MCP client rows (local ast-grep,
+  git-bash [disabled by default], LSP, codegraph; remote context7, grep.app), 23 `mpd-*`
   plugin rows (including the `mpd-web-compat` self-row that makes the bundle a loader entry),
   the 3 OFFICIAL Agent Teams rows, and the `mpd-better-sidebar` row that mounts the
-  bundle's declared sidebar dependency (the community sidebar host) — §4 lists every
+  bundle's OPTIONAL sidebar peer (the community sidebar host) where it is resolvable — §4 lists every
   one of them. The second patch file contributes the `preset-mpd` row,
-- **1 id-target** (not an insert) that makes the bundle's own preset the default:
-  `agent-preset-registry` → `{ default: mpd }` (§2, §6c),
+- **no id-target at all.** The bundle ships its `mpd` preset additively and overrides no host row, so
+  the deployment default stays the host's; setting it is the user's action through the documented
+  channels (`docs/preset-default.md`, §6c),
 - the harness adapter (`mpd-dsh-adapter`) every other row calls through,
 - one agent preset (`mpd`) declared as a ROW, and a skill corpus served by reference
   (no home copy),
@@ -113,11 +115,11 @@ step). `scripts/pack-mpd.ts` is the RELEASE step: it assembles the relocatable
 | Piece | Where it goes | Why |
 |---|---|---|
 | plugin dists | `packages/<pkg>/dist/index.js` | host rows reference them via `@mpd-dsh/mpd/packages/...` (the exports map) |
-| retired agent-teams body | `packages/mpd-agent-teams-plugin/` (lib + `_deps/` + assets) | kept as provenance and copied wholesale so the packed artifact stays self-contained; NO row mounts it (§4) |
+| the two relocated adopted pieces (HISTORY) | `packages/mpd-schemastery/**` (the schemastery validator four shipped plugins import, + its `cosmokit` dep and the six harness framework modules four test files drive) and `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` (the adopted browser bundle, embedded verbatim by `scripts/build-mpd-client.ts`) | the rest of the body they came from — `packages/mpd-agent-teams-plugin/**`, 768 files with `_deps/` — was DELETED in the de-vendor wave (2026-10-07); these two are our own code now and both carry their upstream MIT notice (`LICENSE-NOTICES.md`, `packages/mpd-schemastery/LICENSE`) |
 | combined web client | `packages/mpd-bundle-plugin/client.js` | served as `@mpd-dsh/mpd`'s `./client` export |
 | skills | `skills/` | SERVED from the package: `mpd-bootstrap` registers `skills/` as a skill provider — nothing is copied into `$DSH_HOME` |
 | preset | `presets/mpd.patch.yml` | the `preset-mpd` ROW (`@deepseek-ai/dsh-agent-preset`, `config.id: mpd`, the child entry list inline) and the manifest's second `dsh.bundle.patch` entry |
-| `cordis.patch.yml` | package root | the first `dsh.bundle.patch` layer (the row inserts and the one id-target) |
+| `cordis.patch.yml` | package root | the first `dsh.bundle.patch` layer (the row inserts — and no id-target) |
 
 Manifest invariants (why they exist):
 
@@ -126,11 +128,12 @@ Manifest invariants (why they exist):
   as an entry (`ERR_PACKAGE_PATH_NOT_EXPORTED`).
 - `exports["./client"]` → combined client; `dsh.client.platform: "web"` — marks the
   bundle as a web client contributor.
-- **The retained `agent-teams` body is NOT a declared dependency.** pnpm (the engine behind
-  `dsh plugin add`) never links a bundle's transitive deps into the profile root, and a
+- **The adopted `agent-teams` body was NEVER a declared dependency — and it is now gone.** pnpm (the
+  engine behind `dsh plugin add`) never links a bundle's transitive deps into the profile root, and a
   package-name row would self-disable on an unresolvable module (the E4 defect, see
-  `docs/plan-e.md`). That body is main code plus its own vendored closure
-  (`packages/mpd-agent-teams-plugin/_deps/`), and since 0.1.7-rc.2 no row mounts it at all.
+  `docs/plan-e.md`). That body was main code plus its own vendored closure
+  (`packages/mpd-agent-teams-plugin/_deps/`), and since 0.1.7-rc.2 no row mounted it — which is why
+  the de-vendor wave (2026-10-07) could delete it without moving a single row.
 - **THREE `dependencies` entries — the three official Agent Teams packages**
   (`@deepseek-ai/dsh-experimental-agent-team`, `-tool-agent-team`,
   `-client-ui-agent-team`). `dsh-better-sidebar` is deliberately NOT one of them: it is an OPTIONAL
@@ -204,15 +207,19 @@ to bare package names.
 ## 4. Plugin inventory
 
 **Every row of `cordis.patch.yml`, by composition.** The patch layer is
-additive and carries **28 `insert` rows**; the bundle's SECOND patch file
+additive and carries **33 `insert` rows** (counted as `- id:` entries at the 4-space depth of the
+file's five top-level `insert:` lists; `node scripts/verify-rows-parity.ts` reads back the SAME list —
+`ok: 34 row ids match the 2-file bundle patch layer`, i.e. these 33 plus the `preset-mpd` row of the
+second file); the bundle's SECOND patch file
 (`presets/mpd.patch.yml`) carries one more insert, the `preset-mpd` row, and both files are listed
 in the manifest's `dsh.bundle.patch` ARRAY. `node scripts/verify-rows-parity.ts` asserts that this
-list and the repository's own row bookkeeping agree. One further entry is an **id-target**, not an
-insert — it REPLACES a row the host itself owns — so it is listed in its own table below.
+list and the repository's own row bookkeeping agree. **This bundle carries NO id-target**: since the
+strict zero-override decision (2026-10-02) it overrides no host row, so there is no second table below
+and the deployment default preset is the user's to choose
+([`preset-default.md`](preset-default.md), §6c).
 
 The `Composition` column answers "which composition does this row reach": an `insert` row reaches
-every profile the bundle is installed into (`web + dsh-tui`). The id-target reaches the composition
-that mints the registry row.
+every profile the bundle is installed into (`web + dsh-tui`).
 **Composition-only evidence**: `evidence/tui/composition/20260915T053445Z/raw/web-dump-config-final.txt`
 and `…/raw/dsh-tui-dump-config.txt` list the same bundle rows in both compositions; that snapshot
 predates `mpd-team-watchdog`, which the patch adds as an `insert` in the same band. A dump proves
@@ -237,25 +244,28 @@ COMPOSITION ONLY — it never executes plugin code, so it is never load evidence
 | `mpd-ulw` | mpd-ulw-plugin | web + dsh-tui | fixed plan→execute→verify loop discipline (C2 ultrawork v2) | `mpd_ultrawork`, `mpd_ulw` (light alias); commands `/ulw`, `/ultrawork` | `maxRounds`, `maxReReviews`, `provider/model/reviewerModel`, `planDir`, `stateDir` |
 | `mpd-hashline` | mpd-hashline-plugin | web + dsh-tui | hash-anchored edit discipline (`LINE#HASH` anchors) | `mpd_hashline_read`, `mpd_hashline_edit`, `mpd_hashline_format`, `mpd_hashline_restore` | `guardEditTools`, `maxDiffChars`, `registryFile` |
 | `mpd-boulder` | mpd-boulder-plugin | web + dsh-tui | durable work ledger bound to plan markdown files | `mpd_boulder_status`, `mpd_boulder_start`, `mpd_boulder_complete`, `mpd_boulder_task_timer`, `mpd_boulder_plan_progress`, `mpd_boulder_plans` | `boulderDir` |
+| `mpd-goal` | mpd-goal-plugin | web + dsh-tui | C8 — the persisted GOAL as the durable basis of continuous execution: bridges the harness goal domain and anchors one automatically for a heavy ULW run or a plan-bound boulder work, so the run's OBJECTIVE (not a tool call) keeps the session going across automatic continuation rounds | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish`; service `mpdGoal` | `enabled`, `autoAnchor`, `autoRounds` |
+| `mpd-verify` | mpd-verify-plugin | web + dsh-tui | THE VERIFICATION LAW: the delegation+verification loop, the seat envelope, the black-box evidence probe and the record validator (a PASS with no cited documents or no gate evidence is REFUSED; a FAIL opens a repair task); ledger under `<workspace>/.mpd/verify/` | `mpd_verify_open`, `mpd_verify_escape`, `mpd_verify_seat`, `mpd_verify_evidence`, `mpd_verify_record` | `mode: hard`, `escapeUses` |
 | `mpd-comment-checker` | mpd-comment-checker-plugin | web + dsh-tui | comment/docstring detection (opt-in binary) | `mpd_comment_check` | `autoCheck`, `binary`, `timeoutMs`, `maxMessageChars` |
 | `mpd-codegraph` | mpd-codegraph-plugin | web + dsh-tui | codegraph binary resolve + project index init | effect (auto init) + `/mpd-codegraph` command | `autoInit`, `initTimeoutMs`, `cooldownMs`, `binary` |
 | `mpd-memory` | mpd-memory-plugin | web + dsh-tui | VCS-backed memory (git/svn) + reflection state machine | `mpd_memory_write`, `mpd_memory_read`, `mpd_memory_reflect`, `mpd_memory_reflect_complete`, `mpd_memory_status` | `vcs`, `dir`, `agentSlug`, `reflectionEvery` |
 | `mpd-workmate` | mpd-workmate-plugin | web + dsh-tui | durable evolving agent library under `~/.mpd/workmate/` (mutations rename/delete, archive-first) | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`; service `mpdWorkmate` (`list`/`get`/`read`/`rename`/`delete`); web routes `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
+| `mpd-team-core` | mpd-team-core-plugin | web + dsh-tui | THE TEAM RECORD + WORKFLOW around the official runtime: the PLAN plane (`agent_teams_plan` stages a plan the user can read and approve BEFORE anybody exists, and approval EXECUTES it through the `TeamExecutor` seam), the task contract + monotonic `attempt`, the durable mailbox, the hold, and the archive; kept under `<workspace>/.mpd/team/` and served as `mpdTeams` + `/plugins/mpd-team/state` | `agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`, `agent_teams_control`; service `mpdTeams` | — |
+| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | per-member MODEL ROUTING for official teammates: registers the `mpd-roster` subagent provider the team tool row points at, so a `spawn_teammate` teammate is routed by the `teamModels` slots instead of inheriting the Lead's route (the official `TeamService` forwards only `{prompt, parent}`, so a provider — not a per-teammate option — is the only seam) | no model-facing tools; registers subagent provider `mpd-roster` | `baseProvider` |
 | `mpd-team-compact` | mpd-team-compact-plugin | web + dsh-tui | compacts a FINISHED team's members (every task terminal AND every member idle) through each member's OWN scoped context; the captain is left to the human `/compact`; audit lands under `<workspace>/.mpd/team-compact/` and this row never writes `.mpd/team` | `mpd_team_compact_run`, `mpd_team_compact_status` | — |
 | `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | asset provisioning BY REFERENCE: registers `<bundle>/skills` as a skill provider through the adapter (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
+| `mpd-tui-adapter` | mpd-tui-adapter-plugin | web + dsh-tui | THE single contact surface with the DSH-TUI plane: every `ctx.tui*` seam, the harness `commands` registry and the `settings` provider reach an mpd plugin through this one package (the seam-id table is `TUI_SEAMS`: FIFTEEN `tui*` services — the fourteen 0.12.0 exposed plus the `tuiPanels` registry 0.13.0 added), binder = ONE deferred `ctx.inject([id], …)` per seam, probe = `ctx.get(id, false)`, and a seam that never binds degrades to `absent` instead of failing the boot; it also owns the R5 file log sink | service `mpdTui` | — |
 | `mpd-tui` | mpd-tui-plugin | web + dsh-tui (active in dsh-tui, degrades elsewhere) | the dsh-tui edition's native surface: binds the host's activation-gated TUI seams and probes each one with `ctx.get(id, false)` + warn-once degrade, so a web/headless composition loses the TUI surfaces and not the boot (§7b) | no model-facing tools; TUI status / settings section / board / command tree / shortcuts / dialogs / transcript renderer | — |
 | `mpd-agent-team` | @deepseek-ai/dsh-experimental-agent-team | web + dsh-tui | the OFFICIAL Agent Teams domain service (`ctx.agentTeams`): the implicit-root roster, the durable peer mailbox and the shared task board; roster, mailbox and task state are persisted in the LEAD's session log | service `agentTeams` | `maxMembers: 16`, `maxTasks: 256`, `maxPendingMessagesPerMember: 64`, `maxMessageBytes: 32768`, `disposalTimeoutMs: 5000` |
 | `mpd-tool-agent-team` | @deepseek-ai/dsh-experimental-tool-agent-team | web + dsh-tui | the nine scoped model-facing tools every member receives — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, `team_task_create/list/get/update` — plus the `team:policy` prompt section | those nine tools | `freshProvider: spawn`, `forkProvider: fork` |
 | `mpd-ui-agent-team` | @deepseek-ai/dsh-experimental-client-ui-agent-team | web (inert host export elsewhere) | the official Web roster, shared task board and teammate-navigation panel in the conversation header; read-only (no spawn/rename/delete/interrupt and no task-mutation control) | `/client` browser half | — |
-| `mpd-better-sidebar` | dsh-better-sidebar (the bundle's declared dependency; entry id is `mpd-`-prefixed on purpose, never the package's own `better-sidebar` or an aggregate's id) | web (the guard disables it when no enabled `@deepseek-ai/dsh-host-webserver` entry exists, `dsh-tui` included) | mounts the community sidebar bundle that HOSTS the Workmates tab, so the tab exists without a second manual plugin install; the guard is order-independent and disables the row where ANY composed patch layer already names the package — every declared bundle layer's `dsh.bundle.patch` (e.g. the `@linxin666/dsh-web-all` aggregate), `<profileDir>/cordis.patch.yml`, `$DSH_HOME/cordis.patch.yml`, and every `--patch` overlay path read from `process.argv` (both spellings, repeatable) — where `dsh-better-sidebar` is itself a bundle layer, where the package is unresolvable, or where no enabled `@deepseek-ai/dsh-host-webserver` ENTRY exists (a webserver row disabled by an expression does not count). A foreign layer suppresses the row only when its patch contains a ROW that mounts the package — a row naming `dsh-better-sidebar` whose `disabled` is not literally `true` (YAML comments are stripped first); a mention inside a comment, or a row that is literally `disabled: true`, mounts nothing and does not suppress our mount, and any form the row scanner cannot parse falls back to the conservative behaviour (treated as a mount), because a false disable costs the sidebar while a false enable kills the boot with `duplicate prefix route`. Every path degrades to "no sidebar" with one log line, never a dead boot | sidebar host + its tab registry (`ctx.betterSidebar`) | `disabled: !!js` mount guard |
+| `mpd-better-sidebar` | dsh-better-sidebar (an OPTIONAL PEER the bundle never installs; entry id is `mpd-`-prefixed on purpose, never the package's own `better-sidebar` or an aggregate's id) | web (the guard disables it when no enabled `@deepseek-ai/dsh-host-webserver` entry exists, `dsh-tui` included) | mounts the community sidebar bundle that HOSTS the Workmates tab where it is resolvable, so the tab exists without a second manual plugin install — and its ABSENCE is a normal composition, not a broken install: the same two mpd panels register into the harness's own right sidebar (§7); the guard is order-independent and disables the row where ANY composed patch layer already names the package — every declared bundle layer's `dsh.bundle.patch` (e.g. the `@linxin666/dsh-web-all` aggregate), `<profileDir>/cordis.patch.yml`, `$DSH_HOME/cordis.patch.yml`, and every `--patch` overlay path read from `process.argv` (both spellings, repeatable) — where `dsh-better-sidebar` is itself a bundle layer, where the package is unresolvable, or where no enabled `@deepseek-ai/dsh-host-webserver` ENTRY exists (a webserver row disabled by an expression does not count). A foreign layer suppresses the row only when its patch contains a ROW that mounts the package — a row naming `dsh-better-sidebar` whose `disabled` is not literally `true` (YAML comments are stripped first); a mention inside a comment, or a row that is literally `disabled: true`, mounts nothing and does not suppress our mount, and any form the row scanner cannot parse falls back to the conservative behaviour (treated as a mount), because a false disable costs the sidebar while a false enable kills the boot with `duplicate prefix route`. Every path degrades to "no sidebar" with one log line, never a dead boot | sidebar host + its tab registry (`ctx.betterSidebar`) | `disabled: !!js` mount guard |
 
-**The id-target** (it replaces the composition's own preset-selection row; an id-target is a
-per-key shallow override, so the host row's other keys survive, and a composition that does not
-have the row logs `patch: entry … not found` and skips it):
-
-| Entry id | Target | Composition | What it carries here |
-|---|---|---|---|
-| `agent-preset-registry` | the registry row `dsh-web-app` inserts | web / base plane | `default: mpd`, so ONE `dsh plugin add` selects the bundle's preset. The registry declares exactly ONE config key (`default`), so restating it is complete; a composition that carries no such row logs `patch: entry … not found` and keeps its own default (a warning, never an error) |
+**There is no id-target.** This bundle's patch layers contain `insert` rows only: an id-target
+REPLACES a row the host itself owns, and taking over the deployment's preset selection was the
+decision reversed on 2026-10-02 (strict zero-override, enforced by
+`node scripts/verify-no-host-override.ts`). Making `mpd` the default is a USER action through the
+documented channels — see [`preset-default.md`](preset-default.md) and §6c.
 
 Two rows behave differently per composition ON PURPOSE and neither is a defect: `mpd-tui` binds TUI
 seams and degrades warn-once where none exist (web / headless), and `mpd-web-compat` is what puts the
@@ -407,33 +417,15 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
 - QA proof: `bundle-lifecycle` asserts the composed row, the boot log line, the probe's
   `ADAPTER_SEAMS=…` snapshot and `ADAPTER_TOOL_CALL=ok` (a real `mpd_config_get` call
   through the normalized path).
-- **Retained-code seam routing (the former boundary — CLOSED 2026-09-19; the code since RETIRED
-  from the composition 2026-09-27):** the `agent-teams` body at
-  `packages/mpd-agent-teams-plugin` (MIT) is kept as provenance and no loader row mounts it, but it
-  still reaches every harness seam
-  through this adapter — except the counted `setup(childCtx, child)` residual that AGENTS.md §6
-  names (five lines in `lib/members.ts`, asserted line-by-line, because that host-handed scoped
-  ctx is passed to a vendored `_deps/dsh-agent` helper and a legacy Alpha.2 `childCtx` is not
-  guaranteed to be `child.ctx`). `lib/mpd-adapter-ctx.ts` — a NEW mpd-owned module (name rule
-  `lib/mpd-*.js`, restorable byte-faithfully from the delta registry) — builds the facade once
-  at the top of `apply`, so the SIX bridged adopted files (`lib/index.ts`, `lib/capabilities.ts`,
-  `lib/harness-compat.ts`, `lib/members.ts`, `lib/command.ts`, `lib/tools.ts`) consume the facade
-  and the remaining adopted server files receive it unchanged. Keeping it adapter-routed is exactly
-  why the code is retained rather than deleted: a later wave can delete it without re-deriving the
-  D6 analysis. The facade resolves the mounted
-  `mpdDsh` service lazily and falls back warn-once (exactly one absent line per plugin instance),
-  so the plugin still applies with the adapter absent. FOURTEEN adapter methods carry the
-  traffic, each behind a `capabilities()` flag (one flag may cover two methods; `subagentRuntime`
-  reuses the existing `subagents` flag): `registerHostTool` (verbatim, `Object.is`),
-  `subagentRuntime` / `subagentProvider` / `subagentProviders` / `startContinuableAgent` /
-  `interruptAgent`, `llmListModels` / `llmResolveCallConfig`, `registerPromptSection`,
-  `agentScope`, and the `agentTurn*` family (`startAgentTurn` / `cancelAgentTurn` /
-  `steerAgentTurn` / `injectAgentMessage`). The local adaptations that remain are unchanged —
-  the `installContinuableMemberSetup` boot-safety guard wrapping the host's
-  `registerContinuableSetup`, the workmate persona injection, and the re-vendor-resistant
-  `mpd-delta` regions. The closure is stated WITH its residual set in AGENTS.md §6 (R1–R5 plus
-  the counted `members.js` bypass), and the bridged region ids live in
-  `agent-references/agent-teams-deltas.md`.
+- **Retained-code seam routing (the former boundary — CLOSED 2026-09-19; the code RETIRED from the
+  composition 2026-09-27 and DELETED 2026-10-07): HISTORY.** The `agent-teams` body this bullet used
+  to describe — its `packages/mpd-agent-teams-plugin` tree, its counted `setup(childCtx, child)`
+  residual in `lib/members.ts`, the `lib/mpd-adapter-ctx.ts` facade and the six bridged files that
+  consumed it, and the `mpd-delta` region registry — is GONE from the live tree, together with the
+  three scripts that vendored, patched and reclaimed it. Nothing in this bundle reads, imports,
+  patches, fingerprints or copies it any more, and no rule depends on it; the historical account of
+  the adopted era is in `agent-references/plugin-authoring.md` (an agent-facing document, opened on
+  demand). The adapter's seam surface is unaffected and is the section below.
 - The ADAPTER's own team surface is what the shipped consumers use: `teamMembership`,
   `teamListMembers`, `teamListTasks`, `teamCreateTask`, `teamGetTask`, `teamUpdateTask`,
   `teamSendMessage`, `teamSpawnTeammate`, `teamInterrupt`, `teamWaitForChange` and
@@ -447,8 +439,11 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
 `presets/mpd.patch.yml` declares the `mpd` preset as an ordinary **ROW**: an insert of `preset-mpd`
 (`name: '@deepseek-ai/dsh-agent-preset'`, `config.id: mpd`, the child entry list inline under
 `config.plugins`). That child list IS the agent-plane composition every `mpd` session joins, and the
-file is the manifest's SECOND `dsh.bundle.patch` entry; `cordis.patch.yml`
-id-targets `agent-preset-registry` to `{ default: mpd }`. Harness **0.1.7-rc.2 replaced the
+file is the manifest's SECOND `dsh.bundle.patch` entry. `cordis.patch.yml` carries **no id-target**:
+the two that used to make `mpd` the deployment default (one per composition) are gone since the
+strict zero-override decision (2026-10-02), so the bundle ships the preset ADDITIVELY and the default
+stays the host's to hand over ([`preset-default.md`](preset-default.md)). Harness **0.1.7-rc.2
+replaced the
 directory form**: `@deepseek-ai/dsh-agent-presets` (which served `preset.yml` + `agent.cordis.yml`
 from a preset root) no longer exists, so there is no `<bundle>/presets` preset root and no
 `$DSH_HOME/.agent-presets` copy.
@@ -488,14 +483,15 @@ actually installed, and that mirroring is load-bearing:
 `packages/mpd-bundle-plugin/client.js` (generated by `scripts/build-mpd-client.ts`) is
 one script:
 
-1. the retained agent-teams `lib/client.js` **verbatim** — it self-registers
-   `@nanmicoder/dsh-agent-teams`. It is used strictly as a **view library**:
-   `scripts/patch-agent-teams-client.ts` additively exports its views (`TeamSection`,
-   historic cards), monitor store, zh/en dictionaries and CSS through a pinned export
-   bridge that `scripts/vendor-agent-teams.ts` re-applies after every refresh, and the
-   adopted `apply(ctx)` is **never called** — that is what registered the removed surfaces;
+1. the adopted agent-teams client bundle **verbatim**, from
+   `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` — it self-registers
+   `@nanmicoder/dsh-agent-teams`. It is used strictly as a **view library**: its additive
+   export bridge (`TeamSection`, historic cards, monitor store, zh/en dictionaries and CSS) is baked
+   into that relocated copy at its marked region, and `scripts/build-mpd-client.ts` refuses to build
+   a bundle that no longer carries it; the adopted `apply(ctx)` is **never called** — that is what
+   registered the removed surfaces;
 2. a `__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory })` entry retained from the same
-   vendored body (`src/team-page.ts`). Its HOST half was the retired `agent-teams` plugin's routes
+   adopted body (`src/team-page.ts`). Its HOST half was the retired `agent-teams` plugin's routes
    (`/plugins/dsh-agent-teams/{state,halt,plan,assets}`), and no mounted row serves those any more —
    so **the shipped team surface is the official plugin's panel** (`mpd-ui-agent-team`, next
    section), and this entry is NOT documented as providing one;
@@ -630,17 +626,20 @@ document should carry, stated rather than left to be discovered:
   `session-watchdog-hold` / `-resume` and the durable hold record; wiring the OFFICIAL dispatch
   gates that honour a hold is a later task. Until then a hold is recorded and reported, and a
   teammate's current turn is stopped by the official `interrupt_agent` (Lead-only) (§4).
-- **The retained team body is NOT mounted.** `packages/mpd-agent-teams-plugin` is kept as
-  provenance: no loader row mounts it, so none of its tools, its `.mpd/team` records or its
-  sidebar panel is part of a shipped session. Its `lib/` stays adapter-routed (§6b) and its
-  client half is retained as a view library (§7); deleting it is a declared follow-up, not an
-  oversight.
+- **The adopted team body is DELETED.** `packages/mpd-agent-teams-plugin` — 768 files, `_deps/`
+  included — was removed in the de-vendor wave (2026-10-07), so none of its tools, its `.mpd/team`
+  records or its sidebar panel is part of a shipped session. What survives was relocated into
+  mpd-owned homes as our own code: the schemastery validator at `packages/mpd-schemastery/**` and the
+  adopted browser bundle at `packages/mpd-bundle-plugin/adopted/agent-teams-client.js`, retained as a
+  view library (§7). Deleting it is DONE, not a follow-up, and `LICENSE-NOTICES.md` carries the MIT
+  notice for the two relocated pieces.
 - **The web client's mpd page is sidebar-only.** There is no in-conversation fallback: the mpd page
   lives as a sidebar tab, and an optional seam must be mounted with `ctx.inject([...])` rather than probed
   with a one-shot `ctx.get` — a probe cannot see a service another plugin owns and cannot recover
-  when that provider mounts late (§7). The sidebar host is installed with the bundle (the declared
-  `dsh-better-sidebar` dependency plus the guarded `mpd-better-sidebar` row, §4), so this limit
-  describes the code path, not an extra install step the user owes. The Agent Teams panel is the
+  when that provider mounts late (§7). Nothing extra is owed by the user: the community sidebar host
+  is an OPTIONAL PEER the bundle never installs, and WITHOUT it the same two pages register into the
+  harness's own right sidebar, so this limit describes the code path, not an install step. The Agent
+  Teams panel is the
   exception by construction: the official client plugin renders it in the CONVERSATION HEADER, not
   in the sidebar.
 - **Two rows are inert or degraded by design.** `mcp-gitbash` ships disabled (Windows-only upstream)

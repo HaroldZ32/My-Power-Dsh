@@ -25,15 +25,26 @@
 > **BASELINE STATUS — read this before quoting any team row (0.1.7-rc.2).** The Web side this ledger
 > scores against is the **vendored `agent-teams` plugin, which is now RETIRED from the composition**:
 > no loader row mounts it, so its routes (`/plugins/dsh-agent-teams/**`), its `.mpd/team` records and
-> its sidebar panel do not exist in a shipped session. Every row and section below is that wave's
-> MEASUREMENT of that baseline — history, not current capability.
+> its sidebar panel do not exist in a shipped session. The adopted tree has since been DELETED
+> outright (de-vendor wave, 2026-10-07), so every `packages/mpd-agent-teams-plugin/**` path cited
+> below is the ANCHOR OF A HISTORIC MEASUREMENT — bytes a reader can quote, never a file it can open.
+> Every row and section below is that wave's MEASUREMENT of that baseline — history, not current
+> capability.
 >
 > Two consequences, stated rather than left to be inferred when a team row is cited:
-> **the whole plan-approval family does not exist any more** (a staged plan, `approve <teamId>` +
-> `Ctrl+X`, `Ctrl+D` discard, the plan member/task editors, `plan-continue`), because the OFFICIAL
-> Agent Teams plugin this bundle mounts has **no staged plan and no approval step** — the Lead spawns
-> a teammate with `spawn_teammate`, opens its lane with `team_task_create`, and the shared board IS
-> the plan; and **the team state a TUI scene could read** is the Lead's session log, not
+> **the plan-approval family this table measured ran on that deleted plugin and went with it** (its
+> staged plan, its `approve <teamId>` + `Ctrl+X`, its `Ctrl+D` discard, its plan member/task editors,
+> its `plan-continue`), because the OFFICIAL Agent Teams plugin this bundle mounts has **no staged
+> plan and no approval step** — the Lead spawns a teammate with `spawn_teammate`, opens its lane with
+> `team_task_create`, and the shared board IS the plan. **That is the OFFICIAL plane only, because
+> THIS bundle owns a staged plan again on its own plane**: `mpd-team-core`'s `agent_teams_plan`
+> (`create` → `add_member` / `create_task` → `approve`, refusing a plan with 0 members and 0 tasks),
+> reached from the TUI as `/mpd plan` and rendered in the Web panel's plan projection
+> (`packages/mpd-bundle-plugin/src/team-view.ts`, served from `/plugins/mpd-team/plan`) — the
+> contract for it is `docs/tui.md` §3.2, which is what to quote, not the retired rows below. And
+> **the team state a TUI scene reads** is the mpd-owned team record
+> (`.mpd/team/teams/<teamId>.json`, `packages/mpd-tui-plugin/src/team-state.ts`), with the official
+> live readout only a FALLBACK — not the Lead's session log as the source, and not the retired
 > `.mpd/team/team.json`. For the current team capability read `docs/user-guide.md` §6,
 > `docs/tui.md` §3.2 and `docs/plan-0.1.7-adaptation.md`.
 
@@ -100,7 +111,7 @@ a measured Web artifact). `—` means there is no TUI surface to name.
 | `plan-task-editor` (subject/assignee/dependencies) | `lib/index.ts:426` (`update_task`) | absent | — | — | NOT-CLAIMED #2 |
 | `plan-add-task` | `lib/index.ts:443` (`add_task`) | absent | — | — | NOT-CLAIMED #2 |
 | `plan-remove-task` | `lib/index.ts:458` (`remove_task`) | absent | — | — | NOT-CLAIMED #2 |
-| `plan-pre-approval editing / merge` | `lib/index.ts:405-475` (the editor action block); `lib/tools.ts:759` (the plugin's edit-plan tool) | absent | — | — | NOT-CLAIMED #2; the contract's row label `merge-autonomous-plan` has no locatable anchor in the adopted client bytes — see deviation D2. (The whole plan-approval family is retired — see the banner.) |
+| `plan-pre-approval editing / merge` | `lib/index.ts:405-475` (the editor action block); `lib/tools.ts:759` (the plugin's edit-plan tool) | absent | — | — | NOT-CLAIMED #2; the contract's row label `merge-autonomous-plan` has no locatable anchor in the adopted client bytes — see deviation D2. (The Web column is the deleted plugin's; the plan-approval family itself is back on this bundle's own plane — see the banner and `docs/tui.md` §3.2.) |
 | `activity-panel/archived-teams view (?archived=1)` | `lib/index.ts:255-272`; `lib/client.js:360-367` | absent | — | — | measured: the TUI reads the live state root only and selects one newest record (`packages/mpd-tui-plugin/src/state.ts:107-109`); archived teams are not projected |
 | `activity-panel/panel-geometry + drag/resize` | `lib/client/panel-geometry.ts:121` | not-applicable | — | — | a terminal scene has no floating geometry (§7.1) |
 | `activity-panel/localization (t())` | `lib/client/locales.ts` | not-applicable | the injected `tuiCommandTrees` carries `descriptions.zh` (`src/command-trees.ts:18-25`); scene text stays English | E4 (`16-command-completion.pane.txt`) | §5.1 plus §7.1 — no scene-text localization is claimed |
@@ -184,8 +195,9 @@ in this ledger as the history of the measurement, not as a current status.
 STILL OPEN).**
 The mandatory row `activity-panel/merge-autonomous-plan` is kept (an omitted row is a defect), but
 the label itself could not be located in the adopted client bytes: a case-insensitive search for
-`autonomous|merge` over `packages/mpd-agent-teams-plugin/lib/client.js` and `lib/client/**` returns
-zero hits. The row is therefore anchored to the nearest MEASURED Web surface — the pre-approval plan
+`autonomous|merge` over `packages/mpd-agent-teams-plugin/lib/client.js` and `lib/client/**` returned
+zero hits before that tree was deleted (those paths are history anchors — see the banner). The row
+is therefore anchored to the nearest MEASURED Web surface — the pre-approval plan
 editor action block (`lib/index.ts:405-475`) and the plugin's edit-plan tool (`lib/tools.ts:759`). This
 is recorded rather than silently re-labelled: a reader comparing this page with the contract sees
 the discrepancy and its cause.
@@ -250,16 +262,17 @@ Web column cites source, exactly as the contract's §2 does).
 
 ## 6. How to open each TUI surface
 
-**The team rows in this table describe the RETIRED baseline (see the banner at the top): a staged
-plan, `approve <teamId>` + `Ctrl+X` and the `team-plan …` board row do not exist in a shipped
-session any more.** What a current session can open is `/mpd team`, `/mpd board`, `/mpd status`,
+**This table lists what a CURRENT session can open; the ledger in §2 (see the banner at the top) is
+the historic measurement, and the plan-approval row below is live again on this bundle's own
+plane.** What a current session can open is `/mpd team`, `/mpd plan`, `/mpd board`, `/mpd status`,
 `/mpd workmates`, `/settings` and the `/mpd` grammar — the TUI action list is
-`packages/mpd-tui-plugin/src/command-trees.ts`.
+`packages/mpd-tui-plugin/src/command-trees.ts`, whose `plan` child reads "Review and approve a
+staged plan".
 
 | Surface | How to open it | Then |
 |---|---|---|
 | The team workflow | `/mpd team` (or `/mpd` → picker, or `a` while `mpd-tui-board` is open) | `p` jumps to the board; `r` re-reads |
-| ~~The plan approval~~ (RETIRED — no staged plan exists; use the official `team_task_*` tools) | — | — |
+| The plan approval | `/mpd plan` (or `a` while `mpd-tui-team` is open, once a staged team was read) | type the EXACT phrase the pane serves (`approve plan-…`, from the same plan projection the Web panel renders), then `Ctrl+X`; `Ctrl+D` twice within 10 s discards the staged plan, `Ctrl+R` re-reads, `esc` goes back |
 | The board | `/mpd board`, the configured shortcut, or picking the board | the `team-hold held (…)` row (only while a watchdog hold lasts) |
 | The workmate library (listing) | `/mpd workmates` | prints the count and names; mutations are Web-only (row 24) |
 | The status line | `/mpd status` (or the configured status seam) | the one-line team summary, including the hold when one lasts |
