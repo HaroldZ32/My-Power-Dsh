@@ -49,6 +49,15 @@ export interface VerifyLoop {
   loopId: string
   /** The board task this loop verifies, when it verifies one. */
   taskId: string | null
+  /**
+   * The wave contract THIS loop was opened against, workspace-relative — what its verifier is handed.
+   *
+   * ADDITIVE, and OPTIONAL on purpose: a loop file written by an older revision carries no such field,
+   * and an absent one means "the declared default" (`DEFAULT_CONTRACT_PATH` in `law.ts`) rather than
+   * "no basis". It is recorded per loop because the hardcoded pair this field replaces handed every
+   * later wave the PREVIOUS wave's plan.
+   */
+  contract?: string
   /** The workspace the loop belongs to. */
   workspace: string
   /** The agent key the loop belongs to (the captain's session, for a self-writer loop). */

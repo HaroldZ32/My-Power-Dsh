@@ -689,7 +689,10 @@ export type CasCloseOutcome = {
  *     identity candidates: session id, session title, team display name). A task with NO owner is
  *     refused, because nobody has claimed the work. The ONE override is the Lead: a stranded row
  *     (its owner gone, its work abandoned) must be closable, and the outcome SAYS which rule applied
- *     (`closedBy`) rather than blurring the two.
+ *     (`closedBy`) rather than blurring the two. THE LEAD IS READ FROM THE RECORD, not only from the
+ *     caller's flag (defect D5b): `leadSessionId` on this very record is the authority, so a Lead whose
+ *     official membership read is unavailable — every dsh-tui boot, where that service cannot mount —
+ *     still closes any task of its own team, and a member still cannot.
  *   * COMPARE-AND-SET — `expectedRevision`, when supplied, must equal the task's revision on disk; a
  *     stale caller is refused with both numbers instead of clobbering a concurrent write.
  *   * ATTEMPT — reported, never reset: the counter is monotonic across claims and closures.
@@ -707,7 +710,11 @@ export function casCloseTask(fresh: TeamRecord, input: {
   status: "completed" | "failed"
   /** Every spelling that identifies the caller, so an owner recorded as a name still matches. */
   caller: readonly string[]
-  /** True when the caller leads this team — the narrow stranded-row override. */
+  /**
+   * True when the ROSTER says the caller leads this team — the narrow stranded-row override.
+   * A caller whose membership read is unavailable is still recognised through the record's own
+   * `leadSessionId`, so this flag only ever ADDS a lead, it never withholds one.
+   */
   lead: boolean
   /** The revision the caller decided on; a mismatch is refused. */
   expectedRevision?: number
@@ -727,7 +734,18 @@ export function casCloseTask(fresh: TeamRecord, input: {
   }
   /** Whether any of the caller's own spellings IS the recorded owner. */
   const isOwner = task.owner !== undefined && input.caller.some((candidate) => nameMatches(candidate, String(task.owner)))
-  if (!isOwner && !input.lead) {
+  // THE RECORD'S OWN LEAD (defect D5b). `input.lead` is the OFFICIAL membership read, and in a dsh-tui
+  // boot that service cannot mount — measured on a live session where the captain's own close answered
+  // `... is owned by "Plan Reviewer" and this caller is neither that owner nor this team's lead` while
+  // `leadSessionId` on the record being closed named that very session. The record is already the
+  // authority this gate decides against (`fresh`), so the Lead arm is derived from it here, through the
+  // SAME comparator the owner arm uses rather than a second one.
+  /** Whether any of the caller's own spellings IS this team's recorded Lead session. */
+  const isRecordLead = String(fresh.leadSessionId ?? "") !== ""
+    && input.caller.some((candidate) => candidate !== "" && nameMatches(candidate, String(fresh.leadSessionId)))
+  /** Whether the caller may override ownership: the roster's own lead role, or this team's Lead. */
+  const isLead = input.lead || isRecordLead
+  if (!isOwner && !isLead) {
     return {
       applied: false,
       reason: task.owner === undefined
@@ -783,6 +801,32 @@ function nameMatches(a: string, b: string): boolean {
   /** The first spelling's normalised key. */
   const left = key(a)
   return left !== "" && left === key(b)
+}
+
+/**
+ * Whether one DURABLE record names this caller on its roster.
+ *
+ * WHY A RECORD CAN NAME A MEMBER AT ALL. The record is what a MEMBER session has to resolve its team
+ * by: a teammate is neither the key of `teams.json`'s `active` map (that is written for the Lead
+ * session that approved the plan) nor any record's `leadSessionId`, so before this predicate existed a
+ * member resolved NOTHING and every board action answered `no team record in this workspace`. MEASURED
+ * on a real session during the tui-dag-highlight wave: a member could open a contract but never close
+ * its own row. The two spellings the record carries are the member's own HANDLE (`executorRef`, the
+ * durable child session id the executor reported at spawn, which is what a member's own session id IS)
+ * and its display `name`; both are compared through {@link nameMatches}, never a second comparator.
+ *
+ * @param record - the record to ask.
+ * @param caller - every spelling that identifies the calling session.
+ * @returns true when the roster names the caller at least once.
+ */
+export function recordNamesMember(record: TeamRecord, caller: readonly string[]): boolean {
+  /** Whether ONE member is named by any of the caller's spellings. */
+  const names = (member: TeamMemberRecord): boolean => {
+    /** Every spelling this member can be addressed by on the durable record. */
+    const spellings = [member.name, member.executorRef ?? ""].filter((value) => value !== "")
+    return spellings.some((spelling) => caller.some((candidate) => candidate !== "" && nameMatches(candidate, spelling)))
+  }
+  return Array.isArray(record.members) && record.members.some(names)
 }
 
 /** The fields {@link updateTeamMember} may change. */

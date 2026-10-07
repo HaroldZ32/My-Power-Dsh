@@ -16,7 +16,7 @@
 // the wrong thing. Only a genuinely broken precondition (no team, no task) throws.
 import type { DshAdapter, DshToolDef, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { textBlock } from "../../mpd-dsh-adapter-plugin/src/index"
-import { resolvePositiveInt, sessionKeyOf } from "./law.ts"
+import { DEFAULT_CONTRACT_PATH, loopContractPath, normalizeContractPath, resolvePositiveInt, sessionKeyOf } from "./law.ts"
 import {
   appendEscape, ensureDir, evidenceDir, hashDoc, loopsDir, mintId, readEvidence, readJson, readLoops, readRecords,
   readSeats, recordsDir, seatsPath, sha256File, verifyRoot, writeEvidence, writeJsonAtomic, writeLoop,
@@ -136,7 +136,7 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
   return {
     name: "mpd_verify_open",
     description:
-      "Open a delegation+verification LOOP. `writer:\"self\"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:\"delegate\"` records a loop whose writer is a member. A loop authorises nothing after `expiresAt`.",
+      "Open a delegation+verification LOOP. `writer:\"self\"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:\"delegate\"` records a loop whose writer is a member. `contract` is the document THIS wave's verifier is handed (a workspace-relative path, e.g. `.mpd/plans/<wave>.md`); with none the loop falls back to the declared `" + DEFAULT_CONTRACT_PATH + "`. A loop authorises nothing after `expiresAt`.",
     parameters: {
       type: "object",
       properties: {
@@ -144,6 +144,7 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
         self_write_reason: { type: "string", description: "writer:\"self\" only: why this agent writes its own code. Required, echoed in the report." },
         writer: { type: "string", enum: ["self", "delegate"], description: "Who writes. Defaults to `self`." },
         scope: { type: "array", items: { type: "string" }, description: "The paths this loop covers, relative to the workspace. EMPTY means the whole workspace." },
+        contract: { type: "string", description: "The wave contract this loop freezes for its verifier: a workspace-relative path (e.g. `.mpd/plans/verify-law-defects.md`). `mpd_verify_seat` hands the seat exactly this document and `mpd_verify_record` hashes it as the record's `basis.frozenContract`. With none, the declared default `" + DEFAULT_CONTRACT_PATH + "` applies — never a previous wave's plan." },
         task_id: { type: "string", description: "The board task this loop verifies, when it verifies one." },
         ttl_ms: { type: "number", description: "Loop lifetime in ms; defaults to 24h (verify.loopTtlMs)." },
       },
@@ -176,6 +177,8 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
       }
       /** The loop's lifetime, from the row's config or the default. */
       const ttlMs = resolvePositiveInt(args?.ttl_ms, resolvePositiveInt(deps.configValue("verify.loopTtlMs"), DEFAULT_LOOP_TTL_MS))
+      /** The wave contract this loop freezes, when the caller named one; `undefined` means the default. */
+      const contract = normalizeContractPath(args?.contract)
       /** The instant the loop is opened. */
       const now = new Date()
       /** The minted loop id. */
@@ -185,6 +188,7 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
         version: 1,
         loopId,
         taskId: args?.task_id === undefined ? null : String(args.task_id),
+        ...(contract === undefined ? {} : { contract }),
         workspace,
         sessionId,
         writer: { kind: writerKind, id: writerKind === "self" ? sessionId : "delegate:pending", reason: writerKind === "self" ? reason : undefined },
@@ -196,8 +200,20 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
         expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
       }
       if (!writeLoop(workspace, loop)) return { refused: "the loop could not be written to " + join(loopsDir(workspace), loopId + ".json") }
-      deps.log("opened loop " + loopId + " writer=" + loop.writer.kind + " verifier=" + loop.verifier.id)
-      return { loopId, writer: loop.writer, verifier: loop.verifier, scope: loop.scope, status: loop.status, expiresAt: loop.expiresAt }
+      deps.log("opened loop " + loopId + " writer=" + loop.writer.kind + " verifier=" + loop.verifier.id + " contract=" + loopContractPath(loop))
+      // THE RESULT MUST BE PLAIN, LOSSLESS JSON — measured 2026-10-07, D1: the harness walks every own
+      // key of a tool result and refuses the WHOLE value when one of them is `undefined`
+      // (`tool "mpd_verify_open" returned invalid output: value is not lossless JSON`), so a
+      // `writer.reason` that exists only in the `self` branch used to throw the loop id away. A key whose
+      // value is absent is therefore OMITTED, never set to `undefined` — the same discipline the escape,
+      // evidence and record tools already follow with their conditional spreads.
+      /** The writer seat as the caller may read it: `reason` is present only when the loop carries one. */
+      const writerView: { kind: "self" | "delegate"; id: string; reason?: string } = {
+        kind: loop.writer.kind,
+        id: loop.writer.id,
+        ...(typeof loop.writer.reason === "string" ? { reason: loop.writer.reason } : {}),
+      }
+      return { loopId, writer: writerView, verifier: loop.verifier, scope: loop.scope, contract: loopContractPath(loop), status: loop.status, expiresAt: loop.expiresAt }
     },
   }
 }
@@ -279,8 +295,13 @@ function seatTool(deps: VerifyToolDeps): DshToolDef {
       }
       /** The seat file as it stands. */
       const seats = readSeats(workspace)
-      /** The loop's frozen docs: the contract it was opened against, plus whatever the ledger holds. */
-      const docPaths = [...new Set([".mpd/plans/de-vendor-and-verify-law.md", ".mpd/plans/verify-law-spec.md"])]
+      // THE SEAT'S FROZEN DOCS COME FROM THE LOOP, NOT FROM THIS MODULE (D2, measured 2026-10-07): the
+      // pair hardcoded here handed every later wave the PREVIOUS wave's plan. `loopContractPath` resolves
+      // this loop's own contract, falling back to the declared default for a loop that named none.
+      /** The contract this loop froze for its verifier. */
+      const contract = loopContractPath(loop)
+      /** The loop's frozen docs: exactly the document THIS loop was opened against. */
+      const docPaths = [...new Set([contract])]
       /** The seat to store. */
       const seat: VerifySeat = { loopId: loop.loopId, verifierId: sessionId, unlocked: seats.seats?.[sessionId]?.unlocked === true, docPaths }
       seats.version = 1
@@ -420,8 +441,12 @@ function recordTool(deps: VerifyToolDeps): DshToolDef {
         : explicitBasis === "unproven" ? "unproven" as const
           : explicitBasis === "blind" ? "blind" as const
             : deps.runtime.observedCodeRead(sessionId) ? "unproven" as const : "blind" as const
-      // THE CONTRACT IS FROZEN BY THE WAVE, and the `pre-plugin` basis is admissible only against it.
-      const contractPath = ".mpd/plans/de-vendor-and-verify-law.md"
+      // THE CONTRACT IS THE LOOP'S OWN (D2, measured 2026-10-07): this was hardcoded to the de-vendor
+      // wave's plan file, so every later wave's record was checked against a contract it never had — and
+      // the `pre-plugin` attestation sha, which is compared against THIS path's bytes on disk, was
+      // decided by a document the wave had never read. `loopContractPath` is the same resolution the seat
+      // used, so the docPaths a seat was handed and the contract its record cites can never disagree.
+      const contractPath = loopContractPath(loop)
       /** The contract as it is on disk right now, which is what an attestation is checked against. */
       const contractSha = sha256File(join(workspace, contractPath))
       /** The documents the verdict rests on, hashed. */
@@ -491,6 +516,10 @@ function recordTool(deps: VerifyToolDeps): DshToolDef {
       const outcome = validateVerificationRecord(record, {
         producedEvidenceIds: produced.map((row) => String(row.evidenceId)),
         seatUnlocked: seat?.unlocked === true,
+        // THE LOG, NOT THE FLAG (D4, the captain's ruling): the `blind-spent` rule is judged from the
+        // plugin's own observation of what this seat read, so one recorded FAIL no longer bars a PASS
+        // from a seat whose window was opened and never used.
+        loggedImplementationReads: deps.runtime.observedImplementationReads(sessionId),
         loopKnown: loop !== undefined,
         ...(readBootMarker(workspace) === undefined ? {} : { bootInstalledAt: readBootMarker(workspace) }),
         ...(contractSha === "" ? {} : { frozenContractSha: contractSha }),

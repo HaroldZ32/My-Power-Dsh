@@ -23,17 +23,26 @@ depth, installed by the `mpd-roles` row) and a **record validator** (the actual 
 
 - **`mpd_verify_open`** — open a delegation+verification loop. `writer:"self"` (the counted path, and it
   refuses without a `self_write_reason` plus a `verifier` that is a different agent) or
-  `writer:"delegate"` (a member writes). An empty `scope` covers the whole workspace.
+  `writer:"delegate"` (a member writes). An empty `scope` covers the whole workspace. An optional
+  **`contract`** names the wave's own frozen contract (a workspace-relative path) and is RECORDED on the
+  loop; when it is absent the loop keeps a declared default (`AGENTS.md`), never another wave's plan.
 - **`mpd_verify_escape`** — the **counted** escape: one JSONL row, one boot-log line, one allowed write.
   It refuses an empty `reason`, and it grants nothing when the row cannot be written.
 - **`mpd_verify_seat`** — bind the calling session as a loop's **verifier**. Idempotent; refused when the
-  caller is the loop's writer.
+  caller is the loop's writer. Its frozen documents are **the loop's own `contract`**, resolved by ONE
+  function that the seat and the record both call, so a verdict's `docPaths` and its
+  `basis.frozenContract` can never disagree about which document they verified against.
 - **`mpd_verify_evidence`** — `kind:"gate"` runs ONE id from the fixed table (`gates`, `tests`,
   `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) and writes its log;
   `kind:"probe"` reports `{path, exists, bytes, sha256, mtime}` per path and **never content**.
 - **`mpd_verify_record`** — record the verdict through the validator. A **PASS** needs the documents it
   cites, at least one gate, and a provably blind basis; a **FAIL** needs findings, each with the
-  `doc_source` that proves it, and it opens a repair task and unlocks diagnosis reading.
+  `doc_source` that proves it, and it opens a repair task and unlocks diagnosis reading. **Blindness is
+  judged from the observation log, not from the unlock flag**: a seat that has recorded a FAIL may still
+  record the PASS when its log shows no ADMITTED implementation read, and is refused `blind-spent` —
+  naming the path — when it does. Only an admitted read spends the basis; a read the envelope REFUSED
+  does not, which is what keeps "prove the band refuses `src/**`" from spending the very basis the PASS
+  needs.
 
 ## The two guards
 
@@ -94,3 +103,11 @@ not move for this row): `verify.mode` (`hard` default | `advisory` | `off`), `ve
    counted, which is the whole point of calling them counted.
 5. `.mpd/**` is always writable, so code-shaped content could be hidden there — bounded because `.mpd/`
    is gitignored runtime state and cannot ship.
+6. **The observation log is per-process.** It lives in memory, while a seat's `unlocked` flag is durable;
+   so a read performed in an EARLIER process cannot bar a later PASS. The rule above is exactly
+   process-scoped, and this bound is written into the law's own source text rather than implied.
+7. **A bound verifier may read `evidence/**` and every `packages/*/README.md` (and its `.zh-CN` twin)**
+   while it is blind — both were refused before, which left a verdict resting on artifact
+   existence/size/sha256 instead of their content. The band still refuses `packages/*/src/**`,
+   `packages/*/test/**` and any `..`-carrying spelling. An `evidence/**` artifact may EMBED source frames
+   (a gate log tail), so reading one is **controlled black-box evidence**, which bound 3 already states.

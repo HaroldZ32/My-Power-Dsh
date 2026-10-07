@@ -1999,7 +1999,9 @@ function casCloseTask(fresh, input) {
     return { applied: false, reason: `task ${input.taskId} is already terminal ("${task.status}")` };
   }
   const isOwner = task.owner !== undefined && input.caller.some((candidate) => nameMatches(candidate, String(task.owner)));
-  if (!isOwner && !input.lead) {
+  const isRecordLead = String(fresh.leadSessionId ?? "") !== "" && input.caller.some((candidate) => candidate !== "" && nameMatches(candidate, String(fresh.leadSessionId)));
+  const isLead = input.lead || isRecordLead;
+  if (!isOwner && !isLead) {
     return {
       applied: false,
       reason: task.owner === undefined ? `task ${input.taskId} has no owner to close it — claim it first` : `task ${input.taskId} is owned by "${String(task.owner)}" and this caller is neither that owner nor this team's lead`
@@ -2042,6 +2044,13 @@ function nameMatches(a, b) {
   const key = (value) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const left = key(a);
   return left !== "" && left === key(b);
+}
+function recordNamesMember(record, caller) {
+  const names = (member) => {
+    const spellings = [member.name, member.executorRef ?? ""].filter((value) => value !== "");
+    return spellings.some((spelling) => caller.some((candidate) => candidate !== "" && nameMatches(candidate, spelling)));
+  };
+  return Array.isArray(record.members) && record.members.some(names);
 }
 function updateTeamMember(record, key, patch) {
   let touched = false;
@@ -2663,19 +2672,32 @@ function apply(ctx) {
       return { state: "not-readable", reason: String(error?.message ?? error) };
     }
   };
-  const recordFor = (workspace, sessionId) => {
+  const resolveTeam = (workspace, sessionId) => {
     try {
       const bound = activeTeamId(workspace, sessionId);
       if (bound !== undefined) {
         const record = readTeam(workspace, bound);
         if (record !== undefined)
-          return record;
+          return { record };
       }
-      return listTeams(workspace).find((record) => record.leadSessionId === sessionId);
+      const teams = listTeams(workspace);
+      const leading = teams.find((record) => record.leadSessionId === sessionId);
+      if (leading !== undefined)
+        return { record: leading };
+      const memberOf = teams.filter((record) => recordNamesMember(record, [sessionId]));
+      if (memberOf.length === 1)
+        return { record: memberOf[0] };
+      if (memberOf.length > 1) {
+        return {
+          refusal: `this session is on the roster of ${memberOf.length} teams in this workspace (${memberOf.map((record) => record.teamId).join(", ")}) and the record does not say which one it works on — run this from the team's lead session, or remove the duplicate roster entry`
+        };
+      }
+      return {};
     } catch {
-      return;
+      return {};
     }
   };
+  const recordFor = (workspace, sessionId) => resolveTeam(workspace, sessionId).record;
   if (typeof ctx?.provide === "function") {
     try {
       ctx.provide(TEAMS_SERVICE, {
@@ -2995,9 +3017,10 @@ function apply(ctx) {
         return { contract };
       }
       if (action === "claim") {
-        const record = recordFor(workspace, sessionIdOf(exec));
-        if (record === undefined)
-          throw new Error("no team record in this workspace — approve a plan first");
+        const resolved = resolveTeam(workspace, sessionIdOf(exec));
+        if (resolved.record === undefined)
+          throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
+        const record = resolved.record;
         const task = record.tasks.find((candidate) => candidate.id === String(args?.task_id ?? ""));
         if (task === undefined)
           throw new Error(`no task "${String(args?.task_id ?? "")}" in team ${record.teamId}`);
@@ -3016,9 +3039,10 @@ function apply(ctx) {
         return { contract, task: view };
       }
       if (action === "complete" || action === "fail") {
-        const record = recordFor(workspace, sessionIdOf(exec));
-        if (record === undefined)
-          throw new Error("no team record in this workspace — approve a plan first");
+        const resolved = resolveTeam(workspace, sessionIdOf(exec));
+        if (resolved.record === undefined)
+          throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
+        const record = resolved.record;
         const taskId = String(args?.task_id ?? "");
         if (taskId === "")
           throw new Error(`agent_teams_task ${action}: task_id is required`);
@@ -3100,9 +3124,10 @@ function apply(ctx) {
       const watchdog = teamId === undefined ? { state: "free" } : readWatchdogHold(workspace, sessionIdOf(exec));
       const holdReason = hold?.reason ?? (watchdog.state === "held" ? watchdog.reason : undefined);
       const holdNote = watchdog.state === "not-readable" ? `not-readable: ${String(watchdog.reason ?? "the watchdog's hold could not be read")}` : undefined;
-      let record = recordFor(workspace, sessionIdOf(exec));
-      if (record === undefined)
-        return { pairs: [], skipped: [], refused: "no team record in this workspace — approve a plan first" };
+      const resolvedDispatch = resolveTeam(workspace, sessionIdOf(exec));
+      if (resolvedDispatch.record === undefined)
+        return { pairs: [], skipped: [], refused: resolvedDispatch.refusal ?? "no team record in this workspace — approve a plan first" };
+      let record = resolvedDispatch.record;
       const opened = record;
       const readyIds = new Set(readyTasks(opened).map((candidate) => candidate.id));
       const tasks = opened.tasks.map((task) => ({

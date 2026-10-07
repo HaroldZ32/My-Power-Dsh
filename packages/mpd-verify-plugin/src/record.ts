@@ -169,7 +169,11 @@ export const REFUSAL = {
   failWithoutFindings: "fail-without-findings",
   /** A finding with no document behind it. */
   findingWithoutBasis: "finding-without-basis",
-  /** A record from a seat that already spent its blindness on a diagnosis window. */
+  /**
+   * A PASS from a seat whose observation log shows it read an implementation path.
+   *
+   * DECIDED FROM THE LOG, never from the unlock flag: the message names the logged read.
+   */
   blindSpent: "blind-spent",
   /** A record naming a loop this workspace does not know. */
   unknownLoop: "unknown-loop",
@@ -192,8 +196,24 @@ export type ValidationOutcome =
 export interface ValidationContext {
   /** The evidence ids `mpd_verify_evidence` really produced for this loop. */
   producedEvidenceIds: readonly string[]
-  /** True when this seat had already unlocked an implementation-reading window. */
+  /**
+   * True when this seat had already unlocked an implementation-reading window (the ratchet).
+   *
+   * REPORTED, never decisive: the captain's ruling of 2026-10-07 replaced this flag with the observation
+   * log below. It stays in the context because it is a true fact about the seat and the refusal sentence
+   * reports it — a seat whose window is open is told that a FAIL is still admissible from it.
+   */
   seatUnlocked: boolean
+  /**
+   * The implementation paths the plugin's own observation log recorded for this seat.
+   *
+   * THE decisive fact of the `blind-spent` rule. ABSENT or empty means the log shows no implementation
+   * read — which is the state a PASS is admissible from, even after a FAIL unlocked this seat's
+   * diagnosis window. THE DECLARED BOUND: that log is process-local (see `observe.ts`), so a read that
+   * happened in an EARLIER process is invisible here; durability lives in `seats.json`, observations do
+   * not. The bound is stated rather than implied.
+   */
+  loggedImplementationReads?: readonly string[]
   /** True when the loop named by the record exists in this workspace. */
   loopKnown: boolean
   /**
@@ -262,12 +282,34 @@ export function validateVerificationRecord(record: VerificationRecord, context: 
         + "): the exemption closes the moment the guard is live")
     }
   }
-  // RULE 5 — THE RATCHET. A seat that has already spent its blindness on a diagnosis window may only
-  // FAIL; a PASS must come from a FRESH verifier, because that seat has read the implementation and its
-  // verdict can no longer be a black-box one.
-  if (context.seatUnlocked) {
-    return refuse(REFUSAL.blindSpent, "this verifier seat has already unlocked an implementation-reading window (a previous FAIL),"
-      + " so it can only record further FAILs; a PASS must come from a fresh verifier that has not read the implementation")
+  // RULE 5 — THE RATCHET, JUDGED FROM THE OBSERVATION LOG (captain's ruling, 2026-10-07).
+  //
+  // WHAT CHANGED AND WHY: this clause used to fire on `seat.unlocked` alone, so ONE recorded FAIL barred
+  // that seat from ever recording that loop's PASS — even when its diagnosis window had been opened and
+  // never used. The repo's own doctrine says blindness is PROVEN by the plugin's observation log, so the
+  // validator now obeys that doctrine instead of the blunter flag: a seat whose log shows NO
+  // implementation read may record the PASS, and one whose log shows a read is refused with the read
+  // NAMED. `seat.unlocked` is reported in the sentence, never decisive.
+  //
+  // THE BOUND, DECLARED: the log is per-PROCESS and in memory only (`observe.ts` persists no
+  // observations), so a read performed in an earlier process is not visible here and cannot bar a PASS.
+  // That is what "judge from the observation log" means; the alternative — trusting the durable flag
+  // instead — is the blunter rule the captain replaced.
+  //
+  // A FAIL is deliberately NOT gated by this clause: a refusal here would contradict its own words
+  // ("it can only record further FAILs", which the flag-based rule also refused), and a seat that has
+  // read the implementation is exactly the seat whose second FAIL is worth having.
+  if (record.verdict === "PASS") {
+    /** The implementation reads the plugin itself observed for this seat, if any. */
+    const spent = context.loggedImplementationReads ?? []
+    if (spent.length > 0) {
+      return refuse(REFUSAL.blindSpent, "this seat's blindness is SPENT: the plugin's own observation log recorded "
+        + spent.map((path) => JSON.stringify(path)).join(", ")
+        + " as path(s) this verifier read"
+        + (context.seatUnlocked ? ", inside a diagnosis window an earlier FAIL unlocked" : "")
+        + ", so a PASS cannot rest on its blindness. A PASS must come from a fresh verifier that has read nothing;"
+        + " from this seat a FAIL is still admissible, which is what keeps its diagnosis window open.")
+    }
   }
   if (record.verdict === "FAIL") {
     // RULE 4 — A FAIL MUST BE ACTIONABLE. A bounce to a writer needs findings a writer can act on, and

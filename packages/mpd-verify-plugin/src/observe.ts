@@ -18,7 +18,7 @@
 import { join } from "node:path"
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { ArmedLoopView, VerifierSeatView } from "./law.ts"
-import { GATED_WRITE_TOOLS, readTargetPath, classifyWriteTarget, resolvePositiveInt, sessionKeyOf } from "./law.ts"
+import { GATED_WRITE_TOOLS, readTargetPath, classifyWriteTarget, resolvePositiveInt, resolveVerifyMode, sessionKeyOf, verifierEnvelopeDecision } from "./law.ts"
 import { loopsDir, mintId, readLoops, readSeats, writeJsonAtomic } from "./ledger.ts"
 
 /**
@@ -49,6 +49,19 @@ export interface ObservedCall {
   at: string
 }
 
+/** One implementation read the log observed for a session. */
+interface ObservedImplementationRead {
+  /** The workspace-relative path the call named. */
+  path: string
+  /**
+   * True when the read was ADMITTED — the verifier's envelope did not deny it, or its caller is not a
+   * bound seat at all. ONLY an admitted read spends a seat's blindness.
+   */
+  admitted: boolean
+  /** ISO instant the call was observed. */
+  at: string
+}
+
 /** One counted implementation read inside a diagnosis window. */
 export interface CountedRead {
   /** The path that was read. */
@@ -68,8 +81,35 @@ export interface VerifyRuntime {
   noteCall(exec: DshToolExec): void
   /** The session key of one agent, in the frozen `??` order. */
   keyOf(agent: unknown): string
-  /** True when the observation log shows this session read a CODE path. */
+  /**
+   * True when the observation log shows this session was ADMITTED an implementation read.
+   *
+   * The boolean half of {@link VerifyRuntime.observedImplementationReads}, and the fact the record's
+   * `blind` versus `unproven` basis is decided from — a REFUSED attempt is not a read, for the reason
+   * stated there.
+   */
   observedCodeRead(sessionId: string): boolean
+  /**
+   * The implementation paths this session's calls NAMED and the guard ADMITTED, deduped, in order.
+   *
+   * This is the FACT the record validator's `blind-spent` rule is judged from (captain's ruling,
+   * 2026-10-07): a seat whose log lists no admitted implementation read may record a PASS even after a
+   * FAIL unlocked its diagnosis window, and one whose log lists a read may not — and the refusal NAMES
+   * it, which is why this accessor returns paths and not the boolean above.
+   *
+   * ONLY AN ADMITTED READ IS A READ, and that is a correctness requirement rather than a refinement:
+   * while a seat is BLIND the envelope DENIES it every implementation path, and the acceptance arm for
+   * the readable band REQUIRES a seat to demonstrate that refusal. If a refused ATTEMPT counted as a
+   * read, then proving the band spends the basis, and no seat could ever be both demonstrably refused
+   * the implementation and admitted for a PASS — the law would defeat itself.
+   *
+   * THE DECLARED BOUND: the log is PROCESS-LOCAL and in memory only (nothing under `.mpd/verify/`
+   * persists observations), while `seats.json` does persist `unlocked`. A seat that read an
+   * implementation in an EARLIER process therefore starts this one with a clean log and can record a
+   * PASS. That bound is ACCEPTED, not hidden: the ruling is "judge from the observation log", and this
+   * log is what a process can honestly attest to.
+   */
+  observedImplementationReads(sessionId: string): readonly string[]
   /** The number of escape uses this session still holds. */
   escapeUses(sessionId: string): number
   /** Grant escape uses (the counted escape's one effect on the guard). */
@@ -113,8 +153,17 @@ export interface RuntimeOptions {
 export function createVerifyRuntime(options: RuntimeOptions): VerifyRuntime {
   /** Every call the guard has seen, in observation order. */
   const calls: ObservedCall[] = []
-  /** The first CODE read per session key — the fact `blind` versus `unproven` is decided from. */
-  const firstCodeRead = new Map<string, string>()
+  /**
+   * The implementation paths each session's calls NAMED, with whether the read was ADMITTED.
+   *
+   * THIS IS THE BLINDNESS FACT, and it replaced a timestamp map that could only answer "some code path
+   * was named at some point" — which is the wrong question twice over: the validator must NAME the read
+   * that spent a seat's basis, and a REFUSED ATTEMPT is not a read. While a seat is blind the envelope
+   * DENIES it every implementation path, so counting an attempt would make the readable band's own
+   * refusal arm spend the basis the PASS needs (see {@link VerifyRuntime.observedImplementationReads}).
+   * Only READS are recorded at all — a gated write tool names a code path it wants to CHANGE.
+   */
+  const codeReads = new Map<string, ObservedImplementationRead[]>()
   /** The escape uses still held, per session key. */
   const escapes = new Map<string, number>()
   /** The counted diagnosis reads, per session key and path. */
@@ -133,6 +182,38 @@ export function createVerifyRuntime(options: RuntimeOptions): VerifyRuntime {
     return created
   }
 
+  /** The verifier seat bound to one session, resolved from disk so the guard and the log agree. */
+  const seatOf = (workspace: string, sessionId: string): VerifierSeatView | undefined => {
+    try {
+      /** The seat bound to this session, or `undefined` for every other caller. */
+      const seat = readSeats(workspace).seats?.[sessionId]
+      if (seat === undefined) return undefined
+      return {
+        loopId: String(seat.loopId ?? ""),
+        verifierId: String(seat.verifierId ?? sessionId),
+        unlocked: seat.unlocked === true,
+        docPaths: Array.isArray(seat.docPaths) ? seat.docPaths.map(String) : [],
+      }
+    } catch { return undefined }
+  }
+
+  /**
+   * Keep one observed implementation read, deduped by path, upgrading a refused attempt to an admitted
+   * read when the same path is later read with the envelope's leave.
+   */
+  const recordImplementationRead = (sessionId: string, path: string, admitted: boolean, at: string): void => {
+    /** This session's observations so far. */
+    const entries = codeReads.get(sessionId) ?? []
+    /** The entry already recorded for this path, if any. */
+    const existing = entries.find((entry) => entry.path === path)
+    if (existing !== undefined) {
+      if (admitted) existing.admitted = true
+      return
+    }
+    entries.push({ path, admitted, at })
+    codeReads.set(sessionId, entries)
+  }
+
   return {
     /** The session key of one agent, in the frozen `??` order. */
     keyOf(agent: unknown): string { return sessionKeyOf(agent) },
@@ -147,17 +228,31 @@ export function createVerifyRuntime(options: RuntimeOptions): VerifyRuntime {
         const sessionId = sessionKeyOf((exec as { agent?: unknown })?.agent)
         /** The call's argument object. */
         const args = (exec as { arguments?: Record<string, unknown> })?.arguments
+        /** The workspace this call happens in, resolved per call as the guard resolves it. */
+        const workspace = options.dsh.workspaceRoot(exec)
         /** The target this call named, if any. */
         const raw = readTargetPath(toolName, args)
         /** The classification of that target, used only for its CODE verdict here. */
-        const target = raw === undefined ? undefined : classifyWriteTarget(options.dsh.workspaceRoot(exec), raw)
+        const target = raw === undefined ? undefined : classifyWriteTarget(workspace, raw)
         /** Whether the call names a code path. */
         const code = target?.kind === "code"
         calls.push({ sessionId, toolName, ...(target?.rel === undefined ? {} : { path: target.rel }), code, at: new Date().toISOString() })
-        // THE BLINDNESS FACT: the FIRST code-path read by this session, whenever it happened. Reads
-        // through a tool this law does not gate still count — the question is what the verifier SAW,
-        // not whether it was allowed to see it.
-        if (code && !firstCodeRead.has(sessionId)) firstCodeRead.set(sessionId, new Date().toISOString())
+        if (code && !GATED_WRITE_TOOLS.includes(toolName)) {
+          /** The path this call named, or its raw spelling when the classifier kept no relative form. */
+          const named = target?.rel ?? String(raw ?? "")
+          // WHETHER THIS READ WAS ADMITTED — asked of the SAME pure decision the guard itself is about to
+          // make, with the same inputs, so the log and the guard cannot disagree about what was denied.
+          // The mode is read per call for the same reason: `advisory` reports a denial and lets the call
+          // through, and `off` enforces nothing, so in neither one did the envelope keep the read out.
+          /** The mode in force right now (`verify.mode`, defaulting to `hard`). */
+          const mode = resolveVerifyMode(options.configValue("verify.mode"))
+          /** The seat bound to this caller, if any; a caller with no seat has no envelope to be denied by. */
+          const seat = seatOf(workspace, sessionId)
+          /** Whether the envelope would have REFUSED this read (so it never happened). */
+          const refused = mode === "hard" && seat !== undefined
+            && verifierEnvelopeDecision({ toolName, args, workspaceRoot: workspace, seat }).deny !== undefined
+          if (named !== "") recordImplementationRead(sessionId, named, !refused, new Date().toISOString())
+        }
         // A COUNTED DIAGNOSIS READ: while a seat's window is open, an implementation read is legal and
         // is tallied, so the next record can carry `unlockedReads[]` with real numbers.
         if (code && !GATED_WRITE_TOOLS.includes(toolName) && counted.has(sessionId)) {
@@ -168,8 +263,13 @@ export function createVerifyRuntime(options: RuntimeOptions): VerifyRuntime {
       } catch { /* bookkeeping never fails a tool call */ }
     },
 
-    /** True when the observation log shows this session read a CODE path. */
-    observedCodeRead(sessionId: string): boolean { return firstCodeRead.has(sessionId) },
+    /** True when the observation log shows this session was ADMITTED an implementation read. */
+    observedCodeRead(sessionId: string): boolean { return (codeReads.get(sessionId) ?? []).some((entry) => entry.admitted) },
+
+    /** The ADMITTED implementation paths of one session, copied so a caller cannot mutate the log. */
+    observedImplementationReads(sessionId: string): readonly string[] {
+      return (codeReads.get(sessionId) ?? []).filter((entry) => entry.admitted).map((entry) => entry.path)
+    },
 
     /** The escape uses this session still holds. */
     escapeUses(sessionId: string): number { return escapes.get(sessionId) ?? 0 },
@@ -225,17 +325,7 @@ export function createVerifyRuntime(options: RuntimeOptions): VerifyRuntime {
 
     /** The verifier seat bound to one session, or `undefined` for every other caller. */
     seatFor(workspace: string, sessionId: string): VerifierSeatView | undefined {
-      try {
-        /** The seat bound to this session, or `undefined` for every other caller. */
-        const seat = readSeats(workspace).seats?.[sessionId]
-        if (seat === undefined) return undefined
-        return {
-          loopId: String(seat.loopId ?? ""),
-          verifierId: String(seat.verifierId ?? sessionId),
-          unlocked: seat.unlocked === true,
-          docPaths: Array.isArray(seat.docPaths) ? seat.docPaths.map(String) : [],
-        }
-      } catch { return undefined }
+      return seatOf(workspace, sessionId)
     },
 
     /** The delegation calls observed so far, newest last — the report a boot lane reads. */

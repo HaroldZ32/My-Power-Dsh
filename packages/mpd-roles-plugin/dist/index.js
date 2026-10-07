@@ -479,7 +479,8 @@ var DEFAULT_CODE_EXTENSIONS = [
 ];
 var CODE_BASENAMES = ["Dockerfile", "Makefile"];
 var ALWAYS_WRITABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
-var VERIFIER_DOC_PREFIXES = [".mpd/plans/", "docs/", "agent-references/", ".mpd/verify/"];
+var VERIFIER_DOC_PREFIXES = [".mpd/plans/", "docs/", "agent-references/", ".mpd/verify/", "evidence/"];
+var VERIFIER_README_PATTERN = /^packages\/[^/]+\/README(?:\.zh-CN)?\.md$/;
 var VERIFIER_WRITE_PREFIX = ".mpd/verify/";
 var VERIFIER_DENIED_TOOLS = [
   "bash",
@@ -621,7 +622,11 @@ function verifierEnvelopeDecision(input) {
 function isAllowedVerifierRead(target, seat) {
   if (target.rel === undefined || target.outside === true)
     return false;
+  if (target.rel.split("/").includes(".."))
+    return false;
   if (VERIFIER_DOC_PREFIXES.some((prefix) => target.rel.startsWith(prefix) || target.rel === prefix.replace(/\/$/, "")))
+    return true;
+  if (VERIFIER_README_PATTERN.test(target.rel))
     return true;
   return seat.docPaths.some((doc) => {
     const normalized = stripLeadingDot(toPosix(String(doc ?? "")));

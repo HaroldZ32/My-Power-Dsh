@@ -51,8 +51,68 @@ export const ALWAYS_WRITABLE_PREFIXES: readonly string[] = [".mpd/", "docs/", "e
  * The point is that B works from the CONTRACT and the DOCS. `packages/**` and `scripts/**` are not on
  * this list, so a blind verifier's `read` of the implementation is denied until it has recorded a
  * verdict — and only a FAIL unlocks it (the two-way ratchet).
+ *
+ * `evidence/**` IS on the band, by the captain's ruling (2026-10-07): a verifier asked to rest a verdict
+ * on an artifact must be able to READ that artifact, while the content-free probe only ever reports what
+ * exists, how big it is and its hash. THE RESIDUAL IS DECLARED, not implied: an `evidence/**` artifact
+ * may EMBED source frames — a gate log's tail prints whatever the runner printed, and a captured listing
+ * is a listing — so this band is CONTROLLED BLACK-BOX EVIDENCE and never a proof of reading nothing.
+ * Blindness is what the plugin's own observation log proves (see `observe.ts`), not the width of a list.
  */
-export const VERIFIER_DOC_PREFIXES: readonly string[] = [".mpd/plans/", "docs/", "agent-references/", ".mpd/verify/"]
+export const VERIFIER_DOC_PREFIXES: readonly string[] = [".mpd/plans/", "docs/", "agent-references/", ".mpd/verify/", "evidence/"]
+
+/**
+ * The package documents a BLIND verifier may read: one level under `packages/`, and the README pair only.
+ *
+ * A package's README is its own published contract — the document a verifier checks the shipped behaviour
+ * against — so it belongs to the blind band (captain's ruling, 2026-10-07), exactly as a `docs/**` page
+ * does. The pattern is deliberately DEPTH-ONE and NAME-EXACT: `packages/<pkg>/README.md` and
+ * `packages/<pkg>/README.zh-CN.md` and nothing else, so `packages/<pkg>/src/**` and
+ * `packages/<pkg>/test/**` stay outside the band whatever the caller spells.
+ */
+const VERIFIER_README_PATTERN = /^packages\/[^/]+\/README(?:\.zh-CN)?\.md$/
+
+/**
+ * The contract a loop that named NONE is checked against — DECLARED, and never a wave's plan file.
+ *
+ * A wave's contract is per-loop (`mpd_verify_open {contract}`): the seat of loop X is handed X's own
+ * document. A loop opened with no contract must still be handed something STABLE, because the failure
+ * this default replaces was a hardcoded pair that handed every later wave the PREVIOUS wave's plan. The
+ * binding manual is the document that states the law itself (§4/§5) in every workspace, so it is the
+ * honest fallback: it is not a wave's artifact, it cannot go stale when a wave ends, and a verifier
+ * reading it has read exactly what a contract-less verification can be judged against.
+ */
+export const DEFAULT_CONTRACT_PATH = "AGENTS.md"
+
+/**
+ * The contract one loop freezes for its seat: the loop's OWN path, else the declared default.
+ *
+ * ONE resolution site, used by both `mpd_verify_seat` and `mpd_verify_record`, so the docPaths handed to
+ * a seat and the `basis.frozenContract` hashed into its record can never disagree. A loop file written
+ * by an older revision carries no `contract` field at all; it takes the same fallback, which is why the
+ * legacy shape stays readable.
+ *
+ * @param loop - the loop record, or `undefined` when the caller's loop is unknown (a `pre-plugin` record).
+ * @returns the workspace-relative contract path in force, never empty.
+ */
+export function loopContractPath(loop: { contract?: string } | undefined): string {
+  /** The loop's own contract, normalised; empty when it never named one. */
+  const named = normalizeContractPath(loop?.contract)
+  return named === undefined ? DEFAULT_CONTRACT_PATH : named
+}
+
+/**
+ * Normalise one caller-supplied contract spelling to the workspace-relative POSIX form the ledger stores.
+ *
+ * @param raw - the contract as the caller or the loop file spelled it.
+ * @returns the normalised path, or `undefined` when nothing usable was given (absent, empty, or `.`).
+ */
+export function normalizeContractPath(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined
+  /** The spelling with separators normalised, a leading `./` dropped and a trailing `/` trimmed. */
+  const normalized = stripLeadingDot(toPosix(raw.trim())).replace(/\/+$/, "")
+  return normalized === "" || normalized === "." ? undefined : normalized
+}
 
 /** The only directory a verifier may WRITE: its own evidence and records are written by the tool. */
 export const VERIFIER_WRITE_PREFIX = ".mpd/verify/"
@@ -435,9 +495,11 @@ export function verifierEnvelopeDecision(input: VerifierEnvelopeInput): Envelope
   /** The read target, classified. */
   const target = classifyWriteTarget(input.workspaceRoot, raw)
   if (target.kind === "pass") return {}
-  // ALWAYS WRITABLE BANDS ARE NOT AUTOMATICALLY DOCS. `.mpd/`, `docs/`, `agent-references/` are, but
-  // `evidence/` can hold a captured source listing, so the verifier's allowlist is the SPEC's list
-  // (the frozen docs, the plans, the docs band, the agent references and the law's own records).
+  // ALWAYS WRITABLE BANDS ARE NOT AUTOMATICALLY DOCS — but the ruling of 2026-10-07 puts `evidence/`
+  // and the package READMEs INTO the blind band deliberately: a verifier that may only probe an artifact
+  // for size and hash cannot check what the artifact says. The residual is declared on
+  // {@link VERIFIER_DOC_PREFIXES} and stays declared here: an `evidence/**` artifact may embed source
+  // frames, so this is CONTROLLED BLACK-BOX EVIDENCE, and blindness is proven by the observation log.
   if (isAllowedVerifierRead(target, seat)) return seat.unlocked ? { countedRead: true } : {}
   if (seat.unlocked) return { countedRead: true }
   return { deny: "verification law: a bound VERIFIER seat may not read " + JSON.stringify(target.rel ?? target.raw)
@@ -449,15 +511,28 @@ export function verifierEnvelopeDecision(input: VerifierEnvelopeInput): Envelope
 /**
  * Whether a classified path is inside the blind verifier's documented allowlist.
  *
+ * Three clauses, and every one of them is a DOCUMENT: the declared band ({@link VERIFIER_DOC_PREFIXES},
+ * which since the captain's 2026-10-07 ruling includes `evidence/**`), a package's published README pair
+ * ({@link VERIFIER_README_PATTERN}), and the loop's own frozen contract plus whatever the seat file
+ * froze. A path that is none of those — `packages/<pkg>/src/**`, `packages/<pkg>/test/**`, `scripts/**`,
+ * a build file — stays outside the band while the seat is blind.
+ *
  * @param target - the classified read target.
  * @param seat - the seat, whose frozen docs extend the band.
  * @returns true when the blind verifier may read it.
  */
 function isAllowedVerifierRead(target: WriteTarget, seat: VerifierSeatView): boolean {
   if (target.rel === undefined || target.outside === true) return false
+  // NO PARENT HOPS. `evidence/../packages/x/src/y.ts` STARTS with an allowed prefix and ENDS outside it,
+  // and this function never normalises a path: it compares spellings. A relative spelling carrying a `..`
+  // segment is therefore refused outright rather than resolved — fail-closed, exactly as the classifier's
+  // own order is, and the reason the widened band cannot be walked back out of by a caller who spells the
+  // way out. (The same clause closes the pre-existing shape for the `docs/` and `.mpd/plans/` bands.)
+  if (target.rel.split("/").includes("..")) return false
   // A PREFIX OR THE BAND ITSELF: a verifier may name the directory (`grep path:"docs"`), and the band it
   // names is exactly the band it is allowed to search.
   if (VERIFIER_DOC_PREFIXES.some((prefix) => target.rel!.startsWith(prefix) || target.rel === prefix.replace(/\/$/, ""))) return true
+  if (VERIFIER_README_PATTERN.test(target.rel)) return true
   return seat.docPaths.some((doc) => {
     /** The frozen doc path, normalised to a workspace-relative POSIX spelling. */
     const normalized = stripLeadingDot(toPosix(String(doc ?? "")))
