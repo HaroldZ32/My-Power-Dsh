@@ -195,3 +195,46 @@ THE LIVE ARM — `node skills/dsh-qa/scripts/verify-law.ts`, exit 0, evidence
 `reported: {sentenceRelayed: false, controlSentenceRelayed: false}` — the unreliable channel, recorded and
 never judged. **The REAL workspace's `.mpd/verify/boot.json` was ABSENT before the run and ABSENT after
 it**, so the isolation claim holds on both sides of the measurement.
+
+## CLOSURE — the `typecheck` red, fixed in the STUB (2026-10-07T10:56Z)
+
+The captain's corrected premise is the measured one, and it is what I found before the correction
+landed: `skills/dsh-qa/scripts/lib/session-evidence.ts` ALREADY declares `readonly succeeded: boolean`
+on `ToolCallEvidence` — the red came from the CASE's own local stub shape at ~line 81
+(`findToolCall: (events, name) => { called; calls; resultText }`), which types `write` and therefore hid
+`succeeded` from the checker. **The reader was NOT changed** (no field added, nothing deleted).
+
+WHAT CHANGED in `packages/mpd-verify-plugin/qa/verify-law.ts` (and re-copied verbatim):
+- the stub's return shape gains `succeeded: boolean`, with a comment stating BOTH the contract (it is
+  `ToolCallEvidence.succeeded`) AND the measured surprise: the harness pairs a guard-DENIED call with a
+  result it does NOT error-flag, so `succeeded === true` while the write never landed — which is exactly
+  why the `denied` arm asserts `called && codeNotWritten` and keeps the text channel REPORTED-only.
+- the file's own HEADER claim that a denial reaches "an ERROR `tool/result`" was corrected to the measured
+  behavioural formulation (a header that contradicts the measurement is the doc-rot class this wave hunts).
+- NO read was deleted: `write.succeeded` is still read, and it still feeds `reported`.
+- WHY THE SHAPE IS COMPLETED RATHER THAN ANNOTATED WITH THE IMPORTED TYPE (the captain's preferred
+  option): this file is LOCATION-INDEPENDENT BY CONSTRUCTION — its header says so, and its QA-library
+  imports are DYNAMIC paths computed from the repository root — so a static `import type` with one
+  relative specifier cannot serve both `packages/mpd-verify-plugin/qa/` and `skills/dsh-qa/scripts/`.
+  The stub now matches the reader's declared interface member-for-member, and the comment names the
+  interface so a future reader change is visible here rather than silent.
+
+MEASURED, this moment (`closure-verification.out`):
+
+```
+$ sha256sum packages/mpd-verify-plugin/qa/verify-law.ts skills/dsh-qa/scripts/verify-law.ts
+e6dc5db58db3b815b32dca06eceb3bef6a72becbb67a7b8fb2474128e97cffac  packages/mpd-verify-plugin/qa/verify-law.ts
+e6dc5db58db3b815b32dca06eceb3bef6a72becbb67a7b8fb2474128e97cffac  skills/dsh-qa/scripts/verify-law.ts
+$ bun skills/dsh-qa/scripts/verify-law.ts --self-test
+[verify-law self-test] ok: the registered copy is byte-identical (e6dc5db58db3)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+$ bun run typecheck             -> TYPECHECK_EXIT=0
+$ node scripts/run-qa-lanes.ts --check-drift -> manifest and disk agree (48 entries, 42 lane scripts) ; DRIFT_EXIT=0
+$ bun run test:qa               -> "all self-tests passed" ; TESTQA_EXIT=0
+```
+
+THE LIVE ARM RE-RUN ON THE FINAL BYTES (`verify-law-live-final.out`), exit 0, evidence
+`evidence/gates/verify-law/2026-10-07T10-55-54.339Z/{result.json,output.log}` — nine of nine true
+(`mounted, denied, codeNotWritten, controlNotDenied, controlWritten, docsAllowed, sandboxMarker,
+realMarkerUnchanged, sessionsSandboxed`), `reported.sentenceRelayed=false`, and the REAL workspace's
+`.mpd/verify/boot.json` was **ABSENT before and ABSENT after** the run.

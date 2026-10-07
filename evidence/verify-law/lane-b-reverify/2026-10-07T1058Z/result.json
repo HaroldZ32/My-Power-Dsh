@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "recordId": "lane-e-lane-b-reverify-2026-10-07T1058Z",
+  "loopId": "waveloop-lane-b",
+  "taskId": "T13",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "lane-b-deep-worker / lane-c-repair (the pack-closure arm fix)",
+  "verifierId": "lane-e-verifier",
+  "basis": {
+    "kind": "pre-plugin",
+    "attestation": "no-guard-in-process",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/verify-law-spec.md",
+        "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+      },
+      {
+        "path": "AGENTS.md",
+        "sha256": "81ad82454e5056363f739b4f48014fbc15c69d68f201d9df25d1d3f388b10baf"
+      },
+      {
+        "path": "scripts/verify-pack-closure.ts",
+        "sha256": "68132b507730278cd8c5c89dcf812d37f990fe16734db33e2f9c8e836058dc72"
+      },
+      {
+        "path": "evidence/gates/wave-final-sweep/20261007T105354Z/summary.txt",
+        "sha256": "2e0d5a2701d8b922baf359469c73eefd8a60512504c336a0c7d95500bd73a251"
+      },
+      {
+        "path": "dist/mpd-package/package.json",
+        "sha256": "90f5a7b6384ba821c4591d2711c991b50991c78b121b1616e9c7f2af727042fe"
+      }
+    ],
+    "probe": [
+      {
+        "path": "scripts/verify-pack-closure.ts",
+        "bytes": 114144,
+        "sha256": "68132b507730278cd8c5c89dcf812d37f990fe16734db33e2f9c8e836058dc72",
+        "mtime": "2026-10-07T10:34:06.281Z"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/verify-law.ts",
+        "bytes": 23534,
+        "sha256": "e6dc5db58db3b815b32dca06eceb3bef6a72becbb67a7b8fb2474128e97cffac",
+        "mtime": "2026-10-07T10:55:49.378Z"
+      },
+      {
+        "path": "packages/mpd-verify-plugin/qa/verify-law.ts",
+        "bytes": 23534,
+        "sha256": "e6dc5db58db3b815b32dca06eceb3bef6a72becbb67a7b8fb2474128e97cffac",
+        "mtime": "2026-10-07T10:55:49.375Z"
+      },
+      {
+        "path": ".mpd/verify/boot.json",
+        "exists": false
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/verify-law-spec.md",
+      "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "81ad82454e5056363f739b4f48014fbc15c69d68f201d9df25d1d3f388b10baf"
+    },
+    {
+      "path": "scripts/verify-pack-closure.ts",
+      "sha256": "68132b507730278cd8c5c89dcf812d37f990fe16734db33e2f9c8e836058dc72"
+    },
+    {
+      "path": "evidence/gates/wave-final-sweep/20261007T105354Z/summary.txt",
+      "sha256": "2e0d5a2701d8b922baf359469c73eefd8a60512504c336a0c7d95500bd73a251"
+    },
+    {
+      "path": "dist/mpd-package/package.json",
+      "sha256": "90f5a7b6384ba821c4591d2711c991b50991c78b121b1616e9c7f2af727042fe"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "cmd": "node scripts/verify-pack-closure.ts --self-test  (MY OWN RUN: the clause that was red)",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b-reverify/2026-10-07T1058Z/logs/ev-selftest-raw.log",
+      "logSha256": "9c323561566fba6a4aaa28bf1ef077da9e896e925bb079ab4df7b394e7a2c2a6"
+    },
+    {
+      "cmd": "the arm tally: PASS/FAIL line counts, the real-tree control reading, the arm total",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b-reverify/2026-10-07T1058Z/logs/ev-selftest-tally.log",
+      "logSha256": "907b5b8332d392c410c5ce7c2beb9a9b48226a11c5a1aa68c69602839937072c"
+    },
+    {
+      "cmd": "tree quiescence + the post-pack-writer discriminator (HEAD, git status, artifact stamp vs newest tracked source mtime)",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b-reverify/2026-10-07T1058Z/logs/ev-settle-and-discriminator.log",
+      "logSha256": "976f6fc69b349691aa72bdd8e6d06a746b2f15490dabad820839246ae3025deb"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "notes": [
+    "RESIDUAL BOUND (verify-law-spec §(c), verbatim): the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).",
+    "DOCKER DECLARED BOUND (captain ruling D): the Docker lane's evidence is INTEGRATION-borne and declared in the PR body — a declared bound, never a hole.",
+    "THE CLAUSE IS GREEN, MEASURED BY THIS SEAT, NOT ACCEPTED FROM THE CAPTAIN'S LOG: `node scripts/verify-pack-closure.ts --self-test` → **EXIT=0**, `self-test PASS: 34/34 arms`, **35 `self-test PASS` lines and 0 `self-test FAIL` lines** in my own run. The real-tree positive control reads `content bytes: 542 file(s) compared, 541 identical, 0 drift, 1 expected-after-pack`, `declared packages 28/28 present in the artifact`, `completeness: 446 declared source file(s) compared, 445 present, 1 declared exemption(s), 0 absent`, `pack stamp 2026-10-07T10:54:21.952Z`. My T13 file count (550) and the captain's (542) are different revisions and are NOT reconciled — each is quoted with its own moment, as agreed.",
+    "I REFUTE THE PROPOSED DISPOSITION, IN THE WAVE'S FAVOUR — and the refutation is itself measured. The captain proposes the PR say 'the self-test is green only when no writer lands after the pack, by design'. That is no longer true of the code on disk, and I can prove it because a writer DID land after the pack during my verification window: at 10:55:22Z — **61 SECONDS AFTER the pack stamp 10:54:21.952Z** — two TRACKED files were modified (`packages/mpd-verify-plugin/qa/verify-law.ts` and `skills/dsh-qa/scripts/verify-law.ts`, the stub fix for the typecheck red). With that post-pack writer present, my run is still **exit 0 / 34/34**, and the real-tree control reports the writer's file as **`1 expected-after-pack`, 0 drift** — i.e. REPORTED and NAMED, never silently tolerated, and never a failure. Every one of the seven arms that was red in my T13 run is green under exactly this condition: 'positive-control (real tree, exit 0)', 'positive-control (byte-copy of the real artifact, exit 0)', 'positive-control (fixture packed tree, exit 0)', 'negative-control (post-pack source writer -> reported, exit 0)', 'negative-control (post-pack writer of a ROOT FILE -> expected, exit 0)', 'negative-control (the one declared exemption is exercised, not a silent skip)', and 'positive-control (real scratch pack staged with --out, exit 0)' — the last of which is green now only because T16 built the `mpd-verify-plugin` dist that made the packer refuse `--out` before.",
+    "SO THE CORRECT DISPOSITION IS: my T13 blocker was a REAL red at that revision (26/33 arms, exit 1 — the arm set has since grown to 34 and its expectations were corrected), and the fix has since been IMPROVED to tolerate a post-pack writer rather than merely being excused by a quiet tree. The '34/34 at either order' claim is therefore TRUE AS RE-IMPLEMENTED and must NOT be narrowed to a quiesced-tree bound: narrowing it would understate a real repair. What the PR body should say instead, in two sentences with each command quoted: (1) the GATE is green on the swept tree (`node scripts/verify-pack-closure.ts` → exit 0, 542 file(s) compared, 542 identical, 0 drift); (2) the SELF-TEST is green AT EITHER ORDER (`node scripts/verify-pack-closure.ts --self-test` → exit 0, 34/34 arms) because a writer landing after the pack is reported as `expected-after-pack` and named, with `0 drift` — verified in this record with two tracked files landing 61 s after the stamp. The only residual wording correction left is historical: the arm count and the readings differ between the T13 revision (33 arms) and now (34), which is provenance, not a defect.",
+    "ONE HONEST RESIDUAL FOR THE PR BODY: the tolerance is what it is BECAUSE T-91 already declares that freshness is read from the `expected-after-pack` list rather than from the exit code; the `--pack-stamp <t>` arm remains the HARD mode — 'negative-control (same drift, stamp pinned ahead of the writer, exit 1)' passed in both my runs, so a pinned reviewer still gets a hard CONTENT-DRIFT. State that pairing so nobody reads the tolerance as a licence to skip packing.",
+    "NOT RE-OPENED: the deletion surface (768 files → 0, all nine paths gone), the specifier-level import probes (0 specifiers, 0 dynamic imports), the client-bundle claim (numstat 1/1, zero non-sourceMappingURL deltas), the test-count accounting (52 removed = 51 adopted + 1 named, no loss of our own tests), the relocated `mpd-schemastery` closure, `docs/independence.md` §5's measured closure and the declared cross-lane couplings — every one verified PASS in the predecessor record and untouched in substance by this repair, whose diff is confined to the closure arms' expectations.",
+    "ACKNOWLEDGED FOR THE LEDGER (the captain's finding, not this seat's subject): the wave's final sweep caught `bun run typecheck` exiting 1 on `skills/dsh-qa/scripts/verify-law.ts(200,36)` — the case's own hand-written stub omitting `succeeded`, while the reader's type declares it. This seat's Lane D re-verification PASSed the LIVE clause and could not have caught a type error in the case's stub: a verifier proves behaviour, the type checker proves types, and neither retires the other. That is the same discipline that made this record necessary — no PASS retires a gate that has not itself been run.",
+    "METHOD — no implementation read: no .ts/.js source and no dist/** was opened. Evidence used: my own run's output and exit code, the arm tally (PASS/FAIL line counts), the artifact stamp and the newest tracked-source mtimes (the discriminator), read-only git state, and content-free hashes."
+  ],
+  "createdAt": "2026-10-07T10:59:00Z",
+  "predecessor": "lane-e-lane-b-2026-10-07T1046Z (result.json sha256 87a4e1017654c6a3b41122d1507ab3015c5196ab734dee7564345324c66217c0)"
+}

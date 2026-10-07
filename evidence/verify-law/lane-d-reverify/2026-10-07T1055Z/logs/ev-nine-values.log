@@ -1,0 +1,17 @@
+cmd: the corrected live run — the raw nine, per the writer's report
+  ok=true  slug=verify-law  sandbox=/tmp/mpd-verify-law-1J88iQ
+  1: mounted               true  the harness recorded a write call for the code path
+  2: denied                true  the harness recorded a write CALL for the code path and the artifact was
+  3: codeNotWritten        true  the denied code path was never created
+  4: controlNotDenied      true  with verify.mode=off the same write was not refused
+  5: controlWritten        true  with verify.mode=off the code path really was written
+  6: docsAllowed           true  a docs/** write is allowed and exists in the sandbox
+  7: sandboxMarker         true  the law wrote its boot marker in the SANDBOX workspace
+  8: realMarkerUnchanged   true  the REAL workspace's marker is exactly as it was: before=false after=fal
+  9: sessionsSandboxed     true  no real-cwd session key exists
+  nine-value summary: mounted=true | denied=true | codeNotWritten=true | controlNotDenied=true | controlWritten=true | docsAllowed=true | sandboxMarker=true | realMarkerUnchanged=true | sessionsSandboxed=true
+  all nine green: true
+  reported: {"sentenceRelayed":false,"controlSentenceRelayed":false}
+  realMarkerBefore=false
+--- is sentenceRelayed ASSERTED anywhere in the run payload, or only reported? ---
+  occurrences in result.json: 1

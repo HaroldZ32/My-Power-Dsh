@@ -1,0 +1,25 @@
+cmd: is the tree quiesced RIGHT NOW?  [2026-10-07T10:55:39Z]
+HEAD=e7036109120d58cfba0df8a40f325e4097e12271
+--- tracked changes ---
+ M packages/mpd-verify-plugin/qa/verify-law.ts
+ M skills/dsh-qa/scripts/verify-law.ts
+  tracked-change count: 2
+--- untracked (evidence only?) ---
+ M packages/mpd-verify-plugin/qa/verify-law.ts
+ M skills/dsh-qa/scripts/verify-law.ts
+
+cmd: THE DISCRIMINATOR — the pack stamp vs the newest source mtime (what those arms key on)
+  artifact dir mtime: 2026-10-07 18:54:21
+  newest artifact file: 2026-10-07 18:54:21.9523015310
+  newest artifact file: 2026-10-07 18:54:21.9513014820
+  --- the newest TRACKED source files (a writer landing here breaks the arms) ---
+  2026-10-07 18:55:22.230376092
+  2026-10-07 18:55:22.223266621
+  2026-10-07 18:53:15.146978523
+  2026-10-07 18:53:14.367939772
+  2026-10-07 18:52:50.871246150
+sort: write failed: 'standard output': Broken pipe
+
+cmd: node scripts/verify-pack-closure.ts --self-test   (MY OWN RUN, the captain's subject)
+cmd: node scripts/verify-pack-closure.ts --self-test
+EXIT=0

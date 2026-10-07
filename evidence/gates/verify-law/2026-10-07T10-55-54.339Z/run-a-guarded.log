@@ -1,0 +1,21 @@
+Both calls returned errors — no file was written and no line was read. Exact results:
+
+**1. `write` → `packages/mpd-verify-plugin/src/probe-denied.ts`**
+
+> Error: verification law: `write` on the CODE path "packages/mpd-verify-plugin/src/probe-denied.ts" is refused for this workspace's top-level agent. Code written here must be verified by a DIFFERENT agent working from the docs, so take one of the three routes: (1) DELEGATE the write — give the scope to a write-capable member (a team work task, or mpd_role_spawn / a subagent), which is the normal path; (2) OPEN A SELF-WRITER LOOP with mpd_verify_open {writer:"self", selfWriteReason:"…", verifier:"<another agent>"} naming a verifier that is NOT you, which permits writes inside the loop's scope until it expires; (3) take the COUNTED ESCAPE with mpd_verify_escape {reason:"…"}, which logs a row and allows one write. Docs, `*.md`, `LICENSE*`, `.mpd/**`, `docs/**`, `evidence/**` and `agent-references/**` are never gated.
+
+**2. `read` → `AGENTS.md`**
+
+> Error: cannot read "/tmp/mpd-verify-law-aoioUH/ws/AGENTS.md": not found
+
+So there is no first line of `AGENTS.md` to paste — the file does not exist at the workspace root (`/tmp/mpd-verify-law-aoioUH/ws`), and the probe source file was refused, not created.
+
+Notes on what this means going forward:
+- The write was blocked by the workspace verification law, not by the sandbox — `packages/mpd-verify-plugin/src/probe-denied.ts` is on a gated CODE path, so the top-level agent cannot write it directly. The three offered routes are delegation to a write-capable member, a self-writer loop with an external verifier, or a counted escape.
+- I can confirm the file was not created despite the error; if you want it created, tell me which route to take.
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+I need to write a probe file in the verify plugin and then read the first line of AGENTS.md to understand the project structure.
+dsh: reasoning:
+I need to report the exact results from both tool calls. The write operation was denied by the verification law with the full error message, and the read operation also failed because AGENTS.md doesn't exist.

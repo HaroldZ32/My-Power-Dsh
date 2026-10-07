@@ -1,0 +1,49 @@
+{
+  "ok": true,
+  "slug": "verify-law",
+  "sandbox": "/tmp/mpd-verify-law-aoioUH",
+  "workspace": "/tmp/mpd-verify-law-aoioUH/ws",
+  "realMarkerBefore": false,
+  "steps": {
+    "mounted": {
+      "ok": true,
+      "detail": "the harness recorded a write call for the code path"
+    },
+    "denied": {
+      "ok": true,
+      "detail": "the harness recorded a write CALL for the code path and the artifact was NEVER created (sentence relayed: false — REPORTED, never asserted: requiring it would fail a working guard)"
+    },
+    "codeNotWritten": {
+      "ok": true,
+      "detail": "the denied code path was never created"
+    },
+    "controlNotDenied": {
+      "ok": true,
+      "detail": "with verify.mode=off the same write was not refused"
+    },
+    "controlWritten": {
+      "ok": true,
+      "detail": "with verify.mode=off the code path really was written"
+    },
+    "docsAllowed": {
+      "ok": true,
+      "detail": "a docs/** write is allowed and exists in the sandbox"
+    },
+    "sandboxMarker": {
+      "ok": true,
+      "detail": "the law wrote its boot marker in the SANDBOX workspace"
+    },
+    "realMarkerUnchanged": {
+      "ok": true,
+      "detail": "the REAL workspace's marker is exactly as it was: before=false after=false"
+    },
+    "sessionsSandboxed": {
+      "ok": true,
+      "detail": "no real-cwd session key exists"
+    }
+  },
+  "reported": {
+    "sentenceRelayed": false,
+    "controlSentenceRelayed": false
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "recordId": "lane-e-lane-d-reverify-2026-10-07T1055Z",
+  "loopId": "waveloop-lane-d",
+  "taskId": "T15",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "lane-c-repair (the corrected live arm — T15's blocker repair)",
+  "verifierId": "lane-e-verifier",
+  "basis": {
+    "kind": "pre-plugin",
+    "attestation": "no-guard-in-process",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/verify-law-spec.md",
+        "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+      },
+      {
+        "path": "AGENTS.md",
+        "sha256": "81ad82454e5056363f739b4f48014fbc15c69d68f201d9df25d1d3f388b10baf"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/verify-law.ts",
+        "sha256": "fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb"
+      },
+      {
+        "path": "packages/mpd-verify-plugin/qa/verify-law.ts",
+        "sha256": "fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb"
+      },
+      {
+        "path": "evidence/gates/verify-law/2026-10-07T10-52-07.173Z/result.json",
+        "sha256": "1d740463d26083dfb5d4201ba81f5bb0ae249fa349d4d1761b8b1555ca599528"
+      }
+    ],
+    "probe": [
+      {
+        "path": "skills/dsh-qa/scripts/verify-law.ts",
+        "bytes": 22585,
+        "sha256": "fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb",
+        "mtime": "2026-10-07T10:52:01.803Z"
+      },
+      {
+        "path": "packages/mpd-verify-plugin/qa/verify-law.ts",
+        "bytes": 22585,
+        "sha256": "fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb",
+        "mtime": "2026-10-07T10:52:01.780Z"
+      },
+      {
+        "path": "evidence/gates/verify-law/2026-10-07T10-52-07.173Z/result.json",
+        "bytes": 1452,
+        "sha256": "1d740463d26083dfb5d4201ba81f5bb0ae249fa349d4d1761b8b1555ca599528",
+        "mtime": "2026-10-07T10:52:37.622Z"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/lib/session-evidence.ts",
+        "bytes": 32629,
+        "sha256": "cadf2086a2a6ba30e320f6debae23acfb53fd956e44146af117625bd31fe01da",
+        "mtime": "2026-10-02T12:34:41.729Z"
+      },
+      {
+        "path": ".mpd/verify/boot.json",
+        "exists": false
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/verify-law-spec.md",
+      "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "81ad82454e5056363f739b4f48014fbc15c69d68f201d9df25d1d3f388b10baf"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/verify-law.ts",
+      "sha256": "fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb"
+    },
+    {
+      "path": "packages/mpd-verify-plugin/qa/verify-law.ts",
+      "sha256": "fa61eb5825ad7f21ce309ddea82edf3dc6a987d78a4a898ba15d4d2dcf0336cb"
+    },
+    {
+      "path": "evidence/gates/verify-law/2026-10-07T10-52-07.173Z/result.json",
+      "sha256": "1d740463d26083dfb5d4201ba81f5bb0ae249fa349d4d1761b8b1555ca599528"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "cmd": "node skills/dsh-qa/scripts/verify-law.ts --self-test",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d-reverify/2026-10-07T1055Z/logs/ev-selftest-digest.log",
+      "logSha256": "9f54ff92143c0c1299db99a73a282232c051cdbec149f62f543c87e33e695555"
+    },
+    {
+      "cmd": "revision/quiescence/marker/digest probe (HEAD, git status, boot.json, both case copies hashed)",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d-reverify/2026-10-07T1055Z/logs/ev-scope-and-digest.log",
+      "logSha256": "5db5a70a0e15b114975dc32271a7884d3b9c7e24de47d35418631b98f02a9a03"
+    },
+    {
+      "cmd": "the corrected live run: the raw nine values and the reported block",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d-reverify/2026-10-07T1055Z/logs/ev-nine-values.log",
+      "logSha256": "d971c4513fc67ff4509d60a0d2a2fab658a85fe6873b5f4b2bef322331a778d4"
+    },
+    {
+      "cmd": "the no-better-channel probe: the sanctioned reader API names + the installed harness event vocabulary",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-d-reverify/2026-10-07T1055Z/logs/ev-channel-claim.log",
+      "logSha256": "4842a1e86d3ea8e3d75e07180dc9b4c2067c3ce4dc842e77d1441436c4e03bf1"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "notes": [
+    "RESIDUAL BOUND (verify-law-spec §(c), verbatim): the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).",
+    "DOCKER DECLARED BOUND (captain ruling D): the Docker lane's evidence is INTEGRATION-borne and declared in the PR body — a declared bound, never a hole.",
+    "THE BLOCKER IS CLOSED — the arm now asserts BEHAVIOUR, and the change is exactly the one this seat named. The corrected run at `evidence/gates/verify-law/2026-10-07T10-52-07.173Z/result.json` reports `ok:true` with ALL NINE green: `mounted=true | denied=true | codeNotWritten=true | controlNotDenied=true | controlWritten=true | docsAllowed=true | sandboxMarker=true | realMarkerUnchanged=true | sessionsSandboxed=true`. The `denied` step's own detail is the proof that the assertion moved from a text channel to behaviour: 'the harness recorded a write CALL for the code path and the artifact was [not created]'.",
+    "THE SENTENCE CHANNEL IS REPORTED, NOT ASSERTED — verified mechanically: `sentenceRelayed` occurs EXACTLY ONCE in the run payload, inside `reported: {\"sentenceRelayed\": false, \"controlSentenceRelayed\": false}`, and nowhere in any `steps.*.ok`. So the dead channel can no longer hold the case red, which is what the predecessor record's blocker was about. Because the sentence is a non-asserted report, its `false` value is harmless — and it is also the expected value: a pre-dispatch `tools.guard` refusal produces no `tool/result` frame to carry it.",
+    "THE FALSIFIABLE PAIR IS INTACT IN THE SAME RUN: `controlNotDenied` ('with verify.mode=off the same write was not refused') and `controlWritten` ('with verify.mode=off the code path really was written') still sit beside `codeNotWritten` ('the denied code path was never created'). Same scenario, guard off → the write LANDS; guard on → the artifact is absent. That two-way pair is what the PR body should cite, and it is what makes this a PASS rather than a green-looking run.",
+    "THE ANTI-DRIFT DIGEST CLAIM IS VERIFIED INDEPENDENTLY, by hashing both copies myself rather than trusting the printed line: `packages/mpd-verify-plugin/qa/verify-law.ts` (authored) and `skills/dsh-qa/scripts/verify-law.ts` (registered) are **byte-identical**, both `fa61eb5825ad7f21ce309ddea82edf3d…`, matching the claimed `fa61eb5825ad…`. The acceptance-named command agrees: `node skills/dsh-qa/scripts/verify-law.ts --self-test` → exit 0, '[verify-law self-test] ok: the registered copy is byte-identical (fa61eb5825ad)' plus 'ok: patch row + dist symbols + refusal vocabulary + decision/row arms'.",
+    "THE TREE IS QUIESCED, so this verdict is anchored to a settled revision, not a moving one: `HEAD = e7036109120d58cfba0df8a40f325e4097e12271` and `git status --porcelain --untracked-files=no` returns **0** tracked changes. This is the precondition the predecessor record could not have (it was taken while writers were active) — and it is why this record can state a clean PASS without a settle caveat.",
+    "F.2/F.3 HOLD: `.mpd/verify/boot.json` is ABSENT in the real workspace (re-probed inside this record's own logs), and no `boot.json` exists anywhere outside node_modules/.git. The live run's own `sandboxMarker=true` + `realMarkerUnchanged=true` ('before=false after=false') show the marker was written ONLY in the sandbox.",
+    "THE 'NO BETTER CHANNEL' CLAIM — CORROBORATED AT THE API-NAME LEVEL, NOT PROVEN, AND NOT LOAD-BEARING. The sanctioned reader's exported surface was enumerated by name only (16 exports: `decodeSessionLog`, `findToolCall`, `readSessionEvents`, `recordedToolNames`, `ToolCallEvidence`, `RecordedToolCall`, `scanZstdFrames`, …) and carries no guard-denial reader, while the four fields the writer names (`called`/`succeeded`/`resultText`/`calls`) are its actual vocabulary. A bounded name-level probe of the INSTALLED harness found no guard-denial event type either: the guard-shaped mentions live in `dsh-tools` as the SEAM (`tools.guard`/`guardTool`), not as an event. My probe is bounded (a few name patterns over `.d.ts`/`.js`), so the honest statement is CORROBORATED. What matters for the verdict is the asymmetry: **the negative claim is not a premise of this PASS** — the arm asserts observable behaviour plus a two-way control, so even if a better channel existed tomorrow, the verdict would stand and the arm would merely be less complete. That is the right shape for a claim like this: it must not carry weight it cannot bear.",
+    "ADVISORY (not a finding): if a future harness release exposes a guard-denial event, the case should adopt it as the PREFERRED channel and keep the behavioural pair as the fallback; the `reported` block is already the right place to record both.",
+    "F2 FROM THE PREDECESSOR IS LANDED, noted for the record but not this seat's subject: the manual now states the REAL numbers ('measured 64996 bytes on 2026-10-07 — only 540 B of margin, which is NOT headroom'), a MOVE-FIRST rule, and a target (≤ 63.5 KiB / 65024 B) with a 2 KB margin requirement.",
+    "NOT RE-OPENED, per the dispatch: the eleven refusal arms, the pre-plugin self-closing exemption, the git-write matcher (all five arms), the manual's §5/§13 content, the pinned-toolchain paragraph, `verify-no-host-override` and `preset-conformance --self-test` — every one verified PASS in the predecessor record and untouched in substance by this repair, whose diff is confined to the live arm's assertion and its reported block.",
+    "METHOD — no implementation read: no .ts/.js source and no dist/** was opened. Evidence used: the corrected run's own payload, byte hashes of both case copies, the acceptance-named self-test output, exported API NAMES (not logic), a bounded name-level probe of the installed harness, read-only git state, and the marker probe."
+  ],
+  "createdAt": "2026-10-07T10:56:00Z",
+  "predecessor": "lane-e-lane-d-2026-10-07T1050Z (result.json sha256 f2d7aa3839d2607d1679e9ecee0565ab…)"
+}

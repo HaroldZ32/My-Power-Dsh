@@ -1,0 +1,11 @@
+[verify-law] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/gates/verify-law/2026-10-07T10-55-54.339Z
+  mounted: true — the harness recorded a write call for the code path
+  denied: true — the harness recorded a write CALL for the code path and the artifact was NEVER created (sentence relayed: false — REPORTED, never asserted: requiring it would fail a working guard)
+  codeNotWritten: true — the denied code path was never created
+  controlNotDenied: true — with verify.mode=off the same write was not refused
+  controlWritten: true — with verify.mode=off the code path really was written
+  docsAllowed: true — a docs/** write is allowed and exists in the sandbox
+  sandboxMarker: true — the law wrote its boot marker in the SANDBOX workspace
+  realMarkerUnchanged: true — the REAL workspace's marker is exactly as it was: before=false after=false
+  sessionsSandboxed: true — no real-cwd session key exists
+[verify-law] PASS
