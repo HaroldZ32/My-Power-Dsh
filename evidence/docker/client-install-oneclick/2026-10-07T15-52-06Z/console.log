@@ -1,0 +1,103 @@
+ Image mpd-docker-e2e:local Building 
+ Image mpd-docker-e2e:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.05kB done
+#1 DONE 0.0s
+
+#2 [mpd-client internal] load build definition from Dockerfile
+#2 transferring dockerfile: 6.33kB done
+#2 DONE 0.0s
+
+#3 [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm
+#3 DONE 0.0s
+
+#4 [mpd-client internal] load metadata for docker.io/library/ubuntu:24.04
+#4 DONE 0.0s
+
+#5 [mpd-client node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
+#5 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
+#5 DONE 0.0s
+
+#6 [mpd-client stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
+#6 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
+#6 DONE 0.0s
+
+#7 [mpd-oneclick internal] load build context
+#7 transferring context: 25.96MB 0.1s
+#7 transferring context: 28.15MB 0.1s done
+#7 DONE 0.2s
+
+#8 [mpd-oneclick stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
+#8 CACHED
+
+#9 [mpd-oneclick stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
+#9 CACHED
+
+#10 [mpd-oneclick stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+#10 CACHED
+
+#11 [mpd-oneclick stage-1  9/12] COPY docker/ui/capture.mts /opt/mpd-e2e/capture.mts
+#11 CACHED
+
+#12 [mpd-oneclick stage-1 10/12] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
+#12 CACHED
+
+#13 [mpd-oneclick stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
+#13 CACHED
+
+#14 [mpd-oneclick stage-1  7/12] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
+#14 CACHED
+
+#15 [mpd-oneclick stage-1  3/12] COPY . /src/
+#15 CACHED
+
+#16 [mpd-oneclick stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
+#16 CACHED
+
+#17 [mpd-oneclick stage-1 11/12] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mts /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src
+#17 CACHED
+
+#18 [mpd-oneclick stage-1 12/12] WORKDIR /work
+#18 CACHED
+
+#19 [mpd-oneclick] exporting to image
+#19 exporting layers done
+#19 exporting manifest sha256:a9f1c3fc2b2601143bab0bc45da1fa1e86f1e608fe79c2eef9a3aa266e3c058c done
+#19 exporting config sha256:834deb1c4c664878898edeeb1f85c4e772b4adb084039db918ed362698eed98e done
+#19 exporting attestation manifest sha256:a04c4207720eb23d754c58a52aaa92c4ab9b363d1f0827b6d2fca1332c31c59a
+#19 exporting attestation manifest sha256:a04c4207720eb23d754c58a52aaa92c4ab9b363d1f0827b6d2fca1332c31c59a 0.0s done
+#19 exporting manifest list sha256:a2f7d8a65c2d386c4ad3a19c60c929c94355812bc40d16eab79d103df1ade994 0.0s done
+#19 naming to docker.io/library/mpd-docker-e2e:local done
+#19 unpacking to docker.io/library/mpd-docker-e2e:local 0.0s done
+#19 DONE 0.1s
+
+#20 [mpd-client] exporting to image
+#20 exporting layers done
+#20 exporting manifest sha256:c1d9040d6be17c5260d5b4b7ba73c5181b193c2d7b5dc8b90bf48af443544614 done
+#20 exporting config sha256:cb5c151179a60154a15d494e3aee4f11b5410687fcb5d877fc46270ccfb22a01 0.0s done
+#20 exporting attestation manifest sha256:f1f5332cd51925440692954ecba34d9e99330500da374719aa021e728512e67e 0.0s done
+#20 exporting manifest list sha256:48183a1089cd858d2c0d7262c5ff3e8dea520765999a83396189d580c2ee4d86 0.0s done
+#20 naming to docker.io/library/mpd-docker-e2e:local done
+#20 unpacking to docker.io/library/mpd-docker-e2e:local 0.0s done
+#20 DONE 0.1s
+
+#21 [mpd-oneclick] resolving provenance for metadata file
+#21 DONE 0.0s
+
+#22 [mpd-client] resolving provenance for metadata file
+#22 DONE 0.0s
+ Image mpd-docker-e2e:local Built 
+ Image mpd-docker-e2e:local Built 
+ Container docker-mpd-oneclick-run-4d65b1f2cdac Creating 
+ Container docker-mpd-oneclick-run-4d65b1f2cdac Created 
+===== Docker client-install E2E — 2026-10-07T15:52:07Z =====
+ubuntu image : ubuntu 24.04
+app dir      : /opt/mpd   (copy of /src)
+HOME         : /root/sandbox-home
+DSH_HOME     : /root/sandbox-dsh
+pins         : nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0
+[record] ubuntu.version=true — the base image is ubuntu:24.04
+
+----- apt: curl git ca-certificates unzip xz-utils -----
+===== STEP 01-apt-update =====
+$ apt-get update
