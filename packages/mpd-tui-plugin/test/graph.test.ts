@@ -19,15 +19,18 @@ import {
   dependencyChain,
   hitTest,
   layoutBoxes,
+  layoutBoxesNatural,
   layoutGraph,
   layoutList,
   layoutRail,
   legendLines,
+  widestLabelCells,
   type GraphHit,
   type GraphTask,
   type GraphSpan,
 } from "../src/graph"
 import { cellWidth } from "../src/sanitize"
+import { DAG_CHARS, DAG_KIND_ABBREV, DAG_TONE_GLYPH } from "../src/dag-theme"
 
 /** One task, with the fields a fixture cares about and sane defaults for the rest. */
 function task(id: string, depth: number, dependencies: string[] = [], extra: Partial<GraphTask> = {}): GraphTask {
@@ -145,16 +148,39 @@ describe("the boxed layout", () => {
     expect(layoutGraph(BOARD, 100).mode).toBe("boxes")
   })
 
-  test("a task shows its marker, id, kind and subject, truncated rather than wrapped", () => {
+  test("AC1: a box draws EXACTLY `<marker> <id>` — no kind, no subject, no ordinal", () => {
     /** The drawing at a comfortable width. */
-    const view = layoutBoxes(BOARD, 100)
+    const view = layoutBoxes(BOARD, 100) as NonNullable<ReturnType<typeof layoutBoxes>>
     /** The whole drawing as text. */
-    const text = linesOf(view as never).join("\n")
-    // The state glyph, the id and the kind abbreviation are all present.
-    expect(text).toContain("✓ T1 REQ")
-    expect(text).toContain("◐ T3 WRK")
-    expect(text).toContain("✗ T6 FIX")
-    expect(text).toContain("○ T5 WRK")
+    const text = linesOf(view).join("\n")
+    // THE MARKER AND THE ID, one space apart: a state glyph per task, and `▶` for the focus (that
+    // swap has its own arm below).
+    expect(text).toContain("✓ T1")
+    expect(text).toContain("◐ T3")
+    expect(text).toContain("✗ T6")
+    expect(text).toContain("○ T5")
+    // AND THE THREE FIELDS THIS WAVE REMOVED ARE ABSENT FROM THE DRAWING AS A WHOLE: the kind
+    // abbreviation, the subject, and the `#<ordinal>` a composed subject used to fall back to. The
+    // subject is not lost — the pinned detail body carries it verbatim (clause C3) — and
+    // `graphSafeLabel` keeps its own arms in `dag-label-parity.test.ts`.
+    for (const kind of Object.values(DAG_KIND_ABBREV)) expect(text).not.toContain(kind)
+    for (const entry of BOARD) expect(text).not.toContain(entry.subject)
+    expect(text).not.toContain("#")
+    // AND PER BOX, in cells: clause AC2's COMPACT form is exact — one content row, whose text begins
+    // at the box's own left border + 1 with ` <marker> <id>`, and a bottom border one row under it.
+    for (const hit of view.hits) {
+      /** The task this rectangle belongs to. */
+      const entry = BOARD.find((task) => task.id === hit.taskId) as GraphTask
+      /** The box's content row, as cells. */
+      const content = linesOf(view)[hit.row + 1]
+      expect(`${hit.taskId} content=${content.slice(hit.col + 1, hit.col + 4 + entry.id.length)}`)
+        .toBe(`${hit.taskId} content= ${DAG_TONE_GLYPH[entry.visual]} ${entry.id}`)
+      expect(`${hit.taskId} bottom=${linesOf(view)[hit.row + 2].slice(hit.col, hit.col + 1)}`)
+        .toBe(`${hit.taskId} bottom=${DAG_CHARS.cornerUpRight}`)
+      // Three rows per box, top to bottom, reported and drawn alike.
+      expect(`${hit.taskId} rows=${hit.rowEnd - hit.row + 1}`).toBe(`${hit.taskId} rows=3`)
+    }
+    expect(view.boxRows).toBe(3)
   })
 
   test("an empty board draws nothing rather than a bare frame", () => {
@@ -232,9 +258,16 @@ describe("the focus", () => {
     expect(view).toBeDefined()
     expect(view.focus).toBe("T9")
     expect([...view.chain].sort()).toEqual(["T1", "T3", "T7", "T8"])
-    /** The tone of the span holding each task's id. */
+    /**
+     * The tone of the span holding each task's id.
+     *
+     * THE ID NOW ENDS ITS SPAN. Clause AC1 took the subject out of the label, and this probe used to
+     * find an id by the SPACE that followed it — the space that used to introduce that subject. The
+     * facts it reads are unchanged (the focus/chain/dim treatment of the same nine tasks); only the
+     * shape it recognises is, because the drawing's shape changed.
+     */
     const toneOfTask = (id: string): string | undefined => {
-      for (const line of view.lines) for (const span of line) if (span.text.includes(id + " ")) return span.tone
+      for (const line of view.lines) for (const span of line) if (span.text.trimEnd().endsWith(id)) return span.tone
       return undefined
     }
     // The focus itself is the loudest tone there is.
@@ -372,6 +405,72 @@ describe("the legend", () => {
     expect(legendLines(4)).toEqual([])
     expect(legendLines(0)).toEqual([])
     expect(legendLines(Number.NaN)).toEqual([])
+  })
+})
+
+describe("AC3 · the natural-width drawing is sized by its label", () => {
+  /**
+   * The clause's own board: THREE tasks in the widest rank, so the drawing's width is the rank's.
+   *
+   *   T1, T2, T3 (rank 0) ──► T4 (rank 1)
+   */
+  const THREE_WIDE: GraphTask[] = [
+    task("T1", 0, [], { kind: "work", visual: "completed" }),
+    task("T2", 0, [], { kind: "work", visual: "completed" }),
+    task("T3", 0, [], { kind: "work", visual: "running" }),
+    task("T4", 1, ["T1", "T2", "T3"], { kind: "integration", visual: "open" }),
+  ]
+  /**
+   * The board's own box width, read back from the rectangle the drawing recorded.
+   * @param view - the drawing.
+   * @param id - the task whose box is measured; defaults to the first rectangle.
+   * @returns the box's width in cells, borders included.
+   */
+  const boxWidthOf = (view: { hits: GraphHit[] }, id?: string): number => {
+    /** This task's rectangle, or the first one when no id was named. */
+    const hit = (id === undefined ? view.hits[0] : view.hits.find((entry) => entry.taskId === id)) as GraphHit
+    return hit.colEnd - hit.col + 1
+  }
+
+  test("a widest rank of THREE draws at 36 cells — inside a 40-column sidebar with no panning", () => {
+    /** The clause's drawing, at its natural width. */
+    const view = layoutBoxesNatural(THREE_WIDE) as NonNullable<ReturnType<typeof layoutBoxesNatural>>
+    // THE MEASURED NUMBER, not an inequality alone: three boxes of ten cells and two gaps of three.
+    expect(view.width).toBe(3 * 10 + 2 * 3)
+    expect(view.width).toBe(36)
+    expect(view.width).toBeLessThanOrEqual(40)
+    // AND THE FLOOR IS WHAT SIZED IT, which is the half of the clamp clause AC1 made load-bearing:
+    // `<marker> <id>` is four cells for a two-character id, so `labelCells + 4` is EIGHT and the
+    // `naturalFloor` of ten wins.
+    expect(widestLabelCells(THREE_WIDE)).toBe(4)
+    for (const hit of view.hits) expect(`${hit.taskId}=${boxWidthOf(view, hit.taskId)}`).toBe(`${hit.taskId}=10`)
+    // THE CONTROL, so this arm measures the RANK and not a constant: a fourth task in the widest rank
+    // is 49 cells and does NOT fit a 40-column page.
+    /** The same board one task wider. */
+    const fourWide = [...THREE_WIDE, task("T5", 0, [], { kind: "work", visual: "open" })]
+    /** That board's drawing. */
+    const wider = layoutBoxesNatural(fourWide) as NonNullable<ReturnType<typeof layoutBoxesNatural>>
+    expect(wider.width).toBe(4 * 10 + 3 * 3)
+    expect(wider.width).toBeGreaterThan(40)
+  })
+
+  test("above the floor the LABEL sizes the box, and the cap still bounds it", () => {
+    // `nodeWidth = clamp(10, labelCells + 4, NATURAL_MAX_NODE_WIDTH)`, read from both ends so neither a
+    // hard-coded ten nor a hard-coded sixty-four can pass: a 12-character id needs 18 cells.
+    /** One task whose id is longer than the floor's four cells of label. */
+    const longId = [task("TASK-1234567", 0, [], { visual: "open" })]
+    /** Its drawing. */
+    const view = layoutBoxesNatural(longId) as NonNullable<ReturnType<typeof layoutBoxesNatural>>
+    expect(widestLabelCells(longId)).toBe(14)
+    expect(boxWidthOf(view)).toBe(14 + 4)
+    // AND THE UPPER BOUND IS STILL A BOUND: an absurd id is capped rather than allowed to push the
+    // rank off any terminal, and the drawing REPORTS that it could not write the label whole.
+    /** One task with an id no realistic board carries (80 characters, so the cap binds). */
+    const absurd = [task("T9".repeat(40), 0, [], { visual: "open" })]
+    /** Its drawing. */
+    const capped = layoutBoxesNatural(absurd) as NonNullable<ReturnType<typeof layoutBoxesNatural>>
+    expect(boxWidthOf(capped)).toBe(64)
+    expect(capped.labelOverflow).toBe(true)
   })
 })
 

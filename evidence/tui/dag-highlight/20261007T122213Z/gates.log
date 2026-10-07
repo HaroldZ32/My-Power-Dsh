@@ -1,0 +1,18 @@
+# Wave gates, FINAL frozen revision
+# aggregate src+dist hash 14a28d8b2312b0c3c37e1e71130b4d20cc00d9957eddf243ebbaf0a12e2af7aa
+# read 2026-10-07T12:29:33Z (start) and again after a 50s settle - IDENTICAL (see hashes.txt)
+
+ 415 pass
+ 0 fail
+ 12458 expect() calls
+Ran 415 tests across 18 files. [2.09s]
+
+$ tsgo --noEmit
+typecheck exit=0
+
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=22 derived=3 links=440 dead=0 — PASS
+
+[verify-dist-fresh] ok: 30/30 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 629ms

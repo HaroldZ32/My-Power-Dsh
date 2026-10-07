@@ -58,6 +58,7 @@ import { DASHBOARD_TAKEOVER_KNOB } from "./settings.js"
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
 import type { PanelOpenOutcome } from "./panel.js"
+import { requestSubagentDetail, takeSubagentDetailRequest } from "./subagent-scene.js"
 import { registerDagPanel } from "./panel-dag.js"
 import { registerWorkmatePanel } from "./panel-workmate.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
@@ -583,6 +584,23 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     openMergedScene: () => scene.openSubagents(),
     log,
   })
+  // ── the agent work page (AC6, scene side) ────────────────────────────────
+  // A SECOND CLICK on the DAG page's pinned task asks for that task's OWNER's work page. The page it
+  // reaches is MPD's own full-screen subagents scene, positioned on the member's DETAIL view: the id
+  // goes into the scene's one-shot request slot and the scene takes it on its next mount (see
+  // `subagent-scene.ts`). The opening itself is the SAME `openSubagents()` route the panel's fallback
+  // and `alt+a` use, so there is one surface and not a second one invented for this gesture.
+  /** Opens the agent work page for a live subagent id; false when no page was reached. */
+  const openAgentPage = (agentId: string): boolean => {
+    requestSubagentDetail(agentId)
+    if (scene.openSubagents()) return true
+    // A REFUSED OPEN MUST NOT LEAVE THE REQUEST BEHIND: the scene seam is absent here (or the host does
+    // not serve the id), so a request left in the slot would ambush some LATER open — the panel's own
+    // `⤢`, a week later — with a detail view nobody asked for. The destructive take is also the clear.
+    takeSubagentDetailRequest()
+    log.debug(`openAgentPage(${agentId}): no subagent scene is reachable here; the request was cleared`)
+    return false
+  }
   // ── the two INDEPENDENT pages (frozen R1/R12) ────────────────────────────
   // The DAG page and the workmate page are their own panels, registered through the SAME adapter and
   // fed by the SAME projections the merged panel uses, so three surfaces cannot describe one team or
@@ -598,6 +616,13 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     enabled: resolved.panel,
     readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
     openScene: () => scene.openSubagents(),
+    // The page's own `⤢` control calls THIS, and it is deliberately the same full-screen surface the
+    // `openScene` fallback above names: one route, so the button and the fallback cannot part ways.
+    openFullscreen: () => scene.openSubagents(),
+    // The page's own "open that member's work page" route. `panel-dag.ts` forwards it into the page's
+    // component; the boolean is the page's own answer and the reason it can say "no page was reached"
+    // instead of pretending it opened one.
+    openAgentPage,
     log,
   })
   // The workmate page: the durable library under the user's HOME, with the board scene (which already

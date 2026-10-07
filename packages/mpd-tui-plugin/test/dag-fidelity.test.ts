@@ -1350,28 +1350,39 @@ describe("T7 · the termaid glyph obligations, read out of the source rather tha
     expect(entered).toBeGreaterThan(0)
   })
 
-  test("the drawing REPORTS which box form it drew (3 or 5 rows), and the roomy budget really buys 5", async () => {
+  test("AC2: EVERY drawing reports the COMPACT three-row form, and no vertical budget buys padding rows", async () => {
     /** The graph module under test. */
     const graph = await loadGraphSurface()
-    /** The natural-width entry point, which is where the budget is honoured (T1). */
+    /** The natural-width entry point, which is where the budget used to choose the form. */
     const natural = graph.layoutGraphNatural
     if (typeof natural !== "function") throw new Error("graph.ts no longer exports layoutGraphNatural (T1/R2)")
-    /** The ranks the board needs, which is what the box-form rule is stated in. */
+    /** The ranks the board needs, which is what the OLD roomy-form rule was stated in. */
     const ranks = new Set(layoutGraph(RESOLVABLE_BOARD, 200).hits.map(hit => hit.row)).size
-    // ROOMY when `rows >= ranks * 8 + 2`; COMPRESSED otherwise. Both arms are run, so a layout that
-    // always answered 3 — or always 5 — cannot pass by picking one.
-    expect(natural(RESOLVABLE_BOARD, undefined, { rows: ranks * 8 + 40 }).boxRows).toBe(5)
-    expect(natural(RESOLVABLE_BOARD, undefined, { rows: 5 }).boxRows).toBe(3)
-    // BOTH FORMS ARE ROUNDED: the vertical budget buys the padding rows only, never the corners.
-    for (const budget of [{ rows: ranks * 8 + 40 }, { rows: 5 }]) {
+    // THE BUDGET THAT USED TO BUY THE ROOMY FORM (`rows >= ranks * 8 + 2`), the one that never could, a
+    // generous one and NO budget at all. All four draw the SAME form now, so a layout that still
+    // answered five for a generous budget — or that kept a second form for the no-budget caller —
+    // reddens here rather than at a render.
+    for (const budget of [{ rows: ranks * 8 + 40 }, { rows: 5 }, { rows: 10_000 }, undefined]) {
       /** The drawing for this budget. */
       const view = natural(RESOLVABLE_BOARD, undefined, budget)
-      /** Every task box's top border, read through its own hit rectangle. */
+      expect(`budget=${JSON.stringify(budget)} boxRows=${view.boxRows}`).toBe(`budget=${JSON.stringify(budget)} boxRows=3`)
+      expect(`budget=${JSON.stringify(budget)} mode=${view.mode}`).toBe(`budget=${JSON.stringify(budget)} mode=boxes`)
+      /** Every task box's own rows, read through its hit rectangle. */
       for (const hit of view.hits) {
-        /** The first character of the box's top border. */
-        const corner = charAtCell(view, hit.row, hit.col)
-        expect(`boxRows=${view.boxRows} ${hit.taskId}=${corner}`).toBe(`boxRows=${view.boxRows} ${hit.taskId}=${DAG_CHARS.cornerDownRight}`)
+        // THREE ROWS PER BOX, top border / content / bottom border: the rectangle spans exactly two
+        // rows beyond its top, which is the form's own arithmetic rather than a reported flag.
+        expect(`boxRows=${view.boxRows} ${hit.taskId} rows=${hit.rowEnd - hit.row}`).toBe(`boxRows=${view.boxRows} ${hit.taskId} rows=2`)
+        // AND THE CORNERS ARE STILL ROUNDED (clause AC2's first sentence, which this wave does NOT
+        // revert): the top-left cell of every box is the table's rounded corner, in every budget.
+        expect(`boxRows=${view.boxRows} ${hit.taskId}=${charAtCell(view, hit.row, hit.col)}`).toBe(`boxRows=${view.boxRows} ${hit.taskId}=${DAG_CHARS.cornerDownRight}`)
       }
+      // THE RANK STRIDE IS SIX — three box rows plus the three connector rows that carry a rank's edges
+      // to the next one — so consecutive rank tops differ by exactly six. A layout that kept the roomy
+      // form's eight-row stride while reporting three would pass the flag check and fail this one.
+      /** The distinct rank tops, ascending. */
+      const tops = [...new Set(view.hits.map(hit => hit.row))].sort((left, right) => left - right)
+      expect(tops.length).toBeGreaterThan(1)
+      for (let at = 1; at < tops.length; at++) expect(`stride=${tops[at] - tops[at - 1]}`).toBe("stride=6")
     }
   })
 })

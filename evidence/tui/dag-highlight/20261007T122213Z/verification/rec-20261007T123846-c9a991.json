@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "recordId": "rec-20261007T123846-c9a991",
+  "loopId": "loop-20261007T120525-04d808",
+  "taskId": null,
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "delegate:pending",
+  "verifierId": "420240be-27a0-48cf-bc7c-3053a6df1329",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/de-vendor-and-verify-law.md",
+        "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+      },
+      {
+        "path": ".mpd/plans/verify-law-spec.md",
+        "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+      }
+    ],
+    "probe": [
+      {
+        "path": "evidence/tui/dag-highlight/20261007T122213Z",
+        "bytes": 0,
+        "sha256": "",
+        "mtime": "2026-10-07T12:36:24.135Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/index.ts",
+        "bytes": 52545,
+        "sha256": "317dd044ace495fa0e2b68c75ef7e0054d13e13988a081e74ff0defb85d31517",
+        "mtime": "2026-10-07T12:20:01.414Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/graph.ts",
+        "bytes": 77505,
+        "sha256": "c962c518270d7e2efa8532752fcd566a3f48c440e952d68bd770ca7343c3bf56",
+        "mtime": "2026-10-07T12:13:13.274Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/dag-theme.ts",
+        "bytes": 11737,
+        "sha256": "1dff5e5de397ff5397a16cc81fdefe3e3a7d1c95efee40ce4b0d5485e1df426e",
+        "mtime": "2026-10-07T10:19:48.188Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/panel.ts",
+        "bytes": 44087,
+        "sha256": "182c3e17aafaa4c7daaae62df054063a0cf3a235833abf8d0ba20cf2cdfe1831",
+        "mtime": "2026-10-07T12:27:03.258Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/panel-dag.ts",
+        "bytes": 69316,
+        "sha256": "0902d370558d51f0f19bc0b3a4471e05e8d8d9177c52fbc88684da125b7afa4c",
+        "mtime": "2026-10-07T12:19:54.867Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/panel-core.ts",
+        "bytes": 82301,
+        "sha256": "3e04adec7ae1462187344fb5312ebb54e45ffee16784ec3e81771e50721ce553",
+        "mtime": "2026-10-07T12:09:50.932Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/panel-workmate.ts",
+        "bytes": 31917,
+        "sha256": "0b5f6580fe63fec1e971225575be2da6056d4d4bb5216345da3d96bedf65e224",
+        "mtime": "2026-10-07T12:13:40.485Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/subagent-scene.ts",
+        "bytes": 90601,
+        "sha256": "91e42b05c70a8e14c50f80b71a88f907da6cf770c46e49c638d3536387ce34ef",
+        "mtime": "2026-10-07T12:11:12.145Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/dist/index.js",
+        "bytes": 384227,
+        "sha256": "37f6097451fdacc79c787decdc71794e9b1a10dd14ea08048c621e471a079095",
+        "mtime": "2026-10-07T12:29:33.181Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/tui-dag-highlight.md",
+      "sha256": "b4c88120d0e58eca983a9d22fbfbde74f410d0a0b4c9728b7b18a3482bebd7d8"
+    },
+    {
+      "path": "docs/tui.md",
+      "sha256": "54035d2cf4766559452f2a2228b98c2f547d6b2700419035dfca407131d5b052"
+    },
+    {
+      "path": "docs/tui.zh-CN.md",
+      "sha256": "941aa0c0a3222e8b7fdf35078c114df7752462af114da3f4a3397d365bc1adaf"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "81ad82454e5056363f739b4f48014fbc15c69d68f201d9df25d1d3f388b10baf"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261007T123812-e7850e",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123812-e7850e.log",
+      "logSha256": "2b5f16d8b9f98fd766e458554a1cc5be48cff4eef912579261d3ffcb84361615"
+    },
+    {
+      "evidenceId": "ev-20261007T123825-e89b70",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123825-e89b70.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261007T123825-42c8fc",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123825-42c8fc.log",
+      "logSha256": "10f59d70381f22c5d89bebd7f8b98e626135bc62af8b4dd25b196b5c9d3b00c6"
+    },
+    {
+      "evidenceId": "ev-20261007T123827-9d1123",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123827-9d1123.log",
+      "logSha256": "028823a3d936fccee456c70000cae8436b06bc59771df66bc3a1bd8c40e3ae32"
+    },
+    {
+      "evidenceId": "ev-20261007T123827-6b90ef",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123827-6b90ef.log",
+      "logSha256": "f075381f1099a8670f837b7875b2f61e1f7a5881c9a7727abc1b2dc011172df6"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-07T12:38:46.698Z",
+  "notes": [
+    "pointer-coordinate DELIVERY is declared, not proven — a terminal and this host actually handing usable `onClick`/`onDragStart` `localRow`/`localCol` to a row `Box` inside a plugin sidebar panel is not provable by any arm here; the headless arms prove RESOLUTION, the real-terminal capture proves RENDER",
+    "artifact CONTENTS are unreadable to a bound seat — you can witness existence, size and sha256 only, so the acceptance rests on the gate exits plus the documentation you read",
+    "finding DOC-1 was raised by the previous seat and REPAIRED before your record, so your PASS is on the REPAIRED revision: `docs/tui.md` §3.3 now reads `icon ⬢` and its zh twin 图标 `⬢`, and §11.5's supersession row is relabelled `§3.3 / §11.4 icon cell — workmate`",
+    "MY OWN gate measurements this seat (all exit 0, run bound on the FROZEN tree, no implementation file read): tests — 1603 pass / 3 skip / 0 fail, 21624 expect() calls, 1606 tests across 98 files (the 3 skips are the toolchain-absent binary probes and the comment-checker binary arms, declared); typecheck exit 0; comments — VERDICT: PASS, scanned 357 of 357 TS files, 31409 declarations inspected, 13954 inline callbacks skipped as out of family; docs — pairs=47 failed=0 violations=0 exempt=22 derived=3 links=440 dead=0 PASS; dist — ok: 30/30 targets fresh, build toolchain bun 1.4.0 from `.toolchain/node_modules/.bin/bun`, with `packages/mpd-tui-plugin/dist/index.js` FRESH at sha 37f6097451fd… (7 NOT COVERED files listed, all vendored MCP `cli.js`/`serve.js`/`BUILD.lock` with no local src, not this wave's). The plan's §11.5 states '382 passing in the TUI package alone' — a PACKAGE-scoped figure from that lane's own run; the whole-tree `bun test packages` figure measured here is 1603, and the two are different bands, not a contradiction",
+    "the contract's own acceptance instruments (the headless AC1/AC2/AC3/AC5 render, the hitTest second/third-box arm, the PTY capture for the compact boxes / `✓ Tx` labels / three icons / `⤢`) live under the probed `evidence/tui/dag-highlight/<stamp>/` directories; a bound seat can witness their EXISTENCE, SIZE and SHA256 only — their CONTENTS are not readable to it, which is the second declared bound above, and it is why this PASS rests on the gate exits plus the documentation band rather than on re-performing the instruments",
+    "the seat's frozen doc resolution is WRONG FOR THIS WAVE (recorded by the previous seat and confirmed by mine): `.mpd/verify/seats.json` freezes `docPaths` as the PREVIOUS wave's plans, so `packages/*/README.md` and all of `evidence/**` are REFUSED while blind. This PASS therefore cites `.mpd/plans/tui-dag-highlight.md` + `docs/tui.md` (incl. §3.3 / §3.4 / §11.5) + `docs/tui.zh-CN.md` + `AGENTS.md`, the band a bound seat can actually read; the fix belongs to the seat-resolution path, not to this wave"
+  ]
+}

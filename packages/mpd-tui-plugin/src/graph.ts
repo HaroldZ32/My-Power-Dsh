@@ -47,6 +47,18 @@
 // so the references no task on the board carries travel out of the layout in `unresolved` and can be
 // counted, named and shown by the page.
 //
+// EVERY NODE READS `<marker> <id>` AND NOTHING ELSE (frozen clause AC1, this wave). The drawing used to
+// append a three-letter kind and the graph-safe subject, which is what the user read as garbled output
+// once a Chinese subject had been squeezed through `graphSafeLabel` — and which made one box wider than
+// the 40-cell sidebar its rank lives in. The subject and the description are NOT lost: they are verbatim
+// in the pinned detail body (clause C3), which is text rather than a drawing. `graphSafeLabel` stays
+// exported and byte-identical for the WEB parity arm; this module simply stops calling it.
+//
+// THE BOX IS THE COMPACT THREE-ROW FORM IN EVERY DRAWING (frozen clause AC2): top border, content,
+// bottom border, no padding rows, so a rank's stride is six rows (three box rows plus the three
+// connector rows that carry its edges down). One form per drawing, because two boxes of different
+// heights in one column would leave every edge between them pointing at rows nobody recomputed.
+//
 // A WIDE GLYPH OWNS THE CELL AFTER IT. `cellWidth` — never a character count — says how many cells a
 // glyph takes, and the cell a wide glyph covers must render as NOTHING rather than as the background
 // space it would otherwise fall back to. Writing one array slot per character while advancing two
@@ -55,7 +67,7 @@
 // against `ascii codepoints=34 cellWidth=34 endsWith│=true`. The `wide` array below is that fix, and
 // it is why a CJK subject can no longer shear the drawing.
 import { cellWidth, clampCells, sliceCells, stripControl } from "./sanitize.js"
-import { DAG_CHARS, DAG_KIND_ABBREV, DAG_TONE_GLYPH } from "./dag-theme.js"
+import { DAG_CHARS, DAG_TONE_GLYPH } from "./dag-theme.js"
 
 /** One task as the graph needs it; a structural subset of `TeamTaskRow` so a fixture is cheap. */
 export interface GraphTask {
@@ -142,11 +154,12 @@ export interface GraphView {
    */
   unresolved: readonly string[]
   /**
-   * How many rows one box carries: the roomy FIVE (top border, padding, label, padding, bottom border)
-   * or the compressed THREE (top border, label, bottom border).
+   * How many rows one box carries. The type keeps both forms so no existing caller's comparison stops
+   * compiling; EVERY drawing this wave produces reports the COMPACT THREE (top border, label, bottom
+   * border), because clause AC2 removed the padding rows from every entry point.
    *
    * REPORTED rather than implied, because every caller that resolves a pointer or a focus to a ROW
-   * needs it and a hard-coded `+ 1` is exactly how a five-row form breaks a three-row assumption
+   * needs it and a hard-coded `+ 1` is exactly how a box form breaks an assumption made about it
    * silently. The rail and the list draw one row per task and report three, the form they resemble.
    */
   boxRows: 3 | 5
@@ -154,9 +167,10 @@ export interface GraphView {
    * Whether the width cap forced a box interior narrower than the widest label the board would write.
    *
    * The one way a natural-width drawing can still be too small for its own text: the natural width cap
-   * (`NATURAL_MAX_NODE_WIDTH`) bounds the box, so an absurdly long subject is cut. The SCENE accepts
-   * that (it has always truncated); the `dag` PANEL reads this and falls back to the rail, keeping its
-   * own "never truncate" promise rather than losing it silently (frozen clause T1).
+   * (`NATURAL_MAX_NODE_WIDTH`) bounds the box, so an over-long label is cut. The SCENE accepts that (it
+   * has always truncated); the `dag` PANEL reads this and falls back to the rail, keeping its own
+   * "never truncate" promise rather than losing it silently (frozen clause T1). Under clause AC1 the
+   * label is `<marker> <id>`, so the cap does not bind for a realistic board and this stays `false`.
    *
    * IT IS THE CLAMP'S OWN CONDITION, not a second guess at it: the flag is true exactly when the label
    * the drawing would write does not fit the interior it drew. A reported fact derived any other way
@@ -190,13 +204,12 @@ export const GRAPH_THEME: Readonly<Record<GraphTone, string>> = Object.freeze({
   blank: "text",
 })
 
-// THE STATE GLYPHS AND KIND ABBREVIATIONS ARE THE CONTRACT'S, not this module's. `DAG_TONE_GLYPH` and
-// `DAG_KIND_ABBREV` in `dag-theme.ts` carried byte-identical copies of the two tables that used to live
-// here, and a duplicate table is precisely the drift clause C2 forbids: the panel and the scene read
-// the contract while the drawing read its own copy, so a state mark could change in one place only.
+// THE STATE GLYPHS ARE THE CONTRACT'S, not this module's. `DAG_TONE_GLYPH` in `dag-theme.ts` carried a
+// byte-identical copy of the table that used to live here, and a duplicate table is precisely the drift
+// clause C2 forbids: the panel and the scene read the contract while the drawing read its own copy, so a
+// state mark could change in one place only. `DAG_KIND_ABBREV` is deliberately NOT read any more: clause
+// AC1 takes the kind out of the drawing, so this module has no use for the abbreviation table.
 const GLYPH = DAG_TONE_GLYPH
-/** The three-letter kind abbreviation the labels carry, out of the same contract. */
-const KIND_ABBREV = DAG_KIND_ABBREV
 
 // The marks are read out of the visual contract (`dag-theme.ts`) rather than re-typed here: the legend,
 // the drawing and the tests all name the same characters, and a glyph change is one edit. `ARROW_DOWN`
@@ -287,7 +300,16 @@ export function legendLines(cols: number): string[] {
  */
 const NATURAL_RAIL_FALLBACK_COLS = 80
 
-/** The smallest box that can still hold `◐ T12 WRK …`; below this the rail is drawn instead. */
+/**
+ * The smallest box the FIT-WIDTH path (`layoutBoxes`) draws; below it that path REFUSES and
+ * `layoutGraph` falls back to the rail.
+ *
+ * ITS VALUE IS UNCHANGED BY THIS WAVE ON PURPOSE (frozen clause AC2's second sentence): the wave
+ * rebuilds the boxes at a width derived from the LABEL, and the fit-width path's geometry — including
+ * the width at which it gives up — is what `layoutGraph`'s boxes-versus-rail choice is stated in, so
+ * touching it would silently move that choice for every existing caller. The `◐ T12 …` reading it was
+ * sized for is now the drawing's own label, `<marker> <id>`.
+ */
 const MIN_NODE_WIDTH = 16
 /** The gap between two boxes in one rank. */
 const NODE_GAP = 3
@@ -300,21 +322,41 @@ const NODE_GAP = 3
  */
 const MAX_NODE_WIDTH = 34
 /**
- * The widest a box may grow ON THE NATURAL-WIDTH PATH.
+ * The widest a box may grow ON THE NATURAL-WIDTH PATH — the upper bound clause AC3 names in
+ * `clamp(naturalFloor, labelCells + 4, NATURAL_MAX_NODE_WIDTH)`.
  *
- * WHY IT IS SO MUCH WIDER THAN THE FIT PATH'S (measured against a real PTY capture, 2026-10-06): at 34
- * the cap is reached by any label past 32 cells, and a REAL board's labels are 48-53 — `W1 natural width
- * and bidirectional panning` is 51 — so `labelOverflow` fired at every terminal width, `dagPanelLayout`
- * fell back to the rail, and the whole feature (natural width plus a horizontal window) switched itself
- * OFF on exactly the boards it exists for. The capture read `view rail · 5 tasks · ranks derived` at 140
- * AND 220 columns, with `pan1`/`pan2` identical to `open1` because a rail has nothing to pan to.
+ * WHY IT WAS 64, and why the number survives the wave that made it unreachable. At the fit path's 34 the
+ * cap was reached by any label past 32 cells, and a REAL board's labels measured 48-53 —
+ * `W1 natural width and bidirectional panning` is 51 — so `labelOverflow` fired at every terminal width,
+ * `dagPanelLayout` fell back to the rail, and the whole feature (natural width plus a horizontal window)
+ * switched itself OFF on exactly the boards it exists for: the PTY capture read
+ * `view rail · 5 tasks · ranks derived` at 140 AND 220 columns, with `pan1`/`pan2` identical to `open1`
+ * because a rail has nothing to pan to.
  *
- * 64 is sized from the LABEL, which is what the cap actually bounds: `nodeWidth` must hold `" " + body`,
- * so a 64-cell box writes a 61-cell label whole — a ~52-cell SUBJECT once the `✓ T1 KIND ` prefix takes
- * its ~9 cells, which covers the fixture and ordinary real subjects. A pathological subject still trips
- * the safety net rather than producing a kilometre-wide drawing.
+ * UNDER CLAUSE AC1 THE CAP CAN NO LONGER BIND, and that is the intended direction rather than a loose
+ * end: a label is `<marker> <id>`, so `labelCells + 4` stays in the low tens for any realistic id and
+ * the FLOOR (below) is what sizes an ordinary drawing. The bound is kept exactly as the clause spells
+ * it, because it is also the safety net that keeps a pathological board from producing a
+ * kilometre-wide drawing — the natural path's width is content-derived and this is the only ceiling on
+ * that content.
  */
 const NATURAL_MAX_NODE_WIDTH = 64
+/**
+ * The NATURAL path's width FLOOR — `naturalFloor` in the frozen clause AC3, and the number that makes
+ * the drawing fit a sidebar.
+ *
+ * WHY TEN. `nodeWidth = clamp(naturalFloor, labelCells + 4, NATURAL_MAX_NODE_WIDTH)` and the label is
+ * now `<marker> <id>` (clause AC1), so for ordinary boards the floor is what actually binds: ten cells
+ * carry a five-cell label with a leading space and room to spare inside the borders. That is what makes
+ * clause AC3's measurement true — a board whose widest rank holds THREE tasks draws at
+ * `3 * 10 + 2 * NODE_GAP` = 36 cells, inside a 40-column sidebar with no horizontal pan, where the old
+ * content-derived width (`label + 3`, floored at 16, capped at 64) drew 3 * 19 + 6 = 63 and forced the
+ * user to pan to read their own graph.
+ *
+ * IT IS NOT A TRUNCATION FLOOR. A label longer than `floor - 4` cells still WIDENS its box (up to the
+ * cap); the floor only stops a board of one-character ids from drawing boxes too cramped to read.
+ */
+const NATURAL_MIN_NODE_WIDTH = 10
 /** Ranks at or above this count are drawn as the list, because boxes stop being readable. */
 const MAX_BOX_RANKS = 12
 
@@ -385,6 +427,11 @@ function clampSpans(spans: readonly GraphSpan[], cols: number): GraphSpan[] {
  * single-cell and outside every CJK range the clause bans, so a label built here cannot contain one.
  * That is what lets the acceptance instrument assert C1 over the RENDERED drawing instead of over the
  * inputs.
+ *
+ * WHO CALLS IT. NOT this module's boxed drawing any more: clause AC1 limits a node label to
+ * `<marker> <id>` (see {@link labelOf}), so the TUI drawing composes no subject at all and the CJK
+ * question cannot come up. The function is FROZEN and kept exported because the WEB view's factory and
+ * `dag-label-parity.test.ts` consume it by this name, and their contract is unchanged.
  * @param subject - the task's original subject, in whatever language the record carries.
  * @param ordinal - the task's 1-based position in the board order the surface was HANDED; it is what a
  *   subject with no ASCII left falls back to, and it must never be a drawn order (clause C4).
@@ -456,44 +503,29 @@ export function sliceSpans(spans: readonly GraphSpan[], offset: number, cols: nu
 }
 
 /**
- * The label one task draws: marker, id, kind abbreviation and the GRAPH-SAFE subject.
+ * The label one task draws: its marker, ONE space, its id — and nothing else (frozen clause AC1).
  *
- * Built here rather than inline in three renderers so an ABSENT kind cannot leave a double space in
- * one view and not the others — measured: the boxes view drew `✓ t1  freeze the contract` while the
- * rail drew it single-spaced. The subject goes through {@link graphSafeLabel}, so this function is the
- * ONE write site for text the drawing carries (clause C2) and no renderer composes a label of its own.
+ * WHY SO TERSE. The drawing is a NAVIGATION surface in a 28-column sidebar, and the wave's user ruling
+ * is a state marker plus the task number (`✓ T3`, `▶ T3`): the kind was a three-letter word the
+ * neighbouring box already implies, and the subject was a real sentence squeezed into whatever interior
+ * was left — a Chinese subject came out `#5`, which the user read as garbled text rather than as a
+ * label. Removing BOTH removes the class: a marker is one cell, an id is short, and the box needs no
+ * truncation to stay on its column.
+ *
+ * THE SUBJECT IS NOT LOST BY THIS. It lives verbatim in the pinned detail body (clause C3), and
+ * {@link graphSafeLabel} — the composer this function no longer calls — stays exported and unchanged
+ * for the WEB parity arm and for `dag-label-parity.test.ts`.
+ *
+ * ONE WRITE SITE, still: built here rather than inline in three renderers so an absent glyph cannot
+ * leave a double space in one view and not the others, and so no renderer composes a label of its own.
  * @param task - the task to label.
  * @param focus - the focused task id, which draws the `▶` marker instead of the state glyph.
- * @param ordinal - the task's 1-based position in the board order the layout was handed.
- * @returns the label text.
+ * @returns the label text: `<marker> <id>`.
  */
-function labelOf(task: GraphTask, focus: string | undefined, ordinal: number): string {
+function labelOf(task: GraphTask, focus: string | undefined): string {
   /** The marker: the focus outranks the state glyph, because where you ARE beats what it is. */
   const marker = task.id === focus ? FOCUS_MARKER : (GLYPH[task.visual] ?? "?")
-  /** The kind abbreviation, absent when the record carries no kind. */
-  const kind = KIND_ABBREV[task.kind ?? ""] ?? ""
-  /** The subject slot, composed rather than interpolated — this is where the CJK ban is enforced. */
-  const subject = graphSafeLabel(task.subject, ordinal)
-  return (kind === "" ? [marker, task.id, subject] : [marker, task.id, kind, subject]).join(" ")
-}
-
-/**
- * The 1-based board position of every task, which is the ordinal {@link graphSafeLabel} falls back to.
- *
- * Read from the array the layout was HANDED and never from a drawn order: the boxes layout reorders
- * within a rank by barycentre and `rankPlan` re-buckets the tasks, so a drawn index would number a
- * fallback label by where a task happened to land on screen — and the same board would then compose
- * different labels at different widths (clause C4's own warning).
- * @param tasks - the board, in the order the surface was handed it.
- * @returns each id's 1-based board position; a duplicate id keeps its FIRST position.
- */
-function ordinalOf(tasks: readonly GraphTask[]): Map<string, number> {
-  /** The positions, filled in one pass so every layout agrees on the numbering. */
-  const ordinals = new Map<string, number>()
-  tasks.forEach((task, index) => {
-    if (!ordinals.has(task.id)) ordinals.set(task.id, index + 1)
-  })
-  return ordinals
+  return `${marker} ${task.id}`
 }
 
 /**
@@ -502,17 +534,17 @@ function ordinalOf(tasks: readonly GraphTask[]): Map<string, number> {
  * The natural-width entry point's whole input: the node width comes from CONTENT, so it needs the one
  * number that content produces, measured with the SAME composer the drawing paints with. A second,
  * hand-rolled estimate here would be the drift clause C2 forbids — and the panel used to carry exactly
- * such a duplicate, which is why it is now computed in one place and read by both surfaces.
+ * such a duplicate, which is why it is now computed in one place and read by both surfaces. Under clause
+ * AC1 the composer writes `<marker> <id>`, so this is the widest of those and a board of two-character
+ * ids measures four cells whatever its subjects say.
  * @param tasks - the board, in the order the surface was handed it.
  * @param focus - the focused task id, which swaps a state glyph for the focus marker.
  * @returns the widest label, in cells; zero for an empty board.
  */
 export function widestLabelCells(tasks: readonly GraphTask[], focus?: string): number {
-  /** The position of each task in the board order the caller handed over. */
-  const ordinals = ordinalOf(tasks)
   /** The running maximum. */
   let widest = 0
-  for (const task of tasks) widest = Math.max(widest, cellWidth(labelOf(task, focus, ordinals.get(task.id) ?? 1)))
+  for (const task of tasks) widest = Math.max(widest, cellWidth(labelOf(task, focus)))
   return widest
 }
 
@@ -742,9 +774,10 @@ export function cycleIds(tasks: readonly GraphTask[]): string[] {
 export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: string): GraphView | undefined {
   /** What the board's references resolve to, and therefore how it is ranked. */
   const plan = rankPlan(tasks)
-  // THE FIT-WIDTH FORM STAYS THREE ROWS. Its callers pin `hit.row + 1` as the label row, and its
-  // contract is "the drawing fits what you gave me" — not "the drawing is roomy". The padding rows are
-  // the NATURAL form's, chosen from the vertical budget (see `layoutBoxesNatural`).
+  // THE FIT-WIDTH FORM IS THE COMPACT THREE-ROW ONE, and since clause AC2 that is the ONLY form any
+  // entry point draws — `layoutBoxesNatural` draws the same one rather than buying padding rows from a
+  // vertical budget. Its callers pin `hit.row + 1` as the label row, and its contract is "the drawing
+  // fits what you gave me"; the geometry itself is untouched by this wave.
   if (tasks.length === 0) {
     /** The empty view: a board with no tasks draws nothing rather than a bare frame. */
     const empty: GraphView = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [], ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 }
@@ -763,14 +796,17 @@ export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: s
 }
 
 /**
- * How much room a natural-width layout has VERTICALLY, which is what selects the box form.
+ * How much room a natural-width layout has VERTICALLY.
  *
- * A budget rather than a width, because the natural form's own width comes from the content: the only
- * thing a caller can still constrain is how many rows it can show, and that is the difference between
- * the roomy five-row box and the compressed three-row one.
+ * KEPT AS AN ACCEPTED ARGUMENT, NO LONGER A CHOICE (frozen clause AC2). The budget used to select the
+ * box form — the roomy five-row box when every rank fitted its own five rows plus three connector rows,
+ * the compressed three-row one otherwise. The wave draws ONE form, the compact three-row box, in every
+ * drawing, so `rows` is accepted and ignored: the three entry points that pass `{ rows }`
+ * (`panel-dag.ts`, `scenes.ts`, `subagent-scene.ts`) keep compiling and keep their own vertical window,
+ * which is where that number was always really spent.
  */
 export interface GraphBudget {
-  /** The rows the surface can show; omitted means the roomy form, since no caller said otherwise. */
+  /** The rows the surface can show; accepted for compatibility and no longer selects the box form. */
   rows?: number
 }
 
@@ -787,9 +823,15 @@ export interface GraphBudget {
  * content-derived width the old `nodeWidth < MIN_NODE_WIDTH` arm is unreachable — the width is floored
  * AT that minimum — so the one remaining refusal is a board with more ranks than a boxed drawing can
  * stay legible in.
+ *
+ * THE WIDTH AND THE FORM ARE BOTH FIXED BY THIS WAVE'S CLAUSES: `nodeWidth` is AC3's clamp (the label
+ * plus four cells of chrome, floored at ten), and the box is AC2's compact three-row form in every
+ * drawing. The `budget` argument the callers still pass is accepted and ignored — see
+ * {@link GraphBudget} — and every caller's own vertical window is untouched.
  * @param tasks - the board to draw.
  * @param focus - the task to light, with its dependency chain.
- * @param budget - how many rows the surface can show; omitted means the roomy box form.
+ * @param budget - the surface's vertical budget, accepted for compatibility; it no longer selects the
+ *   box form (the compact three-row form is the only one drawn).
  * @returns the view, or `undefined` when the board refuses to be drawn as boxes.
  */
 export function layoutBoxesNatural(tasks: readonly GraphTask[], focus?: string, budget?: GraphBudget): GraphView | undefined {
@@ -802,48 +844,26 @@ export function layoutBoxesNatural(tasks: readonly GraphTask[], focus?: string, 
   const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1)
   /** The widest label the drawing would write, measured with the composer it paints with. */
   const label = widestLabelCells(tasks, focus)
-  // THE NODE WIDTH IS THE LABEL PLUS ITS THREE CELLS OF CHROME — the leading space the drawing writes
-  // before the text, and the two borders around it — floored at the width below which even a minimum
-  // label cannot be read, and capped so one long subject cannot make the drawing absurdly wide. The
-  // panel learns about the cap through `labelOverflow` rather than being silently truncated. Getting
-  // this arithmetic wrong by ONE cell is what used to cut the last character of any label that landed
-  // between the two bounds: measured, `requirements contract` drew as `requirements contrac` while
-  // `labelOverflow` still answered `false`, so nothing fell back and nothing reported it.
-  const nodeWidth = Math.max(MIN_NODE_WIDTH, Math.min(NATURAL_MAX_NODE_WIDTH, label + 3))
+  // THE NODE WIDTH IS THE LABEL PLUS ITS FOUR CELLS OF CHROME (frozen clause AC3, stated exactly as the
+  // clause spells it): the leading space the drawing writes before the text, the two borders around it,
+  // and one cell of slack — `nodeWidth = clamp(naturalFloor, labelCells + 4, NATURAL_MAX_NODE_WIDTH)`.
+  // The FLOOR is what sizes an ordinary drawing, because clause AC1's label is `<marker> <id>`; the CAP
+  // is the safety net a content-derived width needs. Getting this arithmetic wrong by ONE cell is what
+  // used to cut the last character of any label that landed between the two bounds: measured,
+  // `requirements contract` drew as `requirements contrac` while `labelOverflow` still answered `false`.
+  const nodeWidth = Math.max(NATURAL_MIN_NODE_WIDTH, Math.min(NATURAL_MAX_NODE_WIDTH, label + 4))
   if (tasks.length === 0) {
     /** The empty view: a board with no tasks draws nothing rather than a bare frame. */
     const empty: GraphView = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [], ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 }
     if (focus !== undefined) empty.focus = focus
     return empty
   }
-  // THE FORM IS CHOSEN ONCE, for the whole drawing: every rank must have the room, or the FIRST one
-  // that does not would leave two boxes of different heights in the same column and the edges between
-  // them pointing at rows that are no longer where they were computed.
-  /** How many rows one rank occupies in this form, connector rows included. */
-  const stride = boxRowsOf(ranks.length, budget) === 5 ? 8 : 6
-  /** Whether the vertical budget bought the padding rows. */
-  const form: 3 | 5 = stride === 8 ? 5 : 3
-  return drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, label)
-}
-
-/**
- * Which box form a board of `ranks` ranks fits in, given the surface's vertical budget.
- *
- * ROOMY needs every rank to fit its own five rows PLUS the three connector rows that carry that rank's
- * edges to the next one, and the last rank needs no connector — hence `+ 2` rather than `+ 3` on the
- * whole sum. A surface that reported no budget at all is treated as roomy: it said nothing, so the
- * padding rows are drawn and the caller's own vertical window deals with the overflow, which is the
- * same contract the vertical scrollbar already had.
- * @param ranks - how many ranks the drawing stacks.
- * @param budget - the surface's vertical budget, when it reported one.
- * @returns the box form to draw.
- */
-function boxRowsOf(ranks: number, budget: GraphBudget | undefined): 3 | 5 {
-  /** The rows the roomy form needs in total, its rank strides plus the final rank's own box. */
-  const roomy = ranks * 8 + 2
-  /** The rows the surface can show; `Infinity` when it did not say. */
-  const rows = budget?.rows === undefined || !Number.isFinite(budget.rows) ? Number.POSITIVE_INFINITY : Math.floor(budget.rows)
-  return rows >= roomy ? 5 : 3
+  // ONE FORM, ALWAYS (frozen clause AC2): the compact three-row box, top border / content / bottom
+  // border, at a rank stride of six rows. The vertical budget no longer buys padding rows — a single
+  // form per drawing is the contract, and two boxes of different heights in one column would leave the
+  // edges between them pointing at rows nobody recomputed.
+  void budget
+  return drawBoxes(tasks, ranks, widest, nodeWidth, 3, focus, plan, label)
 }
 
 /**
@@ -857,7 +877,10 @@ function boxRowsOf(ranks: number, budget: GraphBudget | undefined): 3 | 5 {
  * @param ranks - the ranks in draw order, already computed by the caller's rank plan.
  * @param widest - the count of tasks in the busiest rank, which sets the drawing's total width.
  * @param nodeWidth - the box width, borders included, already clamped by the caller.
- * @param form - how many rows each box carries: the roomy five (padding rows) or the compressed three.
+ * @param form - how many rows each box carries. BOTH branches are kept and only the COMPACT THREE is
+ *   passed any more (clause AC2: one form per drawing); the five-row branch survives as the arithmetic
+ *   the three-row branch is written against, so a future caller cannot silently reintroduce padding rows
+ *   without the label, border and stride rows moving with it.
  * @param focus - the task to light, with its dependency chain.
  * @param plan - the rank plan, handed in rather than recomputed so the two cannot disagree.
  * @param widestLabel - the board's widest label, when the caller measured one and wants the overflow
@@ -878,8 +901,6 @@ function drawBoxes(
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus)
   /** The drawn width: exactly what the widest rank occupies. */
   const width = widest * (nodeWidth + NODE_GAP) - NODE_GAP
-  /** The position of each task in the board order the caller handed over, for the label fallback. */
-  const ordinals = ordinalOf(tasks)
   /** The row a box's padding sits on above its content, and the row its content sits on. */
   const padTop = form === 5 ? 1 : 0
   /**
@@ -890,8 +911,9 @@ function drawBoxes(
    * budget is correct only while the box is at the width that constant was derived from, and wrong — by
    * writing straight over the right border and into the next box — for every narrower box. The FIT-WIDTH
    * path produces exactly those (a 28-cell terminal gets a 28-cell box), so a fixed budget shears its
-   * drawings; measured, a boxed row came out with NO closing border at all. The roomy form's padding rows
-   * buy air and not text, so the interior is the budget in both forms.
+   * drawings; measured, a boxed row came out with NO closing border at all. A padding row (when a caller
+   * ever draws the five-row form again) buys air and not text, so the interior is the budget in both
+   * forms.
    */
   const labelCells = nodeWidth - 2
   /** The row a box's content (its label) sits on, relative to the box's top border. */
@@ -1002,8 +1024,8 @@ function drawBoxes(
       }
       for (let col = left + 1; col < right; col++) link(top + bottomRow, col, LEFT | RIGHT, at)
       link(top + bottomRow, left, RIGHT | UP, at); link(top + bottomRow, right, LEFT | UP, at)
-      /** The label: the marker, the id, the kind abbreviation and as much subject as fits. */
-      const body = labelOf(task, focus, ordinals.get(task.id) ?? 1)
+      /** The label: the marker and the id, one space apart and nothing else (clause AC1). */
+      const body = labelOf(task, focus)
       /** The column the next label character goes to. */
       let cursor = left + 1
       for (const char of clampCells(stripControl(" " + body), labelCells)) { label(top + contentRow, cursor, char, at); cursor += cellWidth(char) }
@@ -1161,8 +1183,6 @@ export function layoutRail(tasks: readonly GraphTask[], cols: number, focus?: st
   const lines: GraphSpan[][] = []
   /** One rectangle per row, so the pointer can resolve to a task. */
   const hits: GraphHit[] = []
-  /** The position of each task in the board order the caller handed over, for the label fallback. */
-  const ordinals = ordinalOf(tasks)
   drawn.forEach((entry, index) => {
     /** This task's tone: its state, or the chain/dim treatment when something is focused. */
     const at = toneOf(entry.task, focus, chain)
@@ -1174,8 +1194,8 @@ export function layoutRail(tasks: readonly GraphTask[], cols: number, focus?: st
     const elbow = entry.leaf ? "└─" : "├─"
     /** The connector, arrowed INTO this task so the rail states its direction without a bus. */
     const connector = entry.depth === 0 ? "" : `${entry.prefix}${elbow}${ARROW_RIGHT} `
-    /** The label: marker, glyph, id, kind and the graph-safe subject. */
-    const label = labelOf(entry.task, focus, ordinals.get(entry.task.id) ?? 1)
+    /** The label: the marker and the id, the same two fields every other view draws (clause AC1). */
+    const label = labelOf(entry.task, focus)
     // THE LABEL OUTRANKS THE TAIL. A row with no id is unreadable, while a row without its
     // assignee is merely terse — so the tail is DROPPED on a narrow viewport rather than squeezing
     // the label below the width at which a task id is still legible.
@@ -1223,8 +1243,6 @@ export function layoutList(tasks: readonly GraphTask[], cols: number, focus?: st
   const lines: GraphSpan[][] = []
   /** One rectangle per row, so the pointer can resolve to a task. */
   const hits: GraphHit[] = []
-  /** The position of each task in the board order the caller handed over, for the label fallback. */
-  const ordinals = ordinalOf(tasks)
   for (let rank = 0; rank < ranks.length; rank++) {
     /** The rank header's rule length, which never goes negative. */
     const rule = "─".repeat(Math.max(0, cols - 8))
@@ -1234,8 +1252,8 @@ export function layoutList(tasks: readonly GraphTask[], cols: number, focus?: st
       const at = toneOf(task, focus, chain)
       /** The dependency suffix, so a multi-blocker row is readable at a glance. */
       const suffix = task.dependencies.length === 0 ? "" : ` ⇠${task.dependencies.join(",")}`
-      /** The row's left half: marker, id, kind and the graph-safe subject. */
-      const head = labelOf(task, focus, ordinals.get(task.id) ?? 1)
+      /** The row's left half: the marker and the id (clause AC1), which is all the drawing carries. */
+      const head = labelOf(task, focus)
       /** The row's right half: state, assignee, blocker list. */
       const tail = `${task.visual}${task.attempt === undefined ? "" : ` a${task.attempt}`}${task.assignee === undefined ? "" : `  @${task.assignee}`}${suffix}`
       /** The head, truncated to leave the tail its room. */
@@ -1285,7 +1303,8 @@ export function layoutGraph(tasks: readonly GraphTask[], cols: number, focus?: s
  * the `dag` panel does when it declines a boxed drawing.
  * @param tasks - the board to draw.
  * @param focus - the task to light, with its dependency chain.
- * @param budget - how many rows the surface can show; omitted means the roomy box form.
+ * @param budget - the surface's vertical budget, forwarded to {@link layoutBoxesNatural}; under clause
+ *   AC2 it no longer selects the box form, and this path's own vertical window does that work.
  * @returns the view; its `width` may exceed `cols`.
  */
 export function layoutGraphNatural(tasks: readonly GraphTask[], focus?: string, budget?: GraphBudget): GraphView {

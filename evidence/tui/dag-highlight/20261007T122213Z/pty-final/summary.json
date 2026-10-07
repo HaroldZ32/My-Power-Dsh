@@ -1,0 +1,53 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/dag-verify",
+  "widths": [
+    220
+  ],
+  "board": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/dag-verify/ws/.mpd/team/teams/team-dag-verify.json",
+  "isolation": {
+    "ok": true,
+    "checked": 1,
+    "keys": [
+      "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-dag-verify-ws--"
+    ]
+  },
+  "verdicts": [
+    {
+      "cols": 220,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "‹ 待办 › ▸ ◆ ❖ ◈ ⬢",
+        "≡ ▸ ◆ ❖ ‹ MPD DAG › ⬢"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": true,
+      "boxRound": true,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 5,
+      "railRendered": false,
+      "panSignatures": [],
+      "panMoved": false,
+      "staticRows": [],
+      "panStatic": false,
+      "cjkInDrawing": [],
+      "cjkInDetail": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               "
+      ],
+      "cjkOutsideDrawing": [
+        " ‹ 待办 › ▸ ◆ ❖ ◈ ⬢                                                    ",
+        " Ctrl+B 聚焦侧栏                                                       ",
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               "
+      ],
+      "chineseSubjectsInDetail": [],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    }
+  ]
+}

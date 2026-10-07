@@ -681,19 +681,32 @@ describe("C1 · the TUI drawing carries no banned character in ANY of its three 
     for (const line of lines) expect(bannedChars(line)).toEqual([])
   })
 
-  test("the drawing really uses the ordinal fallback, per mode, in the same order as the board", async () => {
+  test("AC1: every TUI mode draws `<marker> <id>` and carries NO subject and NO ordinal fallback", async () => {
+    // THE ARM THIS REPLACES asserted that the drawing carried `#<ordinal>` — the label `graphSafeLabel`
+    // produces for a subject with no printable ASCII left, which every row of this pure-Chinese board
+    // hits. Clause AC1 takes the subject OUT of the label, so the fallback can no longer reach the
+    // drawing at all; asserting its ABSENCE, in all three modes, is the stronger statement, and it is
+    // the one the user's garbled-text objection was about.
     /** The TUI module under test. */
     const surface = await loadTuiGraph()
-    if (typeof surface.layoutList !== "function") throw new Error("graph.ts no longer exports layoutList")
-    /** The list drawing, whose rows are one task each and therefore readable per ordinal. */
-    const view = surface.layoutList(TUI_CHINESE_BOARD, 60)
-    /** The drawing's text. */
-    const text = tuiText(view)
-    for (const [index] of TUI_CHINESE_BOARD.entries()) {
-      expect(`${index + 1} in drawing: ${text.includes(`#${index + 1}`)}`).toBe(`${index + 1} in drawing: true`)
+    /** The three modes, each with how it is called, so a missing entry point names itself. */
+    const modes: Array<{ name: string; draw: () => TuiView }> = []
+    if (typeof surface.layoutGraph === "function") modes.push({ name: "boxes", draw: () => (surface.layoutGraph as NonNullable<TuiGraphSurface["layoutGraph"]>)(TUI_CHINESE_BOARD, 200) })
+    if (typeof surface.layoutRail === "function") modes.push({ name: "rail", draw: () => (surface.layoutRail as NonNullable<TuiGraphSurface["layoutRail"]>)(TUI_CHINESE_BOARD, 40) })
+    if (typeof surface.layoutList === "function") modes.push({ name: "list", draw: () => (surface.layoutList as NonNullable<TuiGraphSurface["layoutList"]>)(TUI_CHINESE_BOARD, 60) })
+    expect(modes.map(mode => mode.name)).toEqual(["boxes", "rail", "list"])
+    for (const mode of modes) {
+      /** This mode's whole drawn text. */
+      const text = tuiText(mode.draw())
+      // Every task is still NAMED — the id is what a reader navigates by, and it survives untouched.
+      for (const task of TUI_CHINESE_BOARD) expect(`${mode.name} ${task.id} in drawing: ${text.includes(task.id)}`).toBe(`${mode.name} ${task.id} in drawing: true`)
+      // THE ORDINAL FALLBACK IS GONE FROM THE DRAWING, per mode.
+      for (const [index] of TUI_CHINESE_BOARD.entries()) {
+        expect(`${mode.name} #${index + 1} in drawing: ${text.includes(`#${index + 1}`)}`).toBe(`${mode.name} #${index + 1} in drawing: false`)
+      }
+      // And NOTHING of the raw subjects survived into the drawing.
+      for (const subject of CHINESE_SUBJECTS) expect(`${mode.name} subject in drawing: ${text.includes(subject)}`).toBe(`${mode.name} subject in drawing: false`)
     }
-    // And NOTHING of the raw subjects survived into the drawing.
-    for (const subject of CHINESE_SUBJECTS) expect(text.includes(subject)).toBe(false)
   })
 })
 

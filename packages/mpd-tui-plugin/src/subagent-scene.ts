@@ -1115,6 +1115,66 @@ export function interruptSubagent(channel: unknown, agentId: string): boolean {
 }
 
 /**
+ * How long a pending detail request stays usable, in milliseconds.
+ *
+ * The window this covers is the one between the DAG page deciding to open a member's page and the
+ * scene's FIRST render — two calls inside one synchronous route, so five seconds is already generous.
+ * The bound exists for the OTHER case: the scene is already mounted (the request cannot seed a state
+ * that has already been initialised), and an unbounded request would then ambush some unrelated LATER
+ * open with a stale agent id. A request older than this is DROPPED, never replayed.
+ */
+export const SUBAGENT_DETAIL_REQUEST_TTL_MS = 5000
+
+/**
+ * The ONE pending request, module-scoped on purpose.
+ *
+ * WHY NOT A PARAMETER: the scene component is constructed by `scenes.ts` at apply time, while the
+ * request is produced later by a CLICK in a sidebar panel, and the host's scene seam opens a scene by
+ * id alone (`tui.openScene(id)`) — there is no per-open argument to carry. The request is therefore a
+ * one-slot handoff between the two, with three properties that keep it honest: it is TRANSIENT (a UI
+ * gesture, never persisted state), it is DESTRUCTIVE (taking it clears it), and it EXPIRES (see
+ * {@link SUBAGENT_DETAIL_REQUEST_TTL_MS}). The slot holds the LAST request only — two clicks inside
+ * one mount window resolve to the page the user last pointed at, which is what a click means.
+ */
+let pendingDetailRequest: { agentId: string; at: number } | undefined
+
+/**
+ * Ask the merged scene to open on one subagent's DETAIL view the next time it mounts.
+ *
+ * The caller is expected to open the scene immediately afterwards; a request that no mount ever takes
+ * simply expires. Nothing here reads the host — it records an intent, it does not verify one.
+ * @param agentId - the HOST's own subagent id (the key the detail view re-reads its entry by).
+ * @param atMs - the instant the request was made; a test injects it to age a request deliberately.
+ */
+export function requestSubagentDetail(agentId: string, atMs: number = Date.now()): void {
+  pendingDetailRequest = { agentId, at: atMs }
+}
+
+/**
+ * Take the pending request, if one is still fresh: a DESTRUCTIVE read.
+ *
+ * Destructive by contract, for two reasons that are the same reason: a second scene open must not
+ * re-enter a detail the user has already left, and a reader that returned the same id twice would make
+ * "opened on the member you clicked" indistinguishable from "opened on whatever is still lying
+ * around". A stale or nonsensical request is cleared and reported as absent — the caller then lands on
+ * the scene's list, which is the honest surface for "nobody told me which member".
+ * @param nowMs - the current instant; defaults to the wall clock, and a test passes its own.
+ * @returns the agent id to open the detail on, or undefined when there is nothing fresh to open.
+ */
+export function takeSubagentDetailRequest(nowMs: number = Date.now()): string | undefined {
+  /** The request as it stood; the slot is cleared BEFORE it is judged, so a rejection cannot linger. */
+  const request = pendingDetailRequest
+  pendingDetailRequest = undefined
+  if (request === undefined) return undefined
+  if (request.agentId === "") return undefined
+  if (!Number.isFinite(nowMs)) return undefined
+  /** How long the request has been waiting, in milliseconds; a clock that ran BACKWARDS is not fresh. */
+  const age = nowMs - request.at
+  if (age < 0 || age > SUBAGENT_DETAIL_REQUEST_TTL_MS) return undefined
+  return request.agentId
+}
+
+/**
  * Build the merged scene component.
  * @param readWorkflow - reads the MPD team projection for this session's workspace; the wiring in
  *   `scenes.ts` passes the same reader the team scene uses, so the two cannot drift. It is injected
@@ -1123,9 +1183,17 @@ export function interruptSubagent(channel: unknown, agentId: string): boolean {
  *   SCENE is the only surface the host hands that object to, and its `useStdin` is the one that
  *   resolves the LIVE input context (measured, dsh-tui 0.12.0). Optional: the panel still renders
  *   without it, and a caller that omits it simply reports nothing.
+ * @param takePendingDetail - reads (and consumes) a request to open ON one member's detail view; the
+ *   reader is consulted EXACTLY ONCE, on the mount that opens the scene. Defaults to this module's own
+ *   {@link takeSubagentDetailRequest}, which is how the DAG page's `openAgentPage` reaches a scene an
+ *   earlier `scenes.ts` already constructed.
  * @returns a component matching the host's `TuiSceneProps` contract.
  */
-export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | undefined, onHostKit?: (ui: unknown) => unknown): unknown {
+export function createSubagentSceneComponent(
+  readWorkflow: () => TeamWorkflow | undefined,
+  onHostKit?: (ui: unknown) => unknown,
+  takePendingDetail: () => string | undefined = takeSubagentDetailRequest,
+): unknown {
   // The props type is the ADAPTER's `TuiScenePropsLike` — the TUI plane's single declaration of the
   // host's scene contract — even though every field is still re-checked at runtime below: the type
   // says what a well-formed host passes, and a scene must survive a host that does not.
@@ -1176,8 +1244,15 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
     const notice = noticeState[0] as string
     /** Publishes an action outcome. */
     const setNotice = noticeState[1]
-    /** The agent id the DETAIL view is open on; undefined means the list owns the scene body. */
-    const detailState = React.useState(undefined as string | undefined)
+    /**
+     * The agent id the DETAIL view is open on; undefined means the list owns the scene body.
+     *
+     * ITS INITIAL VALUE IS THE PENDING REQUEST, read through a lazy initializer so the reader runs
+     * EXACTLY ONCE per mount (React evaluates a function argument only on the mount, and this module's
+     * own reader is destructive): a scene the DAG page asked to open on a member comes up ON that
+     * member's detail, while a scene opened any other way comes up on its list.
+     */
+    const detailState = React.useState(() => takePendingDetail())
     /** The agent id the DETAIL view is open on. */
     const detailAgentId = detailState[0] as string | undefined
     /** Opens the detail on an agent id, or returns to the list with `undefined`. */

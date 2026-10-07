@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "recordId": "rec-20261007T123439-15d9ec",
+  "loopId": "loop-20261007T120525-04d808",
+  "taskId": null,
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "delegate:agent_teams_plan",
+  "verifierId": "418383f3-9cf4-4833-ae95-65459b955154",
+  "basis": {
+    "kind": "unproven",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/de-vendor-and-verify-law.md",
+        "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+      },
+      {
+        "path": ".mpd/plans/verify-law-spec.md",
+        "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+      }
+    ],
+    "probe": [
+      {
+        "path": "evidence/tui/dag-highlight/20261007T122213Z/README.md",
+        "bytes": 5263,
+        "sha256": "779e8cfb2a2b28bfa011ebc382299551758765c460cfe907962e12cf829077ce",
+        "mtime": "2026-10-07T12:32:28.483Z"
+      },
+      {
+        "path": "evidence/tui/dag-highlight/20261007T122213Z/gates.log",
+        "bytes": 707,
+        "sha256": "aa6c59cb4c82cdc0d9d2c8e30a7fd2d965bf69eda6b67b5845cc95b1cae7d651",
+        "mtime": "2026-10-07T12:31:12.777Z"
+      },
+      {
+        "path": "evidence/tui/dag-highlight/20261007T122213Z/hashes.txt",
+        "bytes": 227,
+        "sha256": "23f1a34ac078e1ac3010cffc039efd0627b666cf2eb1ab54dda6c1622bfcad5a",
+        "mtime": "2026-10-07T12:32:23.040Z"
+      },
+      {
+        "path": "evidence/tui/dag-highlight/20261007T122213Z/acceptance.log",
+        "bytes": 730,
+        "sha256": "05671ab91a2ab6a26b23af7ce3aea4259a63dd4f391815785c848a5cbaa2124f",
+        "mtime": "2026-10-07T12:31:12.805Z"
+      },
+      {
+        "path": "evidence/tui/dag-highlight/20261007T122213Z/discriminate-click.log",
+        "bytes": 655,
+        "sha256": "6c2d4abc7ef51109cb2f2c464ee317d28ec32a2a1fc7cd7d57db8f6a345e855c",
+        "mtime": "2026-10-07T12:23:34.063Z"
+      },
+      {
+        "path": "evidence/tui/dag-highlight/20261007T122213Z/probe-click.log",
+        "bytes": 11700,
+        "sha256": "4f723a76988496db370e5b572f4f2f5b061ce390367585ba7f161d948103b9ff",
+        "mtime": "2026-10-07T12:23:34.063Z"
+      },
+      {
+        "path": "evidence/tui/dag-highlight/20261007T122213Z/pty-defect/README.md",
+        "bytes": 1984,
+        "sha256": "6307f25e9bc09548f70146872ea25e5513d38812b11f8ff3d2c42a6d5ca7abf3",
+        "mtime": "2026-10-07T12:26:05.572Z"
+      },
+      {
+        "path": "evidence/tui/dag-highlight/20261007T122213Z/pty-final/w220",
+        "bytes": 0,
+        "sha256": "",
+        "mtime": "2026-10-07T12:30:55.081Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/graph.ts",
+        "bytes": 77505,
+        "sha256": "c962c518270d7e2efa8532752fcd566a3f48c440e952d68bd770ca7343c3bf56",
+        "mtime": "2026-10-07T12:13:13.274Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/panel-dag.ts",
+        "bytes": 69316,
+        "sha256": "0902d370558d51f0f19bc0b3a4471e05e8d8d9177c52fbc88684da125b7afa4c",
+        "mtime": "2026-10-07T12:19:54.867Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/panel-core.ts",
+        "bytes": 82301,
+        "sha256": "3e04adec7ae1462187344fb5312ebb54e45ffee16784ec3e81771e50721ce553",
+        "mtime": "2026-10-07T12:09:50.932Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/panel.ts",
+        "bytes": 44087,
+        "sha256": "182c3e17aafaa4c7daaae62df054063a0cf3a235833abf8d0ba20cf2cdfe1831",
+        "mtime": "2026-10-07T12:27:03.258Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/panel-workmate.ts",
+        "bytes": 31917,
+        "sha256": "0b5f6580fe63fec1e971225575be2da6056d4d4bb5216345da3d96bedf65e224",
+        "mtime": "2026-10-07T12:13:40.485Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/subagent-scene.ts",
+        "bytes": 90601,
+        "sha256": "91e42b05c70a8e14c50f80b71a88f907da6cf770c46e49c638d3536387ce34ef",
+        "mtime": "2026-10-07T12:11:12.145Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/src/index.ts",
+        "bytes": 52545,
+        "sha256": "317dd044ace495fa0e2b68c75ef7e0054d13e13988a081e74ff0defb85d31517",
+        "mtime": "2026-10-07T12:20:01.414Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/dist/index.js",
+        "bytes": 384227,
+        "sha256": "37f6097451fdacc79c787decdc71794e9b1a10dd14ea08048c621e471a079095",
+        "mtime": "2026-10-07T12:29:33.181Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/tui-dag-highlight.md",
+      "sha256": "b4c88120d0e58eca983a9d22fbfbde74f410d0a0b4c9728b7b18a3482bebd7d8"
+    },
+    {
+      "path": "docs/tui.md",
+      "sha256": "ad8b276d91df8c9d7b39f3d380a41401b09b6b62e0d550cec3460e901304b528"
+    },
+    {
+      "path": "docs/tui.zh-CN.md",
+      "sha256": "362d684370c41613952935c9e95d97eb51f5b7108d5b171c7cec083350b1184e"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "81ad82454e5056363f739b4f48014fbc15c69d68f201d9df25d1d3f388b10baf"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261007T123252-fcc3d8",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123252-fcc3d8.log",
+      "logSha256": "3020e8e121f8e6a42deb0947d960a4f9f1f9378ad27bfa4788cbe1a9091ba1c6"
+    },
+    {
+      "evidenceId": "ev-20261007T123304-0ac9ba",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123304-0ac9ba.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261007T123309-c60bb0",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123309-c60bb0.log",
+      "logSha256": "10f59d70381f22c5d89bebd7f8b98e626135bc62af8b4dd25b196b5c9d3b00c6"
+    },
+    {
+      "evidenceId": "ev-20261007T123310-ad5c66",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123310-ad5c66.log",
+      "logSha256": "028823a3d936fccee456c70000cae8436b06bc59771df66bc3a1bd8c40e3ae32"
+    },
+    {
+      "evidenceId": "ev-20261007T123410-22c80f",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123410-22c80f.log",
+      "logSha256": "028823a3d936fccee456c70000cae8436b06bc59771df66bc3a1bd8c40e3ae32"
+    },
+    {
+      "evidenceId": "ev-20261007T123311-189174",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261007T123311-189174.log",
+      "logSha256": "81f38657d96490c142aefbc9e91bcd9f535ee9da64cd5fefd3763c749ddf825f"
+    },
+    {
+      "evidenceId": "ev-20261007T123251-8d17ca",
+      "cmd": "(asserted)",
+      "exit": -1,
+      "logPath": "",
+      "logSha256": ""
+    },
+    {
+      "evidenceId": "ev-20261007T123326-bc70a2",
+      "cmd": "(asserted)",
+      "exit": -1,
+      "logPath": "",
+      "logSha256": ""
+    }
+  ],
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "DOC-1",
+      "severity": "minor",
+      "symptom": "docs/tui.md §3.3 (the panel inventory, line 208) still declares the workmate page's icon as `◆` U+25C6 in the PRESENT tense, while §3.4's new chrome bullet (lines 327-335) and §11.5's icon row both declare `⬢` U+2B22 and state that `◆` is byte-identical to the host's own `agents` tab icon — the exact value AC8 forbids ('each distinct from the host's built-ins'). The zh twin carries the same contradiction: docs/tui.zh-CN.md line 178 says 图标 `◆`, while its own bullet at line 275 and its §11.5 row at line 759 say `⬢` and call `◆` the host's icon. §11.5's supersession table names only '§11.4 icon cell', so by the page's own amendment convention (§11.5 preamble: 'The rows above stay as written ... the following supersedes them') §3.3's sentence is NOT covered and stands as a live, contradictory claim. Minimal reproduction: read docs/tui.md line 208 and line 330 in the same file; read docs/tui.zh-CN.md lines 178 and 275.",
+      "expected": "The §3.3 sentence and its zh twin read the shipped icon `⬢` (the same one-cell value §3.4 and §11.5 declare), or §11.5's supersession row explicitly names §3.3 alongside §11.4 — one page must not assert two different present-tense values for the same shipped icon. Two cells to edit, one per language twin.",
+      "docSource": "docs/tui.md §3.3 line 208 vs docs/tui.md §3.4 lines 327-335 and §11.5 row '§11.4 icon cell — workmate' (docs/tui.zh-CN.md line 178 vs lines 275 and 759)"
+    }
+  ],
+  "unlockedReads": [],
+  "createdAt": "2026-10-07T12:34:39.194Z",
+  "notes": [
+    "SCOPE OF THIS FAIL: documentation only. All five required gates on the settled revision are green (tests `bun test packages` exit 0; typecheck exit 0; comments exit 0; docs exit 0 twice, incl. after the post-ping doc edit; dist `node scripts/verify-dist-fresh.ts` exit 0 = 30/30 targets fresh, each rebuilt twice, toolchain bun 1.4.0 from .toolchain/node_modules/.bin/bun). No AC1-AC8 behaviour claim was falsified. Finding DOC-1 is the sole blocker and its repair is two cells, one per language twin.",
+    "SETTLED REVISION (start==end over my own verification window): probe ev-20261007T123251-8d17ca @12:32:51.984Z and probe ev-20261007T123326-bc70a2 @12:33:26.503Z are byte-identical for graph.ts c962c518/77505B, panel-dag.ts 0902d370/69316B, panel-core.ts 3e04adec/82301B, panel.ts 182c3e17/44087B, panel-workmate.ts 0b5f6580/31917B, subagent-scene.ts 91e42b05/90601B, index.ts 317dd044/52545B, dist/index.js 37f60974/384227B (mtime 12:29:33.181Z), README.md 64833e3c/56776B, README.zh-CN.md f65b2807/55999B. Newest src mtime 12:27:03Z; dist rebuilt 12:29:33Z; no code path moved during verification. The captain's aggregate 14a28d8b… is not independently reproducible from the probe surface (no concatenation/hash primitive is exposed), so this record asserts the per-file sha256 equality above instead.",
+    "ACCEPTANCE ARTIFACTS (content-free existence, size, sha256 verified): evidence/tui/dag-highlight/20261007T122213Z/README.md 5263B 779e8cfb; gates.log 707B aa6c59cb; hashes.txt 227B 23f1a34a; acceptance.log 730B 05671ab9; discriminate-click.log 655B 6c2d4abc; probe-click.log 11700B 4f723a76; pty-defect/README.md 1984B 6307f25e; pty-final/w220 (mtime 12:30:55Z); pty/w220; pty/w100. 'ptr-defect/' named by the captain does not exist (probe: 0 bytes) — it is the typo for the real pty-defect/.",
+    "HONEST BOUND 1 (contract §5, requoted): pointer-coordinate DELIVERY — whether a terminal and this host actually hand usable onClick/onDragStart localRow/localCol to a row Box inside a plugin sidebar panel — is DECLARED, not proven. The headless arms prove RESOLUTION; the real-PTY capture proves RENDER; neither proves DELIVERY. This seat repeats that bound rather than closing it.",
+    "HONEST BOUND 2 (this seat's own): the bound-verifier envelope refuses every packages/*/README.md and all of evidence/**, so the CONTENT of acceptance.log, discriminate-click.log, gates.log, the pty captures and the two package READMEs is NOT verified by this seat — only their existence/size/sha256 (probe above). The AC arms here therefore rest on the five gate exits plus the documented claims in the citable band docs/tui.md §3.4/§11.5 (both languages, read in full). AC8's glyph identity is carried by that documentation and by the green unit suite; the blind envelope does not let this seat read the arm that asserts it.",
+    "ENVIRONMENT DEFECTS recorded for the bundle, not held against the wave: (1) mpd_verify_open returns a value the harness cannot serialize ('value is not lossless JSON') — the loop file is written to disk but the caller never receives the id, so loops must be read off disk; (2) the bound-verifier envelope is NARROWER than the frozen contract's first wording (contract §5: 'works from THIS document and the package READMEs'), a defect the contract now records.",
+    "The captain's earlier cited tests evidence ev-20261007T120531-343dc1 was loopId:null and ran `bun test packages`, not the contract's `bun test packages/mpd-tui-plugin`; this seat re-ran the suite BOUND (ev-20261007T123252-fcc3d8, exit 0). The per-package scope is subsumed by that whole-tree run."
+  ]
+}

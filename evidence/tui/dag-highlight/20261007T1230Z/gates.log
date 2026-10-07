@@ -1,0 +1,15 @@
+$ bun test packages/mpd-tui-plugin
+
+ 410 pass
+ 0 fail
+ 12409 expect() calls
+Ran 410 tests across 18 files. [1388.00ms]
+
+$ bun run typecheck
+$ tsgo --noEmit
+typecheck_exit=0
+
+$ bun run verify:comments
+scanned 357 TypeScript file(s) of 357 in the source set; inspected 31351 declaration(s); skipped 13887 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

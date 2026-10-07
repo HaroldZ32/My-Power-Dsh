@@ -1,0 +1,136 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/dag-verify",
+  "widths": [
+    100,
+    220
+  ],
+  "board": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/dag-verify/ws/.mpd/team/teams/team-dag-verify.json",
+  "isolation": {
+    "ok": true,
+    "checked": 1,
+    "keys": [
+      "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-dag-verify-ws--"
+    ]
+  },
+  "verdicts": [
+    {
+      "cols": 100,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "‹ 待办 › ▸ ◆ ❖ ◈ ⬢",
+        "≡ ▸ ◆ ❖ ‹ MPD DAG › ⬢"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": true,
+      "boxRound": true,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 5,
+      "railRendered": false,
+      "panSignatures": [
+        {
+          "step": "pan1",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        },
+        {
+          "step": "pan2",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        },
+        {
+          "step": "pan3",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        },
+        {
+          "step": "panback",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0"
+        }
+      ],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩…    "
+      ],
+      "panStatic": true,
+      "cjkInDrawing": [],
+      "cjkInDetail": [
+        "│subject REQ · 冻结验收契约：│  ",
+        " Esc 聊天 · ←/→ 切换 · z 缩…    ",
+        "│subject REV — 独立验证：真实│  "
+      ],
+      "cjkOutsideDrawing": [
+        " ‹ 待办 › ▸ ◆ ❖ ◈ ⬢             ",
+        " Ctrl+B 聚焦侧栏                ",
+        " Esc 聊天 · ←/→ 切换 · z 缩…    "
+      ],
+      "chineseSubjectsInDetail": [],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    },
+    {
+      "cols": 220,
+      "chatRendered": true,
+      "splitPresent": true,
+      "dagPanelLocated": true,
+      "dagCommandOpened": false,
+      "panelBars": [
+        "‹ 待办 › ▸ ◆ ❖ ◈ ⬢",
+        "≡ ▸ ◆ ❖ ‹ MPD DAG › ⬢"
+      ],
+      "graphHeaderSeen": true,
+      "roundedBoxSeen": true,
+      "boxRound": true,
+      "arrowHeadSeen": true,
+      "verticalGutterSeen": false,
+      "horizontalGutterSeen": false,
+      "focusMarkerSeen": true,
+      "boxRowsSeen": 5,
+      "railRendered": false,
+      "panSignatures": [
+        {
+          "step": "pan1",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,48,0,0,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        },
+        {
+          "step": "pan2",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,48,0,0,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        },
+        {
+          "step": "pan3",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,48,0,0,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        },
+        {
+          "step": "panback",
+          "signature": "0,0,0,0,0,0,0,0,0,0,0,0,0,48,0,0,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0"
+        }
+      ],
+      "panMoved": false,
+      "staticRows": [
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               "
+      ],
+      "panStatic": true,
+      "cjkInDrawing": [],
+      "cjkInDetail": [
+        "│subject REQ · 冻结验收契约：DAG 曲线与 TUI 双向滚动                │  ",
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               ",
+        "│subject REV — 独立验证：真实 PTY 与真实浏览器抓图                  │  "
+      ],
+      "cjkOutsideDrawing": [
+        " ‹ 待办 › ▸ ◆ ❖ ◈ ⬢                                                    ",
+        " Ctrl+B 聚焦侧栏                                                       ",
+        " Esc 聊天 · ←/→ 切换 · z 缩放 · +/- 调宽                               "
+      ],
+      "chineseSubjectsInDetail": [
+        "REQ · 冻结验收契约：DAG 曲线与 TUI 双向滚动",
+        "REV — 独立验证：真实 PTY 与真实浏览器抓图"
+      ],
+      "chineseSubjectsInBox": [],
+      "tooNarrow": false,
+      "failures": []
+    }
+  ]
+}
