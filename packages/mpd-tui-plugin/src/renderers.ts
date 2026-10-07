@@ -1,8 +1,10 @@
 // Seam 13 — `ctx.tuiRenderers`: log-only session events -> transcript text rows.
 //
 // Registered types are the mpd bundle's own log-only vocabulary:
-//   * `agent-teams/*` — appended by packages/mpd-agent-teams-plugin for the
-//     (web-side) conversation node; in the TUI they had no projection at all.
+//   * `agent-teams/*` — appended by the adopted agent-teams client bundle for the
+//     (web-side) conversation node; in the TUI they had no projection at all. The producer
+//     package that used to be named here is DELETED (de-vendor wave); the client bundle that
+//     still emits these events ships under packages/mpd-bundle-plugin/adopted/.
 //   * `mpd-tui/board-opened` — appended by this plugin's `/mpd` command.
 // A renderer maps the payload to plain text rows, is text-only by design (the
 // host gives it no React), must never throw, and its output is clamped to the

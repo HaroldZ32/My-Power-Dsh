@@ -140,7 +140,18 @@ Tab 完全一致），而不是疏漏。
 
 ## 团队集成（dsh-agent-teams）
 
-`packages/mpd-agent-teams-plugin` 的 `memberPersona()` 被修补（该插件是一等 main 代码），因此名称匹配某个 workmate 实例的成员，其系统提示中会注入该 workmate 的 persona + memory，并且在每项任务结束时注入一条 `mpd_workmate_reflect` 指令——"captain 检查 note，委托给以 workmate 命名的成员"。`mpd` preset 和 roster profile 中的 captain 指南要求：在委托前先查询 `mpd_workmate_match`；弱匹配 → 初始化一个新的 workmate。
+**该 persona 注入钩子自 2026-09-27 起就已缺席 —— 这是时间先后，不是因果关系。** 该钩子曾是打在
+**被采纳的** `agent-teams` 主体的 `memberPersona()` 上的补丁：名称匹配某个 workmate 实例的成员，
+其系统提示中会注入该 workmate 的 persona + memory，并在每项任务结束时注入一条
+`mpd_workmate_reflect` 指令——“captain 检查 note，委托给以 workmate 命名的成员”。该主体于
+**2026-09-27** 从组合中退役 —— 此后 `cordis.patch.yml` 与 `presets/mpd.patch.yml` 中没有任何 loader
+行指向它，只剩一条注释 —— 而**未被挂载的模块什么也注入不了**，因此**该自动注入从那天起就不可能再
+触发**。`de-vendor-and-verify-law` 波次随后**删除**了该主体
+（`packages/mpd-agent-teams-plugin/**`，768 个文件），这只是移除了死代码，**没有改变任何运行时行为**：
+如今团队内的 workmate 复用 —— 与退役以来完全一样 —— 是 captain 的显式动作
+（`mpd_workmate_match` → 委托 → 成员汇报、captain 调 `mpd_workmate_reflect`），而不是运行时拼接进
+提示词。要恢复它，属于**官方**团队通路（`mpd-roster-provider-plugin` —— 它已经会为描述中指名 roster
+成员的队友做路由）的工作，已记录为后续事项，本波次不实现。`mpd` preset 和 roster profile 中的 captain 指南要求：在委托前先查询 `mpd_workmate_match`；弱匹配 → 初始化一个新的 workmate。
 
 ## 构建 / 测试
 

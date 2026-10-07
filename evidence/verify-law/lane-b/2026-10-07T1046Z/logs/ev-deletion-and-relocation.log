@@ -1,0 +1,74 @@
+cmd: revision + DELETED-surface probe  [2026-10-07T10:45:20Z]
+97207ab8ec6f662175e843c50c40890b05656cf6
+--- are the named paths gone? ---
+  gone           packages/mpd-agent-teams-plugin
+  gone           scripts/vendor-agent-teams.ts
+  gone           scripts/patch-agent-teams-fixes.ts
+  gone           scripts/patch-agent-teams-client.ts
+  gone           scripts/reclaim-staged-teams.ts
+  gone           scripts/lib/vendored-agent-teams.d.ts
+  gone           agent-references/agent-teams-deltas.md
+  gone           packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+  gone           packages/mpd-team-watchdog-plugin/test/fixtures/inject.ts
+--- baseline (HEAD) file counts for the deleted tree ---
+  HEAD packages/mpd-agent-teams-plugin files=768
+  working tree same path files=0
+
+cmd: TEST-COUNT DELTA accounting (captain probe 1)
+  HEAD test files under the adopted tree (*.test.ts): 51
+  HEAD test files under the adopted tree (any /test/ path): 26
+  working tree test files total now: 98
+  HEAD test files total: 355
+
+cmd: ADDED-surface probe
+  packages/mpd-schemastery files=19
+    LICENSE
+    README.md
+    README.zh-CN.md
+    harness
+    lib
+    package.json
+    harness/cordis
+    harness/dsh-llm
+    harness/dsh-scope
+    harness/dsh-session
+    harness/dsh-timeout
+    harness/dsh-tools
+  packages/mpd-schemastery/harness file count=12
+--- the relocated client bundle ---
+      196984  packages/mpd-bundle-plugin/adopted/agent-teams-client.js
+      223593  packages/mpd-bundle-plugin/adopted/agent-teams-client.js.map
+
+cmd: THE CLIENT-BUNDLE CLAIM — numstat must be exactly 1/1 and the delta only sourceMappingURL
+  numstat: 1	1	packages/mpd-bundle-plugin/client.js
+  stat:  packages/mpd-bundle-plugin/client.js | 2 +-
+  stat:  1 file changed, 1 insertion(+), 1 deletion(-)
+  sourceMappingURL occurrences: old=1 new=1
+  other added/removed lines (excluding sourceMappingURL): 0
+
+cmd: PROOF OF DELETION from the live tree (captain's grep-proof)
+  packages   matches for the dead path: 19
+  scripts    matches for the dead path: 5
+  docker     matches for the dead path: 1
+  skills     matches for the dead path: 4
+  --- and which files still name it (names only) ---
+packages/mpd-team-compact-plugin/README.md
+packages/mpd-team-compact-plugin/README.zh-CN.md
+packages/mpd-team-watchdog-plugin/src/team.ts
+packages/mpd-tui-plugin/src/index.ts
+packages/mpd-schemastery/README.md
+packages/mpd-schemastery/package.json
+packages/mpd-schemastery/README.zh-CN.md
+packages/mpd-schemastery/LICENSE
+packages/mpd-roles-plugin/src/complexity-gate.ts
+packages/mpd-workmate-plugin/README.md
+packages/mpd-workmate-plugin/README.zh-CN.md
+packages/mpd-dsh-adapter-plugin/README.md
+packages/mpd-dsh-adapter-plugin/README.zh-CN.md
+packages/mpd-dsh-adapter-plugin/src/index.ts
+packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts
+packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+packages/mpd-bundle-plugin/client.js
+packages/mpd-bundle-plugin/adopted/agent-teams-client.js
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.ts
+scripts/install-profile.ts

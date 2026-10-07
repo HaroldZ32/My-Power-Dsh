@@ -659,7 +659,7 @@ function endTaskTimer(directory, workId, taskKey, endedAt) {
   return writeBoulderState(directory, state) ? state : null;
 }
 // packages/mpd-boulder-plugin/src/index.ts
-import { join as join5, isAbsolute as isAbsolute2, resolve as resolve4 } from "node:path";
+import { join as join6, isAbsolute as isAbsolute2, resolve as resolve4 } from "node:path";
 import { existsSync as existsSync5 } from "node:fs";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
@@ -2211,6 +2211,7 @@ function probeMpdDsh(ctx, strict) {
 }
 
 // packages/mpd-roles-plugin/src/complexity-gate.ts
+import { join as join5 } from "node:path";
 var WORKSPACE_ROOT_SPELLINGS = [".", "./", ".mpd", ".mpd/", "./.mpd", "./.mpd/"];
 function resolveBoulderDir(value) {
   if (typeof value !== "string")
@@ -2220,6 +2221,7 @@ function resolveBoulderDir(value) {
     return;
   return trimmed;
 }
+var TEAM_RECORDS_DIR = join5(".mpd", "team", "teams");
 
 // packages/mpd-boulder-plugin/src/index.ts
 var name = "mpd-boulder";
@@ -2294,7 +2296,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
           planProgress = { error: String(e?.message ?? e) };
         }
       }
-      const result = { stateFile: join5(dir, ".mpd", "boulder.json"), activeWorks, resumeOptions };
+      const result = { stateFile: join6(dir, ".mpd", "boulder.json"), activeWorks, resumeOptions };
       if (state)
         result.state = { active_work_id: state.active_work_id, status: state.status };
       if (planProgress)
@@ -2324,7 +2326,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
       const wid = next.active_work_id;
       const status = wid ? next.works?.[wid]?.status ?? "active" : "active";
       await anchorGoal(exec, planPath, String(wid ?? "?"));
-      return { workId: wid ?? "?", status, stateFile: join5(dir, ".mpd", "boulder.json") };
+      return { workId: wid ?? "?", status, stateFile: join6(dir, ".mpd", "boulder.json") };
     }
   });
   dsh.registerTool({

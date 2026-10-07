@@ -1,0 +1,70 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wm-dsh-Mj2ZXL",
+  "wmHome": "/tmp/mpd-wm-home-uYCguX",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 2,
+      "retryNotes": [
+        "attempt 1 did not complete the flow (unproven tools: none; files present: false) — retrying once"
+      ]
+    },
+    "flow": {
+      "ok": true,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [],
+      "availableTools": 98,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": " ...} — will fail since alice doesn't exist. | dsh: reasoning: | Step 3 failed. Report. |  | Step 4: mpd_workmate_reflect {name:\"alice\", ...} — likely will fail too, since alice doesn't exist. Let me run it. |  | Also step 5 match is independent-ish but order matters. Run reflect now. | dsh: reasoning: | Step 4 failed. |  | Step 5: mpd_workmate_match {task:\"implement a verilog counter and verify\"}. | dsh: reasoning: | Step 5: NO MATCH, threshold 0.35. |  | Now the final ask: \"End with the word DONE and then the contents of the note card ~/.mpd/workmate/alice/note.md.\" |  | The note card doesn'"
+    },
+    "files": {
+      "ok": false,
+      "uses": null,
+      "noteChars": 0,
+      "memoryChars": 0,
+      "note": "",
+      "wmRoot": "/tmp/mpd-wm-home-uYCguX/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/home/haroldzhao/.mpd/workmate",
+      "before": null,
+      "after": null,
+      "sandboxHome": "/tmp/mpd-wm-home-uYCguX",
+      "sandboxRoot": "/tmp/mpd-wm-home-uYCguX/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

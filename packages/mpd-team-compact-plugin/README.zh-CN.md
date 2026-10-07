@@ -64,4 +64,7 @@
 ## 相关
 
 - 使用者视角的团队模式：[`../../docs/user-guide.zh-CN.md`](../../docs/user-guide.zh-CN.md) §6。
-- 拥有 `.mpd/team` 的插件：[`../mpd-agent-teams-plugin/README.md`](../mpd-agent-teams-plugin/README.md)。
+- 拥有团队平面的插件：[`../mpd-team-core-plugin/README.md`](../mpd-team-core-plugin/README.md)
+  （团队记录、工作流与 `mpdTeams` 服务）与
+  [`../mpd-team-watchdog-plugin/README.md`](../mpd-team-watchdog-plugin/README.md)（停滞检测）。
+  在此之前拥有该状态的已退役 vendored `mpd-agent-teams-plugin` 已被删除。

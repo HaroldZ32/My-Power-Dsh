@@ -162,7 +162,7 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
 
 | 门禁 | 命令 |
 |---|---|
-| Vendor | `node scripts/verify-vendor.ts`（需 `MPD_UPSTREAM_ROOT`） |
+| Vendor（供应商/资产指纹） | `node scripts/verify-vendor.ts`（对本仓库发布的资产做指纹校验；不再解析任何上游 checkout） |
 | 测试 | `bun test packages` + `bun run typecheck` |
 | QA self-tests | `bun run test:qa` + 每个 case `--self-test` |
 | QA 真实 case | `node skills/dsh-qa/scripts/<case>.mjs` |

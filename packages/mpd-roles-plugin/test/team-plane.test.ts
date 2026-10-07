@@ -6,7 +6,8 @@
 // captured, and the team-mutation seams THROW, so "a fired soft signal stages nothing" is
 // proven by the test failing loudly if the gate ever reached for one.
 import { describe, expect, test } from "bun:test"
-import { readFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -35,6 +36,7 @@ import {
   latestUserMessage,
   mechanicalNoticeText,
   readBoulderGate,
+  readLeadingTeam,
   resolveGateMode,
   sessionQualifies,
   STAGED_PLAN_PHRASE,
@@ -1059,11 +1061,18 @@ describe("goal selection: the injected runtime-context turn must not shadow the 
     /** A runtime-context turn, which must never shadow that goal. */
     const injected = { id: "c", role: "user", content: [{ type: "text", text: "Current runtime context." }], source: { kind: "runtime-context" } }
     expect(latestUserMessage([goal, injected])?.text).toBe("do the thing")
-    expect(latestUserMessage([injected])?.text).toBe("Current runtime context.")
+    // C8 REPAIR (2026-10-07): a producer-owned turn is NO goal — not even when it is the only
+    // user-role message in the list. The old fallback answered the runtime-context snapshot here,
+    // which is the "judged a message no human wrote" half of the defect; with a `team-message`
+    // instead of a snapshot the SAME fallback staged a spurious shell. `undefined` leaves the
+    // session UNREGISTERED, so its first real turn is still the one that gets evaluated.
+    expect(latestUserMessage([injected])).toBeUndefined()
     // Untagged messages keep the old "last user-role message with text" behaviour.
     const untagged = { id: "u", role: "user", content: [{ type: "text", text: "legacy" }] }
     expect(latestUserMessage([untagged])?.text).toBe("legacy")
-    expect(latestUserMessage([untagged, injected])?.text).toBe("Current runtime context.")
+    // …and the tagged goal beside an untagged one still wins, in either order.
+    expect(latestUserMessage([untagged, injected])?.text).toBe("legacy")
+    expect(latestUserMessage([injected, goal])?.text).toBe("do the thing")
   })
 })
 
@@ -1098,5 +1107,183 @@ describe("the mpd preset states the MECHANICAL gate contract (prompt/implementat
     expect(preset).not.toContain(DRIFTED_ADVISORY_SENTENCE)
     expect(preset).not.toContain("the gate only ADVISES")
     expect(preset).not.toContain("it stages NOTHING")
+  })
+})
+
+// ── C7/C8 + signal E (wave `de-vendor-and-verify-law`, Lane C) ──
+// The three repairs the wave's measured defects produced, each with a FALSIFIABLE twin: the
+// positive arm and the arm that must stay silent move ONE field, so a blanket "always fires" or
+// "never fires" implementation cannot pass both.
+describe("signal E: a CJK-scale instruction fires where the English-centric signals cannot", () => {
+  /** The user's VERBATIM instruction from `.mpd/plans/de-vendor-and-verify-law.md`, byte-for-byte. */
+  const VERBATIM = "脱去该项目对于Oh-my-openagent与dsh-agent-teams项目的源码的所有依赖及检查，文档里只写参考鸣谢与License；"
+    + "验证当前工作量门，现在貌似用户只要不提，不论如何都不会建队；不论如何工作量，帮我找一个办法尽量避免面向用户的主代理去直接写/验证代码，"
+    + "做这些事情由子代理去干，并且该插件的PRESET硬要求无论什么模式下，A写出来的一部分代码必须由B验证，两agent必须独立，"
+    + "且要求不直接看代码只看文档，若有问题打回去改"
+
+  test("the user's verbatim Chinese instruction triggers, and E is the signal that carries it", () => {
+    /** The shipped predicate's verdict on the measured defect case. */
+    const verdict = evaluateComplexityGate(VERBATIM)
+    expect(verdict.trigger).toBe(true)
+    expect(verdict.signals).toContain("E")
+  })
+
+  test("BOTH conjuncts are load-bearing: scale without verbs and verbs without scale stay silent", () => {
+    // Scale alone: 70 Han characters of pure question, zero lexicon verbs.
+    const scaleOnly = "请解释一下这个项目里面 preset 和 profile 究竟有什么区别，"
+      + "它们分别在什么时候生效，为什么会这样设计，以及这样安排对我们平时的工作到底有什么好处，最后用三句话总结一下"
+    expect(evaluateComplexityGate(scaleOnly).trigger).toBe(false)
+    // Verbs alone: the lexicon present, far below the scale bound.
+    expect(evaluateComplexityGate("验证一下").trigger).toBe(false)
+    expect(evaluateComplexityGate("修复并验证").trigger).toBe(false)
+  })
+
+  test("the frozen Chinese NEGATIVE controls stay silent (the language fix is not a blanket 'fires on CJK')", () => {
+    expect(evaluateComplexityGate("这个函数是干什么的？").trigger).toBe(false)
+    expect(evaluateComplexityGate("读一下 AGENTS.md 的第一节，然后告诉我它说了什么").trigger).toBe(false)
+    expect(evaluateComplexityGate("帮我看下 src/index.ts 第 42 行").trigger).toBe(false)
+  })
+
+  test("the full-width clause separators enumerate a one-line Chinese plan", () => {
+    // Three action clauses joined by `，` — impossible before the separator set carried `，，。；：`.
+    expect(evaluateComplexityGate("移除旧的检查，迁移配置，验证结果").signals).toContain("C")
+    // The ASCII set alone never split those clauses: the same three verbs WITHOUT the separators
+    // are one clause, which is below C3's bound.
+    expect(evaluateComplexityGate("移除旧的检查迁移配置验证结果").signals).not.toContain("C")
+  })
+})
+
+describe("C8: an inbound agent message is never judged as the human turn", () => {
+  /** One user-role message with a text block and an optional producer-owned source kind. */
+  const message = (text: string, kind?: string): unknown => ({
+    role: "user",
+    content: [{ type: "text", text }],
+    ...(kind === undefined ? {} : { source: { kind } }),
+  })
+  /** A teammate report that WOULD fire signal C if it were judged as a human turn. */
+  const REPORT = "1. Audit the gates\n2. Implement the change\n3. Verify the boot"
+
+  test("a `team-message` and a relayed `agent-message` are excluded; the SAME text as a human turn is not", () => {
+    // The falsifiability twin first: judged as the caller's own turn, this text fires signal C.
+    expect(evaluateComplexityGate(REPORT).signals).toEqual(["C"])
+    // Tagged as a teammate report (the official team plugin's own source shape), it is not the goal.
+    expect(latestUserMessage([message(REPORT, "team-message")])).toBeUndefined()
+    expect(latestUserMessage([message(REPORT, "agent-message")])).toBeUndefined()
+    expect(latestUserMessage([message(REPORT, "runtime-context")])).toBeUndefined()
+    expect(latestUserMessage([message(REPORT, "subagent-settled")])).toBeUndefined()
+    // …and the human turn beside it still wins, whatever order the two arrive in.
+    expect(latestUserMessage([message("fix the typo", "user"), message(REPORT, "team-message")])?.text).toBe("fix the typo")
+    expect(latestUserMessage([message(REPORT, "team-message"), message("fix the typo", "user")])?.text).toBe("fix the typo")
+  })
+
+  test("an UNTAGGED message stays eligible (the host that tags nothing keeps its gate)", () => {
+    expect(latestUserMessage([message("untagged turn")])?.text).toBe("untagged turn")
+    // A message with no text at all is still skipped, tagged or not.
+    expect(latestUserMessage([{ role: "user", content: [] }])).toBeUndefined()
+    expect(latestUserMessage([])).toBeUndefined()
+  })
+})
+
+describe("C7: a session already LEADING a team is never sent to stage one", () => {
+  /** One team record as `mpd-team-core` writes it, with only the fields this reader judges. */
+  const record = (leadSessionId: string, members: number): string => JSON.stringify({
+    version: 1,
+    teamId: "team-20261007102205",
+    leadSessionId,
+    members: Array.from({ length: members }, (_, index) => ({ id: "M" + String(index + 1) })),
+    tasks: [],
+  })
+  /** A lister seam answering one fixed directory listing, and a reader keyed by file name. */
+  const seams = (files: Record<string, string>): { readDir: (path: string) => Promise<readonly string[]>; readFile: (path: string) => Promise<string>; listed: string[] } => {
+    /** Every directory the reader was asked to list. */
+    const listed: string[] = []
+    return {
+      listed,
+      readDir: async (path: string): Promise<readonly string[]> => { listed.push(path); return Object.keys(files) },
+      readFile: async (path: string): Promise<string> => {
+        /** The record file name this read asked for. */
+        const name = path.slice(path.lastIndexOf("/") + 1)
+        if (!(name in files)) throw new Error("ENOENT " + path)
+        return files[name]
+      },
+    }
+  }
+
+  test("this session's OWN record with members reads leading; another session's does not", async () => {
+    /** The injected seams, listing one record led by `me`. */
+    const mine = seams({ "team-a.json": record("me", 3) })
+    expect(await readLeadingTeam("/ws", "me", mine)).toEqual({ leading: true, teamId: "team-20261007102205", members: 3 })
+    // The record directory resolves under the WORKSPACE, exactly like the boulder ledger's root.
+    expect(mine.listed[0]).toBe("/ws/.mpd/team/teams")
+    // The falsifiability twin: the SAME record, one `leadSessionId` field moved.
+    expect(await readLeadingTeam("/ws", "someone-else", seams({ "team-a.json": record("me", 3) }))).toEqual({ leading: false, members: 0 })
+  })
+
+  test("a 0-member record is a STAGED SHELL, not a team, so the gate may still stage", async () => {
+    expect(await readLeadingTeam("/ws", "me", seams({ "team-a.json": record("me", 0) }))).toEqual({ leading: false, members: 0 })
+  })
+
+  test("every failure path reads NOT leading, and never throws", async () => {
+    // A missing directory, an unreadable record beside a good one, malformed JSON and an empty id.
+    expect(await readLeadingTeam("/ws", "me", { readDir: async () => { throw new Error("ENOENT") } })).toEqual({ leading: false, members: 0 })
+    expect(await readLeadingTeam("/ws", "me", { readDir: async () => ["a.json", "README.md"], readFile: async () => "{ not json" })).toEqual({ leading: false, members: 0 })
+    expect(await readLeadingTeam("/ws", "me", seams({ "a.json": "null", "b.json": "[]" }))).toEqual({ leading: false, members: 0 })
+    expect(await readLeadingTeam("/ws", "", seams({ "team-a.json": record("", 3) }))).toEqual({ leading: false, members: 0 })
+    // A NON-JSON entry is skipped while a readable record beside it still answers.
+    expect(await readLeadingTeam("/ws", "me", seams({ "notes.txt": "ignored", "team-a.json": record("me", 1) }))).toEqual({ leading: true, teamId: "team-20261007102205", members: 1 })
+  })
+
+  test("WIRING: a session already leading a team stages NOTHING and injects NO notice", async () => {
+    /** A strong prompt that fires signal C on its own — the "even on a strong human prompt" arm. */
+    const strong = "1. Audit the gates\n2. Implement the change\n3. Verify the boot"
+    /** One team record naming `leadSessionId` with the given member count. */
+    const recordJson = (leadSessionId: string, members: number): string => JSON.stringify({
+      teamId: "team-1",
+      leadSessionId,
+      members: Array.from({ length: members }, (_, index) => ({ id: "M" + String(index + 1) })),
+    })
+    /** Drive ONE step of a fresh harness whose team-record seams answer the given record. */
+    const stepWith = async (teamRecord: string | null): Promise<{ out: any; toolCalls: number }> => {
+      /** The recording adapter double, with the staging tool genuinely registered. */
+      const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+      installSessionGate(harness.dsh as never, {
+        warn: () => {},
+        readDir: async (): Promise<readonly string[]> => (teamRecord === null ? [] : ["team-1.json"]),
+        readFile: async (): Promise<string> => teamRecord ?? "{}",
+      })
+      /** The goal message the step claims. */
+      const goal = userMessage(strong)
+      /** The step listener's return value: the rewritten decision, or undefined when it abstained. */
+      const out: any = await harness.steps[0].listener(
+        { messages: [goal], turn: 1, step: 1, signal: new AbortController().signal },
+        { kind: "enter", messages: [goal] },
+      )
+      return { out, toolCalls: harness.toolCalls.length }
+    }
+    // The guard: THIS session (id "lead-1") already leads a team that names 3 members.
+    expect(await stepWith(recordJson("lead-1", 3))).toEqual({ out: undefined, toolCalls: 0 })
+    // FALSIFIABILITY, two arms: the SAME record under another session's id, and a 0-member SHELL —
+    // both must proceed and stage, so the guard cannot pass by never staging at all.
+    expect(await stepWith(recordJson("someone-else", 3))).toEqual({ out: expect.anything(), toolCalls: 1 })
+    expect((await stepWith(recordJson("lead-1", 0))).toolCalls).toBe(1)
+    // …and with NO team at all the gate stages too (the every-session baseline).
+    expect((await stepWith(null)).toolCalls).toBe(1)
+  })
+
+  test("the DEFAULT reader walks a real `.mpd/team/teams` directory (the live boot's path)", async () => {
+    // A REAL directory, never a fixture: the same `node:fs/promises` readers a boot uses, so a
+    // renamed record field or a moved directory reddens here rather than in a live arm.
+    const probe = mkdtempSync(join(tmpdir(), "mpd-leading-team-"))
+    try {
+      mkdirSync(join(probe, ".mpd", "team", "teams"), { recursive: true })
+      writeFileSync(join(probe, ".mpd", "team", "teams", "team-x.json"), record("sess-live", 2))
+      expect(await readLeadingTeam(probe, "sess-live")).toEqual({ leading: true, teamId: "team-20261007102205", members: 2 })
+      // The one-field twin: the SAME directory, a session id the record does not name.
+      expect(await readLeadingTeam(probe, "another-session")).toEqual({ leading: false, members: 0 })
+      // A workspace with NO team directory at all: the every-session case, silent.
+      expect(await readLeadingTeam("/nonexistent-workspace-mpd", "sess-live")).toEqual({ leading: false, members: 0 })
+    } finally {
+      rmSync(probe, { recursive: true, force: true })
+    }
   })
 })

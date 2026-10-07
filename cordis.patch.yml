@@ -423,6 +423,19 @@
         quiet: false
     - id: mpd-roles
       name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
+    # ── the verification law (W4) ──────────────────────────────────────────────────
+    # ONE row, placed AFTER `mpd-roles` on purpose. The GUARD is installed by the roles row (the
+    # bundle's single existing `guardTool` site) and resolves this row's `mpdVerify` service PER CALL,
+    # so apply order costs nothing: by the time any tool call reaches the guard, both rows are up.
+    # This row owns the durable ledger under `<workspace>/.mpd/verify/`, the five `mpd_verify_*` tools
+    # and the boot marker that closes the `pre-plugin` record exemption.
+    # The `verify.*` knobs are the row's ONLY config and are read RAW (no settings-schema entry, so the
+    # pinned `SETTINGS_KNOBS` count does not move). The defaults below ship the law ON.
+    - id: mpd-verify
+      name: '@mpd-dsh/mpd/packages/mpd-verify-plugin/dist/index.js'
+      config:
+        mode: hard
+        escapeUses: 1
     - id: mpd-ulw
       name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
       config:

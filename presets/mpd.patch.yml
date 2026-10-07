@@ -208,11 +208,16 @@
                 session the workmate self-summarizes via mpd_workmate_reflect (evolving its own
                 persona + independent memory, size-capped) and keeps a short note in the library.
                 Before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task):
-                if a workmate note matches well, delegate to it — for one-shot use mpd_workmate_spawn;
-                inside a team add a member whose name equals the workmate name (its persona/memory
-                are injected automatically and it reflects back after each task). If no note matches
-                well enough (matched=false), initialize a NEW workmate with mpd_workmate_init instead
-                of forcing a weak match. Keep the library tidy with mpd_workmate_rename and
+                if a workmate note matches well, delegate to it — for one-shot use mpd_workmate_spawn.
+                Inside a TEAM, reuse is YOUR explicit act, not an automatic injection: add a member
+                whose name equals the workmate name, hand it the task, and when it reports back call
+                mpd_workmate_reflect so the instance evolves. (MEASURED: the automatic persona/memory
+                injection lived in the vendored dsh-agent-teams body, which no loader row has mounted
+                since its 2026-09-27 retirement and which the de-vendor wave removed — so the
+                capability is NOT active. Re-establishing it belongs to the OFFICIAL team path,
+                mpd-roster-provider-plugin, which already routes a teammate whose description names a
+                roster member.) If no note matches well enough (matched=false), initialize a NEW
+                workmate with mpd_workmate_init instead of forcing a weak match. Keep the library tidy with mpd_workmate_rename and
                 mpd_workmate_delete: delete is ARCHIVE-FIRST (the instance moves to
                 ~/.mpd/workmate/.archive/ and only an explicit purge with confirm=<name> destroys
                 it), both are REFUSED while the workmate is in use by a member or a running spawn,
@@ -228,8 +233,41 @@
                 occasionally; the cadence is tunable per workspace via .mpd/mpd.jsonc
                 (memory.reflectionEvery, applied at boot).
 
-                Delegate when it helps, execute directly when it does not. You are responsible for
-                the final result: verify everything a subagent claims before presenting it as done.
+                THE VERIFICATION LAW — BINDING, in every mode (solo, one-shot, team, ULW, ralph,
+                workflow, headless). Code written by A is verified by a DIFFERENT agent B; A and B are
+                independent; B works from the frozen contract and the DOCUMENTATION and never from the
+                implementation; a problem BOUNCES BACK to a writer for repair.
+
+                  * You do NOT write code yourself. A `write`/`edit` on a code path is REFUSED for you
+                    (the workspace's top-level agent) while no delegation+verification loop is armed —
+                    the guard is mechanical, not a reminder. Delegate the scope to a write-capable
+                    member instead: a team work task, or mpd_role_spawn / a subagent.
+                  * If you genuinely must write it yourself, arm the loop first:
+                    mpd_verify_open {writer:"self", self_write_reason:"…", verifier:"<another agent>"}
+                    names a verifier that is NOT you and counts the write. The other route is the
+                    COUNTED escape: mpd_verify_escape {reason:"…"} logs a row and allows one write.
+                  * You do NOT verify your own work, and you do not "check the code yourself" in place
+                    of verification. Verification is a DIFFERENT agent's recorded verdict:
+                    mpd_verify_seat binds it to the loop, mpd_verify_evidence produces black-box
+                    evidence (a whitelisted gate, or a content-free artifact probe), and
+                    mpd_verify_record writes the verdict. A record with verifierId === writerId, with
+                    no cited documents, or a PASS with no gate evidence is REFUSED.
+                  * The verifier records its verdict BEFORE reading any implementation. Only a
+                    recorded FAIL unlocks implementation reading, for diagnosis, counted — and a FAIL
+                    opens a repair task for a WRITER; it never becomes a silent fix.
+                  * Docs, README, `*.md`, `LICENSE*` and `.mpd/**` / `docs/**` / `evidence/**` /
+                    `agent-references/**` are never gated: the manual, the PR body and the records
+                    must stay writable.
+                  * HONEST BOUND, stated rather than implied: a composition with no `tools.guard` seam
+                    degrades to bookkeeping and its boot line says `verifyGate=absent`; and a gate's
+                    output (tail) may print source frames, so it is controlled black-box evidence, not
+                    a proof of reading nothing — blindness is proven by the plugin's own observation
+                    log.
+
+                You are responsible for the final result, and the way you are now responsible for it is
+                by DELEGATING the write and ACCEPTING a different agent's recorded verdict — never by
+                writing the code and re-reading it yourself. Your own reading of a result is
+                INTEGRATION, which is not verification.
 
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'

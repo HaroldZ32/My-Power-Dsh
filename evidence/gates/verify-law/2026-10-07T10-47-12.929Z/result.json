@@ -1,0 +1,45 @@
+{
+  "ok": false,
+  "slug": "verify-law",
+  "sandbox": "/tmp/mpd-verify-law-IBtgj8",
+  "workspace": "/tmp/mpd-verify-law-IBtgj8/ws",
+  "realMarkerBefore": false,
+  "steps": {
+    "mounted": {
+      "ok": true,
+      "detail": "the harness recorded a write call for the code path"
+    },
+    "denied": {
+      "ok": false,
+      "detail": "the recorded write result carries the guard's denial sentence"
+    },
+    "codeNotWritten": {
+      "ok": false,
+      "detail": "the denied code path was never created"
+    },
+    "controlNotDenied": {
+      "ok": true,
+      "detail": "with verify.mode=off the same write was not refused"
+    },
+    "controlWritten": {
+      "ok": true,
+      "detail": "with verify.mode=off the code path really was written"
+    },
+    "docsAllowed": {
+      "ok": true,
+      "detail": "a docs/** write is allowed and exists in the sandbox"
+    },
+    "sandboxMarker": {
+      "ok": false,
+      "detail": "the law wrote its boot marker in the SANDBOX workspace"
+    },
+    "realMarkerUnchanged": {
+      "ok": true,
+      "detail": "the REAL workspace's marker is exactly as it was: before=false after=false"
+    },
+    "sessionsSandboxed": {
+      "ok": true,
+      "detail": "no real-cwd session key exists"
+    }
+  }
+}

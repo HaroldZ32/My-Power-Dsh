@@ -64,8 +64,10 @@ mkdir -p "$HOME" "$DSH_HOME"
 cd /src || exit 1
 log "bun install + rebuild dists"
 bun install >>"$LOG_DIR/install.log" 2>&1
+# Every `packages/*/src/index.ts` is an entry; the retired adopted body (whose lib/ had no src/)
+# used to need a `case ... continue` guard here and is DELETED, and the relocated
+# packages/mpd-schemastery ships no src/ either, so the glob cannot reach a non-entry.
 for entry in packages/*/src/index.ts packages/mpd-ext-plugin/src/sdk.ts; do
-  case "$entry" in packages/mpd-agent-teams-plugin/*) continue ;; esac
   out="$(dirname "$entry")/../dist/index.js"
   [ "$(basename "$entry")" = "sdk.ts" ] && out="packages/mpd-ext-plugin/dist/sdk.js"
   bun build "$entry" --target node --format esm --outfile "$out" >>"$LOG_DIR/rebuild.log" 2>&1

@@ -1,0 +1,44 @@
+cmd: workmate-library red — (a) post-sweep defect, or (b) improper invocation?  [2026-10-07T10:44:48Z]
+--- 1. the case's FULL history (ok / live.attempts / files.noteChars) ---
+  2026-08-28T09-33-38.409Z     ok=true   attempts=-   noteChars=-   
+  2026-09-16T07-58-07.481Z     ok=false  attempts=-   noteChars=-     <-- RED
+  2026-09-17T01-43-27.803Z     ok=false  attempts=-   noteChars=-     <-- RED
+  2026-09-17T02-31-46.921Z     ok=true   attempts=-   noteChars=-   
+  2026-09-17T02-47-12.406Z     ok=false  attempts=-   noteChars=-     <-- RED
+  2026-09-17T02-51-03.089Z     ok=true   attempts=-   noteChars=226 
+  2026-09-17T02-53-17.548Z     ok=true   attempts=-   noteChars=239 
+  2026-09-17T03-08-05.586Z     ok=false  attempts=-   noteChars=0     <-- RED
+  2026-09-17T03-14-09.939Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-09-17T03-18-40.091Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-09-17T03-29-58.116Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-09-17T03-40-51.394Z     ok=true   attempts=1   noteChars=267 
+  2026-09-17T04-03-49.570Z     ok=true   attempts=1   noteChars=211 
+  2026-09-17T04-19-25.871Z     ok=true   attempts=1   noteChars=243 
+  2026-09-17T04-38-53.905Z     ok=true   attempts=1   noteChars=284 
+  2026-09-17T15-23-45.299Z     ok=true   attempts=1   noteChars=197 
+  2026-09-17T15-51-49.926Z     ok=true   attempts=1   noteChars=264 
+  2026-09-17T15-59-10.235Z     ok=true   attempts=1   noteChars=234 
+  2026-09-17T16-05-39.796Z     ok=true   attempts=1   noteChars=299 
+  2026-09-27T21-45-00.194Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-09-27T22-05-49.202Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-09-27T22-11-40.595Z     ok=true   attempts=1   noteChars=221 
+  2026-10-07T10-38-04.837Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-10-07T10-42-03.828Z     ok=true   attempts=2   noteChars=251 
+  ---- totals: ok=14 red=10 ----
+
+--- 2. the accidental run's own steps (isolation is CORRECT => not a prerequisite failure) ---
+  ok=false steps={"install":true,"dump":true,"live":true,"flow":true,"files":false,"isolation":true}
+  live.attempts=2 retryNotes=["attempt 1 did not complete the flow (unproven tools: none; files present: false) — retrying once"]
+  isolation={"ok":true,"realWm":"/home/haroldzhao/.mpd/workmate","before":null,"after":null,"sandboxHome":"/tmp/mpd-wm-home-uYCguX","sandboxRoot":"/tmp/mpd-wm-home-uYCguX/.mpd/workmate","homeSandboxed":true,"predicate":"HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"}
+
+--- 3. the SAME case, SAME revision, run PROPERLY through the lane runner 4 minutes later ---
+  runner verdict=pass exitCode=0 ms=53853
+  runner exitCode=0 counts={"pass":1,"unavailable":0,"fail":0} manifestSha256=53460c32fa1d8198
+  case ok=true files={"ok":true,"noteChars":251,"memoryChars":420}
+  live.attempts=2 retryNotes=["attempt 1 did not complete the flow (unproven tools: none; files present: false) — retrying once"]
+
+--- 4. structure identical pre-wave vs today (the sweep did not change the case's shape) ---
+  step keys identical: true
+  flow tool keys identical: true
+   skills/dsh-qa/scripts/workmate-library.ts | 36 ++++++++++++++++++++++++-------
+   1 file changed, 28 insertions(+), 8 deletions(-)

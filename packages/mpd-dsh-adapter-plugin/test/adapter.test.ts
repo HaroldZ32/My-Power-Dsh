@@ -7,16 +7,16 @@ import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 
-// The two vendored `_deps/**` JS modules ship NO type declarations, and that tree is outside this
-// lane's write scope, so the imports are the one place a directive is the honest tool: the module
-// resolves to `any`, and every shape this file relies on is declared at its own use site (the
+// The two RELOCATED harness modules (`mpd-schemastery/harness/{cordis,dsh-llm}`) ship no type
+// declarations this file can use, so the imports are the one place a directive is the honest tool:
+// the module resolves to `any`, and every shape this file relies on is declared at its own use site (the
 // `Context` waterfall calls below and the message comparison against `userMessage`). A LOCAL
 // `.d.ts` is impossible here (it would have to live in the vendored tree) and a `declare module`
 // block would be an augmentation trick. `@ts-expect-error` (not `@ts-ignore`) so a future vendored
 // type declaration turns this into a loud "unused directive" instead of a silent suppression.
 /** The vendored cordis module, used as the REAL waterfall dispatcher in the last describe block. */
 // The vendored module now resolves to its .ts source, so this surface is typed from that file.
-import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.ts"
+import { Context } from "../../mpd-schemastery/harness/cordis/lib/index.ts"
 
 /**
  * The slice of the real vendored cordis context these arms drive.
@@ -42,7 +42,7 @@ interface DrivenContext {
 const realContext = (): DrivenContext => new Context() as unknown as DrivenContext
 /** The vendored host message constructor, compared field by field against this adapter's own. */
 // The vendored module now resolves to its .ts source, so this surface is typed from that file.
-import { createUserMessage } from "../../mpd-agent-teams-plugin/_deps/dsh-llm/lib/index.ts"
+import { createUserMessage } from "../../mpd-schemastery/harness/dsh-llm/lib/index.ts"
 import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, resolveDshAdapter, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, GOAL_TOOL_NAMES, SERVICE_NAME, textBlock, userMessage } from "../src/index"
 
 /** A recording double of the FULL harness: eleven services (the goal domain included), the event bus and provide(). */

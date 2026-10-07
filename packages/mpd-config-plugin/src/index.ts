@@ -11,7 +11,7 @@ import { basename, dirname, join, resolve } from "node:path"
 import { rowLogLine, DSH_SEAM_TOOLS, dshSeamInject, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_DEFAULTS } from "./settings-schema"
 import { markVolatile } from "./settings-schema"
-import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
+import z from "../../mpd-schemastery"
 import {
   DEFAULT_BRIDGE_OPTIONS,
   changedLeaves,

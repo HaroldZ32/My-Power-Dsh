@@ -1,0 +1,21 @@
+== T14 repair (authoritative checklist), 2026-10-07T10:46:53Z ==
+
+ITEM 1 — verify-law re-copied byte-exact
+82531edd6c0be9ab4abb5ea2f59e364cbcfabff145e59ae47cc881b6e3a7e494  packages/mpd-verify-plugin/qa/verify-law.ts
+82531edd6c0be9ab4abb5ea2f59e364cbcfabff145e59ae47cc881b6e3a7e494  skills/dsh-qa/scripts/verify-law.ts
+
+$ bun skills/dsh-qa/scripts/verify-law.ts --self-test
+[verify-law self-test] ok: the registered copy is byte-identical (82531edd6c0b)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+exit=0
+
+ITEM 2 — drift gate
+[run-qa-lanes] discovery: 42 lane script(s) discovered (42 listed, 0 unlisted, 17 outside every suite); .ts entries 42, underscore-excluded 0
+[run-qa-lanes] immutability required=8: team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=34
+[run-qa-lanes] manifest and disk agree (48 entries, 42 lane script(s) discovered) and the immutability guard is declared
+DRIFT_EXIT=0
+
+ITEM 3 — the sweep doc's measured numbers
+96:[run-qa-lanes] discovery: 42 lane script(s) discovered (42 listed, 0 unlisted, 17 outside every suite)
+98:DRIFT_EXIT=0
+101:So the FINAL manifest arithmetic for this wave: **44 lanes at `HEAD` → 42 now** (five retired, three added:

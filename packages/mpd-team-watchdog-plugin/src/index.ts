@@ -35,7 +35,7 @@
 //   * cleanup through `ctx.effect`;
 //   * never a thrown boot failure — a missing optional seam degrades with a warning;
 //   * the harness contact goes through the ADAPTER only (AGENTS.md §6).
-import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
+import z from "../../mpd-schemastery"
 import { rowLogLine, createDshAdapter, dshSeamInject, DSH_SEAM_AGENTS, DSH_SEAM_TOOLS, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerWatchdogActions } from "./actions.js"
 import { WatchdogEngine, type EngineConfig, type EngineContext, type EngineStats } from "./engine.js"

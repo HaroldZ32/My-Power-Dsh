@@ -1553,7 +1553,7 @@ function probeMpdDsh(ctx, strict) {
 }
 
 // packages/mpd-roles-plugin/src/complexity-gate.ts
-import { readFile as readFileFs } from "node:fs/promises";
+import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises";
 import { join as join2 } from "node:path";
 var GATE_MODE_MECHANICAL = "mechanical";
 var GATE_MODE_ADVISORY = "advisory";
@@ -1575,15 +1575,18 @@ var STAGED_PLAN_PHRASE = "a team PLAN was STAGED";
 var ALREADY_STAGED_PLAN_PHRASE = "a team PLAN is ALREADY STAGED";
 var INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until approved";
 var NO_TEAM_STAGED_PHRASE = "NO team was staged";
-var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
-var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu;
+var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/giu;
+var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充/giu;
 var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
-var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u;
-var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
+var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.、，。；：！？（）「」『』“”‘’【】]/u;
+var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/iu;
 var DELIVERABLE_VERB_MIN = 4;
 var ENUMERATED_LINE_MIN = 3;
 var ACTION_VERB_MIN = 3;
 var C_SUBSIGNAL_MIN = 2;
+var CJK_CHAR_PATTERN = /\p{Script=Han}/gu;
+var CJK_CHAR_MIN = 60;
+var CJK_ACTION_VERB_MIN = 2;
 var GATE_PLAN_NAME_MAX = 60;
 var GATE_PLAN_EXCERPT_MAX = 500;
 var GATE_PLAN_NAME_FALLBACK = "session-start complexity gate team";
@@ -1608,6 +1611,10 @@ function clauseStepCount(text) {
       count += 1;
   return count;
 }
+function cjkCharCount(text) {
+  const matches = text.match(CJK_CHAR_PATTERN);
+  return matches === null ? 0 : matches.length;
+}
 function consumeExplicitFlag(text) {
   const source = String(text ?? "");
   const trimmed = source.trimStart();
@@ -1626,15 +1633,18 @@ function evaluateComplexityGate(text, input = {}) {
     signals.push("A");
   if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
     signals.push("B");
+  const actionVerbs = distinctMatches(source, ACTION_VERB_PATTERN);
   const cSubSignals = [
     enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
-    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
+    actionVerbs >= ACTION_VERB_MIN,
     clauseStepCount(source) >= ENUMERATED_LINE_MIN
   ].filter(Boolean).length;
   if (cSubSignals >= C_SUBSIGNAL_MIN)
     signals.push("C");
   if (input.activeBoulder === true)
     signals.push("D");
+  if (cjkCharCount(source) >= CJK_CHAR_MIN && actionVerbs >= CJK_ACTION_VERB_MIN)
+    signals.push("E");
   return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
 }
 async function readBoulderGate(workspace, opts = {}) {
@@ -1661,6 +1671,7 @@ async function readBoulderGate(workspace, opts = {}) {
     return { active: false };
   }
 }
+var TEAM_RECORDS_DIR = join2(".mpd", "team", "teams");
 function resolveGateMode(value) {
   if (value === GATE_MODE_ADVISORY)
     return GATE_MODE_ADVISORY;
@@ -1746,7 +1757,7 @@ var DIRECTIVE = [
 var ULW_ACTIVATION_DIRECTIVE = [
   "ULTRAWORK ACTIVATION (user-invoked; execute autonomously and ask the user nothing)",
   "1. TRIAGE FIRST: when the objective is unclear, or the task is investigate-first-then-execute, run one normal-MPD investigation round BEFORE the gate, a team or the loop; never open a team on a guess.",
-  "2. GATE: ALREADY EVALUATED MECHANICALLY — the SAME complexity predicate the session-start gate uses (an explicit `team:`/`!team` flag OR any matched signal A-D: A explicit flag, B deliverable verbs, C enumerated steps, D an active boulder work) was run by the plugin BEFORE this directive was injected, and its verdict is the TEAM GATE block below this objective. Never invent a second predicate.",
+  "2. GATE: ALREADY EVALUATED MECHANICALLY — the SAME complexity predicate the session-start gate uses (an explicit `team:`/`!team` flag OR any matched signal A-E: A explicit flag, B deliverable verbs, C enumerated steps, D an active boulder work, E a CJK-scale instruction) was run by the plugin BEFORE this directive was injected, and its verdict is the TEAM GATE block below this objective. Never invent a second predicate.",
   '3. TEAM WHEN WARRANTED: the TEAM GATE block below carries the verdict, and when the gate staged a plan that plan is YOURS — extend it with `agent_teams_plan {action:"add_member"}` and `agent_teams_plan {action:"create_task"}`, then approve it YOURSELF with `agent_teams_plan {action:"approve"}`: no user confirmation and no plan review. A staged plan is INERT until approval. EXACTLY five `agent_teams_*` tools exist on this harness — `agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`, `agent_teams_control` — and every OTHER `agent_teams_*` name is retired and GONE (e.g. `agent_teams_create`, `agent_teams_add_member`, `agent_teams_create_task`, `agent_teams_approve`, `agent_teams_status`): never call a retired one, and never read the shared `agent_teams_` prefix as a reason to skip `agent_teams_plan`.',
   "4. LOOP TO COMPLETION: never stop early to ask the user; keep rounds until every success criterion is clean.",
   "5. FIX ON SIGHT: a defect the run finds is fixed in the same turn — never report-and-wait and never ask the user for approval.",

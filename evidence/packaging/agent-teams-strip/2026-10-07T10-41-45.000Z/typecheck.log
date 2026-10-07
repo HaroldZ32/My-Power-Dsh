@@ -1,0 +1,9 @@
+### bun install --frozen-lockfile
+bun install v1.4.2 (744846f84)
+error: lockfile had changes, but lockfile is frozen
+note: try re-running without --frozen-lockfile and commit the updated lockfile
+EXIT=1
+
+### bun run typecheck
+$ tsgo --noEmit
+EXIT=0

@@ -1,0 +1,5 @@
+cmd: bun install --frozen-lockfile
+bun install v1.4.2 (744846f84)
+
+Checked 347 installs across 336 packages (no changes) [9.00ms]
+EXIT=0

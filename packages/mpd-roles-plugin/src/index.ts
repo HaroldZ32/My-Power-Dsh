@@ -19,6 +19,8 @@ import { existsSync, readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
+import { installVerifyGuard, type VerifyLawAccess } from "./verify-guard.ts"
+import { VERIFY_SERVICE } from "../../mpd-verify-plugin/src/service.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
 import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY } from "./complexity-gate.ts"
@@ -645,6 +647,27 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } catch (error) {
     guardOutcome.push("readOnlyGuard=absent reason=threw")
     warnOnce("team-guard:threw", "the team-path read-only guard could not be installed (" + errText(error) + ")")
+  }
+  // THE VERIFICATION LAW'S GUARD, installed at this same site: one extra `guardTool` install, decided by
+  // the pure functions of `mpd-verify-plugin/src/law.ts` and reading its state from the `mpdVerify`
+  // SERVICE per call — so the state belongs to the one verify row even though the hook lives here.
+  try {
+    /** The verify row's runtime, resolved PER CALL: `mpd-verify` applies after this row. */
+    const lawAccess = (): VerifyLawAccess | undefined => {
+      try { return (ctx.get?.(VERIFY_SERVICE, false) ?? undefined) as VerifyLawAccess | undefined } catch { return undefined }
+    }
+    /** The guard's install outcome, reported on the team-plane boot signature below. */
+    const verifyGuard = installVerifyGuard(dsh, {
+      presets: ["mpd"],
+      law: lawAccess,
+      workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
+      configValue,
+      warn: (line) => warnOnce("verify-guard:" + line, line),
+    })
+    guardOutcome.push(verifyGuard.installed ? "verifyGate=installed" : "verifyGate=absent reason=" + String(verifyGuard.reason))
+  } catch (error) {
+    guardOutcome.push("verifyGate=absent reason=threw")
+    warnOnce("verify-guard:threw", "the verification law's write guard could not be installed (" + errText(error) + ")")
   }
   try {
     installRosterSection(dsh, {

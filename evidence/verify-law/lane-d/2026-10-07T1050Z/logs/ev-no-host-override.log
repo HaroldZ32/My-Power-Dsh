@@ -1,0 +1,14 @@
+cmd: node scripts/verify-no-host-override.ts  (probe 5 — the row plane)
+[verify-no-host-override]   patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml
+[verify-no-host-override] bundle id-targets (overrides): 0 (none: this bundle is purely additive)
+[verify-no-host-override] bundle inserted rows (additive): 34
+[verify-no-host-override] unclassified top-level entries: 0
+[verify-no-host-override] host layers found on disk: 4
+[verify-no-host-override]   host: dsh-base -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base [1 patch file(s)]
+[verify-no-host-override]   host: dsh-web-app -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app [5 patch file(s)]
+[verify-no-host-override]   host: dsh-headless -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless [1 patch file(s)]
+[verify-no-host-override]   host: dsh-tui (profile dsh-tui) -> /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui [1 patch file(s)]
+[verify-no-host-override] host-declared row ids: 205
+[verify-no-host-override] declared exemptions (0): none
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 205 host-declared row ids)
+EXIT=0

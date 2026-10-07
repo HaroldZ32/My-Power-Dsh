@@ -262,8 +262,9 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 **官方 Agent Teams 行 —— 3 个 insert 行**
 
 本 bundle 的团队能力来自**官方** DSH Agent Teams 插件组（不是内置的引擎）：这三个包声明在
-`package.json` 的 `dependencies` 中，并由下面的行挂载（*鸣谢* 记录了为什么被淘汰的内置副本仍留在
-仓库里）。
+`package.json` 的 `dependencies` 中，并由下面的行挂载。曾经位于这些行背后的内置 `dsh-agent-teams`
+引擎已从组合中退役，其后更被**删除**（`de-vendor-and-verify-law`）；*鸣谢* 记录了它仍有哪两部分在
+发布、以及它们现在在哪里。
 
 | Row id | 包 | 提供的能力 |
 |---|---|---|
@@ -921,14 +922,19 @@ issue、pull request 或证据里包含凭据、令牌或私有数据。
 
 - **[oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)** —— 作者
   **code-yeongyu** 与各位贡献者。专家名册、十一个角色描述与模型链术语来自这个项目；它固定在
-  commit `8c57e46`（v5.0.0-beta.20），在这里以"适配后的队友模板与 workmate 基础模板"的形式提供。
-  这份固定基线是工程参考，而不是身份标签：本仓库不是 OMO 的 fork，也不会逐版本跟随它。
+  commit `8c57e46`（v5.0.0-beta.20），在这里以“适配后的队友模板与 workmate 基础模板”的形式提供。
+  这份基线是工程参考 —— 属历史记录，不欠任何同步义务：本仓库不是 OMO 的 fork，没有任何关卡或文档
+  依赖上游 checkout，也不会逐版本跟随它。其 MCP 服务器源码同样以快照形式收入本仓库，位于
+  [`vendor/mcp-src/`](./vendor/mcp-src/README.md)，`scripts/build-mcp.ts` 即以它为构建输入生成随包
+  发布的服务器；构建输入是该快照，不再需要任何外部 checkout。
 - **[dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams)** —— 作者
-  **程序员阿江（Relakkes）**，MIT。它的 `agent-teams` 插件曾被整体采纳，主代码仍作为来源记录保留在
-  `packages/mpd-agent-teams-plugin/`（采纳版本 `0.1.16-rc.3-mpd`）—— 但它**已从组合中退役**：
-  不再有任何 loader 行挂载它，所以它的任何工具、它的 `.mpd/team` 记录与它的侧边栏面板都不属于随包
-  会话。团队模式改由官方 Agent Teams 插件承载（即上面三行 `mpd-*-agent-team`）。它的许可证与声明
-  保存在 [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)。
+  **程序员阿江（Relakkes）**，MIT。它的 `agent-teams` 插件曾被整体采纳（采纳版本
+  `0.1.16-rc.3-mpd`），其后从组合中退役——不再有任何 loader 行挂载它——并最终由
+  `de-vendor-and-verify-law` 波次**删除了整个主体**。该工作中仍有两部分在发布、并已迁入 mpd 自有的
+  家：采纳的浏览器客户端 bundle 位于 `packages/mpd-bundle-plugin/adopted/agent-teams-client.js`
+  （随包侧边栏以它为构建基础），以及现由 `packages/mpd-schemastery/` 拥有的 DSH 运行时模块。
+  团队模式改由官方 Agent Teams 插件承载（即上面三行 `mpd-*-agent-team`）。MIT 归属与完整记录保存在
+  [LICENSE-NOTICES.md](./LICENSE-NOTICES.md)。
 - **DeepSeek Harness 宿主包（`@deepseek-ai/*`）** —— DeepSeek 团队，MIT。宿主提供了本 bundle 接入
   的插件系统、tool/agent/skill/preset 接缝、模型提供方与 Web 外壳 —— 其中也包括本 bundle 为团队
   模式挂载的**官方 Agent Teams 插件组**（`@deepseek-ai/dsh-experimental-agent-team`、

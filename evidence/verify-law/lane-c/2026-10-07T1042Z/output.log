@@ -1,0 +1,180 @@
+===================================================================
+Lane E — T14 / LANE C independent verification — OUTPUT.LOG
+recordId : lane-e-lane-c-2026-10-07T1042Z   verdict: FAIL
+revision : b5401665 (HEAD at dispatch) ; skills/** MOVED at 10:42:14Z inside the window
+===================================================================
+
+--- RESIDUAL BOUND (verify-law-spec (c)), verbatim ---
+the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).
+
+--- THE DRIFT RED (F1), quoted ---
+cmd: node scripts/run-qa-lanes.ts --check-drift
+[run-qa-lanes] drift: 3 lane script(s) on disk in no manifest entry: skills/dsh-qa/scripts/goal-bridge.ts, skills/dsh-qa/scripts/tui-deps-ctrla.ts, skills/dsh-qa/scripts/verify-law.ts
+[run-qa-lanes] discovery: 42 lane script(s) discovered (39 listed, 3 unlisted, 15 outside every suite); .ts entries 42, underscore-excluded 0
+
+=== LOG: ev-bun-test-roles.log
+cmd: bun test packages/mpd-roles-plugin
+(pass) extension roles: an absent or broken mpdExtensions service leaves the base roster answering [1.34ms]
+(pass) extension roles do NOT enter the agent-teams `mpd` profile member list (documented limit) [1.13ms]
+(pass) the built dist carries the extension-role wiring (a src-only change would ship dead) [0.28ms]
+(pass) extension roles: a PROJECT-plane extension's role is refused (the contract rejects it) [3.27ms]
+
+1 tests failed:
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [98.61ms]
+
+ 87 pass
+ 1 fail
+ 845 expect() calls
+Ran 88 tests across 4 files. [254.00ms]
+EXIT=1
+
+=== LOG: ev-preconditions.log
+cmd: ruling-A preconditions (captured 2026-10-07T10:44:47Z)
+--- A2: frozen contract on disk ---
+e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610  .mpd/plans/de-vendor-and-verify-law.md
+bytes=10277 mtime=2026-10-07 18:35:14.185707077 +0800
+--- A2b: amended spec (docs[].sha256 copied from THIS line) ---
+65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74  .mpd/plans/verify-law-spec.md
+--- A2c: the manual (it moved DURING this review: Lane D) ---
+f52338414c47c8b6c2bedb45aeaa86929f7a49e1a9ed15d68734fe94f08b6450  AGENTS.md
+bytes=65102 mtime=2026-10-07 18:44:17.304494007 +0800
+--- A3: F.3 marker re-probe ---
+ABSENT - a pre-plugin record is admissible (the exemption has not closed)
+--- settle: Lane C paths, START(10:42:07Z) vs END ---
+  complexity-gate  start=995564251c877723 end=995564251c877723
+  session-gate     start=81082cb588235743 end=81082cb588235743
+  session-start-team start=7c2646a700dfa554 end=7c2646a700dfa554
+  ulw src/index    start=6e2035821e063806 end=6e2035821e063806
+  cases.json       start=53460c32fa1d8198 end=a9ae27ae3bdd9014   <-- MOVED at 10:42:14Z (F1/F4)
+  SKILL.md         start=0fc50a7e6e47bc2c end=c216f7f450148794   <-- MOVED at 10:42:14Z (F4)
+  skills/**        start=1c8b9e4a06021b34(332 files) end=78ad940cb45b5ad2(331 files)
+--- the mutation timeline INSIDE the verification window ---
+  cases.json      mtime=2026-10-07 18:42:14.577916486 +0800
+  SKILL.md        mtime=2026-10-07 18:44:16.721008312 +0800
+  verify-law.ts   mtime=2026-10-07 18:42:59.259567285 +0800
+  runner evidence manifestSha256 = 53460c32fa1d8198b444d4135140b1ebae8dc0fbc23de02f1e7383fdd09b466d (the PRE-edit manifest)
+
+=== LOG: ev-run-qa-lanes-drift.log
+cmd: node scripts/run-qa-lanes.ts --check-drift
+[run-qa-lanes] drift: 3 lane script(s) on disk in no manifest entry: skills/dsh-qa/scripts/goal-bridge.ts, skills/dsh-qa/scripts/tui-deps-ctrla.ts, skills/dsh-qa/scripts/verify-law.ts
+[run-qa-lanes] discovery: 42 lane script(s) discovered (39 listed, 3 unlisted, 15 outside every suite); .ts entries 42, underscore-excluded 0
+[run-qa-lanes] immutability required=8: team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=31
+EXIT=1
+
+=== LOG: ev-selftest-session-start.log
+cmd: node skills/dsh-qa/scripts/session-start-team.ts --self-test
+[session-start-team self-test] corpus (verdicts from the SHIPPED predicate):
+  ok simple        han=  0 trigger=false signals=[]       "Reply with exactly: hello-ok"
+  ok simple        han=  0 trigger=false signals=[]       "What does the git-master skill do? Answer in one sentence."
+  ok simple        han=  0 trigger=false signals=[]       "Rename the variable `foo` to `bar` in src/util.ts and run it"
+  ok soft-complex  han=  0 trigger=true  signals=["C"]    "Align the bundle with upstream: audit the orchestration surf"
+  ok soft-complex  han=  0 trigger=true  signals=["C"]    "1. Read the patch file\n2. Audit the gates\n3. Implement the c"
+  ok explicit      han=  0 trigger=true  signals=["A"]    "team: fix the flaky test"
+  ok cjk-positive  han=159 trigger=true  signals=["E"]    "脱去该项目对于Oh-my-openagent与dsh-agent-teams项目的源码的所有依赖及检查，文档里只写参考鸣"
+  ok cjk-negative  han=  9 trigger=false signals=[]       "这个函数是干什么的？"
+  ok cjk-negative  han= 17 trigger=false signals=[]       "读一下 AGENTS.md 的第一节，然后告诉我它说了什么"
+  ok cjk-negative  han= 52 trigger=false signals=[]       "请解释一下这个项目里 preset 和 profile 到底有什么区别，为什么会这样设计，以及这样做对我们有什么好处和坏"
+  calibration: positives han=[159] negatives han=[9,17,52] bound=60 verbs>=2
+[session-start-team self-test] ok: the shipped PURE gate module conforms to the MECHANICAL contract (3 simple / 2 soft-complex / 1 explicit / 1 cjk-positive / 3 cjk-negative / 1 boulder-probe prompt, both ways; signal D through the INJECTED reader AND the real filesystem, the mode FAIL-SAFE, the shell builder's honest bounds, both notices with the retired vocabulary scoped per text, and the session scope); FOUR negative controls reddened (always-trigger 12, always-silent 14, advisory-only-mechanical 10, CJK-blind 1 problem(s)); C7 (a session already leading a team) and C8 (an inbound `team-message`/`agent-message` is never the human turn) each driven BOTH ways; the LIVE verdict and the REAL `.mpd/team` stage scan were each driven offline BOTH ways (a matching shell passes; a spawned record, a plan-id mismatch, a leaked notice and a non-shell staged plan all redden); bundle mounts mpd-roles with the retired rows gone; preset carries the SESSION STARTUP RULE
+EXIT=0
+
+=== LOG: ev-test-qa.log
+cmd: bun run test:qa  (all --self-test arms)
+  ok the default copy wrote personas/demo-ext-plain-reviewer.md
+  ok validate accepts the default copy (got 0): 
+  ok the default copy contributes three kinds
+  ok the default copy is the template modulo the token rewrite and the mcp drop, file by file
+  ok scaffold accepts an id longer than the serverName bound (got 0): mpd-ext scaffold: warning: ^[A-Za-z0-9_-]{1,32}$ caps serverName at 32 characters, so the copy declares "demo-ext-with-a-very-long-identi" instead of "demo-ext-with-a-very-long-identifier-1234"
+  ok the long-id fixture (41 chars) really is longer than the contract bound (32)
+  ok the copied serverName is capped at the contract bound (32), not at a literal
+  ok the cap is WARNED on stderr, never silent
+  ok the long-id copy still validates
+  ok scaffold refuses an id that violates the id grammar
+  ok the refusal names the id grammar
+  ok scaffold refuses an existing target
+  ok the refusal says the target exists
+  ok scaffold refuses the base-roster role collision for id "plan" (got 1)
+  ok the refusal is a CONTRACT refusal, not a CLI-defect message
+  ok the refusal quotes the roster's own collision sentence
+  ok the refusal states that nothing was written
+  ok a refused scaffold leaves nothing at the target
+  ok a refused scaffold leaves no staging container behind
+  ok validate exits 1 on a broken extension (got 1)
+  ok the broken run reports "typoKey"
+  ok the broken run reports "serverName"
+  ok the broken run reports "contributes.skills[0].root"
+  ok the broken run reports "escapes are rejected"
+  ok the broken run reports "surprise"
+  ok the broken run reports "persona file does not exist"
+  ok validate exits 1 on a deliberately broken copy of the template (got 1)
+  ok the broken copy reports "typoKey"
+  ok the broken copy reports "surprise"
+  ok the broken copy reports "serverName"
+  ok the broken copy reports "persona file does not exist"
+  ok the broken copy reports "frontmatter"
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (53 checks) [validator: source]
+[test:qa] scripts/mpd-ext.ts validate extensions/mpd-ext-example
+[mpd-ext] validate /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+[test:qa] all self-tests passed
+EXIT=0
+
+=== LOG: ev-typecheck.log
+cmd: bun run typecheck
+$ tsgo --noEmit
+EXIT=0
+
+=== LOG: ev-workmate-history.log
+cmd: workmate-library red — (a) post-sweep defect, or (b) improper invocation?  [2026-10-07T10:44:48Z]
+--- 1. the case's FULL history (ok / live.attempts / files.noteChars) ---
+  2026-08-28T09-33-38.409Z     ok=true   attempts=-   noteChars=-   
+  2026-09-16T07-58-07.481Z     ok=false  attempts=-   noteChars=-     <-- RED
+  2026-09-17T01-43-27.803Z     ok=false  attempts=-   noteChars=-     <-- RED
+  2026-09-17T02-31-46.921Z     ok=true   attempts=-   noteChars=-   
+  2026-09-17T02-47-12.406Z     ok=false  attempts=-   noteChars=-     <-- RED
+  2026-09-17T02-51-03.089Z     ok=true   attempts=-   noteChars=226 
+  2026-09-17T02-53-17.548Z     ok=true   attempts=-   noteChars=239 
+  2026-09-17T03-08-05.586Z     ok=false  attempts=-   noteChars=0     <-- RED
+  2026-09-17T03-14-09.939Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-09-17T03-18-40.091Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-09-17T03-29-58.116Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-09-17T03-40-51.394Z     ok=true   attempts=1   noteChars=267 
+  2026-09-17T04-03-49.570Z     ok=true   attempts=1   noteChars=211 
+  2026-09-17T04-19-25.871Z     ok=true   attempts=1   noteChars=243 
+  2026-09-17T04-38-53.905Z     ok=true   attempts=1   noteChars=284 
+  2026-09-17T15-23-45.299Z     ok=true   attempts=1   noteChars=197 
+  2026-09-17T15-51-49.926Z     ok=true   attempts=1   noteChars=264 
+  2026-09-17T15-59-10.235Z     ok=true   attempts=1   noteChars=234 
+  2026-09-17T16-05-39.796Z     ok=true   attempts=1   noteChars=299 
+  2026-09-27T21-45-00.194Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-09-27T22-05-49.202Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-09-27T22-11-40.595Z     ok=true   attempts=1   noteChars=221 
+  2026-10-07T10-38-04.837Z     ok=false  attempts=2   noteChars=0     <-- RED
+  2026-10-07T10-42-03.828Z     ok=true   attempts=2   noteChars=251 
+  ---- totals: ok=14 red=10 ----
+
+--- 2. the accidental run's own steps (isolation is CORRECT => not a prerequisite failure) ---
+  ok=false steps={"install":true,"dump":true,"live":true,"flow":true,"files":false,"isolation":true}
+  live.attempts=2 retryNotes=["attempt 1 did not complete the flow (unproven tools: none; files present: false) — retrying once"]
+  isolation={"ok":true,"realWm":"/home/haroldzhao/.mpd/workmate","before":null,"after":null,"sandboxHome":"/tmp/mpd-wm-home-uYCguX","sandboxRoot":"/tmp/mpd-wm-home-uYCguX/.mpd/workmate","homeSandboxed":true,"predicate":"HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"}
+
+--- 3. the SAME case, SAME revision, run PROPERLY through the lane runner 4 minutes later ---
+  runner verdict=pass exitCode=0 ms=53853
+  runner exitCode=0 counts={"pass":1,"unavailable":0,"fail":0} manifestSha256=53460c32fa1d8198
+  case ok=true files={"ok":true,"noteChars":251,"memoryChars":420}
+  live.attempts=2 retryNotes=["attempt 1 did not complete the flow (unproven tools: none; files present: false) — retrying once"]
+
+--- 4. structure identical pre-wave vs today (the sweep did not change the case's shape) ---
+  step keys identical: true
+  flow tool keys identical: true
+   skills/dsh-qa/scripts/workmate-library.ts | 36 ++++++++++++++++++++++++-------
+   1 file changed, 28 insertions(+), 8 deletions(-)
+

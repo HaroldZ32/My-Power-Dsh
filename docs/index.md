@@ -44,8 +44,9 @@ here for the full set.
 1. [`../AGENTS.md`](../AGENTS.md) — the binding manual: conventions, gates, git model.
 2. [`../agent-references/troubleshooting.md`](../agent-references/troubleshooting.md) — the full
    symptom → cause → fix table.
-3. [`../agent-references/agent-teams-deltas.md`](../agent-references/agent-teams-deltas.md) — the
-   adopted agent-teams delta registry (only when touching that package).
+
+The adopted agent-teams delta registry that used to be listed here was deleted WITH the vendored
+body it described (de-vendor wave); `agent-references/index.md` is the live register.
 
 `agent-references/**` is agent-facing and English-only by policy; it is deliberately outside the
 bilingual band this hub documents.

@@ -6,7 +6,7 @@
 // plugin. Both therefore read the schema and the field list from HERE, so the two front doors
 // cannot drift and the twenty-five knobs (thirteen mpd knobs + twelve team-model slot leaves) stay
 // one declaration.
-import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
+import z from "../../mpd-schemastery"
 
 /** The settings namespace the section and the Web card both edit. */
 export const SETTINGS_NS = "mpd"

@@ -1,7 +1,0 @@
-{ 
-  "type": "module",
-  "main": "./index.cts",
-  "module": "./index.ts",
-  "types": "./index.d.cts",
-  "sideEffects": false
-}

@@ -97,7 +97,10 @@ describe("the consolidated surface", () => {
     // plan absorbed create/add_member/create_task/edit_plan/approve/delete/status
     expect(actions("agent_teams_plan").sort()).toEqual(["add_member", "approve", "create", "create_task", "delete", "edit", "status"])
     // task absorbed claim_task/task_contract/dispatch_release
-    expect(actions("agent_teams_task").sort()).toEqual(["claim", "contract", "release"])
+    // task absorbed claim_task/task_contract/dispatch_release, and (2026-10-07) gained the TERMINAL
+    // verbs `complete`/`fail`: with the official `team_task_*` row disabled in a dsh-tui boot this board
+    // is the only board, and a board whose rows never reach a terminal state cannot advance its DAG.
+    expect(actions("agent_teams_task").sort()).toEqual(["claim", "complete", "contract", "fail", "release"])
     // dispatch absorbed dispatch/dispatch_release
     expect(actions("agent_teams_dispatch").sort()).toEqual(["release", "run"])
     // mail absorbed mailbox (and the older observation-only counter)

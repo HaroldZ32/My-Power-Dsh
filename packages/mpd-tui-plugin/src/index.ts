@@ -38,13 +38,14 @@
 // mount would duplicate a loader entry id.
 import { homedir } from "node:os"
 import { t } from "./i18n.js"
-// The Config schema comes from the schemastery copy the bundle ALREADY vendors
-// (packages/mpd-agent-teams-plugin/_deps/schemastery): this package declares no
-// dependency of its own and resolves nothing over the network. It is the one
-// relative specifier that names a PACKAGE DIRECTORY (resolved through that copy's
-// own package.json, which carries both `exports.import` and `types`) — every
-// relative FILE import in this package carries an explicit extension.
-import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
+// The Config schema comes from the schemastery copy the bundle OWNS
+// (packages/mpd-schemastery, relocated out of the retired
+// packages/mpd-agent-teams-plugin/_deps closure by the de-vendor wave): this package
+// declares no dependency of its own and resolves nothing over the network. It is the
+// one relative specifier that names a PACKAGE DIRECTORY (resolved through that
+// package's own package.json, which carries both `exports.import` and `types`) —
+// every relative FILE import in this package carries an explicit extension.
+import z from "../../mpd-schemastery"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { PluginContextLike, SeamOutcome, SessionLike, TuiAdapter } from "./types.js"
 import { createLog, type Log } from "./log.js"

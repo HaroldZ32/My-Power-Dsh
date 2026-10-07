@@ -24,13 +24,14 @@
 //     infers from the callee's signature — annotating those would fight the type system, not help it;
 //   · statements and expressions (a comment on every `if` is not a contract, it is noise);
 //   · generated trees (`dist/**`, `_deps/**`, `evidence/**`) and JavaScript sources;
-//   · the ADOPTED agent-teams body at `packages/mpd-agent-teams-plugin/lib/**` and the two sha256-
-//     PINNED pristine upstream fixtures under its `self-fix-tests/fixtures/upstream/`. Both are
-//     upstream bytes this repository renamed rather than authored — the vendored body now carries a
+//   · the RELOCATED DSH runtime this repository owns but did not author, under
+//     `packages/mpd-schemastery/lib/**` (the schemastery validator and its `cosmokit`) and
+//     `packages/mpd-schemastery/harness/**` (the six DSH framework modules the test suite drives).
+//     These are upstream bytes this repository moved rather than wrote — every one of them carries a
 //     first-line `@ts-nocheck` precisely because it is not code we type — so a per-declaration
 //     contract comment above them is impossible by construction, not merely unwritten. The exclusion
 //     is a whole PATH, never the segment `lib` (which would silently drop `skills/dsh-qa/scripts/lib/**`)
-//     and never the package (whose `test/` and `self-fix-tests/` own code stays covered).
+//     and never the package (whose own `package.json`, `LICENSE` and READMEs stay covered).
 //
 // Modes:
 //   node scripts/verify-comment-coverage.ts                  scan the declared source set
@@ -61,12 +62,12 @@ const EXCLUDED_SEGMENTS: readonly string[] = ["node_modules", "dist", "_deps", "
 
 /**
  * Repository-relative path PREFIXES that take a whole tree out of the source set, for the two
- * adopted trees whose bytes are upstream's rather than ours (see the header's out-of-family
+ * RELOCATED trees whose bytes are upstream's rather than ours (see the header's out-of-family
  * paragraph). Declared as full paths on purpose: a bare segment would over-exclude.
  */
 const EXCLUDED_PATH_PREFIXES: readonly string[] = [
-  "packages/mpd-agent-teams-plugin/lib",
-  "packages/mpd-agent-teams-plugin/self-fix-tests/fixtures/upstream",
+  "packages/mpd-schemastery/lib",
+  "packages/mpd-schemastery/harness",
 ]
 
 /** One declaration that fails the gate. */

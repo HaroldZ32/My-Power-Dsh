@@ -11,8 +11,7 @@
 // how the defect the user reported comes back.
 //
 // THE BAND (an MPD runtime path), both halves walked and merged:
-//   * `packages/mpd-*/src/**/*.ts` — every plugin row's shipped source, EXCEPT the retired adopted body
-//     (`packages/mpd-agent-teams-plugin/lib/**`, not an mpd row) and every test file (`*.test.ts`,
+//   * `packages/mpd-*/src/**/*.ts` — every plugin row's shipped source, and every test file (`*.test.ts`,
 //     `*.test.js`, and anything under `test/` / `tests/` / `self-fix-tests/` — a TEST may capture or
 //     replace `console` on purpose, which is a technique, not a terminal write);
 //   * `packages/mpd-mcp-*/**/*.ts` at any depth — the MCP launchers and their shared helpers, EXCEPT
@@ -231,8 +230,13 @@ export const REPO_ROOT: string = resolve(here, "..", "..", "..")
 /** Path segments that take a `.ts` file out of the band wherever they appear. */
 const OUT_OF_BAND_SEGMENTS: readonly string[] = ["dist", "node_modules", "test", "tests", "self-fix-tests"]
 
-/** The retired adopted body's tree, which is upstream's vendored JavaScript and not an mpd row. */
-const OUT_OF_BAND_PREFIXES: readonly string[] = ["packages/mpd-agent-teams-plugin/lib"]
+// NO OUT-OF-BAND PREFIXES REMAIN. This list used to carry the RETIRED adopted body's tree
+// (`packages/mpd-agent-teams-plugin/lib`), which was upstream's vendored JavaScript rather than an
+// mpd row. The de-vendor wave DELETED that body, and its replacement home
+// (`packages/mpd-schemastery/{lib,harness}`) never reaches this walk at all: the scanned band is
+// `packages/mpd-*/src/**` plus `packages/mpd-mcp-*/**`, and a tree outside `src/` is outside the
+// subject rather than skipped by a rule. An empty prefix list would be a guard that can no longer
+// fire, so the mechanism went with its only subject.
 
 /**
  * Blank out comments while preserving BOTH the character count and every newline, so a finding keeps
@@ -323,9 +327,6 @@ function walkFiles(dir: string): string[] {
 
 /** `true` when the repo-relative path carries one of the declared out-of-band segments or prefixes. */
 function isOutOfBand(relPath: string): boolean {
-  for (const prefix of OUT_OF_BAND_PREFIXES) {
-    if (relPath === prefix || relPath.startsWith(`${prefix}/`)) return true
-  }
   /** The path's segments, which the segment rules are matched against. */
   const segments = relPath.split("/")
   return segments.some((segment) => OUT_OF_BAND_SEGMENTS.includes(segment))

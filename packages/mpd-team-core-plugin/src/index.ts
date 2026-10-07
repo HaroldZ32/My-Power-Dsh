@@ -70,6 +70,7 @@ import {
   addTeamTask,
   blockingDependencies,
   casClaimTask,
+  casCloseTask,
   createTeam,
   idleMembers,
   readyTasks,
@@ -767,22 +768,26 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
     description:
-      "Shared board tasks. `claim` claims one for a member AND freezes its contract — the acceptance text, blockers and write scopes as they stand now, with a monotonic attempt counter; `contract` reads a frozen contract back (or every one in this workspace); `release` frees one dispatched task so it can be dispatched again.",
+      "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, and terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks its dependents).",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["claim", "contract", "release"], description: "What to do." },
-        task_id: { type: "string", description: "claim/contract: the official task id. release: the task to free." },
-        claimant: { type: "string", description: "claim: who claims it. Defaults to the calling agent." },
+        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail"], description: "What to do." },
+        task_id: { type: "string", description: "the task id; `release` takes the task to free." },
+        claimant: { type: "string", description: "claim: who claims it (default: the caller)." },
+        note: { type: "string", description: "complete/fail: one line recorded on the row." },
+        expected_revision: { type: "number", description: "complete/fail: the revision you decided on; stale is refused." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" } } },
+      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] } } },
       render: (_args: any, value: any) =>
         text(
-          value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
+          value?.refused !== undefined ? `refused: ${value.refused}`
+            : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})`
+            : value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
             : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}`
             : value?.contracts !== undefined ? `${value.contracts.length} contract(s)`
             : "no contract",
@@ -839,7 +844,66 @@ export function apply(ctx: any): void {
         return { contract, task: view }
       }
 
-      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release)`)
+      if (action === "complete" || action === "fail") {
+        // THE MISSING TERMINAL VERB (captain amendment, 2026-10-07). The mpd-native plane could open a
+        // plan, add members and create tasks, and then NOTHING could close a row: the official
+        // `team_task_*` verbs are disabled in a dsh-tui boot (the host refuses the root-bound effect
+        // their activation needs), so this board is the only board — and a board whose rows never reach
+        // a terminal state can never satisfy a dependency, so `agent_teams_dispatch` could not pair a
+        // blocked task and the whole DAG was frozen. MEASURED on this wave's own board.
+        /** The team this call works on, or a refusal naming what is missing. */
+        const record = recordFor(workspace, sessionIdOf(exec))
+        if (record === undefined) throw new Error("no team record in this workspace — approve a plan first")
+        /** The task to close. */
+        const taskId = String(args?.task_id ?? "")
+        if (taskId === "") throw new Error(`agent_teams_task ${action}: task_id is required`)
+        /** The raw calling agent, read for the title the harness gives it. */
+        const self = exec.agent as any
+        /** The caller's team identity, when the official plane knows one. */
+        const membership = ((): { role?: string; name?: string } | undefined => {
+          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
+        })()
+        // THE CALLER'S OWN SPELLINGS, never a name the caller TYPES: `claimant` is deliberately NOT read
+        // here, because accepting it would let any agent close any row by naming its owner.
+        const caller = [sessionIdOf(exec), String(self?.session?.header?.title ?? ""), String(membership?.name ?? "")].filter((value) => value !== "")
+        // RE-READ IMMEDIATELY BEFORE THE CAS, the dispatch pass's own discipline: the record was opened
+        // before this branch and a concurrent write may have moved it.
+        const fresh = readTeam(workspace, record.teamId) ?? record
+        /** The closure decision, or the refusal and its reason. */
+        const outcome = casCloseTask(fresh, {
+          taskId,
+          status: action === "complete" ? "completed" : "failed",
+          caller,
+          lead: membership?.role === "lead",
+          ...(typeof args?.expected_revision === "number" ? { expectedRevision: args.expected_revision } : {}),
+          ...(args?.note === undefined ? {} : { note: String(args.note) }),
+          now: now(),
+        })
+        if (!outcome.applied) return { refused: outcome.reason, taskId }
+        writeTeam(workspace, withDerivedPhase(outcome.record))
+        // A FAILED ROW IS RELEASED FROM THE DISPATCH LEDGER, so the repair can be dispatched again on the
+        // next pass: the pairing is what makes a member look busy, and a closed row must not hold one.
+        /** Whether this closure also freed a dispatch pairing. */
+        let releasedFromDispatch = false
+        if (outcome.status === "failed") {
+          /** The ledger after freeing this row's pairing, and whether one was there to free. */
+          const freed = release(readLedger(workspace), taskId)
+          if (freed.released) { writeLedger(workspace, freed.ledger); releasedFromDispatch = true }
+        }
+        rowLogLine("mpd-team-core", `[mpd-team-core] task ${taskId} ${outcome.status} by ${outcome.closedBy}`)
+        return {
+          taskId,
+          status: outcome.status,
+          closedBy: outcome.closedBy,
+          attempt: outcome.attempt,
+          revision: outcome.task.revision,
+          note: outcome.task.note ?? null,
+          dependents: outcome.dependents,
+          releasedFromDispatch,
+        }
+      }
+
+      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail)`)
     },
   }))
 
@@ -868,7 +932,7 @@ export function apply(ctx: any): void {
             : value?.halted !== undefined ? `halted: ${value.halted}`
             : value?.refused !== undefined ? `refused: ${value.refused}`
             : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row: any) => row.subject + ": " + row.reason).join("; ") + ")")
-            : value.pairs.map((pair: any) => `${pair.subject} -> ${pair.memberName}`).join("\n"),
+            : value.pairs.map((pair: any) => `${pair.subject} -> ${pair.memberName}` + (typeof pair.note === "string" && pair.note !== "" ? ` [${pair.note}]` : "")).join("\n"),
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
@@ -1129,7 +1193,7 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
     description:
-      "Halt or resume the team. `halt` records a hold that stops NEW DISPATCH while leaving the team and every teammate alive — it is not an ending (use agent_teams_plan action:\"delete\" to end and archive a team). `resume` clears the hold.",
+      "Halt or resume the team. `halt` stops NEW DISPATCH and leaves the team and every teammate alive (use agent_teams_plan action:\"delete\" to end a team). `resume` clears the hold.",
     parameters: {
       type: "object",
       properties: {

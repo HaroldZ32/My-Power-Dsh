@@ -1,0 +1,56 @@
+cmd: IMPORT-SHAPED references to the dead path (the claim: ZERO imports/requires)  [2026-10-07T10:45:36Z]
+  packages   import/require-shaped matches: 0
+  scripts    import/require-shaped matches: 0
+  docker     import/require-shaped matches: 0
+  skills     import/require-shaped matches: 1
+  --- dynamic import() / import( with the dead path ---
+  dynamic-import matches: 0
+  --- any specifier at all mentioning the dead path ---
+  total specifier matches: 0
+
+cmd: THE EXACT REMOVED TEST-FILE SET (captain probe 1) — every removed package test file must be the adopted suite or one of the two named
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+  HEAD packages test files: 147 | now: 98 | removed: 52 | added: 3
+  --- removed files NOT under the adopted tree ---
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+    packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+  --- removed files UNDER the adopted tree: ---
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+    count: 51
+  --- ADDED test files (other lanes) ---
+comm: file 1 is not in sorted order
+comm: file 2 is not in sorted order
+comm: input is not in sorted order
+    packages/mpd-team-core-plugin/test/close-and-dispatch.test.ts
+    packages/mpd-verify-plugin/test/law.test.ts
+    packages/mpd-verify-plugin/test/row.test.ts
+
+cmd: the new package's shape (the writer called it an 8-file closure)
+  60483  packages/mpd-schemastery/harness/cordis/lib/index.ts
+  1241  packages/mpd-schemastery/harness/cordis/package.json
+  71573  packages/mpd-schemastery/harness/dsh-llm/lib/index.ts
+  1748  packages/mpd-schemastery/harness/dsh-llm/package.json
+  12259  packages/mpd-schemastery/harness/dsh-scope/lib/index.ts
+  1099  packages/mpd-schemastery/harness/dsh-scope/package.json
+  79422  packages/mpd-schemastery/harness/dsh-session/lib/index.ts
+  1721  packages/mpd-schemastery/harness/dsh-session/package.json
+  5520  packages/mpd-schemastery/harness/dsh-timeout/lib/index.ts
+  1136  packages/mpd-schemastery/harness/dsh-timeout/package.json
+  150769  packages/mpd-schemastery/harness/dsh-tools/lib/index.ts
+  2053  packages/mpd-schemastery/harness/dsh-tools/package.json
+
+cmd: the writer's own grep-proof.log (cross-check)
+  ### grep: any import/export of the dead path
+  ### grep: dynamic import / require of it
+  0
+  drwxrwxr-x 2 haroldzhao haroldzhao   4096 Oct  7 18:27 .
+  drwxrwxr-x 6 haroldzhao haroldzhao   4096 Oct  7 18:27 ..

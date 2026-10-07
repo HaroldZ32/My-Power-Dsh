@@ -24,7 +24,7 @@ import { join } from "node:path"
 // The vendored cordis build ships no declaration file, so this module resolves to `any`; the
 // directive stays loud and self-healing rather than a blanket `@ts-ignore`.
 // The vendored module now resolves to its .ts source, so this surface is typed from that file.
-import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.ts"
+import { Context } from "../../mpd-schemastery/harness/cordis/lib/index.ts"
 import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { WatchdogEngine, type EngineContext } from "../src/engine"
 import { inFlightFor, WatchdogMachine, type SilenceCandidate } from "../src/machine"

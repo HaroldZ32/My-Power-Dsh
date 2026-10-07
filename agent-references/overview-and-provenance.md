@@ -56,11 +56,15 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   (rank columns, status colours, focus chain, rail fallback) and the Web panel is ONE body registered
   into `dsh-better-sidebar` first with the harness's right sidebar as fallback — for the team AND the
   workmate library. See `docs/plan-team-plane-split.md`.
-- **The vendored `agent-teams` body is RETIRED from the composition (2026-09-27).** It is a **0.1.14
-  body with the audited 0.1.16-rc.3 deltas backported** (adopted package version `0.1.16-rc.3-mpd`;
-  `lib/client.js` is still the 0.1.14 client build), it still lives at
-  `packages/mpd-agent-teams-plugin`, and `LICENSE-NOTICES.md` remains its authoritative provenance
-  record — but **no loader row mounts it any more**, so `agent_teams_*` tools, that plugin's
+- **The vendored `agent-teams` body is DELETED (retired 2026-09-27, removed by the
+  `de-vendor-and-verify-law` wave 2026-10-07).** It was a **0.1.14 body with the audited 0.1.16-rc.3
+  deltas backported** (adopted package version `0.1.16-rc.3-mpd`; `lib/client.js` is still the 0.1.14
+  client build). It lived at `packages/mpd-agent-teams-plugin` — **768 files, now GONE** — with
+  `LICENSE-NOTICES.md` as its authoritative provenance record. Two pieces still ship, relocated in the
+  same commit: the adopted client bundle at
+  `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` and the DSH runtime modules this repo owns
+  at `packages/mpd-schemastery/`. It was **never mounted by a loader row** after 2026-09-27, so
+  `agent_teams_*` tools, that plugin's
   `<workspace>/.mpd/team` record and its Web activity panel are NOT part of a shipped session. Harness 0.1.7-rc.2
   shipped an official Agent Teams plugin, and this bundle adopted it (see the roster bullet above and
   `docs/plan-0.1.7-adaptation.md`). Its `lib/` stays mediated through `mpd-dsh-adapter` except the

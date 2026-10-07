@@ -1,7 +1,8 @@
 # mpd-bundle
 **中文** | [English](./README.md)
 
-本 bundle 的 host 平面 patch 层是 `cordis.patch.yml`，它位于**仓库根目录**（标准 cordis bundle 布局 —— `package.json` 把它声明为 `dsh.bundle.patch` 数组的第一个条目）。它挂载每一个 mpd-dsh plugin row — MCP servers（ast-grep / git-bash / lsp / codegraph + 远程 context7 / grep.app）、B/C 线 plugins（mpd-config 置顶，使 mpdConfig service 对下方 rows 可见；随后是 mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline / boulder / comment-checker / codegraph / memory / workmate）、本 bundle **自己**的团队平面（`mpd-team-core` / `mpd-team-watchdog` / `mpd-team-compact`）、`mpd-web-compat` 自注册行（`name: '@mpd-dsh/mpd'`——承载 bundle web client 的 loader 条目）、mpd-bootstrap provisioning，以及**三个**官方 Agent Teams 行（`mpd-agent-team`、`mpd-tool-agent-team`、`mpd-ui-agent-team`，外加工具行指向的 `mpd-roster-provider` 行）。被采纳的 `agent-teams` body **不再被任何行挂载** —— 已无任何 loader 行指向 `packages/mpd-agent-teams-plugin`。
+本 bundle 的 host 平面 patch 层是 `cordis.patch.yml`，它位于**仓库根目录**（标准 cordis bundle 布局 —— `package.json` 把它声明为 `dsh.bundle.patch` 数组的第一个条目）。它挂载每一个 mpd-dsh plugin row — MCP servers（ast-grep / git-bash / lsp / codegraph + 远程 context7 / grep.app）、B/C 线 plugins（mpd-config 置顶，使 mpdConfig service 对下方 rows 可见；随后是 mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline / boulder / comment-checker / codegraph / memory / workmate）、本 bundle **自己**的团队平面（`mpd-team-core` / `mpd-team-watchdog` / `mpd-team-compact`）、`mpd-web-compat` 自注册行（`name: '@mpd-dsh/mpd'`——承载 bundle web client 的 loader 条目）、mpd-bootstrap provisioning，以及**三个**官方 Agent Teams 行（`mpd-agent-team`、`mpd-tool-agent-team`、`mpd-ui-agent-team`，外加工具行指向的 `mpd-roster-provider` 行）。被采纳的 `agent-teams` body 已**消失**：它先被取消挂载，随后由 `de-vendor-and-verify-law` 波次**删除**，
+因此本树中已无任何东西加载它。
 
 波形读取行（`mcp-wave-mcp` / `mcp-traceweave`）**未挂载**：它们包装外部 Python MCP server，在 `cordis.patch.yml:92-123` 中连同安装步骤一起保持注释状态，因此没有这些二进制的机器仍能原样启动。
 
@@ -37,7 +38,8 @@ trigger = explicit flag OR (matchedSignals >= 1)
 - 官方 `mpd-agent-team` 行携带 patch 中的上限：`maxMembers: 16`、`maxTasks: 256`、`maxPendingMessagesPerMember: 64`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000`。
 - `mpd-team-core` 拥有 `<workspace>/.mpd/team/` 下的团队记录：`teams/<id>.json`、staged plan 所在的 `staging/<sessionId>.json` 槽位，以及已归档的计划。
 
-已退役内置行那套对齐上游的上限（`maxParallelMembers`、`maxMessagesPerRun`、`maxWallClockMinutes`、`maxMemberTurns`、`messagePayloadMaxBytes`、`recipientUnreadMaxBytes`、`mailboxPollIntervalMs`、`memberMaxDepth`、`stateDir`、`enforcement`）属于**历史**：它们只存在于 `packages/mpd-agent-teams-plugin/lib/index.ts`，而没有任何行挂载它。
+已退役内置行那套对齐上游的上限（`maxParallelMembers`、`maxMessagesPerRun`、`maxWallClockMinutes`、`maxMemberTurns`、`messagePayloadMaxBytes`、`recipientUnreadMaxBytes`、`mailboxPollIntervalMs`、`memberMaxDepth`、`stateDir`、`enforcement`）属于**历史**：它们只存在于采纳主体的 `lib/index.ts` 中，而没有任何行挂载它，且该主体已被 de-vendor
+波次**删除**。它们不是任何在用行会读取的旋钮。
 
 ## TUI 组合
 

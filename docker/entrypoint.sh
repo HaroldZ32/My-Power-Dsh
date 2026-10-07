@@ -677,7 +677,8 @@ fi
 
 # An id-target row is matched as an EXACT id on its own YAML line, at whatever indentation the
 # composer used (nested insert entries are indented). A substring match would let
-# `mpd-agent-team` be satisfied by `mpd-agent-teams-plugin` — the retired vendored row.
+# `mpd-agent-team` be satisfied by `mpd-agent-teams-plugin` — the retired vendored row (DELETED
+# by the de-vendor wave, which is why the guard is now belt-and-braces rather than load-bearing).
 has_row() { grep -qE "^[[:space:]]*- id: $1[[:space:]]*\$" "$DUMP_TXT" 2>/dev/null; }
 has_name() { grep -qE "^[[:space:]]*name: ['\"]?$1['\"]?[[:space:]]*\$" "$DUMP_TXT" 2>/dev/null; }
 MISSING_ROWS=""

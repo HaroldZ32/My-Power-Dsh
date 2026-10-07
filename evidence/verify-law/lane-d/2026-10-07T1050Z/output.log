@@ -1,0 +1,252 @@
+===================================================================
+Lane E — evidence/verify-law/lane-d/2026-10-07T1050Z — OUTPUT.LOG
+recordId: lane-e-lane-d-2026-10-07T1050Z   verdict: FAIL
+===================================================================
+
+--- RESIDUAL BOUND (verify-law-spec (c)), verbatim ---
+the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin’s own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).
+
+=== LOG: ev-live-and-settle.log
+cmd: the live arm's corrected case + the newest run, quoted  [2026-10-07T10:51:09Z]
+--- newest run result.json ---
+{
+  "ok": false,
+  "slug": "verify-law",
+  "sandbox": "/tmp/mpd-verify-law-es1wuH",
+  "workspace": "/tmp/mpd-verify-law-es1wuH/ws",
+  "realMarkerBefore": false,
+  "steps": {
+    "mounted": {
+      "ok": true,
+      "detail": "the harness recorded a write call for the code path"
+    },
+    "denied": {
+      "ok": false,
+      "detail": "the write was called and blocked (no successful result; sentence relayed: false)"
+    },
+    "codeNotWritten": {
+      "ok": true,
+      "detail": "the denied code path was never created"
+    },
+    "controlNotDenied": {
+      "ok": true,
+      "detail": "with verify.mode=off the same write was not refused"
+    },
+    "controlWritten": {
+      "ok": true,
+      "detail": "with verify.mode=off the code path really was written"
+    },
+    "docsAllowed": {
+      "ok": true,
+      "detail": "a docs/** write is allowed and exists in the sandbox"
+    },
+    "sandboxMarker": {
+      "ok": true,
+      "detail": "the law wrote its boot marker in the SANDBOX workspace"
+    },
+    "realMarkerUnchanged": {
+      "ok": true,
+      "detail": "the REAL workspace's marker is exactly as it was: before=false after=false"
+    },
+    "sessionsSandboxed": {
+      "ok": true,
+      "detail": "no real-cwd session key exists"
+    }
+  }
+}--- the correction's own evidence dirs (run 1 vs run 2 wording) ---
+  1c1
+  < {"ok":false,"detail":"the recorded write result carries the guard's denial sentence"}
+  ---
+  > {"ok":false,"detail":"the write was called and blocked (no successful result; sentence relayed: false)"}
+--- does the model transcript carry the refusal sentence? (run-a-guarded.log) ---
+  sentence occurrences: 2
+--- the control run's landing (run-b-control) ---
+  control success markers: 3
+--- F.2/F.3: the REAL workspace marker, re-probed ---
+  ABSENT (F.2/F.3 hold: the sandbox boot did not leak a real marker)
+--- settle: the law's own files + the skills manifest (Lane C re-verification subject) ---
+  packages/mpd-verify-plugin/src/law.ts            7282e71652d77857
+  packages/mpd-roles-plugin/src/verify-guard.ts    e336ba21b8095e3d
+  skills/dsh-qa/scripts/verify-law.ts              d5f1eb2f6881a699
+  cordis.patch.yml                                 28a7a2570f2d7d92
+  AGENTS.md                                        e39082509fdedce0
+  skills/dsh-qa/cases.json                         39360f57f2a6a548
+  skills/dsh-qa/SKILL.md                           c216f7f450148794
+
+=== LOG: ev-no-host-override.log
+cmd: node scripts/verify-no-host-override.ts  (probe 5 — the row plane)
+[verify-no-host-override]   patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml
+[verify-no-host-override] bundle id-targets (overrides): 0 (none: this bundle is purely additive)
+[verify-no-host-override] bundle inserted rows (additive): 34
+[verify-no-host-override] unclassified top-level entries: 0
+[verify-no-host-override] host layers found on disk: 4
+[verify-no-host-override]   host: dsh-base -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base [1 patch file(s)]
+[verify-no-host-override]   host: dsh-web-app -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app [5 patch file(s)]
+[verify-no-host-override]   host: dsh-headless -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless [1 patch file(s)]
+[verify-no-host-override]   host: dsh-tui (profile dsh-tui) -> /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui [1 patch file(s)]
+[verify-no-host-override] host-declared row ids: 205
+[verify-no-host-override] declared exemptions (0): none
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 205 host-declared row ids)
+EXIT=0
+
+=== LOG: ev-preset-conformance.log
+cmd: node skills/dsh-qa/scripts/preset-conformance.ts --self-test
+[preset-conformance self-test] PASS - (i) retired `text:` persona form -> problems name the persona row :: /tmp/mpd-preset-conformance-GubhyD/persona-text.patch.yml :: persona (@deepseek-ai/dsh-persona): $.prefix missing required value | /tmp/mpd-preset-conformance-GubhyD/persona-text.patch.yml :: the persona row has no `pref
+[preset-conformance self-test] PASS - (ii) renamed required row -> the unmutated copy is clean and the mutated one names tool-fs AND tool-fs-renamed :: control problems=0; mutated: the mpd preset does not mount active row(s) the installed standard preset mounts: tool-fs | the mpd preset declares row(s) the installed standard preset does not declare at all: tool-fs-renam
+[preset-conformance self-test] PASS - (iii) the renamed copy really changed the document it audits :: bytes differ
+[preset-conformance self-test] PASS - (iv) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged :: fixture root /tmp/mpd-preset-conformance-GubhyD (temp); live mtime 1791369836975.626 -> 1791369836975.626
+[preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)
+EXIT=0
+
+=== LOG: ev-scope.log
+cmd: revision + Lane D scope presence  [2026-10-07T10:50:29Z]
+97207ab8ec6f662175e843c50c40890b05656cf6
+  present  packages/mpd-verify-plugin                       files=15
+  present  packages/mpd-verify-plugin/src/law.ts            bytes=33661
+  present  packages/mpd-roles-plugin/src/verify-guard.ts    bytes=12937
+  present  skills/dsh-qa/scripts/verify-law.ts              bytes=21451
+  present  packages/mpd-verify-plugin/dist/index.js         bytes=111940
+  present  cordis.patch.yml                                 bytes=54838
+  mpd-verify-plugin src files: 8 | test files: 2
+  the mpd-verify row in cordis.patch.yml: 2 occurrence(s)
+
+cmd: the wave's evidence dirs for the law
+         984  evidence/gates/verify-law/2026-10-07T10-41-52Z/output.log
+        4039  evidence/gates/verify-law/2026-10-07T10-44-42Z-integration/output.log
+        5575  evidence/gates/verify-law/2026-10-07T10-45-47Z-integration/output.log
+        2585  evidence/gates/verify-law/2026-10-07T10-45-47Z-integration/result.json
+        6037  evidence/gates/verify-law/2026-10-07T10-47-12.929Z/output.log
+        1248  evidence/gates/verify-law/2026-10-07T10-47-12.929Z/result.json
+        3364  evidence/gates/verify-law/2026-10-07T10-47-12.929Z/run-a-guarded.log
+        1904  evidence/gates/verify-law/2026-10-07T10-47-12.929Z/run-b-control.log
+         611  evidence/gates/verify-law/2026-10-07T10-47-12.929Z/run-c-docs.log
+        4834  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/output.log
+        1246  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/result.json
+        1246  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/result-run2.json
+        2891  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/run-a-guarded.log
+         954  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/run-b-control.log
+         850  evidence/gates/verify-law/2026-10-07T10-48-03.471Z/run-c-docs.log
+
+cmd: THE ACCEPTANCE-NAMED FALSIFIER — node skills/dsh-qa/scripts/verify-law.ts --self-test
+
+=== LOG: ev-test-team-core.log
+cmd: bun test packages/mpd-team-core-plugin  (the git-write matcher + terminal verbs as TEST NAMES)
+(pass) task contracts and attempts > the attempt counter is monotonic ACROSS claims, and a board revision cannot stand in for it [0.17ms]
+(pass) task contracts and attempts > contracts list newest claim first, and an unclaimed task has none [0.23ms]
+(pass) task contracts and attempts > a corrupt contract reads as absent, never as a half-written claim [0.12ms]
+(pass) the halt > a halt records who and why, and resuming reports whether one was there [0.18ms]
+(pass) plan identity > a plan id is stable, sortable and derived from the clock [0.05ms]
+(pass) a traversal-shaped id cannot escape .mpd/team > readPlan REFUSES the id instead of returning a plan planted outside .mpd/team [0.11ms]
+(pass) a traversal-shaped id cannot escape .mpd/team > writePlan REFUSES the id and creates no file outside .mpd/team [0.08ms]
+(pass) a traversal-shaped id cannot escape .mpd/team > readContract and claimContract refuse a traversal-shaped taskId [0.15ms]
+(pass) a traversal-shaped id cannot escape .mpd/team > a FILE-CONTROLLED planId cannot send the archive write outside .mpd/team [0.29ms]
+(pass) a traversal-shaped id cannot escape .mpd/team > the falsifier: an ORDINARY session id still stages, reads and archives [0.30ms]
+
+packages/mpd-team-core-plugin/test/team-web.test.ts:
+(pass) the payload is computed from the RECORD > it carries the review fields the official board has no column for [0.65ms]
+(pass) the payload is computed from the RECORD > the VISUAL state comes from the same function the TUI uses [0.41ms]
+(pass) the payload is computed from the RECORD > the board is ordered by RANK, so the browser can lay out a graph without re-sorting [0.41ms]
+(pass) the payload is computed from the RECORD > the EXECUTOR is named, so the split's own state is visible in the browser [0.29ms]
+(pass) the payload is computed from the RECORD > a session with NO team is a payload with `team: null`, not an error [0.04ms]
+(pass) the payload is computed from the RECORD > a session with NO team of its own still gets the WORKSPACE's teams (D2) [0.35ms]
+(pass) the payload is computed from the RECORD > a workspace with NO teams is served an EMPTY listing, not a fabricated one [0.05ms]
+(pass) the payload is computed from the RECORD > a cycle is REPORTED in the payload rather than drawn as a sound board [0.27ms]
+(pass) the route > registers ONE exact path, and answers the caller's own session [0.78ms]
+(pass) the route > a THROWING read becomes a 500 payload, never an uncaught throw in a request [0.10ms]
+(pass) the route > a composition with NO web server registers nothing and says so quietly [0.07ms]
+(pass) the staged-plan route > serves the PLAN and its planId, not the team record [0.68ms]
+(pass) the staged-plan route > a session with NO staged plan is a payload with plan null, not an error [0.04ms]
+(pass) the task route > serves the frozen contracts and the hold, in the store's own fields [0.43ms]
+(pass) the mail route > serves the fold, and distinguishes an EMPTY mailbox from an unread one [0.23ms]
+(pass) the route family > registers ALL FOUR paths, and one registration covers the family [0.06ms]
+(pass) the shared approval phrase > names the planId, and is SERVED in the payload rather than re-derived by a consumer [0.17ms]
+(pass) the shared approval phrase > planForSession and the /plan route answer with the SAME projection [0.27ms]
+
+packages/mpd-team-core-plugin/test/close-and-dispatch.test.ts:
+(pass) owner-first dispatch > a declared owner is PREFERRED over roster order [0.06ms]
+(pass) owner-first dispatch > the order is preserved when NO owner is declared (the positional rule still holds) [0.04ms]
+(pass) owner-first dispatch > a BUSY owner falls back positionally AND the fallback is reported, never silent [0.04ms]
+(pass) owner-first dispatch > an ABSENT owner falls back and says so [0.02ms]
+(pass) owner-first dispatch > the owner spelling collapses like the roster's own key [0.07ms]
+(pass) the terminal verbs > the owner closes its row; a NON-owner is refused [0.35ms]
+(pass) the terminal verbs > a task with NO owner is refused: nobody has claimed the work [0.12ms]
+(pass) the terminal verbs > a STALE revision is refused rather than clobbering a concurrent write [0.13ms]
+(pass) the terminal verbs > a terminal row cannot be closed twice [0.13ms]
+(pass) the terminal verbs > the attempt counter is MONOTONIC across claims and closures [0.13ms]
+(pass) the terminal verbs > COMPLETING a row makes its dependent READY — the DAG can advance again [0.23ms]
+(pass) the terminal verbs > FAILING a row RELEASES its dependent (OPT-1) and reports the release [0.16ms]
+(pass) the terminal verbs > the LEAD override closes a stranded row, and SAYS it was the lead [0.12ms]
+
+ 149 pass
+ 0 fail
+ 673 expect() calls
+Ran 149 tests across 11 files. [158.00ms]
+EXIT=0
+
+=== LOG: ev-test-verify-plugin.log
+cmd: bun test packages/mpd-verify-plugin  (the refusal arms as TEST NAMES)
+bun test v1.4.2 (744846f84)
+
+packages/mpd-verify-plugin/test/law.test.ts:
+(pass) path classification (asserted BOTH ways) > code is gated: a declared extension, an UNKNOWN extension, and no extension at all [0.30ms]
+(pass) path classification (asserted BOTH ways) > the documentation band stays WRITABLE: the manual, the PR body, docs, evidence and .mpd [0.15ms]
+(pass) path classification (asserted BOTH ways) > a path outside the workspace root is CODE whatever it looks like [0.04ms]
+(pass) path classification (asserted BOTH ways) > a non-string or absent path PASSES — the law never guesses [0.02ms]
+(pass) path classification (asserted BOTH ways) > scope matching: empty scope is the whole workspace, a prefix covers its subtree only [0.08ms]
+(pass) the captain's write rule > a code write with NO loop, NO escape and NO delegation is DENIED [0.40ms]
+(pass) the captain's write rule > the SAME write is ALLOWED once an armed self-loop covers it (the other direction) [0.42ms]
+(pass) the captain's write rule > a loop whose scope does NOT cover the path does not authorise it [0.16ms]
+(pass) the captain's write rule > a DELEGATE loop never authorises the captain — delegation is not a loophole [0.14ms]
+(pass) the captain's write rule > an EXPIRED loop authorises nothing [0.15ms]
+(pass) the captain's write rule > a CHILD session is never the captain — that is where the writes are supposed to go [0.06ms]
+(pass) the captain's write rule > a documentation path is NEVER gated, whatever the caller is [0.06ms]
+(pass) the captain's write rule > ONE escape authorises exactly ONE write, and the second is denied again [0.07ms]
+(pass) the captain's write rule > the gated tool set is exactly the write family, and a read is never gated [0.10ms]
+(pass) the verifier's envelope > a non-seat caller is untouched: the envelope binds VERIFIERS, not everybody [0.08ms]
+(pass) the verifier's envelope > bash and the source-returning tools are DENIED outright [0.03ms]
+(pass) the verifier's envelope > board and team mutations are DENIED, but the law's OWN tools are not [0.04ms]
+(pass) the verifier's envelope > while BLIND: an implementation read is denied and a documented one is allowed [0.10ms]
+(pass) the verifier's envelope > a BARE read is denied while blind: it would search the workspace, implementation included [0.06ms]
+(pass) the verifier's envelope > after a FAIL the ratchet UNLOCKS implementation reading, COUNTED [0.05ms]
+(pass) the verifier's envelope > writes are confined to .mpd/verify/**: a verifier never fixes what it found [0.03ms]
+(pass) the record validator: every refusal, and the admissible record beside it > the good record is ADMITTED (the arm every refusal is measured against) [0.15ms]
+(pass) the record validator: every refusal, and the admissible record beside it > same-agent: the verifier and the writer cannot be the same [0.02ms]
+(pass) the record validator: every refusal, and the admissible record beside it > no-doc-sources / no-gate-evidence: an empty PASS is refused [0.02ms]
+(pass) the record validator: every refusal, and the admissible record beside it > forged-evidence: an evidence id the runner never produced is refused [0.02ms]
+(pass) the record validator: every refusal, and the admissible record beside it > bind-unproven: a PASS from a seat the observation log cannot show to be blind is refused [0.01ms]
+(pass) the record validator: every refusal, and the admissible record beside it > fail-without-findings / finding-without-basis: a FAIL must be actionable AND grounded [0.05ms]
+(pass) the record validator: every refusal, and the admissible record beside it > blind-spent: a seat that already unlocked diagnosis can only FAIL [0.01ms]
+(pass) the record validator: every refusal, and the admissible record beside it > unknown-loop: a record naming a loop this workspace does not know is refused [0.01ms]
+(pass) the record validator: every refusal, and the admissible record beside it > the pre-plugin exemption: admissible only attested, unlocked-free and pre-marker [0.08ms]
+(pass) the ledger and the gates > an escape is counted from the LOG, so a restart cannot renumber it [0.38ms]
+(pass) the ledger and the gates > loops and seats round-trip through the workspace ledger [0.34ms]
+(pass) the ledger and the gates > the boot marker is written once and read back; an absent marker reads as undefined [0.15ms]
+(pass) the ledger and the gates > the gate table is a whitelist: every id resolves, an invented one does not, and `vendor` exists [0.06ms]
+(pass) the ledger and the gates > the artifact probe returns size and hash and NEVER content, and refuses an outside path [0.36ms]
+(pass) config and identity > verify.mode resolves to its three values, defaulting to hard [0.04ms]
+(pass) config and identity > a positive-int knob falls back rather than accepting nonsense [0.05ms]
+(pass) config and identity > the session-key chain is the frozen `??` order with the `workspace` fallback [0.05ms]
+(pass) the one-git-writer rule (§5, made mechanical) > a MEMBER's git write is denied; the CAPTAIN's is allowed [0.23ms]
+(pass) the one-git-writer rule (§5, made mechanical) > read-only git stays open to everyone [0.04ms]
+(pass) the one-git-writer rule (§5, made mechanical) > a command that merely MENTIONS git is NOT denied — a guard that reddens on prose is a defect [0.02ms]
+(pass) the one-git-writer rule (§5, made mechanical) > a chained invocation IS denied, and the wrapper forms are seen [0.02ms]
+
+packages/mpd-verify-plugin/test/row.test.ts:
+(pass) the mpd-verify row > apply publishes the service, registers five tools, installs the observer and marks the boot [1.15ms]
+(pass) the mpd-verify row > the ROLES-side guard, reading that service, refuses a captain write and allows it after an arm [1.09ms]
+(pass) the mpd-verify row > §5's one-git-writer rule through the INSTALLED guard: member denied, captain allowed [0.31ms]
+(pass) the mpd-verify row > a self-writer loop without a reason or without a different verifier is REFUSED [0.27ms]
+(pass) the mpd-verify row > an escape is counted, logged and buys exactly one write [0.57ms]
+
+ 47 pass
+ 0 fail
+ 195 expect() calls
+Ran 47 tests across 2 files. [114.00ms]
+EXIT=0
+
+=== LOG: ev-verify-law-selftest.log
+cmd: node skills/dsh-qa/scripts/verify-law.ts --self-test
+[verify-law self-test] ok: the registered copy is byte-identical (d5f1eb2f6881)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+EXIT=0
+

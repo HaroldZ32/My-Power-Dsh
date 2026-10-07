@@ -181,39 +181,11 @@ export function writeTeam(box: Sandbox, team: TeamFixture): DshTeamView {
   return JSON.parse(JSON.stringify(view)) as DshTeamView
 }
 
-/**
- * Register a fixture team AND materialize the RETIRED record file at its old path.
- *
- * Only a test that mounts `packages/mpd-agent-teams-plugin/lib` (the retired, still-retained
- * vendored plugin) needs the file: that lib owns `<stateDir>/<teamId>/team.json` as ITS state and
- * reads it back. The watchdog reads the file NOWHERE any more, which is exactly why this is a
- * separate helper instead of something `writeTeam` does for every fixture.
- *
- * @returns the written record path.
- */
-export function writeTeamRecord(box: Sandbox, team: TeamFixture): string {
-  // The team's retired scratch directory (`<stateDir>/<teamId>`).
-  const dir = join(box.workspace, box.stateDir, team.id)
-  mkdirSync(join(dir, "inbox"), { recursive: true })
-  // The retired record file's content, rebuilt from the same fixture.
-  const record = {
-    id: team.id,
-    name: team.name ?? team.id,
-    phase: team.phase ?? "running",
-    ...(team.createdAt === undefined ? {} : { createdAt: team.createdAt }),
-    ...(team.approvedAt === undefined ? {} : { approvedAt: team.approvedAt }),
-    ...(team.halted === undefined ? {} : { halted: team.halted }),
-    ...(team.haltedAt === undefined ? {} : { haltedAt: team.haltedAt }),
-    ...(team.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId }),
-    members: team.members.map((member) => ({ ...member })),
-    tasks: team.tasks.map((task) => ({ ...task })),
-  }
-  // The retired record path the still-retained vendored lib reads.
-  const path = join(dir, "team.json")
-  writeFileSync(path, JSON.stringify(record, null, 2))
-  writeTeam(box, team)
-  return path
-}
+// `writeTeamRecord` was REMOVED by the de-vendor wave. It materialized `<stateDir>/<teamId>/team.json`,
+// the state file the RETIRED adopted body owned; its only caller was `lane-c-wave2.test.ts`, which
+// drove that body's scheduler and was deleted with it. The watchdog reads the file NOWHERE (the
+// adapter's `teamLiveTeams()` is its source), so nothing here is missing and no dead helper that
+// names a deleted path is left behind.
 
 /** The CURRENT views for a workspace, as fresh copies (the byte-identity assertions use this). */
 export function teamViews(box: Sandbox): DshTeamView[] {

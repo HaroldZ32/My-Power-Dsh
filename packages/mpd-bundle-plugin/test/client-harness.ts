@@ -826,9 +826,10 @@ export function createSidebarStore(initial: Record<string, unknown> = {}): Sideb
 
 /**
  * Fake "@nanmicoder/dsh-agent-teams" module: the adopted views/store/locale surface the
- * sidebar page composes. The REAL adopted bundle is proven separately
- * (packages/mpd-agent-teams-plugin/test/export-bridge.test.ts), so this stub only has to
- * be faithful about the contract the page relies on.
+ * sidebar page composes. The REAL adopted bundle is proven separately, at artifact level, by
+ * packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.ts (the export-bridge suite that
+ * used to live beside the adopted body was deleted WITH that body), so this stub only has to be
+ * faithful about the contract the page relies on.
  */
 export function createAdoptedStub(calls: HarnessCalls): AdoptedStub {
   /** Snapshot subscribers the stub notifies on a real change. */

@@ -472,9 +472,9 @@ bun run typecheck
 ```
 
 `dist/index.js` 使用仓库既有工具链（bun，无联网步骤）构建，且自包含：运行时仅需
-Node 内建模块。`Config` schema 来自本包已 vendor 的 schemastery
-（`packages/mpd-agent-teams-plugin/_deps/schemastery`）——本包不声明自己的依赖。
-该 vendor 副本是本包唯一一个指向**包目录**的相对说明符（经其自身 `package.json`
+Node 内建模块。`Config` schema 来自本 bundle **自有**的 schemastery
+（`packages/mpd-schemastery`，由 de-vendor 波次从已退役的 agent-teams 主体迁出）——本包不声明自己的
+依赖。该副本是本包唯一一个指向**包目录**的相对说明符（经其自身 `package.json`
 解析，其中同时给出 `exports.import` 与 `types`）；`src/` 中每一个相对**文件**导入
 都带显式后缀（`.js`），而构建产物已把 vendor 副本内联，因此发布产物中不含任何
 相对说明符。

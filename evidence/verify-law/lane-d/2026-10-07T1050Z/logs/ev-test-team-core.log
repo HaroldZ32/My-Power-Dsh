@@ -1,0 +1,52 @@
+cmd: bun test packages/mpd-team-core-plugin  (the git-write matcher + terminal verbs as TEST NAMES)
+(pass) task contracts and attempts > the attempt counter is monotonic ACROSS claims, and a board revision cannot stand in for it [0.17ms]
+(pass) task contracts and attempts > contracts list newest claim first, and an unclaimed task has none [0.23ms]
+(pass) task contracts and attempts > a corrupt contract reads as absent, never as a half-written claim [0.12ms]
+(pass) the halt > a halt records who and why, and resuming reports whether one was there [0.18ms]
+(pass) plan identity > a plan id is stable, sortable and derived from the clock [0.05ms]
+(pass) a traversal-shaped id cannot escape .mpd/team > readPlan REFUSES the id instead of returning a plan planted outside .mpd/team [0.11ms]
+(pass) a traversal-shaped id cannot escape .mpd/team > writePlan REFUSES the id and creates no file outside .mpd/team [0.08ms]
+(pass) a traversal-shaped id cannot escape .mpd/team > readContract and claimContract refuse a traversal-shaped taskId [0.15ms]
+(pass) a traversal-shaped id cannot escape .mpd/team > a FILE-CONTROLLED planId cannot send the archive write outside .mpd/team [0.29ms]
+(pass) a traversal-shaped id cannot escape .mpd/team > the falsifier: an ORDINARY session id still stages, reads and archives [0.30ms]
+
+packages/mpd-team-core-plugin/test/team-web.test.ts:
+(pass) the payload is computed from the RECORD > it carries the review fields the official board has no column for [0.65ms]
+(pass) the payload is computed from the RECORD > the VISUAL state comes from the same function the TUI uses [0.41ms]
+(pass) the payload is computed from the RECORD > the board is ordered by RANK, so the browser can lay out a graph without re-sorting [0.41ms]
+(pass) the payload is computed from the RECORD > the EXECUTOR is named, so the split's own state is visible in the browser [0.29ms]
+(pass) the payload is computed from the RECORD > a session with NO team is a payload with `team: null`, not an error [0.04ms]
+(pass) the payload is computed from the RECORD > a session with NO team of its own still gets the WORKSPACE's teams (D2) [0.35ms]
+(pass) the payload is computed from the RECORD > a workspace with NO teams is served an EMPTY listing, not a fabricated one [0.05ms]
+(pass) the payload is computed from the RECORD > a cycle is REPORTED in the payload rather than drawn as a sound board [0.27ms]
+(pass) the route > registers ONE exact path, and answers the caller's own session [0.78ms]
+(pass) the route > a THROWING read becomes a 500 payload, never an uncaught throw in a request [0.10ms]
+(pass) the route > a composition with NO web server registers nothing and says so quietly [0.07ms]
+(pass) the staged-plan route > serves the PLAN and its planId, not the team record [0.68ms]
+(pass) the staged-plan route > a session with NO staged plan is a payload with plan null, not an error [0.04ms]
+(pass) the task route > serves the frozen contracts and the hold, in the store's own fields [0.43ms]
+(pass) the mail route > serves the fold, and distinguishes an EMPTY mailbox from an unread one [0.23ms]
+(pass) the route family > registers ALL FOUR paths, and one registration covers the family [0.06ms]
+(pass) the shared approval phrase > names the planId, and is SERVED in the payload rather than re-derived by a consumer [0.17ms]
+(pass) the shared approval phrase > planForSession and the /plan route answer with the SAME projection [0.27ms]
+
+packages/mpd-team-core-plugin/test/close-and-dispatch.test.ts:
+(pass) owner-first dispatch > a declared owner is PREFERRED over roster order [0.06ms]
+(pass) owner-first dispatch > the order is preserved when NO owner is declared (the positional rule still holds) [0.04ms]
+(pass) owner-first dispatch > a BUSY owner falls back positionally AND the fallback is reported, never silent [0.04ms]
+(pass) owner-first dispatch > an ABSENT owner falls back and says so [0.02ms]
+(pass) owner-first dispatch > the owner spelling collapses like the roster's own key [0.07ms]
+(pass) the terminal verbs > the owner closes its row; a NON-owner is refused [0.35ms]
+(pass) the terminal verbs > a task with NO owner is refused: nobody has claimed the work [0.12ms]
+(pass) the terminal verbs > a STALE revision is refused rather than clobbering a concurrent write [0.13ms]
+(pass) the terminal verbs > a terminal row cannot be closed twice [0.13ms]
+(pass) the terminal verbs > the attempt counter is MONOTONIC across claims and closures [0.13ms]
+(pass) the terminal verbs > COMPLETING a row makes its dependent READY — the DAG can advance again [0.23ms]
+(pass) the terminal verbs > FAILING a row RELEASES its dependent (OPT-1) and reports the release [0.16ms]
+(pass) the terminal verbs > the LEAD override closes a stranded row, and SAYS it was the lead [0.12ms]
+
+ 149 pass
+ 0 fail
+ 673 expect() calls
+Ran 149 tests across 11 files. [158.00ms]
+EXIT=0

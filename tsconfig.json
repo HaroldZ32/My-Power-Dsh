@@ -22,16 +22,19 @@
     "templates/**/*.ts",
     "extensions/**/*.ts"
   ],
-  "exclude": [
-    // The ADOPTED, RETIRED plugin package is vendored code: it was plain JavaScript until this wave
-    // renamed it to `.ts`, so nothing in it was ever type-checked, and its suite was written against
-    // the `any` surface an untyped import gives. Re-typing ~380 places inside adopted test bodies is
-    // a refactor nobody asked for, so the suite is declared OUT of the program (it still RUNS under
-    // `bun test`, which is how it was verified all along) while our own packages, scripts, skills,
-    // docker, tests, templates and extensions stay in it. `lib/**` needs no entry here: it is pulled
-    // in only through the ambient shim (`scripts/lib/vendored-agent-teams.d.ts`), and the renamed
-    // vendored files carry `@ts-nocheck` because they are not ours to type.
-    "packages/mpd-agent-teams-plugin/test",
-    "packages/mpd-agent-teams-plugin/self-fix-tests"
-  ]
+  // NO TREE IS EXCLUDED FROM THE TYPE PROGRAM ANY MORE.
+  //
+  // The two entries that used to live here pointed at the ADOPTED `packages/mpd-agent-teams-plugin`
+  // (its suite was declared out of the program because ~380 adopted test bodies were written against
+  // the `any` surface an untyped import gives). The de-vendor wave DELETED that package, so the
+  // exclusion has no subject and keeping it would be a justification for a tree that does not exist.
+  //
+  // The relocated home needs NO entry either, and here is the reason rather than a guess: every file
+  // under `packages/mpd-schemastery/{lib,harness}` carries a first-line `@ts-nocheck`, which
+  // suppresses diagnostics INSIDE the file while leaving its inferred types visible to importers.
+  // That is exactly the contract the four shipped plugins rely on — they import the validator as a
+  // package directory and take their types from `lib/types/index.d.ts` through `exports.types`, which
+  // is where the global `Schemastery<T>` interface lives. An `exclude` entry could only hide those
+  // files from the declaration-coverage walk without removing a single diagnostic.
+  "exclude": []
 }

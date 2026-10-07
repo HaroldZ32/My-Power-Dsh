@@ -1,0 +1,957 @@
+## Summary of the 5 requested calls (executed in the exact order given)
+
+| # | Tool call | Result |
+|---|-----------|--------|
+| 1 | `mpd_workmate_init {base:"hephaestus", name:"alice", note:"Verilog counter specialist"}` | ❌ **Error**: `unknown base — use a functional NAME from mpd_roles_list (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer)` |
+| 2 | `mpd_workmate_list` | ✅ OK — `workmates (0):` (library empty) |
+| 3 | `mpd_workmate_spawn {name:"alice", task:"Read README.md and summarize in one sentence"}` | ❌ **Error**: `no workmate named "alice" — run mpd_workmate_init first` |
+| 4 | `mpd_workmate_reflect {name:"alice", task:"summarize README", outcome:"provided a one-sentence summary"}` | ❌ **Error**: `no workmate named "alice" — run mpd_workmate_init first` |
+| 5 | `mpd_workmate_match {task:"implement a verilog counter and verify"}` | ✅ OK — `NO MATCH (threshold 0.35)` |
+
+**Root cause of the cascade:** step 1 used `base:"hephaestus"`, which is not one of the roster's functional base names, so `alice` was never created. Steps 3 and 4 then correctly failed because they require an existing workmate. No `README.md` summary was ever produced by a workmate (steps 3–4 never ran), so that outcome is *not* confirmed. The correct call would use a valid base such as `{base:"Junior Engineer", name:"alice", ...}` — I did not make that substitution since you specified the exact calls to issue.
+
+**Note card request:** `~/.mpd/workmate/alice/note.md` does not exist, so there are no contents to print. Verified directly:
+
+```
+ls: cannot access '/tmp/mpd-wm-home-uYCguX/.mpd/workmate/': No such file or directory
+ls: cannot access '/tmp/mpd-wm-home-uYCguX/.mpd/workmate/alice/': No such file or directory
+note.md MISSING
+```
+
+DONE
+
+`~/.mpd/workmate/alice/note.md` — **MISSING**: the file (and the entire `~/.mpd/workmate/` directory) does not exist, because `mpd_workmate_init` rejected the base `"hephaestus"` and no workmate `alice` was ever created.
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user asks to use workmate tools in exact order. Note step 1 uses base:"hephaestus" — but the roster base specialists are named things like "Deep Worker", etc. There's no "hephaestus" base. Let me just try it and report the result. Let's execute in order.
+
+Step 1: mpd_workmate_init {base:"hephaestus", name:"alice", note:"Verilog counter specialist"}
+
+Then steps depend on prior results partly. Step 2 list is independent... but order matters, so sequential mostly. Let me do 1 first.
+
+Actually I can batch independent calls, but order matters for reporting. Let me do them sequentially to be safe — though 2 depends on 1 finishing.
+
+Let me start with 1.
+dsh: reasoning:
+Step 1 failed: base "hephaestus" is unknown. Report it. Then continue to step 2 regardless.
+
+Step 2: mpd_workmate_list.
+dsh: reasoning:
+Result 2: 0 workmates.
+
+Step 3: mpd_workmate_spawn {name:"alice", ...} — will fail since alice doesn't exist.
+dsh: reasoning:
+Step 3 failed. Report.
+
+Step 4: mpd_workmate_reflect {name:"alice", ...} — likely will fail too, since alice doesn't exist. Let me run it.
+
+Also step 5 match is independent-ish but order matters. Run reflect now.
+dsh: reasoning:
+Step 4 failed.
+
+Step 5: mpd_workmate_match {task:"implement a verilog counter and verify"}.
+dsh: reasoning:
+Step 5: NO MATCH, threshold 0.35.
+
+Now the final ask: "End with the word DONE and then the contents of the note card ~/.mpd/workmate/alice/note.md."
+
+The note card doesn't exist because alice was never created. Let me verify with a read/bash to be sure and report accurately. Use glob or bash ls. Let me check.
+dsh: reasoning:
+The note card is missing. I should report honestly.
+
+The user said "End with the word DONE and then the contents of the note card". Since the note card doesn't exist, I cannot provide contents. Report that.
+
+Should I try to fix by using a valid base? The user asked for the exact order with exact params. I executed as asked. The instructions said report each result. I should not deviate silently. However, it might be helpful to note the correct base would be e.g. "Deep Worker" or "Junior Engineer". I'll mention it but not execute extra unrequested steps... Actually the user wants a report; maybe offering the correction is useful. But do not do unrequested mutations. I'll just note it.
+
+End with DONE then the note contents — note card missing, so state that clearly.
+
+
+--- dump (raw capture, banner included) ---
+{
+  "bin": "dsh",
+  "args": [
+    "--profile",
+    "mpd-headless",
+    "--dump-config"
+  ],
+  "profile": "mpd-headless",
+  "exitCode": 0,
+  "exitCodeSource": "child",
+  "stdoutBytes": 44331,
+  "bannerEmitted": true,
+  "childSpawnError": null,
+  "stdout": "# == @deepseek-ai/dsh-base\n- id: tool-plugin-manager\n  name: '@deepseek-ai/dsh-plugin-manager/tools'\n  disabled: true\n- id: plugin-manager\n  name: '@deepseek-ai/dsh-plugin-manager'\n  disabled: !!js '!ctx.get(''profileContext'')'\n- id: timer\n  name: '@deepseek-ai/cordis-plugin-timer'\n# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-headless\n- id: hmr\n  name: '@deepseek-ai/dsh-hmr'\n  disabled: true\n  config:\n    root: []\n# == @deepseek-ai/dsh-base\n- id: llm\n  name: '@deepseek-ai/dsh-llm'\n- id: deepseek-llm-api-extensions\n  name: '@deepseek-ai/dsh-deepseek-llm-api-extensions'\n- id: session\n  name: '@deepseek-ai/dsh-session'\n- id: session-log-deepseek\n  name: '@deepseek-ai/dsh-session-log-deepseek'\n- id: typert\n  name: '@deepseek-ai/dsh-typert-registry'\n- id: typert-loader\n  name: '@deepseek-ai/dsh-typert-loader'\n- id: typert-gateway\n  name: '@deepseek-ai/dsh-api-gateway'\n- id: session-title\n  name: '@deepseek-ai/dsh-session-title'\n  config:\n    fallbackMaxWords: 5\n    fallbackMaxBytes: 40\n    maxTitleBytes: 80\n- id: session-title-llm\n  name: '@deepseek-ai/dsh-session-title-first-prompt-llm'\n  config:\n    targetWords: 5\n    targetCjkCharacters: 10\n    maxInputBytes: 4096\n    maxOutputTokens: 64\n    timeoutMs: 60000\n- id: user-questions\n  name: '@deepseek-ai/dsh-user-questions'\n- id: agent\n  name: '@deepseek-ai/dsh-agent'\n- id: plugin-package-inventory-deepseek\n  name: '@deepseek-ai/dsh-plugin-package-inventory-deepseek'\n- id: agent-default-model\n  name: '@deepseek-ai/dsh-agent-default-model'\n  config:\n    provider: deepseek-official\n    model: deepseek-flash\n- id: jobs\n  name: '@deepseek-ai/dsh-jobs-local'\n- id: llm-retry\n  name: '@deepseek-ai/dsh-llm-retry'\n- id: config-editor\n  name: '@deepseek-ai/dsh-config-editor'\n  disabled: !!js '!ctx.get(''profileContext'')'\n- id: settings\n  name: '@deepseek-ai/dsh-settings'\n  disabled: !!js '!ctx.get(''profileContext'')'\n- id: authorization\n  name: '@deepseek-ai/dsh-authorization'\n- id: deepseek-account\n  name: '@deepseek-ai/dsh-deepseek-account-platform'\n  config:\n    desktopPlatform: !!js >-\n      ctx.get('profileContext')?.name === 'desktop' && ['darwin',\n      'win32'].includes(process.platform) ? process.platform : null\n- id: credentials\n  name: '@deepseek-ai/dsh-credentials-local'\n- id: llm-pi-ai\n  name: '@deepseek-ai/dsh-llm-pi-ai'\n- id: session-persistence-jsonl\n  name: '@deepseek-ai/dsh-session-persistence-jsonl'\n  config:\n    root: !!js dshHomePath('sessions')\n- id: attachment-local\n  name: '@deepseek-ai/dsh-attachment-local'\n- id: session-query-sqlite\n  name: '@deepseek-ai/dsh-session-query-sqlite'\n  config:\n    path: ':memory:'\n    openAt: never\n- id: session-projection\n  name: '@deepseek-ai/dsh-session-projection'\n- id: storage\n  name: '@deepseek-ai/dsh-storage'\n- id: storage-json\n  name: '@deepseek-ai/dsh-storage-json'\n  config:\n    root: !!js dshHomePath('storages')\n- id: storage-domain\n  name: '@deepseek-ai/dsh-storage-domain'\n  config:\n    backend: json\n- id: session-projection-cache\n  name: '@deepseek-ai/dsh-session-projection-cache'\n  config:\n    writeEveryEvents: 200\n    writeIntervalMs: 5000\n- id: otel\n  name: '@deepseek-ai/dsh-otel'\n- id: session-telemetry-otel\n  name: '@deepseek-ai/dsh-session-telemetry-otel'\n  config:\n    mode: !!js process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'\n    shutdownTimeoutMillis: 3000\n    maxRequestBytes: 4000000\n    exporter:\n      url: !!js >-\n        process.env.DSH_TELEMETRY_OTLP_URL ??\n        'https://dsh-otel-collector.deepseeksvc.com/v1/logs'\n      compression: gzip\n      timeoutMillis: 1000\n    processor:\n      scheduledDelayMillis: 10000\n      maxQueueSize: 2048\n      maxExportBatchSize: 2048\n      exportTimeoutMillis: 1500\n- id: subprocess\n  name: '@deepseek-ai/dsh-subprocess-local'\n- id: sandbox\n  name: '@deepseek-ai/dsh-sandbox-local'\n- id: sandbox-policy\n  name: '@deepseek-ai/dsh-sandbox-policy'\n  config:\n    mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'\n    workspaceRoot: !!js process.cwd()\n- id: bash-sandbox\n  name: '@deepseek-ai/dsh-bash-sandbox'\n  disabled: !!js process.platform === 'win32'\n  config:\n    timeoutMs: 60000\n- id: pwsh-sandbox\n  name: '@deepseek-ai/dsh-pwsh-sandbox'\n  disabled: !!js process.platform !== 'win32'\n- id: approval\n  name: '@deepseek-ai/dsh-user-approval'\n  config:\n    policy: !!js >-\n      (process.env.DSH_PERMISSION_MODE ?? 'workspace-write') ===\n      'danger-full-access' ? 'never' : 'ask'\n- id: permission\n  name: '@deepseek-ai/dsh-permission-presets'\n  config:\n    presets:\n      read-only:\n        sandbox: read-only\n        approval: ask\n      workspace-write:\n        sandbox: workspace-write\n        approval: ask\n      danger-full-access:\n        sandbox: danger-full-access\n        approval: never\n- id: shell-env\n  name: '@deepseek-ai/dsh-shell-env'\n- id: tool-bash\n  name: '@deepseek-ai/dsh-tool-bash'\n  disabled: !!js process.platform === 'win32'\n- id: tool-pwsh\n  name: '@deepseek-ai/dsh-tool-pwsh'\n  disabled: !!js process.platform !== 'win32'\n- id: tool-jobs\n  name: '@deepseek-ai/dsh-tool-jobs'\n- id: fs-observation-policy\n  name: '@deepseek-ai/dsh-fs-observation-policy'\n- id: tool-fs\n  name: '@deepseek-ai/dsh-tool-fs'\n- id: tool-fs-search\n  name: '@deepseek-ai/dsh-tool-fs-search'\n  config:\n    sampleOverCapGlobResults: false\n- id: agent-instructions\n  name: '@deepseek-ai/dsh-agent-instructions'\n  config:\n    maxBytes: 65536\n- id: skill\n  name: '@deepseek-ai/dsh-skill'\n- id: skill-filesystem\n  name: '@deepseek-ai/dsh-skill-filesystem'\n- id: skill-badge\n  name: '@deepseek-ai/dsh-skill-badge'\n  disabled: true\n- id: tool-skill\n  name: '@deepseek-ai/dsh-tool-skill'\n- id: commands\n  name: '@deepseek-ai/dsh-commands'\n- id: command-feedback\n  name: '@deepseek-ai/dsh-command-feedback'\n- id: goal\n  name: '@deepseek-ai/dsh-goal'\n- id: goal-round-driver\n  name: '@deepseek-ai/dsh-goal-round-driver'\n- id: command-goal\n  name: '@deepseek-ai/dsh-command-goal'\n- id: plan-mode\n  name: '@deepseek-ai/dsh-plan-mode'\n  config:\n    section: >\n      You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or\n      the user switches the session mode. Imperative language to implement\n      changes means plan the implementation, not execute it. A user's\n      conversational agreement — including an answer confirming something you\n      asked — approves nothing and does not end plan mode; fold the confirmed\n      decision into the plan and submit it through exit_plan_mode.\n\n\n      Explore first. Use non-mutating reads, searches, static analysis, and\n      checks to ground the plan in the actual repository. Do not edit or write\n      files, change configuration, run formatters or code generation that\n      rewrites tracked files, commit, or otherwise carry out the plan. Prefer\n      existing functions and patterns over new machinery.\n\n\n      The tool catalog stays the same across modes for request-cache stability.\n      These plan-mode rules override any later tool description or guidance that\n      suggests using mutation tools; those tools remain listed only to keep the\n      request shape stable. Do not use todo_write to track this planning phase:\n      it tracks implementation after an approved plan, while the plan itself\n      belongs in exit_plan_mode.\n\n\n      Resolve discoverable facts by inspection. Use ask_user_question only for\n      user-owned choices or material ambiguity that inspection cannot answer. Do\n      not ask the user where code lives or how current behavior works when you\n      can find out.\n\n\n      Make the plan decision-complete: state the goal and success criteria;\n      group implementation changes by subsystem; identify public API, schema,\n      and data-flow changes; cover edge cases, failure modes, tests, acceptance\n      criteria, and explicit assumptions. Keep it concise enough to review but\n      detailed enough that another engineer can implement it without making\n      design decisions.\n\n\n      When ready, call exit_plan_mode with the complete plan markdown, starting\n      with a # title. Make exit_plan_mode the only and final tool call in that\n      assistant response: it presents the plan for approval, and implementation\n      begins only in a later step after approval. Do not paste the final plan as\n      a plain reply or ask \"should I proceed?\" through prose or\n      ask_user_question. If review rejects it, incorporate the feedback and\n      present again. If the review channel is unavailable or aborted, stay in\n      plan mode and ask the user to switch modes manually; do not proceed with\n      implementation.\n- id: token-meter\n  name: '@deepseek-ai/dsh-token-meter'\n- id: compaction-basic\n  name: '@deepseek-ai/dsh-compaction-basic'\n- id: command-compact\n  name: '@deepseek-ai/dsh-command-compact'\n- id: subagent\n  name: '@deepseek-ai/dsh-subagent'\n- id: subagent-spawn-in-process\n  name: '@deepseek-ai/dsh-subagent-spawn-in-process'\n  config:\n    providerName: spawn\n- id: subagent-fork-in-process\n  name: '@deepseek-ai/dsh-subagent-fork-in-process'\n  config:\n    providerName: fork\n- id: tool-subagent-control\n  name: '@deepseek-ai/dsh-tool-subagent-control'\n- id: tool-subagent-list-agents\n  name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'\n- id: tool-subagent\n  name: '@deepseek-ai/dsh-tool-subagent'\n  config:\n    provider: spawn\n    toolName: subagent\n    backgroundMode: continuable\n- id: tool-subagent-fork\n  name: '@deepseek-ai/dsh-tool-subagent'\n  config:\n    provider: fork\n    toolName: subagent_fork\n    backgroundMode: one-shot\n- id: ptc-runtime\n  name: '@deepseek-ai/dsh-ptc-runtime-node'\n- id: workflow-ptc\n  name: '@deepseek-ai/dsh-workflow-ptc'\n  config:\n    provider: spawn\n- id: tool-workflow\n  name: '@deepseek-ai/dsh-tool-workflow'\n- id: timeout-policy\n  name: '@deepseek-ai/dsh-tool-call-timeout-policy'\n- id: spill-local\n  name: '@deepseek-ai/dsh-spill-local'\n- id: spill-policy\n  name: '@deepseek-ai/dsh-spill-policy'\n  config:\n    maxInlineTokens: 12500\n- id: session-checkpoint-policy\n  name: '@deepseek-ai/dsh-session-checkpoint-policy'\n- id: tool-result-pruner\n  name: '@deepseek-ai/dsh-compaction-tool-result-pruner'\n  config:\n    thresholdChars: 8192\n    headChars: 4096\n    tailChars: 1024\n- id: image-offload\n  name: '@deepseek-ai/dsh-compaction-image-offload'\n- id: tool-todo\n  name: '@deepseek-ai/dsh-tool-todo'\n  config:\n    allowParallelInProgress: true\n- id: tool-goal\n  name: '@deepseek-ai/dsh-tool-goal'\n- id: tool-ralph\n  name: '@deepseek-ai/dsh-tool-ralph'\n  disabled: true\n  config:\n    subagentProvider: spawn\n    maxRounds: 64\n- id: repeat-tool-reminder\n  name: '@deepseek-ai/dsh-repeat-tool-reminder'\n  config:\n    thresholds:\n      - 3\n      - 5\n      - 8\n    argumentsPreviewChars: 500\n- id: web\n  name: '@deepseek-ai/dsh-web'\n  config:\n    searchProvider: deepseek-official\n    fetchProvider: http\n- id: web-search-deepseek\n  name: '@deepseek-ai/dsh-web-search-deepseek'\n  config:\n    apiKeyEnv: DEEPSEEK_API_KEY\n- id: web-fetch-http\n  name: '@deepseek-ai/dsh-web-fetch-http'\n- id: tool-web\n  name: '@deepseek-ai/dsh-tool-web'\n  config:\n    fetch: true\n    searchTimeoutMs: 60000\n- id: mcp-resources\n  name: '@deepseek-ai/dsh-mcp-resources'\n# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-headless\n- id: tools\n  name: '@deepseek-ai/dsh-tools'\n  config:\n    mode: !!js process.env.DSH_TOOLS_MODE\n- id: system-prompt\n  name: '@deepseek-ai/dsh-system-prompt'\n  config:\n    personaSuffix: Your working directory is {{cwd}}.\n    personaPrefix: You are a coding agent powered by the {{model}} model.\n# == @deepseek-ai/dsh-base\n- id: agent-loop\n  name: '@deepseek-ai/dsh-agent-loop'\n  config:\n    agents: []\n- id: fs-sandbox\n  name: '@deepseek-ai/dsh-fs-sandbox'\n- id: llm-deepseek\n  name: '@deepseek-ai/dsh-llm-deepseek-api-key'\n- id: llm-deepseek-account\n  name: '@deepseek-ai/dsh-llm-deepseek-account'\n# == @deepseek-ai/dsh-headless\n- id: headless-startup\n  name: '@deepseek-ai/dsh-headless/startup'\n- id: headless-runner\n  name: '@deepseek-ai/dsh-headless'\n  inject:\n    - headlessStartup\n  config:\n    task: !!js ctx.headlessStartup.task\n    sessionId: !!js ctx.headlessStartup.sessionId\n    json: !!js ctx.headlessStartup.json\n# == /tmp/mpd-wm-dsh-Mj2ZXL/cordis.patch.yml\n- id: preset-mpd\n  name: '@deepseek-ai/dsh-agent-preset'\n  config:\n    id: mpd\n    order: 1\n    name: MPD (Main Working Agent)\n    description: >-\n      The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every\n      project, works natively, one-shot-consults the specialists\n      (Architect/Researcher/Planner/Deep Worker/Senior\n      Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior\n      Engineer) via mpd_role_spawn, and runs teams through the official\n      @deepseek-ai/dsh-experimental-agent-team plugin.\n    plugins:\n      - id: persona\n        name: '@deepseek-ai/dsh-persona'\n        config:\n          prefix: >-\n            You are MPD, the main working agent of the my-power-dsh DeepSeek\n            Harness bundle, powered by the {{model}} model. Your working\n            directory is {{cwd}}.\n\n            CONVENTION - EVERY PROJECT INSTRUCTION FILE: at the start of every\n            session in a project workspace you MUST attempt to read AGENT.md\n            (fall back to AGENTS.md, then CLAUDE.md) from the project root down\n            to the current directory, and follow it. Do not skip this step even\n            on workspaces you have seen before; instructions may have changed.\n\n            SPECIALISTS: the specialists are SUBAGENTS and teammate templates,\n            not presets. One-shot consult them with mpd_role_spawn (names from\n            mpd_roles_list), each named for what it does: Architect\n            (architecture review, deep debugging, self-review), Researcher\n            (evidence-based code / open-source search), Planner (produces\n            .mpd/plans plans, never implements), Deep Worker (executes goals\n            end-to-end with tools), Senior Engineer (primary implementation and\n            verification), Lead (orchestration, delegation, integration),\n            Explorer (read-only codebase search and location), Reviewer\n            (correctness/risk findings, no fixes), Plan Reviewer (plan\n            executability and reference review), Vision Analyst\n            (image/screenshot/PDF analysis), Junior Engineer (fast, well-scoped\n            execution). Read-only specialists (Architect/\n            Researcher/Planner/Explorer/Plan Reviewer/Vision Analyst) are\n            mechanically restricted from writing - treat their output as advice.\n            Workers (Senior Engineer/ Junior Engineer/Deep Worker/Lead/Reviewer)\n            can edit - always verify their claimed results yourself.\n\n            TEAM WORK uses the OFFICIAL Agent Teams plugin\n            (@deepseek-ai/dsh-experimental-agent-team), NOT bare mpd_role_spawn\n            loops. STAGING is OURS: the `agent_teams_plan` tool is the one write\n            path that records a plan before anybody exists — create ->\n            add_member / create_task -> approve, and approval is what EXECUTES\n            it (nothing is spawned before that). The OFFICIAL tools stay correct\n            for the members themselves, the shared board and delivery:\n            spawn_teammate (one call per teammate; name + description + complete\n            prompt + context fresh|fork), team_task_create / team_task_list /\n            team_task_get / team_task_update (the shared task DAG and its\n            compare-and-set lifecycle), send_message (durable peer message;\n            target \"lead\" reaches you), list_agents, wait_agent,\n            interrupt_agent. You are the captain: design the DAG, dispatch by\n            workload size, keep requirement / task / review as separate tasks,\n            and integrate results yourself. Every team edit a member makes is\n            immediately visible to everyone — split write work into disjoint\n            scopes and record the expected write scope on the task.\n\n            THE ROSTER IS YOUR TEMPLATE SET. The 11 specialists (Architect,\n            Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer,\n            Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) are\n            teammate INSTANTIATION TEMPLATES, not tools: fetch a member's\n            persona/role text with mpd_role_persona and paste it into the\n            spawn_teammate prompt. The read-only specialists (Architect,\n            Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) are\n            MECHANICALLY denied write/edit/bash/mpd_hashline_edit by the\n            bundle's guard, so treat their output as advice; workers (Senior\n            Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) can edit —\n            always verify their claimed results yourself.\n\n            MODEL ROUTES: a teammate created by spawn_teammate runs on YOUR\n            route (the official TeamService forwards only the prompt and the\n            parent to the subagent registry, so no per-teammate model can be\n            injected). The mpd team-model slots still apply to the ONE-SHOT\n            consult path (mpd_role_spawn), where the route is explicit. If a\n            teammate needs a different model, state that in its prompt so it can\n            raise it with you.\n\n            SESSION STARTUP RULE (binding; MECHANICAL by default, evaluated by\n            the mpd session gate): a session starts with NO team — a team is NOT\n            a precondition of a session. At the session's first pre-step the\n            complexity gate is evaluated and behaves accordingly, and\n            `team.gate` in mpd.jsonc selects the mode: mechanical (default) |\n            advisory | off. Every notice it injects carries the marker\n            `[AgentTeams] Session-start team rule`.\n              - gate NOT triggered -> run the session solo; do NOT create a team, and do not invent\n                one. Ordinary questions, one-line edits and lookups belong here.\n              - gate TRIGGERED -> the gate STAGES an APPROVABLE PLAN SHELL (0 members, 0 tasks)\n                through the `agent_teams_plan` tool, then injects ONE notice naming the returned plan\n                id; NOTHING is spawned — the plan is INERT until you approve it with `agent_teams_plan\n                {action:\"approve\"}`; extend it with `add_member`/`create_task` first, and approval is\n                what spawns the members and posts the tasks. Never tell the user a team was created\n                while that shell is unapproved.\n              - an explicit `team:` / `!team` request ALSO stages the shell (signal A) and the marker is\n                CONSUMED from the goal text — you are the captain from that moment. Tell the user the\n                roster and DAG you are about to run, extend the staged shell, then approve it. If the\n                team does not fit, discard the plan and continue solo with the user — that is an\n                accepted outcome.\n              - without `agent_teams_plan` mounted, or with `team.gate: \"advisory\"`, the notice is\n                ADVISORY and says `NO team was staged`: you stage the team yourself at the moment the\n                work warrants one. If the work does not warrant a team (a short or single-thread
+
+--- composed tree (stdout, banner-free — what the assertions read) ---
+# == @deepseek-ai/dsh-base
+- id: tool-plugin-manager
+  name: '@deepseek-ai/dsh-plugin-manager/tools'
+  disabled: true
+- id: plugin-manager
+  name: '@deepseek-ai/dsh-plugin-manager'
+  disabled: !!js '!ctx.get(''profileContext'')'
+- id: timer
+  name: '@deepseek-ai/cordis-plugin-timer'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-headless
+- id: hmr
+  name: '@deepseek-ai/dsh-hmr'
+  disabled: true
+  config:
+    root: []
+# == @deepseek-ai/dsh-base
+- id: llm
+  name: '@deepseek-ai/dsh-llm'
+- id: deepseek-llm-api-extensions
+  name: '@deepseek-ai/dsh-deepseek-llm-api-extensions'
+- id: session
+  name: '@deepseek-ai/dsh-session'
+- id: session-log-deepseek
+  name: '@deepseek-ai/dsh-session-log-deepseek'
+- id: typert
+  name: '@deepseek-ai/dsh-typert-registry'
+- id: typert-loader
+  name: '@deepseek-ai/dsh-typert-loader'
+- id: typert-gateway
+  name: '@deepseek-ai/dsh-api-gateway'
+- id: session-title
+  name: '@deepseek-ai/dsh-session-title'
+  config:
+    fallbackMaxWords: 5
+    fallbackMaxBytes: 40
+    maxTitleBytes: 80
+- id: session-title-llm
+  name: '@deepseek-ai/dsh-session-title-first-prompt-llm'
+  config:
+    targetWords: 5
+    targetCjkCharacters: 10
+    maxInputBytes: 4096
+    maxOutputTokens: 64
+    timeoutMs: 60000
+- id: user-questions
+  name: '@deepseek-ai/dsh-user-questions'
+- id: agent
+  name: '@deepseek-ai/dsh-agent'
+- id: plugin-package-inventory-deepseek
+  name: '@deepseek-ai/dsh-plugin-package-inventory-deepseek'
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-flash
+- id: jobs
+  name: '@deepseek-ai/dsh-jobs-local'
+- id: llm-retry
+  name: '@deepseek-ai/dsh-llm-retry'
+- id: config-editor
+  name: '@deepseek-ai/dsh-config-editor'
+  disabled: !!js '!ctx.get(''profileContext'')'
+- id: settings
+  name: '@deepseek-ai/dsh-settings'
+  disabled: !!js '!ctx.get(''profileContext'')'
+- id: authorization
+  name: '@deepseek-ai/dsh-authorization'
+- id: deepseek-account
+  name: '@deepseek-ai/dsh-deepseek-account-platform'
+  config:
+    desktopPlatform: !!js >-
+      ctx.get('profileContext')?.name === 'desktop' && ['darwin',
+      'win32'].includes(process.platform) ? process.platform : null
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+- id: attachment-local
+  name: '@deepseek-ai/dsh-attachment-local'
+- id: session-query-sqlite
+  name: '@deepseek-ai/dsh-session-query-sqlite'
+  config:
+    path: ':memory:'
+    openAt: never
+- id: session-projection
+  name: '@deepseek-ai/dsh-session-projection'
+- id: storage
+  name: '@deepseek-ai/dsh-storage'
+- id: storage-json
+  name: '@deepseek-ai/dsh-storage-json'
+  config:
+    root: !!js dshHomePath('storages')
+- id: storage-domain
+  name: '@deepseek-ai/dsh-storage-domain'
+  config:
+    backend: json
+- id: session-projection-cache
+  name: '@deepseek-ai/dsh-session-projection-cache'
+  config:
+    writeEveryEvents: 200
+    writeIntervalMs: 5000
+- id: otel
+  name: '@deepseek-ai/dsh-otel'
+- id: session-telemetry-otel
+  name: '@deepseek-ai/dsh-session-telemetry-otel'
+  config:
+    mode: !!js process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'
+    shutdownTimeoutMillis: 3000
+    maxRequestBytes: 4000000
+    exporter:
+      url: !!js >-
+        process.env.DSH_TELEMETRY_OTLP_URL ??
+        'https://dsh-otel-collector.deepseeksvc.com/v1/logs'
+      compression: gzip
+      timeoutMillis: 1000
+    processor:
+      scheduledDelayMillis: 10000
+      maxQueueSize: 2048
+      maxExportBatchSize: 2048
+      exportTimeoutMillis: 1500
+- id: subprocess
+  name: '@deepseek-ai/dsh-subprocess-local'
+- id: sandbox
+  name: '@deepseek-ai/dsh-sandbox-local'
+- id: sandbox-policy
+  name: '@deepseek-ai/dsh-sandbox-policy'
+  config:
+    mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'
+    workspaceRoot: !!js process.cwd()
+- id: bash-sandbox
+  name: '@deepseek-ai/dsh-bash-sandbox'
+  disabled: !!js process.platform === 'win32'
+  config:
+    timeoutMs: 60000
+- id: pwsh-sandbox
+  name: '@deepseek-ai/dsh-pwsh-sandbox'
+  disabled: !!js process.platform !== 'win32'
+- id: approval
+  name: '@deepseek-ai/dsh-user-approval'
+  config:
+    policy: !!js >-
+      (process.env.DSH_PERMISSION_MODE ?? 'workspace-write') ===
+      'danger-full-access' ? 'never' : 'ask'
+- id: permission
+  name: '@deepseek-ai/dsh-permission-presets'
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+- id: shell-env
+  name: '@deepseek-ai/dsh-shell-env'
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: !!js process.platform === 'win32'
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: !!js process.platform !== 'win32'
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+- id: fs-observation-policy
+  name: '@deepseek-ai/dsh-fs-observation-policy'
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+- id: skill
+  name: '@deepseek-ai/dsh-skill'
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+- id: skill-badge
+  name: '@deepseek-ai/dsh-skill-badge'
+  disabled: true
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+- id: commands
+  name: '@deepseek-ai/dsh-commands'
+- id: command-feedback
+  name: '@deepseek-ai/dsh-command-feedback'
+- id: goal
+  name: '@deepseek-ai/dsh-goal'
+- id: goal-round-driver
+  name: '@deepseek-ai/dsh-goal-round-driver'
+- id: command-goal
+  name: '@deepseek-ai/dsh-command-goal'
+- id: plan-mode
+  name: '@deepseek-ai/dsh-plan-mode'
+  config:
+    section: >
+      You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or
+      the user switches the session mode. Imperative language to implement
+      changes means plan the implementation, not execute it. A user's
+      conversational agreement — including an answer confirming something you
+      asked — approves nothing and does not end plan mode; fold the confirmed
+      decision into the plan and submit it through exit_plan_mode.
+
+
+      Explore first. Use non-mutating reads, searches, static analysis, and
+      checks to ground the plan in the actual repository. Do not edit or write
+      files, change configuration, run formatters or code generation that
+      rewrites tracked files, commit, or otherwise carry out the plan. Prefer
+      existing functions and patterns over new machinery.
+
+
+      The tool catalog stays the same across modes for request-cache stability.
+      These plan-mode rules override any later tool description or guidance that
+      suggests using mutation tools; those tools remain listed only to keep the
+      request shape stable. Do not use todo_write to track this planning phase:
+      it tracks implementation after an approved plan, while the plan itself
+      belongs in exit_plan_mode.
+
+
+      Resolve discoverable facts by inspection. Use ask_user_question only for
+      user-owned choices or material ambiguity that inspection cannot answer. Do
+      not ask the user where code lives or how current behavior works when you
+      can find out.
+
+
+      Make the plan decision-complete: state the goal and success criteria;
+      group implementation changes by subsystem; identify public API, schema,
+      and data-flow changes; cover edge cases, failure modes, tests, acceptance
+      criteria, and explicit assumptions. Keep it concise enough to review but
+      detailed enough that another engineer can implement it without making
+      design decisions.
+
+
+      When ready, call exit_plan_mode with the complete plan markdown, starting
+      with a # title. Make exit_plan_mode the only and final tool call in that
+      assistant response: it presents the plan for approval, and implementation
+      begins only in a later step after approval. Do not paste the final plan as
+      a plain reply or ask "should I proceed?" through prose or
+      ask_user_question. If review rejects it, incorporate the feedback and
+      present again. If the review channel is unavailable or aborted, stay in
+      plan mode and ask the user to switch modes manually; do not proceed with
+      implementation.
+- id: token-meter
+  name: '@deepseek-ai/dsh-token-meter'
+- id: compaction-basic
+  name: '@deepseek-ai/dsh-compaction-basic'
+- id: command-compact
+  name: '@deepseek-ai/dsh-command-compact'
+- id: subagent
+  name: '@deepseek-ai/dsh-subagent'
+- id: subagent-spawn-in-process
+  name: '@deepseek-ai/dsh-subagent-spawn-in-process'
+  config:
+    providerName: spawn
+- id: subagent-fork-in-process
+  name: '@deepseek-ai/dsh-subagent-fork-in-process'
+  config:
+    providerName: fork
+- id: tool-subagent-control
+  name: '@deepseek-ai/dsh-tool-subagent-control'
+- id: tool-subagent-list-agents
+  name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+- id: tool-subagent
+  name: '@deepseek-ai/dsh-tool-subagent'
+  config:
+    provider: spawn
+    toolName: subagent
+    backgroundMode: continuable
+- id: tool-subagent-fork
+  name: '@deepseek-ai/dsh-tool-subagent'
+  config:
+    provider: fork
+    toolName: subagent_fork
+    backgroundMode: one-shot
+- id: ptc-runtime
+  name: '@deepseek-ai/dsh-ptc-runtime-node'
+- id: workflow-ptc
+  name: '@deepseek-ai/dsh-workflow-ptc'
+  config:
+    provider: spawn
+- id: tool-workflow
+  name: '@deepseek-ai/dsh-tool-workflow'
+- id: timeout-policy
+  name: '@deepseek-ai/dsh-tool-call-timeout-policy'
+- id: spill-local
+  name: '@deepseek-ai/dsh-spill-local'
+- id: spill-policy
+  name: '@deepseek-ai/dsh-spill-policy'
+  config:
+    maxInlineTokens: 12500
+- id: session-checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'
+- id: tool-result-pruner
+  name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+  config:
+    thresholdChars: 8192
+    headChars: 4096
+    tailChars: 1024
+- id: image-offload
+  name: '@deepseek-ai/dsh-compaction-image-offload'
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+- id: tool-ralph
+  name: '@deepseek-ai/dsh-tool-ralph'
+  disabled: true
+  config:
+    subagentProvider: spawn
+    maxRounds: 64
+- id: repeat-tool-reminder
+  name: '@deepseek-ai/dsh-repeat-tool-reminder'
+  config:
+    thresholds:
+      - 3
+      - 5
+      - 8
+    argumentsPreviewChars: 500
+- id: web
+  name: '@deepseek-ai/dsh-web'
+  config:
+    searchProvider: deepseek-official
+    fetchProvider: http
+- id: web-search-deepseek
+  name: '@deepseek-ai/dsh-web-search-deepseek'
+  config:
+    apiKeyEnv: DEEPSEEK_API_KEY
+- id: web-fetch-http
+  name: '@deepseek-ai/dsh-web-fetch-http'
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: true
+    searchTimeoutMs: 60000
+- id: mcp-resources
+  name: '@deepseek-ai/dsh-mcp-resources'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-headless
+- id: tools
+  name: '@deepseek-ai/dsh-tools'
+  config:
+    mode: !!js process.env.DSH_TOOLS_MODE
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+  config:
+    personaSuffix: Your working directory is {{cwd}}.
+    personaPrefix: You are a coding agent powered by the {{model}} model.
+# == @deepseek-ai/dsh-base
+- id: agent-loop
+  name: '@deepseek-ai/dsh-agent-loop'
+  config:
+    agents: []
+- id: fs-sandbox
+  name: '@deepseek-ai/dsh-fs-sandbox'
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+- id: llm-deepseek-account
+  name: '@deepseek-ai/dsh-llm-deepseek-account'
+# == @deepseek-ai/dsh-headless
+- id: headless-startup
+  name: '@deepseek-ai/dsh-headless/startup'
+- id: headless-runner
+  name: '@deepseek-ai/dsh-headless'
+  inject:
+    - headlessStartup
+  config:
+    task: !!js ctx.headlessStartup.task
+    sessionId: !!js ctx.headlessStartup.sessionId
+    json: !!js ctx.headlessStartup.json
+# == /tmp/mpd-wm-dsh-Mj2ZXL/cordis.patch.yml
+- id: preset-mpd
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: mpd
+    order: 1
+    name: MPD (Main Working Agent)
+    description: >-
+      The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every
+      project, works natively, one-shot-consults the specialists
+      (Architect/Researcher/Planner/Deep Worker/Senior
+      Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior
+      Engineer) via mpd_role_spawn, and runs teams through the official
+      @deepseek-ai/dsh-experimental-agent-team plugin.
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          prefix: >-
+            You are MPD, the main working agent of the my-power-dsh DeepSeek
+            Harness bundle, powered by the {{model}} model. Your working
+            directory is {{cwd}}.
+
+            CONVENTION - EVERY PROJECT INSTRUCTION FILE: at the start of every
+            session in a project workspace you MUST attempt to read AGENT.md
+            (fall back to AGENTS.md, then CLAUDE.md) from the project root down
+            to the current directory, and follow it. Do not skip this step even
+            on workspaces you have seen before; instructions may have changed.
+
+            SPECIALISTS: the specialists are SUBAGENTS and teammate templates,
+            not presets. One-shot consult them with mpd_role_spawn (names from
+            mpd_roles_list), each named for what it does: Architect
+            (architecture review, deep debugging, self-review), Researcher
+            (evidence-based code / open-source search), Planner (produces
+            .mpd/plans plans, never implements), Deep Worker (executes goals
+            end-to-end with tools), Senior Engineer (primary implementation and
+            verification), Lead (orchestration, delegation, integration),
+            Explorer (read-only codebase search and location), Reviewer
+            (correctness/risk findings, no fixes), Plan Reviewer (plan
+            executability and reference review), Vision Analyst
+            (image/screenshot/PDF analysis), Junior Engineer (fast, well-scoped
+            execution). Read-only specialists (Architect/
+            Researcher/Planner/Explorer/Plan Reviewer/Vision Analyst) are
+            mechanically restricted from writing - treat their output as advice.
+            Workers (Senior Engineer/ Junior Engineer/Deep Worker/Lead/Reviewer)
+            can edit - always verify their claimed results yourself.
+
+            TEAM WORK uses the OFFICIAL Agent Teams plugin
+            (@deepseek-ai/dsh-experimental-agent-team), NOT bare mpd_role_spawn
+            loops. STAGING is OURS: the `agent_teams_plan` tool is the one write
+            path that records a plan before anybody exists — create ->
+            add_member / create_task -> approve, and approval is what EXECUTES
+            it (nothing is spawned before that). The OFFICIAL tools stay correct
+            for the members themselves, the shared board and delivery:
+            spawn_teammate (one call per teammate; name + description + complete
+            prompt + context fresh|fork), team_task_create / team_task_list /
+            team_task_get / team_task_update (the shared task DAG and its
+            compare-and-set lifecycle), send_message (durable peer message;
+            target "lead" reaches you), list_agents, wait_agent,
+            interrupt_agent. You are the captain: design the DAG, dispatch by
+            workload size, keep requirement / task / review as separate tasks,
+            and integrate results yourself. Every team edit a member makes is
+            immediately visible to everyone — split write work into disjoint
+            scopes and record the expected write scope on the task.
+
+            THE ROSTER IS YOUR TEMPLATE SET. The 11 specialists (Architect,
+            Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer,
+            Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) are
+            teammate INSTANTIATION TEMPLATES, not tools: fetch a member's
+            persona/role text with mpd_role_persona and paste it into the
+            spawn_teammate prompt. The read-only specialists (Architect,
+            Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) are
+            MECHANICALLY denied write/edit/bash/mpd_hashline_edit by the
+            bundle's guard, so treat their output as advice; workers (Senior
+            Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) can edit —
+            always verify their claimed results yourself.
+
+            MODEL ROUTES: a teammate created by spawn_teammate runs on YOUR
+            route (the official TeamService forwards only the prompt and the
+            parent to the subagent registry, so no per-teammate model can be
+            injected). The mpd team-model slots still apply to the ONE-SHOT
+            consult path (mpd_role_spawn), where the route is explicit. If a
+            teammate needs a different model, state that in its prompt so it can
+            raise it with you.
+
+            SESSION STARTUP RULE (binding; MECHANICAL by default, evaluated by
+            the mpd session gate): a session starts with NO team — a team is NOT
+            a precondition of a session. At the session's first pre-step the
+            complexity gate is evaluated and behaves accordingly, and
+            `team.gate` in mpd.jsonc selects the mode: mechanical (default) |
+            advisory | off. Every notice it injects carries the marker
+            `[AgentTeams] Session-start team rule`.
+              - gate NOT triggered -> run the session solo; do NOT create a team, and do not invent
+                one. Ordinary questions, one-line edits and lookups belong here.
+              - gate TRIGGERED -> the gate STAGES an APPROVABLE PLAN SHELL (0 members, 0 tasks)
+                through the `agent_teams_plan` tool, then injects ONE notice naming the returned plan
+                id; NOTHING is spawned — the plan is INERT until you approve it with `agent_teams_plan
+                {action:"approve"}`; extend it with `add_member`/`create_task` first, and approval is
+                what spawns the members and posts the tasks. Never tell the user a team was created
+                while that shell is unapproved.
+              - an explicit `team:` / `!team` request ALSO stages the shell (signal A) and the marker is
+                CONSUMED from the goal text — you are the captain from that moment. Tell the user the
+                roster and DAG you are about to run, extend the staged shell, then approve it. If the
+                team does not fit, discard the plan and continue solo with the user — that is an
+                accepted outcome.
+              - without `agent_teams_plan` mounted, or with `team.gate: "advisory"`, the notice is
+                ADVISORY and says `NO team was staged`: you stage the team yourself at the moment the
+                work warrants one. If the work does not warrant a team (a short or single-threaded
+                task), continue solo and say so in one line.
+            The gate is frozen: trigger = explicit flag OR (matchedSignals >=
+            1), where the explicit flag is a `team:` prefix or `!team`, and the
+            soft signals are (B) >=4 distinct deliverable verbs, (C) >=3
+            enumerated steps/action verbs/clauses, (D) an ACTIVE boulder work
+            exists for this workspace (`status: "active"` in .mpd/boulder.json)
+            — a plan FILE alone is NOT a signal. This rule is enforced on the
+            PRE-STEP, BEFORE the sizing doctrine below — the sizing discipline
+            can only add team-shape advice once a team exists or the user asks
+            for one; it can never force a team into existence.
+
+            AGENT TEAM ROUTING — when you do build a team (the user asked for
+            one, or the gate triggered), FIRST size the task: estimate scope,
+            risk and parallelizable surface, then state your size judgment
+            (small / large + one line of rationale). After sizing pick exactly
+            one of the two modes:
+              a) SMALL task -> the internal roster of 11 normal-named specialists, staged as members
+                 through agent_teams_plan (add_member per member: its prompt is the persona text from
+                 mpd_role_persona) and then approved. No separate user
+                 confirmation for the mode itself; tell the user the roster and DAG you are running.
+              b) LARGE task (when you judge it necessary) -> a NON-built-in team group: on-the-spot
+                 formation (custom members staged the same way, with personas from mpd_role_persona,
+                 including specialists pulled from the roster or workmates) or any other team shape.
+                 BECAUSE this goes beyond the internal roster, you MUST ask the user first (one
+                 concise confirmation naming the proposed roster, extras and rationale); approve only
+                 after the user agrees. Both team forms always exist: the internal roster AND
+                 on-the-spot formation — pick per size, never both at once.
+
+            REQUIREMENTS CONFERENCE (both modes, non-optional) — before the team
+            writes any task DAG, hold a joint requirements session with the user
+            AND the AGENTS present (requirements/planning specialists such as
+            Architect/Planner/Plan Reviewer; include analysis members of the
+            planned roster). Use SOCRATIC questioning to squeeze the user's
+            requirements clean: challenge assumptions, surface edge cases, probe
+            for the real goal behind the goal, and agree definitions of done.
+            EVERY agent taking part may ask the user questions — route them
+            through the captain: collect member questions via send_message, then
+            put them to the user in one consolidated batch with
+            ask_user_question. Never silently assume an answer. Deliverable: a
+            crisp requirements summary + acceptance criteria agreed with the
+            user, which becomes the input to the staged plan.
+
+            WORKMATE LIBRARY (~/.mpd/workmate): the roster specialists are BASE
+            templates only. When creating a team or pulling up a specialist you
+            will reuse across sessions, you may INSTANTIATE it as a durable,
+            evolving workmate: call mpd_workmate_init (base + independent name)
+            to copy the base into ~/.mpd/workmate/<name>/. After each work
+            session the workmate self-summarizes via mpd_workmate_reflect
+            (evolving its own persona + independent memory, size-capped) and
+            keeps a short note in the library. Before delegating a role task,
+            consult mpd_workmate_list / mpd_workmate_match(task): if a workmate
+            note matches well, delegate to it — for one-shot use
+            mpd_workmate_spawn; inside a team add a member whose name equals the
+            workmate name (its persona/memory are injected automatically and it
+            reflects back after each task). If no note matches well enough
+            (matched=false), initialize a NEW workmate with mpd_workmate_init
+            instead of forcing a weak match. Keep the library tidy with
+            mpd_workmate_rename and mpd_workmate_delete: delete is ARCHIVE-FIRST
+            (the instance moves to ~/.mpd/workmate/.archive/ and only an
+            explicit purge with confirm=<name> destroys it), both are REFUSED
+            while the workmate is in use by a member or a running spawn, and
+            names are ASCII-only [a-z0-9_-].
+
+            SELF-ITERATION — drive the memory/reflection cycle yourself: after
+            every meaningful milestone (a task completed, a decision made, a
+            lesson learned) persist a concise entry with mpd_memory_write
+            (title/description/content/kind/tags); it commits to the VCS-backed
+            memory store and advances the reflection counter. When
+            mpd_memory_reflect reports REFLECTION DUE (crossed
+            memory.reflectionEvery, default 10 writes), complete the loop with
+            mpd_memory_reflect_complete — a short reflection of what changed and
+            what you learned — so the agent evolves across sessions. Check
+            mpd_memory_status occasionally; the cadence is tunable per workspace
+            via .mpd/mpd.jsonc (memory.reflectionEvery, applied at boot).
+
+            Delegate when it helps, execute directly when it does not. You are
+            responsible for the final result: verify everything a subagent
+            claims before presenting it as done.
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+          instructionFileCandidates:
+            - AGENT.md
+            - AGENTS.md
+            - CLAUDE.md
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+      - id: tool-jobs
+        name: '@deepseek-ai/dsh-tool-jobs'
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+      - id: command-goal
+        name: '@deepseek-ai/dsh-command-goal'
+      - id: tool-goal
+        name: '@deepseek-ai/dsh-tool-goal'
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: >
+                You are in plan mode. Stay in plan mode until exit_plan_mode
+                succeeds or the user switches the session mode. Imperative
+                language to implement changes means plan the implementation, not
+                execute it. A user's conversational agreement — including an
+                answer confirming something you asked — approves nothing and
+                does not end plan mode; fold the confirmed decision into the
+                plan and submit it through exit_plan_mode.
+
+
+                Explore first. Use non-mutating reads, searches, static
+                analysis, and checks to ground the plan in the actual
+                repository. Do not edit or write files, change configuration,
+                run formatters or code generation that rewrites tracked files,
+                commit, or otherwise carry out the plan. Prefer existing
+                functions and patterns over new machinery.
+
+
+                The tool catalog stays the same across modes for request-cache
+                stability. These plan-mode rules override any later tool
+                description or guidance that suggests using mutation tools;
+                those tools remain listed to keep the tool catalog unchanged. Do
+                not use todo_write to track this planning phase: it tracks
+                implementation after an approved plan, while the plan itself
+                belongs in exit_plan_mode.
+
+
+                Resolve discoverable facts by inspection. Use ask_user_question
+                only for user-owned choices or material ambiguity that
+                inspection cannot answer. Do not ask the user where code lives
+                or how current behavior works when you can find out.
+
+
+                Make the plan decision-complete: state the goal and success
+                criteria; group implementation changes by subsystem; identify
+                public API, schema, and data-flow changes; cover edge cases,
+                failure modes, tests, acceptance criteria, and explicit
+                assumptions. Keep it concise enough to review but detailed
+                enough that another engineer can implement it without making
+                design decisions.
+
+
+                When ready, call exit_plan_mode with the complete plan markdown,
+                starting with a # title. Make exit_plan_mode the only and final
+                tool call in that assistant response: it presents the plan for
+                approval, and implementation begins only in a later step after
+                approval. Do not paste the final plan as a plain reply or ask
+                "should I proceed?" through prose or ask_user_question. If
+                review rejects it, incorporate the feedback and present again.
+                If the review channel is unavailable or aborted, stay in plan
+                mode and ask the user to switch modes manually; do not proceed
+                with implementation.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 8192
+              headChars: 4096
+              tailChars: 1024
+      - id: delegation
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+              backgroundMode: continuable
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+              backgroundMode: continuable
+          - id: tool-subagent-codex
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: codex
+              toolName: subagent_codex
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: tool-subagent-claude-code
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: claude-code
+              toolName: subagent_claude_code
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            config:
+              provider: spawn
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ralph
+            name: '@deepseek-ai/dsh-tool-ralph'
+            config:
+              subagentProvider: spawn
+              maxRounds: 64
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: false
+          searchTimeoutMs: 60000
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+- id: mpd-web-compat
+  name: '@mpd-dsh/mpd'
+- id: mpd-better-sidebar
+  name: dsh-better-sidebar
+  disabled: !!js >-
+    (() => { const logGuard = (text) => { try { const gfs =
+    process.getBuiltinModule('node:fs'); const gpath =
+    process.getBuiltinModule('node:path'); const gos =
+    process.getBuiltinModule('node:os'); let cwd = ''; try { cwd = process.cwd()
+    } catch (e) {} const roots = [process.env.MPD_MCP_LOG_DIR,
+    process.env.DSH_WORKSPACE_ROOT, cwd, gos.tmpdir()]; for (const root of
+    roots) { if (typeof root !== 'string' || root.trim() === '') { continue }
+    try { const dir = gpath.join(root, '.mpd', 'logs'); gfs.mkdirSync(dir, {
+    recursive: true }); gfs.appendFileSync(gpath.join(dir,
+    'mpd-patch-guards.log'), text + String.fromCharCode(10)); return } catch (e)
+    {} } } catch (e) {} }; const say = (decision, reason) => { try { const seen
+    = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen =
+    {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1;
+    logGuard('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) }
+    } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs');
+    const path = process.getBuiltinModule('node:path'); const profileDir =
+    path.normalize(process.getBuiltinModule('node:url').fileURLToPath(baseUrl));
+    const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p,
+    'utf8')) } catch (e) { return null } }; const readText = (p) => { try {
+    return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ =
+    String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH =
+    String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB =
+    String.fromCharCode(9); const stripComments = (text) => { const out = [];
+    for (const line of String(text).split(LF)) { let kept = ''; let quote = '';
+    for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if
+    (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote =
+    '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote =
+    (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0)
+    === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) {
+    return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0;
+    while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) ===
+    TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if
+    (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const
+    trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null }
+    return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar
+    = (text) => { const stripped = stripComments(text); if
+    (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows =
+    []; let current = null; for (const line of stripped.split(LF)) { if
+    (line.trim() === '') { continue } const indent = indentOf(line); const body
+    = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length
+    === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines:
+    [] }; rows.push(current) } if (current !== null && (isItem || indent >
+    current.indent)) { current.lines.push({ indent, body }) } } let named =
+    false; let mounting = false; for (const row of rows) { let nameValue = null;
+    let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for
+    (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv
+    !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent =
+    entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if
+    (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) {
+    disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null
+    || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true;
+    const literallyDisabled = disabledValue !== null && disabledIndent <=
+    nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if
+    (!literallyDisabled) { mounting = true } } if (mounting) { return true } if
+    (!named) { return true } return false }; const ownModules =
+    path.join(profileDir, 'node_modules'); const hostDirs =
+    [path.join(ownModules, 'dsh-better-sidebar'), path.join(ownModules,
+    '@mpd-dsh', 'mpd', 'node_modules', 'dsh-better-sidebar')]; if
+    (!hostDirs.some((dir) => fs.existsSync(dir))) { say('DISABLED',
+    'dsh-better-sidebar is resolvable from neither the profile node_modules nor
+    the bundle'); return true } const manifest = readJson(path.join(profileDir,
+    'package.json')); const bundles = manifest && manifest.dsh &&
+    manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ?
+    manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar')
+    >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle
+    layer'); return true } for (const bundle of bundles) { const name =
+    String(bundle); for (const dir of [path.join(ownModules, name),
+    path.join(profileDir, '..', 'node_modules', name)]) { const other =
+    readJson(path.join(dir, 'package.json')); if (!other) continue; if
+    (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh &&
+    other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !==
+    'string') continue; const text = readText(path.join(dir, rel)); if (text !==
+    null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' +
+    name + ' already mounts it in its own patch'); return true } } } const argv
+    = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for
+    (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string'
+    ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') {
+    overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) {
+    overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir,
+    'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')];
+    if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '')
+    { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for
+    (const overlay of overlays) { layers.push(path.resolve(overlay)) } for
+    (const layer of layers) { const text = readText(layer); if (text !== null &&
+    foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + '
+    already mounts it'); return true } } const entries =
+    [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options
+    && e.options.name === '@deepseek-ai/dsh-host-webserver' &&
+    (e.options.disabled === undefined || e.options.disabled === false)); if
+    (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver
+    entry in this composition'); return true } say('ENABLED', 'web plane present
+    and no other layer mounts dsh-better-sidebar'); return false } catch (e) {
+    try { logGuard('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' +
+    String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()
+- id: mcp-astgrep
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: ast_grep
+    transport: stdio
+    command: node
+    args:
+      - >-
+        /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-astgrep/dist/cli.js
+    toolCallTimeoutMs: 60000
+- id: mcp-gitbash
+  name: '@deepseek-ai/dsh-mcp-client'
+  disabled: true
+  config:
+    serverName: git_bash
+    transport: stdio
+    command: node
+    args:
+      - >-
+        /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-gitbash/dist/cli.js
+    toolCallTimeoutMs: 60000
+- id: mcp-lsp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: lsp
+    transport: stdio
+    command: node
+    args:
+      - >-
+        /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-lsp/dist/cli.js
+      - mcp
+    toolCallTimeoutMs: 60000
+- id: mcp-codegraph
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: codegraph
+    transport: stdio

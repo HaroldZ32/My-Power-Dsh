@@ -1,0 +1,2 @@
+dist sha256=739150fe3d30f568160c5b6f97b7291cef33f3b7e657d4416fcf000ecf876f8d
+cmd: bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js (run from repo root)

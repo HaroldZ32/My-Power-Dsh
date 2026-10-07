@@ -1,0 +1,30 @@
+{
+  "notice": {
+    "any": 0,
+    "advisory": 0,
+    "mechanical": 0,
+    "signalsNamed": 0,
+    "shellShaped": 0,
+    "inert": 0,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "mechanicalTool": 0,
+    "retiredVocabulary": 0,
+    "signals": [],
+    "planIds": []
+  },
+  "teams": {
+    "staged": 0,
+    "planIds": [],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 0,
+    "recordIds": []
+  },
+  "goal": "Reply with exactly: boulder-ok",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 verifyGate=installed rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "firedLine": "",
+  "gateInstalled": true,
+  "ownKeyWritten": true,
+  "problems": []
+}

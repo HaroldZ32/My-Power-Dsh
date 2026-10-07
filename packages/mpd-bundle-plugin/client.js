@@ -3721,7 +3721,7 @@ window.__ModuleLoader__.load({
 	}
 });
 
-//# sourceMappingURL=client.js.map
+//# sourceMappingURL=agent-teams-client.js.map
 
 // ==== @mpd-dsh/team-page: AgentTeams rendered inside a DSH-better-sidebar tab ====
 window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle web client — the bundle's OWN team surface: the TEAM WATCHDOG view.

@@ -1,0 +1,11 @@
+case           han  before(pre-wave)         after(working tree)     want
+simple           0  false []                 false []                trigger=false  "Reply with exactly: hello-ok"
+simple           0  false []                 false []                trigger=false  "What does the git-master skill do? Answe"
+simple           0  false []                 false []                trigger=false  "Rename the variable `foo` to `bar` in sr"
+soft-complex     0  true ["C"]               true ["C"]              trigger=true  "Align the bundle with upstream: audit th"
+soft-complex     0  true ["C"]               true ["C"]              trigger=true  "1. Read the patch file\n2. Audit the gate"
+explicit         0  true ["A"]               true ["A"]              trigger=true  "team: fix the flaky test"
+cjk-positive   159  false []                 true ["E"]              trigger=true  "脱去该项目对于Oh-my-openagent与dsh-agent-teams项目"
+cjk-negative     9  false []                 false []                trigger=false  "这个函数是干什么的？"
+cjk-negative    17  false []                 false []                trigger=false  "读一下 AGENTS.md 的第一节，然后告诉我它说了什么"
+cjk-negative    52  false []                 false []                trigger=false  "请解释一下这个项目里 preset 和 profile 到底有什么区别，为什么会"

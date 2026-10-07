@@ -40,8 +40,9 @@ repository is English-only (see Language Policy).
 - Process records exempt from the bilingual requirement (see §3): internal QA/golden reference docs;
   plan files (`docs/decisions.md`); prior-phase reports (`docs/bline-report.md`,
   `docs/omo-parity-gap.md`, `docs/review-p0-p3.md`, `docs/track-a-report.md`,
-  `docs/ulw-deepseek-optimization.md`, `docs/tui-edition-report.md`); and adopted third-party docs
-  kept verbatim as provenance (the upstream `mpd-agent-teams-plugin/README.md` and `README_ZH.md`).
+  `docs/ulw-deepseek-optimization.md`, `docs/tui-edition-report.md`). The adopted third-party docs kept
+  verbatim as provenance were removed with the vendored body on 2026-10-07, so every remaining human-facing
+  doc is policed; the upstream acknowledgements live in `LICENSE-NOTICES.md`.
 
 ## Reference Index (on-demand)
 
@@ -54,7 +55,6 @@ code, scripts and docs still resolves. The register is `agent-references/index.m
 | File | Holds | Open it when |
 |---|---|---|
 | `agent-references/troubleshooting.md` | the full symptom → cause/fix table (the former body of §12, moved verbatim 2026-09-17 by the T-22 instruction-budget split) | a boot, gate, tool or team behaviour is wrong — look the symptom up before inventing a fix |
-| `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the authoritative A1–D42 adaptation table, the registry mechanics (context-pair addressing, `--write-registry`), the live region count and the two unpatched wave-2 driver scripts | you touch `packages/mpd-agent-teams-plugin/**`, `scripts/patch-agent-teams-fixes.ts`, `scripts/vendor-agent-teams.ts`, or an `mpd-delta` region |
 | `agent-references/verification-flow.md` | the ordered verification flow behind §4/§11 — AND the former §4 body verbatim (the full gate table with every per-row measurement): what each gate is worth, why the Docker lane is the LAST step, and the measured rootless / skip / `--require-docker` policy | you run a verification pass, or a Docker step skipped and you need to know why |
 | `agent-references/seam-adapters.md` | the TWO contact surfaces in detail (§6): the harness adapter and the DSH-TUI adapter, the fifteen `tui*` seams (the fourteen dsh-tui has exposed since 0.12.0, plus the `tuiPanels` sidebar registry 0.13.0 added) with their binder/probe/degrade discipline, the R5 "no terminal writes" rule and its gates, the declared WEB-plane residual, and the upstream panel-seam ask (ANSWERED for the sidebar by 0.13.0, still open for the dashboard) | you touch a `ctx.tui*` seam, an MPD log sink, an MCP launcher's stdio, or you are about to add a THIRD contact surface |
 | `agent-references/overview-and-provenance.md` | the full §1 body: what the bundle carries from upstream, the adopted-then-retired agent-teams body, the declared-dependency mount mechanism, the ULW/GOAL detail and the session-start gate's softer signals | you need the provenance or the composition history behind §1 before restating it |
@@ -69,9 +69,11 @@ code, scripts and docs still resolves. The register is `agent-references/index.m
 
 **my-power-dsh** is a DeepSeek Harness (DSH) plugin bundle. **From upstream**: the roster, the
 model-chain vocabulary and the roster's stable ids, plus a pinned capability baseline —
-`code-yeongyu/oh-my-openagent` (base commit `8c57e46`, v5.0.0-beta.20, recorded in `VENDOR_LOCK.json`,
-never chased per §9) whose 11 specialists ship as adapted teammate templates and workmate BASE
-templates. **Ours**: the DSH plumbing, the plugin set, the `mpd` preset and the QA suite. Upstream spec
+`code-yeongyu/oh-my-openagent` (base commit `8c57e46`, v5.0.0-beta.20, recorded in `VENDOR_LOCK.json` as
+HISTORICAL provenance) whose 11 specialists ship as adapted teammate templates and workmate BASE
+templates. **That upstream is a REFERENCE, not a dependency**: nothing in this tree reads, copies,
+patches, fingerprints or audits its sources, nothing needs a checkout of it, and no gate fails when it is
+unreachable — the pin is a record of where the adaptation came from. **Ours**: the DSH plumbing, the plugin set, the `mpd` preset and the QA suite. Upstream spec
 parity (see `docs/feature-audit.md`) is an engineering reference, not an identity label — describe this
 repository by what it ships, never by what it is not. License: SUL-1.0 (`LICENSE.md`), inherited from
 upstream; attribution is declared in `README.md` and `LICENSE-NOTICES.md`. The full composition and
@@ -95,11 +97,14 @@ provenance narrative is in `agent-references/overview-and-provenance.md`.
   execution seam, **`TeamExecutor`**, whose **native** backend (over `ctx.subagents.startContinuable`)
   is the DEFAULT and the official `dsh.team*` calls the FALLBACK. No mpd surface reads
   `dsh.teamLiveTeams()` any more. See `docs/plan-team-plane-split.md`.
-- **The vendored `agent-teams` body is RETIRED from the composition (2026-09-27)**: retained at
-  `packages/mpd-agent-teams-plugin` but mounted by NO loader row, so its `agent_teams_*` tools and its
-  `<workspace>/.mpd/team` record are NOT part of a shipped session — harness 0.1.7-rc.2's official Agent
-  Teams plugin replaced it. Deleting the code is a declared follow-up (the D6 gate and §6's counted
-  residual still cover it), not an oversight.
+- **The vendored `agent-teams` body is RETIRED (2026-09-27) AND REMOVED (2026-10-07)**: harness
+  0.1.7-rc.2's official Agent Teams plugin replaced it, no loader row ever mounted it after the
+  retirement, and the de-vendor wave deleted the tree outright. Its `agent_teams_*` tools, its
+  `<workspace>/.mpd/team` record and its `mpd-delta` registry are NOT part of any shipped session, and
+  no file here reads, copies, patches or fingerprints anything outside this repository. What SURVIVED
+  the deletion was relocated into mpd-owned homes as our own code: the schemastery validator now lives
+  in `packages/mpd-schemastery/**` (four shipped plugins import it) and the prebuilt browser client
+  bundle in the web package, with the upstream MIT acknowledgement carried in `LICENSE-NOTICES.md`.
 - **A dependency a bundle DECLARES is mounted by a row that needs it**: the three official Agent Teams
   packages are declared in `dependencies` and materialized by `dsh-app-boot`'s
   `healProfileModuleFallback` before the loader runs.
@@ -140,7 +145,10 @@ provenance narrative is in `agent-references/overview-and-provenance.md`.
    injects rows into the harness, never edits DSH sources, and never writes the home by hand.
 3. **Evidence without evidence is incomplete.** A change without QA evidence is not done.
 4. **Isolation.** QA never touches the real `~/.dsh`. Everything boots in a temp DSH_HOME.
-5. **Baseline discipline.** Upstream assets are pinned and verified; we don't chase upstream.
+5. **Fingerprinted bytes, historical identity.** The assets this repository SHIPS are verified by their
+   own fingerprints — a corrupted one still reddens — while the upstream identity behind them is
+   PROVENANCE, a record of where an adaptation came from, never a dependency to re-fetch, re-sync or
+   audit. We don't chase upstream, and we no longer need it to exist.
 6. **Minimal diffs.** Prefer the smallest change that satisfies the requirement; no speculative refactors.
 
 ---
@@ -153,7 +161,7 @@ mpd-dsh/
 ├── README.md / README.zh-CN.md   # public overview, bilingual pair (inheritance declared in README)
 ├── PLAN.md                       # port plan (Track A/B)
 ├── LICENSE.md / LICENSE-NOTICES.md
-├── VENDOR_LOCK.json              # upstream commit/version/stats + vendored asset fingerprints
+├── VENDOR_LOCK.json              # vendored asset fingerprints (+ the upstream recorded as a _note historical reference)
 ├── package.json                  # THE BUNDLE MANIFEST (name @mpd-dsh/mpd): dsh.bundle.patch
 │                                 #   (an ARRAY of the bundle patch + the preset patch) + dsh.client
 │                                 #   + exports -> `dsh plugin add .` is the whole install
@@ -166,7 +174,8 @@ mpd-dsh/
 ├── packages/                     # one dir per plugin package (src/ + dist/ + README.md each);
 │   ├── mpd-dsh-adapter-plugin/   # THE single contact surface with harness seams (§6)
 │   ├── mpd-roles-plugin/         # the specialist roster + mpd_roles_* + the mpdRoles service
-│   ├── mpd-agent-teams-plugin/   # RETIRED vendored dsh-agent-teams body — kept, NOT mounted (§1)
+│   ├── mpd-verify-plugin/        # THE VERIFICATION LAW (§5): the ledger under .mpd/verify/, the five
+│   │                             #   mpd_verify_* tools, the record validator and the receipt probe
 │   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate)
 │   ├── mpd-ulw-plugin/           # C2 ultrawork v2 engine: mpd_ultrawork + /ulw, /ultrawork
 │   ├── mpd-mcp-astgrep / mpd-mcp-codegraph / mpd-mcp-gitbash / mpd-mcp-lsp / mpd-mcp-shared /
@@ -209,13 +218,23 @@ mpd-dsh/
 Each `packages/<pkg>/README.md` holds that plugin's own contract — this tree is a map, not a
 specification.
 
+**Instruction budget (binding):** this manual is INJECTED into every session and the budget is
+**65536 bytes**; a longer file is silently TRUNCATED, so a section past the cut stops binding unnoticed
+(measured 2026-10-07: 65923 → `truncated … to 65244`, losing most of §13). This manual measured **64996 bytes** on 2026-10-07 —
+only 540 B of margin, which is NOT headroom. The rule is therefore MOVE-FIRST: before adding to this
+file, move a LONG FORM of comparable or larger size into `agent-references/` and leave a SHORT definition
+**plus an exact pointer** — never drop the term — then re-measure and restore a margin above **2 KB**
+(target **≤ 63.5 KiB / 65024 B**). A truncated manual is one whose tail silently stops binding, and a
+reader cannot tell.
+
 ---
 
 ## 4. Gates (binding)
 
 | Gate | Command | When |
 |---|---|---|
-| Vendor | `node scripts/verify-vendor.ts`; the corpus re-pin is DERIVED — `node scripts/repin-vendor.ts` (dry-run by default, `--check` asserts, `--write` applies; it REFUSES the repository's own `VENDOR_LOCK.json` without `--i-know-this-is-the-captains-step`, so a wave cannot re-pin mid-flight) — and lands in the commit that invalidated the `treeSha` (§9/§11) | any baseline/asset change; before release |
+| Vendor | `node scripts/verify-vendor.ts`; the corpus re-pin is DERIVED — `node scripts/repin-vendor.ts` (dry-run by default, `--check` asserts, `--write` applies; it REFUSES the repository's own `VENDOR_LOCK.json` without `--i-know-this-is-the-captains-step`, so a wave cannot re-pin mid-flight) — and lands in the commit that invalidated the `treeSha` (§9/§11). **The gate's subject is now the bytes this repo SHIPS**: it verifies the asset fingerprints and needs no upstream checkout, no network and no `.mpd-dsh/upstream`; every identity assertion that used to be part of its exit code is GONE (de-vendor wave, 2026-10-07), and a corrupted fingerprint still FAILS | any baseline/asset change; before release |
+| **Verification law (STANDING)** | `mpd_verify_evidence {kind:"gate"}` runs the FIXED table (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) and `mpd_verify_record` REFUSES a PASS with no documents, no gate evidence, a forged evidence id or a same-agent verifier. Boot-level falsifier: `node skills/dsh-qa/scripts/verify-law.ts` (`--self-test` offline; otherwise the mounted-row boot — denial, the `verify.mode=off` control, the `docs/**` allowance) | any change under the law (§5), and every release sweep |
 | Dist freshness | `node scripts/verify-dist-fresh.ts` (deterministic rebuild-and-diff of every `packages/*/src` entry against its committed `dist/`; unmatched `dist/` files print in a loud NOT COVERED section; the canonical REBUILD command — repo root, path-qualified args — and the package-directory trap are named in §6's Build line) | any `packages/*/src` or `dist/` change; before release |
 | Row/parity | `bun run verify:rows` + `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` | any bundle-patch / preset / overlay / row change |
 | Pack closure | `node scripts/verify-pack-closure.ts` (completeness + the byte identity of files whose sources did not move; `--self-test` is the fixture-driven arm; `--pack-stamp <t>` re-anchors the comparison for a reviewer mutating a copy) | any pack, any post-pack writer, and the release sweep (§11) |
@@ -308,6 +327,34 @@ lands (§9/§11).
      implementation task; finding-driven work uses `kind=repair` + `sourceTaskId`/
      `sourceFindingIds`, and `coverageOf` names the user clause a task serves — that is what turns
      the Web plan from a flat list into a requirement chain.
+  4. **A-writes/B-verifies is MECHANICAL — the main agent does not write code, and it does not verify
+     its own work.** The workspace's TOP-LEVEL `mpd` agent may not `write`/`edit` a code path unless a
+     delegation+verification loop is armed (`mpd_verify_open {writer:"self", verifier:"<another
+     agent>"}`), and every such write is COUNTED; the normal path is to hand the scope to a
+     write-capable member. Code is verified by a DIFFERENT agent that works from the frozen contract
+     and the docs — **never from the implementation** — with the verdict recorded BEFORE any
+     implementation read; only a recorded FAIL unlocks implementation reading, for diagnosis, counted.
+     A PASS with no cited documents or no gate evidence is REFUSED by the record validator, and a FAIL
+     bounces the work back to a writer as a `kind=repair` task rather than being quietly fixed. Where
+     the law cannot be mechanical (a composition with no `tools.guard` seam), the bound is STATED —
+     the boot line says `verifyGate=absent` — never implied. The tool surface is one row,
+     `mpd-verify-plugin`: `mpd_verify_open` / `_escape` / `_seat` / `_evidence` / `_record`, and the
+     envelope denies a bound verifier the shell, the source-returning tools and every board mutation.
+     **Two sentences this rule REPLACES**: "execute directly when it does not [help to delegate]" is no
+     longer an option for code, and "verify everything a subagent claims yourself" is no longer how the
+     main agent closes work — a claim is closed by a DIFFERENT agent's recorded verdict, and the main
+     agent's own reading of a result is INTEGRATION, which is not verification.
+  5. **The board has terminal verbs, and dispatch honours the declared owner.** `agent_teams_task`
+     carries `complete`/`fail` (owner-only, optional `note`, optional `expected_revision`
+     compare-and-set; a FAIL releases its dependents per OPT-1) — without them a dependency edge could
+     never be satisfied and the DAG could not advance. `agent_teams_dispatch` pairs a ready task with
+     its DECLARED owner when that member is free, and falls back to roster order ONLY with the reason
+     reported on the pairing. A git WRITE command (`commit`, `add`, `rm`, `mv`, `checkout`, `switch`,
+     `restore`, `reset`, `stash`, `merge`, `branch`, `rebase`, `tag`, `cherry-pick`, `revert`, `clean`,
+     `apply`, `am`, `update-index`, `worktree`, `init`, `clone`) is denied for any session that is NOT
+     the top-level captain — rule 1 above is now MECHANICAL for member sessions too, with the same
+     honest bound: the matcher reads a command STRING, so an obfuscated invocation can evade it. It is
+     a speed bump that makes the rule real for ordinary use, not a sandbox.
 
 ---
 
@@ -341,25 +388,14 @@ and every adapter API signature — is in `agent-references/plugin-authoring.md`
 - **A patch row NEVER id-targets a host-owned row — binding** (`node scripts/verify-no-host-override.ts`,
   §4). The deployment default preset is the USER's to choose, not the bundle's: `docs/preset-default.md`
   and `node scripts/set-default-preset.ts`.
-- **The adopted-plugin exception is CLOSED (2026-09-19), and its residuals stay NAMED.** Its SIX bridged
-  files route through the facade `lib/mpd-adapter-ctx.ts` (an mpd-OWNED module, healed byte-faithfully
-  from the registry). **One bypass is COUNTED, never routed:** the ctx the HOST hands
-  `setup(childCtx, child)` stays DIRECT on its **5 counted lines** in `lib/members.ts`, pinned by
-  `packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.ts` (plus the two `whenIdle`
-  Class-B sites), so a NEW use reddens instead of hiding. **Five further residuals stay NAMED**: (R1)
-  adapter-mediated registrations belong to the ADAPTER row's fiber — a plugin-only unload would not
-  revoke them (T-21); (R2) the retired-member delivery guard still PATCHES `subagentRuntime()`'s object
-  (delivery in the plugin, RESOLUTION in the adapter); (R3) `lib/client.js` is OUT OF SCOPE, guarded by
-  `scripts/patch-agent-teams-client.ts`; (R4) `liveAgent`/`liveAgents`/`onEvent` swallow-and-degrade,
-  deliberately; (R5) the count sentence in `agent-references/agent-teams-deltas.md` keeps its exact
-  wording (the docs gate's regex is FIXED) while only its numbers move. Detail:
-  `agent-references/plugin-authoring.md`.
-- **The adopted-plugin delta registry lives in `agent-references/agent-teams-deltas.md`** (on demand, not
-  injected): the A1–D42 table, the registry mechanics, the region count and the wave-2 driver-script
-  warning. Two rules bind: (a) the registry is **derived** — regenerate with `--write-registry`, never
-  hand-edit an entry; (b) the **REPLACEMENT-shaped** deltas (D13/D14/D21/D22) do **not** self-heal after a
-  human re-materialize — the applier REFUSES loudly, file byte-untouched. Everything else — including
-  every future mpd plugin — goes through the adapter.
+- **There is NO adopted third-party plugin body any more — the de-vendor wave (2026-10-07) ended that
+  chapter.** The vendored `dsh-agent-teams` tree, its adapter facade, its counted bypass inventory, its
+  six bridged files, its five named residuals (R1–R5) and its `mpd-delta` registry were all deleted with
+  the body. What remains is OUR code: the schemastery validator is `packages/mpd-schemastery/**`, the
+  prebuilt browser client lives in the web package, and every shipped plugin — including every future
+  one — reaches the harness through `mpd-dsh-adapter-plugin` (§6's binding seam rule). A historical
+  account of the adopted era is in `agent-references/plugin-authoring.md`; nothing in the live tree
+  depends on it.
 - **State**: workspace-scoped only (`.mpd/` under the **calling session's workspace**, never the dsh
   process cwd); never write `~/.dsh` from a plugin. Every plugin resolves that root through the ONE
   adapter helper — `dsh.workspaceRoot(exec)` with precedence **session header cwd →
@@ -394,7 +430,16 @@ and every adapter API signature — is in `agent-references/plugin-authoring.md`
   `packages/mpd-ext-plugin/dist/sdk.js`). The canonical form matters (T-67): `bun build` writes every
   bundled module's path RELATIVE TO CWD into the artifact's path comments, and
   `node scripts/verify-dist-fresh.ts` reproduces THESE bytes — so a build run from a PACKAGE directory
-  is flagged STALE even though it looks sanctioned. Zero runtime deps preferred (type-only imports).
+  is flagged STALE even though it looks sanctioned. **BUILD WITH THE PINNED TOOLCHAIN, not the `bun` on
+  your PATH** — this is a MEASURED trap (2026-10-07, T16): `package.json`'s `buildToolchain` pins
+  `bun@1.4.0`, which lives at `.toolchain/node_modules/.bin/bun`, while a PATH `bun` on this machine is
+  `1.4.2`; the SAME canonical command produced **24 of 30 targets STALE under 1.4.2 and 30/30 fresh under
+  the pinned binary**, because a bun minor rewrites the injected helper preamble and
+  `node scripts/verify-dist-fresh.ts` prefers the pinned binary SILENTLY — so a human following this line
+  literally would ship a stale tree and only the gate would say so. Use
+  `.toolchain/node_modules/.bin/bun build packages/<pkg>/src/index.ts --target node --format esm
+  --outfile packages/<pkg>/dist/index.js`, or read the rebuild command the gate itself prints. Zero
+  runtime deps preferred (type-only imports).
   **An ADAPTER edit fans out**: `bun build` INLINES every imported module, so touching
   `packages/{mpd-dsh,mpd-tui}-adapter-plugin/src` changes the emitted bytes of every package that
   imports it (measured: one adapter edit left 12 of 24 dist targets STALE). Rebuild each dependent with
@@ -529,8 +574,13 @@ user's own `~/.mpd/workmate`. A capability that arrives by any other route is a 
 
 ## 9. Vendor & Baseline
 
-- `VENDOR_LOCK.json`: upstream commit/version/stats; per-asset `fileCount` + `sha256` (single file)
-  or `treeSha` (dir, sorted relpath + per-file sha256). Item counts and fingerprints are blocking.
+- `VENDOR_LOCK.json`: upstream commit/version/stats recorded as HISTORICAL provenance, plus per-asset
+  `fileCount` + `sha256` (single file) or `treeSha` (dir, sorted relpath + per-file sha256). **The
+  FINGERPRINTS are blocking; the identity half is a record.** Since the de-vendor wave (2026-10-07)
+  nothing reads, copies, patches or audits the upstream repositories, so the gate needs no checkout and
+  no network, and the MCP servers' sources are snapshotted in-repo (`vendor/mcp-src/**`) as a build-time
+  input — a PACKED install ships the built `dist/` and not the ability to rebuild it from source, which
+  is a declared bound rather than an omission.
 - Update policy: never chase upstream; a baseline change requires a deliberate branch + evidence.
 - Vendored skill corpus: refresh as whole-dir replacements from upstream, keep provenance links.
 - **`skills/**` has ONE writer per wave (single-skills-writer rule).** Every `skills/**` edit
@@ -622,41 +672,40 @@ slot, workmate) stay here.
 - **roster**: the specialist roster served by `mpd-roles-plugin` (`mpd_roles_list` / `mpd_role_spawn` /
   `mpd_role_persona`) as teammate instantiation templates for the OFFICIAL Agent Teams plugin
   (`spawn_teammate`, whose persona the captain takes from `mpd_role_persona`). The eleven members are
-  addressed by NAME — Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer,
-  Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id` (chain key,
-  `personas/<id>.md`, workmate `meta.baseId`) is INTERNAL: accepted for compatibility, exposed by NO
-  tool output, description, render, web route or GUI. The **read-only discipline is the exported deny
-  list** — exactly seven names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted
-  equal by `roles.test.ts`): `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`,
-  `mcp__ast_grep__scan`, `mcp__lsp__rename`. `bash` is denied on purpose (a shell can write files);
-  `read`/`glob`/`grep` stay available. Enforced TWO ways that must keep agreeing:
-  the one-shot path passes it as `toolFilter.deny` to `mpd_role_spawn`, and a tool GUARD denies the same
-  seven names for a live Team teammate whose name normalises to a read-only roster member (the official
-  `spawn_teammate` accepts no per-teammate tool filter). **Do NOT re-add `str_replace_editor` /
-  `apply_patch`, and do not filter the list with `dsh.hasTool`**: the harness validates the WHOLE list at
-  spawn time, so one dead entry breaks every read-only spawn. Detail: `agent-references/glossary.md`.
-- **team-model slot**: one of the four configurable default model routes of the ROSTER members —
+  addressed by NAME: Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer,
+  Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id` is INTERNAL — exposed by NO
+  tool output, render, web route or GUI. The **read-only discipline is the exported deny list**, exactly
+  seven names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted by `roles.test.ts`):
+  `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`,
+  `mcp__lsp__rename` (a shell writes files, so `bash` stays denied; `read`/`glob`/`grep` stay available).
+  **Do NOT re-add `str_replace_editor` / `apply_patch`, and do not filter the list with `dsh.hasTool`** —
+  the harness validates the WHOLE list at spawn time, so one dead entry breaks every read-only spawn.
+  Full form, including the two enforcement surfaces: `agent-references/glossary.md`.
+- **team-model slot**: one of the FOUR configurable default model routes of the ROSTER members —
   `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings
-  namespace, whose defaults are `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high`, plus
-  `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high` for slot 4. Slot 1 routes
-  Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep
-  Worker/Junior Engineer, slot 4 Vision Analyst (the vision member; the model here MUST accept image
-  input). A slot that cannot be resolved — a missing service, a missing or incomplete slot, an unknown
-  model, an unsupported effort — fails the corresponding spawn LOUDLY naming the member and the slot,
-  writes no state, and NEVER clamps an effort. **Team teammates ARE routed (2026-09-27), through
-  `mpd-roster-provider-plugin`'s `mpd-roster` provider, wired into the `mpd-tool-agent-team` row as
-  `config.freshProvider`** — the slot applies to the ONE-SHOT paths (`mpd_role_spawn`,
-  `mpd_workmate_spawn`) AND to an official `spawn_teammate`. IDENTITY is the one thing the team service
-  does not forward, so the routing rule is: **a teammate `description` that NAMES a roster member routes
-  that member; one that does not inherits the Lead's route.**
+  namespace. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/
+  Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (the vision member — its model
+  MUST accept image input). A slot that cannot be resolved fails the spawn LOUDLY, naming the member and
+  the slot, writes no state and NEVER clamps an effort. Slots apply to the ONE-SHOT paths AND to an
+  official `spawn_teammate` (routed through `mpd-roster-provider-plugin`); because the team service does
+  not forward identity, **a teammate `description` that NAMES a roster member routes that member — one
+  that does not inherits the Lead's route**. **Long form — the default models, the effort defaults and the
+  routing history: `agent-references/glossary.md`.**
+- **verifier's envelope**: the tool and path boundary a BOUND VERIFIER SEAT works inside, enforced by the
+  same `guardTool` install as the captain's write rule (`packages/mpd-roles-plugin/src/verify-guard.ts`,
+  decided by the pure functions in `packages/mpd-verify-plugin/src/law.ts`). A seat is bound with
+  `mpd_verify_seat`; from then on it may not call the shell, the source-returning tools or any board
+  mutation (`mpd_verify_*` excepted — those ARE its job), its reads are path-scoped to the frozen docs and
+  the documentation band while it is BLIND (a bare path argument is refused), its writes are confined to
+  `.mpd/verify/**`, and a recorded FAIL unlocks implementation reading for DIAGNOSIS, COUNTED. Blindness is
+  PROVEN by the plugin's own observation log, never asserted. **Long form — the full tool lists, the
+  scoping rules and the ratchet: `agent-references/glossary.md` ("verifier's envelope").**
 - **workmate**: a durable, evolving agent instance in `~/.mpd/workmate/` created by `mpd-workmate-plugin`
   (`mpd_workmate_*`) from a roster BASE template with an independent name; it self-summarizes after each
   work (persona + independent memory, size-capped) and keeps a short note card. Reuse is via
-  `mpd_workmate_match`; weak matches must NOT be forced — initialize a new workmate instead. The tool
-  surface is `mpd_workmate_list` / `mpd_workmate_init` / `mpd_workmate_spawn` / `mpd_workmate_reflect` /
-  `mpd_workmate_match` / `mpd_workmate_rename` / `mpd_workmate_delete`. **The directory name IS the
-  instance key** (`meta.name` is only a display mirror). `delete` is archive-first (no in-product
-  restore; permanent only with `purge: true` + `confirm === name`); both mutations are refused while the
-  workmate is in use, and names are ASCII-only `[a-z0-9_-]`. A base is addressed by its functional NAME
-  only, an auto-generated name derives from it (`Deep Worker` → `deep-worker-1`), and `baseId` is
-  internal provenance in `meta.json` that no tool output, web route or GUI ever exposes.
+  `mpd_workmate_match`; weak matches must NOT be forced — initialize a new workmate instead. Two rules a
+  caller must know: **the directory name IS the instance key** (`meta.name` is only a display mirror), and
+  `delete` is ARCHIVE-FIRST (permanent only with `purge: true` + `confirm === name`), with both mutations
+  refused while the workmate is in use. A base is addressed by its functional NAME only; `baseId` is
+  internal provenance no tool output, web route or GUI ever exposes. **Long form — the full tool surface,
+  the archive path and the naming rules: `agent-references/glossary.md`.**

@@ -16,6 +16,58 @@ Further reading:
 
 ## Unreleased — the gate contract is stated, not drifted
 
+### The vendored `dsh-agent-teams` body is DELETED, and what still ships has moved
+
+**Removed.**
+
+- **`packages/mpd-agent-teams-plugin/**` — 768 files, `_deps/` included — is GONE.** The body had
+  already been retired from the composition in 0.1.7 (no loader row mounted it); this wave removes the
+  code. Nothing in the tree reads, imports, patches, fingerprints or copies it any more: the whole
+  `_deps/` runtime closure, the `agent_teams_*` tools, the prebuilt client sources under `lib/client/`,
+  the `self-fix-tests/` suite and the delta registry (`agent-references/agent-teams-deltas.md`) went
+  with it, together with the three scripts that existed only to vendor, patch and reclaim it
+  (`scripts/vendor-agent-teams.ts`, `scripts/patch-agent-teams-fixes.ts`,
+  `scripts/patch-agent-teams-client.ts`, plus `scripts/reclaim-staged-teams.ts` and the ambient shim
+  `scripts/lib/vendored-agent-teams.d.ts`).
+
+**Added.**
+
+- **`packages/mpd-schemastery/` — the mpd-owned home of the two pieces the shipped product still
+  uses.** `lib/` carries the schemastery validator (the `Config` schema of four SHIPPED plugins), its
+  `cosmokit` dependency and the type declarations — including the GLOBAL `Schemastery<T>` interface
+  `export const Config: Schemastery<Config>` relies on, which is why the package ships a manifest with
+  `exports.types`. `harness/` carries the six DSH framework modules (`cordis`, `dsh-tools`, `dsh-llm`,
+  `dsh-session`, `dsh-scope`, `dsh-timeout`) that four TEST files drive directly — they need a real
+  dispatcher and a real harness validator, not a double. The eight-file closure is self-contained: no
+  network, no new npm dependency, and `cordis`-family `devDependencies` were refused because
+  `verify-plugin-manifest` forbids them by name. Both upstream MIT notices are reproduced in
+  `packages/mpd-schemastery/LICENSE`.
+- **`packages/mpd-bundle-plugin/adopted/agent-teams-client.js`** — the adopted browser bundle (the
+  0.1.14 build) and its source map, moved to the bundle package that embeds them. The committed
+  `packages/mpd-bundle-plugin/client.js` was rebuilt from the new path and differs from the previous
+  bytes by exactly one line and twelve bytes (the `sourceMappingURL` now names the relocated file).
+- `docs/independence.md` §5, the pinned-debt entry, is **CLOSED** with the measurement that closed it.
+
+**Changed.**
+
+- The migrated surfaces were re-pointed in the same commit as the deletion: `tsconfig.json` (the
+  adopted-suite `exclude` entries are gone), `bun.lock` (one workspace entry swapped),
+  `scripts/{pack-mpd,verify-pack-closure,verify-dist-fresh,verify-docs-parity,verify-comment-coverage,install-profile,build-mpd-client}.ts`,
+  `docker/**`, the cross-package coupling inventory, the no-terminal-writes band and the watchdog test
+  suite.
+- `package.json`'s description now reads *upstream reference … historical, no synchronisation owed*.
+
+**Declared bounds (named, not silent).**
+
+- The `verify-docs-parity` derived-value rule (delta range + region count) and its `EXEMPT_PROVENANCE`
+  map are VACUOUS in the live tree — they are exercised only by the gate's own `--self-test` fixtures,
+  and every run PRINTS that fact instead of passing silently.
+- The `mpd-team-watchdog-plugin` fault-injection fixture
+  (`test/fixtures/inject.ts`) was deleted with the body it drove; the QA cases reading it are retired by
+  the wave's `skills/**` writer.
+- The workmate persona-injection hook lived in the deleted body's `memberPersona()`; automatic
+  injection into team members no longer fires (see `packages/mpd-workmate-plugin/README.md`).
+
 ### DSH-TUI 0.13.0: the sidebar panel seam, and a `Ctrl+A` that is now version-gated
 
 **Changed.**

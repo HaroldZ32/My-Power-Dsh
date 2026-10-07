@@ -1,5 +1,14 @@
 # Troubleshooting reference (the body of AGENTS.md §12)
 
+> **THE VENDORED `dsh-agent-teams` BODY IS DELETED (de-vendor wave, 2026-10-07).** Rows below that
+> name `packages/mpd-agent-teams-plugin/**` are the HISTORICAL RECORD of symptoms measured while that
+> body shipped: 768 files, its `_deps/` closure, its `agent_teams_*` tools and its
+> `scripts/{vendor-agent-teams,patch-agent-teams-fixes,patch-agent-teams-client}.ts` appliers are all
+> GONE, so a remedy that tells you to run one of them cannot work. The two pieces that survive were
+> relocated in the same commit: the adopted browser bundle at
+> `packages/mpd-bundle-plugin/adopted/agent-teams-client.js`, and the DSH runtime modules this
+> repository owns at `packages/mpd-schemastery/` (see its README and `docs/independence.md` §5).
+
 Agent-facing, English-only reference for the repository manual `AGENTS.md`. This file is **not
 auto-injected** into a session — it is deliberately not named `AGENT.md`/`AGENTS.md`/`CLAUDE.md`,
 so the workspace instruction loader never reads it; open it on demand. `§N` citations below refer

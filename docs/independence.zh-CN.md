@@ -106,9 +106,32 @@
    "../../mpd-team-core-plugin/src/team-store.js"` 的语句在构建时被**擦除**，不产生任何运行期边 —— 但它
    依然是对兄弟包内部模块路径的源码级依赖，因此与其它耦合一样被冻结。
 
-## 5. 钉住的债：已退役主体内置的 `schemastery`
+## 5. 钉住的债：已退役主体内置的 `schemastery` —— 已关闭
 
-bundle 曾整体采纳了一个第三方插件（`agent-teams` 主体），它如今**已从组装中退役**，但仍留在
+**状态：由 `de-vendor-and-verify-law` 波次关闭（2026-10-07）。** 关闭度量即后续动作当初指明的那一项，
+与删除在同一次提交中取得：
+
+* 采纳主体 `packages/mpd-agent-teams-plugin/**` 已**删除** —— 实测计数为 **768 个文件**（含 `_deps/`），
+  删除前 `git ls-files` 报出的也是同一数字 768；
+* 内置树迁往 mpd 自有的家：`packages/mpd-schemastery/lib/` 承载校验器（`index.ts`）、它自身的依赖
+  （`cosmokit.ts`）与声明集（`types/index.d.ts`），MIT 声明全文收录于
+  `packages/mpd-schemastery/LICENSE`；
+* 下文点名的**四个现役 import 方**在**同一次提交**中改指向：由
+  `../../mpd-agent-teams-plugin/_deps/schemastery` 改为 `../../mpd-schemastery` —— 以
+  `grep -rn "mpd-agent-teams-plugin" packages/*/src` 只返回历史注释、不返回任何 import 为证；
+* 门禁的冻结集仍恰好保留这四条边（它们被改指向，而不是被丢弃），因此该后续动作不会长出第五个：见
+  `packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`。
+
+有一处**实测的扩大范围**，因合同并未点名而记录在此：同一次删除也带走了四个测试文件对
+`_deps/cordis`、`_deps/dsh-llm` 与 `_deps/dsh-tools` 的 import（它们需要**真实的**派发器或**真实的**
+harness 校验器），因此它们那 8 个文件的传递闭包（schemastery、cosmokit 与六个 `@deepseek-ai/dsh-*`
+模块）一并迁入同一个家的 `harness/` 之下。该闭包是自足的 —— 不需要网络，也不新增任何 npm 依赖 —— 拒绝
+走 `cordis` 系 `devDependencies` 路线的理由写在 `packages/mpd-schemastery/README.md`。
+
+### 这笔债当时的样子（历史记录，已被上文关闭动作取代）
+
+
+bundle 曾整体采纳了一个第三方插件（`agent-teams` 主体），它当时**已从组装中退役**，但仍留在
 `packages/mpd-agent-teams-plugin`。它的树里带有一份内置依赖，而现役包 import 的正是**那一份**：
 
 * 该树：`packages/mpd-agent-teams-plugin/_deps/schemastery` —— **6 个文件、65,846 字节内容**

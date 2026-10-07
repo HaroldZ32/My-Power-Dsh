@@ -1,0 +1,235 @@
+{
+  "version": 1,
+  "recordId": "lane-e-lane-b-2026-10-07T1046Z",
+  "loopId": "waveloop-lane-b",
+  "taskId": "T13",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "lane-b-deep-worker (T6)",
+  "verifierId": "lane-e-verifier",
+  "basis": {
+    "kind": "pre-plugin",
+    "attestation": "no-guard-in-process",
+    "frozenContract": {
+      "path": ".mpd/plans/de-vendor-and-verify-law.md",
+      "sha256": "e9464a36abc86912280b8f5d1857007bf54b96ee3f2bedef1d0471eb34cdd610"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/verify-law-spec.md",
+        "sha256": "65c9504911f34866ad20e981b21ecbf5b68f2416242a5d4ed71185750260bc74"
+      },
+      {
+        "path": "AGENTS.md",
+        "sha256": "f52338414c47c8b6c2bedb45aeaa86929f7a49e1a9ed15d68734fe94f08b6450"
+      },
+      {
+        "path": "docs/independence.md",
+        "sha256": "4bf65d393ede6ea19b56841d135a6f2623fa0c148fbfedca1f929c379343651a"
+      },
+      {
+        "path": "package.json",
+        "sha256": "98653072508f20594a0101f44e3b669e9edae889263d170fd212517a2c9fbb97"
+      },
+      {
+        "path": "scripts/verify-pack-closure.ts",
+        "sha256": "68132b507730278cd8c5c89dcf812d37f990fe16734db33e2f9c8e836058dc72"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-schemastery/package.json",
+        "bytes": 693,
+        "sha256": "72bc8f5dfc57cdf8440f341a5bfc37274d93e2453fd1a3c8387e284b30f4aef5",
+        "mtime": "2026-10-07T10:26:35.127Z"
+      },
+      {
+        "path": "packages/mpd-bundle-plugin/client.js",
+        "bytes": 664514,
+        "sha256": "e83a9713cf894134c376ca50a09daf34553b19f53c35a94e58bc56056d35e137",
+        "mtime": "2026-10-07T10:28:15.422Z"
+      },
+      {
+        "path": "packages/mpd-bundle-plugin/adopted/agent-teams-client.js",
+        "bytes": 196984,
+        "sha256": "5148bdcb0a838b04bda00703283e94b3d3abad2243dab2befca7ee4bd941f488",
+        "mtime": "2026-10-07T10:28:15.351Z"
+      },
+      {
+        "path": "skills/dsh-qa/SKILL.md",
+        "bytes": 55154,
+        "sha256": "c216f7f45014879407189544fc0f26362e2a8cda883a82eb0e23d379da7962af",
+        "mtime": "2026-10-07T10:44:16.721Z"
+      },
+      {
+        "path": "bun.lock",
+        "bytes": 137424,
+        "sha256": "e9e9f6fca5ddaa14dc63614870bab515291ba22404d35991bc01f1f077a37f1e",
+        "mtime": "2026-10-07T10:41:50.580Z"
+      },
+      {
+        "path": "tsconfig.json",
+        "bytes": 1699,
+        "sha256": "532ab803c5430270d68e044ba52ccfbecc674088b0095f224e1d8d52c06c1757",
+        "mtime": "2026-10-07T10:34:29.834Z"
+      },
+      {
+        "path": ".mpd/verify/boot.json",
+        "exists": false
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/independence.md",
+      "sha256": "4bf65d393ede6ea19b56841d135a6f2623fa0c148fbfedca1f929c379343651a"
+    },
+    {
+      "path": "scripts/verify-pack-closure.ts",
+      "sha256": "68132b507730278cd8c5c89dcf812d37f990fe16734db33e2f9c8e836058dc72"
+    },
+    {
+      "path": "packages/mpd-schemastery/README.md",
+      "sha256": "c5989f6cf5e5ce8bd7d53506f1ff17c5abe2ed59016cfb7709e7d195ec01eb69"
+    },
+    {
+      "path": "package.json",
+      "sha256": "98653072508f20594a0101f44e3b669e9edae889263d170fd212517a2c9fbb97"
+    },
+    {
+      "path": "skills/dsh-qa/SKILL.md",
+      "sha256": "c216f7f45014879407189544fc0f26362e2a8cda883a82eb0e23d379da7962af"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "cmd": "git ls-tree HEAD + existence probe of the nine deleted paths + the adopted tree file counts",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-deletion-and-relocation.log",
+      "logSha256": "ede26a9ea3d2ceece79089b11f16f5e3f9863cd8a767c48d5b86a96cdc0d6cdd"
+    },
+    {
+      "cmd": "specifier-level import probes + the exact removed-test-file set + the harness shape",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-imports-and-testdelta.log",
+      "logSha256": "135421a22ab57e52c50d3dabbdcc19bdfc025eb6f43de48e6344d48a0254c74f"
+    },
+    {
+      "cmd": "bun install --frozen-lockfile",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-bun-install.log",
+      "logSha256": "4e8cd86a7969c73eef81e5b0d76f57d5f9a7368be5faf53741be947554ae1e73"
+    },
+    {
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-typecheck.log",
+      "logSha256": "8f61a615742758ff02c97cbbb7bbefb0224591af06b7848260814bb0d846980b"
+    },
+    {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-verify-docs.log",
+      "logSha256": "4318e3442a0ea53dd71b9d838cd279f17a2b1674cfb947fd8312dac520a3b677"
+    },
+    {
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-verify-manifest.log",
+      "logSha256": "dcf73edf07f5f8850725972def29b0357479e94fd8269a3ba0afad3a9bbcf9fb"
+    },
+    {
+      "cmd": "bun run verify:comments",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-verify-comments.log",
+      "logSha256": "5696be80a11a0bb9a689b8fad03d47ea51fe6faa7c23c2a89ed0c2080c15c688"
+    },
+    {
+      "cmd": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-verify-manual-paths.log",
+      "logSha256": "5f1acacabb2d5a22d65d45eaa217881b08767ec968174b73c8102ad6f86606c1"
+    },
+    {
+      "cmd": "node scripts/verify-pack-closure.ts --self-test",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-pack-closure-selftest.log",
+      "logSha256": "5af6838ce6bb4bc69e8f429920e4123e3e41340f4341b32e37cd567c10e75781"
+    },
+    {
+      "cmd": "node scripts/verify-docs-parity.ts --self-test",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-docs-selftest.log",
+      "logSha256": "9650e58dd4288f3ce062f59d1c5a3f51eb59011568d1a0dfa1bdb52015883c7d"
+    },
+    {
+      "cmd": "verify:comments attribution (which file)",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-comments-attribution.log",
+      "logSha256": "a0109845444fe5be614624134c53107ad55d7fbe6680a1755aee364a4145cae8"
+    },
+    {
+      "cmd": "the pack-closure self-test arm table (which arms redden, and why)",
+      "exit": 1,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-packclosure-arms.log",
+      "logSha256": "9aa05aae8d386fbbf6110348bf4420425203361e5fb80ef68c0f5c8d1cdb6afe"
+    },
+    {
+      "cmd": "skills prose-vs-import classification + docs/independence.md closure + the coupling inventory edges",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-attribution-and-docs.log",
+      "logSha256": "058d1115d5e2ba7944643f6775455fafe5c85fc70e214846b86f691a71c5b413"
+    },
+    {
+      "cmd": "ruling-A preconditions + settle table",
+      "exit": 0,
+      "logPath": "evidence/verify-law/lane-b/2026-10-07T1046Z/logs/ev-preconditions.log",
+      "logSha256": "4e9aa4d793791edbcba0c8a2f804f6e31c5adce2fcddfc60153f437cadb0fec3"
+    }
+  ],
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "symptom": "The gate fix's own claim is FALSE on the measured revision. `node scripts/verify-pack-closure.ts --self-test` → exit 1, 'self-test FAIL: 26/33 arms'; the report claimed 34/34 'at EITHER order' (and the arm count itself differs: 33 vs 34). SEVEN arms red, five of them for exactly the defect the fix claimed to remove — order-sensitivity to a writer landing after the pack: 'positive-control (real tree, exit 0)', 'positive-control (byte-copy of the real artifact, exit 0)', 'positive-control (fixture packed tree, exit 0)', 'negative-control (post-pack source writer -> reported, exit 0)' and 'negative-control (post-pack writer of a ROOT FILE -> expected, exit 0)'. Each prints `CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) — skills/dsh-qa/SKILL.md: source mtime 10:44:16.721Z is AFTER the artifact stamp 10:43:28.179Z` (or agent-references/index.md 10:45:52, or EXTENSIONS-FOR-AGENTS.md 10:45:52) while the arm's exit expectation is not met. A sixth arm, 'scratch pack via --out (fixture build)', fails on the T16 known-red: 'the packer refused --out: [pack-mpd] FAIL: cordis.patch.yml mounts packages/mpd-verify-plugin/dist/index.js but the packed tree has no such file'. A seventh, 'negative-control (the one declared exemption is exercised, not a silent skip)', fails with 1 closure violation.",
+      "expected": "Either the arms must be made stamp-independent as the claim states, or the claim must be narrowed to 'green only on a quiesced tree' and the run moved into the integration sweep AFTER the last write (T-91's own bound already says freshness is read from the expected-after-pack list, not from the exit code). The fixture build must not depend on a dist T16 has not built. NOTE THE FIX IS NOT A WEAKENING — the assertion arms still redden correctly (many 'PASS - negative-control (… exit 1)' lines), so what failed is the ORDER-TOLERANCE half of the claim, not the falsifiability.",
+      "docSource": "contract §Acceptance criteria AC7 + §Risks (gates going vacuous); AGENTS.md §4 gate table (Pack closure) and T-91's bound ('freshness is NOT what the exit code says')"
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "symptom": "`bun run verify:comments` exits 1 (measured), while the report listed it green: 'VERDICT: FAIL — 1 violation(s) across 1 file(s). packages/mpd-verify-plugin/qa/verify-law.ts (1) 136: comment — registeredSha'. That file belongs to LANE D, not to this lane, and the violation count has already fallen from the 26 seen earlier today.",
+      "expected": "Not counted against Lane B. Lane D clears the last violation; the wave cannot read verify:comments as green until then.",
+      "docSource": "contract §Acceptance criteria AC7 (bun run verify:comments); AGENTS.md §6 (every declaration is documented — verify:comments)"
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "symptom": "A stale path survives in the `skills/**` band as a LIVE SUBJECT, not as history: `skills/dsh-qa/SKILL.md:123` still says the team-watchdog-boot self-test 'drives the REAL vendored cordis waterfall (`packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.ts`)' — that path is DELETED (measured: 0 files) and the subject was relocated to `packages/mpd-schemastery/harness/cordis/lib/index.ts`, which is where Lane C's sweep retargeted the case. A reader following the case table is sent to a dead path.",
+      "expected": "Update that row's path to the relocation (Lane C holds the skills pen; the surface is currently in flux, so this rides the same fix as T14's blocker). Running prose that merely NAMES the retired body historically is fine and expected — this is a path presented as the live subject.",
+      "docSource": "contract §Acceptance criteria AC2 (no dead reference may survive, per the sweep's own GO rule); AGENTS.md §7 'New case checklist' (the SKILL.md row must describe what the case really does)"
+    },
+    {
+      "id": "F4",
+      "severity": "minor",
+      "symptom": "A count in the orientation does not match the bytes: the relocated harness closure is MEASURED at 12 files in 6 directories (`harness/{cordis,dsh-llm,dsh-scope,dsh-session,dsh-timeout,dsh-tools}/` each carrying `lib/index.ts` + `package.json`), not 'the 8-file closure' the report names. The closure is REAL and substantial (cordis 60483 B, dsh-tools 150769 B, dsh-llm 71573 B, dsh-session 79422 B, dsh-scope 12259 B, dsh-timeout 5520 B) — a dispatcher, not a double.",
+      "expected": "Correct the count in the report/PR body so the claim matches the tree.",
+      "docSource": "contract §Acceptance criteria AC2; AGENTS.md §4 'No evidence on disk for a gate = the change is not complete'"
+    }
+  ],
+  "unlockedReads": [],
+  "notes": [
+    "RESIDUAL BOUND (verify-law-spec §(c), verbatim): the gate runner's `tail` may print source frames — controlled black-box evidence, not implementation reading. The envelope is defence in depth; blindness is PROVEN by the plugin's own observation log (`guardTool` sees every call before dispatch, so `blindStart` is computed from observed code-path reads since session creation).",
+    "DOCKER DECLARED BOUND (captain ruling D): the Docker lane's evidence is INTEGRATION-borne and declared in the PR body — a declared bound, never a hole. This lane's report also declares that the Docker lane, `bun run test:qa` and the packed-artifact boot were NOT verified by it.",
+    "VERIFIED PASS — the deletion is complete and exact. All nine named paths are gone from the tree (`packages/mpd-agent-teams-plugin`, `scripts/{vendor-agent-teams,patch-agent-teams-fixes,patch-agent-teams-client,reclaim-staged-teams}.ts`, `scripts/lib/vendored-agent-teams.d.ts`, `agent-references/agent-teams-deltas.md`, `packages/mpd-team-watchdog-plugin/test/{lane-c-wave2.test.ts,fixtures/inject.ts}`); `git ls-tree -r HEAD` counted 768 files under the adopted tree and the working tree now holds 0.",
+    "VERIFIED PASS — PROOF OF DELETION is real, measured with specifier-level probes, not by reading code: import/export-shaped matches 0 in `packages/`, `scripts/`, `docker/`; dynamic `import(`/`require(` matches **0**; and a strict specifier probe (`from` / `require(` / `import(` + the dead path) returns **0 across all four directories**. The surviving textual mentions are prose, attribution, fixtures or the relocated artifact itself (`packages/mpd-schemastery/{README,package.json,LICENSE}` naming its upstream, the relocated `adopted/agent-teams-client.js` internals, README pairs, and the docs-parity self-test's own fixture names). The single 'import-shaped' hit in `skills/` is a markdown TABLE ROW in `SKILL.md`, not code.",
+    "VERIFIED PASS — THE CLIENT-BUNDLE CLAIM, exactly as stated. `git diff --numstat` on `packages/mpd-bundle-plugin/client.js` = `1 1`; `git diff --stat` = 1 insertion, 1 deletion; excluding `sourceMappingURL` the added/removed line count is **0**; both old and new carry exactly one `sourceMappingURL`. The relocated bundle is `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` (196984 B) + `.map` (223593 B). Nothing else moved in the relocation.",
+    "VERIFIED PASS — THE TEST-COUNT DELTA (captain probe 1), and NO loss of our own tests. `git ls-tree -r HEAD` counted **147** test files under `packages/`; the tree now holds **98**; the removed set is **52** = **51 under the adopted tree** + **exactly one** elsewhere, the named `packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts`. Three test files were ADDED by other lanes (`mpd-verify-plugin/test/{law,row}.test.ts`, `mpd-team-core-plugin/test/close-and-dispatch.test.ts`), which is why the net is 49 rather than 52. Every removed package test file is accounted for by the adopted suite plus the one named deletion.",
+    "VERIFIED PASS — THE VACUOUS-GATE FIX (captain probe 2, first item, the one with a self-test): `node scripts/verify-docs-parity.ts --self-test` → **34/34 checks passed**, exit 0, and its rewritten PROVENANCE arm proves the removal rather than asserting it: `ok links PROVENANCE: the retired verbatim exemption is GONE — a dead link at its old path reddens like any other package README, and the skip counter stays at zero — {violations:[link-missing:packages/mpd-agent-teams-plugin/README.md:./docs/usage.md, …], skippedProvenance:0, …}`. The gate can no longer be green because the exemption vanished.",
+    "VERIFIED PASS — `docs/independence.md` §5's closure is MEASURED, not asserted: it cites the 768-file count with `git ls-files` agreement (which my own HEAD probe reproduces exactly), the relocation homes, the MIT notices in `packages/mpd-schemastery/LICENSE`, and a grep-verified re-point claim for the four live importers — which I confirmed independently: four `packages/*/src` files now import `mpd-schemastery` (`mpd-team-watchdog-plugin/src/index.ts`, `mpd-tui-plugin/src/index.ts`, `mpd-config-plugin/src/{index,settings-schema}.ts`), alongside five test importers.",
+    "VERIFIED PASS — the greens this lane claimed, re-run: `bun install --frozen-lockfile` exit 0, `bun run typecheck` exit 0, `bun run verify:docs` exit 0, `bun run verify:manifest` exit 0, `node scripts/verify-manual-paths.ts` exit 0.",
+    "VERIFIED PASS (captain probe 3) — the cross-lane couplings Lane B added to the coupling inventory are REAL, and declared as exact import strings rather than as a blanket allowance: the inventory carries `packages/mpd-roles-plugin/src/index.ts :: import { VERIFY_SERVICE } from \"../../mpd-verify-plugin/src/service.ts\"` and two `packages/mpd-roles-plugin/src/verify-guard.ts :: … from \"../../mpd-verify-plugin/src/law.ts\"` edges. That is a declared edge, not a masked violation.",
+    "METHOD — the verdict was reached before any implementation read and needed none: no .ts/.js source and no dist/** was opened. Evidence used: the frozen contract + spec + AGENTS.md, the writer's evidence tree, read-only git history/tree listing, content-free and specifier-level probes (counts, hashes, existence, diffstats) and the acceptance-named commands with their exits."
+  ],
+  "createdAt": "2026-10-07T10:47:00Z"
+}

@@ -20,7 +20,7 @@ import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 // The adopted cordis body is vendored JavaScript with no declaration file, so these two
 // constructors are untyped here; the arms below use only their runtime identity.
 // The vendored module now resolves to its .ts source, so this surface is typed from that file.
-import { Context, Service } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.ts"
+import { Context, Service } from "../../mpd-schemastery/harness/cordis/lib/index.ts"
 import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
 import { COMMAND_ACTIONS, MODEL_COMMAND } from "../src/command-trees"

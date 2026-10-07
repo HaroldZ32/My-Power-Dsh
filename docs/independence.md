@@ -126,26 +126,50 @@ Four kinds of coupling are **allowed**; they are called out here so "independent
    edge — but it is still a source-level dependency on a sibling's internal module path, so it is
    frozen like any other.
 
-## 5. The pinned debt: the retired body's vendored `schemastery`
+## 5. The pinned debt: the retired body's vendored `schemastery` — CLOSED
 
-The bundle adopted one third-party plugin outright (the `agent-teams` body), which is now
+**STATUS: CLOSED by the `de-vendor-and-verify-law` wave (2026-10-07).** The closure measurement is the
+one the follow-up named, taken on the same commit as the deletion:
+
+* the adopted body `packages/mpd-agent-teams-plugin/**` is **DELETED** — the measured count is
+  **768 files**, `_deps/` included, and `git ls-files` reported the same 768 before removal;
+* the vendored tree moved to a first-class mpd-owned home: `packages/mpd-schemastery/lib/` carries the
+  validator (`index.ts`), its dependency (`cosmokit.ts`) and the declaration set
+  (`types/index.d.ts`), with the MIT notices reproduced in `packages/mpd-schemastery/LICENSE`;
+* the **four live importers** named below are re-pointed IN THE SAME COMMIT, from
+  `../../mpd-agent-teams-plugin/_deps/schemastery` to `../../mpd-schemastery` — verified with
+  `grep -rn "mpd-agent-teams-plugin" packages/*/src` returning no import, only historical comments;
+* the gate's frozen set still holds exactly those four edges (they were re-pointed, not dropped), so
+  the follow-up cannot grow a fifth: see
+  `packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`.
+
+One measured widening, recorded because the contract did not name it: the same deletion also took out
+the four TEST files that imported `_deps/cordis`, `_deps/dsh-llm` and `_deps/dsh-tools` for a REAL
+dispatcher or a REAL harness validator, so their eight-file transitive closure (schemastery, cosmokit
+and six `@deepseek-ai/dsh-*` modules) was relocated into the same home under `harness/`. The closure is
+self-contained — no network, no new npm dependency — and the reasoning for refusing a `cordis`-family
+`devDependencies` route is in `packages/mpd-schemastery/README.md`.
+
+### The pinned debt as it stood (historical record, superseded by the closure above)
+
+The bundle had adopted one third-party plugin outright (the `agent-teams` body), which was
 **RETIRED from the composition** but still present at `packages/mpd-agent-teams-plugin`. Its tree
-carries a vendored dependency, and live packages import **that copy**:
+carried a vendored dependency, and live packages imported **that copy**:
 
 * the tree: `packages/mpd-agent-teams-plugin/_deps/schemastery` — **6 files, 65,846 bytes of
   content** (92 KB as `du` reports it), including `lib/index.ts`, `lib/index.cts`, the declaration
   map and `LICENSE`;
-* **four live files** import it: `mpd-config-plugin/src/index.ts`,
+* **four live files** imported it: `mpd-config-plugin/src/index.ts`,
   `mpd-config-plugin/src/settings-schema.ts`, `mpd-team-watchdog-plugin/src/index.ts`,
   `mpd-tui-plugin/src/index.ts`;
-* the body's own `lib/index.ts` imports the same tree through a different specifier
+* the body's own `lib/index.ts` imported the same tree through a different specifier
   (`../_deps/schemastery/lib/index.ts`).
 
-This is **PINNED DEBT, not an oversight**. Moving the tree out of the retired body would duplicate a
-third-party library while the body still needs it, so the debt is recorded here with a **named
-follow-up**: when the body is deleted, its `_deps/schemastery` tree moves to a first-class home and
-the four importers are re-pointed in the same commit. The gate freezes the four importers so the
-follow-up cannot grow a fifth.
+That was **PINNED DEBT, not an oversight**: moving the tree out of the retired body would have
+duplicated a third-party library while the body still needed it, so the debt was recorded with a
+**named follow-up** — when the body is deleted, its `_deps/schemastery` tree moves to a first-class
+home and the four importers are re-pointed in the same commit — and the gate froze the four importers
+so the follow-up could not grow a fifth.
 
 ## 6. The counted inventory: identity-keyed, frozen, and it can only shrink
 

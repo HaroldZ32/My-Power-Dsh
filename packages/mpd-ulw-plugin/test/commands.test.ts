@@ -315,7 +315,7 @@ test("the activation directive carries the six autonomy behaviours in order", ()
   // Clause 2 states that the predicate was ALREADY evaluated mechanically, never that the model
   // should evaluate it: the plugin runs the SAME predicate the session-start gate uses.
   expect(directive).toContain("ALREADY EVALUATED MECHANICALLY")
-  expect(directive).toContain("explicit `team:`/`!team` flag OR any matched signal A-D")
+  expect(directive).toContain("explicit `team:`/`!team` flag OR any matched signal A-E")
   expect(directive).toContain("Never invent a second predicate")
   // Clause 3 points at OUR plan plane (`agent_teams_plan` create / add_member / create_task /
   // approve), and the retired official-tool sentence is GONE.
@@ -355,7 +355,7 @@ test("the QA case's c3.2 probe still matches and the c3.3 probe it needs is the 
   const directive = activationDirective("make the widget ship")
   // C3.2 as it still ships in `skills/dsh-qa/scripts/ulw-command.ts` (`CLAUSE_PROBES` id "gate"):
   // the clause rewrite had to stay readable to the probe that guards it.
-  const c32 = /GATE:[\s\S]{0,120}complexity predicate[\s\S]{0,160}signal A-D/
+  const c32 = /GATE:[\s\S]{0,120}complexity predicate[\s\S]{0,160}signal A-E/
   expect(c32.test(directive)).toBe(true)
   // C3.3 is the probe the SKILLS LANE must change (this package cannot edit `skills/**`): the
   // shipped probe still demands `spawn_teammate` + `team_task_create`, which the mpd plan plane

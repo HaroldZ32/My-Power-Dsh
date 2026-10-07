@@ -1,0 +1,37 @@
+### grep: any import/export of the dead path
+NONE
+
+### grep: dynamic import / require of it
+NONE
+
+### the directory
+GONE
+0
+
+### the new home
+packages/mpd-schemastery/harness/cordis/lib/index.ts
+packages/mpd-schemastery/harness/cordis/package.json
+packages/mpd-schemastery/harness/dsh-llm/lib/index.ts
+packages/mpd-schemastery/harness/dsh-llm/package.json
+packages/mpd-schemastery/harness/dsh-scope/lib/index.ts
+packages/mpd-schemastery/harness/dsh-scope/package.json
+packages/mpd-schemastery/harness/dsh-session/lib/index.ts
+packages/mpd-schemastery/harness/dsh-session/package.json
+packages/mpd-schemastery/harness/dsh-timeout/lib/index.ts
+packages/mpd-schemastery/harness/dsh-timeout/package.json
+packages/mpd-schemastery/harness/dsh-tools/lib/index.ts
+packages/mpd-schemastery/harness/dsh-tools/package.json
+packages/mpd-schemastery/lib/cosmokit.ts
+packages/mpd-schemastery/lib/index.ts
+packages/mpd-schemastery/lib/types/index.d.ts
+packages/mpd-schemastery/LICENSE
+packages/mpd-schemastery/package.json
+packages/mpd-schemastery/README.md
+packages/mpd-schemastery/README.zh-CN.md
+
+### the relocated client bundle
+total 424
+drwxrwxr-x 2 haroldzhao haroldzhao   4096 Oct  7 18:27 .
+drwxrwxr-x 6 haroldzhao haroldzhao   4096 Oct  7 18:27 ..
+-rw-rw-r-- 1 haroldzhao haroldzhao 196984 Oct  7 18:28 agent-teams-client.js
+-rw-rw-r-- 1 haroldzhao haroldzhao 223593 Oct  7 18:28 agent-teams-client.js.map
