@@ -668,3 +668,192 @@ note agent-references/agent-teams-deltas.md — DERIVED: site file not present i
 [verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
 [verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
 [exit=1] verify-vendor (post-deletion)
+
+== ARM N (F1): run the PUBLISHED recipe verbatim into a scratch dir and count ==
+   recipe: vendor/mcp-src/README.md, 'Origin (re-derivable)' block
+
+== ARM N (F1): run the PUBLISHED recipe verbatim into a scratch dir and count ==
+   recipe: vendor/mcp-src/README.md, 'Origin (re-derivable)' block
++ git init -q upstream
++ cd upstream
++ git remote add origin https://github.com/code-yeongyu/oh-my-openagent
++ git config core.sparseCheckout true
++ git sparse-checkout init --cone
++ git sparse-checkout set packages/ast-grep-mcp packages/git-bash-mcp packages/lsp-daemon packages/mcp-stdio-core packages/utils packages/omo-config-core packages/lsp-core
++ git fetch --depth 1 origin 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+From https://github.com/code-yeongyu/oh-my-openagent
+ * branch            8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29 -> FETCH_HEAD
++ git checkout -q FETCH_HEAD
+++ git rev-parse HEAD
++ test 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29 = 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
++ cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-snapshot/recipe-repro
++ mkdir mcp-src
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/ast-grep-mcp mcp-src/ast-grep-mcp
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/git-bash-mcp mcp-src/git-bash-mcp
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/lsp-daemon mcp-src/lsp-daemon
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/mcp-stdio-core mcp-src/mcp-stdio-core
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/utils mcp-src/utils
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/omo-config-core mcp-src/omo-config-core
++ for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core
++ cp -r upstream/packages/lsp-core mcp-src/lsp-core
+++ find mcp-src -type f
+++ wc -l
++ echo 'COUNT-after-copy: 464'
+COUNT-after-copy: 464
++ find mcp-src -name AGENTS.md -delete
+++ find mcp-src -type f
+++ wc -l
++ echo 'COUNT-after-AGENTS-omission: 457'
+COUNT-after-AGENTS-omission: 457
++ cp /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/vendor/mcp-src/README.md /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/vendor/mcp-src/README.zh-CN.md mcp-src/
+++ find mcp-src -type f
+++ wc -l
++ echo 'COUNT-final: 459'
+COUNT-final: 459
+recipe exit=0
+
+== ARM O (F1 control): the REPRODUCED directory must hash to the LOCKED treeSha ==
+   (fixture gate + a lock copy carrying ONLY the vendor/mcp-src entry; the asset is the recipe's output)
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] PASS - 1 shipped asset(s) fingerprinted, upstream identity not checked
+[exit=0]
+== ARM P (F1): repin-vendor --check against the REAL lock ==
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (4011 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 fileCount=335
+[repin-vendor]   computed (LF) : treeSha=d665fc517f540153ab9e72d0d3f1433c8b16df0cccaab7acbbdaa33f672afdc2 fileCount=332 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 55764ea2635c7411ca1a777ed8d93a6086539e85ae2b58a388cdc6d1fbd179e9   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 -> d665fc517f540153ab9e72d0d3f1433c8b16df0cccaab7acbbdaa33f672afdc2
+[repin-vendor]   DELTA        : fileCount 335 -> 332
+
+[repin-vendor] asset          : vendor/mcp-src
+[repin-vendor]   locked       : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459
+[repin-vendor]   computed (LF) : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : RED - lock does not match the working tree (drift=1, problems=0)
+[exit=1] repin --check
+
+########## F1 + F2 REPAIRS (post-T12) ##########
+
+== F2 ARM: node scripts/verify-vendor.ts --self-test ==
+[verify-vendor] SELF-TEST PASS - intact-fixture-PASS
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor] SELF-TEST PASS - one-byte-edit-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/corpus treeSha mismatch
+[verify-vendor] SELF-TEST PASS - added-file-count-drift-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/corpus count drifted: 3 vs 2
+[verify-vendor] SELF-TEST PASS - zero-subject-REFUSED
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - zero-subject run: VENDOR_LOCK.json declares no vendored assets to fingerprint - refusing to report PASS
+[verify-vendor] SELF-TEST PASS - corrupted-single-file-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/blob.js sha256 mismatch
+[verify-vendor] SELF-TEST PASS - require-upstream-REFUSED
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] REFUSED - --require-upstream: this gate has NO upstream subject any more.
+[verify-vendor] SELF-TEST PASS - unknown-flag-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - unknown argument: --frobnicate
+[verify-vendor] SELF-TEST PASS - restored-fixture-PASS
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor] SELF-TEST PASS - 8/8 arm(s) passed
+[exit=0] self-test
+
+== F2 guard: the REPIN MIRROR must still match after the rewrite ==
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+== FINAL RE-VERIFICATION (after the F1+F2 repairs) ==
+--- argv arms ---
+--help               usage: node scripts/verify-vendor.ts [--help] [--self-test]
+  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker
+  --self-test         run every fixture arm in a temp root; never reads or writes the shipped lock
+  --help              print this text and exit 0
+  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)
+[exit=0]
+--require-upstream   [verify-vendor] REFUSED - --require-upstream: this gate has NO upstream subject any more.
+[verify-vendor] the oh-my-openagent checkout is retired from the composition (de-vendored 2026-10-07):
+[verify-vendor]   * no MPD_UPSTREAM_ROOT is read, no .mpd-dsh/upstream is looked for, no fallback exists;
+[verify-vendor]   * the upstream commit/version/statistics checks were DELETED, not skipped - nothing is left to require;
+[verify-vendor]   * upstream attribution lives in LICENSE-NOTICES.md, README.md and README.zh-CN.md, where no gate owns it.
+[verify-vendor] re-run without the flag to fingerprint the assets this repository ships, or revert the de-vendoring commit.
+[exit=1]
+--frobnicate         [verify-vendor] FAIL - unknown argument: --frobnicate
+usage: node scripts/verify-vendor.ts [--help] [--self-test]
+  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker
+  --self-test         run every fixture arm in a temp root; never reads or writes the shipped lock
+  --help              print this text and exit 0
+  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)
+[exit=1]
+--self-test          [verify-vendor] SELF-TEST PASS - intact-fixture-PASS
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor] SELF-TEST PASS - one-byte-edit-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/corpus treeSha mismatch
+[verify-vendor] SELF-TEST PASS - added-file-count-drift-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/corpus count drifted: 3 vs 2
+[verify-vendor] SELF-TEST PASS - zero-subject-REFUSED
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - zero-subject run: VENDOR_LOCK.json declares no vendored assets to fingerprint - refusing to report PASS
+[verify-vendor] SELF-TEST PASS - corrupted-single-file-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/blob.js sha256 mismatch
+[verify-vendor] SELF-TEST PASS - require-upstream-REFUSED
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] REFUSED - --require-upstream: this gate has NO upstream subject any more.
+[verify-vendor] SELF-TEST PASS - unknown-flag-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - unknown argument: --frobnicate
+[verify-vendor] SELF-TEST PASS - restored-fixture-PASS
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor] SELF-TEST PASS - 8/8 arm(s) passed
+[exit=0]
+--- real run (env unset) ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills count drifted: 330 vs 335
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[exit=1]
+--- repin --check ---
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (4011 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 fileCount=335
+[repin-vendor]   computed (LF) : treeSha=449cd2e0186b0405e9150fdef5916fb9455316b4e0deaf692008ad392513d86d fileCount=330 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 9f7a09d80bfab88fc2d09c7399c8fdd0f76f64bb26b9396f30d1ba4eb853f86d   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha f8d30d9665d8ca98fb9f6e052d996b03c15c407840fea5e08ec775022b3cdfb1 -> 449cd2e0186b0405e9150fdef5916fb9455316b4e0deaf692008ad392513d86d
+[repin-vendor]   DELTA        : fileCount 335 -> 330
+
+[repin-vendor] asset          : vendor/mcp-src
+[repin-vendor]   locked       : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459
+[repin-vendor]   computed (LF) : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : RED - lock does not match the working tree (drift=1, problems=0)
+[exit=1]

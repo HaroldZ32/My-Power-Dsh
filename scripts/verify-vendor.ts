@@ -18,11 +18,21 @@
 // The remaining subject is the asset half: the bytes THIS repository ships (the served skill corpus,
 // the in-repo MCP source snapshot, the committed MCP dists).
 //
+// `--self-test` is the SHIPPED FALSIFIER for that half: an intact fixture must PASS, a one-byte edit
+// and an added file must each FAIL naming the asset, and an empty asset table must be REFUSED rather
+// than silently pass. Every arm works on a COPY of this script against a COPY of the lock inside a
+// temp root, so the shipped VENDOR_LOCK.json is never read or written.
+//
 // The fingerprint algorithm below is MIRRORED by scripts/repin-vendor.ts, which re-reads this file on
 // every run and refuses to work when one of its decisive tokens has moved. Edit the two together.
+import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
-import { join, sep } from "node:path"
+import {
+  copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync,
+} from "node:fs"
+import { tmpdir } from "node:os"
+import { dirname, join, sep } from "node:path"
+import { fileURLToPath } from "node:url"
 import { readJson, repoRootFrom } from "./lib/repo.ts"
 
 /** One vendored asset's fingerprint declaration. */
@@ -43,15 +53,41 @@ interface VendorLock {
   assets: Record<string, VendorAssetMeta | string>
 }
 
+/** One self-test arm's outcome: its name, whether it held, and the one-line proof or failure. */
+interface SelfTestArm {
+  /** Stable arm name, echoed on the arm's own census line. */
+  readonly name: string
+  /** Whether every assertion of the arm held. */
+  readonly ok: boolean
+  /** The arm's one-line proof, or the failure message that made it red. */
+  readonly note: string
+}
+
+/** One spawned fixture run: the child's exit status plus both captured streams. */
+interface FixtureRun {
+  /** The child's exit status, or `null` when a signal killed it. */
+  readonly code: number | null
+  /** Captured stdout, which carries the PASS line on a green arm. */
+  readonly out: string
+  /** Captured stderr, which carries the FAIL line an arm asserts against. */
+  readonly err: string
+}
+
 /** The repository root, derived from this gate's own URL (`<root>/scripts/verify-vendor.ts`). */
 const repoRoot: string = repoRootFrom(import.meta.url)
+/** This gate's own absolute path: the fixture copies the self-test spawns are made from it. */
+const SELF_PATH: string = fileURLToPath(import.meta.url)
 /** The usage text, which also names the refusal this gate performs. */
 const USAGE: string = [
-  "usage: node scripts/verify-vendor.ts [--help]",
+  "usage: node scripts/verify-vendor.ts [--help] [--self-test]",
   "  (no flag)           fingerprint every asset VENDOR_LOCK.json declares; a mismatch is a blocker",
+  "  --self-test         run every fixture arm in a temp root; never reads or writes the shipped lock",
   "  --help              print this text and exit 0",
   "  --require-upstream  REFUSED: this gate has no upstream subject any more (see the header)",
 ].join("\n")
+
+/** Whether this run is the fixture self-test rather than the real fingerprint sweep. */
+let selfTestRequested: boolean = false
 
 // The argv contract is part of the acceptance, not a nicety: the retired flag must FAIL LOUDLY and
 // explain itself, so nobody can read a green exit code as "the upstream baseline was verified".
@@ -59,6 +95,10 @@ for (const arg of process.argv.slice(2)) {
   if (arg === "--help" || arg === "-h") {
     console.log(USAGE)
     process.exit(0)
+  }
+  if (arg === "--self-test") {
+    selfTestRequested = true
+    continue
   }
   if (/upstream/i.test(arg)) {
     console.error("[verify-vendor] REFUSED - " + arg + ": this gate has NO upstream subject any more.")
@@ -73,6 +113,11 @@ for (const arg of process.argv.slice(2)) {
   console.error(USAGE)
   process.exit(1)
 }
+
+// A self-test run exits HERE, before the shipped lock is read: the arms work on their own fixture.
+// `selfTest` and the fingerprint helpers it uses are function declarations, so hoisting makes this
+// call site independent of where they are written.
+if (selfTestRequested) process.exit(selfTest())
 
 // The named fact, printed on EVERY run: a green exit code here never means "the upstream was checked".
 console.log("[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)")
@@ -126,6 +171,160 @@ function listFiles(dir: string): string[] {
   }
   walk(dir)
   return out
+}
+
+/**
+ * Fingerprint one directory exactly as the real run does, so a fixture lock can be written with the
+ * value the fixture gate will recompute.
+ *
+ * The arms stay FALSIFIABLE even though they share this fold: each one mutates the fixture's BYTES or
+ * its file COUNT and then asserts the gate's reaction — never the hash itself.
+ *
+ * @param dir - The fixture asset directory to fold.
+ * @returns The file count and the treeSha fold over the fixture's sorted relpaths.
+ */
+function fixtureTree(dir: string): { fileCount: number; treeSha: string } {
+  /** Every file the fixture directory holds, in walk order. */
+  const files: string[] = listFiles(dir)
+  /** The fixture's relpaths, POSIX-spelled and sorted — the same fold input the real run uses. */
+  const rels: string[] = files.map((f: string): string => f.slice(dir.length + 1).split(sep).join("/")).sort()
+  /** The running fold hash over (relpath, per-file sha256) pairs. */
+  const h = createHash("sha256")
+  for (const f of rels) {
+    /** That fixture file's own sha256, over the same LF-normalized bytes. */
+    const fh: string = createHash("sha256").update(readBytes(join(dir, f))).digest("hex")
+    h.update(f + "\n" + fh + "\n")
+  }
+  return { fileCount: files.length, treeSha: h.digest("hex") }
+}
+
+/**
+ * Run every self-test arm in a temp fixture root and return the process exit code.
+ *
+ * WHY THIS SHIPS: the acceptance falsifier — "a deliberately corrupted asset fingerprint still
+ * FAILS" — has to be a repeatable command a reviewer can run, not a claim that lives only in an
+ * evidence directory. Every arm spawns a COPY of this script against a COPY of the lock inside a temp
+ * root, so the shipped `VENDOR_LOCK.json` is never read or written.
+ *
+ * @returns 0 when every arm held, 1 when any arm failed.
+ */
+function selfTest(): number {
+  /** The arm outcomes, in run order. */
+  const arms: SelfTestArm[] = []
+  /** The fixture root, which mimics a repository: `scripts/` + `VENDOR_LOCK.json` + `assets/`. */
+  const root: string = mkdtempSync(join(tmpdir(), "mpd-verify-vendor-selftest-"))
+  /** Record one arm's outcome. */
+  const arm = (name: string, ok: boolean, note: string): void => { arms.push({ name, ok, note }) }
+  /**
+   * Assert one spawned fixture run.
+   *
+   * @param name - The arm's stable name.
+   * @param r - The spawned run to judge.
+   * @param wantCode - The exit status the arm requires.
+   * @param wantIn - A substring the run's combined output must carry (omitted means "any output").
+   * @returns Nothing; the outcome is recorded on `arms`.
+   */
+  const expect = (name: string, r: FixtureRun, wantCode: number, wantIn?: string): void => {
+    /** The combined transcript, which is what a human reads when an arm is red. */
+    const all: string = r.out + r.err
+    /** The two conditions the arm asserts, reported separately so a red arm names its own cause. */
+    const codeOk: boolean = r.code === wantCode
+    /** Whether the required substring is present; a vacuous requirement is treated as held. */
+    const textOk: boolean = wantIn === undefined || all.includes(wantIn)
+    /** The line the arm asserts against — quoted instead of the run's last line, so a reader sees the
+     * exact message the arm required rather than whatever the run happened to print last. */
+    const quoted: string = wantIn === undefined
+      ? (all.split("\n").filter((l: string): boolean => l.includes("[verify-vendor]")).pop() ?? "(no verdict line)")
+      : (all.split("\n").find((l: string): boolean => l.includes(wantIn)) ?? "(asserted line absent)")
+    arm(name, codeOk && textOk, `exit ${r.code} (want ${wantCode}${codeOk ? "" : " MISMATCH"}); quoted: ${quoted.trim()}`)
+  }
+  try {
+    mkdirSync(join(root, "scripts", "lib"), { recursive: true })
+    mkdirSync(join(root, "assets", "corpus"), { recursive: true })
+    copyFileSync(SELF_PATH, join(root, "scripts", "verify-vendor.ts"))
+    copyFileSync(join(dirname(SELF_PATH), "lib", "repo.ts"), join(root, "scripts", "lib", "repo.ts"))
+    /** The fixture script the arms spawn — a COPY, so the shipped gate is never executed here. */
+    const script: string = join(root, "scripts", "verify-vendor.ts")
+    /** The fixture lock the arms rewrite between runs. */
+    const lockPath: string = join(root, "VENDOR_LOCK.json")
+    /** The fixture DIRECTORY asset, which exercises the treeSha fold. */
+    const corpus: string = join(root, "assets", "corpus")
+    /** The fixture SINGLE-FILE asset, which exercises the sha256 branch. */
+    const blob: string = join(root, "assets", "blob.js")
+    /** The two seed files, small enough to be mutated one byte at a time. */
+    const seed: ReadonlyArray<readonly [string, string]> = [["a.txt", "alpha\n"], ["b.txt", "beta\n"]]
+    /** Restore the fixture to its intact state, so each arm starts from the same bytes. */
+    const reset = (): void => {
+      for (const f of readdirSync(corpus)) rmSync(join(corpus, f), { recursive: true, force: true })
+      for (const [name, text] of seed) writeFileSync(join(corpus, name), text)
+      writeFileSync(blob, "export const x = 1\n")
+    }
+    reset()
+    /** The asset table derived from the INTACT fixture; every mutation below is measured against it. */
+    const good: Record<string, unknown> = ((): Record<string, unknown> => {
+      /** The intact fixture directory's fingerprint. */
+      const t = fixtureTree(corpus)
+      return {
+        _note: "self-test fixture",
+        "assets/corpus": { fileCount: t.fileCount, treeSha: t.treeSha, source: "self-test fixture" },
+        "assets/blob.js": { fileCount: 1, sha256: createHash("sha256").update(readFileSync(blob)).digest("hex"), source: "self-test fixture" },
+      }
+    })()
+    /**
+     * Write the fixture lock and spawn the fixture gate.
+     *
+     * @param assets - The fixture asset table to write.
+     * @param args - Extra argv for the fixture gate.
+     * @returns The child's exit status and its two captured streams.
+     */
+    const run = (assets: Record<string, unknown>, args: readonly string[] = []): FixtureRun => {
+      writeFileSync(lockPath, JSON.stringify({ assets }, null, 2) + "\n")
+      /** The spawned fixture gate; both streams are captured so an arm can quote the message. */
+      const r = spawnSync("node", [script, ...args], { encoding: "utf8" })
+      return { code: r.status, out: r.stdout ?? "", err: r.stderr ?? "" }
+    }
+
+    // (i) THE CLEAN CONTROL: without this every later arm could be green for the wrong reason.
+    expect("intact-fixture-PASS", run(good), 0, "[verify-vendor] PASS")
+
+    // (ii) one BYTE appended to a fingerprinted file -> the tree fold must catch it, naming the asset.
+    writeFileSync(join(corpus, "a.txt"), "alpha\n ")
+    expect("one-byte-edit-FAILS", run(good), 1, "assets/corpus treeSha mismatch")
+
+    // (iii) one FILE added -> the count guard must catch it BEFORE any hash work.
+    reset()
+    writeFileSync(join(corpus, "extra.txt"), "extra\n")
+    expect("added-file-count-drift-FAILS", run(good), 1, "assets/corpus count drifted")
+
+    // (iv) an EMPTY asset table -> the zero-subject guard must REFUSE, never report a vacuous PASS.
+    reset()
+    expect("zero-subject-REFUSED", run({ _note: "self-test fixture" }), 1, "zero-subject run")
+
+    // (v) the SINGLE-FILE branch: a corrupted blob must fail on sha256, not on the fold.
+    writeFileSync(blob, "export const x = 2\n")
+    expect("corrupted-single-file-FAILS", run(good), 1, "assets/blob.js sha256 mismatch")
+
+    // (vi)+(vii) the argv contract: the retired flag refuses, an unknown flag is a usage error.
+    reset()
+    expect("require-upstream-REFUSED", run(good, ["--require-upstream"]), 1, "REFUSED")
+    expect("unknown-flag-FAILS", run(good, ["--frobnicate"]), 1, "unknown argument")
+
+    // (viii) THE CLOSING CONTROL: the fixture is restored, so the SAME lock must pass again — this is
+    // what proves arms (ii)-(v) failed because of their mutation and not because a run left it dirty.
+    expect("restored-fixture-PASS", run(good), 0, "[verify-vendor] PASS")
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+
+  /** The arms that did not hold; the returned exit code is derived from it. */
+  let failedArms: number = 0
+  for (const a of arms) {
+    if (!a.ok) failedArms += 1
+    console.log(`[verify-vendor] SELF-TEST ${a.ok ? "PASS" : "FAIL"} - ${a.name}`)
+    console.log(`[verify-vendor]   ${a.note}`)
+  }
+  console.log(`[verify-vendor] SELF-TEST ${failedArms === 0 ? "PASS" : "FAIL"} - ${arms.length - failedArms}/${arms.length} arm(s) passed`)
+  return failedArms === 0 ? 0 : 1
 }
 
 // Guard-2 (t8 / R7.15): the fingerprint loop is the gate's subject. With `assets` empty (or

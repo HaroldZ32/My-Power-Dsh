@@ -48,7 +48,7 @@
         "path": "vendor/mcp-src",
         "packages": ["ast-grep-mcp", "git-bash-mcp", "lsp-daemon", "mcp-stdio-core", "utils", "omo-config-core", "lsp-core"],
         "fileCount": 459,
-        "treeSha": "05979e8a3fcb273486b9e56a30f183845c48a7e812a8065cf030961f6fde33f4",
+        "treeSha": "af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c",
         "pinnedUpstreamCommit": "8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29",
         "resolvedCommitAfterFetch": "8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29",
         "fetch": "one-time shallow SPARSE fetch (`git sparse-checkout set` the seven package dirs, `git fetch --depth 1 origin <pin>`, `git checkout FETCH_HEAD`) into the gitignored scratch root `.qa-mcp-snapshot/`, then copied; the scratch root is deleted. The exact commands are recorded in vendor/mcp-src/README.md.",
@@ -100,5 +100,33 @@
     "vendor/mcp-src is NOT packed (package.json `files` is outside the granted scope), so only a checkout can rebuild the MCP servers. The published artifact ships prebuilt dists.",
     "The `skills` re-pin and the derived dist surface remain the captain's/integration's steps; this lane ran no git write command.",
     "`package.json`'s `description` still says 'upstream baseline: oh-my-openagent 8c57e46, pinned' — the word 'pinned' now overstates the relationship (it is a historical reference). Left untouched as an open decision for the captain, flagged rather than silently edited."
-  ]
+  ],
+  "repairsPostT12": {
+    "context": "T12 VERDICT: PASS (0 blockers, 3 minor, 3 declared bounds). Two minor repairs were requested and landed. The Reviewer's F3 (the retired upstream is still NAMED in message/_note text) was explicitly NOT changed, as instructed: a removal notice must name what was removed, and the lock's `_note` is the historical record.",
+    "F1": {
+      "finding": "vendor/mcp-src/README.md (and the zh twin) published a fetch/copy recipe that OMITTED the per-package AGENTS.md exclusion, so following it verbatim yielded MORE files than the locked 459.",
+      "fix": "The recipe is now COMPLETE and self-checking: it prints every intermediate count (464 -> 457 -> 459), asserts the resolved commit equals the pin, deletes the 7 AGENTS.md files explicitly, and copies this directory's own two README files — naming that last step as the one a reader is most likely to miss. The Contents table now separates the 457 package subtotal from the 459 locked asset total, with the arithmetic stated. Both language twins were moved together.",
+      "proofRecipeReproducesItsOwnCount": "ARM N — the published recipe run verbatim into a scratch root: `COUNT-after-copy: 464`, `COUNT-after-AGENTS-omission: 457`, `COUNT-final: 459` (recipe exit 0). 459 == VENDOR_LOCK.json assets[\"vendor/mcp-src\"].fileCount.",
+      "proofReproducedBytesMatchTheLock": "ARM O — the recipe's OUTPUT directory, mounted as the asset of a fixture gate with a lock copy carrying ONLY that entry: `[verify-vendor] asset OK: vendor/mcp-src 459 files` / `[verify-vendor] PASS - 1 shipped asset(s) fingerprinted` / `[exit=0]`. So the re-derived snapshot hashes to the locked fingerprint, not merely to the locked count.",
+      "proofInSync": "ARM P — `node scripts/repin-vendor.ts --check` (against the real lock): `asset vendor/mcp-src` -> `in sync : no change`. The run's single RED drift is `skills` (335 -> 330 files), i.e. Lane C's in-flight single-writer corpus awaiting the wave's ONE re-pin — not this lane.",
+      "fingerprintMoved": "Because both README files are part of the asset, completing the recipe changed the fingerprint. It was re-derived with the DECLARED authority (`node scripts/repin-vendor.ts`, which reports `mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts`) and re-pinned from 05979e8a... to af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c; fileCount stayed 459."
+    },
+    "F2": {
+      "finding": "`node scripts/verify-vendor.ts --self-test` answered `FAIL - unknown argument` (exit 1), so AC1's falsifier lived only in the evidence directory and in no repeatable command.",
+      "fix": "scripts/verify-vendor.ts now ships a fixture-driven `--self-test` with EIGHT arms. Every arm spawns a COPY of the gate against a COPY of the lock inside a temp root, so the shipped VENDOR_LOCK.json is never read or written; the temp root is removed in a `finally`.",
+      "arms": [
+        "intact-fixture-PASS -> exit 0, 'PASS - 2 shipped asset(s) fingerprinted' (the CLEAN CONTROL: without it every later arm could be green for the wrong reason)",
+        "one-byte-edit-FAILS -> exit 1, 'asset assets/corpus treeSha mismatch'",
+        "added-file-count-drift-FAILS -> exit 1, 'asset assets/corpus count drifted: 3 vs 2'",
+        "zero-subject-REFUSED -> exit 1, 'zero-subject run: VENDOR_LOCK.json declares no vendored assets to fingerprint - refusing to report PASS'",
+        "corrupted-single-file-FAILS -> exit 1, 'asset assets/blob.js sha256 mismatch' (the sha256 branch, distinct from the fold)",
+        "require-upstream-REFUSED -> exit 1, 'REFUSED - --require-upstream: this gate has NO upstream subject any more.'",
+        "unknown-flag-FAILS -> exit 1, 'FAIL - unknown argument: --frobnicate'",
+        "restored-fixture-PASS -> exit 0 (the CLOSING CONTROL: the same lock passes again once the fixture is restored, proving arms 2-5 failed because of their mutation and not because a run left the fixture dirty)"
+      ],
+      "proof": "`node scripts/verify-vendor.ts --self-test` -> `SELF-TEST PASS - 8/8 arm(s) passed`, `[exit=0]`. The clean control earned its keep during development: it caught a fixture bug (an asset key of `corpus` while the file sits at `assets/corpus`) that produced `asset missing: corpus` — the arm reported it rather than passing vacuously.",
+      "aggregateWiring": "NOT WIRED, deliberately and as instructed. Measured: `scripts/verify-gates.ts` runs its `vendor` member as `node ./scripts/verify-vendor.ts` with NO `--self-test` (only `preset-conformance` carries the flag in that table), and `scripts/run-qa-selftests.ts` discovers cases under `skills/dsh-qa/scripts` only (`CASE_DIR`) plus two `scripts/mpd-ext.ts` rows — there is no sweep that runs `scripts/*.ts --self-test`. The aggregate was left alone. The command is therefore repeatable by hand: `node scripts/verify-vendor.ts --self-test`.",
+      "invariantsHeld": "The repin mirror guard still holds after the rewrite: `node scripts/repin-vendor.ts` reports `mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts`. The comment gate is clean over the new code: `node scripts/verify-comment-coverage.ts` scans 356 files and reports ZERO violations for scripts/verify-vendor.ts (its remaining 7 violations are in packages/mpd-team-core-plugin/test/close-and-dispatch.test.ts, another lane's file). The real run is unchanged: `--help` exit 0, `--require-upstream` exit 1 REFUSED, unknown flag exit 1, real run red ONLY on `skills`."
+    }
+  }
 }

@@ -21,19 +21,38 @@
 | 快照日期（UTC） | 2026-10-07 |
 | 源子树 | `packages/{ast-grep-mcp,git-bash-mcp,lsp-daemon,mcp-stdio-core,utils,omo-config-core,lsp-core}` |
 
-快照由**一次性的**浅层稀疏取回产生：把钉住的提交取到被 gitignore 的 scratch 根，再复制这七个包目录：
+快照由**一次性的**浅层稀疏取回产生：把钉住的提交取到被 gitignore 的 scratch 根，再复制这七个包
+目录、删除七个上游 `AGENTS.md` 指令文件，最后放入本目录自己的两个 README 文件。下面的配方是
+**完整的、自校验的**：每一步的中间计数都会被打印，而最后一个计数正是 `VENDOR_LOCK.json` 钉住的值。
 
 ```bash
-git init upstream && cd upstream
+# SCRATCH 必须为空且位于仓库之外；本配方会把一份全新快照写入其中。
+SCRATCH=$(mktemp -d)
+cd "$SCRATCH"
+git init -q upstream && cd upstream
 git remote add origin https://github.com/code-yeongyu/oh-my-openagent
 git config core.sparseCheckout true
 git sparse-checkout init --cone
 git sparse-checkout set packages/ast-grep-mcp packages/git-bash-mcp packages/lsp-daemon \
   packages/mcp-stdio-core packages/utils packages/omo-config-core packages/lsp-core
 git fetch --depth 1 origin 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
-git checkout FETCH_HEAD
-git rev-parse HEAD   # 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+git checkout -q FETCH_HEAD
+test "$(git rev-parse HEAD)" = "8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29" || { echo "PIN MISMATCH"; exit 1; }
+
+cd "$SCRATCH" && mkdir mcp-src
+for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core; do
+  cp -r "upstream/packages/$p" "mcp-src/$p"
+done
+find mcp-src -type f | wc -l     # 464  七个包目录的原始副本
+find mcp-src -name AGENTS.md -delete
+find mcp-src -type f | wc -l     # 457  按已声明省略去掉 7 个 AGENTS.md 之后
+cp <本仓库>/vendor/mcp-src/README.md <本仓库>/vendor/mcp-src/README.zh-CN.md mcp-src/
+find mcp-src -type f | wc -l     # 459  == VENDOR_LOCK.json assets["vendor/mcp-src"].fileCount
 ```
+
+最后那次复制是最容易被读者漏掉的一步：本目录中以 `README` 开头的两个文件是**本仓库自己的**来源
+记录、并非上游文件，正是它们把计数从 457 抬到被钉住的 459。少了它们复现出的目录会被 `vendor` 门
+按计数拒绝。
 
 **运行期完全不需要这些。** 取回只在构建期发生一次，scratch 根已被删除；在一台没有 checkout、
 没有网络的机器上，`vendor` 门是绿的。
@@ -49,7 +68,11 @@ git rev-parse HEAD   # 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
 | `mcp-stdio-core` | `@oh-my-opencode/mcp-stdio-core` | 10 | 共享 MCP stdio 传输层 |
 | `omo-config-core` | `@oh-my-opencode/omo-config-core` | 79 | 共享配置加载 |
 | `utils` | `@oh-my-opencode/utils` | 184 | 共享工具函数 |
-| | **合计** | **457** | |
+| | **包小计** | **457** | |
+
+表格中的行就是本快照中七个包目录的文件数：原始 464 个文件减去被省略的 7 个 `AGENTS.md` = 457。
+该资产的锁定总数是 **459**，因为资产还包含本目录自己的两个文件（`README.md` + `README.zh-CN.md`）。
+这两个数字都由上面的配方断言。
 
 七个目录逐字节复制，仅有**一项已声明的省略**。
 

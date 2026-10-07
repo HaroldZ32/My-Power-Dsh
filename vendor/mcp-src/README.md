@@ -23,19 +23,40 @@ packed install consumes the prebuilt `packages/mpd-mcp-*/dist/cli.js`, and only 
 | Source subtree | `packages/{ast-grep-mcp,git-bash-mcp,lsp-daemon,mcp-stdio-core,utils,omo-config-core,lsp-core}` |
 
 The snapshot was produced by a ONE-TIME shallow sparse fetch of the pinned commit into a gitignored
-scratch root, followed by a copy of the seven package directories:
+scratch root, followed by a copy of the seven package directories, the deletion of the seven upstream
+`AGENTS.md` instruction files, and this directory's own two README files. The recipe below is
+COMPLETE and self-checking: every intermediate count is printed, and the last one is the count
+`VENDOR_LOCK.json` pins.
 
 ```bash
-git init upstream && cd upstream
+# SCRATCH must be empty and outside the repository; this writes a fresh snapshot into it.
+SCRATCH=$(mktemp -d)
+cd "$SCRATCH"
+git init -q upstream && cd upstream
 git remote add origin https://github.com/code-yeongyu/oh-my-openagent
 git config core.sparseCheckout true
 git sparse-checkout init --cone
 git sparse-checkout set packages/ast-grep-mcp packages/git-bash-mcp packages/lsp-daemon \
   packages/mcp-stdio-core packages/utils packages/omo-config-core packages/lsp-core
 git fetch --depth 1 origin 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
-git checkout FETCH_HEAD
-git rev-parse HEAD   # 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+git checkout -q FETCH_HEAD
+test "$(git rev-parse HEAD)" = "8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29" || { echo "PIN MISMATCH"; exit 1; }
+
+cd "$SCRATCH" && mkdir mcp-src
+for p in ast-grep-mcp git-bash-mcp lsp-daemon mcp-stdio-core utils omo-config-core lsp-core; do
+  cp -r "upstream/packages/$p" "mcp-src/$p"
+done
+find mcp-src -type f | wc -l     # 464  pristine copy of the seven package directories
+find mcp-src -name AGENTS.md -delete
+find mcp-src -type f | wc -l     # 457  after the declared omission of the 7 AGENTS.md files
+cp <this-repo>/vendor/mcp-src/README.md <this-repo>/vendor/mcp-src/README.zh-CN.md mcp-src/
+find mcp-src -type f | wc -l     # 459  == VENDOR_LOCK.json assets["vendor/mcp-src"].fileCount
 ```
+
+The last copy is the step a reader is most likely to miss: the two files starting `README` in THIS
+directory are this repository's own provenance record, not upstream's, and they are what carries the
+count from 457 to the locked 459. Reproducing this snapshot without them yields a directory the
+`vendor` gate refuses by count.
 
 **Run time needs none of this.** The fetch was build-time only, and the scratch root was deleted; the
 `vendor` gate is green on a machine with no checkout and no network.
@@ -51,9 +72,12 @@ git rev-parse HEAD   # 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
 | `mcp-stdio-core` | `@oh-my-opencode/mcp-stdio-core` | 10 | shared MCP stdio transport |
 | `omo-config-core` | `@oh-my-opencode/omo-config-core` | 79 | shared config loading |
 | `utils` | `@oh-my-opencode/utils` | 184 | shared helpers |
-| | **total** | **457** | |
+| | **packages subtotal** | **457** | |
 
-The seven directories are copied byte-for-byte, with ONE declared omission.
+The table's rows are the seven package directories as they sit in THIS snapshot: 464 pristine files
+minus the 7 omitted `AGENTS.md` = 457. The asset's locked total is **459**, because the asset also
+carries this directory's own two files (`README.md` + `README.zh-CN.md`). Both numbers are asserted
+by the recipe above.
 
 ### Declared omission: the upstream `AGENTS.md` instruction files
 
