@@ -435,6 +435,17 @@
   const TEAM_TASK_PATH = "/plugins/mpd-team/task"
 
   /**
+   * The route the team view SUBSCRIBES to (lane W), beside the three it reads.
+   *
+   * Server-Sent Events, owned by `mpd-team-core-plugin`'s `TEAM_EVENTS_PATH`: the view opens an
+   * `EventSource` on it for the session it is showing and re-reads the routes above on every frame,
+   * while its interval keeps running as the fallback. The path is named here rather than imported
+   * because the browser artifact is assembled by SPLICING factory sources as text — a cross-package
+   * import inside one would not resolve — so the name is the same fact recorded on the client side.
+   */
+  const TEAM_EVENTS_PATH = "/plugins/mpd-team/events"
+
+  /**
    * The team view's own copy, in English — the fallback AND the key list.
    *
    * A view built by `teamViewOf()` runs in a render path with no `ctx`, so it can neither bind nor
@@ -703,8 +714,11 @@
         statePath: TEAM_STATE_PATH,
         planPath: TEAM_PLAN_PATH,
         // The task route is what lets a pinned node quote its frozen contract; the translator is the
-        // view's only language source (it runs in a render path with no `ctx` of its own).
+        // view's only language source (it runs in a render path with no `ctx` of its own). The events
+        // route is what turns the poll into a push: the view subscribes per MOUNT, so the two sidebar
+        // hosts that render this component each own one stream.
         taskPath: TEAM_TASK_PATH,
+        eventsPath: TEAM_EVENTS_PATH,
         t: teamSay,
       })
       return teamView
@@ -1907,7 +1921,7 @@ declare const MPD_SETTINGS_CARD: MpdSettingsCardGlobal | undefined
 /** The spliced team-view global's shape: the ONE factory both sidebar hosts build their body from. */
 interface MpdTeamViewGlobal {
   /** Build the shared team view once, so both hosts render one component with one poller. */
-  createTeamView: (deps: { react: unknown; statePath: string; planPath?: string; taskPath?: string; pollMs?: number; t?: (key: string) => string }) => MpdTeamViewModule
+  createTeamView: (deps: { react: unknown; statePath: string; planPath?: string; taskPath?: string; eventsPath?: string; pollMs?: number; t?: (key: string) => string }) => MpdTeamViewModule
 }
 
 /** The built team view. */

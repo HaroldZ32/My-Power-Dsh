@@ -1,0 +1,7 @@
+=== node scripts/verify-comment-coverage.ts --only packages/mpd-bundle-plugin ===
+# verify-comment-coverage
+
+scanned 15 TypeScript file(s) of 15 in the source set; inspected 2567 declaration(s); skipped 1329 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+COMMENTS_SCOPED_EXIT=0

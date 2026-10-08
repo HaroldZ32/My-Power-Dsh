@@ -1,0 +1,286 @@
+=== bun test packages/mpd-bundle-plugin ===
+bun test v1.4.2 (744846f84)
+
+packages/mpd-bundle-plugin/test/team-view-push.test.ts:
+[W-a] {"readsBefore":1,"readsAfter":2,"elapsedMs":2,"pushBudgetMs":200,"intervalMs":2000,"intervalFired":0,"streamUrl":"/plugins/mpd-team/events?sessionId=s1","refreshedOnScreen":true,"staleTagGone":true}
+(pass) W-a — one data frame refreshes the panel on the BUILT artifact > one frame re-reads the routes while the fallback interval never fires [22.40ms]
+[mpd] team sidebar session: s1
+[W-a:mounts] {"betterSidebar":["/plugins/mpd-team/events?sessionId=s1"],"harnessRightSidebar":["/plugins/mpd-team/events?sessionId=s1"],"openTotal":2}
+(pass) W-a — one data frame refreshes the panel on the BUILT artifact > each MOUNT owns its own stream: both sidebar hosts, mounted together, hold one each [13.19ms]
+[W-b:absent] {"streamsOpened":0,"intervalMs":2000,"intervalFired":1,"readsBeforeTick":1,"readsAfterTick":2,"frameBefore":"Lane W active team-w approved 2026-10-08T07:00:00.000Z workspace lane-w 1 running · 1 ready · 0 blocked 0/1 complete · 1 running / 1 ready Progress 0% native executor MEMBERS (1) push-alpha Senior Eng","frameAfter":"Lane W active team-w approved 2026-10-08T07:00:00.000Z workspace lane-w 1 running · 1 ready · 0 blocked 0/1 complete · 1 running / 1 ready Progress 0% native executor MEMBERS (1) fallback-beta Senior "}
+(pass) W-b — the fallback: no stream, and a stream that errors > with no EventSource global the panel renders and the interval still refreshes it [11.25ms]
+[W-b:error] {"errorHookInstalled":false,"closedByError":false,"frameAfterError":"Lane W active team-w approved 2026-10-08T07:00:00.000Z workspace lane-w 1 running · 1 ready · 0 blocked 0/1 complete · 1 running / 1 ready Progress 0% native executor MEMBERS (1) push-alpha Senior Eng","frameAfterTick":"Lane W active team-w approved 2026-10-08T07:00:00.000Z workspace lane-w 1 running · 1 ready · 0 blocked 0/1 complete · 1 running / 1 ready Progress 0% native executor MEMBERS (1) error-beta Senior Eng","frameAfterFrame":"Lane W active team-w approved 2026-10-08T07:00:00.000Z workspace lane-w 1 running · 1 ready · 0 blocked 0/1 complete · 1 running / 1 ready Progress 0% native executor MEMBERS (1) error-gamma Senior En"}
+(pass) W-b — the fallback: no stream, and a stream that errors > a stream error costs the push and nothing else [19.29ms]
+[W-c:unmount] {"opened":1,"openAfterUnmount":0,"closeCalls":1,"registeredTimers":[15000,2000],"clearedTimers":[2000]}
+(pass) W-c — lifecycle: unmount and session change > unmounting the panel closes the stream and clears the interval [7.03ms]
+[W-c:session-change] {"opened":["/plugins/mpd-team/events?sessionId=s1","/plugins/mpd-team/events?sessionId=s2"],"closedFlags":[true,false],"openAfterChange":1}
+(pass) W-c — lifecycle: unmount and session change > a session change closes the old stream before the next one opens [104.57ms]
+[W-c:no-route] {"opened":0}
+(pass) W-c — lifecycle: unmount and session change > no events route means no stream: the composition is left exactly as it was [34.79ms]
+
+packages/mpd-bundle-plugin/test/settings-card.test.ts:
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the shipped client registers a settings.section with id 'mpd', an explicit order and a label [0.64ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the Plugins tab's keyed item registration is GONE from the built client (the user's request) [0.35ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > NEGATIVE CONTROL: the absence predicate reddens the moment the retired registration returns [0.19ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the mount reaches configForms and the client still declares only the stable seams [0.35ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the disclosure copy is the same sentence the TUI states, and no stale claim survives [0.07ms]
+(pass) the registration only happens when the namespace form is available > no configForms -> no entry, one warning-free degrade, no throw out of apply [1.55ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the registration only happens when the namespace form is available > configForms at apply -> one SECTION entry, and its descriptor passes the whole predicate [2.21ms]
+(pass) the registration only happens when the namespace form is available > NEGATIVE CONTROL: the descriptor predicate reddens on every mutant that matters [0.04ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the registration only happens when the namespace form is available > a late-served configForms still mounts the section (provideService wakes the fiber) [1.13ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the card's form behaviour > it renders what the namespace reports (values, overridden marker, disclosure) and nothing invented [4.48ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence [1.52ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the card's form behaviour > resetField asks for the file value (unset), and an invalid draft refuses to save [2.47ms]
+[mpd] settings section: form status=unavailable value=absent writable=false mode=memory
+(pass) the card's form behaviour > a read-only scope renders read-only with a reason and writes nothing [8.17ms]
+(pass) isolation and front-door parity > web-client.js is the ONLY source that requires the card module, and the card does no I/O [0.84ms]
+(pass) isolation and front-door parity > the card's twenty-six fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift) [0.63ms]
+(pass) isolation and front-door parity > NEGATIVE CONTROL: the parity pin reddens on a drifted label, a shortened path and a changed declared list [0.44ms]
+(pass) isolation and front-door parity > every slot row LEADS with its group's human sentence, in BOTH locales, before its key [0.40ms]
+(pass) isolation and front-door parity > each slot's group heading and one-line impact are DECLARED, above the slot's own rows [0.14ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the model control lists the catalog's provider/model pairs, GROUPED by provider [4.64ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the provider control lists the catalog's provider ids with their display names [3.50ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the effort control offers the SELECTED model's own efforts, and changing the model re-derives them [7.44ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > a model with no advertised efforts keeps the declared fallback list [3.18ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > NO slot field is ever a text input (a slot value is never typed) [3.70ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > DEGRADE: no catalog services -> the declared lists, and the section still renders [3.34ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (the host resolved no model directory for this session: ui-model-selection: session "s1" resolved no scope)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > DEGRADE: an unbound session and a THROWING directoryFor keep the declared lists, no throw out of render [6.88ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > edits through the catalog-driven controls still write ONE mutate batch with the revision fence [1.14ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the disclosure sentences are unchanged and still rendered with the new rows [4.35ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > G-1: each slot renders its group heading + impact ABOVE its three rows, human sentence FIRST [3.96ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > G-2: the human sentence renders FIRST at readable size/opacity, the disclosure dimmer beneath [4.98ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > NEGATIVE CONTROL: the heading/impact lookup is falsifiable (a wrong slot attr finds nothing) [3.98ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-A: a PROBE-INVISIBLE catalog still feeds the pickers through ctx.inject (the defect) [4.51ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-B: a directory-store mutation reaches the card with NO re-mount (live read, live re-projection) [6.66ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-C: when inject never resolves the declared lists render AND the fallback state is VISIBLE [4.11ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-D: the SERVED client.js carries the inject acquisition and the fallback marker [0.98ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-E: the LIVE catalog is reached when — and only when — the caller-scoped chain is satisfied [3.89ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (the host resolved no model directory for this session: cannot get property "testing.absent.seam" without inject)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-F: an UNSATISFIABLE caller chain degrades VISIBLY, naming the rejected seam [3.93ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-G: the MEASURED list shape (`current` is a session ID STRING) reaches the LIVE catalog [4.45ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-G NEGATIVE CONTROL: the PRE-FIX object-only read answers undefined for the MEASURED shape [0.16ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-H: with NO current session, a LISTED session that has BOTH scope and binding is bound [4.08ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-H2: NO current session and NO resolvable listed session still NAMES the reason [3.73ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-I: an ENUMERATING sessions list does not warn at boot; a READY list with no bindable session does [3.79ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-1: a REJECTED read warns the console ONCE and the same sentence renders at the slot rows [4.90ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-2: a RESOLVED catalog emits the LIVE sentence once and leaves the slot hints untouched [3.53ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-3: warn-once survives repeated publishes and RE-ARMS only after a return to live [4.19ms]
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-S1 (static): the radius is the harness's token and NO token is read without a fallback [0.55ms]
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-S1 NEGATIVE CONTROL: the token scan reddens on a bare read and clears on a pair [0.05ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-F1: every field is the host's `.field` — flex column, gap 6px, 12px 0, separator after the first [4.54ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-F2: the label is 13px/500 primary over a 12px/1.5 tertiary hint [5.69ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form status=unavailable value=absent writable=false mode=memory
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-C1: the control is the host's `.input` and its focus state is the host's own rule [7.53ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-C2: the footer is the host's `.footer` and its three actions carry the radius [4.41ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-D1: the disclosure is ONE `.help` block — the SAME four sentences, hint-sized, 8px apart [3.67ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2 NEGATIVE CONTROL: the styled predicates redden on the PRE-restyle presentation [3.07ms]
+
+packages/mpd-bundle-plugin/test/watchdog-routes-boot.test.ts:
+(pass) the watchdog routes survive a late-bound web server > a web server that binds AFTER apply() still gets BOTH routes (the live 404) [0.76ms]
+(pass) the watchdog routes survive a late-bound web server > a web server bound AT apply() registers immediately (the path that already worked) [0.06ms]
+(pass) the watchdog routes survive a late-bound web server > an unrelated late binding registers nothing and never throws [0.06ms]
+(pass) the watchdog routes survive a late-bound web server > httpServer is accepted as the legacy name for the same surface [0.04ms]
+(pass) the watchdog routes survive a late-bound web server > no effect seam keeps the plugin a headless marker and never throws [0.04ms]
+(pass) the watchdog routes survive a late-bound web server > a rebind of the SAME server never registers the routes twice [0.03ms]
+(pass) the late-registered state route really answers > GET answers 200 with ok:true and the web reader key [0.95ms]
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.ts:
+(pass) client seam policy > declares only services this profile is guaranteed to mount [0.17ms]
+(pass) client seam policy > never declares the sidebar statically (that would park the whole entry) [0.08ms]
+(pass) client seam policy > waits for the sidebar through ctx.inject instead of a one-shot probe [0.04ms]
+(pass) with DSH-better-sidebar installed > registers the mpd TEAM view, the AgentTeams page and the workmate library, and no legacy floater [0.05ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces)
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.10ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered
+(pass) a sidebar provider REMOUNT keeps both tabs > a re-fire against the SAME service never double-registers [0.96ms]
+(pass) a sidebar provider REMOUNT keeps both tabs > a FRESH service (the remount) receives both tabs again [0.41ms]
+(pass) workmate page > renders the library from the host routes [5.73ms]
+[mpd] AgentTeams sidebar file failed to load: Error: harness: unexpected require(@mpd-dsh/team-page)
+[mpd] settings card module failed to load: Error: harness: unexpected require(@mpd-dsh/settings-card)
+(pass) workmate page base picker (C3: the functional NAME is the only base key) > the base <option> value and label are the functional NAME, with no id suffix [37.52ms]
+(pass) workmate page base picker (C3: the functional NAME is the only base key) > the "type the base id" fallback copy is gone from BOTH dictionaries [21.64ms]
+(pass) workmate page dictionaries > registers the workmate namespace with both dictionaries [1.88ms]
+(pass) workmate page dictionaries > zh is the key-set source of truth and en matches it key for key (§L A7) [1.62ms]
+(pass) workmate page dictionaries > the mutation surface is localized in BOTH languages, not hardcoded English [1.03ms]
+(pass) workmate page dictionaries > the tab-strip label stays hardcoded English (contract §K, deliberate deferral) [1.46ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > every reason code maps to a distinct, readable message [0.36ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an in-use refusal names the blocking team and member (§E, user decision D2) [0.11ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an unknown failure falls back to the server text, never to a raw reason key [0.03ms]
+(pass) workmate page mutation controls > delete is an explicit two-step confirmation, never one destructive click (D1) [16.84ms]
+(pass) workmate page mutation controls > purge cannot be submitted without typing the exact name (§D confirm-required) [26.35ms]
+(pass) workmate page mutation controls > the archive confirmation posts that workmate and reports the archived outcome [15.81ms]
+(pass) workmate page mutation controls > a rename posts { name, new_name } and follows the new key (§H no stale selection) [15.32ms]
+(pass) workmate page mutation controls > an in-use refusal is shown with the blocking team/member, not a generic failure (§E) [17.65ms]
+(pass) workmate page mutation controls > a 409 collision is reported as taken, and an unknown key drops the stale selection [14.89ms]
+(pass) workmate page mutation controls > a same-key rename is refused locally and explains itself (t8 L1) [12.62ms]
+(pass) workmate page mutation controls > a purge never reports itself as a plain delete (t8 L2) [0.68ms]
+(pass) workmate page mutation controls > the zh reason strings are complete sentences without a stray gap (t8 L3) [0.94ms]
+(pass) workmate page mutation controls > a detail load that fails stops claiming to load (t8 L4) [10.06ms]
+(pass) without DSH-better-sidebar > registers no sidebar surface at all — there is no floating fallback [1.47ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > with no better-sidebar the fallback registrations are ATTEMPTED, and a missing seat is ONE loud line [1.19ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > MID-SESSION: no seat anywhere reports ONCE after the bound, while the page is still open (F5) [463.75ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > MID-SESSION, OTHER DIRECTION: a host that takes the panels SILENCES the bound entirely [202.47ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > MID-SESSION, BOTH HOSTS: the `preferred` latch keeps the bound silent (no regression) [202.77ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > S9: a better-sidebar seat that arrives AFTER apply is PUBLISHED on the preference branch [2.34ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > when the harness seat DOES arrive, both panels register and NOTHING is reported [0.90ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > a missing locale seam is reported once, naming the seam that is missing [1.07ms]
+(pass) the sidebar host preference (W4) > with better-sidebar MOUNTED the official right sidebar stays untouched [0.91ms]
+(pass) the sidebar host preference (W4) > with better-sidebar ABSENT both panels register on the official fallback [1.02ms]
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.ts:
+(pass) shipped bundle client after the AgentTeams sidebar migration > registers exactly the four loader modules: the sidebar page plus the isolated settings card [0.18ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > carries the mpd export bridge with every pinned export [0.21ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > no mpd client source registers a removed surface [0.51ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > the page module keeps the pinned tab id and order [0.29ms]
+
+packages/mpd-bundle-plugin/test/sidebar-guard-profile-dir.test.ts:
+(pass) sidebar mount guard: profile-dir derivation > derives the profile dir through a file-URL conversion, never URL.pathname [0.02ms]
+(pass) sidebar mount guard: profile-dir derivation > ENABLED when the profile resolves the sidebar and no other layer mounts it [0.93ms]
+(pass) sidebar mount guard: profile-dir derivation > DISABLED only when NEITHER the profile nor the bundle can resolve the sidebar [0.12ms]
+(pass) sidebar mount guard: profile-dir derivation > clause 1 PASSES when ONLY the BUNDLE has the host — the checkout install it exists for [0.17ms]
+(pass) sidebar mount guard: profile-dir derivation > DISABLED in favour of a foreign bundle layer that already mounts it [0.35ms]
+(pass) sidebar mount guard: profile-dir derivation > DISABLED when the composition has no enabled webserver entry [0.15ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.ts:
+(pass) the team-watchdog sidebar tab descriptor > registers one single-instance tab with the pinned id and order [0.97ms]
+(pass) the team-watchdog sidebar tab descriptor > the tab has NO auto-open switch: the watchdog view never opens itself [0.77ms]
+(pass) the team-watchdog sidebar tab descriptor > createTab mints the watchdog tab (id pinned, title is the watchdog's) [0.51ms]
+(pass) the watchdog page renders the bundle's OWN state route > shows the banner, the hold and the unread incident with an acknowledge control [8.89ms]
+(pass) the watchdog page renders the bundle's OWN state route > an empty store renders the honest 'no stuck team' line instead of a fake banner [9.48ms]
+(pass) the watchdog page renders the bundle's OWN state route > a FAILING route degrades to a readable error notice and never throws [8.67ms]
+(pass) the watchdog page renders the bundle's OWN state route > acknowledging posts to the bundle's ack route with the stable reader key [7.02ms]
+(pass) the watchdog page renders the bundle's OWN state route > the badge is the last poll's UNREAD count, and never a fetch [6.28ms]
+(pass) the watchdog page renders the bundle's OWN state route > mounting the tab twice keeps ONE polling controller [12.22ms]
+(pass) the removed AgentTeams surfaces can never come back > no mpd client source requires the retired adopted client [1.00ms]
+
+packages/mpd-bundle-plugin/test/team-view.test.ts:
+(pass) team-view factory shape > stays a single factory body: one arrow expression, no import/export, no JSX, no MEASUREMENT [0.81ms]
+(pass) team-view factory shape > the layout and the painted edge carry no DOM access at all [0.15ms]
+(pass) team-view factory shape > takes an OPTIONAL translator and a task route, and exposes the pure layout and its builders [0.09ms]
+(pass) team-view DAG geometry > one column per depth rank, one node box per task, in rank order [33.80ms]
+(pass) team-view DAG geometry > a negative or missing depth falls back to the first column instead of dropping the task [30.39ms]
+(pass) team-view DAG geometry > R19: within a column the task order is NUMERIC, so t2 precedes t10 and t20 follows t2 [30.83ms]
+(pass) team-view panels > header, progress bar and one PLAIN card per member with route, current task and fraction [36.26ms]
+(pass) team-view panels > truncates a long current task in the card, and keeps the whole string on its title [32.47ms]
+(pass) team-view panels > renders the empty-state sentence that names the call filling it [31.48ms]
+(pass) team-view panels > a session with no team renders the WORKSPACE's teams, not the dead empty state (D2) [32.80ms]
+(pass) team-view panels > the listing renders in Chinese through the SAME keys, so the two tables cannot drift [29.65ms]
+(pass) team-view panels > a workspace with genuinely NO teams keeps the honest empty state [30.11ms]
+(pass) team-view panels > says so when a team raised no member at all [30.08ms]
+(pass) team-view panels > reports a cycle instead of hiding it [31.46ms]
+(pass) team-view panels > renders the reason instead of an empty box when the route is unreadable [28.35ms]
+(pass) team-view drawn edges > draws one SVG path per blockedBy entry, and the painted `d` IS the layout's own [29.29ms]
+(pass) team-view drawn edges > draws a riser that spans the two rows when a blocker sits below its dependant [28.38ms]
+(pass) team-view drawn edges > a cycle's back-edge keeps a non-negative width and a finite curve instead of drawing NaN [57.31ms]
+(pass) team-view drawn edges > the curve builder degrades to the straight orthogonal route at radius = 0 (clause W6) [25.05ms]
+(pass) team-view drawn edges > the arrowhead's tip lands ON the border it arrives at, by arithmetic (clause W5) [60.64ms]
+(pass) team-view drawn edges > the graph-safe label rule is clause C4 exactly [25.79ms]
+(pass) team-view drawn edges > a Chinese subject is drawn graph-safe, while the detail and the tooltip keep the original [31.80ms]
+(pass) team-view interaction > hover tints the transitive chain and dims every other node, and leaving restores it [34.60ms]
+(pass) team-view interaction > marks the root with the team id, and with an empty marker when there is no team [54.11ms]
+(pass) team-view interaction > clicking a node pins its detail body with the frozen contract, and closes again [31.07ms]
+(pass) team-view interaction > says so when the task route served no contract, instead of rendering a blank body [35.10ms]
+(pass) team-view interaction > reads all three routes in one pass, each naming the session it was asked about [26.32ms]
+(pass) team-view localization > routes every visible string through the translator, and falls back to English without one [54.83ms]
+(pass) team-view localization > survives a translator that throws, rather than taking the panel down with it [28.62ms]
+(pass) team-view edge legibility (the reported tangle) > NO drawn CURVE enters any node box, on the five-rank board from the screenshot [28.93ms]
+(pass) team-view edge legibility (the reported tangle) > a rank-skipping edge is routed as a CHAIN of adjacent-rank hops, not one riser through a column [24.25ms]
+(pass) team-view edge legibility (the reported tangle) > every gutter lane gets its OWN column: one x per hop, none on a border [24.42ms]
+(pass) team-view edge legibility (the reported tangle) > every drawn run reaches both of the boxes it names [32.20ms]
+(pass) team-view R20: the rank is DERIVED, never trusted from the served depth > a board whose references RESOLVE and whose every depth is 0 draws FIVE columns, not one [23.84ms]
+(pass) team-view R20: the rank is DERIVED, never trusted from the served depth > the two fallback arms, exactly as the TUI engine has them [24.09ms]
+(pass) team-view R20: the rank is DERIVED, never trusted from the served depth > R21: unresolved references are SURFACED with their ids, never silently dropped [23.26ms]
+(pass) team-view R20: the rank is DERIVED, never trusted from the served depth > the hover halo measures the DRAWN ranks, so a lying depth cannot kill the highlight [23.77ms]
+(pass) R18's reader side: the RECORD's own unresolved report, beside the view's re-derivation > the served `unresolvedBlockers` reaches the geometry, and is reported AS the record's [24.95ms]
+(pass) R18's reader side: the RECORD's own unresolved report, beside the view's re-derivation > a REPAIRED board still reports what the record said: the reader sees more than the re-derivation [22.08ms]
+(pass) R18's reader side: the RECORD's own unresolved report, beside the view's re-derivation > an ABSENT key means this task HAS no blockers, not that its blockers were lost [21.80ms]
+(pass) R18's reader side: the RECORD's own unresolved report, beside the view's re-derivation > the pinned detail body NAMES the record's unresolved references, beside blocked-by and dependents [36.94ms]
+
+ 166 pass
+ 0 fail
+ 3110 expect() calls
+Ran 166 tests across 8 files. [2.94s]
+PKG_TEST_EXIT=0
+
+=== node scripts/verify-comment-coverage.ts ===
+# verify-comment-coverage
+
+scanned 366 TypeScript file(s) of 366 in the source set; inspected 32204 declaration(s); skipped 14469 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-roles-plugin/test/captain-investigation-evidence.ts (1)
+  192: comment — message
+
+COMMENTS_EXIT=1
+
+=== node scripts/build-mpd-client.ts ===
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (660355 bytes)
+(node:33) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+BUILD_EXIT=0
+
+=== git status --short packages/mpd-bundle-plugin ===
+ M packages/mpd-bundle-plugin/README.md
+ M packages/mpd-bundle-plugin/README.zh-CN.md
+ M packages/mpd-bundle-plugin/client.js
+ M packages/mpd-bundle-plugin/src/team-view.ts
+ M packages/mpd-bundle-plugin/src/web-client.ts
+ M packages/mpd-bundle-plugin/test/team-view.test.ts
+?? packages/mpd-bundle-plugin/test/team-view-push.test.ts
