@@ -1,0 +1,12 @@
+installing the host into the sandbox profile (network required): /root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b
+host install exit=0
+bundle install exit=0
+install log=evidence/tui/lanes/2026-10-08T03-02-56.630Z/install.log
+sandbox root=/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b explicit=true warm=true fresh=false
+dsh-tui home fixture=.mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/onboarding.json, .mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/agent-preset.json preset=mpd
+launchpad gate DSH_TUI_NO_LAUNCHPAD=1
+profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+statusLine=true counters=true crashes=[]
+session keys created=["--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--"] inherited=[]
+preset=mpd session=92b4d858-602b-47ee-82bb-e7eb2271bf93 isolationOffenders=0

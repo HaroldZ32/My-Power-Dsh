@@ -25,7 +25,7 @@
 //
 // The arms are read from ONE lifecycle, so they cannot disagree about which revision ran.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -50,8 +50,17 @@ export const SLUG: string = "tui-deps-ctrla"
 /** The merged panel's own scene title, printed by the panel's first row (frozen by the scene contract). */
 export const PANEL_TITLE: RegExp = /MPD subagents \+ team/
 
-/** The host's own dashboard title, in either language the host ships (`i18n.js`). */
-export const HOST_TITLE: RegExp = /子代理面板|Subagent Dashboard/
+/**
+ * The host's own dashboard title, in every language the host ships (`i18n.js`).
+ *
+ * 0.14.0 rewrote the host's panel bar into a CAROUSEL that draws the ACTIVE tab's own title, and the
+ * subagent dashboard's tab is `panel-title-agents` — `代理` / `Agents` — not the older `子代理面板` /
+ * `Subagent Dashboard` pair, which is why the two Ctrl+A arms read as missing on a pane that WAS the
+ * host's own surface (MEASURED: `evidence/tui/lanes/2026-10-08T03-06-38.202Z/ctrla-team.pane.txt` paints
+ * `◀     ○     ○     ○     ○    代理   ○ … ▶`). The R4 invariant is unaffected — what those arms assert
+ * is still that the pane carries the HOST's surface, never MPD's.
+ */
+export const HOST_TITLE: RegExp = /代理|Agents|Subagent Dashboard/
 
 /** The header both MPD scenes print directly above the drawing. */
 export const DAG_HEADER: RegExp = /task dependency graph/
@@ -68,8 +77,25 @@ export const SETTINGS_SCREEN: RegExp = /MPD 插件包|MPD bundle/
  */
 export const PANEL_SLUG: string = "team"
 
-/** The panel's own "it opened" sentence, from `packages/mpd-tui-plugin/src/i18n.ts` key `panel.opened`. */
-export const PANEL_OPENED_TEXT: RegExp = /侧栏面板：已打开|sidebar panel: opened/
+/**
+ * The panel's own "the host accepted it" sentence, from `packages/mpd-tui-plugin/src/i18n.ts` key
+ * `panel.opened` (`mpd 侧栏面板：宿主已接受 {id}；…` / `mpd sidebar panel: the host accepted {id}; …`).
+ *
+ * The RETIRED wording this pattern used to carry (`侧栏面板：已打开` / `sidebar panel: opened`) was
+ * replaced in `i18n.ts` by commit `fb7ffddc` (2026-10-06T22:27+08:00) and this matcher was not moved
+ * with it; `i18n.ts` is untouched by this wave, so a pattern holding the old literal can never match a
+ * real boot — MEASURED: the store arm of this very lane reported it as its only `missing` pattern while
+ * the recorded sentence WAS the accepted one (`evidence/tui/lanes/2026-10-08T03-06-38.202Z/result.json`).
+ */
+export const PANEL_OPENED_TEXT: RegExp = /侧栏面板：宿主已接受|sidebar panel: the host accepted/
+/**
+ * The `{id}` that accepted sentence names.
+ *
+ * There is no parenthetical around the id — the sentence's only parentheses carry its tail hint — so a
+ * reader taking the first parenthesis reports the hint, not the id: MEASURED, the same result payload's
+ * `"id": "或开启"启动时展开侧栏""`. The clause's own words are the anchor.
+ */
+export const PANEL_OPENED_ID: RegExp = /(?:宿主已接受|the host accepted)\s+([^\s；;，,]+)/
 
 /** The two `/mpd panel` outcomes that are NOT a registration proof: a refusal, or no seam at all. */
 export const PANEL_OTHER_OUTCOMES: readonly RegExp[] = [/侧栏面板：宿主拒绝|sidebar panel: the host refused/, /该宿主不提供面板接缝|this host exposes no panel seam/]
@@ -243,8 +269,8 @@ export function evaluateStoreArms(records: CommandRecordSet, arms: readonly Stor
     if (done !== undefined) missing.push(...arm.text.filter((pattern) => !pattern.test(text)).map(String))
     /** The forbidden patterns that DID match; a refusal or a no-seam sentence must never be accepted. */
     const forbidden = done === undefined ? [] : (arm.none ?? []).filter((pattern) => pattern.test(text)).map(String)
-    /** The id the sentence named, read out of its parentheses. */
-    const panelId = /[（(]([^）)]+)[）)]/.exec(text)?.[1]
+    /** The id the sentence named, read from its accepted clause. */
+    const panelId = PANEL_OPENED_ID.exec(text)?.[1]
     results.push({ label: arm.label, missing, forbidden, text, id: panelId, ok: missing.length === 0 && forbidden.length === 0 })
   }
   return { ok: results.every((verdict) => verdict.ok), results }
@@ -272,7 +298,7 @@ export const PANEL_STORE_ARM: StoreAssertion = {
   name: "mpd",
   args: /panel/,
   doneKind: "success",
-  text: [PANEL_OPENED_TEXT, /[（(][^）)]+[）)]/],
+  text: [PANEL_OPENED_TEXT, PANEL_OPENED_ID],
   none: PANEL_OTHER_OUTCOMES,
 }
 
@@ -581,7 +607,7 @@ function selfTest(): void {
   /** The reference command records: `/mpd panel` invoked and completed with the panel-OPENED sentence. */
   const storeFixture: CommandRecordSet = {
     runs: [{ sessionId: "s1", commandId: "cmd-1", name: "mpd", args: " panel" }],
-    dones: [{ sessionId: "s1", commandId: "cmd-1", kind: "success", text: "mpd 侧栏面板：已打开（act1:team）" }],
+    dones: [{ sessionId: "s1", commandId: "cmd-1", kind: "success", text: "mpd 侧栏面板：宿主已接受 act1:team；若没有出现面板，请在 /settings → 侧栏里把 act1:team 加入面板列表，并按 Ctrl+B 展开（或开启“启动时展开侧栏”）" }],
   }
   /** The reference store evaluation every mutant below is compared against. */
   const storeGood = evaluateStoreArms(storeFixture, [PANEL_STORE_ARM])
@@ -601,6 +627,10 @@ function selfTest(): void {
   // MUTANT S5: the host offers NO seam, so the routed open fell back to the scene.
   check(!evaluateStoreArms({ runs: storeFixture.runs, dones: [{ ...storeFixture.dones[0], text: "mpd 侧栏面板：该宿主不提供面板接缝，使用全屏面板" }] }, [PANEL_STORE_ARM]).ok,
     "a NEGATIVE CONTROL failed: a host without the panel seam must fail the store arm")
+  // MUTANT S6: the RETIRED sentence. The corrected matcher must still REJECT the wording it replaced,
+  // or "the host accepted the open" could be proven by a sentence no build prints any more.
+  check(!evaluateStoreArms({ runs: storeFixture.runs, dones: [{ ...storeFixture.dones[0], text: "mpd 侧栏面板：已打开（act1:team）" }] }, [PANEL_STORE_ARM]).ok,
+    "a NEGATIVE CONTROL failed: the RETIRED `已打开` wording must fail the corrected store arm")
 
   // ── THE VERSION PROBE ──────────────────────────────────────────────────────────────────────────
   // The branch is decided from the LAUNCHED host payload, so an absent profile must read as "no seam"
@@ -614,11 +644,11 @@ function selfTest(): void {
     mkdirSync(join(withSeam, "lib", "types", "dsh-adapter"), { recursive: true })
     writeFileSync(join(withSeam, "cordis.patch.yml"), "    - id: dsh-tui-panels\n")
     writeFileSync(join(withSeam, "lib", "types", "dsh-adapter", "panels.js"), "// seam payload\n")
-    writeFileSync(join(withSeam, "package.json"), JSON.stringify({ version: "0.13.0" }))
+    writeFileSync(join(withSeam, "package.json"), JSON.stringify({ version: "0.14.0" }))
     /** The probe of that payload. */
     const seamProbe = hostPanelSeam(join(probeRoot, "with-seam"))
     check(seamProbe.present === true && seamProbe.rowDeclared === true && seamProbe.modulePresent === true, "a host payload declaring the row and shipping the module must read as the PRESENT seam")
-    check(seamProbe.hostVersion === "0.13.0", "the probe must read the host's own version")
+    check(seamProbe.hostVersion === "0.14.0", "the probe must read the host's own version")
     // ONE reading alone must NOT be enough: a leftover module without the row is a stale sibling.
     /** The same payload with the row declaration removed. */
     const staleRoot = join(probeRoot, "stale", "node_modules", "@deepseek-harness-tui", "dsh-tui")

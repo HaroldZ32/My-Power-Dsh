@@ -1,0 +1,759 @@
+{
+  "case": "docker-client-install",
+  "title": "a clean ubuntu:24.04 container installs and boots @mpd-dsh/mpd from a copy of this checkout",
+  "ok": false,
+  "complete": false,
+  "image": "mpd-docker-e2e:local",
+  "startedAt": "2026-10-08T03:15:20.000Z",
+  "finishedAt": "2026-10-08T03:17:47.666Z",
+  "durationSeconds": 148,
+  "harness": {
+    "installed": null,
+    "expected": null,
+    "assertion": "harness.version",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bun": "1.4.2 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "",
+    "ubuntu": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)"
+  },
+  "proves": [
+    "node 24 + bun + pnpm + @deepseek-ai/dsh install inside a bare ubuntu:24.04 container",
+    "the bundle installs with ONE command from a copy of the checkout (dsh plugin --profile web add .)",
+    "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
+    "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
+    "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition) — read from the row's own file log, <workspace>/.mpd/logs/mpd-roles.log (R5)",
+    "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd",
+    "the TUI session resolves `mpd` through the DOCUMENTED USER-level preference (dsh-tui's own <HOME>/.dsh-tui/agent-preset.json), while the host preset-registry row stays untouched by the bundle"
+  ],
+  "provesCompositionOnly": [
+    "the composed profile carries the mpd rows, the preset-mpd row and the three official agent-team rows",
+    "the bundle is ADDITIVE-ONLY: both shipped patch layers carry zero column-0 id-targets, so no host row is overridden (the retired `default: mpd` id-targets are the class this catches)"
+  ],
+  "doesNotProve": [
+    "any live LLM turn or model routing: no credentials are staged (AGENTS.md §10)",
+    "that mpd is the deployment default for a user who never set the preference: the bundle ships the preset but selects nothing (strict zero-override)",
+    "`--dump-config` output is COMPOSITION evidence and is never cited here as a plugin load",
+    "a packed/tarball install from dist/mpd-package",
+    "a machine without network access: apt, nodejs.org, bun.sh, npm and the registry are all used"
+  ],
+  "summary": {
+    "total": 83,
+    "passed": 4,
+    "failed": 1,
+    "null": 78,
+    "failedNames": [
+      "toolchain.pnpm"
+    ],
+    "nullNames": [
+      "harness.version",
+      "copy.contextFiltered",
+      "copy.repo",
+      "build.bunInstall",
+      "build.dists",
+      "install.exit",
+      "install.profileDep",
+      "install.installedTree",
+      "compose.dumpExit",
+      "compose.mpdRows",
+      "compose.presetRow",
+      "compose.agentTeamRows",
+      "boot.probeApplied",
+      "boot.adapterService",
+      "boot.adapterToolCall",
+      "boot.mpdTools",
+      "boot.mcpTools",
+      "boot.agentTeamTools",
+      "boot.sessionGateListener",
+      "boot.agentTeamService",
+      "boot.servesHttp",
+      "boot.presetMount",
+      "boot.noFatalSignatures",
+      "isolation.home",
+      "isolation.realHome",
+      "isolation.noCredentials",
+      "tui.hostInstall",
+      "tui.pluginAddHost",
+      "tui.pluginAddBundle",
+      "tui.compose",
+      "tui.presetPreference",
+      "tui.presetRow",
+      "tui.mpdTuiRow",
+      "tui.agentTeamRows",
+      "tui.mergedPanelOpens",
+      "tui.mergedPanelOrder",
+      "tui.hostDashboardKeyIntact",
+      "tui.noDirectTuiSeam",
+      "tui.boot",
+      "tui.noFatalSignatures",
+      "tui.sessionPreset",
+      "live.credentialStaged",
+      "live.credentialScoped",
+      "live.credentialRemoved",
+      "live.web.turnStarted",
+      "live.web.turnCompleted",
+      "live.web.noErrorTurns",
+      "live.web.noMalformedToolJson",
+      "live.web.toolCallsParsed",
+      "live.web.mpdToolCalled",
+      "live.web.assistantReplied",
+      "live.tui.turnStarted",
+      "live.tui.turnCompleted",
+      "live.tui.noErrorTurns",
+      "live.tui.noMalformedToolJson",
+      "live.tui.toolCallsParsed",
+      "live.tui.mpdToolCalled",
+      "live.tui.assistantReplied",
+      "live.headless.turnStarted",
+      "live.headless.turnCompleted",
+      "live.headless.noErrorTurns",
+      "live.headless.noMalformedToolJson",
+      "live.headless.toolCallsParsed",
+      "live.headless.mpdToolCalled",
+      "live.headless.assistantReplied",
+      "live.teamRecord",
+      "live.nativeExecutor",
+      "live.headlessPresetRow",
+      "boot.llmTurn",
+      "boot.workspaceRegistered",
+      "ui.loads",
+      "ui.workspaceSelected",
+      "ui.composerPresent",
+      "ui.promptSent",
+      "ui.replyRendered",
+      "ui.mpdSettingsSection",
+      "ui.teamPanel",
+      "ui.noConsoleErrors"
+    ]
+  },
+  "assertions": [
+    {
+      "name": "ubuntu.version",
+      "ok": true,
+      "reason": "the base image is ubuntu:24.04",
+      "raw": "ubuntu 24.04"
+    },
+    {
+      "name": "toolchain.apt",
+      "ok": true,
+      "reason": "apt-get update + install curl git ca-certificates unzip xz-utils tmux",
+      "raw": "exit=0/0"
+    },
+    {
+      "name": "toolchain.node",
+      "ok": true,
+      "reason": "node v24.21.0 and npm 11.19.0 come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org",
+      "raw": "v24.21.0 npm=11.19.0"
+    },
+    {
+      "name": "toolchain.bun",
+      "ok": true,
+      "reason": "bun 1.4.2 on PATH, installed via official-script",
+      "raw": "1.4.2"
+    },
+    {
+      "name": "toolchain.pnpm",
+      "ok": false,
+      "reason": "pnpm install failed (exit=1) — 'dsh plugin' cannot work without it",
+      "raw": ""
+    },
+    {
+      "name": "harness.version",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "copy.contextFiltered",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "copy.repo",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "build.bunInstall",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "build.dists",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "install.exit",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "install.profileDep",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "install.installedTree",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.dumpExit",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.mpdRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.presetRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.agentTeamRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.probeApplied",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.adapterService",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.adapterToolCall",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.mpdTools",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.mcpTools",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.agentTeamTools",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.sessionGateListener",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.agentTeamService",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.servesHttp",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.presetMount",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.noFatalSignatures",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "isolation.home",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "isolation.realHome",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "isolation.noCredentials",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.hostInstall",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.pluginAddHost",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.pluginAddBundle",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.compose",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.presetPreference",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.presetRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mpdTuiRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.agentTeamRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mergedPanelOpens",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mergedPanelOrder",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.hostDashboardKeyIntact",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.noDirectTuiSeam",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.boot",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.noFatalSignatures",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.sessionPreset",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.credentialStaged",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.credentialScoped",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.credentialRemoved",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.turnStarted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.turnCompleted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.noErrorTurns",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.noMalformedToolJson",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.toolCallsParsed",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.mpdToolCalled",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.assistantReplied",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.turnStarted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.turnCompleted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.noErrorTurns",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.noMalformedToolJson",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.toolCallsParsed",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.mpdToolCalled",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.assistantReplied",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.turnStarted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.turnCompleted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.noErrorTurns",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.noMalformedToolJson",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.toolCallsParsed",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.mpdToolCalled",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.assistantReplied",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.teamRecord",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.nativeExecutor",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headlessPresetRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.llmTurn",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.workspaceRegistered",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.loads",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.workspaceSelected",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.composerPresent",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.promptSent",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.replyRendered",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.mpdSettingsSection",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.teamPanel",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.noConsoleErrors",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    }
+  ],
+  "observations": {},
+  "facts": {
+    "stamp": "2026-10-08T03:15:20Z",
+    "entrypoint": "docker/entrypoint.sh",
+    "image": "mpd-docker-e2e:local",
+    "ubuntuImage": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)",
+    "pins": "nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0",
+    "home": "/root/sandbox-home",
+    "dshHome": "/root/sandbox-dsh",
+    "aptSeconds": "55",
+    "nodeArch": "amd64 -> linux-x64",
+    "nodeSource": "image (node:24-bookworm /usr/local)",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bunPath": "/opt/toolchain/bun/bin/bun",
+    "bun": "1.4.2 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "",
+    "abort": "pnpm missing",
+    "finishedAt": "2026-10-08T03:17:47Z"
+  },
+  "hashes": [],
+  "steps": [
+    {
+      "id": "01-apt-update",
+      "exit": 0,
+      "seconds": 32,
+      "cmd": "apt-get update ",
+      "logFile": "01-apt-update.log",
+      "logBytes": 1635,
+      "tail": [
+        "Get:1 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]",
+        "Get:2 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]",
+        "Get:3 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1323 kB]",
+        "Get:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]",
+        "Get:5 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]",
+        "Get:6 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]",
+        "Get:7 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]",
+        "Get:8 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]",
+        "Get:9 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [50.0 kB]",
+        "Get:10 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1545 kB]",
+        "Get:11 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1943 kB]",
+        "Get:12 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]",
+        "Get:13 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1701 kB]",
+        "Get:14 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2177 kB]",
+        "Get:15 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [67.4 kB]",
+        "Get:16 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2165 kB]",
+        "Get:17 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]",
+        "Get:18 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]",
+        "Get:19 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]",
+        "Fetched 33.3 MB in 31s (1073 kB/s)",
+        "Reading package lists...",
+        ""
+      ]
+    },
+    {
+      "id": "01-apt-install",
+      "exit": 0,
+      "seconds": 23,
+      "cmd": "env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux ",
+      "logFile": "01-apt-install.log",
+      "logBytes": 17363,
+      "tail": [
+        "Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...\r",
+        "Setting up libutempter0:amd64 (1.2.1-3build1) ...\r",
+        "Setting up git-man (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...\r",
+        "Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up openssl (3.0.13-0ubuntu3.16) ...\r",
+        "Setting up tmux (3.4-1ubuntu0.1) ...\r",
+        "Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...\r",
+        "Setting up ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "121 added, 0 removed; done.\r",
+        "Setting up perl (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...\r",
+        "Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up liberror-perl (0.17029-2) ...\r",
+        "Setting up git (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up curl (8.5.0-2ubuntu10.15) ...\r",
+        "Processing triggers for debianutils (5.17build1) ...\r",
+        "Processing triggers for libc-bin (2.39-0ubuntu8.9) ...\r",
+        "Processing triggers for ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "0 added, 0 removed; done.\r",
+        "Running hooks in /etc/ca-certificates/update.d...\r",
+        "done.\r",
+        ""
+      ]
+    },
+    {
+      "id": "03-bun",
+      "exit": 0,
+      "seconds": 40,
+      "cmd": "bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash ",
+      "logFile": "03-bun.log",
+      "logBytes": 28255,
+      "tail": [
+        "#=#=#                                                                          \r##O#-#                                                                         \r##O=#  #                                                                       \r#=#=-#  #                                                                      \r-#O#- #   #                                                                    \r-=#=#   #   #                                                                  \r\r                                                                           0.2%\r                                                                           0.6%\r#                                                                          1.6%\r#                                                                          2.0%\r##                                                                         2.8%\r###                                                                        4.7%\r###                                                                        4.8%\r####                                                                       5.9%\r####                                                                       6.7%\r#####                                                                      7.2%\r#####                                                                      7.7%\r#####                                                                      8.2%\r######                                                                     8.7%\r######                                                                     9.1%\r######                                                                     9.6%\r#######                                                                   10.1%\r#######                                                                   10.6%\r#######                                                                   11.1%\r########                                                                  11.6%\r########                                                                  12.0%\r########                                                                  12.5%\r#########                                                                 13.0%\r#########                                                                 13.5%\r##########                                                                14.0%\r##########                                                                14.4%\r##########                                                                14.9%\r###########                                                               15.4%\r###########                                                               15.8%\r###########                                                               16.3%\r############                                                              16.8%\r############                                                              17.3%\r############                                                              17.8%\r#############                                                             18.2%\r#############                                                             18.7%\r#############                                                             19.2%\r##############                                                            19.7%\r##############                                                            20.2%\r##############                                                            20.6%\r###############                                                           21.1%\r###############                                                           21.6%\r###############                                                           22.1%\r################                                                          22.6%\r################                                                          23.1%\r################                                                          23.6%\r#################                                                         24.0%\r#################                                                         24.4%\r#################                                                         24.4%\r#################                                                         24.7%\r#################                                                         24.9%\r##################                                                        25.2%\r##################                                                        25.5%\r##################                                                        25.8%\r##################                                                        26.1%\r###################                                                       26.4%\r###################                                                       26.7%\r###################                                                       27.1%\r###################                                                       27.5%\r####################                                                      27.8%\r####################                                                      28.2%\r####################                                                      28.6%\r####################                                                      28.9%\r#####################                                                     29.2%\r#####################                                                     29.5%\r#####################                                                     30.1%\r#####################                                                     30.3%\r######################                                                    30.6%\r######################                                                    30.8%\r######################                                                    31.0%\r######################                                                    31.3%\r######################                                                    31.5%\r######################                                                    31.8%\r#######################                                                   32.1%\r#######################                                                   32.3%\r#######################                                                   32.6%\r#######################                                                   33.0%\r########################                                                  33.7%\r########################                                                  33.9%\r########################                                                  34.3%\r#########################                                                 34.7%\r#########################                                                 35.2%\r#########################                                                 35.6%\r#########################                                                 36.0%\r##########################                                                36.4%\r##########################                                                36.8%\r##########################                                                37.3%\r##########################                                                37.4%\r###########################                                               38.1%\r###########################                                               38.4%\r###########################                                               38.6%\r###########################                                               38.8%\r############################                                              39.1%\r############################                                              39.3%\r############################                                              39.5%\r############################                                              39.8%\r############################                                              40.0%\r#############################                                             40.3%\r#############################                                             40.6%\r#############################                                             40.8%\r#############################                                             41.0%\r#############################                                             41.2%\r#############################                                             41.4%\r#############################                                             41.6%\r##############################                                            41.8%\r##############################                                            42.0%\r##############################                                            42.2%\r##############################                                            42.4%\r##############################                                            42.6%\r##############################                                            42.8%\r##############################                                            43.0%\r###############################                                           43.2%\r###############################                                           43.4%\r###############################                                           43.6%\r###############################                                           43.8%\r###############################                                           44.1%\r###############################                                           44.2%\r################################                                          44.5%\r################################                                          44.7%\r################################                                          44.9%\r################################                                          45.2%\r################################                                          45.4%\r################################                                          45.7%\r#################################                                         45.9%\r#################################                                         46.2%\r#################################                                         46.4%\r#################################                                         46.5%\r#################################                                         46.7%\r#################################                                         46.9%\r#################################                                         47.1%\r##################################                                        47.3%\r##################################                                        47.5%\r##################################                                        47.7%\r##################################                                        47.9%\r##################################                                        48.2%\r##################################                                        48.4%\r###################################                                       48.7%\r###################################                                       48.9%\r###################################                                       49.0%\r###################################                                       49.2%\r###################################                                       49.3%\r###################################                                       49.6%\r###################################                                       49.7%\r###################################                                       49.9%\r###################################                                       50.0%\r####################################                                      50.0%\r####################################                                      50.1%\r####################################                                      50.2%\r####################################                                      50.3%\r####################################                                      50.3%\r####################################                                      50.4%\r####################################                                      50.5%\r####################################                                      50.6%\r####################################                                      50.7%\r####################################                                      50.8%\r####################################                                      50.9%\r####################################                                      51.0%\r####################################                                      51.1%\r####################################                                      51.2%\r####################################                                      51.2%\r####################################                                      51.3%\r#####################################                                     51.4%\r#####################################                                     51.5%\r#####################################                                     51.6%\r#####################################                                     51.7%\r#####################################                                     51.8%\r#####################################                                     51.9%\r#####################################                                     52.0%\r#####################################                                     52.1%\r#####################################                                     52.2%\r#####################################                                     52.3%\r#####################################                                     52.4%\r#####################################                                     52.4%\r#####################################                                     52.5%\r#####################################                                     52.6%\r#####################################                                     52.7%\r######################################                                    52.8%\r######################################                                    53.1%\r######################################                                    53.3%\r######################################                                    53.6%\r######################################                                    53.9%\r######################################                                    54.1%\r#######################################                                   54.4%\r#######################################                                   54.7%\r#######################################                                   54.8%\r#######################################                                   55.4%\r########################################                                  55.6%\r########################################                                  55.8%\r########################################                                  56.0%\r########################################                                  56.3%\r########################################                                  56.5%\r########################################                                  56.8%\r#########################################                                 57.1%\r#########################################                                 57.3%\r#########################################                                 57.6%\r#########################################                                 57.9%\r#########################################                                 58.2%\r##########################################                                58.4%\r##########################################                                58.6%\r##########################################                                58.8%\r##########################################                                59.0%\r##########################################                                59.2%\r##########################################                                59.5%\r##########################################                                59.7%\r###########################################                               59.9%\r###########################################                               60.1%\r###########################################                               60.3%\r###########################################                               60.6%\r###########################################                               60.8%\r###########################################                               61.0%\r############################################                              61.3%\r############################################                              61.5%\r############################################                              61.7%\r############################################                              62.0%\r############################################                              62.2%\r############################################                              62.5%\r#############################################                             62.7%\r#############################################                             63.0%\r#############################################                             63.2%\r#############################################                             63.5%\r#############################################                             63.8%\r##############################################                            64.0%\r##############################################                            64.3%\r##############################################                            64.6%\r##############################################                            64.8%\r##############################################                            65.1%\r###############################################                           65.4%\r###############################################                           65.7%\r###############################################                           66.0%\r###############################################                           66.3%\r###############################################                           66.6%\r################################################                          66.9%\r################################################                          67.5%\r################################################                          67.7%\r################################################                          67.9%\r#################################################                         68.1%\r#################################################                         68.4%\r#################################################                         68.6%\r#################################################                         68.9%\r#################################################                         69.1%\r#################################################                         69.4%\r##################################################                        69.7%\r##################################################                        69.9%\r##################################################                        70.2%\r##################################################                        70.5%\r##################################################                        70.8%\r###################################################                       71.1%\r###################################################                       71.4%\r###################################################                       71.6%\r###################################################                       72.0%\r####################################################                      72.2%\r####################################################                      72.6%\r####################################################                      72.9%\r####################################################                      73.2%\r####################################################                      73.5%\r#####################################################                     73.8%\r#####################################################                     74.1%\r#####################################################                     74.4%\r#####################################################                     74.7%\r######################################################                    75.0%\r######################################################                    75.3%\r######################################################                    75.6%\r######################################################                    75.9%\r######################################################                    76.2%\r#######################################################                   76.5%\r#######################################################                   76.8%\r#######################################################                   77.3%\r#######################################################                   77.5%\r#######################################################                   77.7%\r########################################################                  78.0%\r########################################################                  78.2%\r########################################################                  78.4%\r########################################################                  78.7%\r########################################################                  79.0%\r#########################################################                 79.3%\r#########################################################                 79.5%\r#########################################################                 79.8%\r#########################################################                 80.1%\r#########################################################                 80.4%\r##########################################################                80.6%\r##########################################################                80.9%\r##########################################################                81.2%\r##########################################################                81.6%\r###########################################################               82.1%\r###########################################################               82.4%\r###########################################################               82.6%\r###########################################################               82.8%\r###########################################################               83.0%\r###########################################################               83.2%\r############################################################              83.5%\r############################################################              83.7%\r############################################################              84.0%\r############################################################              84.2%\r############################################################              84.5%\r############################################################              84.7%\r#############################################################             85.0%\r#############################################################             85.2%\r#############################################################             85.5%\r#############################################################             85.7%\r#############################################################             86.0%\r##############################################################            86.2%\r##############################################################            86.5%\r##############################################################            86.8%\r##############################################################            87.1%\r##############################################################            87.3%\r###############################################################           87.6%\r###############################################################           87.9%\r###############################################################           88.2%\r###############################################################           88.5%\r###############################################################           88.8%\r################################################################          89.1%\r################################################################          89.4%\r################################################################          89.7%\r################################################################          90.0%\r#################################################################         90.3%\r#################################################################         90.6%\r#################################################################         90.9%\r#################################################################         91.2%\r#################################################################         91.6%\r##################################################################        91.9%\r##################################################################        92.2%\r##################################################################        92.5%\r##################################################################        92.8%\r###################################################################       93.2%\r###################################################################       93.5%\r###################################################################       93.9%\r###################################################################       94.2%\r####################################################################      94.5%\r####################################################################      94.9%\r####################################################################      95.2%\r####################################################################      95.4%\r#####################################################################     95.9%\r#####################################################################     96.2%\r#####################################################################     96.5%\r#####################################################################     96.7%\r#####################################################################     97.0%\r######################################################################    97.4%\r######################################################################    97.6%\r######################################################################    98.0%\r######################################################################    98.2%\r######################################################################    98.4%\r#######################################################################   98.7%\r#######################################################################   98.9%\r#######################################################################   99.1%\r#######################################################################   99.4%\r#######################################################################   99.6%\r#######################################################################   99.8%\r######################################################################## 100.0%",
+        "bun was installed successfully to /opt/toolchain/bun/bin/bun ",
+        "Run 'bun --help' to get started",
+        ""
+      ]
+    },
+    {
+      "id": "04-pnpm",
+      "exit": 1,
+      "seconds": 52,
+      "cmd": "npm i -g pnpm@11.23.0 ",
+      "logFile": "04-pnpm.log",
+      "logBytes": 605,
+      "tail": [
+        "npm error code ETIMEDOUT",
+        "npm error syscall read",
+        "npm error errno ETIMEDOUT",
+        "npm error network Invalid response body while trying to fetch https://registry.npmjs.org/pnpm: read ETIMEDOUT",
+        "npm error network This is a problem related to network connectivity.",
+        "npm error network In most cases you are behind a proxy or have bad network settings.",
+        "npm error network",
+        "npm error network If you are behind a proxy, please make sure that the 'proxy' config is set properly.  See: 'npm help config'",
+        "npm error A complete log of this run can be found in: /opt/toolchain/npm-cache/_logs/2026-10-08T03_16_55_839Z-debug-0.log",
+        ""
+      ]
+    }
+  ],
+  "outputLog": "output.log",
+  "evidenceScrubbed": true
+}

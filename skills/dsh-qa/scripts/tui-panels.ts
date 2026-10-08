@@ -18,7 +18,7 @@
 // engine is re-run against the SAME captured panes with one expectation injected that
 // cannot appear — if that does not fail, the lane cannot fail and the run is void.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -70,15 +70,31 @@ const PANE_HEIGHT = 50
 export const STATUS_LINE: RegExp = /mpd:\s+(?:team|团队)/
 
 /**
- * The panel's own "it opened" sentence, from `packages/mpd-tui-plugin/src/i18n.ts` key `panel.opened`
- * (`mpd 侧栏面板：已打开（{id}）` / `mpd sidebar panel: opened ({id})`).
+ * The panel's own "the host accepted it" sentence, from `packages/mpd-tui-plugin/src/i18n.ts` key
+ * `panel.opened`
+ * (`mpd 侧栏面板：宿主已接受 {id}；…` / `mpd sidebar panel: the host accepted {id}; …`).
+ *
+ * THE OLDER WORDING THIS PATTERN USED TO CARRY (`侧栏面板：已打开` / `sidebar panel: opened`) was
+ * replaced in `i18n.ts` by commit `fb7ffddc` (2026-10-06T22:27+08:00) and the matcher was not moved with
+ * it (`git log -S'侧栏面板：已打开'`); `i18n.ts` is untouched by this wave, so a pattern holding the old
+ * literal matches no real boot — which is exactly how this lane's panel row came to read as "no
+ * panel-OPENED sentence reached the store" on a host that had accepted the open.
  *
  * This sentence is printed by `/mpd panel` through `panelStatusLine()` and only for the ONE outcome in
  * which the seam was BOUND, the host's own `list()` read-back produced an id, and `open(id)` returned
  * true — the two other outcomes have their own sentences (`panel.fallback`, `panel.unavailable`), so
  * matching this one cannot be satisfied by a fallback.
  */
-export const PANEL_OPENED: RegExp = /侧栏面板：已打开|sidebar panel: opened/
+export const PANEL_OPENED: RegExp = /侧栏面板：宿主已接受|sidebar panel: the host accepted/
+/**
+ * The `{id}` that accepted sentence names.
+ *
+ * The id is NOT parenthesised there: the sentence's ONLY parentheses carry the tail hint
+ * (`（或开启"启动时展开侧栏"）` / `(or turn on "Side panel starts open")`), so reading the id out of the
+ * first parenthesis returns that hint instead — MEASURED, `evidence/tui/lanes/2026-10-08T03-06-38.202Z/
+ * result.json`: `"id": "或开启"启动时展开侧栏""`. The clause's own words are the anchor.
+ */
+export const PANEL_OPENED_ID: RegExp = /(?:宿主已接受|the host accepted)\s+([^\s；;，,]+)/
 /** The two outcomes that must NOT be what `/mpd panel` printed: a refusal, or no seam at all. */
 export const PANEL_NOT_OPENED: readonly RegExp[] = [/侧栏面板：宿主拒绝|sidebar panel: the host refused/, /该宿主不提供面板接缝|this host exposes no panel seam/]
 
@@ -253,7 +269,16 @@ export const SURFACES: readonly SurfaceSpec[] = [
     storeProof: { name: "mpd", args: /panel/, doneKind: "success" },
     label: "the sidebar panel seam bound, the host list() read-back yielded an id, and the host ACCEPTED the open",
   },
-  { surface: "tuiScenes", step: "scene", source: "pane", keys: ["/mpd board", "Enter"], waitMs: 8000, pattern: /MPD board/, label: "the board scene opened (title rendered)" },
+  // THE SETTLE THAT GIVES THE COMPOSER BACK (the `pre` half of the step). `/mpd panel` opens the host
+  // SIDEBAR and the sidebar then HOLDS the keyboard, so every step after it changed NOTHING on screen:
+  // MEASURED — `cmd-panel`, `scene`, `renderer`, `settings` and `dialog-pre` were BYTE-IDENTICAL, md5
+  // `fe9c119b28a9d3751fce395212284727` (`evidence/tui/lanes/2026-10-08T03-04-51.787Z/`). `Ctrl+B` is the
+  // host's OWN `sidePanel` action, so ONE settle here returns the keyboard to the composer for this step
+  // and for every step after it.
+  {
+    surface: "tuiScenes", step: "scene", source: "pane", pre: ["C-b"], keys: ["/mpd board", "Enter"], waitMs: 8000,
+    pattern: /MPD board/, label: "the board scene opened (title rendered)",
+  },
   { surface: "tuiRenderers", step: "renderer", source: "pane", keys: ["Escape"], waitMs: 6000, pattern: /board opened via/, label: "the log-only event rendered a transcript row" },
   {
     surface: "tuiSettingsSections", step: "settings", source: "pane", keys: ["/settings", "Enter"], waitMs: 8000,
@@ -414,8 +439,8 @@ export interface PanelRegistrationVerdict {
 export function panelRegistration(store: CommandStoreSlice): PanelRegistrationVerdict {
   /** The sentence a host that OPENED the panel wrote, i.e. the only outcome that proves registration. */
   const opened = (store.dones ?? []).map((done) => String(done.text ?? "")).filter((text) => PANEL_OPENED.test(text))
-  /** The id the host's own `list()` read-back produced, read out of the sentence's parentheses. */
-  const id = opened.length === 0 ? undefined : /[（(]([^）)]+)[）)]/.exec(opened.at(-1) ?? "")?.[1]
+  /** The id the host's own `list()` read-back produced, read from the sentence's accepted clause. */
+  const id = opened.length === 0 ? undefined : PANEL_OPENED_ID.exec(opened.at(-1) ?? "")?.[1]
   /** True when a sentence was printed, it named an id, and nothing about a refusal was printed. */
   const ok = opened.length > 0 && typeof id === "string" && id.length > 0
   return {
@@ -476,7 +501,7 @@ function fixtureStore(): CommandStoreSlice {
     ],
     dones: [
       { sessionId: "s1", commandId: "cmd-1", kind: "success", text: "mpd workmates（2）：demo-workmate, qa-tui-probe" },
-      { sessionId: "s1", commandId: "cmd-2", kind: "success", text: "mpd 侧栏面板：已打开（act1:team）" },
+      { sessionId: "s1", commandId: "cmd-2", kind: "success", text: "mpd 侧栏面板：宿主已接受 act1:team；若没有出现面板，请在 /settings → 侧栏里把 act1:team 加入面板列表，并按 Ctrl+B 展开（或开启“启动时展开侧栏”）" },
     ],
   }
 }
@@ -530,6 +555,10 @@ function selfTest(): void {
     "a NEGATIVE CONTROL failed: the no-seam sentence must NOT satisfy the panel row")
   check(!panelRegistration({ runs: storeFixture.runs, dones: [{ sessionId: "s1", commandId: "cmd-2", kind: "success", text: "mpd 侧栏面板：宿主拒绝了打开请求（act1:team），已改为全屏面板" }] }).ok,
     "a NEGATIVE CONTROL failed: the refused-open sentence must NOT satisfy the panel row")
+  // THE MATCHER MUST STILL FAIL ON THE WORDING IT REPLACED, or "the panel opened" could be satisfied by
+  // a sentence no build prints: this is the same literal the retired pattern carried.
+  check(!panelRegistration({ runs: storeFixture.runs, dones: [{ sessionId: "s1", commandId: "cmd-2", kind: "success", text: "mpd 侧栏面板：已打开（act1:team）" }] }).ok,
+    "a NEGATIVE CONTROL failed: the RETIRED `已打开` wording must NOT satisfy the corrected panel row")
   // The panel row is judged through the same engine, so the mutant must flip exactly that row.
   const noPanel = evaluateSurfaces(fixturePanes(), SURFACES, [], { runs: storeFixture.runs, dones: storeFixture.dones!.map((done) => (done.commandId === "cmd-2" ? { ...done, text: "mpd 侧栏面板：该宿主不提供面板接缝，使用全屏面板" } : done)) })
   check(!noPanel.ok && noPanel.results.find((entry) => entry.surface === "tuiPanels")?.rendered === false, "a NEGATIVE CONTROL failed: a host without the seam must fail the panel row by name")
@@ -609,6 +638,9 @@ function real(): void {
   // lane's original 220 columns so the `/settings` disclosure hint is not cut off (see PANE_WIDTH).
   const session = runTuiSession({ lane: SLUG, root, outDir, steps, bootWaitMs: 90_000, paneWidth: PANE_WIDTH, paneHeight: PANE_HEIGHT })
   for (const failure of session.failures) say("tmux: " + failure)
+  // A replayed incident dialog owns the keyboard, so the helper drops the sandbox's replay state
+  // before the boot; naming what it dropped keeps that hygiene visible in this lane's own log.
+  if (session.replayStateCleared.length > 0) say("dropped the previous run's watchdog replay state: " + session.replayStateCleared.map((file) => file.replace(REPO + "/", "")).join(", "))
 
   // Every command record now in the store, filtered below to this run's own.
   const store = readCommandRecords(root)

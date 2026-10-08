@@ -7,7 +7,7 @@
 //     plus a `pipe-pane` raw ANSI log;
 //   • a tmux server does not survive across shell invocations, so ONE process owns
 //     the whole lifecycle (spawn, drive, capture, kill);
-//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.13.0` needs
+//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.14.0` needs
 //     network on first run, so the lanes take an EXPLICIT sandbox/cache root
 //     (`--sandbox-root`, recorded in every result) and reuse a warm profile instead
 //     of reinstalling: a verification run that is handed a different root proves it
@@ -914,8 +914,45 @@ export interface TuiSessionResult {
   readonly logFile: string
   /** One sentence per tmux/boot/step failure; empty means the lifecycle was clean. */
   readonly failures: string[]
+  /** The watchdog REPLAY files this boot dropped from the sandbox workspace, for the lane log. */
+  readonly replayStateCleared: readonly string[]
   /** Absolute path of the private tmux socket, removed before returning. */
   readonly socket: string
+}
+
+/**
+ * Drop the sandbox workspace's watchdog REPLAY state, so a warm root cannot put a modal in the way.
+ *
+ * WHY THIS EXISTS, MEASURED. The workspace's `.mpd/team/watchdog/incidents.jsonl` accumulates across
+ * runs, and the TUI plugin REPLAYS unread incidents in a dialog at boot
+ * (`packages/mpd-tui-plugin/src/watchdog.ts` `watchdogDialog`). That dialog HOLDS THE KEYBOARD, so a
+ * lane's driven steps type into it instead of into the composer, and every later step reads a pane that
+ * never changed. Measured on the shared sandbox root the TUI lanes use
+ * (`.mpd/recon/qa/tui-lanes/tui-014b`, whose `ws/.mpd/team/watchdog/incidents.jsonl` carried two
+ * `never-started` incidents recorded by an EARLIER run of `tui-team-surface`'s own fixture team):
+ *   * `evidence/tui/lanes/2026-10-08T03-46-19.971Z/cmd-tree.pane.txt` — 3751 bytes, the boot screen
+ *     with `❯ 确认` / `稍后` and ZERO `/mpd` completion rows, against the SAME capture in
+ *     `…2026-10-08T03-04-51.787Z` at 7272 bytes showing `╭─ 命令 · 共 9 项 ─`;
+ *   * `evidence/tui/team-surface-verify/2026-10-08T03-47-32.316Z/panes/phrase-typed.pane.txt` — the
+ *     phrase typed into the COMPOSER (`⌸ ❯ approve plan-…`) with no scene on screen at all.
+ * Only the REPLAY PAIR is removed. A live HOLD is team state, not a notice, and the `heartbeat/` store
+ * feeds stall detection — neither is touched, so no lane loses a surface it may judge.
+ * @param workspace - the sandbox workspace root the boot will run against.
+ * @returns the absolute paths removed, in removal order.
+ */
+export function clearWatchdogReplay(workspace: string): string[] {
+  /** The workspace's watchdog state directory (`<stateDir>/watchdog`, default `.mpd/team`). */
+  const dir = join(workspace, ".mpd", "team", "watchdog")
+  /** The files removed, for the lane log. */
+  const removed: string[] = []
+  for (const name of ["incidents.jsonl", "read-watermark.json"]) {
+    /** The replay file, when this root carries one. */
+    const file = join(dir, name)
+    if (!existsSync(file)) continue
+    rmSync(file, { force: true })
+    removed.push(file)
+  }
+  return removed
 }
 
 /**
@@ -965,6 +1002,9 @@ export function runTuiSession({ lane, root, outDir, steps = [], bootWaitMs = 90_
     "TERM=xterm-256color"]
   /** The whole `env -i … <bootCommand>` command line typed into the pane. */
   const boot = "env -i " + envArgs.map((entry) => "'" + entry + "'").join(" ") + " " + bootCommand
+  // BEFORE the boot: a replayed incident dialog would own the keyboard for the whole drive (see
+  // {@link clearWatchdogReplay}), so the sandbox's own replay history is dropped first.
+  const replayStateCleared = clearWatchdogReplay(join(root, "ws"))
   tmux(socket, ["send-keys", "-t", "tui", boot, "Enter"])
 
   /** Capture the pane under a step name, write it to `<name>.pane.txt`, and return its text. */
@@ -1023,7 +1063,7 @@ export function runTuiSession({ lane, root, outDir, steps = [], bootWaitMs = 90_
   rmSync(socket, { force: true })
   /** The raw terminal log, `""` when `pipe-pane` never wrote the file. */
   const log = existsSync(logFile) ? readFileSync(logFile, "utf8") : ""
-  return { panes, bootPane, log, logFile, failures, socket }
+  return { panes, bootPane, log, logFile, failures, replayStateCleared, socket }
 }
 
 /** Block the calling thread for `ms` milliseconds without a busy loop. */
@@ -1119,7 +1159,7 @@ export interface TuiPrereqOptions {
 /** Declared prerequisites, in check order. */
 export function tuiPrereqs({ sandboxPresent, hostInstallRefusal }: TuiPrereqOptions): TuiPrereq[] {
   return [
-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0", present: tuiBinaryPresent },
+    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0", present: tuiBinaryPresent },
     { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux (a real TTY is required; stdout must not be a pipe)", present: tmuxPresent },
     // CHECKED BEFORE `absent-fixture`, and it exists because that one LIED. When `--install` ran and
     // the harness REFUSED the host on peer ranges, the run fell through to `requested-absent-fixture`

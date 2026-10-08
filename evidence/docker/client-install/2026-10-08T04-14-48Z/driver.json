@@ -1,0 +1,40 @@
+{
+  "startedAt": "2026-10-08T04:14:48.183Z",
+  "finishedAt": "2026-10-08T04:20:36.931Z",
+  "docker": "Docker version 29.8.0, build 88096ef",
+  "compose": "Docker Compose version v5.5.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 417,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-rYVcms",
+  "liveRequested": false,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "ui."
+  ],
+  "unmeasured": [
+    "ui.loads",
+    "ui.workspaceSelected",
+    "ui.composerPresent",
+    "ui.promptSent",
+    "ui.replyRendered",
+    "ui.mpdSettingsSection",
+    "ui.teamPanel",
+    "ui.noConsoleErrors"
+  ],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /root/dshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /root/dshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_BROWSER=1 mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=3 failed=1 null=79 FAILED=[toolchain.bun] NULL=[toolchain.pnpm,harness.version,copy.contextFiltered,copy.repo,build.bunInstall,build.dists,install.exit,install.profileDep,install.installedTree,compose.dumpExit,compose.mpdRows,compose.presetRow,compose.agentTeamRows,boot.probeApplied,boot.adapterService,boot.adapterToolCall,boot.mpdTools,boot.mcpTools,boot.agentTeamTools,boot.sessionGateListener,boot.agentTeamService,boot.servesHttp,boot.presetMount,boot.noFatalSignatures,isolation.home,isolation.realHome,isolation.noCredentials,tui.hostInstall,tui.pluginAddHost,tui.pluginAddBundle,tui.compose,tui.presetPreference,tui.presetRow,tui.mpdTuiRow,tui.agentTeamRows,tui.mergedPanelOpens,tui.mergedPanelOrder,tui.hostDashboardKeyIntact,tui.noDirectTuiSeam,tui.boot,tui.noFatalSignatures,tui.sessionPreset,live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns,live.web.noMalformedToolJson,live.web.toolCallsParsed,live.web.mpdToolCalled,live.web.assistantReplied,live.tui.turnStarted,live.tui.turnCompleted,live.tui.noErrorTurns,live.tui.noMalformedToolJson,live.tui.toolCallsParsed,live.tui.mpdToolCalled,live.tui.assistantReplied,live.headless.turnStarted,live.headless.turnCompleted,live.headless.noErrorTurns,live.headless.noMalformedToolJson,live.headless.toolCallsParsed,live.headless.mpdToolCalled,live.headless.assistantReplied,live.teamRecord,live.nativeExecutor,live.headlessPresetRow,boot.llmTurn,boot.workspaceRegistered,ui.loads,ui.workspaceSelected,ui.composerPresent,ui.promptSent,ui.replyRendered,ui.mpdSettingsSection,ui.teamPanel,ui.noConsoleErrors]",
+  "exitCode": 3
+}

@@ -32,11 +32,16 @@
 import type { PanelRegistrationHandle, SeamOutcome, TuiAdapter } from "./types.js"
 import type { Log } from "./log.js"
 import { cellWidth } from "./sanitize.js"
-import { DAG_CHROME, DAG_KIND_ABBREV, DAG_PANEL_MIN_COLUMNS, DAG_PANEL_SLUG, DAG_TONE_GLYPH } from "./dag-theme.js"
-// THE CHROME COMES FROM THE MERGED PAGE, not a second implementation of it: the `⤢` control, its hover
-// treatment and the title row it sits in are ONE definition, so the three MPD pages cannot drift into
-// three different-looking affordances (and the host cannot draw one for any of them).
-import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow } from "./panel.js"
+import { DAG_CHROME, DAG_KIND_ABBREV, DAG_PANEL_MIN_COLUMNS, DAG_TONE_GLYPH } from "./dag-theme.js"
+// THE CHROME COMES FROM THE SHARED CORE, not a second implementation of it: the `⤢` control, its hover
+// treatment and the title row it sits in are ONE definition, so the two MPD pages this bundle ships
+// (the MPD panel, which is THIS page, and the workmate page) cannot drift into two different-looking
+// affordances (and the host cannot draw one for either of them).
+import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow } from "./panel-core.js"
+// THE HOST'S CURATED SUBAGENT ROWS ARE READ THROUGH THE SCENE'S OWN PROJECTION, never re-derived here:
+// `subagentSectionRows` owns the field reads, the empty state and the counts, and this page renders
+// its answer inside its own frame (frozen clause C3).
+import { subagentSectionRows, type SubagentSectionRow } from "./subagent-scene.js"
 import { hitTest, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
 import type { TeamWorkflow } from "./team-state.js"
 import {
@@ -76,48 +81,23 @@ import {
 // property read costs one lookup per render and degrades to this page's own rail row in the meantime.
 import * as core from "./panel-core.js"
 
-/** The slug this page registers under; the HOST prefixes it with this activation's plugin id. */
-export const DAG_PANEL_ID = DAG_PANEL_SLUG
-
-/** The title the host stores and draws in the sidebar's own panel bar. */
-export const DAG_PANEL_TITLE = "MPD DAG"
+// ── THE PAGE'S OWN IDENTITY, AFTER THE MERGE (frozen clause C3) ────────────────────────────────────
+// This page has NO descriptor, NO slug and NO ordered position of its own any more: the DAG page IS the
+// MPD panel, so ONE descriptor (`panel.ts`'s `PANEL_DESCRIPTOR_FROZEN`, slug `team`, icon `❖`, order 10)
+// and ONE registration survive, and the merged slot renders this module's component. What remains here
+// is only what the page must know to DRAW itself.
 
 /**
- * The descriptor's icon: EXACTLY ONE display cell, which is the host's own hard requirement.
+ * The title this page draws in its own title row, and the title the surviving descriptor declares.
  *
- * `◈` (U+25C8) is one cell under the plugin's own measure (`sanitize.cellWidth`) and under the host's
- * East-Asian-width rule, and it is the shape the DAG itself draws with — a diamond outline, one node
- * per task.
+ * IT IS THE SURVIVOR'S TITLE, not a second one: 「DAG页作为MPD面板」 — the reader sees the MPD panel — and
+ * the arm `panel-visibility.test.ts` carries asserts this constant equals `panel.ts`'s `PANEL_TITLE`, so
+ * the two spellings cannot drift into a page whose chrome says one thing and whose descriptor another.
  */
-export const DAG_PANEL_ICON = "◈"
-
-/** The ordering hint inside the host's panel bar: right after the merged panel's own 10. */
-export const DAG_PANEL_ORDER = 11
+export const DAG_PANEL_TITLE = "MPD"
 
 /** The tick this page re-reads its source on. A sidebar is passive, so the page owns its own clock. */
 export const DAG_PANEL_REFRESH_MS = 1000
-
-/**
- * The panel descriptor, frozen at module scope.
- *
- * `apiVersion` is exactly 1 because the host refuses every other value, `id` is the single lowercase
- * slug the host requires, and `component` is filled per registration by {@link registerDagPanel}
- * (it closes over this row's own workflow reader, which no module-scope constant could).
- */
-export const DAG_PANEL_DESCRIPTOR_FROZEN = {
-  /** The host's panel API version (0.13.0 accepts exactly 1). */
-  apiVersion: 1,
-  /** The single lowercase slug the host prefixes with this activation's plugin id. */
-  id: DAG_PANEL_ID,
-  /** The title the host stores and draws (non-empty, at most 80 cells). */
-  title: DAG_PANEL_TITLE,
-  /** The one-cell icon the host draws in its panel bar. */
-  icon: DAG_PANEL_ICON,
-  /** The sidebar width floor: an integer in the host's own 12..64 range. */
-  minColumns: DAG_PANEL_MIN_COLUMNS,
-  /** The ordering hint inside the host's panel bar. */
-  order: DAG_PANEL_ORDER,
-} as const
 
 /**
  * One task as this page draws and details it: the drawing's own shape plus the facts a pinned detail
@@ -854,6 +834,37 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
 
     /** The rows, in draw order. */
     const children: unknown[] = []
+    // (a) THE HOST'S OWN SUBAGENT ROWS, ABOVE THE DRAWING AND INSIDE THIS SAME RICH FRAME (frozen clause
+    // C3). This page IS the MPD panel, so the rows the host curates for its sidebar belong here rather
+    // than on a page of their own; `subagentSectionRows` owns the field reads, the empty state and the
+    // counts, so this file re-derives none of them.
+    //
+    // THEY ARE PUSHED BEFORE ANY DRAWING ROW, and that is the whole of the row-index contract: the
+    // drawing's own indexing below is built from `children.length` AT THE MOMENT each row is pushed, so
+    // the pin, the focus auto-scroll and the viewport budget stay ONE hook set over whatever chrome
+    // precedes the drawing. A page that computed its rows first and offset them afterwards would be the
+    // silent drift the clause names.
+    /** The host's curated section, or an EMPTY list on a host that exposes no snapshot. */
+    let section: readonly SubagentSectionRow[] = []
+    try {
+      section = subagentSectionRows(panelSnapshot(props?.host))
+    } catch {
+      // An unreadable host snapshot costs the host's own rows, never the drawing this page exists for.
+      section = []
+    }
+    for (let index = 0; index < section.length; index += 1) {
+      /** This row's own draw instructions, as the host's projection decided them. */
+      const row = section[index]
+      if (row === undefined) continue
+      children.push(textRow(kit, row.text, {
+        key: `sub-${index}`,
+        ...(row.header === true ? { bold: true } : {}),
+        ...(row.dim === true ? { dim: true } : {}),
+        maxCells: contentCols,
+      }))
+    }
+    // (b) THE MPD DEPENDENCY DAG — the rich frame, the header, the legend, the pin body and the layouts
+    // that are the reason this page is the MPD panel.
     // THE VIEWPORT IS CREATED AFTER THE ROWS ARE KNOWN, and it is created with the REAL content height.
     // The hook's declaration ORDER is the reason: a page that hands it a placeholder would make every
     // band, every gutter cell and every "is the focus in view?" test depend on a number that arrives one
@@ -985,8 +996,15 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
     const pinnedTask = pinned === undefined ? undefined : page?.tasks.find((task) => task.id === pinned)
     if (pinnedTask !== undefined) {
       children.push(textRow(kit, `${DAG_CHROME.pinMarker} ${pinnedTask.id}`, { key: "pin-head", tone: "focus", bold: true, maxCells: contentCols }))
+      // THE SAME POSITION-KEY RULE AS THE LEGEND BELOW, for the same reason: this list is rebuilt every
+      // render, so a key cut from a line's own text is a duplicate-key defect the moment two lines agree
+      // for the key's length. The detail body's labels are distinct today, which is exactly why the
+      // defect would arrive silently — the key must not depend on that staying true.
+      /** The detail row being pushed, so the key is the position and cannot collide. */
+      let detailRow = 0
       for (const line of pinnedDetailLines(pinnedTask, page?.tasks ?? [], contentCols)) {
-        children.push(textRow(kit, line, { key: `pin-${line.slice(0, 24)}`, dim: true, maxCells: contentCols }))
+        children.push(textRow(kit, line, { key: `pin-${detailRow}`, dim: true, maxCells: contentCols }))
+        detailRow += 1
       }
     }
     // THE LEGEND (R6): the drawing's own arrow sentences, then the state key read out of the contract.
@@ -997,8 +1015,19 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
     } catch {
       arrow = []
     }
+    // THE KEY IS THE ROW'S POSITION, NEVER ITS TEXT. A content-derived key is a duplicate-key defect
+    // waiting on two lines that agree for the key's whole length: the drawing's own state key and this
+    // legend's first wrapped line both begin `✓ completed · ◐ running`, so both were keyed
+    // `legend-✓ completed · ◐ running ` — and React, given two children under one key, renders the
+    // collided row once more on every re-render. That is the user's defect exactly: one extra legend
+    // row per click until the page overflows, measured on the mounted instance at 4 rows after mount
+    // and 7 after seven clicks. A position key is unique by construction and stable while the legend's
+    // line count is, which is what makes the row count invariant across a re-render.
+    /** The legend row being pushed, so the key is the position and cannot collide. */
+    let legendRow = 0
     for (const line of legendLinesFor(contentCols, arrow)) {
-      children.push(textRow(kit, line, { key: `legend-${line.slice(0, 24)}`, dim: true, maxCells: contentCols }))
+      children.push(textRow(kit, line, { key: `legend-${legendRow}`, dim: true, maxCells: contentCols }))
+      legendRow += 1
     }
     // ── THE SELF-WINDOWED BODY ──────────────────────────────────────────────
     // THE PAGE OWNS ITS WINDOW, and the host's `ScrollBox` is deliberately NOT used: its `ref` is
@@ -1040,8 +1069,8 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
     const body = panelViewportBody(kit, children, scroller, true, wheelBound)
     // THE TITLE ROW IS OUTSIDE THE WINDOW, immediately under the frame's top border: the page's own
     // name and MPD's `⤢`, both pinned, so the control sits at the same cell however far the drawing
-    // scrolls. It is the SAME implementation the merged and workmate pages use — one definition of the
-    // chrome, so the three pages cannot drift into three different-looking affordances.
+    // scrolls. It is the SAME implementation the workmate page uses — one definition of the chrome,
+    // so the two pages cannot drift into two different-looking affordances.
     //
     // WHY THE PAGE DRAWS IT AND THE HOST CANNOT: measured on dsh-tui 0.13.0, `dsh-adapter/panels.js`
     // freezes a plugin descriptor WITHOUT `capabilities`, while `SidePanelColumn.js`'s `canExpand` reads
@@ -1049,81 +1078,6 @@ export function createDagPanelComponent(readWorkflow: () => TeamWorkflow | undef
     /** This page's chrome row: its title and the full-screen control. */
     const titleRow = usePanelTitleRow(kit, { key: "title", title: DAG_PANEL_TITLE, cols: contentCols, ...(options?.openFullscreen === undefined ? {} : { open: options.openFullscreen }) })
     return panelFrame(kit, DAG_PANEL_TITLE, [titleRow, ...body, footer])
-  }
-}
-
-/** What the DAG page needs from the rest of the plugin. */
-export interface DagPanelDeps {
-  /** Whether the row config contributes this surface at all (the `panel` knob, default true). */
-  enabled: boolean
-  /** Reads the MPD team projection for the calling session's workspace, per call. */
-  readWorkflow(): TeamWorkflow | undefined
-  /** The existing full-screen scene, opened when the host cannot serve a panel at all. */
-  openScene(): boolean
-  /**
-   * Opens the agent work page for a live subagent id (AC6); false when no page was reached.
-   *
-   * Optional because the row's wiring may have no such surface; a page without it still SAYS SO through
-   * the host's toast rather than ignoring the second click.
-   */
-  openAgentPage?: (agentId: string) => boolean
-  /**
-   * Opens this page's full-screen scene (AC8b); false when no page was reached.
-   *
-   * It is the page's own `openScene` surface, reached from the `⤢` control the page draws in its title
-   * row — the host cannot draw one for a plugin panel. Optional for the same reason as the dep above:
-   * a page given no opener still draws the control row, but its glyph carries no click handler.
-   */
-  openFullscreen?: () => boolean
-  /** Diagnostics: the file sink, never a terminal. */
-  log: Log
-}
-
-/** The DAG page's seam: the registration plus the facts the boot diagnostic reports. */
-export interface DagPanelSeam {
-  /** The registration; `undefined` when the row config disabled this surface. */
-  readonly panel: PanelRegistrationHandle | undefined
-  /** Whether the page is registered right now (the seam is bound AND the registration confirmed). */
-  registered(): boolean
-  /** The FINAL host panel id, or undefined while it is unbound, refused or unread. */
-  id(): string | undefined
-  /** The registration outcome, as the row's own boot diagnostic reports it. */
-  outcome(): SeamOutcome
-  /** Opens the full-screen DAG/merged scene; the surface a host without the panel seam keeps. */
-  openScene(): boolean
-}
-
-/**
- * Register the DAG page and expose the route a host without the panel seam keeps.
- * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
- * @param deps - the workflow reader, the scene opener and the log.
- * @returns the page's seam; `panel` is undefined only when the row config disabled the surface.
- */
-export function registerDagPanel(tui: TuiAdapter, deps: DagPanelDeps): DagPanelSeam {
-  // ONE registration, at apply: the adapter queues it until the seam binds and settles it as `absent`
-  // on a host that never offers the panel seam, so this call is safe on every dsh-tui build.
-  const panel: PanelRegistrationHandle | undefined = deps.enabled
-    ? tui.registerPanel({
-        ...DAG_PANEL_DESCRIPTOR_FROZEN,
-        // THE AGENT-PAGE DEP IS FORWARDED HERE and nowhere else: the component is built by this row, so a
-        // dep the row received but did not pass would leave the second click (AC6) silently dead — the
-        // exact no-op the criterion forbids. THE FULL-SCREEN OPENER RIDES THE SAME RULE (AC8b): the
-        // `⤢` control is drawn by the page, so a dep that stopped here would leave a visible button that
-        // does nothing.
-        component: createDagPanelComponent(deps.readWorkflow, { openAgentPage: deps.openAgentPage, openFullscreen: deps.openFullscreen }),
-      })
-    : undefined
-  return {
-    panel,
-    registered: (): boolean => panel !== undefined && panel.id() !== undefined,
-    id: (): string | undefined => panel?.id(),
-    outcome: (): SeamOutcome => {
-      if (panel !== undefined) return panel.outcome()
-      // A surface this row deliberately did not activate: the adapter's own skipped vocabulary, so the
-      // aggregate line names the reason instead of an invented state.
-      return tui.skipped("panels", "the DAG sidebar page is disabled by the mpd-tui row config (panel: false)").outcome()
-    },
-    openScene: (): boolean => deps.openScene(),
   }
 }
 

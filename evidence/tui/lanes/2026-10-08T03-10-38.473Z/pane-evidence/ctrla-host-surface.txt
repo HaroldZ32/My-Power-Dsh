@@ -1,0 +1,9 @@
+SOURCE: evidence/tui/lanes/2026-10-08T03-06-38.202Z/ctrla-team.pane.txt (tui-deps-ctrla lane, Ctrl+A capture)
+COLUMN: sidebar carousel starts at char col 150
+
+  2|◀     ○     ○     ○     ○    代理   ○     ○     ○     ○     ○ ▶ ⤢
+  3|────────────────────────────────────────────────────────────────────
+  4|0 运行中   0 已完成
+ 14|                                 ○
+ 15|                        当前会话暂无子代理
+ 17|现在这里

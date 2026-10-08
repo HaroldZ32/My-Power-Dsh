@@ -3,18 +3,24 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.13.0** 及其内置的准入
-（admission）配置文件。0.13.0 是**新增侧栏面板接缝**的那个版本——宿主 row 为 `dsh-tui-panels`，
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.14.0** 及其内置的准入
+（admission）配置文件——该版本新增 **Claude 后端 peer**（`@anthropic-ai/claude-agent-sdk`
+0.3.287）与 `ws` 运行时依赖、第**八**个内置侧栏面板（`btw`），并把 `PanelBar` 改成**轮播**：只画
+当前标签页的标题加 `○`/`●` 圆点，不再绘制插件声明的图标。§11.6 是本波次的修订，其中列出了本次
+移动触及的各个载体。**此前的钉定版本是 0.13.0，那段表述作为历史保持可读**：0.13.0 是**新增侧栏
+面板接缝**的那个版本——宿主 row 为 `dsh-tui-panels`，
 导出为 `@deepseek-harness-tui/dsh-tui/panels`——它同时把宿主自己的 `dsh-ecosystem-spec/` 目录更名为
 `tui-profile/`；本版本把这条新接缝采纳为**第十五条** `tui*` 接缝（§3、§3.3）。**此前的钉定版本是
 0.12.0，那段表述作为历史保持可读**：0.12.0 是 peer 范围覆盖本 bundle 所钉 harness 整段区间的 dsh-tui
 版本 —— 其列表一路列到 `0.1.7-rc.2`、`0.2.0-rc.1` 与 `0.2.0-rc.2`，而 `0.11.2` 只到 `0.2.0-rc.1`
 （0.10.1 与 0.10.2 只到 `0.1.5-rc.1`），因此它是第一个能与本 bundle 所针对的 harness 一起启动的版本；
 0.13.0 自身 `peerDependencies` 的末端同样是 `0.2.0-rc.2`（读自已安装的包）。**这次移动在同一个波次里
-改动了每一个载体**：全局包与 `dsh-tui` profile、分发描述符的 `host-tui` 引用（`dsh-distribution.json`
-现为 `pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0`），以及 QA 宿主规格（`docker/tui-lane.sh`、
-`docker/entrypoint.sh`、`skills/dsh-qa/scripts/tui-mount.ts` 的 `TUI_HOST_SPEC` 与
-`skills/dsh-qa/scripts/install-dependencies.ts` 的修复命令，默认值现均为 `0.13.0`）。下文的兼容性
+改动了每一个载体**：全局包与 `dsh-tui` profile、分发描述符的 `host-tui` 引用（0.13.0 还是钉住版本时，
+`dsh-distribution.json` 里写的是 `pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0`），以及 QA 宿主规格
+（`docker/tui-lane.sh`、`docker/entrypoint.sh`、`skills/dsh-qa/scripts/tui-mount.ts` 的
+`TUI_HOST_SPEC` 与 `skills/dsh-qa/scripts/install-dependencies.ts` 的修复命令，当时的默认值均为
+`0.13.0`）。**这两类载体在 0.14.0 波次中又移动了一次——当前生效的取值由 §11.6 那一节给出，而不是本节。**
+下文的兼容性
 测量是在 0.10.1 上做的，并已在 Docker 端到端测试（`docker/tui-lane.sh`）中重新验证 —— 那也是
 唯一能端到端跑通 TUI profile 的地方。
 
@@ -28,7 +34,7 @@
 
 | 产物 | 路径 | 说明 |
 |---|---|---|
-| TUI 界面包 | `packages/mpd-tui-plugin/` | TUI 原生界面：**侧栏团队面板**（`src/panel.ts`——0.13.0 上合并视图的主入口，§3.3）、状态行、`/settings` 区块、全屏面板场景、`/mpd` 命令树、快捷键、受中介的对话框、**宿主未投影**的转写渲染器注册（明确不声明第 10 条），以及"就绪但未激活"的决策事件接缝。 |
+| TUI 界面包 | `packages/mpd-tui-plugin/` | TUI 原生界面：**两个侧栏页面**（`src/panel.ts`——标题 `MPD`，主入口，且自 0.14.0 波次起它本身就是富形态 DAG 页，§3.3/§3.4——与 `src/panel-workmate.ts`）、状态行、`/settings` 区块、全屏场景、`/mpd` 命令树、快捷键、受中介的对话框、**宿主未投影**的转写渲染器注册（明确不声明第 10 条），以及"就绪但未激活"的决策事件接缝。 |
 | 准入清单 | `dsh-plugin.json`（仓库根目录） | 整个 bundle 的**唯一**一份 Community v0.15 清单——这是刻意的偏离（见 §7）。 |
 | 环境描述符 | `dsh-distribution.json`（仓库根目录） | 面向 dsh-distribution 元协议（Draft）的 `DistributionDescriptor`。 |
 | TUI 组合 | `cordis.patch.yml` | 新增 `mpd-tui` 行与 `dsh-tui` 花名册默认值，使 TUI 会话默认使用 **mpd** 预设。 |
@@ -68,7 +74,7 @@ TUI 会话默认使用 **mpd** 预设，由 id 定向的 `agent-preset-registry`
 
 | Web 界面 | TUI 等价物 | 证据级别 |
 |---|---|---|
-| Agent Teams 面板（会话头部） | **`tuiPanels` 侧栏面板**——0.13.0 上的主入口（§3.3）——并以 `tuiScenes` 全屏面板作为其**回退**，外加 `tuiStatus` 状态行 | 0.13.0 上实测到注册 + 宿主**接受**的打开——`evidence/tui/lanes/2026-10-06T10-27-53.571Z/` 与 `…/2026-10-06T10-28-57.807Z/`，从宿主自身回读中发现的 id 为 `act1:team`；全屏场景已在 0.10.1 时期的实机通道 `evidence/tui/live/20260915T063140Z/result.json` 中渲染（t8；7 个界面中 6 个） |
+| Agent Teams 面板（会话头部） | **`tuiPanels` 侧栏面板**——主入口（§3.3）——并以 `tuiScenes` 全屏界面作为其**回退**（页面自己的 `⤢` 用富形态 `mpd-tui-team` 场景，路由回退用合并的 subagents 场景），外加 `tuiStatus` 状态行 | 0.13.0 上实测到注册 + 宿主**接受**的打开——`evidence/tui/lanes/2026-10-06T10-27-53.571Z/` 与 `…/2026-10-06T10-28-57.807Z/`，从宿主自身回读中发现的 id 为 `act1:team`；全屏场景已在 0.10.1 时期的实机通道 `evidence/tui/live/20260915T063140Z/result.json` 中渲染（t8；7 个界面中 6 个） |
 | Workmate 库标签页 | `tuiCommandTrees`（`/mpd …`）+ `tuiDialogs` | 同上（同一实机通道证据） |
 | — | `tuiStatus` 状态行；`tuiRenderers` 转写行**宿主未投影** | 状态行已渲染；渲染器行**未渲染**——见明确不声明第 10 条 |
 | — | `tuiSettingsSections`（mpd.jsonc 可调项的 `/settings` 区块） | 已渲染——同上；该区块写明与 `<workspace>/.mpd/mpd.jsonc` 的**打通**、重启提示与"绝不丢失"条款（§6.2），通道以 `allPatterns` 断言这段披露文本 |
@@ -88,6 +94,13 @@ dsh-tui 自 0.12.0 起就暴露的十四条接缝，加上 0.13.0 新增的侧�
 15——每一条都按同一套纪律绑定、探测与降级：每条接缝一次延迟 `ctx.inject([id], …)`，以
 `ctx.get(id, false)` 作探针，永不绑定的接缝报 `absent`，而不是让启动失败。上面那段"13 个接缝"是首个
 波次范围的记录，保持原样。
+
+**0.14.0 不改动这十五条中的任何一条。** 宿主 `lib/types/dsh-adapter/` 下面向插件的接缝模块 ——
+`panels`、`scenes`、`status`、`renderers`、`settings-sections`、`shortcuts`、`dialogs`、
+`command-trees`、`plugin-host`、`toast`、`themes`、`plugin-storage`、`message-observer`、
+`effect-ledger`、`workspaces`，每个都有 `.js` 与 `.d.ts` —— 在 0.13.0 与 0.14.0 之间**逐字节相同**，
+也不存在第十六条接缝；harness 的 `peerDependencies` 范围同样未变（末端仍是 `0.2.0-rc.2`），因此
+`MPD_E2E_DSH_VERSION` 不动：**接缝层面不需要任何适配器代码改动**。0.14.0 究竟改了什么，见 §11.6。
 
 ### 3.1 Web 界面的设置界面（设置 → MPD）
 
@@ -170,22 +183,30 @@ TUI 会话仍然拥有的东西：`/mpd team` 场景、`/mpd plan` 场景与状�
 —— 它自己的实时读数、等待变更与队友消息 —— 会由适配器报出它无法解析的服务名而失败。今天的 TUI 会话无法
 通过官方平面创建队友 —— 这是能力边界，不是配置失误。
 
-### 3.3 侧栏面板接缝——0.13.0 上的主入口，以及它诚实的边界
+### 3.3 侧栏面板接缝——主入口，以及它诚实的边界
 
-`packages/mpd-tui-plugin/` 通过 `ctx.tuiPanels` 接缝注册**三个**右侧栏页面——`src/panel.ts`（slug
-`team`、标题 `MPD`、`order` 10）承载那份**合并视图**（先是宿主自己整理的子代理快照行，随后是当前工作区
-团队的 MPD 依赖 DAG）；`src/panel-dag.ts`（slug `dag`、标题 `MPD DAG`、单格图标 `◈`、`order` 11）与
-`src/panel-workmate.ts`（slug `workmate`、标题 `MPD workmate`、图标 `⬢`、`order` 12）见 §3.4。三者的
-`apiVersion` 都是 1，都**不带 `compact`**——0.13.0 会校验并保存描述符的 `compact` 槽位，但**不挂载**它的
-渲染槽，声明它就等于声明一个无法渲染的界面——并且都请求 **`minColumns` 28**，即宿主自己的底线。最终面板
-id 是**从宿主自身的 `list()` 回读中发现的**，绝不自行拼接：`<pluginId>:<slug>`，真机实测为 `act1:team`、
-`act1:dag`、`act1:workmate`（该 plain loader 行不携带任何 Component 身份，前缀由宿主加上）。
+`packages/mpd-tui-plugin/` 通过 `ctx.tuiPanels` 接缝注册**两个**右侧栏页面——`src/panel.ts`（slug
+`team`、标题 `MPD`、单格图标 `❖`、`order` 10）承载那份**富形态的合并视图**（宿主自己整理的子代理快照行
+在**上方**，当前工作区团队的 MPD 依赖 DAG 在下方，两者同处 DAG 页自己的外框、表头 + 进度、图例、按键页脚
+与点击钉住的详情体之内）；以及 `src/panel-workmate.ts`（slug `workmate`、标题 `MPD workmate`、图标 `⬢`、
+`order` 12，见 §3.4）。**本节过去描述的第三个页面——`src/panel-dag.ts` 那个独立的 `dag` 页——已被 0.14.0
+波次退役并合并进 MPD 面板**（用户条款「DAG页作为MPD面板」，§11.6 有记录）：两个描述符、两个 slug、两个排
+序位最终只留下**一个**，而存活槽位渲染的正是 DAG 页的渲染体。**用户能触达的入口没有一个变成死路**：
+`/mpd dag` 改瞄到 MPD 面板——DAG 页**就是**这个面板——而 `/mpd panel`、`/mpd subagents`、`alt+a` 本来就
+都走同一个槽位（旧的 `Ctrl+A` 宿主输入接触面在提供该接缝的宿主上**保持惰性**；在它确实就绪的老宿主上，
+它打开的就是合并的 subagents 场景，与以往一致）。存活的两个页面 `apiVersion` 都是 1，都**不带 `compact`**——宿主会校验
+并保存描述符的 `compact` 槽位，但**不挂载**它的渲染槽，声明它就等于声明一个无法渲染的界面——并且都请求
+**`minColumns` 28**，即宿主自己的底线。最终面板
+id 是**从宿主自身的 `list()` 回读中发现的**，绝不自行拼接：`<pluginId>:<slug>`，合并前真机实测为
+`act1:team`、`act1:dag`、`act1:workmate`（该 plain loader 行不携带任何 Component 身份，前缀由宿主加上）。
+记录下来的集合就是**实际注册成功**的那些 id，因此现在只带存活的两个，不再有第三个。
 
 **可达性规则——宿主自己的两个开关，而本 bundle 无法代设。** 注册了页面并不等于页面可见。在已安装宿主上，
-启用列表位于宿主**自己**的行配置里（`dsh-tui.sidePanel.panels`，默认 `todo,jobs,agents`；一个格式合法但
-尚无面板认领的 id 会留在列表里，等插件稍后注册），而侧栏本身默认是**关闭**的（`sidePanel.open` 默认
-`false`）。两者都归宿主所有，而 bundle 的补丁行绝不能 id 指向宿主拥有的行，所以补救只能写成给用户的步骤，
-既写进文档，也由命令自己打印：
+启用列表位于宿主**自己**的行配置里（`dsh-tui.sidePanel.panels` —— 0.13.0 上是 `todo,jobs,agents`，
+0.14.0 目标宿主上是 `todo,jobs,agents,info,trajectory,workspace,btw,companion`，见 §11.6；一个格式
+合法但尚无面板认领的 id 会留在列表里，等插件稍后注册），而侧栏本身默认是**关闭**的（`sidePanel.open`
+默认 `false`）。两者都归宿主所有，而 bundle 的补丁行绝不能 id 指向宿主拥有的行，所以补救只能写成给用户
+的步骤，既写进文档，也由命令自己打印：
 
 1. 在 `/settings` → 侧栏 → *启用的面板* 里加入该页的最终 id（id 可从宿主的 `/panel ` 补全列表得知，或直接
    读 `/mpd panel` / `/mpd dag` / `/mpd workmate` 打印的那一行）；
@@ -198,33 +219,67 @@ id 是**从宿主自身的 `list()` 回读中发现的**，绝不自行拼接：
 `todo,jobs,agents`；一个列出页面 id 的配置会在结算后仍然带着这些 id、并且不带宿主自带的三个。）现在有两条
 互相独立的路径守住列表：
 
-* **有界、在插件内** —— `packages/mpd-tui-adapter-plugin` 的沉降守卫只重新断言**宿主自己的 `list()` 回读
+* **有界、在插件内，并且自 0.14.0 波次起改为跟随宿主自己的变更订阅** ——
+  `packages/mpd-tui-adapter-plugin` 的沉降守卫只重新断言**宿主自己的 `list()` 回读
   产出的那些 id**，而且只在列表里**一个我们的 id 都没有**时才动作：它把整组一次性追加在用户列表之后，从不
   删除也从不改变任何一个 token 的顺序。若列表里出现**任何一个**我们的 id，那就说明配置已经就本 bundle 表态
   了 —— 在 `/settings` 里启用过、由下面的脚本写入过、或者用户故意只删掉了部分 —— 此时守卫**主动退让**，因此
-  它绝不会把用户本想丢掉的页面放回去。它在约 25 秒内走完六个 tick 后永久停止。这是该适配器的**第二处**宿主
+  它绝不会把用户本想丢掉的页面放回去。**0.14.0 波次把有界的 tick 阶梯换成了宿主自己的订阅**
+  （`subscribeSidePanelPanels`，即实时设置存储的变更订阅）：宿主一重新应用配置，守卫当场修复被抹掉的列表，
+  而不是在约 25 秒后输掉这场竞跑；tick 阶梯只作为"宿主没有该订阅"时的降级路径保留。订阅随注入作用域一起
+  释放（热重载不会留下监听），在没有该模块的宿主上永不抛错，退让规则不变：**我们自己的写入包含我们的 id，
+  这正是循环的终点**。这是该适配器的**第二处**宿主
   内部接触，与 `Ctrl+A` 的 `useStdin` 触点并列（AGENTS.md §6 给这类接触计数，因此两处都在该文件里点名）；
   它发现的 id 记录在 `<workspace>/.mpd/logs/mpd-tui-panels.json`。**残留风险明码标出**：若用户故意把我们
   **全部**移除，剩下的列表与全新配置无法区分，因此每个启动周期仍会把整组加回一次；要区分这两种情况必须读到
   配置里写的那个值本身，也就是第三处宿主内部接触 —— 那是 §6 的计数决策，本轮刻意不做；
-* **持久、一条命令** —— `node scripts/mpd-tui-panels.ts` 把 `dsh-tui.sidePanel.panels` 写进 profile 的
+* **持久、一条命令** —— `node scripts/mpd-tui-panels.ts --apply` 把 `dsh-tui.sidePanel.panels` 写进
+  profile 的
   patch 文件，而它就是设置用户层（`dsh-config-editor` 的 `documentPath` 返回
   `profileContext.patchPath`；`dsh-app-boot` 把它拼成 `<profileDir>/cordis.patch.yml`）。这两个读法都取自
-  已安装的源码，脚本在无法证明该路径时拒绝写入；默认试运行，`--apply` 才写，会留 `.bak`，只补缺失的 id。
+  已安装的源码，脚本在无法证明该路径时拒绝写入；默认试运行，`--apply` 才写，会留 `.bak-<stamp>`，只补缺失
+  的 id。它只写**用户**的 profile patch，不碰本仓库里的任何东西，因此不属于任何闸门扫描——需要重新钉定
+  内置技能语料的是那个改动了 `skills/**` 的波次：它的 `treeSha` 必须与**恰好一次**重新钉定落在同一个
+  提交里（AGENTS.md §9）；本命令两样都不涉及。
+
+**记录是否可信，取决于它的来源信息（provenance）——而这是一处实测缺陷，不是担心。**
+`.mpd/logs/mpd-tui-panels.json` 在 2026-10-08 被覆写成 `act0:team,act0:dag,act0:workmate`，而这些 id
+是已安装宿主**无法**拼出的：它的 `pluginIdFor` 兜底计数器**先自增**，所以第一个裸激活是 `act1`，`act0`
+在真机启动里不可能出现。是一次**单元测试**运行（它的面板接缝替身把注册标成 `act0`）驱动了真实记录器，
+而补救脚本正是读这个文件来提议写入用户设置层——于是一次测试运行就能让补救命令写出任何启动都无法提供的
+面板 id。0.14.0 波次修好了**写入**侧：记录现在带 `provenance {hostRoot, hostVersion, readBack,
+activation}`，记录器**拒绝**生成任何无法追溯到已安装宿主包与宿主回读的记录（实测：完整跑一遍
+`bun test ./packages/mpd-tui-plugin ./packages/mpd-tui-adapter-plugin` 之后，该文件的 sha256 不变）。
+**同一份证明在**读取**侧也被守住，因此被污染的记录再也到不了用户的 profile patch：**
+`scripts/mpd-tui-panels.ts` 会**拒绝**（试运行与 `--apply` 一视同仁，退出码 1）任何不带 `provenance`、
+`provenance.hostVersion` 为空、缺 `provenance.readBack`，或 `provenance.activation === "act0"` 的记录，
+并点名失败的字段、同时提示 `--ids <a,b,c>`。实测（针对被污染的 version-1 记录）：打印
+``REFUSED: … it carries no `provenance` block (a version-1 record, whose ids cannot be traced to a boot)``
+并退出 1；该次运行不改变记录 sha256；`--ids act1:team,act1:workmate` 被接受（逃生口仍然可用）；脚本自带的
+`--self-test` 全绿——每种拒绝形状各一条臂，外加"格式良好的 version-2 记录被接受"。试运行仍会打印它读到的 id
+及其文件，所以用户在 `--apply` 真的写入之前就能看到会被写什么。**磁盘上的文件仍然是那份被污染的 version-1
+记录，直到宿主的真机启动把它重写**——这正是补救命令今天会拒绝它的原因，也正是 `--ids` 被记录为逃生口的原因。
 
 **未设**时的实测：标签栏读作 `‹ 待办 › ▸ ◆`，宿主活的启用列表是 `toggle, focus, zoom, todo, jobs,
-agents`。**设好**时的实测（120 列）：标签栏出现 `‹ MPD ›`、`‹ MPD DAG ›` 与 `‹ MPD workmate ›`，页面正文
-渲染出来（`evidence/tui/dag-port/verification/pty/frozen/`）。面板列只在宿主分栏处存在——同一份抓取在 80 列
+agents`。**设好**时的实测（120 列，这是本波次替换掉的**三页**集合）：标签栏出现 `‹ MPD ›`、
+`‹ MPD DAG ›` 与 `‹ MPD workmate ›`，页面正文渲染出来（`evidence/tui/dag-port/verification/pty/frozen/`）。
+**合并之后标签栏只有两个 MPD 标签页**——`‹ MPD ›` 与 `‹ MPD workmate ›`——上面两条路由依旧各自解析到存活
+界面（本波次自己的记录见 §11.6）。面板列只在宿主分栏处存在——同一份抓取在 80 列
 与 48 列上报 `split=false`，因此那里无论列表怎么写都不可能有页面可见。
 
-`alt+a` 与 **`/mpd panel`** 在接缝已绑定时把**合并**页经 `tuiPanels.open()` 打开，而 **`/mpd dag`** 与
-**`/mpd workmate`** 以同样的方式打开各自的页面。**任何**拒绝情形——每插件每 5000 ms 只允许一次打开、宿主
-已不再持有的 id、或没有存活的 panel 消费者——都会回退到**它自己**的全屏界面（`team` 与 `dag` 用
-`mpd-tui-subagents`，`workmate` 用看板场景），并且打印出的那一行会说明实际到达的界面；这条路径上没有任何
-静默的空操作。
+`alt+a`、**`/mpd panel`** 与 **`/mpd subagents`** 在接缝已绑定时把 MPD 面板经 `tuiPanels.open()` 打开，
+**`/mpd dag`** 改瞄到**同一个**面板（它渲染的就是 DAG 页），**`/mpd workmate`** 打开它自己的页面。
+**任何**拒绝情形——每插件每 5000 ms 只允许一次打开、宿主
+已不再持有的 id、或没有存活的 panel 消费者——都会回退到一个全屏界面，并且打印出的那一行会说明实际到达的
+界面；这条路径上没有任何静默的空操作。回退目标按路由区分，刻意不是同一个场景：MPD 面板自己的 `⤢` 打开的是
+**富形态的团队场景**（`mpd-tui-team`——外框、图例、聚焦任务的详情面板、按键提示），这样读者不会从一个富页面
+掉进一个贫页面；而 MPD 面板的**路由**回退仍然是合并的 subagents 场景（`mpd-tui-subagents`），因为那条路由
+问的是"哪个界面承载宿主自己的行"——两个问题各有各的答案，`registerPanelSurface` 也就把它们作为两个选项
+接收。
 
-**证据级别为 `Observed`：** 三个页面的注册、从宿主回读中发现的 id、以及宿主**接受**的打开，均由真机 PTY
-记录——`evidence/tui/dag-port/verification/pty/frozen/`（120 列下标签栏里的三个 MPD 标签页，以及 80/48 列的
+**证据级别为 `Observed`：** 注册、从宿主回读中发现的 id、以及宿主**接受**的打开，均由真机 PTY
+记录——`evidence/tui/dag-port/verification/pty/frozen/`（合并**前**那套集合的三个 MPD 标签页、120 列下的
+标签栏，以及 80/48 列的
 `split=false` 分支）与更早的 0.13.0 通道（`evidence/tui/lanes/2026-10-06T10-27-53.571Z/` 与
 `…/2026-10-06T10-28-57.807Z/`），两者的负向对照都按要求为红。
 
@@ -235,10 +290,17 @@ agents`。**设好**时的实测（120 列）：标签栏出现 `‹ MPD ›`、
 Ctrl+B 展开（或开启"启动时展开侧栏"）"*——而不是宣称"已打开"。页面**正文**由单元套件与钉住版本的真机 PTY
 抓取断言，绝不靠插件自己的分支。
 
-### 3.4 DAG 页与 workmate 页——两个独立的侧栏页面
+### 3.4 MPD 面板——富形态的 DAG 页——与 workmate 页
 
-DAG 页把当前工作区团队的依赖 DAG 单独渲染出来，带上合并页负担不起的外框：带边框的框架、点名团队与进度的
-表头、图形本体、显式图例、只列本页处理按键的页脚、状态徽标，以及钉住的详情体。
+MPD 面板把当前工作区团队的依赖 DAG 渲染出来，宿主自己整理的子代理行位于图形**上方**，两者同处一个合并前
+的旧合并页负担不起的富外框之内：带边框的框架、点名团队与进度的表头、图形本体、显式图例、只列本页处理按键
+的页脚、状态徽标，以及钉住的详情体。（在 0.14.0 波次之前，这是与一个更朴素的合并页并列的独立 `dag` 页；
+现在两者是**一个**页面，见 §11.6。）
+
+**这个面板的 `⤢` 打开的是富形态的团队场景，而不是贫形态的。** 页面自己的控件调用 `mpd-tui-team` 场景——它
+画的是与页面同一套语法：外框、图例、聚焦任务的详情面板（钉住在整屏下的形态）与按键提示——这正是用户条款
+「全屏出来的MPD也要有这种富外观」的具体落实。宿主自己的 `⤢` 对插件面板依旧不可达（§11.6 的重新测量边界），
+所以这个控件是 MPD 自己的，并且就声明在页面上。
 
 - **纵排且自适应。** rank 是**纵向**轴（自上而下），每一个尺寸都由宿主实测出的面板算出——没有任何固定像素
   或单元格常量决定布局，这正是本波次用户的明确决定（纵向，但不要固定尺寸）。`boxes`、`rail`、`list` 是三种
@@ -255,6 +317,11 @@ DAG 页把当前工作区团队的依赖 DAG 单独渲染出来，带上合并�
   钉住一个含十条事实的详情体（`id`、`kind`、`visual`、`verdict`、`failedBy`、`owner`、`attempt`、`round`、
   `blockedBy`、`dependents`），`↑↓/jk`、`Enter`、`Esc` 分别负责移动、钉住与取消钉住。**悬停刻意不做**——
   终端没有指针移动，用户也放弃了它。
+  **"图例越点越多"的缺陷（用户原话「越点越多直到撑爆屏幕」）根因是一个重复的 React key，已修复并钉住
+  （§11.6）。** 图例的行原本以 `legend-${line.slice(0, 24)}` 作为 key，而图形自己的状态键行与图例紧随其后的
+  第一行折行后都以 `✓ completed · ◐ running` 开头——于是两个子元素共用一个 key，React 在**每一次**重渲染时
+  都会把冲突的那一行多渲染一次。在挂载实例上实测：**挂载后 4 行图例，点击七次后 7 行**。现在 key 是位置，
+  守住它的那条臂断言的是**点击 N 次后图例行数稳定**，而不只是"存在一个图例"。
 - **节点只读 `<marker> <id>`**（`✓ T3`，聚焦中的任务读 `▶ T3`）。标题**不再进入图形**；它原样留在钉住的
   详情体里——一句中文就是一句中文，而不是被压成可打印 ASCII。把它移出图形也正是让"一列三个节点"能塞进
   40 格侧栏的原因。
@@ -271,11 +338,16 @@ DAG 页把当前工作区团队的依赖 DAG 单独渲染出来，带上合并�
   说明原因，场景退到它的列表——绝不静默。
 - **两条滚轴都可拖动。** 纵向 gutter 与横向 rail 都按**与点击完全相同**的绝对轨道算术响应鼠标拖动
   （不做"抓住滑块"的偏移）。点击、滚轮与键盘手势照旧；忽略拖动属性的宿主只是不能拖动而已。
-- **每个 MPD 页面都画自己的外观：一枚独特的一格图标，加一个可点的 `⤢`。** 三枚图标是 `❖`（合并页，它过去
-  **不声明**图标、退回字母 `M`）、`◈`（DAG 页）与 `⬢`（workmate 页，它过去戴 `◆`——与宿主自己的 `agents`
-  标签页逐字节相同，所以根本算不上独特的符号）。每枚图标在本包的 `cellWidth` 与宿主的 `stringWidth` 下都
-  恰好一格，因为图标不是一格的注册会被宿主**拒绝**。`⤢` 打开该页既有的整屏场景；它是 MPD 自己的控件，因为
-  宿主**画不出**插件面板的那一个——§11.5 记录了实测原因，而 `evidence/tui/dag-highlight/` 里的真机终端抓取
+- **每个 MPD 页面都画自己的外观：一枚独特的一格图标，加一个可点的 `⤢`。** 存活的两枚图标是 `❖`（MPD
+  面板，它过去
+  **不声明**图标、退回字母 `M`）与 `⬢`（workmate 页，它过去戴 `◆`——与宿主自己的 `agents`
+  标签页逐字节相同，所以根本算不上独特的符号）；已退役 DAG 页的 `◈` 现在不被任何页面声明。每枚图标在本包
+  的 `cellWidth` 与宿主的 `stringWidth` 下都
+  恰好一格，因为图标不是一格的注册会被宿主**拒绝**。**即便 0.14.0 的轮播 `PanelBar` 已不再绘制它，`icon`
+  仍被要求、也仍被声明**（§11.6）——去掉它会把一次静默的宿主变化变成一次被拒绝的注册。`⤢` 打开该页自己的
+  整屏场景；它是 MPD 自己的控件，因为
+  宿主**画不出**插件面板的那一个——§11.5 记录了实测原因、§11.6 在 0.14.0 上重新测量，而
+  `evidence/tui/dag-highlight/` 里的真机终端抓取
   显示该字形确实落在页面标题行上。
 - **OPT-1（用户决定，2026-09-13）：**失败**的依赖**不**阻塞它的下游。** 下游保持 `open` 且可派发，失败被报在
   状态**旁边**（`failedBy`），绝不折进 `blocked`。
@@ -772,3 +844,96 @@ CSS 省略号、`overflow:auto`、原生 tooltip、DOM 读取与 `fetch` 轮询�
 不会丢失任何手势，因为点击、滚轮与键盘仍然绑定。（c）除此之外 DAG 绘制没有任何变化：rank 推导、
 无法解析的阻塞引用与环的报告、箭头、图例与六态调色表都仍是 §11.4 的那些。（d）WEB 依赖视图**未**被本
 波次改动。
+
+### 11.6 DSH-TUI 0.14.0 适配波次之后的修订（2026-10-08）
+
+上面的行是它们各自测量时的记录，保持原样。本波次把目标宿主再往前推了一个版本，而**面向插件的每一条
+接缝都原封不动地穿过这次移动**，所以这次适配是一次宿主形态的重新测量，加上侧栏自己的页面集合与整屏
+控件。以下内容取代它们：
+
+| 被取代的表述 | 原为 | 现为（2026-10-08 实测） |
+|---|---|---|
+| 本页的目标宿主（§ 前言） | `@deepseek-harness-tui/dsh-tui` **0.13.0** 及其内置准入配置文件 | **0.14.0**（读自已安装的包：`version` 为 0.14.0）。该版本自身的增补：**Claude 后端 peer**——`@anthropic-ai/claude-agent-sdk`，恰好 `0.3.287`，是该版本唯一新增的 peer——**`ws` 运行时依赖**（`^8.21.3`，0.13.0 时并不存在）、第**八**个内置侧栏面板（`btw`），以及下面重写过的 `PanelBar`。`MPD_E2E_DSH_VERSION` **不动**，因为 harness 的 peer 范围未变 |
+| §3 接缝清单 | 自 0.13.0 起的十五条 `tui*` 接缝 | **仍是十五条，且每一条与 0.13.0 逐字节相同**——宿主 `lib/types/dsh-adapter/` 下的十五个接缝模块及声明（`panels`、`scenes`、`status`、`renderers`、`settings-sections`、`shortcuts`、`dialogs`、`command-trees`、`plugin-host`、`toast`、`themes`、`plugin-storage`、`message-observer`、`effect-ledger`、`workspaces`，每个都有 `.js` + `.d.ts`）都没有变动，不存在第十六条接缝，`peerDependencies` 列表末端仍是 `0.2.0-rc.2`。**接缝层面不需要任何适配器代码改动** |
+| §3.3——启用列表的默认值，以及钉住它的那条测试臂 | 宿主默认 CSV 为 `todo,jobs,agents`（三个内置面板） | **`todo,jobs,agents,info,trajectory,workspace,btw,companion`——八个内置面板，`btw` 是新增的那个**（`DEFAULT_SIDE_PANEL_IDS`，读自已安装宿主的 `lib/types/tuiDisplayPrefs.js`）。本 bundle 自己的测试现在断言的是**不变量**，而不再断言三 id 的字面量：宿主一长大，字面量就会变红，而这个文件的前提本来就是"宿主一变，它自己重新判定"。该条款点名的**三**条子断言全部在执行且为绿：默认值只列内置面板、不含我们的任何 id；其中每个 id 都通过宿主自己的 `SIDE_PANEL_ID_PATTERN`；规范化函数对它**幂等**——幂等这条的载体是 `packages/mpd-tui-plugin/test/panel-visibility.test.ts` 中的测试臂 *"the host REWRITES the CSV from configuration, which is how a registered panel disappears"*，其 `const once = prefs.normalizeSidePanelPanels(prefs.DEFAULT_SIDE_PANEL_IDS)` 之后紧跟 `expect(prefs.normalizeSidePanelPanels(once)).toBe(once)`。**该断言就在那条臂里运行并通过**——它属于上文 469 通过 / 0 失败 的那次套件读数，是直接读该文件确认的，而不是从臂的标题推断的 |
+| §3.4 / §11.5——`⤢` 控件与宿主自己的那个 | 每个 MPD 页面画自己的 `⤢`，因为宿主画不出插件面板的 | **在 0.14.0 上重新测量，仍然成立，且作为边界而不是愿望陈述**：`dsh-adapter/panels.js` 仍把插件定义冻结为 `{id, title, icon, order, minColumns, source, pluginId, mountPolicy, component, compact}`，**没有 `capabilities`**，而 `components/sidePanel/SidePanelColumn.js` 的 `canExpand` 读的是 `activeEntry?.definition.capabilities?.fullscreen === true`——因此宿主自己的 `⤢` 对插件面板依旧不可达，`capabilities` 依旧不声明（不发布点了没反应的按钮）。MPD 自己的控件打开的是一个由 MPD 注册的整屏界面，外观与该页**同样丰富**（§3.4） |
+| §3.4——图形下方的图例 | 一份每次绘制固定的图例行块 | **"图例累积"缺陷已修，且根因已实测**：图例行原本以 `legend-${line.slice(0, 24)}` 为 key，而图形自己的状态键行与图例紧随其后的第一行折行后都以 `✓ completed · ◐ running` 开头，于是两个 React 子元素共用**同一个** key，冲突的那一行在每次重渲染时都被多渲染一次（挂载实例实测：挂载后 4 行，点击七次后 7 行）。现在 key 是该行的位置，守住它的臂断言**点击 N 次后图例行数稳定** |
+| §3.3 / §7——钉定载体 | 全局包、`dsh-tui` profile、分发引用与 QA 宿主规格都写着 `0.13.0` | **本波次载体改为 `0.14.0`**：`docker/**`（`docker-compose.yml` 的两个 `MPD_E2E_TUI_VERSION` 默认值、`docker/ui/docker-compose.yml` 的同名键、`docker/entrypoint.sh` 的 `TUI_VERSION`、`docker/ui/entrypoint.sh` 的两个 `MPD_UI_TUI_VERSION` 默认值、`docker/tui-lane.sh` 的 `TUI_VERSION` 及其 `PREF_WRITER` 探针字符串）、分发描述符的 `host-tui` 引用（`dsh-distribution.json` 现为 `pkg:npm/@deepseek-harness-tui/dsh-tui@0.14.0`），以及 `skills/dsh-qa/scripts/**` 下七个 QA 载体（`tui-mount.ts` 的 `TUI_HOST_SPEC` 与 PREREQ 行，`tui-panels.ts`、`tui-deps-ctrla.ts`、`tui-team-surface.ts`、`tui-admission.ts` 的 PREREQ/修复字符串，`lib/tui-lane.ts`，`install-dependencies.ts`），以及 `scripts/mpd-tui-panels.ts` 的头注释：它现在把
+0.14.0 写成本 bundle 对准的版本，而它上方那段仍是当年的 0.13.0 测量。**两处刻意的"不动"：** `MPD_E2E_DSH_VERSION` 保持默认 `0.2.0-rc.2`，因为 harness 的 peer 范围没有变化（F2 的读数）；`dsh-plugin.json` 的 `compat.hosts` 保持 `@deepseek-harness-tui/dsh-tui@0.10.1`，因为该字段记录的是本 bundle 通过准入时所依据的 **0.10.1 准入测量**，而不是它所对准的 TUI 版本——改动它会篡改一项测量，而不是记录一个目标 |
+
+**双面板侧栏（用户条款「把MPD与Workmate两个panel扔到侧边栏上去」）。** 本波次把三个 MPD 页面收敛为
+**两个**——富形态的 `team`/`MPD`（`❖`、`order` 10）与 `workmate`/`MPD workmate`（`⬢`、`order` 12）——
+两者 `minColumns` 均为 28、`apiVersion` 均为 1、都不声明 `compact`。独立 `dag` 页的**注册**已消失：
+存活槽位渲染的就是 `src/panel-dag.ts` 的渲染体（宿主自己整理的子代理行在图形上方，同处 DAG 页自己的外框、
+表头 + 进度、图例、按键页脚、徽标与钉住详情体之内），那份单独的合并渲染器被删除而不是与它并列保留，该模块的
+`◈` 图标不再被任何页面声明。**每一个用户可见入口都仍然解析到存活界面**，这正是该条款自己的检验标准：
+`/mpd dag` 改瞄到 MPD 面板被发现的 id（该路由的回退是富形态团队场景），`/mpd panel`、`/mpd subagents` 与
+`alt+a` 本来就都走同一个槽位，`/mpd workmate` 保留它自己的页面，而适配器记录的 id 集合是**从实际注册中
+发现的**——因此它只带存活的两个 id，绝不自行拼出三个。
+
+**整屏对应界面（用户条款「全屏出来的MPD也要有这种富外观」）。** MPD 页面自己的 `⤢` 打开的是**富形态的团队
+场景**（`mpd-tui-team`），而不是合并的 subagents 场景：团队场景画的是与页面同一套语法（外框、图例、聚焦任务
+的详情面板——即钉住在整屏下的形态——以及按键提示），所以读者不会从一个富页面掉进一个贫页面。`/mpd panel` 与
+`alt+a` 的**路由**回退仍然是合并的 subagents 场景（`mpd-tui-subagents`），因为那条路由问的是"哪个界面承载
+宿主自己的行"——两个问题按设计各有各的答案，`registerPanelSurface` 也就把它们作为两个选项接收。
+
+**启用列表现在跟随宿主自己的变更订阅。** 作为**主要**修复手段，有界的 tick 阶梯（六个 tick、约 25 秒后永久
+停止）已被宿主自己的 `subscribeSidePanelPanels`（实时设置存储上的订阅）取代：宿主一重新应用配置，被抹掉的
+列表就当场被修复，而不是在阶梯结束后彻底丢失——这才是用户那句「侧边栏挂掉了」的持久解法。tick 阶梯**只**作为
+"宿主不提供该订阅"时的降级路径保留；订阅随注入作用域释放、在没有该模块的宿主上永不抛错，而**退让**规则
+不变（**列表一旦出现我们的任何一个 id，就说明配置已经就本 bundle 表态，守卫永久停止**，因此用户故意删掉的
+页面绝不会被放回；而我们自己的写入包含我们的 id，所以循环也就此结束）。
+
+**记录的 id 集合现在带来源信息（provenance），因为一次测试运行污染过它（实测）。**
+`.mpd/logs/mpd-tui-panels.json` 在 2026-10-08 被覆写成 `act0:team,act0:dag,act0:workmate`——这些 id
+已安装宿主无法拼出，因为它的 `pluginIdFor` 兜底计数器先自增、第一个裸激活是 `act1`——而元凶是一次**单元
+测试**运行，它的面板接缝替身把注册标成 `act0`。记录现在是 schema 版本 2，并带
+`provenance {hostRoot, hostVersion, readBack, activation}`；记录器**拒绝**写入任何无法追溯到已安装宿主包与
+宿主回读的记录，`act0` 这一形状被点名拒绝。实测：完整跑一遍
+`bun test ./packages/mpd-tui-plugin ./packages/mpd-tui-adapter-plugin` 之后，该记录的 sha256 不变。
+**同一份证明在**读取**侧也被守住**，因此被污染的记录再也到不了用户的 profile patch：
+`scripts/mpd-tui-panels.ts` 会**拒绝**（试运行与 `--apply` 一视同仁，退出码 1）不带 `provenance`、
+`hostVersion` 为空、缺 `readBack` 或 `activation === "act0"` 的记录，点名失败的字段并指向
+`--ids <a,b,c>`——实测（针对被污染的 version-1 记录）：``REFUSED: … it carries no `provenance` block …``、
+退出 1、记录 sha256 不变、`--ids act1:team,act1:workmate` 被接受、脚本 `--self-test` 全绿（每种拒绝形状
+一条臂，外加格式良好的 version-2 记录被接受）。
+
+**0.14.0 的 `PanelBar` 不再绘制插件的图标，这是**宿主**的事实，而不是本 bundle 的改动。**
+`components/sidePanel/PanelBar.js` 现在是一个**轮播**：当前标签页的标题居中绘制（`ActiveTitle`——
+加粗、`wrap: "truncate-end"`），其余每个标签页是一个 `○` 圆点——带徽标时是 `●`——按算出的间距
+（pitch）摆放，溢出时开窗。在已安装源码上实测：`grep -c icon lib/types/components/sidePanel/PanelBar.js`
+为 **0**。描述符的 `icon` 仍被宿主校验器**要求**，每个 MPD 页面也仍然声明它（图标不是恰好一个单元格
+就会被拒绝）；只是它不再被绘制。因此本 bundle 图标臂从宿主自己的 `builtinPanels.js` 读到的碰撞集合
+从七个变成**八个**——`≡ ▸ ◆ ⓘ ∿ ⌗ ? ♥`，新增的那个是 `btw` 的 `?`。
+
+**本波次的证据，以及每一份读数各值多少。** 上面的宿主读数都取自已安装的那棵树
+（`/root/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui`，`version` 为 0.14.0），并且
+是与本修订同一步写下的——`DEFAULT_SIDE_PANEL_IDS`、`SIDE_PANEL_ID_PATTERN`、冻结描述符字面量、
+`canExpand` 的源码、`PanelBar.js` 中不含 `icon` 的正文，以及 `builtinPanels.js` 的八个图标，全部是从
+那些文件里读出来的，而不是凭记忆写的。接缝的逐字节相同是本波次对两棵已安装树的比对。图例缺陷由一条
+**挂载实例**臂钉住：它导入宿主真正的 React/ink
+（`packages/mpd-tui-plugin/test/panel-legend-mount.test.ts`）并走完点击序列——修复前的行数序列为
+`[4,5,5,5,6,6,6,7,7]`，修复后在每一步都是 `4`——再加上实测的测试套件：`bun test ./packages/mpd-tui-plugin
+./packages/mpd-tui-adapter-plugin` = **469 通过 / 0 失败**（冻结版本的读数：波次前 454 → 469，即被恢复的
+44 条测试文件加上 15 条新臂）。
+**全仓范围**上，本波次的验证记录 `rec-20261008T030715-f1a2ad` 读作 **1632 通过 / 3 跳过 / 2 失败**——两条
+红是**已声明**的环境缺陷，对照合同波次前的 1615 / 3 / 4——本页引用该记录，而不是自行重算。记录完整性的
+边界也用同一方式测量：上述套件
+运行前后该文件的 sha256 **不变**。**补救命令的这两处读法并不矛盾——它们是同一条命令在它自身修复之前与之后
+的行为，两者都刻意保留在这里。**在读取侧守卫落地之前（实测于 2026-10-08，即本波次更早的时刻），对
+被污染的记录执行一次 `node scripts/mpd-tui-panels.ts` 试运行会**打印**它打算写入的 `act0:*` id——那是缺陷
+的实证，也正是守卫存在的原因。而在该修复之后，**当前、实测**的行为是同一条命令打印
+``REFUSED: … it carries no `provenance` block (a version-1 record, whose ids cannot be traced to a boot)
+… or pass --ids <a,b,c>`` 并退出 1（见 §3.3 与上文来源信息一段）；修复前那一行是**历史**，不是对现在这版
+脚本的描述。本波次的沙箱与真机 PTY 通道（mount、panels、surfaces、deps/`Ctrl+A`、
+team surface、admission）记录在 `evidence/tui/lanes/**` 下；Docker 通道在
+rootful 守护进程上给出的是 NOTICE 而不是通过——**SKIP 不是通过**，本页不会把它写成通过。
+
+**边界（边界是主张的一部分）。**（a）MPD 依旧无法观测**渲染**：宿主的事件集合是
+`registered|unregistered|badge|error|disabled`，而 `open()` 回答的是**送达**，因此插件只陈述它知道的
+事，页面正文由单元臂与钉住的 PTY 抓取断言，绝不由插件自己的分支断言。（b）宿主自己的 `⤢` 对插件面板依旧
+不可达，因此 `capabilities` 依旧不声明——不发布点了没反应的按钮，而且这是一条边界而不是 TODO。（c）记录的
+来源信息在**两侧**都被强制执行（写入侧拒绝不可证明的记录，读取侧点名拒绝），而 `--ids` 是用户已知 id 时
+记录在案的逃生口。（d）`PanelBar` 的这次
+变化是**宿主**的事实：本页描述的是 0.14.0 的行为，将来若某个宿主重新绘制图标，也不会与本页任何 MPD 主张
+相矛盾——每个描述符仍然声明图标。

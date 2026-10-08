@@ -1,0 +1,117 @@
+{
+  "lane": "tui-014-lanes",
+  "phase": "A — prerequisite and --self-test arms only",
+  "boardTask": "tui-014-lanes (T4)",
+  "frozenContract": ".mpd/plans/tui-014-adaptation.md",
+  "note": "Phase A runs BEFORE the code freeze. Board tasks tui-014-code (T1) and tui-014-pins (T2) were still in_progress at run time, so the sandbox lanes and the Docker lane were NOT started. Nothing here is a substitute for those lanes.",
+  "isolation": {
+    "scratchRoot": ".qa-tui014-lanes/ (T-77 shape ./.qa-<slug>/, covered by the .gitignore rule /.qa-*)",
+    "realDshHome": "never read or written; no user profile cordis.patch.yml was touched",
+    "writeScope": "evidence/tui/lanes/** only (the task's declared writeScopes)"
+  },
+  "environment": {
+    "repoHead": "a129d7117751bcceaf53b833fba82a68a5fb033b",
+    "repoHeadSubject": "release: v0.12.0 — the product page, and one bundle on two surfaces",
+    "worktreeAtSweepStart": "clean",
+    "worktreeDuringPhaseA": "9 modified files appeared (docker/*, docs/tui*.md — the pins writer T2 was editing concurrently). Case tui-spec-conformance.ts and every input it reads (dsh-plugin.json, the pinned spec checkout) are UNMODIFIED, so the red below is baseline state, not a wave edit.",
+    "dshLauncherVersion": "0.2.0-rc.2",
+    "dshTuiOnPath": "/root/.nvm/versions/node/v24.16.0/bin/dsh-tui (@deepseek-harness-tui/dsh-tui 0.14.0, global install mtime 2026-10-08T01:19:43Z)",
+    "dshTuiProfileVersion": "0.14.0 (/root/.dsh/profiles/dsh-tui)",
+    "tmux": "/usr/bin/tmux",
+    "bun": "/root/.nvm/versions/node/v24.16.0/bin/bun (pinned toolchain also present at .toolchain/node_modules/.bin/bun)",
+    "docker": "29.8.0, DockerRootDir=/var/lib/docker, SecurityOptions without name=rootless => ROOTFUL (so the real-PTY lane needs --allow-rootful-docker)",
+    "dockerCompose": "v5.5.1"
+  },
+  "steps": [
+    {
+      "id": "A1",
+      "step": "bun run test:qa (all QA --self-test arms)",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 bun run test:qa",
+      "startedUtc": "2026-10-08T01:57:00Z",
+      "finishedUtc": "2026-10-08T01:58:07Z",
+      "exitCode": 1,
+      "subjects": 44,
+      "subjectsGreen": 43,
+      "skips": 1,
+      "skipsAreNotPasses": true,
+      "raw": ["test-qa.stdout.log", "test-qa.stderr.log"],
+      "skipRecords": [
+        {
+          "marker": "[mpd-qa] SKIP case=tui-distribution lane=real reason=absent-fixture prereq=vendor/meta-protocols/dsh-distribution in a mounted dsh-ecosystem-spec checkout remedy=\"check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT\"",
+          "reasonCode": "absent-fixture",
+          "lane": "real",
+          "subject": "tui-distribution",
+          "classifiedAs": "REPORTED NON-RESULT — never counted as a pass"
+        }
+      ],
+      "failure": {
+        "subject": "tui-spec-conformance.ts",
+        "lane": "self-test",
+        "exitCode": 1,
+        "failingAssertion": "the three-way identity must reproduce",
+        "assertionSource": "skills/dsh-qa/scripts/tui-spec-conformance.ts, self-test arm guarded by `if (resolveHostRoot() !== undefined)`",
+        "measured": "8 of 8 sampled rows carry checkoutDigest === expectedPrefix but NO installedDigest (JSON omits the undefined field), so `matches` is false for every row",
+        "rows": [
+          { "relative": "registry/registry-0.15.json", "expectedPrefix": "c3090dd129aadb06", "checkoutDigest": "c3090dd129aadb06", "installedDigest": null, "matches": false },
+          { "relative": "schemas/conformance-claim.schema.json", "expectedPrefix": "447940843bd9324a", "checkoutDigest": "447940843bd9324a", "installedDigest": null, "matches": false },
+          { "relative": "schemas/effect-ledger-record.schema.json", "expectedPrefix": "bfa0ea159daa1ab8", "checkoutDigest": "bfa0ea159daa1ab8", "installedDigest": null, "matches": false },
+          { "relative": "schemas/host-descriptor.schema.json", "expectedPrefix": "4b76c43de2d7f8d0", "checkoutDigest": "4b76c43de2d7f8d0", "installedDigest": null, "matches": false },
+          { "relative": "registry/permissions-0.1.json", "expectedPrefix": "1e2cfeaa860936f1", "checkoutDigest": "1e2cfeaa860936f1", "installedDigest": null, "matches": false },
+          { "relative": "registry/contracts/decision-events-v1alpha1.json", "expectedPrefix": "56440dde1b00c210", "checkoutDigest": "56440dde1b00c210", "installedDigest": null, "matches": false },
+          { "relative": "protocols/tui-channel.js", "expectedPrefix": "2f9512d3c415fa1b", "checkoutDigest": "2f9512d3c415fa1b", "installedDigest": null, "matches": false },
+          { "relative": "protocols/profile-definitions.js", "expectedPrefix": "2c0eead58688abaa", "checkoutDigest": "2c0eead58688abaa", "installedDigest": null, "matches": false }
+        ],
+        "rootCause": {
+          "statement": "ENVIRONMENT-dependent, not wave-caused: resolveHostRoot() resolves the `dsh-tui` launcher on PATH (the 0.14.0 GLOBAL nvm install created 2026-10-08T01:19:43Z), whose root carries no `dsh-ecosystem-spec/` directory, while the pinned SPEC_ROOT checkout does. verifyCrossCheckIdentity() therefore reads installedDigest === undefined and every row fails.",
+          "resolveHostRootRule": "DSH_TUI_ROOT first, else dirname(dirname(realpath(<dsh-tui on PATH>))) — skills/dsh-qa/scripts/lib/tui-lane.ts",
+          "resolvedHostRootMeasured": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-harness-tui/dsh-tui (has dsh-ecosystem-spec: false; entries: LICENSE README.md assets bin cordis.patch.yml cordis.yml guide lib node_modules package.json presets tui-profile vendor)",
+          "specCheckoutMeasured": "/root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec exists, conformance/requirements-v0.15.json exists",
+          "profilesCopyAlsoLacksPayload": "/root/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui has no dsh-ecosystem-spec either",
+          "notTheWavesSubject": true,
+          "whyNotWaveCaused": "The failure reproduces with the wave's edits absent from the case's inputs (case .ts unmodified, dsh-plugin.json unmodified, tree clean when the sweep started) and reproduces with MPD_E2E_TUI_VERSION unset."
+        },
+        "independentFalsification": {
+          "command": "DSH_TUI_ROOT=/root/dshProj/tui/dsh-TUI node skills/dsh-qa/scripts/tui-spec-conformance.ts --self-test",
+          "exitCode": 0,
+          "observed": "[tui-spec-conformance self-test] ok: matrix mapping two-sided, identity table reproduces on 8 files",
+          "meaning": "Pointing the host root at a copy that DOES carry the payload turns the arm green — the missing installed payload, not the identity claim, is what reddens.",
+          "raw": "tui-spec-conformance.falsification.log"
+        },
+        "hostPackagesCarryNoPayload": {
+          "measurement": "curl <tarball> | tar -tz | grep -c 'dsh-ecosystem-spec'",
+          "results": { "0.13.0": 0, "0.14.0": 0 },
+          "meaning": "Neither the 0.13.0 nor the 0.14.0 PUBLISHED host tarball ships dsh-ecosystem-spec, so this red is not specific to 0.14.0 — installing either version globally reproduces it. Historically the arm was SKIPPED (no dsh-tui on PATH), which is why the September logs printed the same 'ok' sentence: that green never asserted the identity."
+        },
+        "action": "REPORTED, NOT REPAIRED. Evidence-only task: the fix (a PREREQ route or a payload-independent host-root probe) belongs to a QA-script writer."
+      }
+    },
+    {
+      "id": "A2",
+      "step": "node scripts/docker-e2e.ts --self-test (offline arms of the real-PTY lane driver)",
+      "command": "node scripts/docker-e2e.ts --self-test",
+      "finishedUtc": "2026-10-08T02:01:52Z",
+      "exitCode": 0,
+      "observed": "[self-test] all arms passed (offline: no docker, no network) — 19 arms, including 'a ROOTFUL daemon is SKIPPED with a notice, not failed' and '--allow-rootful-docker opts a rootful daemon in'",
+      "raw": "docker-e2e.selftest.log"
+    },
+    {
+      "id": "A3",
+      "step": "lane --self-test arms for the four sandbox lanes (covered by A1; per-case lines quoted)",
+      "exitCode": 0,
+      "observed": [
+        "[tui-mount self-test] ok: layering, crash-scan, boot-face and isolation predicates are two-sided",
+        "[tui-panels self-test] ok: 8 surfaces asserted, negative controls fail as required",
+        "[tui-team-surface self-test] ok: fixture, parser, assertion falsifiability and the dist invariants all hold",
+        "[tui-deps-ctrla self-test] ok: 4 legacy + 3 seam-present arms asserted; the arrow, the takeover, the flip, the store pair and the contact controls all fail as required",
+        "[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided"
+      ]
+    }
+  ],
+  "notRun": {
+    "sandboxLanes": ["tui-mount.ts --install", "tui-panels.ts", "tui-team-surface.ts", "tui-deps-ctrla.ts"],
+    "realPtyDockerLane": "node scripts/docker-e2e.ts --mode source --allow-rootful-docker",
+    "reason": "T4 says DO NOT START until tui-014-code and tui-014-pins are reported complete; both were in_progress. These lanes run only against the FROZEN code and a host spec that reads 0.14.0.",
+    "preconditionNote": "The lane headers' PREREQ/remedy strings still name 0.13.0 (tui-mount.ts TUI_HOST_SPEC default is `process.env.MPD_E2E_TUI_VERSION ?? \"0.13.0\"`); that is the pins task's (T2) subject and was still open. MPD_E2E_TUI_VERSION=0.14.0 was exported for the sweep so the host spec matches the target."
+  },
+  "verdict": "PHASE A COMPLETE — 43/44 self-test subjects green, 1 environment-dependent RED reported with its exact failing assertion and a proven root cause, 1 SKIP reported with its reason code. No sandbox or Docker lane has been run yet."
+}

@@ -27,7 +27,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd panel`, `/mpd dag`, `/mpd workmate`, `/mpd workmates` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
 | Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks slot → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
-| Sidebar pages (dsh-tui 0.13.0) | `ctx.tuiPanels` (through the adapter) | THREE pages — `team` (`MPD`, `order` 10, the merged view), `dag` (`MPD DAG`, `◈`, `order` 11) and `workmate` (`MPD workmate`, `⬢`, `order` 12) — the merged page declares `❖`, so none of the three falls back to a letter and none collides with a host tab icon; all `minColumns` 28 and no `compact`. `alt+a` / `/mpd panel` route to the merged view through `tuiPanels.open()` when the seam is bound; `/mpd dag` and `/mpd workmate` route to their own pages. EVERY refusal FALLS BACK to that page's full-screen scene (`mpd-tui-subagents` for `team`/`dag`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
+| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.14.0) | `ctx.tuiPanels` (through the adapter) | **TWO** pages since the 0.14.0 wave — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body) and `workmate` (`MPD workmate`, `⬢`, `order` 12). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. Both pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and both ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
 | Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: this is the FALLBACK surface — `alt+a` and `/mpd panel` land here when the host has no panel seam or refuses the open — and on a pre-0.13.0 host **`Ctrl+A`** reaches it whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
 | `Ctrl+A` take-over | a `ctx.tuiStatus` view + the adapter's host-input contact | `Ctrl+A` opens the merged panel instead of the host's own dashboard while the team projection holds a team with at least one task; with no team — or on a host whose input bus the adapter cannot reach — the key behaves exactly as before (`tui.dashboardKey`, default `true`; see NOT CLAIMED 7-9) |
 | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
@@ -37,31 +37,43 @@ Supporting surfaces (not one of the seven seams): the `/mpd` command on the
 harness command registry, the `mpd` settings namespace registration, and the
 log-only `mpd-tui/board-opened` session record.
 
-### Three sidebar pages (dsh-tui 0.13.0): the merged view, the DAG and the workmate shelf
+### Two sidebar pages (since the 0.14.0 wave): the merged rich page `MPD` and the workmate shelf
 
-The bundle contributes **three** pages through the host's `tuiPanels` seam, each with its own FROZEN
+The bundle contributes **TWO** pages through the host's `tuiPanels` seam, each with its own FROZEN
 descriptor (`*_DESCRIPTOR_FROZEN` at module scope) and each inside the host's own
 `MAX_PANELS_PER_PLUGIN = 4` budget:
 
 | Module | slug (the host prefixes it with the activation's plugin id) | title | icon | `order` | `minColumns` |
 |---|---|---|---|---|---|
 | `src/panel.ts` | `team` | `MPD` | `❖` | 10 | 28 |
-| `src/panel-dag.ts` | `dag` | `MPD DAG` | `◈` | 11 | 28 |
 | `src/panel-workmate.ts` | `workmate` | `MPD workmate` | `⬢` | 12 | 28 |
 
-**Every icon must be DISTINCT from the host's own seven tab icons** — `≡` (its `todo` panel), `▸` (jobs),
-`◆` (agents), `ⓘ` (info), `∿` (trajectory), `⌗` (workspace), `♥` (companion) — and exactly one cell under
+**The third page this section used to table — `src/panel-dag.ts`'s standalone `dag` page — is RETIRED and
+MERGED INTO the `MPD` panel** (the user's clause 「DAG页作为MPD面板」; the wave's record is `docs/tui.md`
+§11.6). One descriptor, one slug and one ordered position collapsed out of the two: the surviving slot
+renders the DAG page's rich body (frame, header + progress, legend, key-hint footer, click-to-pin detail
+body, three layouts, badge) with the host's curated subagent rows drawn ABOVE the drawing inside the same
+frame, and the separate plain merged renderer is deleted rather than kept beside it. **No entry point
+became a dead end**: `/mpd dag` re-aims onto the `MPD` panel's discovered id (with the rich team scene as
+that route's fallback), while `/mpd panel`, `/mpd subagents` and `alt+a` already routed through the same
+slot. The `◈` icon the retired page declared is declared by nothing now.
+
+**Every icon must be DISTINCT from the host's own tab icons** — `≡` (its `todo` panel), `▸` (jobs),
+`◆` (agents), `ⓘ` (info), `∿` (trajectory), `⌗` (workspace), `?` (`btw`, the eighth builtin 0.14.0 adds),
+`♥` (companion) — and exactly one cell under
 BOTH this package's `sanitize.cellWidth` and the host's `stringWidth`, because the host REJECTS a
 registration whose icon is not exactly one cell. The merged page used to declare no icon and the host
 therefore drew the fallback letter `M`; the workmate page used to declare `◆`, which is byte-identical
 to the host's own `agents` tab and so was not a distinct symbol at all. Both are fixed here, and the
-whole set is asserted by the package suite.
+whole set is asserted by the package suite — **against the host's own registry, not a literal list**,
+because 0.14.0's `PanelBar` no longer PAINTS an icon: the field stays required and declared, it is simply
+not drawn (`grep -c icon …/PanelBar.js` is 0 on the installed 0.14.0).
 
-Every page is `apiVersion` 1 (the only value 0.13.0 accepts) and declares **no `compact`**: 0.13.0
+Every page is `apiVersion` 1 (the only accepted value) and declares **no `compact`**: the host
 validates and stores that row slot but does not mount its render slot, so declaring one would claim a
 surface the host never draws.
 
-**ALL THREE ASK FOR `minColumns` 28 — the host's own floor — and that number is the fix for the defect
+**BOTH ASK FOR `minColumns` 28 — the host's own floor — and that number is the fix for the defect
 that made the old panel invisible.** The host's `components/sidePanel/PanelHost.js` computes
 `tooNarrow = def.minColumns !== undefined && width < def.minColumns` and renders a `panel-too-narrow`
 notice **instead of** the page's body, while `components/sidePanel/dimensions.js` puts the panel column
@@ -69,14 +81,15 @@ at exactly its own `PANEL_MIN_COLUMNS = 28` at the split threshold. The previous
 host for 32, which created a band of terminal widths in which the sidebar opened, the tab existed, and
 the user was shown a refusal notice rather than the team graph. The host's descriptor validator accepts
 32 happily, so nothing reddened at registration; only a width-band test catches this class. Readability
-at 28 columns is the PAGE's own job (the DAG page picks `boxes`/`rail`/`list` from the width it is
+at 28 columns is the PAGE's own job (the page picks `boxes`/`rail`/`list` from the width it is
 actually given), never a demand that the host widen the column.
 
 The registration is safe on every host build: the apply-time `registerPanel(...)` is QUEUED by the
 adapter's deferred binder and settled as `absent` where no `tuiPanels` service exists, and it never
 throws. The final id is not composed here — it is DISCOVERED from the host's own `list()` read-back,
-which is why the debug line reads `sidebar panel id: act1:team` (measured) on the real 0.13.0 host and
-`(not discovered)` everywhere else.
+which is why the debug line reads `sidebar panel id: act1:team` (measured) on a real host and
+`(not discovered)` everywhere else; the recorded set is what ACTUALLY registered, so it carries the two
+surviving ids and no third one.
 
 **HOW A USER ACTUALLY REACHES A PAGE — read this paragraph before concluding a page is missing.** The
 final id is DYNAMIC (`<activationId>:<slug>`; measured `act1:team`, `act1:dag`, `act1:workmate` in a
@@ -107,9 +120,27 @@ Two INDEPENDENT routes now hold the list:
   token and never reordering one. A list that names **ANY** of ours is a configuration that has taken a
   position on this bundle — you enabled us in `/settings`, or ran the script below, or deliberately
   removed some of us and kept the rest — and the keeper **stands down**, so it can never put back a page
-  you meant to remove. It walks six ticks over the first ~25 s and then **stops for good**. The ids it
-  discovered are recorded to `<workspace>/.mpd/logs/mpd-tui-panels.json`, because no source constant can
-  know them. This is the adapter's SECOND host-internals contact (the first is the `Ctrl+A` `useStdin`
+  you meant to remove. **Since the 0.14.0 wave the keeper is FEED-FIRST**: it installs the host's own
+  `subscribeSidePanelPanels` subscription, so a list the host's config re-apply wipes is repaired as it
+  happens instead of after the fact, and the bounded tick ladder (six ticks over ~25 s, then stop for
+  good) survives only as the degrade path for a host that exposes no such feed. The subscription is
+  released with the injected scope, never throws on a host without that module, and our own write ends
+  the loop because it contains our ids. The ids it discovered are recorded to
+  `<workspace>/.mpd/logs/mpd-tui-panels.json`, because no source constant can
+  know them — **and the record now carries PROVENANCE** (`{hostRoot, hostVersion, readBack,
+  activation}`, record schema version 2): a unit test run had driven the real recorder with the
+  impossible `act0:*` ids (the installed host's `pluginIdFor` counter pre-increments, so the first bare
+  activation is `act1`), and the recorder now REFUSES to write a record it cannot trace to an installed
+  host package and a host read-back. **The READER guards the same proof**, so a polluted record can no
+  longer reach a user's profile patch: `node scripts/mpd-tui-panels.ts` REFUSES (dry run and `--apply`
+  alike, exit 1) a record that carries no `provenance`, a blank `provenance.hostVersion`, no
+  `provenance.readBack`, or `provenance.activation === "act0"`, naming the field that failed and pointing
+  at `--ids a,b,c` as the escape. Measured against the polluted version-1 record: `REFUSED …`, exit 1, the
+  record's sha256 unchanged by the run, `--ids act1:team,act1:workmate` accepted, and the script's own
+  `--self-test` green with one arm per refusal shape. **The file on disk stays the polluted version-1
+  record until a real boot of the host rewrites it**, which is why the remedy refuses it today and why
+  `--ids` is the documented escape. This is the adapter's
+  SECOND host-internals contact (the first is the `Ctrl+A` `useStdin`
   reach; AGENTS.md §6 counts that class, so both are named in that file).
   **Named residual:** a user who removes **ALL** of ours on purpose leaves a list indistinguishable from a
   fresh profile's, so the keeper re-adds the set once per boot. Telling those two cases apart needs the
@@ -126,8 +157,10 @@ Two INDEPENDENT routes now hold the list:
 
 With both switches in place, `/panel <id>` switches to the page (`/panel toggle` / `focus` / `zoom` are the
 other forms) and `Alt+Z` zooms it. Measured WITHOUT them: the bar reads `│ ‹ 待办 › ▸ ◆` and the host's
-live enable list is `toggle, focus, zoom, todo, jobs, agents`. Measured WITH them, at 120 columns: the
-bar carries `‹ MPD ›`, `‹ MPD DAG ›` and `‹ MPD workmate ›` and the page body renders. The panel column
+live enable list is `toggle, focus, zoom, todo, jobs, agents`. Measured WITH them, at 120 columns, on the
+pre-merge THREE-page set: the bar carried `‹ MPD ›`, `‹ MPD DAG ›` and `‹ MPD workmate ›` and the page
+body rendered. **After the merge the bar carries TWO MPD tabs — `‹ MPD ›` and `‹ MPD workmate ›`.** The
+panel column
 exists only where the host splits — at 80 and 48 columns the same capture reports `split=false`, i.e. no
 panel column at all, which is the host's own threshold and not an MPD setting.
 
@@ -158,11 +191,14 @@ routed outcome in the active language (`panel.opened` / `panel.fallback` / `pane
 `panel.unavailable`), so a fallback can never be read as "the panel opened", and a host that BOUND the
 seam yet REFUSED the registration says refused — never "this host exposes no panel seam".
 
-**The two independent pages route the same way.** `/mpd dag` and `/mpd workmate` call `openPage(...)`
-with the same arbitration and each page's own FALLBACK scene (`dag` → the full-screen merged subagents
-scene, `workmate` → the board scene), and each prints `slug · <the same routed sentence>`, so the line
-names WHICH page the host admitted and the final id it went to. The bare-`/mpd` action picker gains the
-same two actions, and every child row carries both languages for the host's `/lang`.
+**The routes resolve through the same arbitration, and the retired page did not leave a hole.**
+`/mpd dag` now re-aims onto the `MPD` panel — the DAG page IS that panel, so the route reaches the very
+page it names rather than a second registration of it — with the **rich team scene** (`mpd-tui-team`) as
+that route's fallback (the reader must not fall from a rich page into a bare one), while `/mpd workmate`
+keeps its own page and its board-scene fallback. Each prints `slug · <the same routed sentence>`, so the
+line names WHICH page the host admitted and the final id it went to, and the fallback can never be read
+as "the panel opened". The bare-`/mpd` action picker keeps both actions, and every child row carries both
+languages for the host's `/lang`.
 
 **`Ctrl+A` is VERSION-GATED.** On a host that offers the panel seam the legacy host-input contact is
 skipped outright — `takeoverArmed(seamBound, savedKnob, floor)` returns `false` whatever the config
@@ -200,16 +236,20 @@ Evidence: `evidence/tui/lanes/2026-10-06T10-27-42.389Z/` (mount lane PASS),
 `evidence/tui/lanes/2026-10-06T10-27-53.571Z/` (7 of 8 surfaces render, the panel row green, the negative
 control red), `evidence/tui/lanes/2026-10-06T10-28-57.807Z/` (the host's `Ctrl+A` stayed INERT and
 `/mpd panel` proved the sidebar registration + an accepted open),
-`evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`, and — for THIS wave's three
-pages — `evidence/tui/dag-port/verification/pty/frozen/` (the frozen-revision PTY capture: the three MPD
+`evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`, and — for the PRE-merge
+three-page set that the 0.14.0 wave replaced —
+`evidence/tui/dag-port/verification/pty/frozen/` (the frozen-revision PTY capture: the three MPD
 tabs in the bar, the pin/unpin key set, and the width matrix with its `split=false` arms) plus
 `evidence/tui/dag-port/seam-guard/20261006T135423Z/T6-WIRING.md` (the wiring and the R26 wording).
 
-### The DAG page: adaptive vertical ranks, the six tones and the legend
+### The DAG page's body: adaptive vertical ranks, the six tones and the legend
 
-`src/panel-dag.ts` is the dependency DAG as its OWN page (frozen R1), with the chrome the merged panel
-cannot afford: a bordered frame, a header naming the team and its progress, the drawing, the legend, and
-a footer naming the keys this page really handles.
+`src/panel-dag.ts` is the dependency DAG's rich body with the chrome the pre-merge plain merged page
+could not afford: a bordered frame, a header naming the team and its progress, the drawing, the legend, and
+a footer naming the keys this page really handles. **Since the 0.14.0 wave it is what the `MPD` sidebar
+panel RENDERS** (the user's clause 「DAG页作为MPD面板」): the module keeps its rendering and loses only
+its own registration, and the host's curated subagent rows are drawn above it inside the same frame.
+Everything below is unchanged by that merge.
 
 - **Vertical and adaptive, with no fixed size anywhere.** Rank is the VERTICAL axis (top→bottom), and
   the drawing is REUSED from `graph.ts` rather than re-implemented: `layoutBoxes` (one bordered box per
@@ -618,7 +658,9 @@ only when no logger exists to `stderr`, with `debug` gated behind
     host's own `agents` tab) and the merged page gained `❖`. Without them the bar carries only the host's
     own three
     tabs, and at 80/48 columns the host reports `split=false`, so there is no panel column at all. The
-    page ids are DYNAMIC (`<activationId>:<slug>`; measured `act1:team`, `act1:dag`, `act1:workmate`), and
+    page ids are DYNAMIC (`<activationId>:<slug>`; measured before the 0.14.0 merge as `act1:team`,
+    `act1:dag`, `act1:workmate` — the recorded set is what ACTUALLY registered, so it now carries the two
+    surviving ids and no third one), and
     a patch row may not id-target the host's row to set either switch, so the remedy is documented user
     steps (see the reachability paragraph). What the plugin itself knows is a composed id and an accepted
     `open()` request — never a paint: the host's `TuiPanelEvent` set carries no `opened`/`focused` (an

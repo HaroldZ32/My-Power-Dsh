@@ -264,6 +264,109 @@ instead of the literal strings they used to carry.
   that has none — and the Workmate library), and that is the surface which must work; the old text
   promised one warning and "no surface outside the sidebar".
 
+### DSH-TUI 0.14.0: fifteen unchanged seams, an eight-builtin panel bar, and a sidebar that carries two MPD pages
+
+**Changed.**
+
+- **The DSH-TUI edition is adapted to `@deepseek-harness-tui/dsh-tui` 0.14.0, and the adaptation needed
+  NO adapter code change for the seam surface.** MEASURED on the installed tree: the fifteen
+  plugin-facing `ctx.tui*` seam modules and their declarations under the host's
+  `lib/types/dsh-adapter/` (`panels`, `scenes`, `status`, `renderers`, `settings-sections`,
+  `shortcuts`, `dialogs`, `command-trees`, `plugin-host`, `toast`, `themes`, `plugin-storage`,
+  `message-observer`, `effect-ledger`, `workspaces`, each `.js` + `.d.ts`) are **byte-identical** to
+  0.13.0, there is no sixteenth seam, and the harness `peerDependencies` lists still end at
+  `0.2.0-rc.2` — so `MPD_E2E_DSH_VERSION` does not move. The release's OWN additions are named because
+  a reader meets them on the host: the **Claude backend peer** (`@anthropic-ai/claude-agent-sdk`
+  0.3.287, the one peer the release adds), the **`ws` runtime dependency** (`^8.21.3`, absent at
+  0.13.0), an **eighth** builtin sidebar panel (`btw`) and the rewritten `PanelBar` below.
+- **The host's default enable CSV grew from three builtins to eight, and the bundle's own test now
+  pins the INVARIANT rather than a literal.** `DEFAULT_SIDE_PANEL_IDS` is
+  `todo,jobs,agents,info,trajectory,workspace,btw,companion` on the installed 0.14.0
+  (`lib/types/tuiDisplayPrefs.js`), where 0.13.0 carried `todo,jobs,agents`. The two arms that pinned
+  the three-id literal — and therefore reddened when the HOST grew — now assert what the clause is
+  for: nothing of ours appears in that default, and every id in it passes the host's own
+  `SIDE_PANEL_ID_PATTERN`. The file's premise is that it re-judges itself when the installed host
+  changes, so a new literal (old or new) would reintroduce the same defect. Measured on this revision:
+  `bun test ./packages/mpd-tui-plugin ./packages/mpd-tui-adapter-plugin` = **469 pass / 0 fail**, and
+  repo-wide the wave's verification record `rec-20261008T030715-f1a2ad` reads **1632 pass / 3 skip /
+  2 fail** — the two reds are the declared environment defects, down from the contract's pre-wave
+  1615 / 3 / 4.
+- **`PanelBar` no longer paints a plugin's declared icon — a HOST fact, and the bundle's icon arm
+  follows it.** `components/sidePanel/PanelBar.js` is a carousel on 0.14.0: the active tab's title is
+  centred, every other tab is one `○` (`●` with a badge) dot placed by a computed pitch, and the file
+  carries no `icon` reference at all (`grep -c icon …/PanelBar.js` = **0**). An `icon` is still
+  REQUIRED by the host's validator and still declared by every MPD descriptor (an icon that is not
+  exactly one cell is a refusal); it is simply no longer drawn. The collision set read from the host's
+  own `builtinPanels.js` is now **eight** icons — `≡ ▸ ◆ ⓘ ∿ ⌗ ? ♥`, the new one being `?` for `btw`.
+- **The `⤢` bound is re-measured on 0.14.0 and still holds.** `dsh-adapter/panels.js` still freezes a
+  plugin definition to `{id, title, icon, order, minColumns, source, pluginId, mountPolicy, component,
+  compact}` with **no `capabilities`**, while `components/sidePanel/SidePanelColumn.js`'s `canExpand`
+  reads `activeEntry?.definition.capabilities?.fullscreen === true`, so the host's own `⤢` remains
+  unreachable for a plugin panel and `capabilities` stays undeclared — a dead button is not shipped.
+  MPD's own control is what opens its full-screen surface, and that surface carries the page's same
+  rich appearance.
+- **The 0.14.0 pin moved on every carrier that names the release, in one wave**: `docker/**` (both
+  `MPD_E2E_TUI_VERSION` defaults in `docker-compose.yml`, the same key in `docker/ui/docker-compose.yml`,
+  `docker/entrypoint.sh`'s `TUI_VERSION`, `docker/ui/entrypoint.sh`'s two `MPD_UI_TUI_VERSION` defaults,
+  `docker/tui-lane.sh`'s `TUI_VERSION` and its `PREF_WRITER` probe string), the distribution
+  descriptor's `host-tui` ref (`dsh-distribution.json` is
+  `pkg:npm/@deepseek-harness-tui/dsh-tui@0.14.0` now) and the seven QA carriers under
+  `skills/dsh-qa/scripts/**`. **Two carriers deliberately did NOT move**: `MPD_E2E_DSH_VERSION` keeps its
+  `0.2.0-rc.2` default, because the harness peer range is unchanged; and `dsh-plugin.json`'s
+  `compat.hosts` stays at `@deepseek-harness-tui/dsh-tui@0.10.1`, because that field records the
+  **0.10.1 admission measurement** the bundle was admitted against — not the TUI edition it targets — so
+  moving it would falsify a measurement instead of recording a target.
+- **The sidebar carries TWO MPD pages — `MPD` and `MPD workmate` — because the rich DAG page and the
+  plain merged page collapsed into one.** The user's clause 「将原先的MPD Panel和MPD DAG Panel合并，把MPD与
+  Workmate两个panel扔到侧边栏上去」/「DAG页作为MPD面板」 is met by ONE surviving registration:
+  `panel.ts`'s slot (slug `team`, title `MPD`, one-cell icon `❖`, `order` 10, `minColumns` 28, no
+  `compact`) now RENDERS `panel-dag.ts`'s rich body — bordered frame, header + progress, legend,
+  key-hint footer, click-to-pin detail body, three layouts, badge — with the host's curated subagent
+  rows drawn ABOVE the drawing inside that same frame, and the separate plain merged renderer is deleted
+  rather than kept beside it. The standalone `dag` registration is RETIRED (its `◈` icon is declared by
+  nothing now). **No user-visible entry point became a dead end**, which is the clause's own test:
+  `/mpd dag` re-aims onto the MPD panel's discovered id, `/mpd panel` / `/mpd subagents` / `alt+a`
+  already routed through that slot, `/mpd workmate` keeps its page, and the adapter's recorded id set is
+  DISCOVERED from what actually registered — two ids, never a composed three.
+- **The full-screen MPD surface is as rich as the page it comes from** (user clause 「试着适配一下全屏
+  按钮，还有全屏出来的MPD也要有这种富外观」). The page's own `⤢` opens the rich team scene
+  (`mpd-tui-team` — frame, legend, focused-task detail pane, key hints) instead of the merged subagents
+  scene, while the ROUTED fallback of `/mpd panel` and `alt+a` stays `mpd-tui-subagents`, the surface
+  that carries the host's own rows. `registerPanelSurface` takes them as two separate options, because
+  they answer two different questions.
+- **The sidebar's enable-list keeper is FEED-FIRST, and the panel-id record now carries PROVENANCE.**
+  The keeper installs the host's own `subscribeSidePanelPanels` subscription (released with the injected
+  scope, degrades where the host has no such module), so a config re-apply that wipes the CSV is
+  repaired as it happens instead of being lost when the bounded ladder ended — the durable form of
+  「看起来侧边栏挂掉了」. The stand-down rule is unchanged: a list naming ANY of our ids means a
+  configuration has taken a position on this bundle and the keeper stops for good, and our own write
+  contains our ids, so it cannot loop. `.mpd/logs/mpd-tui-panels.json` is schema version 2 with
+  `provenance {hostRoot, hostVersion, readBack, activation}`, and the recorder REFUSES to write a record
+  it cannot trace to an installed host package and a host read-back — MEASURED because a unit test run
+  had overwritten the real record with the impossible `act0:*` ids (the installed host's `pluginIdFor`
+  fallback counter pre-increments, so the first bare activation is `act1`). **The READ side enforces the
+  same proof**, so a polluted record cannot reach a user's profile patch:
+  `node scripts/mpd-tui-panels.ts` REFUSES (dry run and `--apply` alike, exit 1) a record carrying no
+  `provenance`, a blank `provenance.hostVersion`, no `provenance.readBack`, or
+  `provenance.activation === "act0"`, names the field that failed, and points at `--ids a,b,c` as the
+  escape. Measured against the polluted version-1 record: `REFUSED …`, exit 1, the record's sha256
+  unchanged by the run, `--ids act1:team,act1:workmate` accepted, and `--self-test` green with one arm
+  per refusal shape plus a well-formed version-2 record accepted.
+
+**Fixed.**
+
+- **The accumulating legend (`越点越多直到撑爆屏幕`) was a duplicate React key, and it is genuinely
+  fixed.** The legend's rows were keyed `legend-${line.slice(0, 24)}`, and the drawing's own state-key
+  line and the legend's first wrapped line both begin `✓ completed · ◐ running` — two children sharing
+  ONE key, which made React render the collided row again on EVERY re-render. Measured on a mounted
+  instance (the host's own React/ink, the pattern the panel suite already uses): the legend row count
+  walked `[4,5,5,5,6,6,6,7,7]` across eight clicks, and it is `[4,4,4,4,4,4,4,4,4]` after the fix. The key
+  is the row's position now — the same rule applied to the DAG page's detail rows and the workmate
+  page's problem rows, which had the same content-derived-key shape — and the new arm keeps the fix
+  honest by asserting the legend ROW COUNT is STABLE across N clicks: a re-render of a MOUNTED instance,
+  not a direct call of the component function, which is why the pre-existing suite could not see the
+  defect at all.
+
 ## v0.11.6 — the gate's own comments, and the manual's budget
 
 **Fixed.**

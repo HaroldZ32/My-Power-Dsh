@@ -1,0 +1,122 @@
+{
+  "slug": "tui-mount",
+  "ok": true,
+  "steps": {
+    "face": {
+      "ok": true,
+      "layering": {
+        "ok": true,
+        "missing": [],
+        "ordered": true,
+        "bundles": [
+          "@deepseek-ai/dsh-base",
+          "@deepseek-harness-tui/dsh-tui",
+          "@mpd-dsh/mpd"
+        ],
+        "reason": "triple layer in order"
+      },
+      "crashSignatures": [],
+      "statusLine": true,
+      "counters": true,
+      "rendered": true,
+      "presetSessionId": "92b4d858-602b-47ee-82bb-e7eb2271bf93",
+      "presetAgentPreset": "mpd",
+      "rowComposed": true,
+      "homeFixture": {
+        "onboarding": {
+          "completed": true,
+          "version": 1
+        },
+        "preset": "mpd",
+        "evidence": [
+          ".mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/onboarding.json",
+          ".mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/agent-preset.json"
+        ]
+      },
+      "launchpadGate": {
+        "key": "DSH_TUI_NO_LAUNCHPAD",
+        "value": "1"
+      },
+      "isolationOffenders": [],
+      "sessionKeysCreated": [
+        "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--"
+      ],
+      "sessionKeysInherited": [],
+      "expectedProjectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "sandboxSessions": 1,
+      "sandboxRoot": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b",
+      "layeringEvidence": "dump-config.txt",
+      "paneEvidence": "boot.pane.txt + tui-pane.log",
+      "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-10-08T03-02-56.630Z/preset.session.json"
+    },
+    "rowComposed": true,
+    "isolation": [],
+    "installAttempt": {
+      "hostExit": 0,
+      "bundleExit": 0,
+      "log": "evidence/tui/lanes/2026-10-08T03-02-56.630Z/install.log",
+      "root": ".mpd/recon/qa/tui-lanes/tui-014b"
+    }
+  },
+  "face": {
+    "ok": true,
+    "layering": {
+      "ok": true,
+      "missing": [],
+      "ordered": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "reason": "triple layer in order"
+    },
+    "crashSignatures": [],
+    "statusLine": true,
+    "counters": true,
+    "rendered": true,
+    "presetSessionId": "92b4d858-602b-47ee-82bb-e7eb2271bf93",
+    "presetAgentPreset": "mpd",
+    "rowComposed": true,
+    "homeFixture": {
+      "onboarding": {
+        "completed": true,
+        "version": 1
+      },
+      "preset": "mpd",
+      "evidence": [
+        ".mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/onboarding.json",
+        ".mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/agent-preset.json"
+      ]
+    },
+    "launchpadGate": {
+      "key": "DSH_TUI_NO_LAUNCHPAD",
+      "value": "1"
+    },
+    "isolationOffenders": [],
+    "sessionKeysCreated": [
+      "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--"
+    ],
+    "sessionKeysInherited": [],
+    "expectedProjectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+    "sandboxSessions": 1,
+    "sandboxRoot": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b",
+    "layeringEvidence": "dump-config.txt",
+    "paneEvidence": "boot.pane.txt + tui-pane.log",
+    "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-10-08T03-02-56.630Z/preset.session.json"
+  },
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "1c52b169ea9e71a9392d259570ad23af3b3012f39ab075c62e8141494567f2ba",
+    "bytes": 379650,
+    "mtimeLocal": "2026-10-08T02:40:43.588Z",
+    "mtimeUtc": "2026-10-08T02:40:43.588Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "1c52b169ea9e71a9392d259570ad23af3b3012f39ab075c62e8141494567f2ba",
+    "after": "1c52b169ea9e71a9392d259570ad23af3b3012f39ab075c62e8141494567f2ba",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "00884651369f45999b66ef1798cc9a9633ade7799cbcfb3c53c80a8c617198bb"
+}

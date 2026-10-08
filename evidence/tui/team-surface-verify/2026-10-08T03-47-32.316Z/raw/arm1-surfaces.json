@@ -1,0 +1,150 @@
+{
+  "registered": [
+    {
+      "id": "mpd-tui-board",
+      "title": "MPD 面板"
+    },
+    {
+      "id": "mpd-tui-team",
+      "title": "MPD 团队"
+    },
+    {
+      "id": "mpd-tui-plan",
+      "title": "MPD 计划审批"
+    },
+    {
+      "id": "mpd-tui-subagents",
+      "title": "MPD 子代理 · 团队"
+    }
+  ],
+  "commands": [
+    "mpd",
+    "mpd-model"
+  ],
+  "installErrors": [
+    "core apply: mpd-dsh-adapter: the harness tools service exposes no register()"
+  ],
+  "green": {
+    "message": "approved: plan-20261008T034632Z running · members 2 · tasks 2",
+    "attempts": [
+      {
+        "name": "agent_teams_plan",
+        "confirmation": "approve plan-20261008T034632Z",
+        "agentId": "fixture-captain-session",
+        "callIdPresent": true
+      }
+    ],
+    "facts": {
+      "titleLine": "✓ MPD plan approval — Fixture Team · 216x48",
+      "teamLine": "team Fixture Team (mpd-fixture-1) · phase staged · review -",
+      "instruction": "approval needs the exact phrase typed below, then Ctrl+X",
+      "requiredLine": "required approve plan-20261008T034632Z",
+      "requiredPhrase": "approve plan-20261008T034632Z",
+      "echoLine": "confirm",
+      "confirmEcho": "",
+      "runnableLine": "runnable yes",
+      "message": "approved: plan-20261008T034632Z running · members 2 · tasks 2",
+      "emptyState": ""
+    }
+  },
+  "reds": [
+    {
+      "mode": "empty",
+      "message": "confirmation does not match this team",
+      "attempts": [],
+      "facts": {
+        "titleLine": "? MPD plan approval — Fixture Team · 216x48",
+        "teamLine": "team Fixture Team (mpd-fixture-1) · phase staged · review -",
+        "instruction": "approval needs the exact phrase typed below, then Ctrl+X",
+        "requiredLine": "required approve plan-20261008T034632Z",
+        "requiredPhrase": "approve plan-20261008T034632Z",
+        "echoLine": "confirm",
+        "confirmEcho": "",
+        "runnableLine": "runnable yes",
+        "message": "confirmation does not match this team",
+        "emptyState": ""
+      }
+    },
+    {
+      "mode": "wrong-id",
+      "message": "confirmation does not match this team",
+      "attempts": [],
+      "facts": {
+        "titleLine": "? MPD plan approval — Fixture Team · 216x48",
+        "teamLine": "team Fixture Team (mpd-fixture-1) · phase staged · review -",
+        "instruction": "approval needs the exact phrase typed below, then Ctrl+X",
+        "requiredLine": "required approve plan-20261008T034632Z",
+        "requiredPhrase": "approve plan-20261008T034632Z",
+        "echoLine": "confirm",
+        "confirmEcho": "approve plan-some-other-plan",
+        "runnableLine": "runnable yes",
+        "message": "confirmation does not match this team",
+        "emptyState": ""
+      }
+    },
+    {
+      "mode": "cancelled",
+      "message": "confirmation does not match this team",
+      "attempts": [],
+      "facts": {
+        "titleLine": "? MPD plan approval — Fixture Team · 216x48",
+        "teamLine": "team Fixture Team (mpd-fixture-1) · phase staged · review -",
+        "instruction": "approval needs the exact phrase typed below, then Ctrl+X",
+        "requiredLine": "required approve plan-20261008T034632Z",
+        "requiredPhrase": "approve plan-20261008T034632Z",
+        "echoLine": "confirm",
+        "confirmEcho": "",
+        "runnableLine": "runnable yes",
+        "message": "confirmation does not match this team",
+        "emptyState": ""
+      }
+    }
+  ],
+  "emptyArms": [
+    {
+      "name": "malformed-record",
+      "facts": {
+        "titleLine": "? MPD plan approval — (none) · 216x48",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team (none)"
+      }
+    },
+    {
+      "name": "non-staged-record",
+      "facts": {
+        "titleLine": "? MPD plan approval — no staged plan for team mpd-fixture-1 (phase idle) · 216x48",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team mpd-fixture-1 (phase idle)"
+      }
+    },
+    {
+      "name": "absent-record",
+      "facts": {
+        "titleLine": "? MPD plan approval — (none) · 216x48",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team (none)"
+      }
+    }
+  ]
+}

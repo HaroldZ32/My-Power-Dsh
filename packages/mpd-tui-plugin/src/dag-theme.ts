@@ -207,8 +207,11 @@ export const DAG_ANIM = Object.freeze({
   staticPhase: 0,
 } as const)
 
-/** The panel slug the DAG page registers under; the host prefixes it with this activation's id. */
-export const DAG_PANEL_SLUG = "dag"
+// `DAG_PANEL_SLUG` STOOD HERE AND IS DELETED (wave `tui-014-adaptation`, clause C3), decided from the
+// code rather than from taste: a repo-wide grep over `packages/`, `scripts/` and `skills/` found ZERO
+// readers — its own declaration was the only occurrence — because the DAG page registers nothing any
+// more. The ONE surviving slug is `panel.ts`'s `PANEL_SLUG` (`"team"`), which is the descriptor the host
+// actually receives; keeping a second slug here would name a panel the sidebar cannot show.
 
 /** The panel slug the workmate page registers under. */
 export const WORKMATE_PANEL_SLUG = "workmate"

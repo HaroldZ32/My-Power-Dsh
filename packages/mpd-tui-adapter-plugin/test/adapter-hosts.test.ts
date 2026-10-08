@@ -28,6 +28,8 @@ import {
   HOST_UI_MODULE,
   SERVICE_NAME,
   TUI_SEAMS,
+  panelRecordProvenance,
+  readHostPackageVersion,
   TUI_SEAM_KEYS,
   createFileSink,
   createLazyTuiAdapter,
@@ -940,5 +942,74 @@ describe("the panels seam", () => {
     expect(refused.opened()).toBe(false)
     expect(refused.outcome().state).toBe("refused")
     expect(String(refused.outcome().detail)).toContain("5000 ms")
+  })
+})
+
+// ── the panel-id RECORD's provenance ─────────────────────────────────────────────────────────────
+//
+// WHY THIS BLOCK EXISTS. `.mpd/logs/mpd-tui-panels.json` was overwritten on 2026-10-08 with
+// `act0:team, act0:dag, act0:workmate` — ids the installed host cannot compose, because its
+// `pluginIdFor` fallback counter PRE-INCREMENTS and the first bare activation is therefore `act1` — and
+// `scripts/mpd-tui-panels.ts` reads that file to offer a write into the USER's settings layer. The arms
+// below pin the two refusals that make that impossible again: a record that cannot name the installed
+// package it read the ids from is not written, and neither is one carrying an activation no boot can
+// produce. The ACCEPT arm is the negative control that keeps the two refusals from being vacuous.
+
+describe("the panel-id record's provenance (a record the remedy can trust)", () => {
+  test("REFUSES a record that cannot name the installed host package", () => {
+    /** The reason an unnameable host produces. */
+    const noHost = panelRecordProvenance(undefined, "tuiPanels.list", ["act1:team"])
+    expect("refused" in noHost).toBe(true)
+    // A root with no version is refused too: half a provenance is a claim a reader cannot check.
+    expect("refused" in panelRecordProvenance({ root: "/somewhere/dsh-tui", version: "" }, "tuiPanels.list", ["act1:team"])).toBe(true)
+    expect("refused" in panelRecordProvenance({ root: "", version: "0.14.0" }, "tuiPanels.list", ["act1:team"])).toBe(true)
+  })
+
+  test("REFUSES a record whose ids did not come from a host read-back", () => {
+    /** The host the ids would be attributed to. */
+    const host = { root: "/somewhere/dsh-tui", version: "0.14.0" }
+    expect("refused" in panelRecordProvenance(host, "", ["act1:team"])).toBe(true)
+    // An outcome with no ids at all is not a discovery and must not overwrite a good record.
+    expect("refused" in panelRecordProvenance(host, "tuiPanels.list", [])).toBe(true)
+  })
+
+  test("REFUSES `act0` — the ONE activation the installed host cannot compose, with the measured reason", () => {
+    /** The record the test run actually produced, refused for the reason it is impossible. */
+    const impossible = panelRecordProvenance({ root: "/somewhere/dsh-tui", version: "0.14.0" }, "tuiPanels.list", ["act0:team", "act0:dag"])
+    expect("refused" in impossible).toBe(true)
+    if ("refused" in impossible) {
+      // The reason names the MECHANISM, so a reader of the boot log learns why the record was not written
+      // rather than guessing at a silent no-op.
+      expect(impossible.refused).toContain("act1")
+      expect(impossible.refused).toContain("act0")
+    }
+    // …and ids that do not share ONE activation cannot have come from one registration either.
+    expect("refused" in panelRecordProvenance({ root: "/somewhere/dsh-tui", version: "0.14.0" }, "tuiPanels.list", ["act1:team", "act2:dag"])).toBe(true)
+  })
+
+  test("NEGATIVE CONTROL: a read-back id from a named host is ACCEPTED, and carries all four facts", () => {
+    // Without this arm the three refusals above would pass against a function that refused everything.
+    /** The provenance a real boot would record. */
+    const proved = panelRecordProvenance({ root: "/somewhere/dsh-tui", version: "0.14.0" }, "tuiPanels.list", ["act1:team", "act1:dag"])
+    expect("provenance" in proved).toBe(true)
+    if ("provenance" in proved) {
+      expect(proved.provenance.hostRoot).toBe("/somewhere/dsh-tui")
+      expect(proved.provenance.hostVersion).toBe("0.14.0")
+      expect(proved.provenance.readBack).toBe("tuiPanels.list")
+      // The activation is DERIVED from the ids rather than passed in, so it cannot drift from them.
+      expect(proved.provenance.activation).toBe("act1")
+    }
+  })
+
+  test("the INSTALLED host's own version is readable — the provenance is a measurement, not a literal", () => {
+    /** The host package root this machine actually runs, resolved the way the adapter resolves it. */
+    const host = hostRootCandidates().find((candidate) => existsSync(join(candidate, "package.json")))
+    // A machine without the host cannot answer this arm; the adapter's own probe reports that separately.
+    if (host === undefined) return
+    /** The version read from that package. */
+    const version = readHostPackageVersion(host)
+    expect(version.length).toBeGreaterThan(0)
+    // A dotted version string, which is what a reader comparing hosts will match on.
+    expect(/^\d+\.\d+\.\d+/u.test(version)).toBe(true)
   })
 })

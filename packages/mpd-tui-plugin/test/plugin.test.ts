@@ -24,7 +24,6 @@ import { Context, Service } from "../../mpd-schemastery/harness/cordis/lib/index
 import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
 import { PANEL_ICON } from "../src/panel"
-import { DAG_PANEL_ICON } from "../src/panel-dag"
 import { WORKMATE_PANEL_ICON } from "../src/panel-workmate"
 import { COMMAND_ACTIONS, MODEL_COMMAND } from "../src/command-trees"
 import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
@@ -32,7 +31,8 @@ import { createLog } from "../src/log"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
 import { SHORTCUT_BINDINGS } from "../src/shortcuts"
 import { STATUS_KEY } from "../src/status"
-import { registerScene } from "../src/scenes"
+import { TEAM_SCENE_ID, registerScene } from "../src/scenes"
+import { SUBAGENT_SCENE_ID } from "../src/subagent-scene"
 import { DECISION_EVENTS } from "../src/decisions"
 
 /** What a registration returns: a cleanup, or nothing at all. */
@@ -411,12 +411,14 @@ describe("full composition (every service injected)", () => {
       expect(injected).toContain(id)
     }
 
-    // tuiPanels (dsh-tui 0.13.0): THREE sidebar panels — the merged view PLUS the two independent
-    // pages (frozen R1/R12) — each with the FROZEN descriptor of its own module, and each final id
-    // DISCOVERED from the host's own `list()` read-back (never composed on this side). The host
-    // budgets a plugin at four (`MAX_PANELS_PER_PLUGIN`), so three is the composition's own ceiling
-    // and the assertion below is what keeps a fourth registration from being added unnoticed.
-    expect(calls.panels).toHaveLength(3)
+    // tuiPanels: exactly TWO sidebar panels (frozen clause C3) — the MPD panel, which RENDERS the DAG
+    // page, and the workmate page — each with the frozen descriptor of its own module, and each final id
+    // DISCOVERED from the host's own `list()` read-back (never composed on this side). THE COUNT IS THE
+    // CLAUSE: the standalone merged page and the standalone DAG page do not both survive, so a third
+    // registration here would be the "both survive" the clause forbids. The host budgets a plugin at four
+    // (`MAX_PANELS_PER_PLUGIN`), so two is well inside it and this assertion is what keeps a third from
+    // being added unnoticed.
+    expect(calls.panels).toHaveLength(2)
     expect(calls.panels[0].apiVersion).toBe(1)
     expect(calls.panels[0].id).toBe("team")
     expect(calls.panels[0].title).toBe("MPD")
@@ -430,29 +432,28 @@ describe("full composition (every service injected)", () => {
     expect(typeof calls.panels[0].component).toBe("function")
     expect(outcomeOf(report, "panel").state).toBe("confirmed")
     expect(String(outcomeOf(report, "panel").detail)).toContain("act0:team")
-    // The DAG page: its own slug, its own title, a one-cell icon and the host's own 28-column floor
-    // (a floor above it would get the page's BODY replaced by the host's `panel-too-narrow` notice).
+    // AMENDED (wave `tui-014-adaptation`, clause C3) — THE DAG PAGE NO LONGER REGISTERS ONE OF ITS OWN.
+    // It merged into the panel above: slug, descriptor and ordered position collapsed, and the page's
+    // RENDERER is what the surviving slot now draws (asserted through `panel.ts`'s own arm, which renders
+    // the component and reads the rich chrome out of it). The absence is the clause, so it is asserted
+    // rather than merely removed: a `dag` slug reappearing here would be "both survive" again.
+    expect(calls.panels.map((entry) => entry.id)).not.toContain("dag")
+    expect(calls.panels.map((entry) => entry.id)).not.toContain("team-dag")
+    // No outcome entry names a DAG page any more either — the aggregate would otherwise report a surface
+    // the host was never offered.
+    expect(report.outcomes.some((entry) => String(entry.id).includes("dag"))).toBe(false)
+    // The workmate page: the SECOND surviving surface, and the only other registration.
     expect(calls.panels[1].apiVersion).toBe(1)
-    expect(calls.panels[1].id).toBe("dag")
-    expect(calls.panels[1].title).toBe("MPD DAG")
-    expect(calls.panels[1].icon).toBe(DAG_PANEL_ICON)
-    expect(calls.panels[1].minColumns).toBe(28)
-    expect(calls.panels[1].order).toBe(11)
-    expect(typeof calls.panels[1].component).toBe("function")
-    expect(outcomeOf(report, "dagPanel").state).toBe("confirmed")
-    expect(String(outcomeOf(report, "dagPanel").detail)).toContain("act0:dag")
-    // The workmate page: the third independent surface, ordered after both.
-    expect(calls.panels[2].apiVersion).toBe(1)
-    expect(calls.panels[2].id).toBe("workmate")
-    expect(calls.panels[2].title).toBe("MPD workmate")
+    expect(calls.panels[1].id).toBe("workmate")
+    expect(calls.panels[1].title).toBe("MPD workmate")
     // AMENDED (wave `tui-dag-highlight`, AC8) — the workmate page's icon CHANGED from the pin marker
     // `◆` (U+25C6), which is byte-identical to the host's own `agents` tab, to its own glyph. Asserted
-    // symbolically: three panels, three glyphs, none of them borrowed from the host's panel bar.
-    expect(calls.panels[2].icon).toBe(WORKMATE_PANEL_ICON)
-    expect(new Set([calls.panels[0].icon, calls.panels[1].icon, calls.panels[2].icon]).size).toBe(3)
-    expect(calls.panels[2].minColumns).toBe(28)
-    expect(calls.panels[2].order).toBe(12)
-    expect(typeof calls.panels[2].component).toBe("function")
+    // symbolically: two panels, two glyphs, neither borrowed from the host's panel bar.
+    expect(calls.panels[1].icon).toBe(WORKMATE_PANEL_ICON)
+    expect(new Set([calls.panels[0].icon, calls.panels[1].icon]).size).toBe(2)
+    expect(calls.panels[1].minColumns).toBe(28)
+    expect(calls.panels[1].order).toBe(12)
+    expect(typeof calls.panels[1].component).toBe("function")
     expect(outcomeOf(report, "workmatePanel").state).toBe("confirmed")
     expect(String(outcomeOf(report, "workmatePanel").detail)).toContain("act0:workmate")
 
@@ -1130,6 +1131,30 @@ describe("honest outcomes (no disposer-type inference)", () => {
     expect(String(result.text)).toBe(t("panel.fallback", { id: "act0:team" }))
     // The refusal is not a no-op: the full-screen merged scene opened.
     expect(calls.scenes.some((entry: { open?: string }) => entry.open === "mpd-tui-subagents")).toBe(true)
+  })
+
+  test("C5: `/mpd dag` reaches the RICH scene — the one that draws the pin — not the bare one", async () => {
+    // FROZEN CLAUSE C5, as an arm. The page's own `⤢` and the `/mpd dag` route must land the reader on a
+    // surface with the SAME rich appearance as the page (frame/legend/keys/PIN). The two candidates differ
+    // in exactly one of those four: `mpd-tui-team` draws the focused task's detail pane — the pin's
+    // full-screen form — while `mpd-tui-subagents` draws the HOST's rows and no pin at all. A page whose
+    // central gesture is click-to-pin must therefore open the former, and this arm pins which one it is
+    // so a later re-aim cannot quietly hand the reader the poorer surface.
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host with NO panel seam at all: the route then lands on the page's own full-screen surface. */
+    const host = hostDouble({ ...services, tuiPanels: undefined })
+    mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The registered command handler. */
+    const handler = calls.commands[0].handler as (invocation: unknown) => Promise<{ kind: string; text?: string }>
+    /** The `/mpd dag` answer. */
+    expect((await handler({ rawInput: "dag" })).kind).toBe("success")
+    /** Every scene id this invocation opened. */
+    const opened = calls.scenes.map((entry: { open?: string }) => entry.open)
+    expect(opened).toContain(TEAM_SCENE_ID)
+    // THE NEGATIVE HALF: the surface WITHOUT the pin is not what this route reaches. Without this the arm
+    // would pass for a route that opened both scenes, which is a different defect.
+    expect(opened).not.toContain(SUBAGENT_SCENE_ID)
   })
 
   test("an accepted panel OPEN prints the panel status line with the discovered id", async () => {

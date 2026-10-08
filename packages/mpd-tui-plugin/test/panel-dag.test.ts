@@ -23,7 +23,7 @@ import {
   DAG_TONE_GLYPH,
 } from "../src/dag-theme"
 import { cellWidth, clampCells } from "../src/sanitize"
-import { PANEL_FULLSCREEN_GLYPH } from "../src/panel"
+import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE, registerPanelSurface } from "../src/panel"
 import { layoutBoxesNatural, layoutRail, sliceSpans, widestLabelCells } from "../src/graph"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import {
@@ -33,13 +33,8 @@ import {
   dagPageOf,
   dagPanelLayout,
   dagRowClick,
-  DAG_PANEL_DESCRIPTOR_FROZEN,
-  DAG_PANEL_ICON,
-  DAG_PANEL_ID,
-  DAG_PANEL_ORDER,
   DAG_PANEL_TITLE,
   pinnedDetailLines,
-  registerDagPanel,
   type DagPanelTask,
 } from "../src/panel-dag"
 import { clampScroll, gutterCells, legendLinesFor, PANEL_CHROME_ROWS, panelContentWidth, panelKeysArmed, panelScrollKey, runningGlyph, scrollByWheel, usePanelViewport } from "../src/panel-core"
@@ -494,36 +489,41 @@ function render(component: (props: unknown) => unknown, kit: Kit, host: HostReco
 
 // ── the descriptor (frozen clause R1/R9) ────────────────────────────────────
 
-describe("the DAG page descriptor", () => {
-  test("carries the frozen shape, the one-cell icon and its own slug", () => {
-    expect(DAG_PANEL_DESCRIPTOR_FROZEN).toEqual({
-      apiVersion: 1,
-      id: DAG_PANEL_ID,
-      title: DAG_PANEL_TITLE,
-      icon: DAG_PANEL_ICON,
-      minColumns: DAG_PANEL_MIN_COLUMNS,
-      order: DAG_PANEL_ORDER,
-    })
-    // THE ICON IS EXACTLY ONE CELL, which is the host's own hard requirement. `"◈".length === 1` would
-    // not prove it (a wide glyph is one code point and two cells), so the measurement is the assertion.
-    expect(cellWidth(DAG_PANEL_ICON)).toBe(1)
-    // The page is its OWN slug: registering the merged panel's id twice would be the host's duplicate
-    // contribution error, and the whole point of R1 is that this is a second, independent page.
-    expect(DAG_PANEL_ID).toBe("dag")
-    // THE FLOOR IS THE HOST'S OWN (captain's ruling, 2026-10-13; the reasoning is in `dag-theme.ts`).
-    // `PanelHost.js` swaps the page's BODY for a `panel-too-narrow` notice when `width < minColumns`,
-    // so a floor above the host's own 28 opens a width band where the tab exists and the user sees a
-    // refusal instead of a graph. Readability at 28 is the PAGE's job, not the descriptor's.
+// ── the page's identity AFTER the merge (frozen clause C3) ──────────────────
+//
+// THE DESCRIPTOR IS GONE FROM THIS FILE, and that is the clause rather than a tidy-up: "ONE descriptor,
+// ONE slug, ONE ordered position collapse out of the two". The DAG page IS the MPD panel now, so its
+// slug `dag`, its title `MPD DAG` and its order 11 no longer exist as a second registration, and the
+// surviving descriptor (`panel.ts`'s `PANEL_DESCRIPTOR_FROZEN`, slug `team`, title `MPD`, icon `❖`,
+// order 10) is the only one the host ever receives. What this file still owns is what the PAGE knows
+// about itself, and what it must agree with the survivor about.
+
+describe("the DAG page's identity after the merge (clause C3)", () => {
+  test("its title IS the surviving MPD panel's title — one name, one surface", () => {
+    // The page draws this title in its own chrome row, and the host draws the descriptor's title in its
+    // panel bar: two spellings of one name that could drift silently. This is the arm that stops it.
+    expect(DAG_PANEL_TITLE).toBe(PANEL_TITLE)
+    expect(DAG_PANEL_TITLE).toBe("MPD")
+    // The title the page draws is non-empty and clamps to something a reader can see, which is the shape
+    // the host's own descriptor validator requires of whatever it is registered as.
+    expect(DAG_PANEL_TITLE.length).toBeGreaterThan(0)
+    // THE FLOOR THE PAGE LAYS OUT FOR IS STILL THE HOST'S OWN (captain's ruling, 2026-10-13; the reasoning
+    // is in `dag-theme.ts`). `PanelHost.js` swaps the page's BODY for a `panel-too-narrow` notice when
+    // `width < minColumns`, so a floor above the host's own 28 opens a width band where the tab exists and
+    // the user sees a refusal instead of a graph. Readability at 28 is the PAGE's job, not the panel's.
     expect(DAG_PANEL_MIN_COLUMNS).toBe(28)
   })
 
-  test("registers through the adapter and reports the host's own read-back id", () => {
+  test("the surviving registration carries this page's component and reaches the host read-back", () => {
+    // THE CHAIN THE MERGE HAD TO KEEP: the ONE registration still hands the host a callable component
+    // (this page's), and its final id is still DISCOVERED from the host's own `list()` read-back rather
+    // than composed on this side. A merge that registered the right descriptor with the wrong component,
+    // or predicted the id, would pass every descriptor arm and fail this one.
     /** The registration the host received. */
     const registered: Record<string, unknown>[] = []
     /** The host's own read-back rows; a registration APPENDS one, as the host composes the id itself. */
     const rows: Array<{ id: string; title: string; source: string }> = []
-    /** The host's panel registry double: `list()` reflects what was registered, which is the read-back
-     * the adapter discovers the final id from (the `<pluginId>` half is the HOST's, never predicted). */
+    /** The host's panel registry double. */
     const registry = {
       register: (descriptor: Record<string, unknown>): (() => void) => {
         registered.push(descriptor)
@@ -555,21 +555,21 @@ describe("the DAG page descriptor", () => {
     }
     /** The real adapter over that host. */
     const tui = createTuiAdapter(build() as never)
-    /** The registered page. */
-    const seam = registerDagPanel(tui as never, {
+    /** The registered MPD panel, wired the way `index.ts` wires it. */
+    const seam = registerPanelSurface(tui as never, {
       enabled: true,
       readWorkflow: () => workflowFixture(),
-      openScene: () => true,
+      openMergedScene: () => true,
       log: { info: () => {}, warn: () => {}, debug: () => {}, error: () => {} } as never,
     })
     expect(registered).toHaveLength(1)
-    expect(registered[0]?.id).toBe("dag")
-    expect(registered[0]?.icon).toBe(DAG_PANEL_ICON)
+    expect(registered[0]?.id).toBe("team")
+    expect(registered[0]?.title).toBe(PANEL_TITLE)
     // The compact slot is NOT declared: the host stores it and never mounts it, so claiming one would
     // promise a surface this build cannot render.
     expect(registered[0]?.compact).toBeUndefined()
     expect(typeof registered[0]?.component).toBe("function")
-    expect(seam.id()).toBe("act3:dag")
+    expect(seam.id()).toBe("act3:team")
     expect(seam.registered()).toBe(true)
   })
 })
@@ -1760,7 +1760,9 @@ describe("the scrollbar and the self-windowed viewport", () => {
 // The defect this locks, CONFIRMED on a real terminal: `panelFrame` passed `borderText` as a BARE STRING,
 // and the host's `render-border.js` embeds a title only when `style.borderText?.position === 'top'` — a
 // string has no `position`, so it took the plain-border branch and every page drew a bare top border. The
-// interim PTY capture is the BEFORE shot (all three pages title-less); this is the AFTER.
+// interim PTY capture is the BEFORE shot (all three pages title-less at the time — three was the
+// inventory before this wave's clause C3 merge; this file now exercises the two that survive); this is
+// the AFTER.
 //
 // WHY THE ASSERTION IS ABOUT SHAPE: 327 passing tests did not catch it because they asserted the prop was
 // PRESENT. Presence is satisfied by the wrong VALUE, so the check must reject a bare string explicitly —
@@ -1772,7 +1774,7 @@ describe("R6: the frame's border title is a structured value, not a string", () 
   }
 
   test("every page's frame carries { content, position: 'top', align } — and a bare string FAILS", () => {
-    /** The three pages, each with its own title. */
+    /** The surviving pages, each with its own title — the MPD page and the workmate page. */
     const pages: Array<{ name: string; page: (props: unknown) => unknown }> = [
       { name: "dag", page: createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown },
       { name: "workmate", page: createWorkmatePanelComponent(() => libraryFixture()) as (props: unknown) => unknown },
@@ -1927,9 +1929,11 @@ describe("the workmate page", () => {
     })
     expect(WORKMATE_PANEL_ID).toBe("workmate")
     expect(cellWidth(WORKMATE_PANEL_ICON)).toBe(1)
-    // The three pages have three DISTINCT slugs, which is what makes them three pages rather than one
-    // panel registered three times (the host refuses a duplicate contribution id).
-    expect(new Set([WORKMATE_PANEL_ID, DAG_PANEL_ID, "team"]).size).toBe(3)
+    // AMENDED (clause C3) — TWO panels with two DISTINCT slugs, not three: the DAG page's own slug
+    // collapsed into the MPD panel's, so the pair that must stay distinct is this one. The host refuses a
+    // duplicate contribution id, so distinctness is what makes these two surfaces rather than one
+    // registered twice.
+    expect(new Set([WORKMATE_PANEL_ID, "team"]).size).toBe(2)
   })
 
   test("the EMPTY state names the call that fills the shelf", () => {
@@ -1990,12 +1994,12 @@ describe("the workmate page", () => {
 // while `SidePanelColumn.js`'s `canExpand` reads `definition.capabilities?.fullscreen === true`), so
 // this page draws its own. A `⤢` in the text proves only that something was painted; what the reader
 // actually needs is that the control REACHES the row's full-screen surface — and the seam between the
-// two is `registerDagPanel`'s forward, which is exactly where a dep can stop without any test of the
+// two is the surviving registration's forward, which is exactly where a dep can stop without any test of the
 // component noticing. So the arm walks the whole chain: registration -> captured component -> render
 // -> click -> the dep the ROW was given, counted.
 
 describe("AC8b · the page draws its own `⤢`, and the dep the row received reaches it", () => {
-  test("a click on the control reaches the `openFullscreen` dep forwarded by `registerDagPanel`", () => {
+  test("a click on the control reaches the `openFullscreenScreen` dep the surviving registration forwards", () => {
     /** The registration the host received. */
     const registered: Record<string, unknown>[] = []
     /** The host's own read-back rows, appended by a registration exactly as the host composes them. */
@@ -2034,12 +2038,14 @@ describe("AC8b · the page draws its own `⤢`, and the dep the row received rea
     const tui = createTuiAdapter(build() as never)
     /** How many times the row's own full-screen opener ran. */
     let opened = 0
-    /** The registered page, wired the way `index.ts` wires it. */
-    registerDagPanel(tui as never, {
+    /** The registered MPD panel, wired the way `index.ts` wires it after the merge (clause C3). */
+    registerPanelSurface(tui as never, {
       enabled: true,
       readWorkflow: () => workflowFixture(),
-      openScene: () => true,
-      openFullscreen: () => {
+      openMergedScene: () => true,
+      // THE DEP THAT CARRIES THE `⤢` AFTER THE MERGE: the page this slot renders draws the control, and
+      // this is the opener the row hands it. Before the merge it lived on the DAG page's own seam.
+      openFullscreenScene: () => {
         opened += 1
         return true
       },

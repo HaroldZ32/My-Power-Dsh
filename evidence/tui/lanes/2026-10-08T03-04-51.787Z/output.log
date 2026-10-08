@@ -1,0 +1,9 @@
+dsh-tui home fixture=.mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/onboarding.json, .mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/agent-preset.json preset=mpd
+seeded workmate library at .mpd/recon/qa/tui-lanes/tui-014b/home/.mpd/workmate/qa-tui-probe
+model-echo check: runSessions=1 checked=0 offenders=0 (must be 0)
+harness command records THIS run: [{"sessionId":"d277c87c-0ab1-4fae-ba04-17a4b646bde3","commandId":"cmd-9fe29693-1","kind":"success","text":"mpd workmates（1）：qa-tui-probe"},{"sessionId":"d277c87c-0ab1-4fae-ba04-17a4b646bde3","commandId":"cmd-9fe29693-2","kind":"success","text":"mpd 侧栏面板：宿主已接受 act1:team；若没有出现面板，请在 /settings → 侧栏里把 act1:team 加入面板列表，并按 Ctrl+B 展开（或开启“启动时展开侧栏”）"}]
+surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiPanels=MISSING tuiScenes=MISSING tuiRenderers=MISSING tuiSettingsSections=MISSING tuiDialogs=rendered
+panel registration id=undefined ok=false
+negative control ok=false (must be false)
+board-opened events in the sandbox store=0 scene-reported transcript rows=undefined
+renderer cross-check: no event of this type reached the sandbox store — the plugin's registration gate refused the append

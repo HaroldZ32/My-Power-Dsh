@@ -9,6 +9,11 @@
 // default `todo,jobs,agents` while the user layer is unset, so the appended ids are dropped and the
 // sidebar paints the host's three builtins only — the reported symptom 「只有任务/待办/代理」.
 //
+// THE RELEASE THIS BUNDLE NOW TARGETS IS 0.14.0, and the defect is unchanged there: the MEASURED
+// 0.14.0 boot appended the same ids (`act1:team,act1:dag,act1:workmate`) and the host's own re-apply
+// dropped them again (frozen contract `F5`, `.mpd/plans/tui-014-adaptation.md`), so this remedy is
+// still the user path on the installed host. The paragraph above stays the 0.13.0 measurement it was.
+//
 // WHAT IT WRITES, AND WHERE — the SETTINGS USER LAYER, which is the profile's own patch file. That
 // is the host's own resolution, not a guess: `dsh-config-editor`'s `ConfigEditor` answers
 // `get documentPath() { return this.ownerContext.profileContext.patchPath }`, and `dsh-app-boot`
@@ -22,6 +27,18 @@
 // which is what every document claimed before this was captured. The only authority on the id is the
 // host's own registration read-back, which the adapter records on every boot to
 // `<workspace>/.mpd/logs/mpd-tui-panels.json`; this script reads that, and `--ids` overrides it.
+//
+// THE RECORD'S SHAPE, AND WHY AN UNPROVABLE ONE IS REFUSED. Version 2 of that file is
+// `{version, panelIds, slugs, updatedAt, provenance}` with
+// `provenance = {hostRoot, hostVersion, readBack, activation}`, and the adapter writes it ONLY when it
+// can prove that block (`panelRecordProvenance`). The file was MEASURED polluted once (2026-10-08: a
+// VERSION-1 record carrying `act0:team,act0:dag,act0:workmate` — ids no real boot can compose, because
+// the host's `pluginIdFor` PRE-INCREMENTS its fallback counter so the first bare activation is `act1`),
+// and this script's read side would have offered to `--apply` them into the user's settings layer. So a
+// record is REFUSED, naming the field that failed, when it carries no `provenance`, a blank/absent
+// `provenance.hostVersion`, no `provenance.readBack`, or `provenance.activation === "act0"`. `--ids
+// a,b,c` stays the documented escape when the user knows the ids, and a real TUI boot rewrites a
+// provable record.
 //
 // SAFETY: dry-run is the DEFAULT and prints the resolved absolute path and the exact block it would
 // write; a write needs `--apply`. The write is atomic and keeps a `.bak-<stamp>` copy beside the
@@ -40,7 +57,7 @@
 //       self-test arm.
 
 import { spawnSync } from "node:child_process"
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -522,22 +539,68 @@ interface IdRecord {
   readonly file: string
 }
 
+/** The version-2 `provenance` block of the adapter's record, as this reader narrows it. */
+interface IdRecordProvenance {
+  /** The installed dsh-tui package root the ids were read from. */
+  readonly hostRoot?: unknown
+  /** That package's own version; absent or blank means the ids cannot be traced to a release. */
+  readonly hostVersion?: unknown
+  /** The host read-back the ids came from, e.g. `tuiPanels.list`. */
+  readonly readBack?: unknown
+  /** The `<pluginId>` half every id shares, e.g. `act1`. */
+  readonly activation?: unknown
+}
+
+/**
+ * The ONE reason a recorded id set may not be written into a user's settings layer, or `undefined`
+ * when the record is provable.
+ *
+ * WHY THIS EXISTS, MEASURED: on 2026-10-08 this file was `act0:team,act0:dag,act0:workmate` — ids a
+ * real boot cannot compose, because the installed host's `pluginIdFor` PRE-INCREMENTS its fallback
+ * counter and the first bare activation is therefore `act1`; a unit test that drove the real recorder
+ * had produced them, and this script then offered them for `--apply`. These are the same conditions
+ * the adapter refuses to WRITE a record under (`panelRecordProvenance`), read back on the consumer
+ * side, so a polluted file can no longer reach a user's profile patch.
+ * @param provenance - the record's `provenance` block, narrowed rather than trusted.
+ * @returns the refusal reason, naming the field; `undefined` when the record may be written.
+ */
+function unprovableProvenance(provenance: unknown): string | undefined {
+  if (typeof provenance !== "object" || provenance === null) {
+    return "it carries no `provenance` block (a version-1 record, whose ids cannot be traced to a boot)"
+  }
+  /** The block's fields, narrowed one by one below. */
+  const block = provenance as IdRecordProvenance
+  if (typeof block.hostVersion !== "string" || block.hostVersion.trim() === "") {
+    return "its `provenance.hostVersion` is absent or blank, so the ids cannot be traced to an installed dsh-tui release"
+  }
+  if (typeof block.readBack !== "string" || block.readBack.trim() === "") {
+    return "its `provenance.readBack` is absent, so the ids cannot be traced to a host read-back"
+  }
+  if (block.activation === "act0") {
+    return "its `provenance.activation` is `act0`, which no real boot composes (the host's `pluginIdFor` pre-increments, so the first activation is `act1`)"
+  }
+  return undefined
+}
+
 /**
  * Read the adapter's panel-id record for one workspace.
  * @param workspace - the workspace root whose `.mpd/logs` is probed.
- * @returns the record, or the ONE reason it could not be read.
+ * @returns the record, or the ONE reason it could not be read OR could not be proved.
  */
 function readIdRecord(workspace: string): IdRecord | { detail: string } {
   /** The record file. */
   const file = join(workspace, IDS_RECORD)
   try {
     /** The parsed record; the shape is narrowed rather than trusted. */
-    const parsed = JSON.parse(readFileSync(file, "utf8")) as { panelIds?: unknown }
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as { panelIds?: unknown; provenance?: unknown }
     /** The ids, kept only when they are a non-empty array of non-empty strings. */
     const ids = Array.isArray(parsed.panelIds)
       ? parsed.panelIds.filter((entry): entry is string => typeof entry === "string" && entry.length > 0)
       : []
     if (ids.length === 0) return { detail: `${file} carries no panel ids` }
+    /** The ONE reason these ids may not be offered for a write, `undefined` when they may. */
+    const unprovable = unprovableProvenance(parsed.provenance)
+    if (unprovable !== undefined) return { detail: `${file}: ${unprovable}` }
     return { ids, file }
   } catch {
     return { detail: `${file} is missing or unreadable` }
@@ -666,11 +729,13 @@ function main(argv: readonly string[]): number {
 }
 
 /**
- * Offline self-test: the merge invariants, the entry writer, and the two host-source readings.
+ * Offline self-test: the merge invariants, the entry writer, the two host-source readings, and the
+ * refusals of a record that cannot be proved.
  *
  * Arm (d) reads the INSTALLED host: it extracts the sidebar row's own config block from the installed
  * bundle patch, so "the script restates what the host declared" is MEASURED rather than asserted. An
- * absent install makes that arm SKIP with a printed reason — never a vacuous pass.
+ * absent install makes that arm SKIP with a printed reason — never a vacuous pass. Arm (f) drives the
+ * real reader over four records that must be refused and one that must be accepted.
  * @returns the process exit code.
  */
 function selfTest(): number {
@@ -750,6 +815,43 @@ function selfTest(): number {
     }
   } catch (error) {
     check(`(e) the path-proof arm ran (${String((error as Error)?.message ?? error)})`, false)
+  }
+  // ── arm (f): the reader refuses a record that cannot be PROVED, and accepts a version-2 one ──
+  try {
+    /** A scratch workspace whose `.mpd/logs` carries one record at a time. */
+    const scratch = mkdtempSync(join(tmpdir(), "mpd-tui-panels-record-"))
+    /** Writes one record into that workspace and reports what the real reader made of it. */
+    const read = (record: unknown): string => {
+      /** The record's own path inside the scratch workspace. */
+      const file = join(scratch, IDS_RECORD)
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(file, JSON.stringify(record, undefined, 2))
+      /** What {@link readIdRecord} answered: a refusal, or the ids. */
+      const outcome = readIdRecord(scratch)
+      return "detail" in outcome ? `REFUSED: ${outcome.detail}` : `ACCEPTED: ${outcome.ids.join(",")}`
+    }
+    /** The provenance a REAL boot writes, so each case below differs in exactly ONE field. */
+    const proven = { hostRoot: "/opt/dsh-tui", hostVersion: "0.14.0", readBack: "tuiPanels.list", activation: "act1" }
+    /** The ids that real boot registered. */
+    const ids = ["act1:team", "act1:dag", "act1:workmate"]
+    /** The MEASURED pollution itself: a version-1 record with no provenance block at all. */
+    const absent = read({ version: 1, panelIds: ["act0:team", "act0:dag", "act0:workmate"], slugs: ["team", "dag", "workmate"], updatedAt: "2026-10-08T02:02:20.819Z" })
+    check("(f) the MEASURED version-1 record with NO provenance is refused", absent.startsWith("REFUSED:") && absent.includes("provenance"))
+    /** A version-2 record whose host version is whitespace. */
+    const blank = read({ version: 2, panelIds: ids, provenance: { ...proven, hostVersion: "  " } })
+    check("(f) a blank `provenance.hostVersion` is refused by name", blank.includes("REFUSED:") && blank.includes("provenance.hostVersion"))
+    /** A version-2 record with no host read-back. */
+    const noReadBack = read({ version: 2, panelIds: ids, provenance: { ...proven, readBack: "" } })
+    check("(f) an empty `provenance.readBack` is refused by name", noReadBack.includes("REFUSED:") && noReadBack.includes("provenance.readBack"))
+    /** A version-2 record carrying the impossible `act0` activation. */
+    const polluted = read({ version: 2, panelIds: ["act0:team", "act0:dag"], provenance: { ...proven, activation: "act0" } })
+    check("(f) the impossible `act0` activation is refused by name", polluted.includes("REFUSED:") && polluted.includes("act0"))
+    /** The one record that must be ACCEPTED, so the refusals cannot be a blanket refusal. */
+    const good = read({ version: 2, panelIds: ids, slugs: ["team", "dag", "workmate"], updatedAt: "2026-10-08T03:00:00.000Z", provenance: proven })
+    check("(f) a well-formed version-2 record IS accepted", good === `ACCEPTED: ${ids.join(",")}`)
+    rmSync(scratch, { recursive: true, force: true })
+  } catch (error) {
+    check(`(f) the record-proof arm ran (${String((error as Error)?.message ?? error)})`, false)
   }
   /** The arm's overall verdict: green only when every arm that RAN held. */
   const verdict = problems.length === 0

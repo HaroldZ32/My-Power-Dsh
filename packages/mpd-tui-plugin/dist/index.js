@@ -2800,7 +2800,15 @@ async function probeHostPrefs(candidates) {
       }
       const read = mod.getSidePanelPanels;
       const write = mod.applySidePanelPanels;
-      return { prefs: { getSidePanelPanels: () => read(), applySidePanelPanels: (value) => write(value) }, root };
+      const feed = typeof mod.subscribeSidePanelPanels === "function" ? mod.subscribeSidePanelPanels : undefined;
+      return {
+        prefs: {
+          getSidePanelPanels: () => read(),
+          applySidePanelPanels: (value) => write(value),
+          ...feed === undefined ? {} : { subscribeSidePanelPanels: (listener) => feed(listener) }
+        },
+        root
+      };
     } catch (error) {
       skew = `${file}: ${String(error?.message ?? error)}`;
     }
@@ -2825,8 +2833,12 @@ function createPanelEnableKeeper(options) {
   let armed = false;
   let ticks = 0;
   let reasserted = 0;
+  let onFeed = false;
+  let releaseFeed;
+  let writing = false;
   let state = "requested";
   let detail = "no panel registered yet";
+  let feedRefused = "";
   const announce = () => {
     if (options.onChange === undefined)
       return;
@@ -2836,37 +2848,94 @@ function createPanelEnableKeeper(options) {
   };
   const settle = (next, nextDetail) => {
     state = next;
-    detail = nextDetail;
+    detail = feedRefused === "" ? nextDetail : `${nextDetail}; the change feed was refused: ${feedRefused}`;
     announce();
     if (ticks < ladder.length)
       return;
-    options.log?.(`mpd-tui panel enable keeper: ${next} — ${nextDetail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`);
+    options.log?.(`mpd-tui panel enable keeper: ${next} — ${detail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`);
+  };
+  const cancelLadder = () => {
+    for (const cancel of pending.splice(0)) {
+      try {
+        cancel();
+      } catch {}
+    }
+  };
+  const releaseFeedNow = () => {
+    const release = releaseFeed;
+    releaseFeed = undefined;
+    onFeed = false;
+    if (release === undefined)
+      return;
+    try {
+      release();
+    } catch {}
+  };
+  const decide = (prefs, atArm) => {
+    if (writing)
+      return;
+    ticks += 1;
+    try {
+      const merge2 = mergePanelEnableIds(prefs.getSidePanelPanels(), ours);
+      if (merge2.present.length > 0) {
+        if (atArm) {
+          settle("confirmed", `the enable list already names ${merge2.present.join(",")}; the keeper now follows the host's own change feed instead of standing down on this read`);
+          return;
+        }
+        settle("confirmed", `standing down: the enable list names ${merge2.present.join(",")}, so the configuration has taken a position on this bundle`);
+        standDown();
+        return;
+      }
+      if (merge2.added.length === 0) {
+        settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
+        return;
+      }
+      writing = true;
+      try {
+        prefs.applySidePanelPanels(merge2.csv);
+      } finally {
+        writing = false;
+      }
+      reasserted += 1;
+      settle("confirmed", `re-asserted ${merge2.added.join(",")} (the list named none of our ids)`);
+    } catch (error) {
+      settle("refused", String(error?.message ?? error));
+    }
+  };
+  const standDown = () => {
+    cancelLadder();
+    releaseFeedNow();
+  };
+  const enterFeed = (prefs) => {
+    const subscribe = prefs.subscribeSidePanelPanels;
+    if (typeof subscribe !== "function")
+      return false;
+    let release;
+    try {
+      release = subscribe(() => decide(prefs, false));
+    } catch (error) {
+      feedRefused = String(error?.message ?? error);
+      settle("refused", "the host's change feed refused this keeper");
+      return false;
+    }
+    releaseFeed = typeof release === "function" ? release : undefined;
+    onFeed = true;
+    cancelLadder();
+    decide(prefs, true);
+    return true;
   };
   const runTick = () => {
-    ticks += 1;
     options.loadPrefs().then((probe) => {
       if (probe.prefs === undefined) {
+        ticks += 1;
         settle("absent", probe.detail ?? "the host exposes no side-panel enable store");
         return;
       }
-      const prefs = probe.prefs;
-      try {
-        const merge2 = mergePanelEnableIds(prefs.getSidePanelPanels(), ours);
-        if (merge2.present.length > 0) {
-          settle("confirmed", `standing down: the enable list already names ${merge2.present.join(",")}, so the configuration has taken a position on this bundle`);
-          return;
-        }
-        if (merge2.added.length === 0) {
-          settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
-          return;
-        }
-        prefs.applySidePanelPanels(merge2.csv);
-        reasserted += 1;
-        settle("confirmed", `re-asserted ${merge2.added.join(",")} (none of our ids was present)`);
-      } catch (error) {
-        settle("refused", String(error?.message ?? error));
-      }
+      if (!onFeed && enterFeed(probe.prefs))
+        return;
+      decide(probe.prefs, false);
     }, (error) => {
+      ticks += 1;
       settle("absent", `the host store could not be read: ${String(error?.message ?? error)}`);
     });
   };
@@ -2896,11 +2965,7 @@ function createPanelEnableKeeper(options) {
       return { state, detail, ids: [...ours], reasserted, ticks };
     },
     stop() {
-      for (const cancel of pending.splice(0)) {
-        try {
-          cancel();
-        } catch {}
-      }
+      standDown();
     }
   };
 }
@@ -2912,16 +2977,47 @@ function defaultPanelKeeperSchedule(run, delayMs) {
   };
 }
 var PANEL_IDS_RECORD_NAME = "mpd-tui-panels.json";
-function recordPanelIds(outcome) {
+function readHostPackageVersion(root) {
+  try {
+    const manifest = JSON.parse(readFileSync2(join3(root, "package.json"), "utf8"));
+    return typeof manifest.version === "string" ? manifest.version : "";
+  } catch {
+    return "";
+  }
+}
+function panelRecordProvenance(host, readBack, ids) {
+  if (host === undefined || host.root === "" || host.version === "") {
+    return { refused: "no installed host package could be named (root and version), so the ids cannot be traced to a boot" };
+  }
+  if (readBack === "" || ids.length === 0) {
+    return { refused: "the ids did not come from a host read-back, so the record would name panels nothing verified" };
+  }
+  const activation = ids[0].slice(0, ids[0].indexOf(":"));
+  for (const id of ids) {
+    if (id.slice(0, id.indexOf(":")) !== activation) {
+      return { refused: `the ids do not share one activation (${activation} and ${id.slice(0, id.indexOf(":"))}), so they cannot have come from one registration` };
+    }
+  }
+  if (/^act0$/u.test(activation)) {
+    return { refused: `activation ${activation} is impossible: the host's pluginIdFor pre-increments its fallback counter, so the first composed activation is act1` };
+  }
+  return { provenance: { hostRoot: host.root, hostVersion: host.version, readBack, activation } };
+}
+function recordPanelIds(outcome, host, readBack) {
+  const proved = panelRecordProvenance(host, readBack, outcome.ids);
+  if ("refused" in proved)
+    return;
   try {
     const file = join3(defaultLogRoot(), ".mpd", "logs", PANEL_IDS_RECORD_NAME);
     mkdirSync2(dirname(file), { recursive: true });
-    writeFileSync(file, `${JSON.stringify({
-      version: 1,
+    const record = {
+      version: 2,
       panelIds: [...outcome.ids],
       slugs: outcome.ids.map((id) => id.slice(id.indexOf(":") + 1)),
-      updatedAt: new Date().toISOString()
-    }, null, 2)}
+      updatedAt: new Date().toISOString(),
+      provenance: proved.provenance
+    };
+    writeFileSync(file, `${JSON.stringify(record, null, 2)}
 `);
   } catch {}
 }
@@ -3025,18 +3121,34 @@ function createTuiAdapter(ctx, options = {}) {
   let hostContact = options.hostInput;
   let hostState = options.hostInput !== undefined ? { state: "bound", kit: "probed", detail: "injected by the caller" } : options.probeHostContact === true ? { state: "pending" } : { state: "absent", detail: "this adapter did not probe for the host contact" };
   const hostWaiters = [];
+  let panelHostProvenance;
+  let panelIdReadBack = "";
   const panelKeeperOptions = {
-    loadPrefs: () => probeHostPrefs(hostRootCandidates()),
+    loadPrefs: async () => {
+      const probe = await probeHostPrefs(hostRootCandidates());
+      if (probe.root !== undefined)
+        panelHostProvenance = { root: probe.root, version: readHostPackageVersion(probe.root) };
+      return probe;
+    },
     schedule: defaultPanelKeeperSchedule,
     ...options.panelEnableLadder === undefined ? {} : { ladder: options.panelEnableLadder },
     log: options.panelEnableLog ?? options.hostInputLog ?? defaultHostInputLog,
-    onChange: options.keepPanelEnable === true ? recordPanelIds : undefined
+    onChange: options.keepPanelEnable === true ? (outcome) => {
+      if (!panelKeeperOwned) {
+        panelKeeperOwned = true;
+        effectOn(ctx, () => {
+          panelKeeper.stop();
+        }, "mpd-tui panel enable keeper");
+      }
+      recordPanelIds(outcome, panelHostProvenance, panelIdReadBack);
+    } : undefined
   };
   const panelKeeper = options.keepPanelEnable === true ? createPanelEnableKeeper(panelKeeperOptions) : {
     observe: () => {},
     outcome: () => ({ state: "absent", detail: "this adapter did not keep the host panel enable list", ids: [], reasserted: 0, ticks: 0 }),
     stop: () => {}
   };
+  let panelKeeperOwned = false;
   let rememberedHook;
   const currentHostInput = () => rememberedHook === undefined ? hostContact : { useStdin: () => rememberedHook?.() };
   const wakeHostWaiters = () => {
@@ -3412,8 +3524,10 @@ function createTuiAdapter(ctx, options = {}) {
             finalId = (readBack() ?? []).map((row) => row.id).find((id) => !before.has(id));
           }
           handle.record(finalId !== undefined ? { state: "confirmed", detail: `${finalId} registered` } : readBack !== undefined ? { state: "refused", detail: `${descriptor.id} refused (the host added no id to its own list() read-back)` } : { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` });
-          if (finalId !== undefined)
+          if (finalId !== undefined) {
+            panelIdReadBack = readBack !== undefined ? "tuiPanels.list" : "";
             panelKeeper.observe(finalId);
+          }
         } catch (error) {
           handle.record({ state: "refused", detail: String(error?.message ?? error) });
         }
@@ -4000,7 +4114,6 @@ var DAG_ANIM = Object.freeze({
   frames: 4,
   staticPhase: 0
 });
-var DAG_PANEL_SLUG = "dag";
 var WORKMATE_PANEL_SLUG = "workmate";
 var DAG_PANEL_MIN_COLUMNS = 28;
 var WORKMATE_PANEL_MIN_COLUMNS = 28;
@@ -4535,6 +4648,34 @@ function panelFloorColumns(which) {
   if (which === "workmate")
     return WORKMATE_PANEL_MIN_COLUMNS;
   return DAG_PANEL_MIN_COLUMNS;
+}
+var PANEL_FULLSCREEN_GLYPH = "⤢";
+var PANEL_FULLSCREEN_CELLS = 2;
+var PANEL_TITLE_ROW_ROWS = 1;
+function swallowPointerEvent(event) {
+  if (event === null || typeof event !== "object")
+    return;
+  const stop = event.stopImmediatePropagation;
+  if (typeof stop === "function")
+    stop.call(event);
+}
+function usePanelTitleRow(kit, options) {
+  const hoverState = kit.React.useState(false);
+  const hovered = hoverState[0] === true;
+  const setHovered = hoverState[1];
+  const title = panelText(options.title, Math.max(1, options.cols - PANEL_FULLSCREEN_CELLS));
+  return kit.React.createElement(kit.ui.Box, { key: options.key, flexDirection: "row", justifyContent: "space-between", flexShrink: 0 }, kit.React.createElement(kit.ui.Box, { key: `${options.key}-title`, flexShrink: 1, overflow: "hidden" }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-text`, color: toneColor("dim") }, title)), kit.React.createElement(kit.ui.Box, {
+    key: `${options.key}-fullscreen`,
+    flexShrink: 0,
+    onMouseEnter: () => setHovered(true),
+    onMouseLeave: () => setHovered(false),
+    ...options.open === undefined ? {} : {
+      onClick: (event) => {
+        swallowPointerEvent(event);
+        options.open?.();
+      }
+    }
+  }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-glyph`, bold: hovered, color: hovered ? toneColor("focus") : toneColor("dim") }, PANEL_FULLSCREEN_GLYPH)));
 }
 
 // packages/mpd-tui-plugin/src/graph.ts
@@ -6957,286 +7098,9 @@ function registerDashboardKey(ctx, tui, deps) {
   return { outcome: () => view.outcome() };
 }
 
-// packages/mpd-tui-plugin/src/panel.ts
-var PANEL_SLUG = "team";
-var PANEL_TITLE = "MPD";
-var PANEL_ICON = "❖";
-var PANEL_MIN_COLUMNS = 28;
-var PANEL_ORDER = 10;
-var PANEL_REFRESH_MS = 1000;
-var MERGED_FALLBACK_ROWS = 24;
-var PANEL_DESCRIPTOR_FROZEN = {
-  apiVersion: 1,
-  id: PANEL_SLUG,
-  title: PANEL_TITLE,
-  icon: PANEL_ICON,
-  minColumns: PANEL_MIN_COLUMNS,
-  order: PANEL_ORDER
-};
-var PANEL_FULLSCREEN_GLYPH = "⤢";
-var PANEL_FULLSCREEN_CELLS = 2;
-var PANEL_TITLE_ROW_ROWS = 1;
-function swallowPointerEvent(event) {
-  if (event === null || typeof event !== "object")
-    return;
-  const stop = event.stopImmediatePropagation;
-  if (typeof stop === "function")
-    stop.call(event);
-}
-function usePanelTitleRow(kit, options) {
-  const hoverState = kit.React.useState(false);
-  const hovered = hoverState[0] === true;
-  const setHovered = hoverState[1];
-  const title = panelText(options.title, Math.max(1, options.cols - PANEL_FULLSCREEN_CELLS));
-  return kit.React.createElement(kit.ui.Box, { key: options.key, flexDirection: "row", justifyContent: "space-between", flexShrink: 0 }, kit.React.createElement(kit.ui.Box, { key: `${options.key}-title`, flexShrink: 1, overflow: "hidden" }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-text`, color: toneColor("dim") }, title)), kit.React.createElement(kit.ui.Box, {
-    key: `${options.key}-fullscreen`,
-    flexShrink: 0,
-    onMouseEnter: () => setHovered(true),
-    onMouseLeave: () => setHovered(false),
-    ...options.open === undefined ? {} : {
-      onClick: (event) => {
-        swallowPointerEvent(event);
-        options.open?.();
-      }
-    }
-  }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-glyph`, bold: hovered, color: hovered ? toneColor("focus") : toneColor("dim") }, PANEL_FULLSCREEN_GLYPH)));
-}
-function takeoverArmed(seamBound, savedKnob, floor) {
-  if (seamBound)
-    return false;
-  return typeof savedKnob === "boolean" ? savedKnob : floor;
-}
-function wrapPanelLines(text, cols) {
-  const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8));
-  const flat = panelText(text);
-  if (flat === "")
-    return [""];
-  const lines = [];
-  let current = "";
-  for (const word of flat.split(" ")) {
-    if (word === "")
-      continue;
-    const candidate = current === "" ? word : `${current} ${word}`;
-    if (current !== "" && cellWidth(candidate) + 1 > width) {
-      lines.push(current);
-      current = word;
-      continue;
-    }
-    current = candidate;
-  }
-  if (current !== "")
-    lines.push(current);
-  return lines;
-}
-function createPanelComponent(readWorkflow, options) {
-  return function MpdTuiPanel(props) {
-    const kit = panelKit(props?.React, props?.ui);
-    if (kit === undefined) {
-      return null;
-    }
-    const React = kit.React;
-    const ui = kit.ui;
-    const measured = usePanelSize(ui, panelFloorColumns("merged"));
-    const contentCols = panelContentWidth(measured.cols);
-    const width = Math.max(1, contentCols);
-    const snapshot = panelSnapshot(props?.host);
-    let workflow;
-    try {
-      workflow = readWorkflow();
-    } catch {
-      workflow = undefined;
-    }
-    const pinned = React.useState(undefined);
-    const pinnedId = typeof pinned[0] === "string" ? pinned[0] : undefined;
-    const setPinned = pinned[1];
-    usePanelTick(kit, PANEL_REFRESH_MS, true);
-    const view = teamGraphView(workflow, width);
-    const dependentsOf = (id) => (workflow?.tasks ?? []).filter((task) => task.dependencies.includes(id)).map((task) => task.id);
-    const pinnedTask = pinnedId === undefined ? undefined : (workflow?.tasks ?? []).find((task) => task.id === pinnedId);
-    const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
-    const sizes = { contentRows: 1, viewportRows: 1 };
-    sizes.contentCols = view === undefined ? width : view.width;
-    sizes.viewportCols = width;
-    const windowRows = Math.max(1, (measured.rows ?? MERGED_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS);
-    const viewport = usePanelViewport(kit, () => sizes);
-    const drawnLines = view === undefined ? [] : view.lines;
-    usePanelKeys(kit, props?.host, keysArmed, (event) => {
-      const bare = panelKeyEvent(event);
-      if (bare === undefined)
-        return;
-      const flags = bare.key ?? {};
-      const gesture = panelScrollKey(bare);
-      const input = bare.input;
-      const down = flags.downArrow === true || input === "j" || input === "J";
-      const up = flags.upArrow === true || input === "k" || input === "K";
-      const both = panelScrollGesture(bare);
-      if (flags.shift === true && (both === "colLeft" || both === "colRight" || both === "colUp" || both === "colDown")) {
-        if (bare.preventDefault !== undefined)
-          bare.preventDefault();
-        viewport.scrollColBy(both === "colLeft" || both === "colUp" ? -1 : 1);
-        return;
-      }
-      if (flags.shift === true && (both === "colPageUp" || both === "colPageDown")) {
-        if (bare.preventDefault !== undefined)
-          bare.preventDefault();
-        viewport.scrollColBy(both === "colPageUp" ? -width : width);
-        return;
-      }
-      if (gesture !== undefined || down || up) {
-        if (bare.preventDefault !== undefined)
-          bare.preventDefault();
-        if (gesture === "top")
-          viewport.scrollTo(0);
-        else if (gesture === "bottom")
-          viewport.scrollTo(Number.MAX_SAFE_INTEGER);
-        else if (gesture === "pageUp")
-          viewport.scrollBy(-viewport.viewportRows);
-        else if (gesture === "pageDown")
-          viewport.scrollBy(viewport.viewportRows);
-        else
-          viewport.scrollBy(down ? 1 : -1);
-        return;
-      }
-      const escape = flags.escape === true || input === "\x1B";
-      if (!escape)
-        return;
-      if (pinnedId === undefined)
-        return;
-      if (bare.preventDefault !== undefined)
-        bare.preventDefault();
-      setPinned(undefined);
-    });
-    const children = [];
-    const section = subagentSectionRows(snapshot);
-    for (let index = 0;index < section.length; index += 1) {
-      const row = section[index];
-      children.push(React.createElement(ui.Text, {
-        key: `sub-${index}`,
-        ...row.header === true ? { bold: true } : {},
-        ...row.dim === true ? { dimColor: true } : {}
-      }, panelText(row.text)));
-    }
-    if (typeof ui.Divider === "function")
-      children.push(React.createElement(ui.Divider, { key: "sep" }));
-    else
-      children.push(React.createElement(ui.Text, { key: "sep", dimColor: true }, panelText("─")));
-    if (view === undefined) {
-      const empty = wrapPanelLines("task dependency graph: no team in this workspace — `agent_teams_plan` stages one", width);
-      for (let index = 0;index < empty.length; index += 1) {
-        children.push(textRow(kit, empty[index], { key: `graphhead-${index}`, dim: true, maxCells: width, joinNext: index < empty.length - 1 }));
-      }
-    } else {
-      children.push(textRow(kit, `task dependency graph${view.mode === "rail" ? " (rail)" : ""}`, { key: "graphhead", dim: true, maxCells: width }));
-      for (let index = 0;index < view.lines.length; index += 1) {
-        const spans = sliceSpans(view.lines[index], viewport.colOffset, width);
-        const hit = view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd);
-        children.push(hit === undefined ? graphRow(kit, spans, { key: `graph-${index}`, cols: width }) : graphRow(kit, spans, {
-          key: `graph-${index}`,
-          cols: width,
-          onClick: () => {
-            setPinned(hit.taskId);
-          }
-        }));
-      }
-      if (viewport.colOverflow) {
-        children.push(textRow(kit, gutterCellsX(viewport.colOffset, sizes.contentCols ?? width, width), { key: "hrail", tone: "edge", maxCells: width }));
-      }
-      if (pinnedTask !== undefined) {
-        children.push(textRow(kit, `◆ ${pinnedTask.id}`, { key: "pin-head", tone: "focus", bold: true, maxCells: width }));
-        const facts = [
-          ["id", pinnedTask.id],
-          ["kind", pinnedTask.kind ?? "—"],
-          ["visual", pinnedTask.visual],
-          ["verdict", pinnedTask.verdict ?? "—"],
-          ["failedBy", pinnedTask.failedDependencies.length === 0 ? "—" : pinnedTask.failedDependencies.join(",")],
-          ["owner", pinnedTask.assignee ?? "—"],
-          ["attempt", pinnedTask.attempt === undefined ? "—" : String(pinnedTask.attempt)],
-          ["round", pinnedTask.round === undefined ? "—" : String(pinnedTask.round)],
-          ["blockedBy", pinnedTask.dependencies.length === 0 ? "—" : pinnedTask.dependencies.join(",")],
-          ["dependents", dependentsOf(pinnedTask.id).join(",") === "" ? "—" : dependentsOf(pinnedTask.id).join(",")]
-        ];
-        for (const [label, value] of facts)
-          children.push(textRow(kit, `${label} ${value}`, { key: `pin-${label}`, dim: true, maxCells: width }));
-      }
-    }
-    let arrow = [];
-    try {
-      arrow = legendLines(width);
-    } catch {
-      arrow = [];
-    }
-    const legend = legendLinesFor(width, arrow);
-    for (let index = 0;index < legend.length; index += 1) {
-      children.push(textRow(kit, legend[index], { key: `legend-${index}`, dim: true, maxCells: width }));
-    }
-    children.push(textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · /mpd panel`, { key: "keys", dim: true, maxCells: width }));
-    const contentRows = Math.max(children.length, 1);
-    const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows);
-    sizes.contentRows = contentRows;
-    sizes.viewportRows = windowRows;
-    const scroller = viewport;
-    const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...rows);
-    const body = panelViewportBody(kit, children, scroller, true, wheelBound);
-    const titleRow = usePanelTitleRow(kit, { key: "title", title: PANEL_TITLE, cols: width, ...options?.openFullscreen === undefined ? {} : { open: options.openFullscreen } });
-    return panelFrame(kit, PANEL_TITLE, [titleRow, ...body]);
-  };
-}
-function registerPanelSurface(tui, deps) {
-  const panel = deps.enabled ? tui.registerPanel({
-    ...PANEL_DESCRIPTOR_FROZEN,
-    component: createPanelComponent(deps.readWorkflow, { openFullscreen: () => deps.openMergedScene() })
-  }) : undefined;
-  return {
-    panel,
-    registered: () => panel !== undefined && panel.id() !== undefined,
-    id: () => panel?.id(),
-    outcome: () => {
-      if (panel !== undefined)
-        return panel.outcome();
-      return tui.skipped("panels", "the sidebar panel is disabled by the mpd-tui row config (panel: false)").outcome();
-    },
-    openOrScene: () => {
-      const id = panel?.id();
-      if (!tui.panelSeamBound() || id === undefined) {
-        const refused = panel !== undefined && tui.panelSeamBound() && panel.outcome().state === "refused";
-        return { outcome: refused ? "refused" : "unavailable", sceneOpened: deps.openMergedScene() };
-      }
-      if (typeof tui.panels()?.open !== "function") {
-        deps.log.debug(`the bound panel seam exposes no open() member; using the full-screen merged scene`);
-        return { outcome: "unavailable", sceneOpened: deps.openMergedScene() };
-      }
-      const result = tui.openPanel(id);
-      if (result.opened() === true)
-        return { outcome: "opened", sceneOpened: false };
-      deps.log.debug(`panel open(${id}) refused; falling back to the full-screen merged scene`);
-      return { outcome: "fallback", sceneOpened: deps.openMergedScene() };
-    }
-  };
-}
-function panelStatusLine(outcome, id) {
-  if (outcome === "opened")
-    return t("panel.opened", { id: id ?? "?" });
-  if (outcome === "fallback")
-    return t("panel.fallback", { id: id ?? "?" });
-  if (outcome === "refused")
-    return t("panel.refused");
-  return t("panel.unavailable");
-}
-
 // packages/mpd-tui-plugin/src/panel-dag.ts
-var DAG_PANEL_ID = DAG_PANEL_SLUG;
-var DAG_PANEL_TITLE = "MPD DAG";
-var DAG_PANEL_ICON = "◈";
-var DAG_PANEL_ORDER = 11;
+var DAG_PANEL_TITLE = "MPD";
 var DAG_PANEL_REFRESH_MS = 1000;
-var DAG_PANEL_DESCRIPTOR_FROZEN = {
-  apiVersion: 1,
-  id: DAG_PANEL_ID,
-  title: DAG_PANEL_TITLE,
-  icon: DAG_PANEL_ICON,
-  minColumns: DAG_PANEL_MIN_COLUMNS,
-  order: DAG_PANEL_ORDER
-};
 function dagPageOf(workflow) {
   if (workflow === undefined || !Array.isArray(workflow.tasks) || workflow.tasks.length === 0)
     return;
@@ -7556,6 +7420,23 @@ function createDagPanelComponent(readWorkflow, options) {
         movePin(undefined);
     });
     const children = [];
+    let section = [];
+    try {
+      section = subagentSectionRows(panelSnapshot(props?.host));
+    } catch {
+      section = [];
+    }
+    for (let index = 0;index < section.length; index += 1) {
+      const row = section[index];
+      if (row === undefined)
+        continue;
+      children.push(textRow(kit, row.text, {
+        key: `sub-${index}`,
+        ...row.header === true ? { bold: true } : {},
+        ...row.dim === true ? { dim: true } : {},
+        maxCells: contentCols
+      }));
+    }
     const viewport = usePanelViewport(kit, () => sizes);
     const header = page === undefined ? undefined : headerFacts(page, contentCols);
     if (header !== undefined) {
@@ -7616,8 +7497,10 @@ function createDagPanelComponent(readWorkflow, options) {
     const pinnedTask = pinned === undefined ? undefined : page?.tasks.find((task) => task.id === pinned);
     if (pinnedTask !== undefined) {
       children.push(textRow(kit, `${DAG_CHROME.pinMarker} ${pinnedTask.id}`, { key: "pin-head", tone: "focus", bold: true, maxCells: contentCols }));
+      let detailRow = 0;
       for (const line of pinnedDetailLines(pinnedTask, page?.tasks ?? [], contentCols)) {
-        children.push(textRow(kit, line, { key: `pin-${line.slice(0, 24)}`, dim: true, maxCells: contentCols }));
+        children.push(textRow(kit, line, { key: `pin-${detailRow}`, dim: true, maxCells: contentCols }));
+        detailRow += 1;
       }
     }
     let arrow = [];
@@ -7626,8 +7509,10 @@ function createDagPanelComponent(readWorkflow, options) {
     } catch {
       arrow = [];
     }
+    let legendRow = 0;
     for (const line of legendLinesFor(contentCols, arrow)) {
-      children.push(textRow(kit, line, { key: `legend-${line.slice(0, 24)}`, dim: true, maxCells: contentCols }));
+      children.push(textRow(kit, line, { key: `legend-${legendRow}`, dim: true, maxCells: contentCols }));
+      legendRow += 1;
     }
     const contentRows = Math.max(children.length, 1);
     sizes.contentRows = contentRows;
@@ -7640,10 +7525,39 @@ function createDagPanelComponent(readWorkflow, options) {
     return panelFrame(kit, DAG_PANEL_TITLE, [titleRow, ...body, footer]);
   };
 }
-function registerDagPanel(tui, deps) {
+
+// packages/mpd-tui-plugin/src/panel.ts
+var PANEL_SLUG = "team";
+var PANEL_TITLE = "MPD";
+var PANEL_ICON = "❖";
+var PANEL_MIN_COLUMNS = 28;
+var PANEL_ORDER = 10;
+var PANEL_DESCRIPTOR_FROZEN = {
+  apiVersion: 1,
+  id: PANEL_SLUG,
+  title: PANEL_TITLE,
+  icon: PANEL_ICON,
+  minColumns: PANEL_MIN_COLUMNS,
+  order: PANEL_ORDER
+};
+function takeoverArmed(seamBound, savedKnob, floor) {
+  if (seamBound)
+    return false;
+  return typeof savedKnob === "boolean" ? savedKnob : floor;
+}
+function createPanelComponent(readWorkflow, options) {
+  return createDagPanelComponent(readWorkflow, {
+    ...options?.openFullscreen === undefined ? {} : { openFullscreen: options.openFullscreen },
+    ...options?.openAgentPage === undefined ? {} : { openAgentPage: options.openAgentPage }
+  });
+}
+function registerPanelSurface(tui, deps) {
   const panel = deps.enabled ? tui.registerPanel({
-    ...DAG_PANEL_DESCRIPTOR_FROZEN,
-    component: createDagPanelComponent(deps.readWorkflow, { openAgentPage: deps.openAgentPage, openFullscreen: deps.openFullscreen })
+    ...PANEL_DESCRIPTOR_FROZEN,
+    component: createPanelComponent(deps.readWorkflow, {
+      openFullscreen: deps.openFullscreenScene ?? (() => deps.openMergedScene()),
+      ...deps.openAgentPage === undefined ? {} : { openAgentPage: deps.openAgentPage }
+    })
   }) : undefined;
   return {
     panel,
@@ -7652,10 +7566,34 @@ function registerDagPanel(tui, deps) {
     outcome: () => {
       if (panel !== undefined)
         return panel.outcome();
-      return tui.skipped("panels", "the DAG sidebar page is disabled by the mpd-tui row config (panel: false)").outcome();
+      return tui.skipped("panels", "the sidebar panel is disabled by the mpd-tui row config (panel: false)").outcome();
     },
-    openScene: () => deps.openScene()
+    openOrScene: () => {
+      const id = panel?.id();
+      if (!tui.panelSeamBound() || id === undefined) {
+        const refused = panel !== undefined && tui.panelSeamBound() && panel.outcome().state === "refused";
+        return { outcome: refused ? "refused" : "unavailable", sceneOpened: deps.openMergedScene() };
+      }
+      if (typeof tui.panels()?.open !== "function") {
+        deps.log.debug(`the bound panel seam exposes no open() member; using the full-screen merged scene`);
+        return { outcome: "unavailable", sceneOpened: deps.openMergedScene() };
+      }
+      const result = tui.openPanel(id);
+      if (result.opened() === true)
+        return { outcome: "opened", sceneOpened: false };
+      deps.log.debug(`panel open(${id}) refused; falling back to the full-screen merged scene`);
+      return { outcome: "fallback", sceneOpened: deps.openMergedScene() };
+    }
   };
+}
+function panelStatusLine(outcome, id) {
+  if (outcome === "opened")
+    return t("panel.opened", { id: id ?? "?" });
+  if (outcome === "fallback")
+    return t("panel.fallback", { id: id ?? "?" });
+  if (outcome === "refused")
+    return t("panel.refused");
+  return t("panel.unavailable");
 }
 
 // packages/mpd-tui-plugin/src/panel-workmate.ts
@@ -7875,8 +7813,11 @@ function createWorkmatePanelComponent(readLibrary, options) {
         }
         children.push(kit.React.createElement(kit.ui.Text, { key: `${entry.key}-gap` }, ""));
       }
-      for (const problem of library.problems)
-        children.push(textRow(kit, problem, { key: `p-${problem.slice(0, 24)}`, tone: "failed", maxCells: contentCols }));
+      let problemRow = 0;
+      for (const problem of library.problems) {
+        children.push(textRow(kit, problem, { key: `p-${problemRow}`, tone: "failed", maxCells: contentCols }));
+        problemRow += 1;
+      }
     }
     const contentRows = Math.max(children.length, 1);
     const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows);
@@ -8641,7 +8582,7 @@ var COMMAND_CHILDREN = [
   { name: "plan", description: "Review and approve a staged plan", descriptions: { zh: "审阅并批准待定计划", en: "Review and approve a staged plan" } },
   { name: "subagents", description: "Open the subagents + team panel", descriptions: { zh: "打开子代理与团队合并面板", en: "Open the subagents + team panel" } },
   { name: "panel", description: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam", descriptions: { zh: "打开侧栏面板；宿主无面板接缝时使用全屏合并面板", en: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam" } },
-  { name: "dag", description: "Open the dependency DAG page (its own sidebar panel), or the full-screen fallback", descriptions: { zh: "打开依赖 DAG 页面（独立侧栏面板）；无接缝时使用全屏回退", en: "Open the dependency DAG page (its own sidebar panel), or the full-screen fallback" } },
+  { name: "dag", description: "Open the MPD panel on its dependency DAG, or the full-screen DAG scene", descriptions: { zh: "打开 MPD 面板的依赖 DAG 视图；无接缝时使用全屏 DAG 场景", en: "Open the MPD panel on its dependency DAG, or the full-screen DAG scene" } },
   { name: "workmate", description: "Open the workmate page (its own sidebar panel), or the full-screen fallback", descriptions: { zh: "打开 workmate 页面（独立侧栏面板）；无接缝时使用全屏回退", en: "Open the workmate page (its own sidebar panel), or the full-screen fallback" } },
   { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库", en: "List the durable workmate library" } },
   { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行", en: "Print the mpd status line" } }
@@ -9424,6 +9365,8 @@ function apply(ctx, config = {}) {
     enabled: resolved.panel,
     readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
     openMergedScene: () => scene.openSubagents(),
+    openFullscreenScene: () => scene.openTeam(),
+    openAgentPage: (agentId) => openAgentPage(agentId),
     log
   });
   const openAgentPage = (agentId) => {
@@ -9434,14 +9377,6 @@ function apply(ctx, config = {}) {
     log.debug(`openAgentPage(${agentId}): no subagent scene is reachable here; the request was cleared`);
     return false;
   };
-  const dagPanel = registerDagPanel(tui, {
-    enabled: resolved.panel,
-    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
-    openScene: () => scene.openSubagents(),
-    openFullscreen: () => scene.openSubagents(),
-    openAgentPage,
-    log
-  });
   const workmatePanel = registerWorkmatePanel(tui, {
     enabled: resolved.panel,
     home,
@@ -9508,7 +9443,7 @@ function apply(ctx, config = {}) {
       return { outcome: route.outcome, id: route.id };
     },
     openDag: () => {
-      const route = openPage(dagPanel);
+      const route = openPage({ id: () => panel.id(), openScene: () => scene.openTeam() });
       return { outcome: route.outcome, id: route.id };
     },
     openWorkmate: () => {
@@ -9535,8 +9470,6 @@ function apply(ctx, config = {}) {
   record(scene);
   outcomes.push({ id: "panel", outcome: panel.outcome() });
   log.debug(`sidebar panel id: ${panel.id() ?? "(not discovered)"}`);
-  outcomes.push({ id: "dagPanel", outcome: dagPanel.outcome() });
-  log.debug(`sidebar DAG page id: ${dagPanel.id() ?? "(not discovered)"}`);
   outcomes.push({ id: "workmatePanel", outcome: workmatePanel.outcome() });
   log.debug(`sidebar workmate page id: ${workmatePanel.id() ?? "(not discovered)"}`);
   outcomes.push({ id: "dashboardKey", outcome: dashboardKey.outcome() });

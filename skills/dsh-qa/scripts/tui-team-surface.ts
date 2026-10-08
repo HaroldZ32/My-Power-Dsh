@@ -33,7 +33,7 @@
 // boundary in arm 1 is a recording double, so arm 1 proves the GATE and the adapter
 // forwarding, never that the adopted runtime executed.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -50,16 +50,27 @@ import {
   REPO, artifactRevision, emitMarker, gateTuiPrereqs, makeChecks, parseSandboxArgs, profileState,
   readSessionHeaders, runTuiSession,
 } from "./lib/tui-lane.ts"
+// THE PLUGIN'S OWN DICTIONARY, never a frozen English literal: the scene title this lane asserts is the
+// one the plugin REGISTERS through `t("scene.plan")`, and the host paints whichever language it resolved.
+import { TUI_TEXT, pick as pickText } from "../../../packages/mpd-tui-plugin/src/i18n.ts"
 import type { TuiPrereq, TuiStep } from "./lib/tui-lane.ts"
 
 /** The case slug: names the evidence dir, the tmux socket and every marker/output line. */
 export const SLUG: string = "tui-team-surface"
 /** The task id this lane reports in its result payload. */
 export const TASK: string = "t3"
-/** The scene ids and titles frozen by the contract (§3.1/§3.2). */
+/** The scene ids and titles frozen by the contract (§3.1/§3.2); the title the plugin REGISTERS is the localized one — see {@link PLAN_SCENE_TITLE}. */
 export const PLAN_SCENE: TuiScene = { id: "mpd-tui-plan", title: "MPD plan approval" }
 /** The second frozen scene of the pair: its registration is asserted alongside the plan scene's. */
 export const TEAM_SCENE: TuiScene = { id: "mpd-tui-team", title: "MPD team" }
+/** `scene.plan` in every language the plugin ships, escaped so it can be interpolated into a pattern. */
+const PLAN_TITLE_ALTERNATIVES: string = [pickText(TUI_TEXT["scene.plan"], "zh"), pickText(TUI_TEXT["scene.plan"], "en")]
+  .map((title) => title.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"))
+  .join("|")
+/** The REGISTERED plan-scene title: `registerScene` takes `t("scene.plan")`, so a frozen English literal reads as a mismatch on a Chinese host. */
+export const PLAN_SCENE_TITLE: RegExp = new RegExp(`^(?:${PLAN_TITLE_ALTERNATIVES})$`)
+/** The rendered title LINE, which prefixes that same title to the team name (`✓ MPD 计划审批 — Fixture Team · 216x48`, inside the pane's border cells). */
+export const PLAN_SCENE_TITLE_LINE: RegExp = new RegExp(`^[^\\p{L}\\p{N}]*(?:${PLAN_TITLE_ALTERNATIVES})`, "u")
 // THE TOOL NAME MOVED WITH THE SPLIT (W6). These named the RETIRED vendored plugin's tools, and after
 // the split the approval rides `mpd-team-core`'s own `agent_teams_plan` — one tool with an `action`
 // enum, not a tool per verb. The boundary double below answers THIS name, so a stale constant here
@@ -491,15 +502,46 @@ export function surfaceFacts(text: string): SurfaceFacts {
   const pick = (predicate: (line: string) => boolean): string => clean(lines.find(predicate) ?? "")
   /** The whole `confirm …` line, which carries the typed echo the drive reads. */
   const confirmLine = clean(lines.find((line) => line.startsWith("confirm ")) ?? "")
+  /** The plugin's own body-row rule (`subagent-scene.ts` `LABEL_ROW`): a lowercase label, then 2+ spaces. */
+  const LABEL_ROW = /^[a-z][a-z0-9-]* {2,}/u
+  /**
+   * The value of one labelled body row, in EITHER shape the extraction can carry it.
+   *
+   * MEASURED (`evidence/tui/team-surface-verify/2026-10-08T03-05-56.134Z/raw/arm1-green.txt`): the
+   * rendered surface puts a row's `Text{label}` and `Text{value}` on TWO lines (`team` / `Fixture Team
+   * (mpd-fixture-1) · phase staged · review -`), while the synthetic fixtures below put them on one —
+   * so a reader that only looks at the label's own line reads the LABEL as the value, which is exactly
+   * how A4/A5/A6 came to fail on a surface that had rendered every row. A continuation that is itself a
+   * label row is NOT a value: there the row is genuinely empty.
+   * @param label - the row's label, exactly as the surface prints it (never its padding).
+   * @returns the value, or `""` when the row and its continuation are both empty.
+   */
+  const rowValue = (label: string): string => {
+    /** The row's index among the rendered lines, `-1` when this render has no such row. */
+    const at = lines.findIndex((line) => line.startsWith(label + " "))
+    if (at < 0) return ""
+    /** The value on the label's own line, `""` when the pair was split over two rows. */
+    const own = clean(lines[at] ?? "").slice(label.length).trim()
+    if (own !== "") return own
+    /** The continuation line, which carries a value only when it is not another label row. */
+    const next = clean(lines[at + 1] ?? "")
+    return LABEL_ROW.test(next) ? "" : next
+  }
+  /** One row joined back into the single line the PANE paints, `""` when the row carries no value. */
+  const rowLine = (label: string): string => {
+    /** That row's value, read in either shape. */
+    const value = rowValue(label)
+    return value === "" ? "" : label + " " + value
+  }
   return {
-    titleLine: pick((line) => line.startsWith("MPD plan approval")),
-    teamLine: pick((line) => /^team\s/.test(line)),
+    titleLine: pick((line) => PLAN_SCENE_TITLE_LINE.test(line)),
+    teamLine: rowLine("team"),
     instruction: pick((line) => line === INSTRUCTION),
-    requiredLine: pick((line) => line.startsWith("required ")),
-    requiredPhrase: pick((line) => line.startsWith("required ")).replace(/^required\s+/, ""),
+    requiredLine: rowLine("required"),
+    requiredPhrase: rowValue("required"),
     echoLine: confirmLine,
-    confirmEcho: clean(confirmLine.replace(/^confirm\s*/, "")),
-    runnableLine: pick((line) => line.startsWith("runnable ")),
+    confirmEcho: rowValue("confirm"),
+    runnableLine: rowLine("runnable"),
     message: clean(lines.filter((line) => /^approved:|^approve failed:|^confirmation does not match|^discarded:|^discard failed:/.test(line)).at(-1) ?? ""),
     emptyState: pick((line) => line.startsWith("no staged plan for team")),
   }
@@ -1262,7 +1304,7 @@ export async function armBoundary({ workspace, home, outDir, planId }: BoundaryA
     mounted.applyError === undefined
       ? "the REAL plugin apply() registered " + mounted.sceneRegistrations.map((entry) => entry.id).join(",")
       : "apply() threw: " + mounted.applyError)
-  add("A2-plan-scene", mounted.plan?.id === PLAN_SCENE.id && mounted.plan?.title === PLAN_SCENE.title,
+  add("A2-plan-scene", mounted.plan?.id === PLAN_SCENE.id && PLAN_SCENE_TITLE.test(String(mounted.plan?.title ?? "")),
     "registered scene " + JSON.stringify(mounted.plan?.id) + " title " + JSON.stringify(mounted.plan?.title))
   add("A3-entry-points", mounted.commandRegistrations.length > 0,
     "command registrations: " + JSON.stringify(mounted.commandRegistrations))
@@ -1526,7 +1568,7 @@ export function binaryOnPath(name: string): boolean {
  */
 export function hostPrereqs(root: string, explicitSource: string | undefined): TuiPrereq[] {
   return [
-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0", present: () => binaryOnPath("dsh-tui") },
+    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0", present: () => binaryOnPath("dsh-tui") },
     { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux (a real TTY is required; stdout must not be a pipe)", present: () => binaryOnPath("tmux") },
     { code: "absent-fixture", probe: "a dsh-tui profile in the sandbox root (or a warm source to seed one from)", remedy: "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install", present: () => profileReachable(root, explicitSource) },
   ]
@@ -1738,6 +1780,10 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
   /** The one real TUI lifecycle: boot, drive every step, capture each pane, kill the server. */
   const session = runTuiSession({ lane: SLUG, root, outDir: join(outDir, "panes"), steps, bootWaitMs: 120_000 })
   for (const failure of session.failures) log("host: tmux " + failure)
+  // A replayed incident dialog owns the keyboard, so the helper drops the sandbox's replay state
+  // before the boot (MEASURED: the 2026-10-08T03-47 run's `plan-open` pane carried the dialog and no
+  // scene at all, which reddened H1 AND H3 together); naming what it dropped keeps that visible here.
+  if (session.replayStateCleared.length > 0) log("host: dropped the previous run's watchdog replay state: " + session.replayStateCleared.map((file) => file.replace(REPO + "/", "")).join(", "))
   /** Read one captured pane's text by step name, `""` when that step produced no capture. */
   const pane = (name: string): string => session.panes.find((entry) => entry.name === name)?.text ?? ""
   /** Absolute path of the record the drive mutates — the truth source of this arm. */
@@ -1797,8 +1843,15 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
   const items: CheckItem[] = []
   /** Append one assertion row; `ok` is coerced to a real boolean so a red is never merely truthy. */
   const add = (id: string, ok: unknown, note: string, extra: Record<string, unknown> = {}): number => items.push({ id, ok: ok === true, note, ...extra })
-  add("H1-host-renders-surface", /MPD plan approval/.test(pane("plan-open")) && pane("plan-open").includes(TEAM_ID),
-    "the real host rendered the plan surface for the sandbox record: " + (pane("plan-open").split("\n").map((l) => l.trim()).find((l) => l.startsWith("MPD plan approval")) ?? "(no title line)"))
+  /** The first pane line carrying the PLAN scene's own title, in either language, or `""` when none does. */
+  // The host painted the title in ENGLISH here while arm 1's in-process registration resolved ZH
+  // (measured together in `evidence/tui/team-surface-verify/2026-10-08T03-47-32.316Z/`), so a frozen
+  // English literal — and the old `startsWith` note, which can never match a bordered pane line —
+  // could not state this arm's claim. The TEAM_ID half is unchanged: the title must be OUR scene's AND
+  // the record must be ours, so the board scene (whose title is `MPD 面板` / `MPD board`) still fails.
+  const planTitleLine = (text: string): string => text.split("\n").map((line) => line.trim()).find((line) => PLAN_SCENE_TITLE_LINE.test(line)) ?? ""
+  add("H1-host-renders-surface", planTitleLine(pane("plan-open")) !== "" && pane("plan-open").includes(TEAM_ID),
+    "the real host rendered the plan surface for the sandbox record: " + (planTitleLine(pane("plan-open")) || "(no title line)"))
   add("H2-host-dialog-request", /Plan/.test(pane("picker-open")) && /review and approve a staged plan/.test(pane("picker-open")),
     "the bare /mpd managed dialog listed the Plan entry: " + (pane("picker-open").split("\n").map((l) => l.trim()).filter((l) => /Plan|approve a staged plan/.test(l)).slice(0, 3).join(" | ") || "(nothing)"))
   add("H3-host-confirm-step", pane("plan-open").includes(INSTRUCTION) && pane("phrase-typed").includes("confirm    " + phrase),
@@ -1877,6 +1930,32 @@ function selfTest(): void {
   check(facts.requiredPhrase === "approve mpd-fixture-1", "the parser must read the required phrase")
   check(facts.confirmEcho === "", "the entry echo must read as EMPTY (no prefill)")
   check(surfaceFacts(rendered.replace("confirm    ", "confirm    approve mpd-fixture-1")).confirmEcho === "approve mpd-fixture-1", "the parser must read a typed echo")
+  // THE SPLIT SHAPE, which is the shape the REAL extraction produces (see `surfaceFacts`): the label
+  // and its value on two lines. A parser that reads only the label's own line reports the LABEL as the
+  // value — the measured A4/A5/A6 red — and one that joins blindly would swallow the next label row.
+  /** The same render split the way the real render splits it — padding INCLUDED, as `raw/arm1-green.txt` has it. */
+  const splitRender = [
+    "✓ MPD plan approval — Fixture Team",
+    "team       ",
+    "Fixture Team (mpd-fixture-1) · phase staged · review -",
+    INSTRUCTION,
+    "confirm    ",
+    "",
+    "required   ",
+    "approve mpd-fixture-1",
+    "runnable   ",
+    "yes",
+  ].join("\n")
+  /** The facts the split shape must produce. */
+  const splitFacts = surfaceFacts(splitRender)
+  check(splitFacts.teamLine === "team Fixture Team (mpd-fixture-1) · phase staged · review -", "the parser must join a label-only row to its continuation")
+  check(splitFacts.requiredPhrase === "approve mpd-fixture-1", "the parser must read the required phrase off the split shape")
+  check(splitFacts.confirmEcho === "", "a label-only row must read as EMPTY, never as the next row's label")
+  check(splitFacts.runnableLine === "runnable yes", "the parser must join the runnable row too")
+  check(splitFacts.titleLine === "✓ MPD plan approval — Fixture Team", "the parser must read the title line through its leading status glyph")
+  // NEGATIVE CONTROL for the title readers H1 and `titleLine` now share: another scene's title must NOT
+  // satisfy them, or "the plan surface rendered" could be proven by the board.
+  check(!PLAN_SCENE_TITLE_LINE.test("✓ MPD board — Fixture Team") && !PLAN_SCENE_TITLE.test("MPD board"), "the title readers must REJECT another scene's title")
 
   // The assertion the control relies on must be falsifiable BOTH ways.
   /** An observation with one recorded boundary call, which must satisfy the assertion. */
