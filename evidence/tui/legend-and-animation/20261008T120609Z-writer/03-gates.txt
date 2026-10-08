@@ -1,0 +1,21 @@
+# gates on the settled revision, run at 2026-10-08T12:07:55Z UTC
+
+$ (cd packages/mpd-tui-plugin && .toolchain/node_modules/.bin/bun test)
+
+ 448 pass
+ 0 fail
+ 12707 expect() calls
+Ran 448 tests across 20 files. [8.86s]
+
+$ bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+$ bun run verify:comments
+scanned 367 TypeScript file(s) of 367 in the source set; inspected 32439 declaration(s); skipped 14642 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+$ node scripts/verify-dist-fresh.ts
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 30/30 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 679ms

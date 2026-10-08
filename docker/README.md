@@ -101,9 +101,12 @@ run produced no `result.json` at all, `3` the host has no usable docker.
     history. Override it
     with `MPD_E2E_TUI_VERSION`, and keep it in step with `MPD_E2E_DSH_VERSION`. It installs THIS bundle
     into the `dsh-tui` profile as the third
-    patch layer, and records fifteen assertions: host install, both `plugin add` calls, composition,
-    the **USER-level preset preference** (see below), the `preset-mpd` / `mpd-tui` /
-    official-team rows, the `/mpd team` scene drawing its graph on the real terminal, a real tmux PTY
+    patch layer, and records twenty-two `tui.*` assertions: host install, both `plugin add` calls,
+    composition, the **USER-level preset preference** (see below), the `preset-mpd` / `mpd-tui` /
+    official-team rows, the seeded board **bound to the session the TUI actually runs as** (both
+    spellings the product's own `createTeam` writes), a SIBLING session's board staying **invisible**
+    in a session that owns none — the product's own `no team in this session` empty state — the
+    `/mpd team` scene drawing its graph on the real terminal, a real tmux PTY
     boot reaching the chat screen, no fatal signature, and the preset the created session ACTUALLY
     ran — read from the harness's own session store (`agentPreset: "mpd"`), never from the pane.
     **The lane performs the documented user path itself**: before the TUI process starts it writes

@@ -802,13 +802,23 @@ describe("the legend is composed, and it disambiguates the two states that share
       // THE STATE KEY IS THE COMPOSER'S ROWS, AND THERE IS ONLY EVER ONE GROUP OF THEM.
       expect(matchingKeys(kit.last(), STATE_KEY_ROW_KEY)).toHaveLength(composed.length - arrow.length)
       expect(composed.length).toBeGreaterThan(arrow.length)
-      // THE CONTRACT'S KEY NAMES EVERY STATE, AND NAMES A SHARED GLYPH'S TWIN — the whole reason it
-      // exists: `○ blocked` and `○ open` are the same character without it.
+      // THE CONTRACT'S KEY NAMES EVERY STATE EXACTLY ONCE, AND A SHARED MARK'S ENTRY NAMES EVERY
+      // CARRIER — the whole reason it exists: `○ blocked` and `○ open` are the same character, so the
+      // reader is told that one mark stands for both. The pre-fix key printed that pair twice, under
+      // an `=` that claimed the two states are each other.
       /** The contract's own key line, the last line the composer produced. */
       const stateKey = composed.at(-1) ?? ""
-      for (const state of DAG_STATE_TONES) expect(stateKey).toContain(state)
-      expect(stateKey).toContain(`${DAG_TONE_GLYPH.blocked ?? "?"} blocked=open`)
-      expect(stateKey).toContain(`${DAG_TONE_GLYPH.open ?? "?"} open=blocked`)
+      for (const state of DAG_STATE_TONES) {
+        /** How many times this key NAMES the state, counted as a whole word so `blocked` != `blocker`. */
+        const named = (stateKey.match(new RegExp(`\\b${state}\\b`, "g")) ?? []).length
+        expect(`${state} named=${named}`).toBe(`${state} named=1`)
+      }
+      /** The entries the key opens with the shared mark; one entry must name BOTH of its carriers. */
+      const sharedEntries = stateKey.split(" · ").filter((entry) => entry.startsWith(`${DAG_TONE_GLYPH.blocked ?? "?"} `))
+      expect(sharedEntries).toHaveLength(1)
+      expect(sharedEntries[0] ?? "").toContain("blocked")
+      expect(sharedEntries[0] ?? "").toContain("open")
+      expect(stateKey).not.toContain("=")
       for (const line of composed) expect(cellWidth(line)).toBeLessThanOrEqual(budget)
     }
   })

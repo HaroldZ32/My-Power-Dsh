@@ -1,0 +1,22 @@
+# the SAME composed legend reaching BOTH render surfaces, at 2026-10-08T12:07:50Z UTC
+#
+# Recon named 'two surfaces that write the same legend text'. Measured: there is ONE writer
+# (panel-core.ts legendLinesFor) and TWO render sites that call it — panel-dag.ts:1117 (the sidebar
+# DAG page) and scenes.ts:976 (the full-screen merged scene) — so they cannot disagree, and each is
+# proved below by the arm that reads the DRAWN frame rather than the helper's return.
+#
+## surface 1 — the mounted DAG page frame (installed host ink root, 156 columns)
+
+ 1 pass
+ 4 filtered out
+ 0 fail
+ 6 expect() calls
+Ran 1 test across 1 file. [267.00ms]
+
+## surface 2 — the merged full-screen scene's own state-key rows
+
+ 1 pass
+ 22 filtered out
+ 0 fail
+ 32 expect() calls
+Ran 1 test across 1 file. [23.00ms]

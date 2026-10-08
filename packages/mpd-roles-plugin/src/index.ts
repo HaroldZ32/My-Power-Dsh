@@ -10,9 +10,11 @@
 // ADDRESSING CONTRACT: a role is addressed by its normal display NAME — the member
 // name in team mode, the label of a one-shot mpd_role_spawn, and what every
 // description/render lists. The stable `id` is an INTERNAL key (modelchain chain key,
-// `personas/<id>.md`, workmate meta.baseId) that legacy callers may still pass; it is
-// accepted for compatibility and never advertised: a role is described by what it does.
-// Keep the two vocabularies one word apart, never two spellings of the same thing.
+// `personas/<id>.md`, workmate meta.baseId): the TOOL surface REFUSES it (`roleOfToolInput`
+// accepts a NAME spelling only) while the internal `mpdRoles.get` path keeps resolving it
+// for chain lookup and legacy callers — and it is never advertised, because a role is
+// described by what it does. Keep the two vocabularies one word apart, never two
+// spellings of the same thing.
 // Persona texts are assets under personas/<id>.md resolved relative to this
 // plugin's package location.
 import { existsSync, readFileSync } from "node:fs"
@@ -136,6 +138,41 @@ export function normalizeRoleKey(key: string): string | null {
   if (k === "sisyphusJunior") return "sisyphus-junior"
   if (k === "multimodalLooker") return "multimodal-looker"
   return ROLE_ID_BY_NAME_KEY[normalizeRoleNameKey(k)] ?? null
+}
+
+/**
+ * Resolve a role key as TOOL INPUT — the ACCEPTANCE side of the addressing contract.
+ *
+ * A tool accepts the roster's own NAME in any case, space, hyphen or underscore spelling and
+ * nothing else. The stable id (`oracle`), the legacy `mpd-<id>` preset form and the camelCase
+ * chain key (`sisyphusJunior`) are INTERNAL keys and are refused HERE — the internal
+ * `mpdRoles.get` path keeps resolving them through `normalizeRoleKey`, which stays PERMISSIVE on
+ * purpose because it also serves chain lookup and the workmate `baseId`; tightening the
+ * normalizer instead of gating the input would silently break that internal path.
+ *
+ * The refusal is not this function's (it answers `null`, and the caller phrases one that names
+ * only accepted names): repeating the rejected key would manufacture the very advertisement the
+ * alias guards scan every model-facing surface for.
+ *
+ * An extension-contributed role keeps its own documented contract (`mpd-ext-plugin/README.md`):
+ * its declared name in any spelling, or its namespaced `ext-<extension-id>-<slug>` id. That id is
+ * namespaced so it can never collide with a base key, and the upstream rule is about base ids.
+ *
+ * @param surface - the roster as THIS call sees it: base specialists plus extension roles.
+ * @param key - the raw tool argument, exactly as the caller spelled it.
+ * @returns the role that key NAMES, or `null` when it is not a name this surface answers to.
+ */
+export function roleOfToolInput(surface: RoleSurface, key: string): ResolvedRole | null {
+  /** The key in the roster's collapsed-name form; an empty key names nothing. */
+  const nameKey = normalizeRoleNameKey(key)
+  if (nameKey === "") return null
+  /** The BASE role whose NAME matches — a base id or a legacy alias can never reach this branch. */
+  const base = surface.roles.find((role) => role.extension === null && normalizeRoleNameKey(role.name) === nameKey)
+  if (base) return base
+  /** The key as written, trimmed: an extension role's namespaced id is matched exactly. */
+  const raw = String(key ?? "").trim()
+  /** The extension role: its namespaced id, or its declared name in the same collapsed form. */
+  return surface.roles.find((role) => role.extension !== null && (role.id === raw || normalizeRoleNameKey(role.name) === nameKey)) ?? null
 }
 
 /** The persona asset path: the configured directory, or this package's own `personas/`. */
@@ -485,7 +522,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   }
 
   /** Resolve one role key against a surface: the base ids/legacy aliases/names first, then an
-   *  extension role by its namespaced id or its declared name in any case/separator spelling. */
+   *  extension role by its namespaced id or its declared name in any case/separator spelling.
+   *
+   *  This is the INTERNAL (service) resolution and stays PERMISSIVE on purpose: `mpdRoles.get` is
+   *  what chain lookup and legacy callers read. The TOOL surface must NOT call it — a tool resolves
+   *  through `roleOfToolInput`, which accepts a NAME spelling only. */
   const roleOf = (surface: RoleSurface, key: string): ResolvedRole | null => {
     /** The key in its canonical internal form, when it resolved to one. */
     const id = normalizeRoleKey(key)
@@ -542,8 +583,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The roster as this call sees it: base specialists plus extension roles. */
       const surface = roleSurface(exec)
       /** The resolved role, or null — in which case the error lists every addressable name. */
-      const spec = roleOf(surface, String(args?.role ?? ""))
-      if (spec === null) throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — use a roster name: " + roleNameListOf(surface))
+      const spec = roleOfToolInput(surface, String(args?.role ?? ""))
+      if (spec === null) throw new Error("mpd_role_spawn: unknown role — use a roster NAME (see mpd_roles_list): " + roleNameListOf(surface))
       /** The task text; empty is a caller error and must not spawn an empty prompt. */
       const task = String(args?.task ?? "").trim()
       if (!task) throw new Error("mpd_role_spawn: task required")
@@ -582,8 +623,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The roster as this call sees it: base specialists plus extension roles. */
       const surface = roleSurface(exec)
       /** The resolved role, or null — in which case the error lists every addressable name. */
-      const spec = roleOf(surface, String(args?.role ?? ""))
-      if (spec === null) throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "' — use a roster name: " + roleNameListOf(surface))
+      const spec = roleOfToolInput(surface, String(args?.role ?? ""))
+      if (spec === null) throw new Error("mpd_role_persona: unknown role — use a roster NAME (see mpd_roles_list): " + roleNameListOf(surface))
       return { role: spec.name, persona: spec.persona, chars: spec.persona.length }
     }
   })

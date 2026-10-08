@@ -2850,6 +2850,16 @@ function normalizeRoleKey(key) {
     return "multimodal-looker";
   return ROLE_ID_BY_NAME_KEY[normalizeRoleNameKey(k)] ?? null;
 }
+function roleOfToolInput(surface, key) {
+  const nameKey = normalizeRoleNameKey(key);
+  if (nameKey === "")
+    return null;
+  const base = surface.roles.find((role) => role.extension === null && normalizeRoleNameKey(role.name) === nameKey);
+  if (base)
+    return base;
+  const raw = String(key ?? "").trim();
+  return surface.roles.find((role) => role.extension !== null && (role.id === raw || normalizeRoleNameKey(role.name) === nameKey)) ?? null;
+}
 function personaPath(config, spec) {
   return config.personasDir ? join3(resolve3(config.personasDir), spec.id + ".md") : join3(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
 }
@@ -3081,9 +3091,9 @@ evidence:
 - `) : "")) },
     execute: async (args, exec) => {
       const surface = roleSurface(exec);
-      const spec = roleOf(surface, String(args?.role ?? ""));
+      const spec = roleOfToolInput(surface, String(args?.role ?? ""));
       if (spec === null)
-        throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — use a roster name: " + roleNameListOf(surface));
+        throw new Error("mpd_role_spawn: unknown role — use a roster NAME (see mpd_roles_list): " + roleNameListOf(surface));
       const task = String(args?.task ?? "").trim();
       if (!task)
         throw new Error("mpd_role_spawn: task required");
@@ -3121,9 +3131,9 @@ Work with the tools your role requires (read-only roles must never modify anythi
 ` + v.persona) },
     execute: async (args, exec) => {
       const surface = roleSurface(exec);
-      const spec = roleOf(surface, String(args?.role ?? ""));
+      const spec = roleOfToolInput(surface, String(args?.role ?? ""));
       if (spec === null)
-        throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "' — use a roster name: " + roleNameListOf(surface));
+        throw new Error("mpd_role_persona: unknown role — use a roster NAME (see mpd_roles_list): " + roleNameListOf(surface));
       return { role: spec.name, persona: spec.persona, chars: spec.persona.length };
     }
   });
@@ -3241,6 +3251,7 @@ export {
   normalizeRoleNameKey,
   pkgRoot,
   readPersona,
+  roleOfToolInput,
   rosterFunctionList,
   rosterNameList,
   stagedPlanProbe

@@ -30,8 +30,9 @@ here for the full body; where the two differ, the manual wins.
   (`spawn_teammate`, whose persona the captain takes from `mpd_role_persona`). The eleven members are
   addressed by NAME and described by what they do — Architect, Researcher, Planner, Deep Worker, Senior
   Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id`
-  (chain key, `personas/<id>.md`, workmate `meta.baseId`) is INTERNAL: accepted for compatibility,
-  exposed by NO tool output, description, render, web route or GUI. The **read-only discipline is the exported deny list** —
+  (chain key, `personas/<id>.md`, workmate `meta.baseId`) is INTERNAL: **refused as tool INPUT** (the
+  tools accept a NAME spelling only; the internal `mpdRoles.get` service path still resolves the id for
+  chain lookup and legacy callers), and exposed by NO tool output, description, render, web route or GUI. The **read-only discipline is the exported deny list** —
   exactly seven names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted equal by
   `roles.test.ts`): `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`,
   `mcp__ast_grep__scan`, `mcp__lsp__rename`. `bash` is denied on purpose (a shell can write files);

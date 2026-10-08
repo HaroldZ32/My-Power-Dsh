@@ -26,9 +26,9 @@
 
 **两个 surface 共用同一套命名（名称统一）。** 名称就是 role 的身份：它既是 team mode 下 agent-teams 为成员取的名称，也是单次 `mpd_role_spawn` 产生的 label。称呼时任意拼写均可：`Architect`、`architect`、`Deep Worker`、`deep-worker`、`deepworker`、`Plan Reviewer`（大小写、空格、连字符、下划线均不敏感）。**任何 surface 都不再展示沿袭自上游的别称** —— role 只用它做什么来描述。
 
-*兼容性（内部实现，任何 surface 都不展示）：* 名册仍接受其稳定的内部键 —— `mpd-modelchain-plugin` 与 `personas/<键>.md` 使用的 chain key（`oracle`、`sisyphus-junior` …）、camelCase 写法（`sisyphusJunior`）以及 legacy 的 `mpd-<键>` 形式 —— 以保证既有 chain 与调用方继续可用；它们永远不会被返回、列出或要求。**workmate library 不再通过这条路径解析 base**：`mpd_workmate_init` 只匹配功能名（稳定 id 会被拒绝，并给出只列名称的错误），`meta.baseId` 仅作为内部溯源保留，任何工具输出、路由或界面都不会暴露它。
+*内部键（永不作为工具输入）：* 稳定内部键 —— `mpd-modelchain-plugin` 与 `personas/<键>.md` 使用的 chain key（`oracle`、`sisyphus-junior` …）、camelCase 写法（`sisyphusJunior`）以及 legacy 的 `mpd-<键>` 形式 —— 在 **service 路径**（`ctx.get("mpdRoles").get(key)`）上仍可解析，因此既有 chain 与内部调用方继续可用；但它们**被工具输入拒绝**：`mpd_role_spawn`、`mpd_role_persona` 与 `mpd_modelchain_resolve` 只接受 NAME 拼写，并以只列名册名称的响亮错误作答 —— 错误中绝不重复被拒绝的键，id 也永远不会被返回、列出或要求。**workmate library 的行为一致**：`mpd_workmate_init` 只匹配功能名（稳定 id 会被拒绝，并给出只列名称的错误），`meta.baseId` 仅作为内部溯源保留，任何工具输出、路由或界面都不会暴露它。
 
-`ctx.get("mpdRoles").get(key)` 使用同一套解析，`mpd_modelchain_resolve` 与 roster 工具正是通过它称呼 role；而 workmate library（`mpd_workmate_init base=...`）则只按功能名称呼它。
+`ctx.get("mpdRoles").get(key)` 仍使用同一套解析 —— 这是**内部**路径。面向工具的路径只接受 NAME 拼写，因此 `mpd_modelchain_resolve`、名册工具与 workmate library（`mpd_workmate_init base=...`）都只按名称称呼 role。
 
 ## 由扩展贡献的 role
 

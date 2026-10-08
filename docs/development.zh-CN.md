@@ -16,7 +16,7 @@
 │   ├── pack-mpd.ts       组装 dist/mpd-package/（Plan D bundle）
 │   ├── build-mpd-client.ts  组合合并 web client（client.js）
 │   ├── build-mcp.ts      ast-grep/git-bash/lsp MCP 服务器离线构建
-│   ├── vendor-agent-teams.ts  物化**保留（未挂载）**的 agent-teams server closure（_deps/）
+│   ├── repin-vendor.ts   重新推导 VENDOR_LOCK 的资产指纹（默认 dry-run；--check 只断言，--write 写入）
 │   ├── install-profile.ts    旧式安装器（默认 dry-run；--dsh-home 供 QA）
 │   ├── mpd-ext.ts        扩展开发者 CLI：validate / scaffold / list / --self-test
 │   ├── bootstrap.ts      preflight + vendor 检查（P0 时代保留为检查项）
@@ -39,7 +39,7 @@ bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packa
 
 提交进仓库的 `dist/` 字节本身就是构建产物：`bun run verify:dist` 会把每个 `packages/*/src` 入口
 在临时目录中重建两次并与已提交文件逐字节比较，因此源码改动与其重建必须放在同一个提交里。
-构建工具链记录在 `package.json` 的 `buildToolchain` 字段（`bun@1.4.2`）：bun 小版本不同会改写注入的
+构建工具链记录在 `package.json` 的 `buildToolchain` 字段（`bun@1.4.0`）：bun 小版本不同会改写注入的
 helper 前导代码与压缩器变量名——在固定版本上重建字节完全一致，而在版本漂移时会点亮 `verify:dist`
 以及 `packages/mpd-ext-plugin/test/adapter-identity.test.ts`、
 `packages/mpd-roles-plugin/test/adapter-identity.test.ts` 的 F1 断言，但语义上并无变化。
@@ -116,7 +116,6 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 | `tui-spec-conformance` | 用**宿主自己**的固定版一致性套件检验我们的 manifest 与捕获到的 host descriptor，记录套件 revision 与每一份输入摘要，并重新测量载荷的三方 sha256 一致性 | `bun skills/dsh-qa/scripts/tui-spec-conformance.ts` |
 | `tui-settings-bridge` | settings 桥接的 TUI 分支，判定对象是**构建后的字节**：每条 `/settings` 提示都带桥接后的真实披露（`a save writes <workspace>/.mpd/mpd.jsonc … after a restart`）、桥接前那句 "not bridged" 已**删除**、`no-live-session` 运行时提示既存在又已接入状态行组合，且 TUI dist **零**文件系统写入 | `bun skills/dsh-qa/scripts/tui-settings-bridge.ts` |
 
-| `agent-teams-adopt`（历史 C1 —— 已**退役**的内置主体；团队路径现在跑在官方插件上） | MIT 声明 + 采纳接线 | `node skills/dsh-qa/scripts/agent-teams-adopt.ts` |
 | `extension-lifecycle`（**新增**） | 在**真实挂载启动**上验证扩展接口（沙箱 `DSH_HOME` + `HOME` + 会话 cwd；各行均从**本检出**组合，且模型步骤由本地 OpenAI 形状的 stub 应答，因此不需要 provider 凭据）：放进 `<sandbox-ws>/.mpd/extensions/` 的数据面扩展出现在 `mpd_ext_list` 中、它的 flow 可加载、它的 role 可 spawn；每一种坏扩展都不会影响正常扩展，且同一主机上两个 cwd 不同的会话只看到各自工作区的工程扩展 | `bun skills/dsh-qa/scripts/extension-lifecycle.ts` |
 | `extension-mcp-bridge`（**新增**） | 在同一套**真实挂载启动** + stub 配方上验证运行时 stdio MCP 桥：声明的服务器在两次工具列表读取中都出现 `mcp__<server>__<tool>`，且真实工具调用成功；dead/hang/schema/dup 四个分支证明单台服务器失败不会影响其他服务器 | `bun skills/dsh-qa/scripts/extension-mcp-bridge.ts` |
 
@@ -131,8 +130,7 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 的 lane 都会立刻以 `EROFS accessing temporary directory` 死掉，case 在几毫秒内报 FAIL —— 这正是"根本没跑到断言"
 的样子。(2) 把某个脚本或插件 `src/` **复制**进临时树的 case，必须同时把该副本会 import 的共享模块（`scripts/lib/`，
 或同级的 `packages/mpd-dsh-adapter-plugin/src/`）一起 stage，否则该分支会以 `ERR_MODULE_NOT_FOUND` 变红，而原因
-与它要测的东西无关；脚本形态的 helper 是
-`packages/mpd-agent-teams-plugin/self-fix-tests/scratch-scripts.ts` 里的 `stageScript()`。
+与它要测的东西无关。
 
 **TUI lane 与 TUI 打包路径。** 上面六个 DSH-TUI case 照例带离线 `--self-test`，但它们的**实时**分支需要
 真实终端：stdout 不是 TTY 时 `dsh-tui` 拒绝启动，所以它们在 tmux 中驱动界面并抓取 pane —— 这也是它们不在
@@ -190,8 +188,8 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
    （`node scripts/verify-docs-parity.ts --root dist/mpd-package`）以及 `scripts/mpd-ext.ts`（漏掉一个
    `PLUGIN_PKGS` 条目会以退出码 0 静默通过，却在启动时崩掉）。自 2026-09-17 的打包变更起，这些不再靠
    肉眼看：`node scripts/verify-pack-closure.ts` 会断言打包器的根资产表，并在产物存在时断言每个已声明
-   资产确实到达、`docs/`+`templates/`+`agent-references/` 与源目录逐文件一致、三个具名参考文件
-   （`index.md`、`troubleshooting.md`、`agent-teams-deltas.md`）都在、打包 manifest 的 `files`/`exports`
+   资产确实到达、`docs/`+`templates/`+`agent-references/` 与源目录逐文件一致、两个具名参考文件
+   （`index.md`、`troubleshooting.md`）都在、打包 manifest 的 `files`/`exports`
    与磁盘内容相符、以及 CLI 的已编译校验器入口存在。
 6. 以 `--no-ff` 合并进 `master`，提交信息为 `release: vX.Y.Z …`，打附注标签
    （`git tag -a vX.Y.Z`），并推送 `master` + 标签（以及 `dev`）。
@@ -204,10 +202,10 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
 
 ## 8. Vendor 与基线
 
-- `scripts/vendor-agent-teams.ts` 从 host 安装（`DSH_HOST_NM`）重新物化**保留（未挂载）**的
-  agent-teams server 运行时闭包（`packages/mpd-agent-teams-plugin/_deps/`），把裸
-  `@deepseek-ai/*` + `zod` 导入重写为相对路径 —— client bundle 保留裸导入（web app
-  的 bundler 提供它们）。
+- `scripts/repin-vendor.ts` 重新推导 `VENDOR_LOCK.json` 所载的资产指纹：`--check` 只断言，
+  `--write` 写入，而没有 `--i-know-this-is-the-captains-step` 时会拒绝写本仓库自己的锁文件 ——
+  因为每一波的那一次 re-pin 是 captain 在提交时执行的步骤（AGENTS.md §9/§11）。MCP 服务器的源码以
+  `vendor/mcp-src/**` 形式快照在本仓库内，作为 `node scripts/build-mcp.ts` 的构建期输入。
 - `VENDOR_LOCK.json` 钉住上游 commit/version + 资产指纹；`verify-vendor.ts` 不匹配即
   阻塞。从不追上游 —— 基线变更需要专门分支 + 证据。
 

@@ -502,10 +502,16 @@ describe("A1 · the composed legend prints the state key exactly once (mounted i
       // ONE, PRECISELY. The pre-fix frame drew two — the drawing module's five-state key first — and a
       // frame that drew NONE would be the other failure this count catches.
       expect(stateRows).toHaveLength(1)
-      // AND THE SURVIVOR IS THE CONTRACT'S SIX-STATE KEY: only it names the twin entries, which is what
-      // tells `○ blocked` from `○ open` — the deleted five-state key omitted `blocked` entirely.
-      expect(stateRows[0]).toContain(`${DAG_TONE_GLYPH.blocked ?? "?"} blocked=open`)
-      expect(stateRows[0]).toContain(`${DAG_TONE_GLYPH.open ?? "?"} open=blocked`)
+      // AND THE SURVIVOR NAMES THE SHARED MARK ONCE, NAMING BOTH CARRIERS: `blocked` and `open` are
+      // drawn as the same `○`, so the mounted key must contain ONE entry for that mark carrying both
+      // names. The pre-fix key printed the pair twice (`○ open=blocked · ○ blocked=open`) with an `=`
+      // asserting they are each other; this is the reading the user reported as a duplicate.
+      /** The entries the mounted key row opens with the shared mark. */
+      const sharedEntries = stateRows[0].split(" · ").filter((entry) => entry.startsWith(`${DAG_TONE_GLYPH.blocked ?? "?"} `))
+      expect(sharedEntries).toHaveLength(1)
+      expect(sharedEntries[0] ?? "").toContain("blocked")
+      expect(sharedEntries[0] ?? "").toContain("open")
+      expect(stateRows[0]).not.toContain("=")
       /** The composed legend at this width: every line the page is supposed to draw under the DAG. */
       const composed = legendLinesFor(panelContentWidth(columns), legendLines(panelContentWidth(columns)))
       // THE LEGEND REALLY REACHED THE FRAME, line for line — otherwise the count above could be read off

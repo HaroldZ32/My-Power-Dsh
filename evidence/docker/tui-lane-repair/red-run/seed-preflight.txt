@@ -1,0 +1,6 @@
+lanes seed writes, replayed against the seed:
+  index  write exit=0
+  record write exit=0
+  read-back index  = UNPARSABLE(SyntaxError)
+  read-back record = UNPARSABLE(SyntaxError)
+  probe write exit=0 (nothing persisted)

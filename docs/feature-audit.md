@@ -61,9 +61,11 @@ Legend: ✅ full / 🟡 partial / ❌ missing / ➖ not applicable (host-specifi
 ## Retired dsh-agent-teams: version and the retained body's upstream gap
 
 **Read this section as the history of RETAINED code, not as a shipped capability.** The vendored
-`agent-teams` body is kept at `packages/mpd-agent-teams-plugin/` as provenance and no loader row
-mounts it since 0.1.7-rc.2, when the official Agent Teams plugin replaced it (see the Team-mode row
-above and `docs/plan-0.1.7-adaptation.md`).
+`agent-teams` body — 768 files, its `_deps/` closure included — was DELETED at
+`packages/mpd-agent-teams-plugin/` by the de-vendor wave (2026-10-07); no loader row had mounted it
+since 0.1.7-rc.2, when the official Agent Teams plugin replaced it (see the Team-mode row
+above, `docs/plan-0.1.7-adaptation.md`, and the deletion record in `docs/design.md`,
+`docs/independence.md` §5 and `LICENSE-NOTICES.md`).
 
 The retained plugin is `0.1.16-rc.3-mpd`: the **0.1.14 body** plus the audited upstream
 **0.1.16-rc.3** deltas this host generation needs — `lib/harness-compat.ts` (team delivery

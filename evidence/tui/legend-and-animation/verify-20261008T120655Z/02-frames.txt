@@ -1,0 +1,81 @@
+====================================================================================================
+MEASUREMENT 2 — the running mark's cell width at every phase
+====================================================================================================
+DAG_TONE_GLYPH.running        = "◐"
+DAG_ANIM.runningFrames        = ["◐","◓","◑","◒"]
+DAG_ANIM.frames               = 4
+DAG_ANIM.staticPhase          = 0
+DAG_ANIM.intervalMs           = 125
+
+----------------------------------------------------------------------------------------------------
+§2.1 THE PER-PHASE TABLE — phases 0..15 (4 full cycles of 4)
+----------------------------------------------------------------------------------------------------
+phase | phase%CYCLE | frame | cellWidth | utf16 | codepoints | graphemes | codePoints
+------|------------|-------|-----------|-------|------------|-----------|-----------
+    0 |          0 | ◐     |         1 |     1 |          1 |         1 | U+25D0
+    1 |          1 | ◓     |         1 |     1 |          1 |         1 | U+25D3
+    2 |          2 | ◑     |         1 |     1 |          1 |         1 | U+25D1
+    3 |          3 | ◒     |         1 |     1 |          1 |         1 | U+25D2
+    4 |          0 | ◐     |         1 |     1 |          1 |         1 | U+25D0
+    5 |          1 | ◓     |         1 |     1 |          1 |         1 | U+25D3
+    6 |          2 | ◑     |         1 |     1 |          1 |         1 | U+25D1
+    7 |          3 | ◒     |         1 |     1 |          1 |         1 | U+25D2
+    8 |          0 | ◐     |         1 |     1 |          1 |         1 | U+25D0
+    9 |          1 | ◓     |         1 |     1 |          1 |         1 | U+25D3
+   10 |          2 | ◑     |         1 |     1 |          1 |         1 | U+25D1
+   11 |          3 | ◒     |         1 |     1 |          1 |         1 | U+25D2
+   12 |          0 | ◐     |         1 |     1 |          1 |         1 | U+25D0
+   13 |          1 | ◓     |         1 |     1 |          1 |         1 | U+25D3
+   14 |          2 | ◑     |         1 |     1 |          1 |         1 | U+25D1
+   15 |          3 | ◒     |         1 |     1 |          1 |         1 | U+25D2
+
+PASS | §2.1 EVERY frame of 16 phases is EXACTLY ONE CELL | widths observed = [1]
+PASS | §2.1 independent cross-check: every frame is ONE code point and ONE grapheme | codepoint/grapheme counts = [1] / [1]
+PASS | §2.1 the functions reported no multi-cell frame anywhere (no width ever exceeded 1) | max cellWidth = 1
+----------------------------------------------------------------------------------------------------
+§2.2 THE ANIMATION IS KEPT — the frames must DIFFER across the cycle
+----------------------------------------------------------------------------------------------------
+distinct frames across the cycle = ["◐","◓","◑","◒"] (count 4)
+PASS | §2.2 the cycle draws MORE THAN ONE distinct frame (not a static mark) | distinct frames = ["◐","◓","◑","◒"]
+PASS | §2.2 the cycle draws exactly as many distinct frames as the contract declares | distinct=4 DAG_ANIM.frames=4
+slot → frame: [[0,"◐"],[1,"◓"],[2,"◑"],[3,"◒"]]
+PASS | §2.2 the orbit is PERIODIC: phase and phase+CYCLE draw the same frame | phase0=◐ phase+4=◐
+----------------------------------------------------------------------------------------------------
+§2.3 NO COLLISION — no frame may be a mark another state owns
+----------------------------------------------------------------------------------------------------
+marks owned by OTHER states = ["✓","○","✗","⊘"]
+forbidden frames            = ["✓","○","✗","⊘"," ",".","·","","\t"]
+  frame "◐": collides-with-another-state=false
+  frame "◓": collides-with-another-state=false
+  frame "◑": collides-with-another-state=false
+  frame "◒": collides-with-another-state=false
+PASS | §2.3 no frame is a mark another state owns, nor a bare space/dot | distinct frames = ["◐","◓","◑","◒"] vs forbidden = ["✓","○","✗","⊘"," ",".","·","","\t"]
+----------------------------------------------------------------------------------------------------
+§2.4 THE TIMER-LESS HOST — the frame at `staticPhase` is the contract's own `running` glyph
+----------------------------------------------------------------------------------------------------
+runningGlyph(DAG_ANIM.staticPhase=0) = "◐"
+DAG_TONE_GLYPH.running                          = "◐"
+PASS | §2.4 the static frame IS the contract's own running glyph (so the legend names it) | static frame="◐" GLYPH.running="◐"
+PASS | §2.4 the static frame is one cell too | cellWidth=1
+----------------------------------------------------------------------------------------------------
+§2.5 DEGRADATION — non-finite and out-of-range phases still draw a legal one-cell frame
+----------------------------------------------------------------------------------------------------
+  runningGlyph(NaN) = "◐" cellWidth=1
+  runningGlyph(Infinity) = "◐" cellWidth=1
+  runningGlyph(-Infinity) = "◐" cellWidth=1
+  runningGlyph(-1) = "◒" cellWidth=1
+  runningGlyph(-3) = "◓" cellWidth=1
+  runningGlyph(3.7) = "◒" cellWidth=1
+  runningGlyph(1e9) = "◐" cellWidth=1
+PASS | §2.5 every out-of-range/non-finite phase draws a legal, ONE-CELL frame | frames = ["◐","◐","◐","◒","◓","◒","◐"]
+PASS | §2.5 the non-finite phases degrade to the contract's running glyph rather than throwing | NaN→"◐" +Inf→"◐" -Inf→"◐"
+----------------------------------------------------------------------------------------------------
+ONE TABLE, TWO SURFACES — the subagent panel must breathe through the SAME marks
+----------------------------------------------------------------------------------------------------
+subagent-scene RUNNING_FRAMES = ["◐","◓","◑","◒"]
+PASS | the subagent panel's frames ARE the DAG's table (one fact, not two copies) | identical reference = true
+PASS | the subagent panel's frames are all ONE CELL too | widths = [1,1,1,1]
+
+====================================================================================================
+MEASUREMENT 2 VERDICT: PASS — every judged condition held
+====================================================================================================

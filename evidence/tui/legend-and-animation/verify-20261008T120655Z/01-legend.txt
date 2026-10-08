@@ -1,0 +1,84 @@
+====================================================================================================
+PANEL A — the shipped legend composer, driven directly, at the reference widths
+====================================================================================================
+DAG_STATE_TONES = ["completed","running","open","failed","blocked","cancelled"]
+DAG_TONE_GLYPH  = {"completed":"✓","running":"◐","failed":"✗","blocked":"○","cancelled":"⊘","open":"○"}
+cellWidth (sanitize.ts) = 3 for a 3-cell probe string
+
+panelFloorColumns("dag") = 28
+
+----------------------------------------------------------------------------------------------------
+cols=156 → legendLinesFor(cols, []) returned 1 line(s):
+  line[0] (cellWidth=65): "✓ completed · ◐ running · ○ open/blocked · ✗ failed · ⊘ cancelled"
+
+PASS | §1.1 cols=156: exactly ONE entry for the shared mark | entries starting "○ " = ["○ open/blocked"]
+PASS | §1.1 cols=156: that entry names BOTH open and blocked | entry = "○ open/blocked"
+PASS | §1.2 cols=156: no "=" anywhere in the drawn key | drawn = "✓ completed · ◐ running · ○ open/blocked · ✗ failed · ⊘ cancelled"
+PASS | §1.2 cols=156: every entry carries a DISTINCT mark (no fact twice) | marks = ["✓","◐","○","✗","⊘"]
+PASS | §1.3 cols=156: the shared entry's mark is the table's own glyph | GLYPH.open="○" GLYPH.blocked="○"
+PASS | §1.3: DAG_TONE_GLYPH still declares the contract's six marks | marks in DAG_STATE_TONES order = ["✓","◐","○","✗","○","⊘"]
+PASS | §1.4 cols=156: completed keeps exactly one entry | entries naming completed = ["✓ completed"]
+PASS | §1.4 cols=156: running keeps exactly one entry | entries naming running = ["◐ running"]
+PASS | §1.4 cols=156: failed keeps exactly one entry | entries naming failed = ["✗ failed"]
+PASS | §1.4 cols=156: cancelled keeps exactly one entry | entries naming cancelled = ["⊘ cancelled"]
+PASS | §1.5 cols=156: every drawn line fits the row | widths = [65] ≤ 156
+PASS | §1.5 cols=156: no entry was abbreviated (all six states present as whole words) | named = ["completed","running","open","failed","blocked","cancelled"] of ["completed","running","open","failed","blocked","cancelled"]
+PASS | §1.5 cols=156: the key drew one entry per distinct mark (no entry dropped at this width) | entries=5 distinctMarks=5
+PASS | §1.6 cols=156: every drawn mark is a value OF the frozen table | drawnMarks=["✓","◐","○","✗","⊘"] tableValues=["✓","◐","○","✗","⊘"]
+----------------------------------------------------------------------------------------------------
+cols=100 → legendLinesFor(cols, []) returned 1 line(s):
+  line[0] (cellWidth=65): "✓ completed · ◐ running · ○ open/blocked · ✗ failed · ⊘ cancelled"
+
+PASS | §1.1 cols=100: exactly ONE entry for the shared mark | entries starting "○ " = ["○ open/blocked"]
+PASS | §1.1 cols=100: that entry names BOTH open and blocked | entry = "○ open/blocked"
+PASS | §1.2 cols=100: no "=" anywhere in the drawn key | drawn = "✓ completed · ◐ running · ○ open/blocked · ✗ failed · ⊘ cancelled"
+PASS | §1.2 cols=100: every entry carries a DISTINCT mark (no fact twice) | marks = ["✓","◐","○","✗","⊘"]
+PASS | §1.3 cols=100: the shared entry's mark is the table's own glyph | GLYPH.open="○" GLYPH.blocked="○"
+PASS | §1.3: DAG_TONE_GLYPH still declares the contract's six marks | marks in DAG_STATE_TONES order = ["✓","◐","○","✗","○","⊘"]
+PASS | §1.4 cols=100: completed keeps exactly one entry | entries naming completed = ["✓ completed"]
+PASS | §1.4 cols=100: running keeps exactly one entry | entries naming running = ["◐ running"]
+PASS | §1.4 cols=100: failed keeps exactly one entry | entries naming failed = ["✗ failed"]
+PASS | §1.4 cols=100: cancelled keeps exactly one entry | entries naming cancelled = ["⊘ cancelled"]
+PASS | §1.5 cols=100: every drawn line fits the row | widths = [65] ≤ 100
+PASS | §1.5 cols=100: no entry was abbreviated (all six states present as whole words) | named = ["completed","running","open","failed","blocked","cancelled"] of ["completed","running","open","failed","blocked","cancelled"]
+PASS | §1.5 cols=100: the key drew one entry per distinct mark (no entry dropped at this width) | entries=5 distinctMarks=5
+PASS | §1.6 cols=100: every drawn mark is a value OF the frozen table | drawnMarks=["✓","◐","○","✗","⊘"] tableValues=["✓","◐","○","✗","⊘"]
+----------------------------------------------------------------------------------------------------
+cols=60 → legendLinesFor(cols, []) returned 2 line(s):
+  line[0] (cellWidth=51): "✓ completed · ◐ running · ○ open/blocked · ✗ failed"
+  line[1] (cellWidth=11): "⊘ cancelled"
+
+PASS | §1.1 cols=60: exactly ONE entry for the shared mark | entries starting "○ " = ["○ open/blocked"]
+PASS | §1.1 cols=60: that entry names BOTH open and blocked | entry = "○ open/blocked"
+PASS | §1.2 cols=60: no "=" anywhere in the drawn key | drawn = "✓ completed · ◐ running · ○ open/blocked · ✗ failed\n⊘ cancelled"
+PASS | §1.2 cols=60: every entry carries a DISTINCT mark (no fact twice) | marks = ["✓","◐","○","✗","⊘"]
+PASS | §1.3 cols=60: the shared entry's mark is the table's own glyph | GLYPH.open="○" GLYPH.blocked="○"
+PASS | §1.3: DAG_TONE_GLYPH still declares the contract's six marks | marks in DAG_STATE_TONES order = ["✓","◐","○","✗","○","⊘"]
+PASS | §1.4 cols=60: completed keeps exactly one entry | entries naming completed = ["✓ completed"]
+PASS | §1.4 cols=60: running keeps exactly one entry | entries naming running = ["◐ running"]
+PASS | §1.4 cols=60: failed keeps exactly one entry | entries naming failed = ["✗ failed"]
+PASS | §1.4 cols=60: cancelled keeps exactly one entry | entries naming cancelled = ["⊘ cancelled"]
+PASS | §1.5 cols=60: every drawn line fits the row | widths = [51,11] ≤ 60
+PASS | §1.5 cols=60: no entry was abbreviated (all six states present as whole words) | named = ["completed","running","open","failed","blocked","cancelled"] of ["completed","running","open","failed","blocked","cancelled"]
+PASS | §1.5 cols=60: the key drew one entry per distinct mark (no entry dropped at this width) | entries=5 distinctMarks=5
+PASS | §1.6 cols=60: every drawn mark is a value OF the frozen table | drawnMarks=["✓","◐","○","✗","⊘"] tableValues=["✓","◐","○","✗","⊘"]
+====================================================================================================
+PANEL B — FALSIFICATION: is the rule specific to the open/blocked pair, or general?
+====================================================================================================
+
+MUTANT 1 — `cancelled` also draws `○`, so ONE mark has THREE carriers:
+  mutant table = {"completed":"✓","running":"◐","failed":"✗","blocked":"○","cancelled":"○","open":"○"}
+  drawn: "✓ completed · ◐ running · ○ open/blocked/cancelled · ✗ failed"
+PASS | FALSIFY 1: three carriers of one mark still draw ONE entry naming ALL THREE | entries = ["✓ completed","◐ running","○ open/blocked/cancelled","✗ failed"]
+PASS | FALSIFY 1: the four other states still keep one entry each (no entry lost) | entries = ["✓ completed","◐ running","○ open/blocked/cancelled","✗ failed"]
+PASS | FALSIFY 1: still no `=` under three carriers | drawn = "✓ completed · ◐ running · ○ open/blocked/cancelled · ✗ failed"
+
+MUTANT 2 — `✗` shared by failed+cancelled AND `○` shared by open+blocked (TWO shared marks):
+  mutant table = {"completed":"✓","running":"◐","failed":"✗","blocked":"○","cancelled":"✗","open":"○"}
+  drawn: "✓ completed · ◐ running · ○ open/blocked · ✗ failed/cancelled"
+PASS | FALSIFY 2: TWO shared marks each draw exactly ONE entry naming both carriers | entries carrying "/" = ["○ open/blocked","✗ failed/cancelled"]
+PASS | FALSIFY 2: still no `=` under a second shared mark | drawn = "✓ completed · ◐ running · ○ open/blocked · ✗ failed/cancelled"
+
+====================================================================================================
+PANEL B VERDICT: every falsification attempt FAILED to break the rule (the rule held)
+====================================================================================================

@@ -1,0 +1,7 @@
+dsh: initialized profile web at /root/sandbox-dsh/profiles/web
+
+dependencies:
++ @mpd-dsh/mpd link:/opt/mpd
+
+Already up to date
+Done in 319ms using pnpm v11.23.0

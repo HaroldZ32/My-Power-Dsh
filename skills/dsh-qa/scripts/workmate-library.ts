@@ -76,9 +76,10 @@ const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.me
  * The live prompt: drives the workmate flow init -> list -> spawn -> reflect -> match.
  *
  * The BASE must be a functional NAME (`Deep Worker`), never an internal stable id: the roster
- * refuses `base:"hephaestus"` with `unknown base — use a functional NAME from mpd_roles_list`, which
- * MEASURABLY turned this lane red (2026-10-07, evidence/plan-f/workmate-library/2026-10-07T10-38-04.837Z)
- * whenever the model copied the prompt's spelling verbatim instead of substituting a valid name.
+ * refuses a `base` that is an internal stable id with `unknown base — use a functional NAME from
+ * mpd_roles_list`, which MEASURABLY turned this lane red (2026-10-07,
+ * evidence/plan-f/workmate-library/2026-10-07T10-38-04.837Z) whenever the model copied the prompt's
+ * spelling verbatim instead of substituting a valid name.
  */
 const PROMPT: string = `Use the workmate tools in this exact order and report each result:
 1) mpd_workmate_init {base:"Deep Worker", name:"alice", note:"Verilog counter specialist"}

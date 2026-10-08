@@ -480,7 +480,7 @@ function makeStub(): StubServer {
       if (calls === 1) {
         sse(res, {
           id: "chatcmpl-probe", object: "chat.completion.chunk", created: 1, model: "probe",
-          choices: [{ index: 0, delta: { role: "assistant", tool_calls: [{ index: 0, id: "call_probe_1", type: "function", function: { name: "mpd_role_spawn", arguments: JSON.stringify({ role: "oracle", task: "Reply OK" }) } }] }, finish_reason: null }],
+          choices: [{ index: 0, delta: { role: "assistant", tool_calls: [{ index: 0, id: "call_probe_1", type: "function", function: { name: "mpd_role_spawn", arguments: JSON.stringify({ role: "Architect", task: "Reply OK" }) } }] }, finish_reason: null }],
         })
       } else {
         sse(res, {
@@ -620,7 +620,7 @@ function runReal(): Promise<void> {
       }
       writeFileSync(patchPath, patch)
       // The task the stub's tool call is meant to satisfy.
-      const task = 'Call the tool mpd_role_spawn exactly once with {"role":"oracle","task":"Reply OK"}.'
+      const task = 'Call the tool mpd_role_spawn exactly once with {"role":"Architect","task":"Reply OK"}.'
       // The boot itself, in the lane's own sandbox workspace.
       const run = await runAsync("dsh", ["--profile", "mpd-headless", task], { env, cwd: ws, timeout: 600000 })
       // The boot's whole output, which every marker assertion reads.
