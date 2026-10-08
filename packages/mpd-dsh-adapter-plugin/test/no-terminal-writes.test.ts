@@ -178,6 +178,11 @@ export const EXEMPT_FILES: readonly ExemptFile[] = [
     requires: 'installTerminalSilence("mpd-mcp-codegraph")',
   },
   {
+    path: "packages/mpd-mcp-shared/unavailable-server.ts",
+    reason: "the SHARED unavailable-server fallback (de-omo wave B2): this file IS the stdio JSON-RPC loop a row keeps when its declared dependency cannot be loaded, so fd 1 is the client channel the row spawned it with, never a terminal; its diagnostics go through the caller's log sink, not through any terminal writer",
+    requires: "process.stdout.write",
+  },
+  {
     path: "packages/mpd-mcp-gitbash/src/launch.ts",
     reason: "silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured",
     requires: 'installTerminalSilence("mpd-mcp-gitbash")',

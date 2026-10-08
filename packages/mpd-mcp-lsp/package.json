@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.3",
   "type": "module",
-  "description": "lsp MCP integration plugin (P3, pending D2)",
+  "description": "lsp MCP integration plugin (P3): thin launcher for the declared cclsp dependency",
   "scripts": {
     "test": "bun test",
     "build": "cd \"$(git rev-parse --show-toplevel)\" && bun build packages/mpd-mcp-lsp/src/launch.ts --target node --format esm --outfile packages/mpd-mcp-lsp/dist/launch.js"

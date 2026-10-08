@@ -139,7 +139,7 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 
 | You want to… | Tools | Notes |
 |---|---|---|
-| Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (definitions, references, diagnostics, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. A fourth family, `mcp__git_bash__*`, is **not available by default**: its row ships `disabled: true` (the upstream server is native-Windows-only), so no such tool appears in a normal session — enable it by flipping that row's `disabled:` to `false` in `cordis.patch.yml` and reinstalling the bundle. |
+| Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (cclsp: definitions, references, implementation, diagnostics, hover, workspace symbols, call hierarchy, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. Two more families are **not available by default**: `mcp__git__*` (a git toolbox, 28 tools) and `mcp__shell__*` (`run_process`, raw shell). Both rows ship `disabled: true`, so no such tool appears in a normal session — enable the one you want by flipping that row's `disabled:` to `false` in `cordis.patch.yml` and reinstalling the bundle. |
 | Edit safely | the write guard and output truncation (no configuration needed), `mpd_hashline_read/edit/format/restore`, `mpd_comment_check` | hash-anchored edits reject a stale anchor instead of writing to the wrong line |
 | Drive long work | `mpd_ulw` (light) / `mpd_ultrawork` (full discipline: plan gate, execution rounds, verification gate), or the equivalent `/ulw <objective>` / `/ultrawork <objective>` commands, `mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | the commands inject the ULW autonomy directive — a run asks the user nothing and stages its own team when the work warrants one; `mpd_boulder_*` tracks progress of a plan markdown file across sessions |
 | Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` (plus the host's `/goal` command and its goal round driver) | see §13.10: the **persisted goal** is the bundle's basis of continuous execution — a heavy ULW run or a plan-bound boulder work anchors one automatically (`goal.autoAnchor`), and it stays armed when the in-turn engine stops short of the objective |
@@ -608,9 +608,10 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
   not the retired `text`) and refuses to mount the whole preset. Update the bundle (`git pull`,
   then `dsh plugin --profile <p> add <repo>`) — this is a harness-version compatibility fix, not a
   configuration problem on your side.
-- **`mcp__git_bash__*` tools are missing** → expected, not a fault: the `mcp-gitbash` row ships
-  `disabled: true` (the upstream server is native-Windows-only). Use the harness's own `bash` tool,
-  or enable that row (`disabled: false`) and reinstall the bundle.
+- **`mcp__git__*` / `mcp__shell__*` tools are missing** → expected, not a fault: the `mcp-git` and
+  `mcp-shell` rows both ship `disabled: true`. Use the harness's own `bash` tool and its git commands,
+  or enable the row you want (`disabled: false`) and reinstall the bundle. The `mcp-git` row also needs
+  `git` on `PATH`.
 - **`mpd_comment_check` reports the binary is missing** → it is the opt-in detector: install
   `@code-yeongyu/comment-checker` into `.toolchain` (`--with-comment-checker`), or set
   `MPD_DSH_COMMENT_CHECKER_BIN` to an absolute path.
@@ -721,7 +722,8 @@ mpd_role_persona { "role": "Architect" }
 
 `role` answers to the functional NAME (`Architect`, `deep worker`, `plan-reviewer`). A read-only role
 is spawned with a deny filter over exactly `write`, `edit`, `mpd_hashline_edit`, `bash`,
-`mcp__ast_grep__rewrite`, `mcp__ast_grep__scan` and `mcp__lsp__rename` — the discipline is mechanical,
+`mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol` and
+`mcp__lsp__rename_symbol_strict` — the discipline is mechanical,
 not advisory.
 
 ### 13.4 The workmate library
@@ -871,9 +873,9 @@ mcp__ast_grep__search { "pattern": "useEffect($$$)", "language": "tsx", "paths":
 mcp__ast_grep__rewrite { "pattern": "console.log($A)", "rewrite": "logger.info($A)", "language": "typescript", "paths": ["src"], "apply": false }
 
 # Language-server intelligence
-mcp__lsp__diagnostics { "filePath": "packages/mpd-roles-plugin/src/index.ts" }
+mcp__lsp__get_diagnostics { "filePath": "packages/mpd-roles-plugin/src/index.ts" }
 mcp__lsp__find_references { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9 }
-mcp__lsp__rename { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9, "newName": "resolvedConfig" }
+mcp__lsp__rename_symbol { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9, "newName": "resolvedConfig" }
 
 # Project graph — ask a question, get the relevant symbols plus the call path
 mcp__codegraph__codegraph_explore { "query": "how does a task get claimed and updated?" }
@@ -883,9 +885,10 @@ mcp__context7__resolve-library-id { "libraryName": "zod", "query": "schema parsi
 mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScript"] }
 ```
 
-`mcp__lsp__rename` and `mcp__ast_grep__rewrite` / `mcp__ast_grep__scan` **write files**: run the
-rewrites with `apply: false` first, read the diff, then apply. `mcp__git_bash__*` ships disabled
-(native-Windows upstream, §3). The two remote rows (`context7`, `grep_app`) are public HTTP services
+`mcp__lsp__rename_symbol` (and its `rename_symbol_strict` twin) and `mcp__ast_grep__rewrite` /
+`mcp__ast_grep__scan` **write files**: run the
+rewrites with `apply: false` first, read the diff, then apply. The `mcp-git` / `mcp-shell` rows ship
+disabled (§3). The two remote rows (`context7`, `grep_app`) are public HTTP services
 and need network access; the three local servers need their binary (§11).
 
 ## 14. Where these capabilities come from

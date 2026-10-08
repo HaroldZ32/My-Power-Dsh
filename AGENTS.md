@@ -582,9 +582,10 @@ user's own `~/.mpd/workmate`. A capability that arrives by any other route is a 
   `fileCount` + `sha256` (single file) or `treeSha` (dir, sorted relpath + per-file sha256). **The
   FINGERPRINTS are blocking; the identity half is a record.** Since the de-vendor wave (2026-10-07)
   nothing reads, copies, patches or audits the upstream repositories, so the gate needs no checkout and
-  no network, and the MCP servers' sources are snapshotted in-repo (`vendor/mcp-src/**`) as a build-time
-  input — a PACKED install ships the built `dist/` and not the ability to rebuild it from source, which
-  is a declared bound rather than an omission.
+  no network. **Nor is anything built from an in-repo snapshot any more** (wave B2, 2026-10-08): the MCP
+  servers are our own code or DECLARED npm dependencies started by thin launchers — `vendor/mcp-src/**`,
+  its `VENDOR_LOCK` asset and `scripts/build-mcp.ts` are gone
+  (`agent-references/overview-and-provenance.md`).
 - Update policy: never chase upstream; a baseline change requires a deliberate branch + evidence.
 - Vendored skill corpus: refresh as whole-dir replacements from upstream, keep provenance links.
 - **`skills/**` has ONE writer per wave (single-skills-writer rule).** Every `skills/**` edit
@@ -671,9 +672,9 @@ slot, workmate) stay here.
   Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id` is INTERNAL — refused as TOOL
   INPUT (a NAME spelling only; the `mpdRoles.get` service path still resolves it) and exposed by NO tool
   output, render, web route or GUI. The **read-only discipline is the exported deny list**, exactly
-  seven names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted by `roles.test.ts`):
+  eight names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted by `roles.test.ts`):
   `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`,
-  `mcp__lsp__rename` (a shell writes files, so `bash` stays denied; `read`/`glob`/`grep` stay available).
+  `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict` (cclsp's own names, wave B2).
   **Do NOT re-add `str_replace_editor` / `apply_patch`, and do not filter the list with `dsh.hasTool`** —
   the harness validates the WHOLE list at spawn time, so one dead entry breaks every read-only spawn.
   Full form, including the two enforcement surfaces: `agent-references/glossary.md`.

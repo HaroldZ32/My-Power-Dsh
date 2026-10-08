@@ -22,12 +22,12 @@
 // child-composition path really runs in a FRESH dsh process with a throwaway key.
 //   WHAT CARRIES THE PROOF (two independent assertions):
 //   1. the instrumented sandbox copy of the adapter records the exact restriction mpd_role_spawn handed
-//      to the harness (filterSent), so "the seven live names were sent" is on the record; and
+//      to the harness (filterSent), so "the eight live names were sent" is on the record; and
 //   2. every request in the stub trace is classified by the harness's own markers — the child's request
 //      carries the composed role persona ("deployment:persona") and never the parent-only delegation
 //      section ("subagent:delegation") — so the case can assert the child's VISIBLE TOOLSET excludes all
-//      seven write-capable names while the parent's includes them (reviewer measurement: child 81 tools
-//      with none, parent 87 with all seven). Assertion 2 is the one that can fail: with the pre-fix
+//      eight write-capable names while the parent's includes them (reviewer measurement: child 81 tools
+//      with none, parent 87 with all eight). Assertion 2 is the one that can fail: with the pre-fix
 //      names re-injected the child sees the full toolset, and the control lane asserts exactly that.
 //   WHAT DOES NOT CARRY PROOF: the mere ABSENCE of the restrict error proves nothing, because a run
 //   that never reaches the spawn (no parent credential, or a plugin tree that fails to apply) produces
@@ -59,11 +59,11 @@ const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.me
 /** The case slug, which prefixes every failure banner and names the evidence slug. */
 const SLUG: string = "readonly-deny"
 
-// The seven names every deny list must carry: live-registered AND write-capable.
-const EXPECTED_DENY: readonly string[] = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"]
+// The eight names every deny list must carry: live-registered AND write-capable.
+const EXPECTED_DENY: readonly string[] = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict"]
 // Aliased for readability at the enforcement assertions: these are exactly the tools a read-only child
 // must NOT be able to see. Denying more than these would be a different (also valid) policy, but the
-// enforcement check below is about these seven, because they are what the deny list names.
+// enforcement check below is about these eight, because they are what the deny list names.
 const WRITE_CAPABLE: readonly string[] = EXPECTED_DENY
 // Names that are NOT registered in this profile: the harness rejects the whole list over them.
 // Assembled from fragments so this case does not itself embed the literals it forbids.
@@ -291,32 +291,32 @@ function fpTree(root: string): Record<string, string> | null {
 function selfTest(): void {
   // Every assertion label paired with its verdict, so one run reports each break by name.
   const checks: Array<[string, boolean]> = []
-  // The roles plugin's SOURCE, whose deny list must be exactly the seven live names.
+  // The roles plugin's SOURCE, whose deny list must be exactly the eight live names.
   const rolesSrc = readFileSync(join(repoRoot, "packages", "mpd-roles-plugin", "src", "index.ts"), "utf8")
   // The roles plugin's BUILT row, which is what a live boot really loads.
   const rolesDist = readFileSync(join(repoRoot, "packages", "mpd-roles-plugin", "dist", "index.js"), "utf8")
   // The workmate plugin's SOURCE, whose deny list must still be declared.
   const wmSrc = readFileSync(join(repoRoot, "packages", "mpd-workmate-plugin", "src", "index.ts"), "utf8")
-  // The workmate plugin's built row, checked for the same seven names.
+  // The workmate plugin's built row, checked for the same eight names.
   const wmDistPath = join(repoRoot, "packages", "mpd-workmate-plugin", "dist", "index.js")
 
   // The deny list extracted from the roles plugin's source.
   const srcDeny = parseDenyArray(rolesSrc, "roles src")
   // The deny list extracted from the roles plugin's built row.
   const distDeny = parseDenyArray(rolesDist, "roles dist")
-  checks.push(["roles src carries exactly the expected seven names", JSON.stringify(srcDeny) === JSON.stringify(EXPECTED_DENY)])
-  checks.push(["roles dist carries exactly the expected seven names", JSON.stringify(distDeny) === JSON.stringify(EXPECTED_DENY)])
+  checks.push(["roles src carries exactly the expected eight names", JSON.stringify(srcDeny) === JSON.stringify(EXPECTED_DENY)])
+  checks.push(["roles dist carries exactly the expected eight names", JSON.stringify(distDeny) === JSON.stringify(EXPECTED_DENY)])
   checks.push(["roles src === roles dist (dist is not stale)", JSON.stringify(srcDeny) === JSON.stringify(distDeny)])
   for (const dead of DEAD_NAMES) {
     checks.push(["roles src has no dead name " + dead, !rolesSrc.includes(dead)])
     checks.push(["roles dist has no dead name " + dead, !rolesDist.includes(dead)])
   }
-  // The repo reads dist, so the built workmate bundle must carry the same seven names — one signal
+  // The repo reads dist, so the built workmate bundle must carry the same eight names — one signal
   // covers both "stale dist" and "the fix never reached that package".
   if (existsSync(wmDistPath)) {
     // The deny list extracted from the workmate plugin's built row.
     const wmDeny = parseDenyArray(readFileSync(wmDistPath, "utf8"), "workmate dist")
-    checks.push(["workmate dist is rebuilt and denies exactly the seven names", JSON.stringify(wmDeny) === JSON.stringify(EXPECTED_DENY)])
+    checks.push(["workmate dist is rebuilt and denies exactly the eight names", JSON.stringify(wmDeny) === JSON.stringify(EXPECTED_DENY)])
   } else {
     checks.push(["workmate dist exists", false])
   }
@@ -325,11 +325,27 @@ function selfTest(): void {
   // The three MCP write-tools in the list must be names the shipped MCP servers really expose.
   // The built ast_grep MCP server, whose own tool names the deny list must match.
   const astgrep = readFileSync(join(repoRoot, "packages", "mpd-mcp-astgrep", "dist", "cli.js"), "utf8")
-  // The built LSP MCP server, whose rename tool the deny list must match.
-  const lsp = readFileSync(join(repoRoot, "packages", "mpd-mcp-lsp", "dist", "cli.js"), "utf8")
+  // The LSP LAUNCHER's source (de-omo wave B2): the row no longer ships a vendored server beside the
+  // launcher, so the two names come from the DECLARED `cclsp` dependency and the launcher's own source
+  // is what must name it — and must no longer reach for a `./cli.js` that does not exist.
+  const lspLauncher = readFileSync(join(repoRoot, "packages", "mpd-mcp-lsp", "src", "launch.ts"), "utf8")
   checks.push(["ast_grep MCP exposes rewrite", /var REWRITE_TOOL_NAME = "rewrite"/.test(astgrep)])
   checks.push(["ast_grep MCP exposes scan", /var SCAN_TOOL_NAME = "scan"/.test(astgrep)])
-  checks.push(["lsp MCP exposes rename", /name: "rename"/.test(lsp)])
+  checks.push(["the lsp row starts the DECLARED cclsp dependency and no vendored cli.js", /DEPENDENCY: string = "cclsp"/.test(lspLauncher) && !lspLauncher.includes('"./cli.js"')])
+  // The two rename names are cclsp's OWN, so the assertion follows the dependency: against the
+  // INSTALLED package when this checkout has it, and otherwise against the package README that
+  // documents the same twelve names. Both branches assert something real; neither passes vacuously.
+  /** The installed cclsp entry, absent before the first `pnpm install`. */
+  const cclspEntry = join(repoRoot, "node_modules", "cclsp", "dist", "index.js")
+  if (existsSync(cclspEntry)) {
+    /** The installed dependency's bundle, whose literal tool names the deny list must match. */
+    const cclsp = readFileSync(cclspEntry, "utf8")
+    checks.push(["the installed cclsp exposes rename_symbol AND rename_symbol_strict", cclsp.includes('"rename_symbol"') && cclsp.includes('"rename_symbol_strict"')])
+  } else {
+    /** This package's own README, which documents cclsp's twelve names. */
+    const lspReadme = readFileSync(join(repoRoot, "packages", "mpd-mcp-lsp", "README.md"), "utf8")
+    checks.push(["cclsp is not installed in this checkout; the documented tool surface names both renames", lspReadme.includes("`rename_symbol`") && lspReadme.includes("`rename_symbol_strict`")])
+  }
 
   // WHY the two names were the defect (offline, deterministic): the harness validates against the
   // tools the AGENT PLANE composes, and `tool-str-replace-editor` — though its package ships in the
@@ -661,17 +677,17 @@ function runReal(): Promise<void> {
     // ENFORCEMENT (t13 / t9 F1): the case must assert what is MEASURED about the child, not merely that
     // the deny list was handed over. The child request is found by its own signature: a request that
     // carries tools whose names are a PROPER SUBSET of the parent's toolset. Measured basis (raw
-    // request dumps): call#1 = parent, 87 tools including all seven write-capable names; call#2 = a
-    // session-title side request, 0 tools; call#3 = the child, 81 tools with none of the seven. A
+    // request dumps): call#1 = parent, 87 tools including all eight write-capable names; call#2 = a
+    // session-title side request, 0 tools; call#3 = the child, 81 tools with none of the eight. A
     // request that merely repeats the parent's toolset is never classified as the child — that is
     // deliberate, because "the child has no restriction" must fail the assertion below rather than
     // silently match.
     // The child request is identified by its own semantic signature, measured from raw request dumps:
-    // it carries tools, exposes NONE of the seven write-capable names, and adds the role's report
+    // it carries tools, exposes NONE of the eight write-capable names, and adds the role's report
     // schema as `structured_output` (the read-only specialist's required output contract) — so its
     // toolset is the parent's MINUS the denied names PLUS structured_output. Measured basis: call#1 =
-    // parent, 87 tools including all seven; call#2 = a session-title side request, 0 tools; call#3 =
-    // the child, 81 tools with none of the seven and `structured_output` present.
+    // parent, 87 tools including all eight; call#2 = a session-title side request, 0 tools; call#3 =
+    // the child, 81 tools with none of the eight and `structured_output` present.
     // WHY THIS KEYS ON THE TOOL-SET SIGNATURE AND NEVER ON CALL ORDER (t9 independent verification):
     // the 0-tool session-title side request is NOT at a fixed position — it was call#2 in the positive
     // lane but call#1 in the reviewer's control run. Position-keyed logic would classify the wrong
@@ -688,25 +704,25 @@ function runReal(): Promise<void> {
     const childReqs = steps.positive.stubTrace.filter(isChildReq)
     // The child requests that carry a toolset, which are the ones that can leak a name.
     const childSpy = childReqs.filter((c) => c.toolCount > 0)
-    // The parent must actually show the seven, or "the child lacks them" would be vacuous.
-    const parentShowsAllSeven = (parentReq?.writeCapableVisible.length ?? 0) === WRITE_CAPABLE.length
+    // The parent must actually show the eight, or "the child lacks them" would be vacuous.
+    const parentShowsAllDenied = (parentReq?.writeCapableVisible.length ?? 0) === WRITE_CAPABLE.length
     steps.enforcement = {
       // Falsifiable by construction: when the restriction silently fails to apply (the pre-fix names
-      // re-injected) every request exposes the seven names, so childRequests is 0 and this fails — which
+      // re-injected) every request exposes the eight names, so childRequests is 0 and this fails — which
       // the control lane below demonstrates on real data.
-      ok: childSpy.length > 0 && parentShowsAllSeven && childSpy.every((c) => c.writeCapableVisible.length === 0),
+      ok: childSpy.length > 0 && parentShowsAllDenied && childSpy.every((c) => c.writeCapableVisible.length === 0),
       childRequests: childReqs.length,
       parentRequests: parentReq ? steps.positive.stubTrace.filter((c) => c !== parentReq).length : 0,
       childToolCounts: childSpy.map((c) => c.toolCount),
       parentToolCount: parentReq?.toolCount ?? 0,
       childLeaksWriteCapable: childSpy.flatMap((c) => c.writeCapableVisible),
       childHasStructuredOutput: childSpy.some((c) => c._toolNames.includes("structured_output")),
-      parentHasAllSeven: parentShowsAllSeven,
-      note: "read-only authority is ENFORCED: the child's own requests cannot see any of the seven write-capable tools, while the parent's sees all of them",
+      parentHasAllSeven: parentShowsAllDenied,
+      note: "read-only authority is ENFORCED: the child's own requests cannot see any of the eight write-capable tools, while the parent's sees all of them",
     }
 
     steps.positiveOk = {
-      // The exact seven-name list reached the harness, the child was created and answered, the harness
+      // The exact eight-name list reached the harness, the child was created and answered, the harness
       // never reported an unknown tool, AND the enforcement assertion above holds. A create() that
       // throws inside tools.restrict() means NO child exists, so a created, answering child is the
       // precondition; the enforcement lane is what proves the child is actually restricted.
@@ -715,7 +731,7 @@ function runReal(): Promise<void> {
         && steps.positive.spawnDriven
         && !steps.positive.missingCredential
         && JSON.stringify(steps.positive.filterSent?.deny) === JSON.stringify(EXPECTED_DENY),
-      note: "the seven-name list reached tools.restrict(), the child was created and answered, and the child's visible toolset excludes all seven write-capable names",
+      note: "the eight-name list reached tools.restrict(), the child was created and answered, and the child's visible toolset excludes all eight write-capable names",
     }
     // CONTROL (t13 / t9 F1): the re-injection lane is where read-only authority SILENTLY DEGRADES in
     // this harness — a stale-but-known name overlaps the scope's restrictable names, so restrict()

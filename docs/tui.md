@@ -754,9 +754,9 @@ as a current capability.
 | `mpd-tui-plugin` | the TUI-native surface package (this edition) | usable | composed row `mpd-tui` → `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` |
 | `mpd-agent-teams-plugin` | the vendored AgentTeams plugin (tools + Web panel) — **RETIRED from the composition in 0.1.7-rc.2; this row is the historical 2026-09-15 measurement** | usable then | 17 team tools |
 | `mpd-mcp-astgrep` | ast-grep MCP server (stdio launcher) | usable | 3 `mcp__ast_grep__*` tools |
-| `mpd-mcp-lsp` | LSP MCP server (stdio launcher) | usable | 8 `mcp__lsp__*` tools |
+| `mpd-mcp-lsp` | LSP MCP server (stdio launcher for the declared `cclsp` dependency) | usable | 12 `mcp__lsp__*` tools (cclsp's own names) |
 | `mpd-mcp-codegraph` | codegraph MCP server (stdio launcher) | usable | server alive in-process; 0 tools **in that sandbox** because the CodeGraph policy excludes a project path containing `.mpd` (a sandbox artifact, not a TUI limitation) |
-| `mpd-mcp-gitbash` | git-bash MCP server (Windows-only upstream) | inert | row composed `disabled: true` under every profile |
+| `mpd-mcp-gitbash` | ONE launcher for the git toolbox and the raw shell runner (declared npm dependencies) | inert | rows `mcp-git` (28 `mcp__git__git_*` tools) and `mcp-shell` (`mcp__shell__run_process`) are both composed `disabled: true` under every profile |
 | `mpd-mcp-shared` | shared binary resolver used by the MCP launchers | usable | support library, no row/tool of its own; witnessed by the MCP children that launched |
 | `mpd-bundle-plugin` | bundle web-compat package (browser client + no-op main) | **web-only** | no TUI rendering face; TUI equivalents are the §3 surfaces |
 | `mpd-qa-roles-probe` | QA-only probe package | inert | no row in the bundle patch (mounted only by a QA overlay) |

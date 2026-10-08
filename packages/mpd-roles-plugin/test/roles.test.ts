@@ -283,7 +283,7 @@ test("mpd_roles_list returns the full roster summary", async () => {
 
 test("read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass)", async () => {
   /** The write-capable tool names the deny list must cover, bash included. */
-  const writeTools = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"]
+  const writeTools = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict"]
   for (const t of writeTools) expect(READONLY_DENY).toContain(t)
   /** A fresh apply whose recorded toolFilter is compared with the constant. */
   const { tools, spawned, exec } = makePlugin()

@@ -93,7 +93,7 @@ bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packa
 其他构建入口：
 
 ```bash
-node scripts/build-mcp.ts          # MCP 服务器，离线使用仓库内源码
+bun run --filter '*' build        # 或执行某个包自己的 `build` 脚本；MCP 启动器每个只构建一个文件
 node scripts/build-mpd-client.ts   # 合并后的 web 客户端，改动 agent-teams 客户端之后执行
 node scripts/pack-mpd.ts           # 仅发布用：生成可迁移的 dist/mpd-package/ 产物
 ```

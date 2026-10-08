@@ -642,9 +642,9 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 | `mpd-tui-plugin` | TUI 原生界面包（本版本） | usable | 组合行 `mpd-tui` → `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` |
 | `mpd-agent-teams-plugin` | 内置的 AgentTeams 插件（工具 + Web 面板）—— **已于 0.1.7-rc.2 从组合中退役；本行是 2026-09-15 的历史测量** | 当时 usable | 17 个团队工具 |
 | `mpd-mcp-astgrep` | ast-grep MCP 服务器（stdio 启动器） | usable | 3 个 `mcp__ast_grep__*` 工具 |
-| `mpd-mcp-lsp` | LSP MCP 服务器（stdio 启动器） | usable | 8 个 `mcp__lsp__*` 工具 |
+| `mpd-mcp-lsp` | LSP MCP 服务器（为已声明的 `cclsp` 依赖提供的 stdio 启动器） | usable | 12 个 `mcp__lsp__*` 工具（cclsp 自己的名字） |
 | `mpd-mcp-codegraph` | codegraph MCP 服务器（stdio 启动器） | usable | 服务器在进程内运行；**在该沙箱**中 0 个工具，因为 CodeGraph 策略排除含 `.mpd` 的项目路径（沙箱现象，不是 TUI 限制） |
-| `mpd-mcp-gitbash` | git-bash MCP 服务器（上游仅 Windows） | inert | 任何 profile 下该行组合为 `disabled: true` |
+| `mpd-mcp-gitbash` | 一个启动器同时服务 git 工具箱与裸 shell 运行器（均为已声明 npm 依赖） | inert | `mcp-git`（28 个 `mcp__git__git_*` 工具）与 `mcp-shell`（`mcp__shell__run_process`）两行在任何 profile 下都组合为 `disabled: true` |
 | `mpd-mcp-shared` | MCP 启动器共用的二进制解析库 | usable | 支持库，自身无行/工具；由已启动的 MCP 子进程间接见证 |
 | `mpd-bundle-plugin` | bundle web 兼容包（浏览器客户端 + 空操作 main） | **web-only** | 无 TUI 渲染面；TUI 等价物见 §3 |
 | `mpd-qa-roles-probe` | 仅 QA 的探针包 | inert | bundle patch 中没有它的行（仅由 QA overlay 挂载） |

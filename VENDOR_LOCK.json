@@ -5,22 +5,7 @@
     "skills": {
       "fileCount": 371,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, extension-template, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe + the five TUI lanes and their shared harness: scripts/tui-mount.mjs, tui-panels.mjs, tui-admission.mjs, tui-distribution.mjs, tui-spec-conformance.mjs, lib/tui-lane.mjs + the settings-bridge lanes and their shared engine: scripts/tui-settings-bridge.mjs, web-settings-bridge.mjs, lib/settings-bridge-lane.mjs + the six team-watchdog lanes and their shared harness: scripts/team-watchdog-{heartbeat,fault,scene,config,notify,boot}.mjs, lib/watchdog-lane.mjs + the real-dsh boot lane); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "34fe50c4a7892f803df6ee5db3180011523721b312bf8018c351c87a3cf8f773"
-    },
-    "vendor/mcp-src": {
-      "fileCount": 459,
-      "source": "in-repo source snapshot of the three MCP servers and their four shared packages, copied at the pinned upstream commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29; this is the ONLY source scripts/build-mcp.ts reads (no external checkout, no network). Its origin, the one-time sparse fetch that produced it, the declared omission of the upstream AGENTS.md instruction files and the MEASURED licence (SUL-1.0; lsp-daemon self-declares MIT - NOT the MIT the wave plan assumed) are recorded in vendor/mcp-src/README.md",
-      "treeSha": "af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c"
-    },
-    "packages/mpd-mcp-gitbash/dist/cli.js": {
-      "fileCount": 1,
-      "source": "built offline via scripts/build-mcp.ts from the vendor/mcp-src/git-bash-mcp snapshot",
-      "sha256": "6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5"
-    },
-    "packages/mpd-mcp-lsp/dist/cli.js": {
-      "fileCount": 1,
-      "source": "built offline via scripts/build-mcp.ts from the vendor/mcp-src/lsp-daemon snapshot",
-      "sha256": "555d6bf2b940ea2c76c0154092e78ba1517d608a2aa5c7c84568f70f123b3720"
+      "treeSha": "1169952b376923e25ac078a8dfc530279525c4a4b2aebc960a8c49f832a2c084"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,

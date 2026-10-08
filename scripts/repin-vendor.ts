@@ -354,7 +354,7 @@ function planAssets(lock: RepinLock): AssetPlan {
     if (typeof entry.treeSha !== "string") {
       /** Which flavour of non-derivable asset this is, phrased for the POLICY line. */
       const kind: string = typeof entry.sha256 === "string"
-        ? "single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock"
+        ? "single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock"
         : "count-only asset - carries no fingerprint this helper can derive"
       skipped.push({ asset, reason: `POLICY (not a failure) - ${kind}` })
       continue

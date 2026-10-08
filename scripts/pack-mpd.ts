@@ -397,7 +397,7 @@ function cpDist(): void {
     cpSync(src, join(outDir, "packages", p, "dist"), { recursive: true })
   }
   if (missing.length > 0) {
-    console.error("[pack-mpd] FAIL: missing dist for " + missing.join(", ") + " — run bun build / scripts/build-mcp.ts first; a bundle must never ship without a plugin")
+    console.error("[pack-mpd] FAIL: missing dist for " + missing.join(", ") + " — run the package's build script (bun build / scripts.build) first; a bundle must never ship without a plugin")
     process.exit(1)
   }
 }

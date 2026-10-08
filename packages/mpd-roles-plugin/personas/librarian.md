@@ -11,7 +11,7 @@ Verify the current date before any search. NEVER search with a stale year. Alway
 ## EVIDENCE TOOLS (DeepSeek Harness)
 
 - mcp__ast_grep__search / mcp__ast_grep__scan: structural local code search (install ast-grep so it fully works)
-- mcp__lsp__*: language server queries (goto_definition, find_references, symbols, status)
+- mcp__lsp__*: language server queries (find_definition, find_references, find_workspace_symbols, get_diagnostics, get_hover, rename_symbol)
 - web_search / tool-web: documentation and web evidence
 - bash: git clone / grep / curl for remote repos and raw files when needed
 

@@ -13,12 +13,12 @@
 //      log's `request/header.data.header.tools[]` (`lib/session-evidence.ts`).
 //      The call itself is a recorded `tool/call` + non-error `tool/result`.
 //   3. the HEALTHY server is the repo's own stdio MCP server
-//      (`packages/mpd-mcp-lsp/dist/cli.js`); the failure arms are local fixtures
+//      (`packages/mpd-mcp-lsp/dist/launch.js`); the failure arms are local fixtures
 //      started by the bridge itself.
 //
 // ARMS (the failure arms share ONE boot, so they also prove containment
 // side by side rather than one at a time)
-//   live    — the lsp server connects at apply, `mcp__qa_mcp_live__status` is
+//   live    — the lsp server connects at apply, `mcp__qa_mcp_live__get_diagnostics` is
 //             offered and a real call returns a non-error result.
 //   dead    — an unreachable command is contained (`unavailable`/`failed` with
 //             the child's reason), contributes no tool, boot stays green.
@@ -36,7 +36,7 @@
 //
 // PREREQ: absent-dsh-binary dsh "install DeepSeek Harness (dsh) on PATH"
 // PREREQ: absent-runtime packages/mpd-ext-plugin/dist/index.js "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js"
-// PREREQ: absent-fixture packages/mpd-mcp-lsp/dist/cli.js "node scripts/build-mcp.ts --with-lsp (repo's own stdio MCP server)"
+// PREREQ: absent-fixture packages/mpd-mcp-lsp/dist/launch.js "bun build packages/mpd-mcp-lsp/src/launch.ts … (repo's own stdio MCP launcher)"
 //
 // --self-test is offline (public-name collision premise + fixture schemas + the
 // shipped example's server + the composed row). Evidence ->
@@ -55,7 +55,7 @@ import {
 export const SLUG: string = "extension-mcp-bridge"
 
 /** The repo's own stdio MCP server, used as the HEALTHY server of the live arm. */
-const LSP_SERVER: string = join(REPO, "packages", "mpd-mcp-lsp", "dist", "cli.js")
+const LSP_SERVER: string = join(REPO, "packages", "mpd-mcp-lsp", "dist", "launch.js")
 // The DESCRIPTOR id grammar is ^[a-z0-9][a-z0-9-]{0,63}$ (no underscores) while
 // the MCP serverName grammar allows them — the two namespaces are separate on
 // purpose: the extension DIRECTORY/manifest id uses dashes, the serverName (and
@@ -64,8 +64,8 @@ const LSP_SERVER: string = join(REPO, "packages", "mpd-mcp-lsp", "dist", "cli.js
 const LIVE_EXT: string = "qa-mcp-live"
 /** The live arm's server name, in the underscore-allowing serverName grammar. */
 const LIVE_SERVER: string = "qa_mcp_live"
-/** The public name the live arm's `status` tool must be offered under. */
-const LIVE_TOOL: string = "mcp__" + LIVE_SERVER + "__status"
+/** The public name the live arm's tool must be offered under: cclsp's own `get_diagnostics` (de-omo wave B2 — the retired server's `status` has no counterpart). */
+const LIVE_TOOL: string = "mcp__" + LIVE_SERVER + "__get_diagnostics"
 /** The dead arm's extension id (an unreachable command must be contained). */
 const DEAD_EXT: string = "qa-mcp-dead"
 /** The dead arm's server name. */
@@ -196,7 +196,7 @@ function selfTest(): void {
   /** Record one violation without aborting the run. */
   const check = (condition: boolean, message: string): void => { if (!condition) problems.push(message) }
 
-  check(existsSync(LSP_SERVER), "the repo's own stdio MCP server is missing: packages/mpd-mcp-lsp/dist/cli.js")
+  check(existsSync(LSP_SERVER), "the repo's own stdio MCP launcher is missing: packages/mpd-mcp-lsp/dist/launch.js")
   // The bundle patch, read to prove the `mpd-ext` row is still mounted.
   const patch = readFileSync(join(REPO, "cordis.patch.yml"), "utf8")
   check(/- id: mpd-ext\b/.test(patch), "the bundle patch does not carry the mpd-ext row")
@@ -242,7 +242,7 @@ function selfTest(): void {
   // The lossy-hash rule keeps DIFFERENT raw names apart — assert that property, so
   // a future change that dropped the hash would be caught here.
   check(publicName(DUP_SERVER, "two.name") !== publicName(DUP_SERVER, "two_name"), "two different lossy raw names must NOT share a public name")
-  check(publicName(LIVE_SERVER, "status") === LIVE_TOOL, "the live arm's expected public name changed: " + publicName(LIVE_SERVER, "status"))
+  check(publicName(LIVE_SERVER, "get_diagnostics") === LIVE_TOOL, "the live arm's expected public name changed: " + publicName(LIVE_SERVER, "get_diagnostics"))
   // The two namespaces are different grammars: a descriptor id may not contain
   // `_` (measured: five extensions were rejected for exactly that), while a
   // serverName may. Assert both on the fixture ids so this class cannot recur.
@@ -300,7 +300,7 @@ async function runReal(): Promise<void> {
   gatePrereqs({ slug: SLUG, prereqs: [
     { code: "absent-dsh-binary", probe: "dsh", remedy: "install DeepSeek Harness (dsh) on PATH", present: () => binaryPresent("dsh") },
     { code: "absent-runtime", probe: "packages/mpd-ext-plugin/dist/index.js", remedy: "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js", present: () => existsSync(join(REPO, "packages", "mpd-ext-plugin", "dist", "index.js")) },
-    { code: "absent-fixture", probe: "packages/mpd-mcp-lsp/dist/cli.js", remedy: "node scripts/build-mcp.ts --with-lsp", present: () => existsSync(LSP_SERVER) },
+    { code: "absent-fixture", probe: "packages/mpd-mcp-lsp/dist/launch.js", remedy: "bun build packages/mpd-mcp-lsp/src/launch.ts --target node --format esm --outfile packages/mpd-mcp-lsp/dist/launch.js", present: () => existsSync(LSP_SERVER) },
   ] })
   // The evidence-directory stamp for this run.
   const ts = timestamp()
@@ -378,7 +378,7 @@ async function runReal(): Promise<void> {
     const port = await stub.listen()
     useStubRoute(box.dshHome, port)
     // The single boot every arm of this case reads.
-    const run = await bootSession({ slug: SLUG, env: box.env, cwd: box.ws, prompt: "Inspect each MCP extension, then call the live status tool.", stub })
+    const run = await bootSession({ slug: SLUG, env: box.env, cwd: box.ws, prompt: "Inspect each MCP extension, then call the live get_diagnostics tool.", stub })
     // What the harness really recorded for this boot.
     const evidence = sessionEvidence(box.dshHome, box.ws, ["mpd_ext_show", LIVE_TOOL])
     await stub.close()
@@ -542,7 +542,7 @@ async function runReal(): Promise<void> {
     ok,
     sandbox: box.sandbox,
     arms: "live (repo's own stdio MCP server, real call) | dead | hang | schema (keep-or-drop) | dup (zero tools) | containment",
-    note: "the healthy server is packages/mpd-mcp-lsp/dist/cli.js; the failure arms are local fixture servers started by the bridge itself",
+    note: "the healthy server is the packages/mpd-mcp-lsp/dist/launch.js launcher (cclsp); the failure arms are local fixture servers started by the bridge itself",
     steps,
   }, logs.join("\n\n"))
   cleanup(box.sandbox)

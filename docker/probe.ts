@@ -104,11 +104,11 @@ const CORE_TOOLS: readonly string[] = [
 // server exposes. The row's `serverName` is the MIDDLE segment of its tool names
 // (`mcp__<serverName>__<tool>`), so these three are the row→capability proof: a server whose child
 // process fails to spawn leaves the session without the tool while every composition assertion stays
-// green, which is the gap this arm closes. `mcp-gitbash` is deliberately absent: that row ships
-// `disabled: true` because its upstream is Windows-only.
+// green, which is the gap this arm closes. `mcp-git`/`mcp-shell` are deliberately absent: those rows
+// ship `disabled: true`, so they register no tools.
 const MCP_TOOLS: readonly string[] = [
   "mcp__ast_grep__search",
-  "mcp__lsp__status",
+  "mcp__lsp__get_diagnostics",
   "mcp__codegraph__codegraph_explore",
 ]
 

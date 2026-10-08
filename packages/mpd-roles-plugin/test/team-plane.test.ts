@@ -181,9 +181,9 @@ const memberFixtures = ROLES.map((role) => ({ name: role.name, description: role
 const readonlyNames = ROLES.filter((role) => role.readonly).map((role) => role.name)
 
 describe("read-only discipline: the guard denies exactly the roster's read-only members", () => {
-  test("the guard's deny list IS the one-shot path's list (one constant, seven names)", () => {
-    expect(READONLY_DENY).toHaveLength(7)
-    expect(new Set(READONLY_DENY).size).toBe(7)
+  test("the guard's deny list IS the one-shot path's list (one constant, eight names)", () => {
+    expect(READONLY_DENY).toHaveLength(8)
+    expect(new Set(READONLY_DENY).size).toBe(8)
     /** The double, with a read-only Explorer teammate as the calling membership. */
     const harness = planeHarness({ membership: { teamId: "team-1", role: "teammate", name: "Explorer" } })
     /** The guard installation result, whose recorded guard is invoked below. */

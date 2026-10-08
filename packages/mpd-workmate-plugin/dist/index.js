@@ -1566,7 +1566,8 @@ var READONLY_DENY = [
   "bash",
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
-  "mcp__lsp__rename"
+  "mcp__lsp__rename_symbol",
+  "mcp__lsp__rename_symbol_strict"
 ];
 
 class WorkmateError extends Error {

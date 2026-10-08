@@ -28,7 +28,7 @@
 | 后台 agent | 并行后台任务 | ✅ | DSH jobs + tool-jobs |
 | Skills 语料 | 上游 skill corpus | ✅ | 已移植（2026-08-27）：语料随仓库发布于 `skills/`（19 个目录，含 `svn-master`、本仓库自有的 `dsh-qa` 与 `cordis-dev` —— 后者改写自 DeepSeek Harness 的创造模式 preset skills，MIT，见 `LICENSE-NOTICES.md`），并以**引用**方式服务 —— `mpd-bootstrap` 通过 adapter 把 `<bundle>/skills` 注册为 `bundled` skill provider，因此不会复制进 `$DSH_HOME`；见 `docs/omo-parity-gap.md` 的 §Content gaps |
 | Rules / AGENTS.md | 嵌套规则发现与注入 | ✅ | DSH agent-instructions（baseline + nested + change tracking） |
-| 内置 MCPs（5） | git_bash, lsp, codegraph, context7, grep_app | ✅ | git_bash（win-gated）、lsp（8 工具）、codegraph（plugin+init）、context7、grep_app（远程行）+ 额外 ast_grep |
+| 内置 MCPs（5） | git_bash, lsp, codegraph, context7, grep_app | ✅ | git（28 工具）+ shell（`run_process`，两行均 `disabled: true`）、lsp（12 个 cclsp 工具）、codegraph（plugin+init）、context7、grep_app（远程行）+ 额外 ast_grep |
 | Slash commands | /goal /ultrawork /team /hyperplan … | 🟡 | DSH 原生命令 + `/mpd-codegraph`、ULW 命令对 `/ulw` + `/ultrawork`（等价；目标即参数）+ TUI 的 `/mpd` 命令树；ULW 引擎同时以工具交付（`mpd_ultrawork`、`mpd_ulw` 轻量别名）。没有 `/team`，也没有 `/agent-teams` —— 团队工作由官方工具驱动 |
 | hashline 哈希编辑 | 保持哈希的编辑纪律 | ✅ | mpd_hashline_read/edit/format/restore + 注册文件 post-edit guard（vendor hashline-core；evidence/plan-c/plan-c-smoke + 单元测试） |
 | comment-checker | post-edit 注释检查 | ✅ | mpd_comment_check（opt-in 二进制 @code-yeongyu/comment-checker，MIT；installer --with-comment-checker；autoCheck 默认关闭；单元测试 + plan-c-smoke） |
@@ -37,7 +37,7 @@
 | 记忆引擎 | git-backed MemFS + 反思 | ✅ | mpd-memory-plugin：Markdown memo 文件（frontmatter）、journal、反思状态机（step-count/manual 触发、reservation）、VCS 抽象支持 git 与 svn 后端（memory.vcs git\|svn\|both）；工具 mpd_memory_write/read/reflect/reflect_complete/status；evidence/plan-c/c6-memory + 单元测试（git 真实提交、svn fake-CLI 接线） |
 | Boulder state | 持久工作状态机 | ✅ | mpd_boulder_status/start/complete/task_timer/plan_progress/plans 于 .mpd/boulder.json（vendor boulder-state，dsh: session 前缀；evidence/plan-c/plan-c-smoke + 单元测试） |
 | Config（上游 config） | 分层 config schema | ✅ | 最小 mpd.jsonc 运行时层（项目 .mpd/mpd.jsonc + 用户 $DSH_HOME/mpd.jsonc，JSONC，深合并；bundle patch 仍是组合真相；evidence/plan-c/plan-c-smoke + 单元测试） |
-| LSP 工具 | diagnostics/goto/refs/rename/symbols | ✅ | mcp__lsp__*（8 工具，经离线构建的 daemon） |
+| LSP 工具 | diagnostics/goto/refs/rename/symbols | ✅ | mcp__lsp__*（12 个工具，经已声明的 cclsp 依赖；`status`/`prepare_rename`/`install_decision` 已删除 —— 见 packages/mpd-mcp-lsp/README.md） |
 | 多模态 | 图像分析模型路由 | ✅ | modality 路由实测：fixture PNG -> deepseek-v4-flash-vision-exp 官方 API -> 接地答案（evidence/plan-c/c8-vision） |
 | 模型护栏 | capability 启发式/别名 | ✅ (scoped) | mpd_modelchain_resolve 中的 chains（11 roles，DeepSeek-first）。上游 model-core 深度有意跳过（用户决策：仅 DeepSeek，官方 vs 非官方 API；D-C9） |
 | 宿主特定遗留 | claude-code compat loaders、opengateway、mcp-oauth、上游 CLI 运行时 | ➖ | 对 DSH bundle 有意排除 |

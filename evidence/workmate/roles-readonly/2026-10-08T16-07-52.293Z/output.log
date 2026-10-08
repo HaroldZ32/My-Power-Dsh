@@ -1,0 +1,4 @@
+{
+  "positiveFullOutput": "dsh: warning: 1 entry did not activate\npreset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)\n\ndsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch\n",
+  "reinjectionFullOutput": "dsh: warning: 1 entry did not activate\npreset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)\n\ndsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch\n"
+}

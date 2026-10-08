@@ -61,7 +61,8 @@ export const READONLY_DENY = [
   "bash",
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
-  "mcp__lsp__rename",
+  "mcp__lsp__rename_symbol",
+  "mcp__lsp__rename_symbol_strict",
 ]
 
 /** Output schema of a one-shot specialist's structured report, so the tool result is validated. */

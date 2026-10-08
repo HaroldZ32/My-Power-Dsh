@@ -120,10 +120,12 @@ export const VERIFIER_WRITE_PREFIX = ".mpd/verify/"
 /** Tools a bound verifier may never call, whatever their arguments (spec (c), frozen). */
 export const VERIFIER_DENIED_TOOLS: readonly string[] = [
   "bash", "powershell", "pwsh",
-  "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename",
+  "mcp__ast_grep__rewrite", "mcp__ast_grep__scan",
+  "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict",
   "mcp__codegraph__codegraph_explore",
-  "mcp__lsp__diagnostics", "mcp__lsp__goto_definition", "mcp__lsp__find_references",
-  "mcp__lsp__symbols", "mcp__lsp__prepare_rename",
+  "mcp__lsp__find_definition", "mcp__lsp__find_references", "mcp__lsp__find_implementation",
+  "mcp__lsp__get_diagnostics", "mcp__lsp__get_hover", "mcp__lsp__find_workspace_symbols",
+  "mcp__lsp__prepare_call_hierarchy", "mcp__lsp__get_incoming_calls", "mcp__lsp__get_outgoing_calls",
 ]
 
 /**

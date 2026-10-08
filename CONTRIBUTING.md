@@ -97,7 +97,7 @@ reproduces those exact bytes — a build run from inside a package directory is 
 Other build entry points:
 
 ```bash
-node scripts/build-mcp.ts          # MCP servers, offline from in-repo sources
+bun run --filter '*' build        # or run a package's own `build` script; MCP launchers build one file each
 node scripts/build-mpd-client.ts   # the combined web client, after agent-teams client changes
 node scripts/pack-mpd.ts           # RELEASE only: the relocatable dist/mpd-package/ artifact
 ```

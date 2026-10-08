@@ -1,11 +1,101 @@
 #!/usr/bin/env node
 
+// packages/mpd-mcp-shared/dependency-entry.ts
+import { createRequire } from "node:module";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+function readManifest(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+function manifestFor(path, packageName) {
+  const manifest = readManifest(path);
+  return manifest !== null && manifest.name === packageName ? manifest : null;
+}
+function ownerManifest(from, packageName) {
+  let dir = dirname(resolve(from));
+  for (;; ) {
+    const candidate = join(dir, "package.json");
+    if (existsSync(candidate) && manifestFor(candidate, packageName) !== null)
+      return candidate;
+    const parent = dirname(dir);
+    if (parent === dir)
+      return null;
+    dir = parent;
+  }
+}
+function walkNodeModules(startDir, packageName) {
+  let dir = resolve(startDir);
+  for (;; ) {
+    const candidate = join(dir, "node_modules", packageName, "package.json");
+    if (existsSync(candidate) && manifestFor(candidate, packageName) !== null)
+      return candidate;
+    const parent = dirname(dir);
+    if (parent === dir)
+      return null;
+    dir = parent;
+  }
+}
+function startDirOf(from) {
+  try {
+    return dirname(fileURLToPath(from));
+  } catch {
+    return process.cwd();
+  }
+}
+function declaredEntry(manifest, packageDir, binName) {
+  if (binName !== undefined && typeof manifest.bin === "object" && manifest.bin !== null) {
+    const binMap = manifest.bin;
+    if (typeof binMap[binName] === "string")
+      return resolve(packageDir, binMap[binName]);
+  }
+  if (typeof manifest.bin === "string")
+    return resolve(packageDir, manifest.bin);
+  if (typeof manifest.main === "string")
+    return resolve(packageDir, manifest.main);
+  return null;
+}
+function resolveDependencyEntry(from, packageName, binName) {
+  const req = createRequire(from);
+  const candidates = [];
+  const consider = (path) => {
+    if (path !== null && !candidates.includes(path))
+      candidates.push(path);
+  };
+  try {
+    const direct = req.resolve(packageName + "/package.json");
+    consider(existsSync(direct) && manifestFor(direct, packageName) !== null ? direct : null);
+  } catch {}
+  try {
+    consider(ownerManifest(req.resolve(packageName), packageName));
+  } catch {}
+  consider(walkNodeModules(startDirOf(from), packageName));
+  for (const manifestPath of candidates) {
+    const manifest = manifestFor(manifestPath, packageName);
+    if (manifest === null)
+      continue;
+    const entry = declaredEntry(manifest, dirname(manifestPath), binName);
+    if (entry === null || !existsSync(entry))
+      continue;
+    return {
+      packageJson: manifestPath,
+      entry,
+      version: typeof manifest.version === "string" ? manifest.version : "unknown"
+    };
+  }
+  return null;
+}
+
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join as join2, resolve as resolve2 } from "node:path";
 import { format } from "node:util";
-var LOG_SUBDIR = join(".mpd", "logs");
+var LOG_SUBDIR = join2(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
 var DEFAULT_RING_LINES = 64;
@@ -29,7 +119,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -42,9 +132,9 @@ function resolveLogRoots(env = process.env, cwd) {
 }
 function tryOpenRoot(root, name) {
   try {
-    const dir = join(root, LOG_SUBDIR);
+    const dir = join2(root, LOG_SUBDIR);
     mkdirSync(dir, { recursive: true });
-    const file = join(dir, `${name}.log`);
+    const file = join2(dir, `${name}.log`);
     return { fd: openSync(file, "a"), file };
   } catch {
     return null;
@@ -267,7 +357,78 @@ function installTerminalSilence(name, options = {}) {
   return sink;
 }
 
+// packages/mpd-mcp-shared/unavailable-server.ts
+var FALLBACK_PROTOCOL_VERSION = "2024-11-05";
+async function serveUnavailable(sink, options) {
+  const prefix = "[" + options.name + "] unavailable fallback: ";
+  sink.write(prefix + options.reason);
+  sink.write(prefix + "this row exposes NO tools until the dependency loads; fix the cause and restart the session" + (options.hint === undefined ? "" : " — " + options.hint));
+  process.stdin.setEncoding("utf8");
+  let buffer = "";
+  const send = (message) => {
+    process.stdout.write(JSON.stringify(message) + `
+`);
+  };
+  for await (const chunk of process.stdin) {
+    buffer += chunk;
+    let index;
+    while ((index = buffer.indexOf(`
+`)) !== -1) {
+      const line = buffer.slice(0, index);
+      buffer = buffer.slice(index + 1);
+      if (line.trim() === "")
+        continue;
+      let request;
+      try {
+        request = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (request.method === "initialize") {
+        send({
+          jsonrpc: "2.0",
+          id: request.id,
+          result: {
+            protocolVersion: typeof request.params?.protocolVersion === "string" ? request.params.protocolVersion : FALLBACK_PROTOCOL_VERSION,
+            capabilities: { tools: {} },
+            serverInfo: { name: options.name, version: "unavailable" }
+          }
+        });
+      } else if (request.method === "tools/list") {
+        send({ jsonrpc: "2.0", id: request.id, result: { tools: [] } });
+      } else if (request.id !== undefined) {
+        send({ jsonrpc: "2.0", id: request.id, error: { code: -32601, message: options.name + " is unavailable on this host" } });
+      }
+    }
+  }
+}
+
 // packages/mpd-mcp-gitbash/src/launch.ts
-installTerminalSilence("mpd-mcp-gitbash");
-var ADOPTED_ENTRY = "./cli.js";
-await import(ADOPTED_ENTRY);
+var SERVERS = {
+  git: {
+    dependency: "@cyanheads/git-mcp-server",
+    bin: "git-mcp-server",
+    capability: "the git_* tool family"
+  },
+  shell: {
+    dependency: "mcp-server-commands",
+    bin: "mcp-server-commands",
+    capability: "run_process (raw shell execution)"
+  }
+};
+var sink = installTerminalSilence("mpd-mcp-gitbash");
+var word = process.argv[2] === "shell" ? "shell" : "git";
+var spec = SERVERS[word];
+var dependency = resolveDependencyEntry(import.meta.url, spec.dependency, spec.bin);
+if (dependency === null) {
+  await serveUnavailable(sink, {
+    name: "mpd-mcp-gitbash:" + word,
+    reason: "the declared dependency " + spec.dependency + " is not installed in this profile",
+    hint: "install the bundle's dependency closure (npm/pnpm install) — without it this row loses " + spec.capability
+  });
+  process.exitCode = 0;
+} else {
+  sink.write("[mpd-mcp-gitbash] starting " + spec.dependency + "@" + dependency.version + " (" + word + ") from " + dependency.entry);
+  const entry = dependency.entry;
+  await import(entry);
+}

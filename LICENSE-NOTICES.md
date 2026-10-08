@@ -86,26 +86,30 @@ sha256 `e343d30bc6631a1c8377b7aac26e7b1c5b38366913a98ef71fe6861fe812dcd4`). Noth
 no engine file was changed by this notice fix; full detail in
 `skills/ultimate-browsing/ATTRIBUTION.md` §1.
 
-## oh-my-openagent MCP servers (SUL-1.0, with one MIT component) — sources snapshotted in-repo
+## oh-my-openagent MCP servers (SUL-1.0, with one MIT component) — snapshots REMOVED
 
-The sources of the three MCP servers this bundle ships (`mpd-mcp-astgrep`, `mpd-mcp-gitbash`,
-`mpd-mcp-lsp`) and their four shared packages (`mcp-stdio-core`, `utils`, `omo-config-core`,
-`lsp-core`) are snapshotted VERBATIM at `vendor/mcp-src/`, copied from the oh-my-openagent
+**This section is now a HISTORICAL record, kept for provenance: the snapshotted sources are gone.**
+Between them the snapshots covered the three MCP servers this bundle used to ship
+(`mpd-mcp-astgrep`, `mpd-mcp-gitbash`, `mpd-mcp-lsp`) and their four shared packages
+(`mcp-stdio-core`, `utils`, `omo-config-core`, `lsp-core`), copied VERBATIM from the oh-my-openagent
 repository (https://github.com/code-yeongyu/oh-my-openagent) at commit
-`8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29` (v5.0.0-beta.20). That snapshot — not an external
-checkout — is the build input for `scripts/build-mcp.ts`.
+`8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29` (v5.0.0-beta.20).
 
-Licensing is MEASURED, never assumed: oh-my-openagent's own `LICENSE.md` places its content under
+Licensing was MEASURED, never assumed: oh-my-openagent's own `LICENSE.md` places its content under
 the Sustainable Use License 1.0, the same licence this repository inherits, and six of the seven
-snapshotted packages declare no `license` field at all; only `lsp-daemon`
-(`@code-yeongyu/lsp-daemon`) self-declares MIT. The snapshot is therefore **SUL-1.0 with that one
-MIT component — it is not MIT.** `vendor/mcp-src/README.md` records the origin, the one-time fetch
-that produced the snapshot, the declared omission of the upstream `AGENTS.md` instruction files
-(with each omitted file's sha256) and the full licence table.
+snapshotted packages declared no `license` field at all; only `lsp-daemon`
+(`@code-yeongyu/lsp-daemon`) self-declared MIT. The snapshot was therefore **SUL-1.0 with that one
+MIT component — it was not MIT.**
 
-**Declared bound:** `vendor/mcp-src/**` is deliberately NOT in `package.json`'s `files` allowlist.
-It is a BUILD-TIME input for a checkout; the published package ships the built `packages/mpd-mcp-*/dist/`
-servers instead, so a packed install never needs — and never receives — the snapshot.
+**REMOVED in de-omo wave B2 (2026-10-08), and nothing was carried over from it:** the snapshot
+(`vendor/mcp-src/**`, 459 files), the offline builder `scripts/build-mcp.ts`, the two built servers it
+produced (`packages/mpd-mcp-{lsp,gitbash}/dist/cli.js` with their `BUILD.lock` files) and the LSP
+build overlay (`packages/mpd-mcp-lsp/overlay/**`) are deleted outright — no SUL-derived source is
+shipped or read any more, and the `VENDOR_LOCK.json` asset that fingerprinted the snapshot is gone with
+it. What replaced each capability, under which licence, is recorded in
+`packages/mpd-mcp-lsp/README.md` and `packages/mpd-mcp-gitbash/README.md`: our own ast-grep server
+(wave B1), and thin launchers over the DECLARED npm dependencies `cclsp` (MIT), `@cyanheads/git-mcp-server`
+(Apache-2.0) and `mcp-server-commands` (MIT licence file, no `license` field).
 
 ## Agent Teams (MIT) — official plugin set, mounted by this bundle
 

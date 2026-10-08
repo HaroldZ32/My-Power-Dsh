@@ -46,7 +46,8 @@ export const READONLY_DENY = [
   "bash",
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
-  "mcp__lsp__rename",
+  "mcp__lsp__rename_symbol",
+  "mcp__lsp__rename_symbol_strict",
 ]
 
 /** A refused mutation, carrying the wire reason of the shared protocol (contract §D) so the HTTP
