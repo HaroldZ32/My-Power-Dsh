@@ -822,16 +822,16 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 |---|---|---|---|
 | 团队模式 —— `spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_*` 任务板与 Web 面板 | **官方** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` 三个包，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载 | MIT（harness 包组）；声明在 `package.json` 的 `dependencies` | `cordis.patch.yml`；`README.md`（*这次安装挂载了哪些插件*） |
 | 被采纳（随后退役、再被**删除**）的内置 `agent-teams` 主体 | **dsh-agent-teams**，作者 程序员阿江（Relakkes）—— 曾被整体采纳并作为一等主代码 | MIT；采纳版本 `0.1.16-rc.3-mpd`（`0.1.14` 主体 + 回移的 `0.1.16-rc.3` 增量）；自 0.1.7-rc.2 起**没有任何行挂载它**，去 vendor 波（2026-10-07）又删除了 `packages/mpd-agent-teams-plugin/**` —— 仅有两块被迁移的产物以我们自己的代码形式存续：`packages/mpd-schemastery/**` 与位于 `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` 的采纳浏览器 bundle | `LICENSE-NOTICES.md` 的 *dsh-agent-teams* 一节 |
-| 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20） | SUL-1.0 —— 本仓库继承的许可证 | `LICENSE-NOTICES.md` §1；`VENDOR_LOCK.json` |
-| 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 上游技能从 oh-my-openagent 整体搬运；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | 语料为 SUL-1.0；MIT 材料为引用、不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
+| 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20）—— 这里只是**名称与词汇**的历史来源；persona 文本已在 D 波改从宽松许可来源取材 | MIT（本仓库自己的作品）；名称所来自的那个上游当时是 SUL-1.0，仅作历史记录 | `LICENSE-NOTICES.md`；`VENDOR_LOCK.json` |
+| 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 16 个移植技能改从 **lazycodex** 取材（同一作者对 oh-my-openagent 语料的 MIT 再许可）；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | MIT —— 再取样的语料为 `Copyright (c) 2026 Yeongyu Kim`；引用的 harness 材料是 MIT 且不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
 | `mcp__ast_grep__*` | **ast-grep** —— 可选依赖 `@ast-grep/cli` | MIT；`0.45.2`；运行时解析，不再分发 | `package.json` 的 `optionalDependencies`；`MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim —— 可选依赖 `@colbymchenry/codegraph` | MIT；`1.5.0`；预构建服务器已搬运并做 sha256 固定 | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；`0.8.0`；**不**随包分发 —— 按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |
 | 插件系统、工具 / 技能 / preset / agent 接缝、模型 provider、Web 外壳 | DeepSeek Harness —— **`@deepseek-ai/*`** 包 | MIT；仅作为依赖引用 | `LICENSE-NOTICES.md` |
 | Agent Teams Web 面板 | 官方客户端插件 `@deepseek-ai/dsh-experimental-client-ui-agent-team` | MIT（harness 包组） | 见上文 §8；patch 行 `mpd-ui-agent-team` |
 | Workmates 侧边栏标签页 | 由社区 bundle **`dsh-better-sidebar`** 承载，它是本 bundle 的**可选 peer**（外加一个 `devDependency`）：bundle 从不安装它，带守卫的 `mpd-better-sidebar` 行在它可解析时挂载它 | — | 见上文 §8；`package.json` 的 `peerDependencies` / `peerDependenciesMeta`；patch 行 `mpd-better-sidebar` |
-| DSH 接线（adapter、运行时插件、`mpd` preset、合并后的 Web 客户端）、TUI 版本、QA 套件、文档、扩展接口 | 本项目自己编写 | SUL-1.0 | `README.md`（鸣谢）；`LICENSE.md` |
+| DSH 接线（adapter、运行时插件、`mpd` preset、合并后的 Web 客户端）、TUI 版本、QA 套件、文档、扩展接口 | 本项目自己编写 | MIT | `README.md`（鸣谢）；`LICENSE.md` |
 
 有两条值得记住的结论：组件即使在 bundle 内也各自保留**自己的**许可证（采纳的浏览器 bundle 与迁移过来
-的 schemastery 校验器是 MIT，而本仓库是 SUL-1.0）；本 bundle 也从不配置你的 provider 凭据 ——
+的 schemastery 校验器是 MIT，本仓库自身也是 MIT）；本 bundle 也从不配置你的 provider 凭据 ——
 `MISSING_CREDENTIAL` 属于你的 DSH 凭据存储，而不是这些文档该负责的事。

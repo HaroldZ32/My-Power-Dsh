@@ -4,7 +4,7 @@
 
 [![版本](https://img.shields.io/badge/version-0.12.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
-[![许可证：SUL-1.0](https://img.shields.io/badge/license-SUL--1.0-orange.svg)](./LICENSE.md)
+[![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.0--rc.2-4B32C3.svg)](#致谢)
 [![平台](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#一个插件两个端)
 [![运行时](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
@@ -196,7 +196,8 @@ Workmates 页签和设置里的 MPD 分区。
 - **截图是无头抓取。** Web 图是固定视口下的 Chromium，由 Playwright 驱动；终端图是 TUI 自己发出的
   字节流（带 ANSI，从真实 PTY 抓取），按 tmux 算好的字符网格栅格化——真实的输出，某一个渲染器的
   像素。换个浏览器窗口尺寸或换一个终端，排版就会不同：**成立的是屏幕上那些事实**，不是像素。
-- **许可证：源码可见，但非开源。** SUL-1.0 允许内部与个人使用、以及免费的非商业分发；它不是 OSI 许可证。
+- **许可证：MIT。** 本仓库自己的代码是 MIT（`LICENSE.md`，Copyright (c) 2026 HaroldZ32）；第三方材料保留各自
+  的许可证，逐组件记录在 `LICENSE-NOTICES.md`。
 
 ## 文档
 
@@ -222,14 +223,18 @@ Workmates 页签和设置里的 MPD 分区。
 
 ## 致谢
 
-专家名册、模型链词汇以及名册的稳定 id 改编自
+专家名册的名称与稳定 id、以及模型链词汇，改编自
 [`code-yeongyu/oh-my-openagent`](https://github.com/code-yeongyu/oh-my-openagent)（v5.0.0-beta.20），
 作为历史来源记录在 [`VENDOR_LOCK.json`](./VENDOR_LOCK.json)。那个上游是一份**参考，不是依赖**：本仓库没有
-任何东西读它、抄它、打补丁或审计它，它挂掉也不会让任何一个关卡变红。
+任何东西读它、抄它、打补丁或审计它，它挂掉也不会让任何一个关卡变红。那份记录当初描述的内容已不再随行：随包
+服务的技能语料是 MIT（改从同一作者的 `lazycodex` 取材），11 份 persona 文本改从
+[`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md) 列出的宽松许可公开 agent 提示词取材，内置内核、MCP 服务器与
+被采纳的 agent-teams 主体则被替换或直接删除。
 
 套件组合的是 harness 自己的官方包而不是把它们 fork 出来，并且为了 Workmates 页签挂了社区侧边栏包
 `dsh-better-sidebar`。署名与第三方声明在 [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md)。
 
 ## 许可证
 
-**SUL-1.0** —— 见 [`LICENSE.md`](./LICENSE.md)。允许内部与个人使用；分发免费且仅限非商业。
+**MIT** —— 见 [`LICENSE.md`](./LICENSE.md)，Copyright (c) 2026 HaroldZ32。第三方组件保留各自的许可证；
+完整声明在 [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md)。

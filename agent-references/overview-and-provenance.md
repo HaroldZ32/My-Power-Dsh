@@ -11,6 +11,12 @@ over at the previous HEAD). The block below is reproduced VERBATIM — its byte 
 recorded in `evidence/gates/agents-budget/20261006T085805Z/result.json`. `AGENTS.md` §1 carries the BINDING rules and points
 here for the full body; where the two differ, the manual wins.
 
+**LICENCE STATE (current — de-omo wave E, 2026-10-08): this repository is MIT** (`LICENSE.md`,
+`Copyright (c) 2026 HaroldZ32`). The block below is a VERBATIM reproduction of `AGENTS.md` §1 as it stood
+on 2026-10-06, so it still reads `SUL-1.0` in places; those sentences are HISTORY and are superseded —
+the full statement is in "LICENCE STATE (current)" at the foot of this file. Never quote the verbatim
+block as the repository's present terms.
+
 ## The former §1 body (verbatim)
 
 ## 1. Overview & Provenance
@@ -117,4 +123,72 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md` (falling back to
   `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
+
+---
+
+## LICENCE STATE (current) — de-omo wave E, 2026-10-08
+
+**This repository's licence is MIT** (`LICENSE.md`, `Copyright (c) 2026 HaroldZ32`). Every declaration
+that carries a licence field agrees with that file: `package.json`, `dsh-plugin.json` and the three
+package manifests say `"license": "MIT"`, the packed manifest the packer writes says the same, and the
+bilingual READMEs carry an `MIT` badge and licence section. Third-party components keep their OWN
+licences, declared per component in `LICENSE-NOTICES.md`.
+
+**The `SUL-1.0` bytes inside "The former §1 body (verbatim)" above are a HISTORICAL SNAPSHOT and are
+SUPERSEDED.** That block is reproduced verbatim from `AGENTS.md` §1 as it stood on 2026-10-06, and its
+byte count and sha256 are recorded in `evidence/gates/agents-budget/`. Its licence sentence, and its
+account of the `agent-teams` body being "retained rather than deleted", were both overtaken by later
+waves (the de-vendor wave deleted that tree on 2026-10-07; wave E moved the licence to MIT). The block is
+kept because a licence record that erases its own past is defective — the manual's CURRENT §1 is the
+binding one, and it states MIT.
+
+---
+
+## §1 long forms moved here by wave E (2026-10-08)
+
+The five §1 bullets below were compressed in the manual to a short definition plus a pointer, because
+`AGENTS.md` is injected into every session under a hard 65,536-byte budget and had fallen to 243 bytes of
+margin. Their long forms are reproduced VERBATIM here. Where the manual and this file differ, the manual's
+short form wins for the rule, and this file wins for the detail.
+
+- **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
+  (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
+  **`mpdTeams`** and over the host route `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE
+  execution seam, **`TeamExecutor`**, whose **native** backend (over `ctx.subagents.startContinuable`)
+  is the DEFAULT and the official `dsh.team*` calls the FALLBACK. No mpd surface reads
+  `dsh.teamLiveTeams()` any more. Surfaces: the TUI team scene draws the record's dependency graph (rank
+  columns, status colours, focus chain, rail fallback) and the Web panel is ONE body registered into
+  `dsh-better-sidebar` first with the harness's right sidebar as fallback — for the team AND the workmate
+  library. See `docs/plan-team-plane-split.md`.
+- **The vendored `agent-teams` body is RETIRED (2026-09-27) AND REMOVED (2026-10-07)**: harness
+  0.1.7-rc.2's official Agent Teams plugin replaced it, no loader row ever mounted it after the
+  retirement, and the de-vendor wave deleted the tree outright. Its `agent_teams_*` tools, its
+  `<workspace>/.mpd/team` record and its `mpd-delta` registry are NOT part of any shipped session, and no
+  file here reads, copies, patches or fingerprints anything outside this repository. What SURVIVED the
+  deletion was relocated into mpd-owned homes as our own code: the schemastery validator now lives in
+  `packages/mpd-schemastery/**` (four shipped plugins import it) and the prebuilt browser client bundle
+  in the web package, with the upstream MIT acknowledgement carried in `LICENSE-NOTICES.md`.
+- **A dependency a bundle DECLARES is mounted by a row that needs it**: the three official Agent Teams
+  packages are declared in `dependencies` and materialized by `dsh-app-boot`'s `healProfileModuleFallback`
+  before the loader runs.
+- **The persisted GOAL and ULW.** `mpd-goal-plugin` bridges the harness goal domain (`mpd_goal_status` /
+  `mpd_goal_anchor` / `mpd_goal_finish` plus the `goal.*` auto-anchor contract); a run that ends
+  `max-rounds` deliberately LEAVES ITS GOAL ARMED — the handoff to the harness's round driver — and goal
+  mutations go through the harness goal TOOLS, never `ctx.goals`. `mpd-ulw-plugin` (C2 ultrawork v2)
+  answers `/ulw <objective>` and `/ultrawork <objective>` by submitting the ULW activation directive as
+  the invoking agent's OWN next user turn, so the run actually starts.
+- **The session-start complexity gate is MECHANICAL — it stages an APPROVABLE PLAN SHELL, never a
+  team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at the session's
+  first pre-step and the notice keeps the marker `[AgentTeams] Session-start team rule`; on a trigger the
+  gate STAGES a 0-member, 0-task plan shell through the `agent_teams_plan` tool and injects ONE notice
+  naming the returned plan id — NOTHING is spawned, and the shell is INERT until the captain extends it
+  (`add_member` / `create_task`) and approves it with `agent_teams_plan {action:"approve"}`. An explicit
+  `team:` / `!team` request ALSO stages the shell (signal A) and has its marker CONSUMED from the goal
+  text. `team.gate` in `mpd.jsonc` selects `mechanical` (the default) | `advisory` | `off`: without the
+  tool mounted, or under `advisory`, the ONE notice is advisory and says `NO team was staged`, and the
+  captain stages a team itself when the work warrants one — or continues solo and says so. Signal D is an
+  ACTIVE boulder work for this workspace (`status: "active"` in `<workspace>/.mpd/boulder.json`, which is
+  gitignored RUNTIME STATE and not a shipped repo path) — a plan FILE alone is NOT a signal (repaired
+  2026-10-07). Softer signals and the retired path are in the historical block above.
+
 

@@ -76,7 +76,7 @@ interface PackedManifest {
   type: "module"
   /** The root bundle description; `undefined` when the root manifest omits it. */
   description: string | undefined
-  /** A pointer into the shipped licence file rather than an SPDX id. */
+  /** The SPDX id the packed artifact declares, kept in step with the root manifest and `LICENSE.md`. */
   license: string
   /** The packed entry point the `@mpd-dsh/mpd` specifier resolves. */
   main: string
@@ -647,7 +647,7 @@ function writeManifest(): void {
     private: true,
     type: "module",
     description: root.description,
-    license: "SEE LICENSE IN LICENSE.md",
+    license: "MIT",
     main: "packages/mpd-bundle-plugin/dist/index.js",
     exports: {
       ".": "./packages/mpd-bundle-plugin/dist/index.js",

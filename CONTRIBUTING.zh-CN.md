@@ -10,7 +10,7 @@
 [`docs/development.zh-CN.md`](./docs/development.zh-CN.md)。本文件是贡献者的入口；如果它与
 `AGENTS.md` 冲突，以 `AGENTS.md` 为准。
 
-你贡献的内容将按本仓库的许可 **SUL-1.0**（[`LICENSE.md`](./LICENSE.md)）分发。
+你贡献的内容将按本仓库的许可 **MIT**（[`LICENSE.md`](./LICENSE.md)，`Copyright (c) 2026 HaroldZ32`）分发。
 
 ## 目录
 
@@ -232,5 +232,5 @@ npm publish --access public
 
 ## 许可证
 
-本仓库采用 **SUL-1.0** 许可（[`LICENSE.md`](./LICENSE.md)）；采纳的 `agent-teams` 组件保留其自身的
-MIT 许可证，该授权仅覆盖该组件本身。完整声明见 [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md)。
+本仓库采用 **MIT** 许可（[`LICENSE.md`](./LICENSE.md)）；第三方组件保留各自的许可证，该授权仅覆盖那些
+组件本身。完整声明见 [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md)。

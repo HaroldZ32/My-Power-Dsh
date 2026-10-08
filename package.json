@@ -7,7 +7,7 @@
   "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream reference: oh-my-openagent 8c57e46 — historical, no synchronisation owed)",
   "main": "packages/mpd-bundle-plugin/dist/index.js",
   "icon": "./icon.svg",
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/HaroldZ32/My-Power-Dsh.git"

@@ -1,9 +1,20 @@
 # License Notices
 
-- This repository is derived from the upstream project oh-my-openagent
-  (https://github.com/code-yeongyu/oh-my-openagent; upstream commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29, v5.0.0-beta.20).
-- License: Sustainable Use License 1.0 (SUL-1.0). See LICENSE.md for the full text.
-- Third-party components keep their original licenses/notices in their source trees.
+- **This repository's own code is MIT** — [`LICENSE.md`](./LICENSE.md), `Copyright (c) 2026 HaroldZ32`.
+  It is **not** under the Sustainable Use License any more: the de-omo program (waves A–F, 2026-10-08)
+  purged and replaced every derived byte, and the licence swap itself is wave E.
+- **Read this file as a RECORD, not as a claim.** It keeps (a) every still-true third-party notice and
+  (b) the history of what was removed and why, with the tense corrected. A licence record that erases
+  its own past is defective, so every `SUL-1.0` / "Sustainable Use" mention below is HISTORY: it
+  describes the upstream project oh-my-openagent
+  (<https://github.com/code-yeongyu/oh-my-openagent>; commit `8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29`,
+  v5.0.0-beta.20) and the vendored content that used to carry those terms.
+- This repository's roster names, stable ids and model-chain vocabulary are adapted from that upstream
+  project; the CONTENT it supplied — the skill corpus, the MCP server snapshots, the vendored cores and
+  the persona texts — has been re-sourced under permissive licences, rewritten or deleted, so no part of
+  it remains as translated upstream source. That upstream is recorded as historical provenance in
+  [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) and is a *reference, not a dependency*.
+- Third-party components keep their own licenses/notices in their source trees.
 - DSH packages (@deepseek-ai/*) are MIT licensed and referenced as dependencies only.
 
 ## Skill corpus (MIT) — re-sourced from `code-yeongyu/lazycodex`
@@ -95,11 +106,12 @@ Between them the snapshots covered the three MCP servers this bundle used to shi
 repository (https://github.com/code-yeongyu/oh-my-openagent) at commit
 `8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29` (v5.0.0-beta.20).
 
-Licensing was MEASURED, never assumed: oh-my-openagent's own `LICENSE.md` places its content under
-the Sustainable Use License 1.0, the same licence this repository inherits, and six of the seven
+Licensing was MEASURED, never assumed: oh-my-openagent's own `LICENSE.md` placed its content under
+the Sustainable Use License 1.0 — the UPSTREAM's terms, never this repository's current licence — and
+six of the seven
 snapshotted packages declared no `license` field at all; only `lsp-daemon`
 (`@code-yeongyu/lsp-daemon`) self-declared MIT. The snapshot was therefore **SUL-1.0 with that one
-MIT component — it was not MIT.**
+MIT component — it was not MIT**, which is exactly why wave B2 replaced it rather than relicensed it.
 
 **REMOVED in de-omo wave B2 (2026-10-08), and nothing was carried over from it:** the snapshot
 (`vendor/mcp-src/**`, 459 files), the offline builder `scripts/build-mcp.ts`, the two built servers it
@@ -231,6 +243,17 @@ is the npm package `@code-yeongyu/comment-checker` 0.8.0
 (https://github.com/code-yeongyu/go-claude-code-comment-checker), distributed under
 the MIT License. It is not redistributed in this repository; it is installed on
 demand into `.toolchain` (installer flag `--with-comment-checker`).
+
+## codegraph (MIT) — the `mpd-codegraph` row and `mcp__codegraph__*`
+
+The code-graph runtime behind the `mpd-codegraph` row and the `mcp__codegraph__*` tools is
+**codegraph** by Yeongyu Kim, distributed under the **MIT License** (`Copyright (c) 2026 Yeongyu Kim`).
+The prebuilt server `packages/mpd-mcp-codegraph/dist/serve.js` is VENDORED into this repository and
+sha256-pinned in `VENDOR_LOCK.json`, so the full licence text and the component notice travel with it
+in `packages/mpd-mcp-codegraph/LICENSE` and `packages/mpd-mcp-codegraph/NOTICE`. Its platform bundles
+may embed a Node.js runtime plus vendored JavaScript and WASM payloads whose texts are reproduced in
+`packages/mpd-mcp-codegraph/NODE-RUNTIME-LICENSES.md` and inside the selected platform package under
+`lib/node_modules/`.
 
 ## DeepSeek Harness 创造模式 skills (MIT) — adapted into `skills/cordis-dev`
 
