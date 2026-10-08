@@ -24,13 +24,14 @@ import {
 } from "../src/dag-theme"
 import { cellWidth, clampCells } from "../src/sanitize"
 import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE, registerPanelSurface } from "../src/panel"
-import { layoutBoxesNatural, layoutRail, sliceSpans, widestLabelCells } from "../src/graph"
+import { layoutBoxesNatural, layoutRail, legendLines, sliceSpans, widestLabelCells } from "../src/graph"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import {
   agentIdForOwner,
   createDagPanelComponent,
   dagBadge,
   dagPageOf,
+  dagPanelKeyAction,
   dagPanelLayout,
   dagRowClick,
   DAG_PANEL_TITLE,
@@ -611,6 +612,30 @@ describe("the legend", () => {
     }
     expect(legendLinesFor(0, ["x"])).toEqual([])
   })
+
+  test("the state key is composed ONCE at every width — no state entry is printed twice", () => {
+    // THE DEFECT THIS PINS. The drawing module's own FIVE-state key used to be composed UNDER this
+    // six-state one, so every one of its entries was printed twice — and the drawing's copy could not
+    // name `blocked` at all, which is exactly the ambiguity this key exists to resolve. The arm sweeps
+    // the widths a panel or a scene can be handed and, per state, counts the composed ROWS carrying that
+    // state's entry: a second row carrying it is the redundant key coming back.
+    for (const cols of [28, 40, 58, 78, 98, 154, 200]) {
+      /** The composed legend at this width: the drawing's arrow sentence, then this key. */
+      const lines = legendLinesFor(cols, legendLines(cols))
+      /** The drawing module's own lines at this width, if any. */
+      const drawing = legendLines(cols)
+      // The drawing contributes AT MOST the arrow/focus sentence; every other row is this key's.
+      expect(`${cols} drawing rows at most one: ${drawing.length <= 1}`).toBe(`${cols} drawing rows at most one: true`)
+      for (const state of DAG_STATE_TONES) {
+        /** This state's entry as the composer prints it (`glyph name`, or `glyph name=twin`). */
+        const entry = `${DAG_TONE_GLYPH[state]} ${state}`
+        /** The composed rows carrying it; a substring match, so a WRAPPED key row still counts. */
+        const carrying = lines.filter((line) => line.includes(entry))
+        // EXACTLY ONE row, at every width: wrapping a key is allowed, printing it twice is not.
+        expect(`${cols} ${entry} rows=${carrying.length}`).toBe(`${cols} ${entry} rows=1`)
+      }
+    }
+  })
 })
 
 // ── the layout: the mode is a fact about the width (frozen clause R2/R6) ─────
@@ -1077,6 +1102,85 @@ describe("click-to-pin and the keyboard", () => {
       consumed.push(true)
     } })
     expect(consumed).toEqual([true])
+  })
+
+  // ── F-a (frozen PART 1): ESCAPE IS CONSUMED ONLY WHEN THERE IS SOMETHING TO RELEASE ──────────
+  // The two arms below are the acceptance pair. The pure arm quotes the keymap's own values; the
+  // mounted arm is the one that proves the HOST-visible fact — a `preventDefault()` is what the
+  // plugin-panel dispatcher turns into `consumed = true`, and a consumed press never reaches the
+  // host's own `key.escape === true → setFocus('chat')` fallback.
+  test("F-a the keymap's OWN values: no pin → NOT consumed; pinned → consumed and unpinned", () => {
+    /** The drawing order the presses walk. */
+    const order = ["T1", "T2"]
+    /** The host's lone-ESC event, in the flag spelling this page reads. */
+    const escape = { input: "\u001b", key: { escape: true } }
+    /** The same press in the raw-byte spelling — the branch's other guard. */
+    const byteOnly = { input: "\u001b", key: {} }
+    // NOTHING PINNED: `consumed: false`, so the press reaches the host's fallback and the keyboard
+    // goes back to the chat. This is the value the defect got wrong (it returned `consumed: true`).
+    expect(dagPanelKeyAction(escape, order, "T1", undefined)).toEqual({ consumed: false })
+    expect(dagPanelKeyAction(byteOnly, order, "T1", undefined)).toEqual({ consumed: false })
+    // A TASK IS PINNED: the page releases it and consumes the press, exactly as it did before.
+    expect(dagPanelKeyAction(escape, order, "T1", "T1")).toEqual({ consumed: true, pin: false })
+    expect(dagPanelKeyAction(byteOnly, order, "T2", "T1")).toEqual({ consumed: true, pin: false })
+    // THE REST OF THE KEYMAP IS UNTOUCHED, and this is asserted rather than assumed: the arrows still
+    // walk and consume, Enter still pins the focused task, and an unhandled key is still left alone
+    // even while something is pinned (a pin never turns the page into a key sink).
+    expect(dagPanelKeyAction({ input: "j", key: {} }, order, undefined, undefined)).toEqual({ consumed: true, focus: "T1" })
+    expect(dagPanelKeyAction({ input: "k", key: {} }, order, undefined, "T1")).toEqual({ consumed: true, focus: "T2" })
+    expect(dagPanelKeyAction({ input: "\r", key: {} }, order, "T2", undefined)).toEqual({ consumed: true, pin: true })
+    expect(dagPanelKeyAction({ input: "x", key: {} }, order, "T1", "T1")).toEqual({ consumed: false })
+  })
+
+  test("F-a ON A MOUNTED PAGE: no pin → Escape is NOT consumed; pinned → consumed AND the pin is released", () => {
+    /** The kit, tall enough that the pin body fits. */
+    const kit = makeKit({ columns: 80, rows: 200 })
+    /** The host double, focused and visible. */
+    const host = makeHost()
+    /** The page under the host's own key dispatcher. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    render(page, kit, host)
+    kit.runEffects()
+    /** How many Escape presses the page consumed (one `preventDefault()` each). */
+    let escapeConsumed = 0
+    /** Sends one Escape press through the host's own dispatch shape. */
+    const pressEscape = (): void =>
+      host.listeners[0]({ input: "\u001b", key: { escape: true }, preventDefault: (): void => {
+        escapeConsumed += 1
+      } })
+    // NO PIN YET: the page must leave the press for the host, whose fallback returns the focus to the
+    // chat. Pre-fix this press was consumed and the user was stuck in the panel.
+    pressEscape()
+    expect(escapeConsumed).toBe(0)
+    // THE CLICK PINS a task, through the same row closure the host's Box invokes.
+    /** Every clickable row element in the tree. */
+    const clickable: Array<(event: unknown) => void> = []
+    /** Collects the `onClick` handlers off the tree. */
+    const walk = (node: unknown): void => {
+      if (node === null || node === undefined || typeof node !== "object") return
+      if (Array.isArray(node)) {
+        for (const child of node) walk(child)
+        return
+      }
+      /** This node as an element. */
+      const element = node as Element
+      if (typeof element.props?.onClick === "function") clickable.push(element.props.onClick as (event: unknown) => void)
+      walk(element.props?.children)
+      walk(element.children)
+    }
+    walk(render(page, kit, host))
+    expect(clickable.length).toBeGreaterThan(0)
+    clickable[0]({ localRow: 0, localCol: 0 })
+    /** The render the pinned state produced, from which both the pin and its release are read. */
+    const reRender = (): string => kit.text(render(page, kit, host))
+    expect(reRender()).toContain(DAG_CHROME.pinMarker)
+    // WITH A PIN the press is the page's: consumed, and the pin is gone on the next render.
+    pressEscape()
+    expect(escapeConsumed).toBe(1)
+    expect(reRender()).not.toContain(DAG_CHROME.pinMarker)
+    // AND THE PAGE IS STILL AWAKE: a second Escape with nothing pinned goes back to the host.
+    pressEscape()
+    expect(escapeConsumed).toBe(1)
   })
 })
 

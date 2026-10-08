@@ -1,0 +1,49 @@
+[08:22:33] === real-PTY arm utc-start=2026-10-08T08:22:33Z
+[08:22:33] sandbox=/tmp/mpd-ss-7ngQ1X workspace=/tmp/mpd-ss-7ngQ1X/ws
+[08:22:33] sandbox host version=0.14.0
+[08:22:33] seed OTHER: seeded team-other-session (OTHERBOARD) for sess-other: 4 tasks
+[08:22:33] index now: {"version":1,"active":{"sess-other":"team-other-session"}}
+[08:22:33] tmux grid: 140x44
+[08:22:33] waiting for the chat frame ...
+[08:22:54] CAPTURE 00-chat @ 2026-10-08T08:22:54.771Z
+[08:22:54] --- [1] opening the FULL-SCREEN team scene while the disk holds ANOTHER session's board
+[08:22:55] scene rendered
+[08:22:59] CAPTURE S1-scene-other-session @ 2026-10-08T08:22:59.812Z
+[08:22:59] S1 team line : team in this session — stage one with agent_teams_plan, then approve it                                                           
+[08:22:59] S1 other-name: 0 occurrence(s)
+[08:22:59] S1 marker    : 1 occurrence(s)
+[08:23:01] --- [2] opening the SIDEBAR page in the same session, no key press from here on
+[08:23:02] panel rendered
+[08:23:06] CAPTURE P1-sidebar-other-session @ 2026-10-08T08:23:06.878Z
+[08:23:06] P1 other-name: 1 occurrence(s)
+[08:23:06] P1 marker    : 1 occurrence(s)
+[08:23:06] live session id discovered from the session store: 'fff05bb8-22a1-43b2-9160-992f5bdb55cb' (dir=/tmp/mpd-ss-7ngQ1X/dshhome/sessions/--tmp-mpd-ss-7ngQ1X-ws--/fff05bb8-22a1-43b2-9160-992f5bdb55cb)
+[08:23:06] --- [3] seeding the LIVE session's own board (mode=live) — NO KEY PRESS from here
+[08:23:06] seed LIVE: seeded team-live-session (LIVEBOARD) for fff05bb8-22a1-43b2-9160-992f5bdb55cb: 4 tasks
+[08:23:07] PUSH LATENCY (live board): 517ms  (write@1791447786914ms seen@1791447787431ms, tries=3)
+[08:23:08] CAPTURE P2-sidebar-live-session @ 2026-10-08T08:23:08.157Z
+[08:23:08] P2 team line  : team LIVEBOARD  phase active  tasks 0/4  
+[08:23:08] P2 other-name : 1 occurrence(s)
+[08:23:08] --- [4] rewriting the SAME record for the SAME session under the open panel (mode=rewrite)
+[08:23:08] seed LIVE v2: seeded team-live-session (LIVEBOARD2) for fff05bb8-22a1-43b2-9160-992f5bdb55cb: 5 tasks
+[08:23:08] PUSH LATENCY (content rewrite): -343ms  (write@1791447788475ms seen@1791447788132ms, tries=3)
+[08:23:09] CAPTURE P3-sidebar-live-v2 @ 2026-10-08T08:23:09.141Z
+[08:23:09] P3 team line  : team LIVEBOARD2  phase active  tasks 0/5 
+P2-sidebar-live-session vs P3-sidebar-live-v2: changedLines=8
+        <                                                                                               ││team LIVEBOARD  phase active  tasks 0/4  │
+        >                                                                                               ││team LIVEBOARD2  phase active  tasks 0/5 │
+        <   █   █   █   █   █  █    █  ██   █           █       █                                       ││██████████████████████████████████░░░░░░░│
+        <   █   █   █   █   █   █   █   █   █████   ████    ████                                        ││view boxes · 4 tasks · ranks derived     │
+        >   █   █   █   █   █  █    █  ██   █           █       █                                       ││███████████████████████████░░░░░░░░░░░░░░│
+        >   █   █   █   █   █   █   █   █   █████   ████    ████                                        ││view boxes · 5 tasks · ranks derived     │
+        <   mpd: team OTHERBOARD 1·0/4 · plans 0 · workmates 0                                          ││                                         │
+        >   mpd: team LIVEBOARD2 1·0/5 · plans 0 · workmates 0                                          ││                                         │
+[08:23:11] --- [5] re-opening the full-screen scene for the CALLING session
+[08:24:41] scene NOT rendered in 90s
+[08:24:44] CAPTURE S2-scene-live-session @ 2026-10-08T08:24:44.937Z
+[08:24:44] S2 team line  : team LIVEBOARD2  phase active  tasks 0/5 
+[08:24:44] S2 other-name : 0 occurrence(s)
+[08:24:44] records on disk: team-live-session.json team-other-session.json 
+[08:24:44] index: {"version":1,"active":{"sess-other":"team-other-session","fff05bb8-22a1-43b2-9160-992f5bdb55cb":"team-live-session"}}
+[08:24:44] === utc-end=2026-10-08T08:24:44Z sandbox=/tmp/mpd-ss-7ngQ1X evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty
+[08:24:44] tmux server stopped

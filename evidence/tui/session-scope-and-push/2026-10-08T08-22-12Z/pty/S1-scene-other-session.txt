@@ -1,0 +1,44 @@
+
+  ┌○ MPD team · 136x42───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ ○ MPD team — (none) · 136x42                                                                                                         │
+  │ no team in this session — stage one with agent_teams_plan, then approve it                                                           │
+  │ workspace-level: this workspace holds 1 team(s), none bound to this session                                                          │
+  │ esc/q close · ↑↓ focus · click pins · hover previews · ⇧↑↓ scroll · r refresh · a plan · p board                                     │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  │                                                                                                                                      │
+  └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+

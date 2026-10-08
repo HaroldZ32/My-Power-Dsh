@@ -1,0 +1,39 @@
+[07:33:01] === attempt=probe-1 mode=probe utc-start=2026-10-08T07:33:01Z
+[07:33:01] sandbox=/tmp/mpd-lr-Zfi9jn
+[07:33:01] sandbox host dsh-tui version=0.14.0  mpd link -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+[07:33:01] sandbox profile patch (sidePanel):
+        sidePanel:
+          splitEnabled: true
+          open: true
+          ratio: 0.68
+          panels: todo,jobs,agents
+[07:33:02] fixture: seeded team-2026-10-05T22-30-00.000Z (board=normal) for session sess-live-refresh: 6 tasks, 5 members
+[07:33:02] record written: /tmp/mpd-lr-Zfi9jn/ws/.mpd/team/teams/team-2026-10-05T22-30-00.000Z.json (4830 bytes)
+board=T1:completed T2:in_progress T3:completed T4:failed(<-T1,T3) T5:pending(<-T4) T6:pending(<-T5)
+[07:33:02] boot: env -i 'PATH=/home/haroldzhao/.cargo/bin:/home/haroldzhao/.bun/bin:/home/haroldzhao/.nvm/versions/node/v24.21.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin' 'DSH_HOME=/tmp/mpd-lr-Zfi9jn/dshhome' 'HOME=/tmp/mpd-lr-Zfi9jn/home' 'TERM=xterm-256color' 'DSH_TUI_LANG=en' 'DSH_TUI_NO_LAUNCHPAD=1' 'DSH_TUI_WORKSPACE_TARGET=/tmp/mpd-lr-Zfi9jn/ws' 'npm_config_cache=/tmp/mpd-lr-Zfi9jn/npm-cache' 'XDG_CONFIG_HOME=/tmp/mpd-lr-Zfi9jn/config' 'XDG_DATA_HOME=/tmp/mpd-lr-Zfi9jn/data' dsh-tui
+[07:33:02] tmux grid reported: 220x50
+[07:33:02] waiting for the chat frame ...
+[07:33:17] captured 00-chat at 2026-10-08T07:33:17.241Z (9299 bytes text, 15589 bytes ansi)
+[07:33:17] chat frame reached; boot markers:
+    dsh-TUI  v0.14.0
+    mpd: team webui-tui-i18n 5·2/6 · failed 1 · plans 0 · workmates 0                                                                                 │
+[07:33:18] --- opening the sidebar page: /mpd panel
+[07:33:19] sidebar mode line seen
+[07:33:23] captured A1-sidebar-open at 2026-10-08T07:33:23.305Z (13241 bytes text, 21659 bytes ansi)
+[07:33:23] A1 mode line:                                                                                                                                                     ││view boxes · 6 tasks · ranks derived                               │
+[07:33:23] A1 panel-bar candidates:
+                                                                                                                                                        │ ◀      ○             ○        MPD        ○             ○        ▶
+                                                ████   █████  █████  ████    ████  █████  █████  █   █                                                  │┌MPD────────────────────────────────────────────────────────────────┐
+                                                █   █  █      █      █   █  █      █      █      █  █                                                   ││MPD                                                               ⤢│
+[07:33:23] probe mode: closing down after the sidebar capture
+[07:33:24] --- opening the full-screen scene: /mpd team
+[07:34:24] scene marker NOT seen within 60s
+[07:34:27] captured B1-scene-open at 2026-10-08T07:34:27.920Z (13241 bytes text, 21659 bytes ansi)
+[07:34:27] B1 scene header: 
+CENSUS A1-sidebar-open.txt {"roundedTL":7,"roundedTR":7,"roundedBL":7,"roundedBR":8,"squareTL":1,"squareBL":1,"railGlyphs":148,"tee":3,"arrowR":7,"hasDenseTag":false,"hasRailTag":false,"hasBoxesTag":true,"hasListTag":false,"hasRailViewTag":false}
+CENSUS B1-scene-open.txt {"roundedTL":7,"roundedTR":7,"roundedBL":7,"roundedBR":8,"squareTL":1,"squareBL":1,"railGlyphs":148,"tee":3,"arrowR":7,"hasDenseTag":false,"hasRailTag":false,"hasBoxesTag":true,"hasListTag":false,"hasRailViewTag":false}
+CENSUS fixture-board.txt {"roundedTL":0,"roundedTR":0,"roundedBL":0,"roundedBR":0,"squareTL":0,"squareBL":0,"railGlyphs":0,"tee":0,"arrowR":0,"hasDenseTag":false,"hasRailTag":false,"hasBoxesTag":false,"hasListTag":false,"hasRailViewTag":false}
+CENSUS grid.txt {"roundedTL":0,"roundedTR":0,"roundedBL":0,"roundedBR":0,"squareTL":0,"squareBL":0,"railGlyphs":0,"tee":0,"arrowR":0,"hasDenseTag":false,"hasRailTag":false,"hasBoxesTag":false,"hasListTag":false,"hasRailViewTag":false}
+[07:34:28] record now: T1:completed T2:in_progress T3:completed T4:failed T5:pending T6:pending
+[07:34:28] === utc-end=2026-10-08T07:34:28Z sandbox=/tmp/mpd-lr-Zfi9jn evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/live-refresh/2026-10-08T07-32-09Z/probe-1
+[07:34:28] tmux server stopped

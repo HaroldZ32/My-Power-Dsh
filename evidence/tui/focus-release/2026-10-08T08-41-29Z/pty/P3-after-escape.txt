@@ -1,0 +1,44 @@
+
+                                                                                              │ ◀    ○      ○    MPD     ○      ○     ▶
+  ✦ dsh-TUI  v0.14.0                                                                          ├───────────────────────────────────────────
+  ████   █████  █████  ████    ████  █████  █████  █   █                                      │┌MPD──────────────────────────────────────┐
+  █   █  █      █      █   █  █      █      █      █  █                                       ││MPD                                     ⤢│
+  █   █  ████   ████   ████    ███   ████   ████   ███                                        ││subagents  0 total · 0 running · 0 comple│
+  █   █  █      █      █          █  █      █      █  █                                       ││⚪ No subagents in the current session   │
+  ████   █████  █████  █      ████   █████  █████  █   █                                      ││  Subagents appear here once the main age│
+                                                                                              ││no team in this session — `agent_teams_pl│
+  █   █    ███    ████    █   █   █████    ████    ████                                       ││this workspace holds 1 team(s), none boun│
+  █   █   █   █   █   █   ██  █   █       █       █                                           ││▼/▸ blocker → dependent · ▶ focus        │
+  █████   █████   ████    █ █ █   ████     ███     ███                                        ││✓ completed · ◐ running · ○ open=blocked │
+  █   █   █   █   █  █    █  ██   █           █       █                                       ││✗ failed · ○ blocked=open · ⊘ cancelled  │
+  █   █   █   █   █   █   █   █   █████   ████    ████                                        ││⤢ fullscreen · ↑↓/jk move · Enter pin · E│
+  deepseek-flash · Max effort                                                                 ││                                         │
+  /tmp/mpd-fr-ntpoXn/ws                                                                       ││                                         │
+  Tip: Esc peels layers: help → preview → menus → selection → context chip → clear input · /t…││                                         │
+                                                                                              ││                                         │
+    Explore the uncharted!                                                                    ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+   ▶ （Ctrl+P to expand） Context loaded · System prompt 19 sections · Runtime context 2 ite… ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+  mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0                        ││                                         │
+                                                                                              ││                                         │
+  ╭──────────────────────────────────────────────────────────────────────────────────────────╮││                                         │
+  ⌸ ❯                                                                                        ⛶││                                         │
+  ╰──────────────────────────────────────────────────────────────────────────────────────────╯│└─────────────────────────────────────────┘
+   deepseek-flash · max · ws                                                                  ├───────────────────────────────────────────
+                                                                                              │ Ctrl+B focus panel                       
+

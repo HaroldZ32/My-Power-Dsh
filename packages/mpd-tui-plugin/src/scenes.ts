@@ -34,9 +34,22 @@ import type { Log } from "./log.js"
 import { boardLines, readBoardState, statusLine, type BoardState } from "./state.js"
 import { cellWidth, clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
-import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines, type MpdPlanView } from "./team-state.js"
+import {
+  approvalPhrase,
+  NO_SESSION_TEAM_MARKER,
+  planProjectionLines,
+  readScopedWorkflow,
+  sessionIdOf,
+  sessionRecord,
+  sessionViewsOf,
+  teamWorkflowLines,
+  WORKSPACE_SCOPE_MARKER,
+  type MpdPlanView,
+  type MpdTeamsLike,
+  type TeamSourceDeps,
+} from "./team-state.js"
 import { hitTest, layoutGraph, layoutGraphNatural, legendLines, sliceSpans, type GraphTask } from "./graph.js"
-import { gutterCellsX, legendLinesFor, toneColor, visualTone } from "./panel-core.js"
+import { gutterCellsX, legendLinesFor, toneColor, useTeamFeed, visualTone } from "./panel-core.js"
 import { statusMarker } from "./status.js"
 import {
   SUBAGENT_SCENE_ID,
@@ -224,8 +237,64 @@ function surfaceKit(React: unknown, ui: unknown): SurfaceKit {
   return { React, ui } as unknown as SurfaceKit
 }
 
-/** Read one workflow, never throwing: on top of `readTeamWorkflow`'s own guard this is the last net. */
-function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[], teamViews?: () => readonly DshTeamView[], teamRecords?: () => readonly TeamRecord[]): TeamWorkflow | undefined {
+/**
+ * The calling session's id, read off a scene's own live channel.
+ *
+ * ONE definition for all four scenes: the channel is the only piece of session identity a full-screen
+ * surface has, and `sessionIdOf` is the same reader the sidebar panel uses on its host snapshot, so the
+ * two planes cannot disagree about what counts as a usable id. It is read PER CALL, never cached: the
+ * host hands the same channel OBJECT across renders but its `sessionId` is published later.
+ * @param props - the scene props the host passed.
+ * @returns the session id, or undefined when the channel carries none yet.
+ */
+function channelSessionOf(props: TuiScenePropsLike | undefined): string | undefined {
+  return sessionIdOf(props?.channel)
+}
+
+/**
+ * THIS session's own team records, as a one-element list — or none at all.
+ *
+ * It exists so the board surface can reuse `readBoardState`'s existing selection rule instead of
+ * growing a second copy of it: that rule is "the newest not-ended record, else the newest, else the
+ * official readout", and handing it only THIS session's record makes the whole rule session-scoped by
+ * construction. Another session's record is never in the list, so it can never be drawn.
+ * @param teamDeps - the session-scoped team reads (the `mpdTeams` face).
+ * @param workspace - the workspace resolved for THIS read.
+ * @param sessionId - the calling session's id.
+ * @param records - this workspace's records, newest first.
+ * @returns the records this session owns; `[]` when it has none.
+ */
+function scopedRecordsFor(teamDeps: TeamSourceDeps | undefined, workspace: string, sessionId: string, records: readonly TeamRecord[]): readonly TeamRecord[] {
+  /** The service face for THIS call, or undefined when this composition has no team row. */
+  let service: MpdTeamsLike | undefined
+  try {
+    service = teamDeps?.teams?.()
+  } catch {
+    service = undefined
+  }
+  /** The record that belongs to this session, through the one session resolver. */
+  const mine = sessionRecord(service, workspace, sessionId, records)
+  return mine === undefined ? [] : [mine]
+}
+
+/**
+ * Read one scene's team projection, SESSION-SCOPED.
+ *
+ * The `sessionId` is the calling scene's own (its live channel's id). It is what makes the read
+ * session-scoped rather than workspace-blind: with an id, another session's record is never consulted
+ * and a session with no team gets the honest empty projection; without one (an older host, a channel
+ * that has not bound) today's workspace-principal behaviour survives and is MARKED as such in the
+ * projection's `source`. Every step is contained, and the whole body has one last net, because a scene
+ * renders inside the host's own error boundary and a throw costs the user the screen.
+ * @param workspaceRoot - resolves the workspace root per call; never cached.
+ * @param holds - the watchdog's held team ids for the workspace.
+ * @param teamViews - the official team readout for that workspace, resolved per call.
+ * @param teamRecords - the mpd-owned team records for that workspace, resolved per call.
+ * @param teams - the `mpdTeams` face, resolved per call; undefined when this composition has no team row.
+ * @param sessionId - the calling session's id, or undefined when this surface cannot read one.
+ * @returns the projection, or undefined when the read could not even be attempted; never throws.
+ */
+function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[], teamViews?: () => readonly DshTeamView[], teamRecords?: () => readonly TeamRecord[], teams?: () => MpdTeamsLike | undefined, sessionId?: string): TeamWorkflow | undefined {
   try {
     /** The watchdog's held team ids; empty when that read fails. */
     let holdIds: readonly string[] = []
@@ -248,12 +317,23 @@ function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[
     } catch {
       records = []
     }
-    // THE PRIMARY SOURCE FIRST: the mpd record, whose review fields and lifecycle are real data.
-    // The official readout answers only when this workspace holds no record at all.
-    /** The principal record, which is the newest that has not ended. */
-    const principal = records.find((record) => record.endedAt === undefined) ?? records[0]
-    if (principal !== undefined) return readRecordWorkflow(workspaceRoot(), holdIds, principal)
-    return readTeamWorkflow(workspaceRoot(), holdIds, views)
+    /** The `mpdTeams` face for THIS call, or undefined when this composition has no team row. */
+    let service: MpdTeamsLike | undefined
+    try {
+      service = teams?.()
+    } catch {
+      service = undefined
+    }
+    // THE WORKSPACE IS RESOLVED PER CALL (§6), and the SESSION is what selects the team: with an id the
+    // read can only ever answer with THIS session's board, and with none it runs the marked fallback.
+    return readScopedWorkflow({
+      workspace: workspaceRoot(),
+      ...(sessionId === undefined || sessionId === "" ? {} : { sessionId }),
+      holds: holdIds,
+      ...(service === undefined ? {} : { teams: service }),
+      records,
+      views,
+    })
   } catch {
     return undefined
   }
@@ -324,6 +404,12 @@ function measureTerminal(ui: any): { size: string; cols: number; window: number 
  * @param holds - the watchdog's held team ids for the workspace.
  * @param nav - the shared surface navigation.
  * @param openScene - opens a scene by id.
+ * @param teamViews - the official team readout, resolved per call.
+ * @param teamRecords - the mpd-owned team records, resolved per call.
+ * @param onHostKit - receives the host's own `ui` kit on every render.
+ * @param teamDeps - the session-scoped team reads: the `mpdTeams` face for the session resolver and
+ *   the live feed that re-reads this page on a change. Optional, so a caller that has neither keeps
+ *   the pre-existing workspace-level behaviour with its 2000 ms tick.
  * @returns a component matching the host's `TuiSceneProps` contract.
  */
 function createBoardComponent(
@@ -335,6 +421,7 @@ function createBoardComponent(
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],
   onHostKit?: (ui: unknown) => unknown,
+  teamDeps?: TeamSourceDeps,
 ): unknown {
   return function MpdTuiBoard(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
@@ -359,8 +446,18 @@ function createBoardComponent(
     /** Reads the board projection and the rows drawn from it, degrading to one explicit line. */
     const read = (): { rows: string[]; state?: BoardState } => {
       try {
+        // THE TEAM HALF IS SESSION-SCOPED TOO, through the FILTERED ARRAYS rather than a second
+        // selection rule: `readBoardState` picks the newest not-ended record and falls back to the
+        // official readout on its own, so handing it only THIS session's record and only THIS
+        // session's views makes its existing rule session-scoped without a second copy of it.
+        /** The calling session's id, read off the live channel at call time. */
+        const sessionId = channelSessionOf(props)
+        /** This session's own record, or none: never another session's. */
+        const scopedRecords = sessionId === undefined ? (teamRecords?.() ?? []) : scopedRecordsFor(teamDeps, workspaceRoot(), sessionId, teamRecords?.() ?? [])
+        /** The official views this session owns; every view when no id is readable. */
+        const scopedViews = teamViews?.() ?? []
         /** This read's projection, which carries the tally the surface's own tone reports. */
-        const state = readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? [])
+        const state = readBoardState(workspaceRoot(), home(), sessionId === undefined ? scopedViews : sessionViewsOf(scopedViews, sessionId), scopedRecords)
         return { rows: boardLines(state, holds()), state }
       } catch {
         return { rows: ["board state unreadable"] }
@@ -375,6 +472,10 @@ function createBoardComponent(
     const rows = board.rows
     /** Replaces the read: the initial read, the refresh key and the timer all use it. */
     const setBoard = state[1] as (next: { rows: string[]; state?: BoardState }) => void
+
+    // THE PUSH (PART P): a team-state change re-reads this page instead of waiting up to 2000 ms for
+    // the tick below, which STAYS as the fallback for a composition with no feed.
+    useTeamFeed(React, teamDeps?.subscribeTeams, () => setBoard(read()))
 
     React.useEffect(() => {
       // Initial read is deferred to the effect: the render path stays free of
@@ -495,6 +596,10 @@ function createBoardComponent(
  * @param holds - the watchdog's held team ids for the workspace.
  * @param nav - the shared surface navigation.
  * @param openScene - opens a scene by id.
+ * @param teamViews - the official team readout, resolved per call.
+ * @param teamRecords - the mpd-owned team records, resolved per call.
+ * @param onHostKit - receives the host's own `ui` kit on every render.
+ * @param teamDeps - the session-scoped team reads: the `mpdTeams` face and the live feed. Optional.
  * @returns a component matching the host's `TuiSceneProps` contract.
  */
 function createTeamComponent(
@@ -505,6 +610,7 @@ function createTeamComponent(
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],
   onHostKit?: (ui: unknown) => unknown,
+  teamDeps?: TeamSourceDeps,
 ): unknown {
   return function MpdTuiTeam(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
@@ -579,15 +685,25 @@ function createTeamComponent(
       /** The freshly read projection; undefined means unreadable. */
       let next: TeamWorkflow | undefined
       try {
-        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords)
+        // THE SESSION ID IS READ AT CALL TIME, never captured: the timer and the feed notification both
+        // reach this closure long after the render that defined it, and the channel publishes its id
+        // later. This is the read that makes the scene draw ITS OWN session's board.
+        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSessionOf(props))
       } catch {
         next = undefined
       }
       setWorkflow(next)
+      // The header's own facts travel with the projection so a key handler can answer without a second
+      // read; the scope marker below is folded the same way so the frame and the rows agree.
       if (latestRef !== undefined && latestRef !== null) {
         latestRef.current = { staged: next?.team?.staged === true, ...(next?.team?.id === undefined ? {} : { teamId: next.team.id }) }
       }
     }
+
+    // THE PUSH (PART P): this scene's projection lives in a state cell, so the notification re-READS
+    // it through `refresh` rather than merely re-rendering. The 2000 ms tick below stays as the
+    // fallback for a composition without the feed.
+    useTeamFeed(React, teamDeps?.subscribeTeams, refresh)
 
     React.useEffect(() => {
       refresh()
@@ -708,12 +824,39 @@ function createTeamComponent(
         tone,
       }),
     )
+    // THE MARKED FALLBACK, third state (frozen PART D.2): a board drawn with NO session id readable is
+    // the workspace's principal team, and the row says so BEFORE the DAG — never a silent fallback.
+    // It is drawn only when the reader said so (`source.scope === "workspace"`); an unlabelled fixture
+    // keeps today's rows exactly, so no existing arm's expected bytes move.
+    if (workflow?.source?.scope === "workspace") {
+      children.push(surfaceBodyRow(surface, "scope", `scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`))
+    }
     if (workflow === undefined) {
       children.push(surfaceText(surface, "unreadable", "team state unreadable", { tone: "failed" }))
     } else if (head === undefined) {
-      // The honest empty state: the workspace really holds no team, and the row says which tool
-      // fills it rather than showing an empty frame.
-      children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }))
+      // THE EMPTY STATE IS TWO DIFFERENT FACTS, and conflating them was the defect (PART D): a session
+      // whose OWN team does not exist must be told exactly that — and never shown another session's
+      // board — while a session-less surface (an older host) says its drawing is workspace-level.
+      if (workflow.source?.scope === "none") {
+        children.push(surfaceText(surface, "none-session", `${NO_SESSION_TEAM_MARKER} — stage one with agent_teams_plan, then approve it`, { dim: true }))
+        /** How many teams the workspace holds, when the reader could count them. */
+        const held = workflow.source?.workspaceTeams
+        if (typeof held === "number" && held > 0) {
+          // NO SCOPE MARKER HERE (orthogonalized): `workspace-level` names the no-session-id state, so a
+          // frame scan keyed on the token must match that state ALONE. This row belongs to state 2 —
+          // this session HAS an id and holds no team of its own — and it states the workspace fact in
+          // words, leaving the token to the state it names. State 2's unique marker is the row above.
+          children.push(surfaceText(surface, "none-session-count", `this workspace holds ${held} team(s), none bound to this session`, { dim: true }))
+        }
+      } else if (workflow.source?.scope === "workspace") {
+        // No session id was readable, so this drawing is the WORKSPACE's principal team: the row
+        // carries the visible marker, so a reader can tell it is not necessarily their own session's.
+        children.push(surfaceText(surface, "none", `${WORKSPACE_SCOPE_MARKER} (no session id on this surface) — no team in this workspace; stage one with agent_teams_plan, then approve it`, { dim: true }))
+      } else {
+        // The honest empty state: the workspace really holds no team, and the row says which tool
+        // fills it rather than showing an empty frame.
+        children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }))
+      }
     } else {
       /** The tally row, in the vocabulary the record uses. */
       const counts = workflow.counts
@@ -810,11 +953,12 @@ function createTeamComponent(
       // THE LEGEND sits directly under the DAG it explains, in the SAME width budget the graph was
       // laid out for (`graphWidth`) — the merged panel draws the same lines under its own DAG, so
       // one legend cannot claim more cells than the drawing above it used. It is COMPOSED, not
-      // private: `graph.ts` owns the drawing's own sentences, and `panel-core.ts`'s `legendLinesFor`
-      // appends the CONTRACT's six-state key — the one that tells `○ blocked` from `○ open`, which
-      // the drawing module's own key cannot. Handing the drawing's lines to that helper is what keeps
-      // this scene's legend identical to the DAG page's.
-      /** The drawing module's own lines: its arrow/focus sentence and its own state key. */
+      // private: `graph.ts` owns the drawing's own arrow/focus sentence, and `panel-core.ts`'s
+      // `legendLinesFor` appends the CONTRACT's ONE state key — the six-state key that tells
+      // `○ blocked` from `○ open`, which the drawing module's DELETED five-state key could not.
+      // Handing the drawing's line to that helper is what keeps this scene's legend identical to the
+      // DAG page's, and it is why this scene prints the state key exactly once.
+      /** The drawing module's own line: its arrow/focus sentence; the state key belongs to the composer. */
       let arrow: string[] = []
       try {
         arrow = legendLines(graphWidth)
@@ -907,6 +1051,11 @@ export function planActionLines(workflow: TeamWorkflow | undefined, echo: string
  * @param nav - the shared surface navigation, read once at mount.
  * @param openScene - opens a scene by id.
  * @param actions - the adapter-backed approval executor.
+ * @param planFor - the shared staged-plan reader, per session.
+ * @param teamViews - the official team readout, resolved per call.
+ * @param teamRecords - the mpd-owned team records, resolved per call.
+ * @param onHostKit - receives the host's own `ui` kit on every render.
+ * @param teamDeps - the session-scoped team reads: the `mpdTeams` face and the live feed. Optional.
  * @returns a component matching the host's `TuiSceneProps` contract.
  */
 function createPlanComponent(
@@ -919,6 +1068,7 @@ function createPlanComponent(
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],
   onHostKit?: (ui: unknown) => unknown,
+  teamDeps?: TeamSourceDeps,
 ): unknown {
   return function MpdTuiPlan(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
@@ -945,14 +1095,11 @@ function createPlanComponent(
     // hands it the live channel, and `sessionId` is one of that channel's published properties. That
     // is the whole reason the plan is reachable here, and it is why nothing needs caching: the id is
     // read per render off the props the host just passed.
+    // SINCE PART D IT ALSO SCOPES THE TEAM: the plan surface draws the workflow body, so a session-less
+    // read here would draw another session's DAG beside this session's plan. The reader is the module's
+    // ONE `channelSessionOf`, so all four scenes answer "which session?" identically.
     /** The live channel's session id, or undefined before the channel has bound one. */
-    const channelSession = (): string | undefined => {
-      /** The channel, narrowed to the one property this surface reads. */
-      const live = (props as { channel?: { sessionId?: unknown } } | undefined)?.channel
-      /** The id as a string, or undefined when the host has not bound one yet. */
-      const id = typeof live?.sessionId === "string" ? live.sessionId : undefined
-      return id === undefined || id === "" ? undefined : id
-    }
+    const channelSession = (): string | undefined => channelSessionOf(props)
 
     // The mount-time navigation target: plain in-memory state, no I/O in the render path.
     const targetState = React.useState(() => ({ teamId: nav.planTeamId, fromTeam: nav.planFromTeam }))
@@ -998,12 +1145,17 @@ function createPlanComponent(
 
     /** Re-reads the record and resets the consent echo, the arm and the scroll. */
     const refresh = (): void => {
-      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
+      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()))
       // Barrier 3: the echo is EMPTY on every entry and on every explicit refresh.
       setEcho("")
       setArmedAt(0)
       setScroll(0)
     }
+
+    // THE PUSH (PART P): a team-state change re-reads the FACTS here, exactly as the periodic read
+    // below does — the consent echo and the discard arm are NOT touched, because barrier 3 reserves
+    // those for the explicit `r` key, and a remote change must never re-arm the approval gate.
+    useTeamFeed(React, teamDeps?.subscribeTeams, () => setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession())))
 
     React.useEffect(() => {
       // Initial read in the effect (never in the render path).
@@ -1014,7 +1166,7 @@ function createPlanComponent(
         timer = setInterval(() => {
           // The automatic re-read refreshes the FACTS only: the consent echo and the 10 s
           // discard arm are cleared by the explicit `r` key (frozen §4.2 barrier 3 / §4.3).
-          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
+          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()))
         }, BOARD_REFRESH_MS)
       } catch {
         timer = undefined
@@ -1133,7 +1285,7 @@ function createPlanComponent(
         // Barrier 5: the record is re-read after the call settles, then keys are live again.
         // The echo is NOT cleared here: §4.5 keeps it on every refused outcome.
         setBusy(false)
-        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()))
       }
     }
 
@@ -1167,7 +1319,7 @@ function createPlanComponent(
         setMessage(`discard failed: ${String((error as Error)?.message ?? error)}`)
       } finally {
         setBusy(false)
-        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()))
       }
     }
 
@@ -1335,6 +1487,9 @@ function createPlanComponent(
  * @param onHostKit - receives the host's own `ui` kit on every scene render, so the adapter can keep
  *   the one `useStdin` that resolves the LIVE input context (see `subagent-scene.ts`); optional, and
  *   a caller that omits it loses only the Ctrl+A take-over's ability to arm.
+ * @param teamDeps - the session-scoped team reads every scene now needs: the `mpdTeams` face (for the
+ *   session resolver) and the live feed (for the push). Optional, so a caller with neither keeps the
+ *   pre-existing workspace-level, timer-only behaviour.
  * @returns the seam handle.
  */
 export function registerScene(
@@ -1349,6 +1504,7 @@ export function registerScene(
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],
   onHostKit?: (ui: unknown) => unknown,
+  teamDeps?: TeamSourceDeps,
 ): SceneSeam {
   /** Navigation shared by the three components, mutated only by their own handlers. */
   const nav: SceneNav = { planFromTeam: false }
@@ -1377,9 +1533,9 @@ export function registerScene(
       // `TuiSceneDescriptor` carries one `title` string), so they are resolved through MPD's own
       // dictionary AT REGISTRATION. A `/lang` switch therefore reaches them at the NEXT plugin
       // apply (a restart), not mid-session — see the limits stated in `i18n.ts`.
-      tui.registerScene({ id: BOARD_SCENE_ID, title: t("scene.board"), component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx)
-      tui.registerScene({ id: TEAM_SCENE_ID, title: t("scene.team"), component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx)
-      tui.registerScene({ id: PLAN_SCENE_ID, title: t("scene.plan"), component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit) }, ctx)
+      tui.registerScene({ id: BOARD_SCENE_ID, title: t("scene.board"), component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) }, ctx)
+      tui.registerScene({ id: TEAM_SCENE_ID, title: t("scene.team"), component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) }, ctx)
+      tui.registerScene({ id: PLAN_SCENE_ID, title: t("scene.plan"), component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit, teamDeps) }, ctx)
       // The MERGED PANEL rides the SAME seam: the host's own subagent rows on top, the MPD team
       // body below them. It gets the SAME `readWorkflow` closure the team scene uses, so the two
       // surfaces cannot describe one team differently. MPD's own key opens it; `Ctrl+A` — the
@@ -1390,7 +1546,7 @@ export function registerScene(
           // The descriptor's title is localized at registration; inside the scene the component
           // renders its own body header from the same dictionary, so the two agree per render.
           title: t("scene.subagents"),
-          component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords), onHostKit),
+          component: createSubagentSceneComponent((sessionId?: string) => readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, sessionId), onHostKit, undefined, teamDeps?.subscribeTeams),
         },
         ctx,
       )

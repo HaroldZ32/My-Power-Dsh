@@ -15,6 +15,20 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index"
 import { boardLines, readBoardState, statusLine } from "../src/state"
+import { WORKSPACE_SCOPE_MARKER } from "../src/team-state"
+import { registerStatus } from "../src/status"
+
+/**
+ * The ONE field of `SeamOutcome` this arm's adapter double has to report.
+ *
+ * Declared here rather than imported so the double stays a structural stand-in for the adapter: the
+ * arm asserts the PUBLISHED TEXT, and a typed import would couple the fixture to a shape it does not
+ * exercise.
+ */
+interface SeamOutcomeLike {
+  /** The seam's own state word. */
+  state: string
+}
 import { cellWidth, clampCells, scalarLines, scalarText } from "../src/sanitize"
 import { TRANSCRIPT_RENDERERS, TRANSCRIPT_TYPES } from "../src/renderers"
 import { appendBoardOpened } from "../src/commands"
@@ -212,10 +226,61 @@ describe("state projection", () => {
     // 0.1.7: the team has no NAME on the official plane — the readout names the Lead pseudo-row
     // `lead`, and the counts are the board's own (7 tasks, 1 completed).
     expect(line.startsWith("mpd: " + t("status.teamRow", { name: "lead", members: 2, done: 1, total: 7 }))).toBe(true)
+    // THE WORKSPACE-LEVEL MARK IS ON THE TEAM ROW (frozen PART S, option b). The seam this row is
+    // published through can carry no session id (`TuiStatusRuntime.set` is a scalar and the rich
+    // companion's component receives `{React, ui}` and nothing else), so the team named here is the
+    // WORKSPACE's principal team — and the row SAYS so instead of presenting it as the reader's own.
+    // The parenthetical makes it a qualifier of the team row, never a counter of its own.
+    expect(line).toContain(`(${WORKSPACE_SCOPE_MARKER})`)
+    // The counters keep their present meaning: the mark qualifies the team row and nothing else.
     expect(line).toContain(t("status.boulder", { active: 1, works: 2 }))
     expect(line).toContain(t("status.plans", { n: 2 }))
     expect(line).toContain(t("status.workmates", { n: 2 }))
     expect(line.includes("\n")).toBe(false)
+  })
+
+  test("a status line with NO team carries NO scope mark: `team -` is a workspace fact, never another session's board", () => {
+    /** This arm's own isolated workspace and home. */
+    const { workspace, home } = fixture()
+    // An EMPTY readout: the workspace truly holds no team, so `team -` is true for every session and
+    // there is nothing whose scope could be misread. Marking it would be noise, and the mark is
+    // reserved for the one case that misleads: a team row that may belong to somebody else.
+    /** The rendered row with no team on either source. */
+    const line = statusLine(readBoardState(workspace, home, [], []))
+    expect(line).toContain("mpd: " + t("status.teamNone"))
+    expect(line).not.toContain(WORKSPACE_SCOPE_MARKER)
+    expect(line).toContain(t("status.plans", { n: 2 }))
+  })
+
+  test("S-b THROUGH THE REAL SEAM: the published row names the workspace's team AND carries the scope mark", () => {
+    /** This arm's own isolated workspace and home. */
+    const { workspace, home } = fixture()
+    /** Every text the fake status seam published, in publish order. */
+    const published: string[] = []
+    /** The adapter double: the ONE member `registerStatus` reaches, plus the recorded value. */
+    const tui = {
+      registerStatusView: (view: { render: () => string | number | boolean | undefined }): { outcome: () => SeamOutcomeLike; refresh: () => void } => {
+        /** Publishes the view's current line, exactly as the adapter's own `publish` does. */
+        const refresh = (): void => {
+          published.push(String(view.render() ?? ""))
+        }
+        refresh()
+        /** The outcome the real adapter reports once the host accepted the view. */
+        const outcome = (): SeamOutcomeLike => ({ state: "bound" })
+        return { outcome, refresh }
+      },
+    }
+    /** A silent logger for this arm. */
+    const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
+    // THE REAL PUBLISH PATH, not a re-derivation of it: `registerStatus` is the function the plugin's
+    // composition applies, so a mark added to the seam but not to the published text could not pass.
+    registerStatus({} as never, tui as never, log, () => workspace, () => home, 0, undefined, () => FIXTURE_VIEWS.get(workspace) ?? [])
+    expect(published).toHaveLength(1)
+    /** The line the seam actually handed the host. */
+    const line = published[0] ?? ""
+    expect(line).toContain("lead")
+    expect(line).toContain(`(${WORKSPACE_SCOPE_MARKER})`)
+    expect(line.startsWith("mpd: ")).toBe(true)
   })
 })
 

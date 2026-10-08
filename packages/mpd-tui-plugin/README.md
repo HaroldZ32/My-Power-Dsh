@@ -180,6 +180,53 @@ ONLY through the props' own kit — `props.React` and `props.ui` — because the
 inside its own reconciler: importing React (or any second copy of it) here would mount a foreign tree,
 so the panel never imports it and never reads a theme of its own (the single-React rule).
 
+**The team is THIS SESSION's, and all three states are said out loud.** Team selection is session-scoped
+on every surface that draws one (this page, the team scene, the merged scene, the plan scene): the page
+reads its OWN session id off `host.snapshot().sessionId` — the field it used to read and discard — and the
+scenes read theirs off `props.channel.sessionId`; both go through ONE resolver,
+`mpdTeams.active(workspace, sessionId)`, with the record's own `leadSessionId` as the degradation when the
+service exposes no `active`. The reader reports WHICH of the three states it answered with
+(`TeamWorkflow.source.scope`), and every renderer draws that state rather than a guess:
+
+| state | when | what is drawn |
+|---|---|---|
+| `session` | a session id was readable AND a team resolved for it | that team's DAG, and nothing else |
+| `none` | a session id was readable and this session has NO team | the marker `no team in this session`, plus how many teams the workspace holds — **never another session's board**; the count row carries NO `workspace-level` token, so a frame scan keyed on that token matches the `workspace` state ALONE |
+| `workspace` | NO session id was readable (an older host, a keypress-time read) | today's workspace-principal rule, marked `workspace-level` so a reader can tell it is not necessarily their own board |
+
+The markers are constants (`NO_SESSION_TEAM_MARKER`, `WORKSPACE_SCOPE_MARKER` in `src/team-state.ts`), so a
+test asserts the rendered frame rather than a paraphrase — and the three states are kept
+MACHINE-DISTINGUISHABLE: `workspace-level` names the no-session-id state only, which is why the state-2
+informational count dropped its old `workspace-level:` prefix. The official-readout fallback is preserved
+AND scoped: a view is drawn only when its `leadSessionId` IS this session. The legacy `Ctrl+A` contact is
+the one surface that cannot be scoped — a status view receives no `host` and no `channel` — so it keeps the
+marked workspace-level behaviour by construction.
+
+**The two surfaces that CANNOT read a session id mark what they draw instead.** The keyed status row
+(`ctx.tuiStatus`) and that legacy `Ctrl+A` contact are the only two with no id to read, and the host's own
+signature is the proof: `TuiStatusRuntime.set(key, text, identity?)` publishes a SCALAR, and the rich
+companion's component is handed `TuiStatusProps { React, ui }` — no `host`, no `channel` (the host's
+comment: *"It deliberately receives no input, channel, or raw-terminal capability"*). Both therefore say
+so in the same vocabulary the scoped surfaces use. The status row's team part carries `(workspace-level)`
+whenever the workspace holds a team — attached to that one part so it cannot be read as a counter, and the
+`plans`/`workmates`/progress numbers keep their meaning and stay unmarked, because they are workspace facts
+by definition. The `Ctrl+A` read passes no id, so `readScopedWorkflow` lands in `scope: "workspace"` and the
+merged scene it opens draws `scope workspace-level (no session id on this surface)` above the board. A row
+that finds NO team is not marked: a workspace-level read that resolves nothing means the workspace holds no
+team at all, so there is nothing that could belong to another session.
+
+**Two clocks, and a push on top of them.** Every surface that draws team state SUBSCRIBES to the
+workspace's team feed (`mpdTeams.subscribe(workspace, listener)`, resolved per call through the
+composition root's ONE accessor) in a host effect and disposes it on unmount; a notification re-reads the
+new record — immediately for the scenes, which keep their projection in a state cell, and through a
+re-render for the pages, which read per render. Measured on the real dsh-tui 0.14.0 PTY: a record rewrite
+under an OPEN, untouched sidebar reached the terminal in **76–85 ms** across six trials
+(`evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/`). The ticks stay, unchanged, as
+the fallback: the sidebar pages tick at **1000 ms** (`DAG_PANEL_REFRESH_MS`), the board, team, plan and
+merged scenes at **2000 ms**, and the workmate page at **2000 ms** because a library changes on a tool
+call rather than on a keypress. No `mpdTeams` row, no `subscribe`, or a throwing one costs the push and
+never the page.
+
 **Entry points, and the ONE routed open.** `alt+a` and the new `/mpd panel` subcommand both land on
 `openMergedPanel()`, which decides PER CALL — the seam binds asynchronously, so a key pressed before the
 binding must still find a surface: the sidebar panel when `panelSeamBound()` is true and an id was
@@ -299,7 +346,11 @@ Everything below is unchanged by that merge.
   current pan offset selects the box; a click that lands on no box CLEARS the pin. The pinned body sits
   under the drawing and prints ten facts in a fixed order, `—` for any the record does not carry: `id`,
   `kind`, `visual`, `verdict`, `failedBy`, `owner`, `attempt`, `round`, `blockedBy`, `dependents`.
-  Keys: `↑↓/jk` move the focus, `Enter` pins, `Esc` unpins. There is NO hover surface, because a
+  Keys: `↑↓/jk` move the focus, `Enter` pins, and `Esc` unpins **while a task is pinned** — with nothing
+  pinned it is deliberately left UNCONSUMED, so the host's own `key.escape === true → setFocus('chat')`
+  fallback runs and the keyboard returns to the chat (previously the page swallowed `Esc`
+  unconditionally, and the host treats any `preventDefault()` as consumed, so `/mpd panel` took the
+  keyboard with no way back). There is NO hover surface, because a
   terminal has no pointer-move and the user dropped that requirement explicitly.
 - **What a pin LOOKS like (AC5).** The pinned task and every task on its upstream dependency chain render
   **BOLD**; everything else carries the muted tone **AND** the host's `dimColor` flag. Colour alone was
@@ -373,8 +424,11 @@ DRAWN dependency edge ends in a directional arrowhead — `▼` in `boxes`, `▸
 dependent, and a fan-in of several blockers still shows exactly ONE arrow: the merged entry is written as
 text rather than as a junction, because no direction bit can say "…and the dependency points into this
 box". Both callers (the team scene and the merged panel) render `legendLines(width)` directly under the
-drawing; it names both marks, the five state glyphs (read from the same table the drawing paints) and the
-focus marker, and it drops a sentence rather than cutting one when the terminal is narrow.
+drawing; it names both marks and the focus marker, and it drops a sentence rather than cutting one when
+the terminal is narrow. **ONE STATE KEY, NOT TWO**: `legendLines` contributes only that arrow/focus
+sentence, and the six-state key under it is composed once by `panel-core.ts`'s `legendLinesFor` — the
+drawing module's own five-state key, which omitted `blocked` and so could not tell `○ blocked` from
+`○ open`, was DELETED with the redundant legend row.
 
 **The engine DERIVES what it draws, and says which source won (this wave).** Rank is computed from the
 dependency graph the board actually resolves — the longest chain of blockers that resolve beneath a

@@ -1,0 +1,3 @@
+BIG-A2-sidebar-plus2s vs BIG-A4-sidebar-reopened: changedLines=28
+        BIG-A2-sidebar-plus2s: modeLine="" header=""
+        BIG-A4-sidebar-reopened: modeLine="" header=""

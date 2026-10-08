@@ -3,11 +3,12 @@
 // WHY THIS FILE EXISTS AND WHY THE REST OF THE SUITE COULD NOT SEE IT. Every other arm in
 // `panel-dag.test.ts` calls the page COMPONENT FUNCTION directly with a host double, so it asserts what
 // the page HANDS React and never what React does with it. The user's defect lives entirely in that gap:
-// two legend rows were keyed by their own truncated text, and two of the lines the page draws agree for
-// the key's whole 24-cell length (`✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled` from the
-// drawing module and this legend's own first wrapped line `✓ completed · ◐ running · ○ open=blocked ·
-// ✗ failed`). React, handed two children under one key inside a column it re-renders, drew the collided
-// row AGAIN on each pass — one extra legend row per click until the page overflowed its window.
+// two legend rows were keyed by their own truncated text, and the two lines the page then drew agreed
+// for the key's whole 24-cell length (`✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled` — the
+// drawing module's own five-state key, DELETED since — and this legend's own first wrapped line
+// `✓ completed · ◐ running · ○ open=blocked · ✗ failed`). React, handed two children under one key
+// inside a column it re-renders, drew the collided row AGAIN on each pass — one extra legend row per
+// click until the page overflowed its window.
 //
 // THE MOUNT IS THE INSTALLED HOST'S OWN. React, the themed `Box`/`Text` and the ink root are imported
 // from the real `@deepseek-harness-tui/dsh-tui` package on this machine, exactly as the host supplies
@@ -17,8 +18,10 @@
 //
 // WHAT IS ASSERTED. The COUNT of legend rows in the frame, at every step of a click walk — not merely
 // that a legend exists. The pre-fix code measured 4 rows after mount and 4,5,5,5,6,6,6,7,7 across eight
-// clicks; the repaired code measures 4 at every step. The second arm pins the CAUSE, so a future edit
-// that reintroduces a content-derived key reddens on the key rather than on a row count.
+// clicks; the repaired code measured 4 at every step, and it measures 3 at every step now that the
+// drawing module's redundant five-state key is gone (one arrow row + two wrapped contract-key rows at
+// this terminal's 58-cell budget). The second arm pins the CAUSE, so a future edit that reintroduces a
+// content-derived key reddens on the key rather than on a row count.
 import { describe, expect, test } from "bun:test"
 import { EventEmitter } from "node:events"
 import { createRequire } from "node:module"
@@ -26,6 +29,7 @@ import { dirname, join } from "node:path"
 
 import { legendLines } from "../src/graph"
 import { legendLinesFor, panelContentWidth } from "../src/panel-core"
+import { DAG_STATE_TONES, DAG_TONE_GLYPH } from "../src/dag-theme"
 import { createDagPanelComponent } from "../src/panel-dag"
 import { createWorkmatePanelComponent, type WorkmateLibrary } from "../src/panel-workmate"
 import type { TeamWorkflow } from "../src/team-state"
@@ -317,7 +321,13 @@ function preFixKeyedPage(props: Record<string, unknown>): unknown {
   const ui = props.ui as { Box: unknown; Text: unknown }
   /** The click counter, whose only job is to force this column to re-render. */
   const clicks = React.useState(0)
-  /** The two rows the pre-fix key could not tell apart: they agree for their first 24 cells. */
+  /**
+   * The two rows the pre-fix key could not tell apart: they agree for their first 24 cells.
+   *
+   * The first is the drawing module's own five-state key, DELETED since with the redundant legend; it
+   * stays spelled out here because this control must reproduce the PRE-FIX shape, or the falsifier
+   * below would prove nothing about whether the harness can still see the defect.
+   */
   const lines = [
     "✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled",
     "✓ completed · ◐ running · ○ open=blocked · ✗ failed",
@@ -376,11 +386,13 @@ describe("C4 · the negative control — this harness CAN see an accumulating ro
 })
 
 describe("C4 · the legend does not accumulate across the click/pin interaction (mounted instance)", () => {
-  test("the legend's row count is STABLE across N clicks — it is 4 after the mount and 4 after every click", async () => {
+  test("the legend's row count is STABLE across N clicks — 3 after the mount (arrow + wrapped key) and 3 after every click", async () => {
     /** The lines the page's own legend function produces at this width — the target count. */
     const expected = legendLinesFor(panelContentWidth(COLUMNS), legendLines(panelContentWidth(COLUMNS)))
-    // The legend is only meaningful with more than one line, and the collision this arm pins needs at
-    // least TWO lines that agree for a key's length: a one-line legend would make the arm vacuous.
+    // The legend is multi-row at this width — the arrow sentence plus the contract's key, WRAPPED — so
+    // the walk below really counts several rows and the arm is not vacuous. The two same-prefix rows of
+    // the original defect are gone with the drawing module's own key; what this arm still proves is that
+    // the count is STABLE across a re-render.
     expect(expected.length).toBeGreaterThan(1)
     /** The mounted page, rendered by the installed host. */
     const page = await mountPage(createDagPanelComponent(workflowFixture, { openFullscreen: () => true }), COLUMNS, ROWS)
@@ -456,6 +468,49 @@ describe("C4 · the legend does not accumulate across the click/pin interaction 
       // losing a row the reader needs, which is the opposite defect.
       expect(problemKeys.length).toBe(2)
       expect(new Set(problemKeys).size).toBe(2)
+    } finally {
+      page.unmount()
+    }
+  })
+})
+
+// ── A1: the state key is printed EXACTLY ONCE — read off the FRAME, at the reference width ─────────
+//
+// WHY A FRAME AND NOT A HELPER RETURN. What the user reported was a ROW the reader saw, so the acceptance
+// artifact is the frame the installed host's ink root wrote, and what this arm counts is ROWS. The
+// pre-fix frame at this width carried TWO rows starting with the contract's first state entry (the
+// drawing module's own five-state key and the contract's six-state key); the post-fix frame carries ONE.
+// This lane's evidence records both readings: `frame-before.txt` stateKeyRows[2], `frame-after.txt`
+// stateKeyRows[1].
+describe("A1 · the composed legend prints the state key exactly once (mounted instance, 156 columns)", () => {
+  test("exactly ONE frame row starts with the contract's first state entry", async () => {
+    /** The terminal width the shipped reference capture was taken at. */
+    const columns = 156
+    /** The first state the contract prints, read out of the frozen table rather than re-typed. */
+    const firstState = DAG_STATE_TONES[0] as string
+    /** That state's own glyph, `?` when the contract stops declaring one. */
+    const firstGlyph = DAG_TONE_GLYPH[firstState] ?? "?"
+    /** The contract's first state entry, which is how a state-key row identifies itself. */
+    const firstEntry = `${firstGlyph} ${firstState}`
+    /** The mounted DAG page over the fixture team, at the reference width. */
+    const page = await mountPage(createDagPanelComponent(workflowFixture, { openFullscreen: () => true }), columns, ROWS)
+    try {
+      /** The frame's own rows, normalized exactly as the row-count arms above normalize them. */
+      const rows = page.frame().map((row) => rowContent(row))
+      /** Every frame row whose content STARTS with the contract's first state entry. */
+      const stateRows = rows.filter((content) => content.startsWith(firstEntry))
+      // ONE, PRECISELY. The pre-fix frame drew two — the drawing module's five-state key first — and a
+      // frame that drew NONE would be the other failure this count catches.
+      expect(stateRows).toHaveLength(1)
+      // AND THE SURVIVOR IS THE CONTRACT'S SIX-STATE KEY: only it names the twin entries, which is what
+      // tells `○ blocked` from `○ open` — the deleted five-state key omitted `blocked` entirely.
+      expect(stateRows[0]).toContain(`${DAG_TONE_GLYPH.blocked ?? "?"} blocked=open`)
+      expect(stateRows[0]).toContain(`${DAG_TONE_GLYPH.open ?? "?"} open=blocked`)
+      /** The composed legend at this width: every line the page is supposed to draw under the DAG. */
+      const composed = legendLinesFor(panelContentWidth(columns), legendLines(panelContentWidth(columns)))
+      // THE LEGEND REALLY REACHED THE FRAME, line for line — otherwise the count above could be read off
+      // a page that drew no legend at all, which is the vacuous shape of an absence assertion.
+      expect(legendRowCount(page.frame(), composed).total).toBe(composed.length)
     } finally {
       page.unmount()
     }

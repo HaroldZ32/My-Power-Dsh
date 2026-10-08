@@ -1,0 +1,48 @@
+[08:25:50] === T-P3 latency arm utc-start=2026-10-08T08:25:50Z clock=EPOCHREALTIME bash=5.3.9(1)-release
+[08:25:51] sandbox=/tmp/mpd-lat-yLFXrt workspace=/tmp/mpd-lat-yLFXrt/ws host=0.14.0
+[08:25:51] seed OTHER: seeded team-other-session (OTHERBOARD) for sess-other: 4 tasks
+[08:25:51] waiting for the chat frame ...
+[08:26:12] --- opening the SIDEBAR page; NO KEY PRESS FROM HERE until the trials are done
+[08:26:16] CAPTURE L0-panel-other-session
+[08:26:16] L0 other-name occurrences: 1
+[08:26:16] L0 marker occurrences   : 1
+[08:26:16] live session id: '6e2e14bc-09c2-4579-abbf-63dc87703bab'
+[08:26:16] --- 6 rewrite trials, panel open and untouched
+[08:26:16] trial 1: LIVEBOARD1 latency=85460us = 85ms  write@1791447976616123 seen@1791447976701583
+[08:26:20] trial 2: LIVEBOARD2 NEVER SEEN (seeded team-live-session (LIVEBOARD2) for 6e2e14bc-09c2-4579-abbf-63dc87703bab: 4 tasks)
+[08:26:24] trial 3: LIVEBOARD3 NEVER SEEN (seeded team-live-session (LIVEBOARD3) for 6e2e14bc-09c2-4579-abbf-63dc87703bab: 4 tasks)
+[08:26:27] trial 4: LIVEBOARD4 NEVER SEEN (seeded team-live-session (LIVEBOARD4) for 6e2e14bc-09c2-4579-abbf-63dc87703bab: 4 tasks)
+[08:26:31] trial 5: LIVEBOARD5 NEVER SEEN (seeded team-live-session (LIVEBOARD5) for 6e2e14bc-09c2-4579-abbf-63dc87703bab: 4 tasks)
+[08:26:35] trial 6: LIVEBOARD6 NEVER SEEN (seeded team-live-session (LIVEBOARD6) for 6e2e14bc-09c2-4579-abbf-63dc87703bab: 4 tasks)
+[08:26:35] CAPTURE L1-panel-after-trials
+[08:26:35] L1 team line: team LIVEBOARD6  phase active  tasks 0/4 
+[08:26:35] records: team-live-session.json team-other-session.json 
+[08:26:35] === utc-end=2026-10-08T08:26:35Z sandbox=/tmp/mpd-lat-yLFXrt
+[08:26:35] tmux server stopped
+[08:26:59] === T-P3 latency arm utc-start=2026-10-08T08:26:59Z clock=EPOCHREALTIME bash=5.3.9(1)-release
+[08:27:00] sandbox=/tmp/mpd-lat-RsBaY1 workspace=/tmp/mpd-lat-RsBaY1/ws host=0.14.0
+[08:27:00] seed OTHER: seeded team-other-session (OTHERBOARD) for sess-other: 4 tasks
+[08:27:00] waiting for the chat frame ...
+[08:27:18] --- opening the SIDEBAR page; NO KEY PRESS FROM HERE until the trials are done
+[08:27:22] CAPTURE L0-panel-other-session
+[08:27:22] L0 other-name occurrences: 1
+[08:27:22] L0 marker occurrences   : 1
+[08:27:22] live session id: '23145325-3350-4792-9a1a-c3164993ea84'
+[08:27:22] --- 6 rewrite trials, panel open and untouched
+[08:27:22] CAPTURE L-trial1
+[08:27:22] trial 1: LIVEBOARD1 first-write latency=85837us = 85ms (idle=true, ticks=8) · frame says 'team LIVEBOARD1'
+[08:27:23] CAPTURE L-trial2
+[08:27:23] trial 2: LIVEBOARD2 first-write latency=76249us = 76ms (idle=true, ticks=7) · frame says 'team LIVEBOARD2'
+[08:27:23] CAPTURE L-trial3
+[08:27:23] trial 3: LIVEBOARD3 first-write latency=79957us = 79ms (idle=true, ticks=7) · frame says 'team LIVEBOARD3'
+[08:27:24] CAPTURE L-trial4
+[08:27:24] trial 4: LIVEBOARD4 first-write latency=77281us = 77ms (idle=true, ticks=7) · frame says 'team LIVEBOARD4'
+[08:27:25] CAPTURE L-trial5
+[08:27:25] trial 5: LIVEBOARD5 first-write latency=78714us = 78ms (idle=true, ticks=7) · frame says 'team LIVEBOARD5'
+[08:27:25] CAPTURE L-trial6
+[08:27:25] trial 6: LIVEBOARD6 first-write latency=82200us = 82ms (idle=true, ticks=7) · frame says 'team LIVEBOARD6'
+[08:27:26] CAPTURE L1-panel-after-trials
+[08:27:26] L1 team line: team LIVEBOARD6  phase active  tasks 0/4 
+[08:27:26] records: team-live-session.json team-other-session.json 
+[08:27:26] === utc-end=2026-10-08T08:27:26Z sandbox=/tmp/mpd-lat-RsBaY1
+[08:27:26] tmux server stopped

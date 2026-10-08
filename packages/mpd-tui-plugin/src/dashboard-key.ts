@@ -36,7 +36,7 @@ import { SUBAGENT_SCENE_ID } from "./subagent-scene.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { HostInputEmitterLike, HostStdinValue } from "../../mpd-tui-adapter-plugin/src/index.js"
 import { readHostStdinValue } from "../../mpd-tui-adapter-plugin/src/index.js"
-import { mpdTeamRecords, principalRecord, readRecordWorkflow, readTeamWorkflow, type TeamWorkflow } from "./team-state.js"
+import { mpdTeamRecords, readScopedWorkflow, type MpdTeamsLike, type TeamWorkflow } from "./team-state.js"
 
 /**
  * One mpd-owned team record, typed from THIS package's own reader.
@@ -203,14 +203,21 @@ export function interceptDashboardKey(event: unknown, deps: DashboardKeyDeps): b
 /**
  * Read the MPD team projection with the SAME rule and the SAME primitives the scenes use.
  *
- * The scenes' own reader is private to `scenes.ts` (another lane's file, and not exported), so the
- * order is mirrored here explicitly: the mpd-owned record FIRST (newest that has not ended, through
- * `principalRecord`), the official readout only when this workspace holds no record at all. Both
- * surfaces therefore describe one team identically instead of drifting into two answers.
+ * The scenes' own reader is private to `scenes.ts` (another lane's file, and not exported), so both go
+ * through the ONE session-scoped reader in `team-state.ts`: this function's only job is to resolve the
+ * four sources per call and hand them over. Both surfaces therefore describe one team identically
+ * instead of drifting into two answers.
+ *
+ * THE SESSION ID IS WHAT MAKES IT SESSION-SCOPED. The sidebar panel reads its own session id off the
+ * host snapshot and passes it here; the Ctrl+A contact cannot (a status view carries no `host`), so it
+ * calls this with no id and gets the MARKED workspace-level fallback — never another session's board
+ * presented as the caller's own.
  * @param workspaceRoot - resolves the calling session's workspace, per call.
  * @param holds - the team ids the watchdog currently holds.
  * @param teamViews - the official team readout for that workspace, resolved per call.
  * @param teamRecords - the mpd-owned team records for that workspace, resolved per call.
+ * @param teams - the `mpdTeams` face, resolved per call; undefined when this composition has no team row.
+ * @param sessionId - the calling session's id, or undefined when this surface cannot read one.
  * @returns the projection, or undefined when nothing could be read; never throws.
  */
 export function readDashboardWorkflow(
@@ -218,6 +225,8 @@ export function readDashboardWorkflow(
   holds: () => readonly string[],
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecordRow[],
+  teams?: () => MpdTeamsLike | undefined,
+  sessionId?: string,
 ): TeamWorkflow | undefined {
   try {
     /** The watchdog's held team ids; empty when that read fails. */
@@ -234,9 +243,6 @@ export function readDashboardWorkflow(
     } catch {
       records = []
     }
-    /** The principal record: newest that has not ended, else the newest of all. */
-    const principal = principalRecord(records)
-    if (principal !== undefined) return readRecordWorkflow(workspaceRoot(), holdIds, principal)
     /** The live official views for this workspace; empty when that read fails. */
     let views: readonly DshTeamView[] = []
     try {
@@ -244,7 +250,21 @@ export function readDashboardWorkflow(
     } catch {
       views = []
     }
-    return readTeamWorkflow(workspaceRoot(), holdIds, views)
+    /** The `mpdTeams` face, resolved per call; undefined when the team row is not mounted. */
+    let service: MpdTeamsLike | undefined
+    try {
+      service = teams?.()
+    } catch {
+      service = undefined
+    }
+    return readScopedWorkflow({
+      workspace: workspaceRoot(),
+      ...(sessionId === undefined || sessionId === "" ? {} : { sessionId }),
+      holds: holdIds,
+      ...(service === undefined ? {} : { teams: service }),
+      records,
+      views,
+    })
   } catch {
     // A projection that cannot be read is "no team" for this decision, never a broken keypress.
     return undefined

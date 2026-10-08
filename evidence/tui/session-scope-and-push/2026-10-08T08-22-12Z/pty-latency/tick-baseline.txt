@@ -1,0 +1,1 @@
+the page's fallback tick is DAG_PANEL_REFRESH_MS=1000 ms: a tick-only surface samples the change at a uniform latency in [0,1000) ms

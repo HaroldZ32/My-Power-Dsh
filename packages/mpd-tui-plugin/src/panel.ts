@@ -44,33 +44,13 @@ import { legendLines, sliceSpans } from "./graph.js"
 // `createPanelComponent` — the shared chrome lives in `panel-core.ts`, so this direction is not a cycle.
 import { createDagPanelComponent } from "./panel-dag.js"
 import { teamGraphView } from "./subagent-scene.js"
-import type { TeamWorkflow } from "./team-state.js"
-import {
-  clampScroll,
-  graphRow,
-  legendLinesFor,
-  PANEL_CHROME_ROWS,
-  panelFrame,
-  panelKit,
-  panelKeysArmed,
-  panelKeyEvent,
-  panelContentWidth,
-  panelFloorColumns,
-  gutterCellsX,
-  panelScrollGesture,
-  panelScrollKey,
-  panelSnapshot,
-  panelText,
-  panelViewportBody,
-  textRow,
-  toneColor,
-  usePanelKeys,
-  usePanelSize,
-  usePanelTick,
-  usePanelViewport,
-  type PanelKit,
-  type PanelPropsLike,
-} from "./panel-core.js"
+import type { TeamFeedAccessor, TeamWorkflow } from "./team-state.js"
+// ONLY THE HELPERS THIS FILE ACTUALLY CALLS (frozen clause P.2.5). The clause C3 merge moved the whole
+// page body into `panel-dag.ts`, which took the tick, the frame, the keymap and the geometry hooks with
+// it: this module is now a DESCRIPTOR plus the ONE routed open, so the twenty imports the pre-merge
+// renderer needed were dead here — a reader following `panel.ts` for the refresh cadence found a
+// constant nothing read and a `usePanelTick` nothing called. Removal, not a comment, is the honest fix.
+import { panelText, textRow, type PanelKit, type PanelPropsLike } from "./panel-core.js"
 import { t } from "./i18n.js"
 
 /** The slug the panel is registered under; the HOST prefixes it with this activation's plugin id. */
@@ -120,16 +100,12 @@ export const PANEL_MIN_COLUMNS = 28
 export const PANEL_ORDER = 10
 
 /**
- * How often the merged panel re-reads its two sources.
+ * The row budget this page assumes when the host reports no height at all.
  *
- * A sidebar panel is a PASSIVE surface: the host re-renders it when it has a reason to, and the DAG
- * below reads the workspace's own record, which no host event is guaranteed to bump. The tick is the
- * same device `panel-dag.ts` uses, so one sidebar behaves like the other, and its cost is one integer
- * per tick.
+ * NOTE ON THE REFRESH CADENCE (frozen clause P.2.5): this module no longer owns one. The panel's tick
+ * is `panel-dag.ts`'s `DAG_PANEL_REFRESH_MS` (1000 ms), because that page IS this panel's renderer
+ * after the clause C3 merge — a second cadence constant here would have been dead, and it was.
  */
-const PANEL_REFRESH_MS = 1000
-
-/** The row budget this page assumes when the host reports no height at all. */
 const MERGED_FALLBACK_ROWS = 24
 
 /**
@@ -248,19 +224,29 @@ export interface PanelPageOptions {
    * a dep this slot received but did not pass would leave that gesture silently dead.
    */
   openAgentPage?: (agentId: string) => boolean
+  /**
+   * Resolves the LIVE team-state feed for the calling session's workspace, per render.
+   *
+   * Forwarded unchanged to the DAG page this slot renders — that page owns the effect, so the
+   * subscription lives and dies with the page and this slot keeps no lifetime of its own. Absent means
+   * the page keeps its 1000 ms tick, which is the pre-existing behaviour.
+   */
+  subscribeTeams?: TeamFeedAccessor
 }
 
 /**
  * Build the merged sidebar-panel component.
  * @param readWorkflow - reads the MPD team projection for this session's workspace; the wiring in
- *   `index.ts` passes the same reader the team surfaces use, so the two cannot drift. It is injected
- *   rather than imported so this file stays free of the scene-registration module.
+ *   `index.ts` passes the same reader the team surfaces use, so the two cannot drift. It takes the
+ *   CALLING session's id, read off the host snapshot the page receives, because the team is
+ *   session-scoped: a surface must never draw another session's board. It is injected rather than
+ *   imported so this file stays free of the scene-registration module.
  * @param options - this page's own chrome: the full-screen opener its `⤢` control calls. Optional so
  *   a caller that only wants the body (a unit arm) still gets a component; the registered page always
  *   passes one, so the control the user sees is always wired.
  * @returns a component matching the host's panel props contract.
  */
-export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefined, options?: PanelPageOptions): unknown {
+export function createPanelComponent(readWorkflow: (sessionId?: string) => TeamWorkflow | undefined, options?: PanelPageOptions): unknown {
   // THE MERGED PAGE IS THE DAG PAGE, and this is the whole of the merge (frozen clause C3): the user's
   // clause is 「DAG页作为MPD面板」 — the DAG page SERVES AS the MPD panel — so the surviving slot renders
   // `panel-dag.ts`'s rich page (frame, header + progress, legend, key-hint footer, click-to-pin detail
@@ -278,6 +264,7 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
   return createDagPanelComponent(readWorkflow, {
     ...(options?.openFullscreen === undefined ? {} : { openFullscreen: options.openFullscreen }),
     ...(options?.openAgentPage === undefined ? {} : { openAgentPage: options.openAgentPage }),
+    ...(options?.subscribeTeams === undefined ? {} : { subscribeTeams: options.subscribeTeams }),
   })
 }
 
@@ -285,10 +272,17 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
 export interface PanelDeps {
   /** Whether the row config contributes this surface at all (the `panel` knob, default true). */
   enabled: boolean
-  /** Reads the MPD team projection for the calling session's workspace, per call. */
-  readWorkflow(): TeamWorkflow | undefined
+  /** Reads the MPD team projection for the calling session's workspace and session, per call. */
+  readWorkflow(sessionId?: string): TeamWorkflow | undefined
   /** Opens the existing full-screen merged scene; the fallback this wave must never lose. */
   openMergedScene(): boolean
+  /**
+   * Resolves the LIVE team-state feed for the calling session's workspace, per render.
+   *
+   * Optional because the push is an ADDITION: a caller that supplies none keeps exactly today's
+   * timer-only behaviour, which is also what a composition without `mpd-team-core` produces.
+   */
+  subscribeTeams?: TeamFeedAccessor
   /**
    * Opens the agent work page for a live subagent id; false when no page was reached.
    *
@@ -373,6 +367,7 @@ export function registerPanelSurface(tui: TuiAdapter, deps: PanelDeps): PanelSea
         component: createPanelComponent(deps.readWorkflow, {
           openFullscreen: deps.openFullscreenScene ?? ((): boolean => deps.openMergedScene()),
           ...(deps.openAgentPage === undefined ? {} : { openAgentPage: deps.openAgentPage }),
+          ...(deps.subscribeTeams === undefined ? {} : { subscribeTeams: deps.subscribeTeams }),
         }),
       })
     : undefined
