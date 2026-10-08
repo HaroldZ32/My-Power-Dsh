@@ -1,0 +1,96 @@
+# Lane S — gate sweep, recorded 2026-10-08T08:03:27Z
+
+## bun test packages/mpd-team-core-plugin
+ 176 pass
+ 0 fail
+ 786 expect() calls
+Ran 176 tests across 13 files. [897.00ms]
+
+## bun run typecheck
+$ tsgo --noEmit
+typecheck exit=0
+
+## node scripts/verify-comment-coverage.ts
+scanned 366 TypeScript file(s) of 366 in the source set; inspected 32206 declaration(s); skipped 14469 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+## node scripts/verify-dist-fresh.ts
+  FRESH   packages/mpd-team-core-plugin/dist/index.js  sha f1e744d10de6… 23ms  <- packages/mpd-team-core-plugin/src/index.ts
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] ok: 30/30 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 634ms
+
+## bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=22 derived=3 links=424 dead=0 — PASS
+
+## S-e parity
+state parity: identical=true routes 4 → 5
+
+## dist sha256
+f1e744d10de641a9b2f171ca2d10bc02c6d02bdb2b38fd504ad00976105d3e7a  packages/mpd-team-core-plugin/dist/index.js
+
+# REPAIR R-S — gate re-run, recorded 2026-10-08T08:18:52Z (writer: repair R-S; the lines below are the commands' own output)
+
+## bun test packages/mpd-team-core-plugin
+ 176 pass
+ 0 fail
+ 786 expect() calls
+Ran 176 tests across 13 files. [889.00ms]
+exit=0
+
+## bun run typecheck
+$ tsgo --noEmit
+packages/mpd-tui-plugin/src/index.ts(471,20): error TS2304: Cannot find name 'TeamFeedSubscribe'.
+packages/mpd-tui-plugin/src/index.ts(476,19): error TS2304: Cannot find name 'TeamFeedAccessor'.
+packages/mpd-tui-plugin/src/index.ts(487,67): error TS2304: Cannot find name 'TeamFeedSubscribe'.
+packages/mpd-tui-plugin/src/index.ts(502,24): error TS2304: Cannot find name 'TeamSourceDeps'.
+error: script "typecheck" exited with code 1
+exit=1   <-- FOREIGN: packages/mpd-tui-plugin/** is another lane's in-flight edit; no diagnostic in packages/mpd-team-core-plugin
+
+## node scripts/verify-comment-coverage.ts
+scanned 366 TypeScript file(s) of 366 in the source set; inspected 32271 declaration(s); skipped 14483 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-tui-plugin/src/index.ts (1)
+  476: return-type — <anonymous>
+exit=1   <-- FOREIGN, the same file; evidence/** is outside this gate's source set
+
+## node scripts/verify-dist-fresh.ts
+  FRESH   packages/mpd-team-core-plugin/dist/index.js  sha f1e744d10de6… 20ms  <- packages/mpd-team-core-plugin/src/index.ts
+  STALE   packages/mpd-tui-plugin/dist/index.js  <- packages/mpd-tui-plugin/src/index.ts
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] FAIL - 1 of 30 targets not fresh (STALE: 1) — 605ms
+exit=1   <-- FOREIGN: the ONE stale target is packages/mpd-tui-plugin/dist/index.js
+
+## dist sha256 (unchanged by this repair: no src/** was touched)
+f1e744d10de641a9b2f171ca2d10bc02c6d02bdb2b38fd504ad00976105d3e7a  packages/mpd-team-core-plugin/dist/index.js
+
+## S-e parity (repaired — the hashes are EMITTED by the run, R-S1)
+state parity: identical=true identicalNormalized=true routes 4 → 5
+state parity: sha256 before=cf1cf0755da57dc314df3d517d3dc7bf9c99847c8df144b421aa6baa4a949099 after=cf1cf0755da57dc314df3d517d3dc7bf9c99847c8df144b421aa6baa4a949099
+state parity: raw sha256 before=26f9e1f799034b3cfb5e4888f2236b9be74791b1356b11512e7173cf1b8cb49e after=26f9e1f799034b3cfb5e4888f2236b9be74791b1356b11512e7173cf1b8cb49e (582 B, workspace=/tmp/mpd-lane-s-parity-waJ5L4)
+cf1cf0755da57dc314df3d517d3dc7bf9c99847c8df144b421aa6baa4a949099  parity-before-state.json
+cf1cf0755da57dc314df3d517d3dc7bf9c99847c8df144b421aa6baa4a949099  parity-after-state.json
+
+## S-a keep-alive arm (repair R-S2), real boot on port 3200
+keepalive: captured the head block and the idle `: ping`
+after-keepalive-sse.txt: [+5ms] retry + hello, [+15006ms] ": ping\n\n", 0 change frames in between
+after-keepalive-body.txt: 269 B over 22013 ms of raw `curl -i -N` — head block + retry + hello + : ping
+after-keepalive-headers.txt: content-type, cache-control, connection, x-accel-buffering all present
+
+## credential sweep (repair R-S3), standalone re-run on the settled directory
+secret sweep: 0 value(s) in 0 distinct form(s) redacted across 0 log(s); re-read clean: true
+
+## recorded-value cross-check (repair R-S1) — a node one-liner that re-hashes the BYTES ON DISK and compares them to the recorded values
+recorded S-e beforeSha256 == sha256sum artifact      : true cf1cf0755da57dc314df3d517d3dc7bf9c99847c8df144b421aa6baa4a949099
+recorded S-e afterSha256  == sha256sum artifact      : true cf1cf0755da57dc314df3d517d3dc7bf9c99847c8df144b421aa6baa4a949099
+recorded == the run-emitted state-parity.json        : true
+recorded rawSha256Before == the final run raw hash   : true 26f9e1f799034b3cfb5e4888f2236b9be74791b1356b11512e7173cf1b8cb49e
+recorded dist.sha256      == sha256sum dist          : true f1e744d10de641a9b2f171ca2d10bc02c6d02bdb2b38fd504ad00976105d3e7a
+keepalive raw capture carries a ping line            : true
+keepalive head capture carries all four headers      : true
+
+## final cross-check (repair R-S1, after the last write) — every recorded value re-read from disk
+ALL 14 recorded values agree with their artifacts (S-e hashes vs sha256sum vs state-parity.json; dist.sha256 vs sha256sum; the five S-a frame/stamp values vs after-latency.json; the four S-d re-arm values vs after-refused.json)

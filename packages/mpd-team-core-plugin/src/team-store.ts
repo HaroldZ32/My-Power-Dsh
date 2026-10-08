@@ -235,6 +235,46 @@ function writeJson(path: string, value: unknown): void {
   renameSync(temp, path)
 }
 
+/**
+ * Who wants to know that a workspace's team state moved — the `mpdTeams` change feed, in production.
+ *
+ * THE HOOK SITS ON THESE WRITERS, not on a poller, because the ONE thing every team mutation has in
+ * common is this module: {@link writeTeam}, {@link writeTeamsIndex} and {@link deleteTeam} are the
+ * choke point. It is a module-level registry rather than a parameter because those writers are called
+ * from ~40 places and threading a feed through every one of them would touch every call site to carry
+ * a value that exactly one consumer in the whole bundle reads.
+ */
+const teamStateObservers = new Set<(workspace: string) => void>()
+
+/**
+ * Subscribe to the team-state WRITES this process performs, in every workspace.
+ *
+ * An observer runs AFTER the bytes are in place, on the WRITER's stack, so it must be cheap and must
+ * be prepared to be called several times inside one change window — coalescing is the feed's job, not
+ * the writer's.
+ * @param observer - called with the workspace whose state was written.
+ * @returns the disposer; calling it twice is safe.
+ */
+export function onTeamStateWritten(observer: (workspace: string) => void): () => void {
+  teamStateObservers.add(observer)
+  return (): void => { teamStateObservers.delete(observer) }
+}
+
+/**
+ * Tell the observers that one workspace's team state moved.
+ *
+ * CONTAINMENT IS PART OF THE CONTRACT (change-feed §3.1.3): a throwing observer is swallowed for this
+ * call and never re-thrown into the writer, because a notification substrate must not be able to fail
+ * a team mutation. The list is snapshotted so an observer that unsubscribes from inside its own call
+ * cannot shorten the delivery for the rest.
+ * @param workspace - the workspace whose record or index was just written.
+ */
+function teamStateChanged(workspace: string): void {
+  for (const observer of [...teamStateObservers]) {
+    try { observer(workspace) } catch { /* a broken observer must not fail the write that fed it */ }
+  }
+}
+
 /** A stable, sortable identity for one team, derived from the instant it was created. */
 export function newTeamId(now: Date): string {
   return "team-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)
@@ -260,6 +300,9 @@ export function readTeamsIndex(workspace: string): TeamsIndex {
 /** Persist the index. */
 export function writeTeamsIndex(workspace: string, index: TeamsIndex): void {
   writeJson(teamsIndexPath(workspace), index)
+  // The index is team state: `createTeam` binds the new team here, so a surface that only followed
+  // the records would miss "this session now has a team".
+  teamStateChanged(workspace)
 }
 
 /** The team id ACTIVE for one session, or `undefined` when that session has none. */
@@ -301,6 +344,7 @@ export function readTeam(workspace: string, teamId: string): TeamRecord | undefi
 /** Persist one team record. */
 export function writeTeam(workspace: string, record: TeamRecord): void {
   writeJson(teamRecordPath(workspace, record.teamId), record)
+  teamStateChanged(workspace)
 }
 
 /** Every readable team in this workspace, NEWEST FIRST (records carry no ordering of their own). */
@@ -329,6 +373,9 @@ export function deleteTeam(workspace: string, teamId: string): boolean {
   const path = teamRecordPath(workspace, teamId)
   if (!existsSync(path)) return false
   rmSync(path, { force: true })
+  // A DELETE is a change too, and it is the one a directory watch sees as a bare `rename` — which is
+  // why the feed is told here rather than being left to infer it from the record it can no longer read.
+  teamStateChanged(workspace)
   return true
 }
 

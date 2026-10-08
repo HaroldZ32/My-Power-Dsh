@@ -1,0 +1,3 @@
+[+5ms] "retry: 1000\n\n"
+[+5ms] "event: hello\ndata: {\"rev\":0}\n\n"
+[+76ms] "data: {\"rev\":1}\n\n"

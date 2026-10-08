@@ -1,0 +1,39 @@
+{
+  "identical": true,
+  "identicalNormalized": true,
+  "sha256Of": "the body as written to parity-before-state.json / parity-after-state.json: this run's mkdtemp workspace path replaced by the literal <workspace>, every other byte untouched",
+  "sha256Before": "cf1cf0755da57dc314df3d517d3dc7bf9c99847c8df144b421aa6baa4a949099",
+  "sha256After": "cf1cf0755da57dc314df3d517d3dc7bf9c99847c8df144b421aa6baa4a949099",
+  "rawSha256Of": "the exact bytes the route answered, workspace path included — equal to each other in THIS run and different in the next one",
+  "rawSha256Before": "26f9e1f799034b3cfb5e4888f2236b9be74791b1356b11512e7173cf1b8cb49e",
+  "rawSha256After": "26f9e1f799034b3cfb5e4888f2236b9be74791b1356b11512e7173cf1b8cb49e",
+  "rawBytes": 582,
+  "normalizedBytes": 564,
+  "beforeBytes": 582,
+  "afterBytes": 582,
+  "workspacePathThisRun": "/tmp/mpd-lane-s-parity-waJ5L4",
+  "workspaceReplacements": {
+    "before": 1,
+    "after": 1
+  },
+  "normalizationApplied": true,
+  "beforeRoutes": [
+    "/plugins/mpd-team/state",
+    "/plugins/mpd-team/plan",
+    "/plugins/mpd-team/task",
+    "/plugins/mpd-team/mail"
+  ],
+  "afterRoutes": [
+    "/plugins/mpd-team/state",
+    "/plugins/mpd-team/plan",
+    "/plugins/mpd-team/task",
+    "/plugins/mpd-team/mail",
+    "/plugins/mpd-team/events"
+  ],
+  "beforeRouteCount": 4,
+  "afterRouteCount": 5,
+  "addedRoutes": [
+    "/plugins/mpd-team/events"
+  ],
+  "ranAt": "2026-10-08T08:17:17.182Z"
+}

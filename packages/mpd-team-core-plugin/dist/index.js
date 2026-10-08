@@ -1,5 +1,5 @@
 // packages/mpd-team-core-plugin/src/index.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync4, readdirSync as readdirSync3, renameSync as renameSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { existsSync as existsSync4, mkdirSync as mkdirSync6, readFileSync as readFileSync4, readdirSync as readdirSync3, renameSync as renameSync4, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join5 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
@@ -1809,6 +1809,20 @@ function writeJson(path, value) {
 `);
   renameSync2(temp, path);
 }
+var teamStateObservers = new Set;
+function onTeamStateWritten(observer) {
+  teamStateObservers.add(observer);
+  return () => {
+    teamStateObservers.delete(observer);
+  };
+}
+function teamStateChanged(workspace) {
+  for (const observer of [...teamStateObservers]) {
+    try {
+      observer(workspace);
+    } catch {}
+  }
+}
 function newTeamId(now) {
   return "team-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
 }
@@ -1824,6 +1838,7 @@ function readTeamsIndex(workspace) {
 }
 function writeTeamsIndex(workspace, index) {
   writeJson(teamsIndexPath(workspace), index);
+  teamStateChanged(workspace);
 }
 function activeTeamId(workspace, sessionId) {
   const id = readTeamsIndex(workspace).active[sessionKey(sessionId)];
@@ -1844,6 +1859,7 @@ function readTeam(workspace, teamId) {
 }
 function writeTeam(workspace, record) {
   writeJson(teamRecordPath(workspace, record.teamId), record);
+  teamStateChanged(workspace);
 }
 function listTeams(workspace) {
   let names = [];
@@ -2365,7 +2381,8 @@ var TEAM_STATE_PATH = "/plugins/mpd-team/state";
 var TEAM_PLAN_PATH = "/plugins/mpd-team/plan";
 var TEAM_TASK_PATH = "/plugins/mpd-team/task";
 var TEAM_MAIL_PATH = "/plugins/mpd-team/mail";
-var TEAM_ROUTES = [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH];
+var TEAM_EVENTS_PATH = "/plugins/mpd-team/events";
+var TEAM_ROUTES = [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH, TEAM_EVENTS_PATH];
 function approvalPhraseFor(planId) {
   return `approve ${planId}`;
 }
@@ -2535,6 +2552,7 @@ function buildTeamMail(workspace) {
 function planForSession(workspace, sessionId) {
   return buildTeamPlan(readPlan(workspace, sessionId), workspace, sessionId);
 }
+var SSE_PING_MS = 15000;
 function registerTeamRoutes(webServer, deps) {
   if (webServer === undefined || typeof webServer.register !== "function")
     return false;
@@ -2571,6 +2589,103 @@ function registerTeamRoutes(webServer, deps) {
     }
   };
   let all = true;
+  const mountStream = (path, handler) => {
+    try {
+      deps.effect(() => webServer.register({
+        kind: "exact",
+        path,
+        handler: (req, res) => {
+          try {
+            handler(req, res);
+          } catch (error) {
+            deps.warn(`the ${path} stream failed: ${String(error?.message ?? error)}`);
+          }
+        }
+      }), `mpd-team-core: web route ${path}`);
+      return true;
+    } catch (error) {
+      deps.warn(`registering ${path} failed: ${String(error?.message ?? error)}`);
+      return false;
+    }
+  };
+  const events = (req, res) => {
+    const subscribe = deps.subscribe;
+    const revision = deps.revision;
+    if (subscribe === undefined || revision === undefined) {
+      json(res, 503, { ok: false, error: "mpd-team-core: the team change feed is unavailable in this composition" });
+      return;
+    }
+    const out = res;
+    const workspace = deps.workspace();
+    const sessionId = sessionOf(req);
+    const revisionNow = () => {
+      try {
+        return revision(workspace);
+      } catch {
+        return 0;
+      }
+    };
+    try {
+      out.writeHead(200, {
+        "content-type": "text/event-stream; charset=utf-8",
+        "cache-control": "no-store, no-transform",
+        connection: "keep-alive",
+        "x-accel-buffering": "no"
+      });
+      if (typeof out.flushHeaders === "function")
+        out.flushHeaders();
+      out.write(`retry: 1000
+
+`);
+      out.write(`event: hello
+data: ${JSON.stringify({ rev: revisionNow() })}
+
+`);
+    } catch (error) {
+      deps.warn(`opening the events stream failed: ${String(error?.message ?? error)}`);
+      try {
+        out.end();
+      } catch {}
+      return;
+    }
+    const ping = setInterval(() => {
+      try {
+        out.write(`: ping
+
+`);
+      } catch {}
+    }, SSE_PING_MS);
+    const unref = ping.unref;
+    if (typeof unref === "function")
+      unref.call(ping);
+    let unsubscribe = () => {};
+    try {
+      unsubscribe = subscribe(workspace, () => {
+        try {
+          out.write(`data: ${JSON.stringify({ rev: revisionNow() })}
+
+`);
+        } catch {}
+      });
+    } catch (error) {
+      deps.warn(`subscribing the events stream failed: ${String(error?.message ?? error)}`);
+    }
+    let closed = false;
+    const close = () => {
+      if (closed)
+        return;
+      closed = true;
+      clearInterval(ping);
+      try {
+        unsubscribe();
+      } catch {}
+    };
+    if (typeof req.on === "function")
+      req.on?.("close", close);
+    if (typeof out.on === "function")
+      out.on("close", close);
+    deps.warn(`the events stream opened for ${workspace} (session=${sessionId === "" ? "none" : sessionId})`);
+  };
   all = mount(TEAM_STATE_PATH, (req) => {
     const sessionId = sessionOf(req);
     const workspace = deps.workspace();
@@ -2582,7 +2697,176 @@ function registerTeamRoutes(webServer, deps) {
   }) && all;
   all = mount(TEAM_TASK_PATH, () => buildTeamTasks(deps.workspace())) && all;
   all = mount(TEAM_MAIL_PATH, () => buildTeamMail(deps.workspace())) && all;
+  all = mountStream(TEAM_EVENTS_PATH, events) && all;
   return all;
+}
+
+// packages/mpd-team-core-plugin/src/change-feed.ts
+import { mkdirSync as mkdirSync5, watch } from "node:fs";
+var watchDirectory = (dir, onEvent) => watch(dir, { persistent: false }, onEvent);
+function detachTimer(timer) {
+  const unref = timer.unref;
+  if (typeof unref === "function")
+    unref.call(timer);
+}
+
+class ChangeFeed {
+  debounceMs;
+  watchFor;
+  warn;
+  workspaces = new Map;
+  unhook;
+  disposed = false;
+  constructor(options = {}) {
+    this.debounceMs = options.debounceMs ?? 50;
+    this.watchFor = options.watch ?? watchDirectory;
+    this.warn = options.warn ?? (() => {});
+    this.unhook = onTeamStateWritten((workspace) => {
+      this.notify(workspace);
+    });
+  }
+  notify(workspace) {
+    if (this.disposed)
+      return;
+    const state = this.stateFor(workspace);
+    this.arm(workspace, state);
+    if (state.timer !== undefined)
+      return;
+    state.revision += 1;
+    state.timer = setTimeout(() => {
+      this.flush(workspace);
+    }, this.debounceMs);
+    detachTimer(state.timer);
+  }
+  subscribe(workspace, listener) {
+    if (this.disposed)
+      return () => {};
+    const state = this.stateFor(workspace);
+    state.listeners.add(listener);
+    this.arm(workspace, state);
+    let released = false;
+    return () => {
+      if (released)
+        return;
+      released = true;
+      this.release(workspace, listener);
+    };
+  }
+  revision(workspace) {
+    return this.workspaces.get(workspace)?.revision ?? 0;
+  }
+  stats(workspace) {
+    const state = this.workspaces.get(workspace);
+    if (state === undefined)
+      return { revision: 0, listeners: 0, watchers: 0, pending: false };
+    return { revision: state.revision, listeners: state.listeners.size, watchers: state.watchers.size, pending: state.timer !== undefined };
+  }
+  dispose() {
+    if (this.disposed)
+      return;
+    this.disposed = true;
+    this.unhook();
+    for (const state of this.workspaces.values()) {
+      if (state.timer !== undefined)
+        clearTimeout(state.timer);
+      for (const handle of state.watchers.values()) {
+        try {
+          handle.close();
+        } catch {}
+      }
+      state.watchers.clear();
+      state.armed.clear();
+      state.listeners.clear();
+      state.timer = undefined;
+    }
+    this.workspaces.clear();
+  }
+  flush(workspace) {
+    const state = this.workspaces.get(workspace);
+    if (state === undefined)
+      return;
+    state.timer = undefined;
+    for (const listener of [...state.listeners]) {
+      try {
+        listener();
+      } catch (error) {
+        if (state.listenerReported)
+          continue;
+        state.listenerReported = true;
+        this.warn(`[mpd-team-core] team change feed: a listener threw and was contained (${String(error?.message ?? error)})`);
+      }
+    }
+  }
+  release(workspace, listener) {
+    const state = this.workspaces.get(workspace);
+    if (state === undefined)
+      return;
+    state.listeners.delete(listener);
+    if (state.listeners.size > 0)
+      return;
+    if (state.timer !== undefined)
+      clearTimeout(state.timer);
+    state.timer = undefined;
+    for (const handle of state.watchers.values()) {
+      try {
+        handle.close();
+      } catch {}
+    }
+    state.watchers.clear();
+    state.armed.clear();
+  }
+  arm(workspace, state) {
+    if (this.disposed || state.arming)
+      return;
+    state.arming = true;
+    try {
+      const dirs = [teamRoot(workspace), teamsDir(workspace)];
+      for (const dir of dirs) {
+        if (state.armed.has(dir))
+          continue;
+        try {
+          mkdirSync5(dir, { recursive: true });
+        } catch {}
+      }
+      for (const dir of dirs) {
+        if (state.armed.has(dir))
+          continue;
+        try {
+          state.watchers.set(dir, this.watchFor(dir, () => {
+            this.notify(workspace);
+          }));
+          state.armed.add(dir);
+          if (state.reported) {
+            state.reported = false;
+            this.warn(`[mpd-team-core] team change feed: watch armed for ${dir}`);
+          }
+        } catch (error) {
+          if (state.reported)
+            continue;
+          state.reported = true;
+          this.warn(`[mpd-team-core] team change feed: no filesystem watch for ${dir} (${String(error?.message ?? error)}) — in-process notifications only, a write from ANOTHER process will not be seen`);
+        }
+      }
+    } finally {
+      state.arming = false;
+    }
+  }
+  stateFor(workspace) {
+    const existing = this.workspaces.get(workspace);
+    if (existing !== undefined)
+      return existing;
+    const created = {
+      revision: 0,
+      listeners: new Set,
+      armed: new Set,
+      watchers: new Map,
+      reported: false,
+      listenerReported: false,
+      arming: false
+    };
+    this.workspaces.set(workspace, created);
+    return created;
+  }
 }
 
 // packages/mpd-team-core-plugin/src/index.ts
@@ -2600,7 +2884,7 @@ function readLedger(workspace) {
   }
 }
 function writeLedger(workspace, ledger) {
-  mkdirSync5(join5(workspace, ".mpd", "team"), { recursive: true });
+  mkdirSync6(join5(workspace, ".mpd", "team"), { recursive: true });
   const temp = dispatchPath(workspace) + ".tmp-" + process.pid;
   writeFileSync3(temp, JSON.stringify(ledger, null, 2) + `
 `);
@@ -2640,6 +2924,12 @@ function apply(ctx) {
   const dsh = adapterFor(ctx);
   const disposers = [];
   const now = () => new Date;
+  const feed = new ChangeFeed({ warn: (line) => {
+    rowLogLine("mpd-team-core", line);
+  } });
+  disposers.push(() => {
+    feed.dispose();
+  });
   const executor = () => dsh.teamExecutor();
   const where = (exec) => ({ workspace: dsh.workspaceRoot(exec), sessionId: sessionIdOf(exec) });
   const requirePlan = (exec) => {
@@ -2746,6 +3036,20 @@ function apply(ctx) {
           } catch (error) {
             rowLogLine("mpd-team-core", `[mpd-team-core] reading the staged plan failed: ${String(error?.message ?? error)}`);
             return { ok: true, workspace, sessionId, plan: null };
+          }
+        },
+        subscribe: (workspace, listener) => {
+          try {
+            return feed.subscribe(workspace, listener);
+          } catch {
+            return () => {};
+          }
+        },
+        revision: (workspace) => {
+          try {
+            return feed.revision(workspace);
+          } catch {
+            return 0;
           }
         }
       });
@@ -3353,7 +3657,9 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
             return;
           }
         },
-        warn: (line) => rowLogLine("mpd-team-core", `[mpd-team-core] ${line}`)
+        warn: (line) => rowLogLine("mpd-team-core", `[mpd-team-core] ${line}`),
+        subscribe: (workspace, listener) => feed.subscribe(workspace, listener),
+        revision: (workspace) => feed.revision(workspace)
       });
       if (mountTeamRoute())
         rowLogLine("mpd-team-core", `[mpd-team-core] team web routes: ${TEAM_ROUTES.join(" ")}`);

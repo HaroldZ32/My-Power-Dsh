@@ -1,0 +1,12 @@
+{
+  "url": "http://127.0.0.1:3198/plugins/mpd-team/events?sessionId=sess-lane-s",
+  "openedAt": 1791446554229,
+  "helloAt": 1791446554234,
+  "helloText": "event: hello\ndata: {\"rev\":0}\n\n",
+  "writeAt": 1791446554255,
+  "writerOutput": "WROTE_MS=1791446554255",
+  "frameAt": 1791446554305,
+  "frameText": "data: {\"rev\":1}\n\n",
+  "deltaMs": 50,
+  "under200": true
+}

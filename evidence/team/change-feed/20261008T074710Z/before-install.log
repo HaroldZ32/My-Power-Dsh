@@ -1,0 +1,12 @@
+[WARN] The package @mpd-dsh/mpd, which you have just pnpm linked, has the following peerDependencies specified in its package.json:
+
+  - dsh-better-sidebar@>=0.24.1 <0.25.0
+
+The linked in dependency will not resolve the peer dependencies from the target node_modules.
+This might cause issues in your project. To resolve this, you may use the "file:" protocol to reference the local dependency.
+Already up to date
+
+dependencies:
++ @mpd-dsh/mpd <- ../../../../..
+
+Done in 22ms using pnpm v12.10.1
