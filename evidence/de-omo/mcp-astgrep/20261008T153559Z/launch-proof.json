@@ -1,0 +1,46 @@
+{
+  "launcher": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-astgrep/dist/launch.js",
+  "withEngine": {
+    "responseCount": 3,
+    "toolNames": [
+      "search",
+      "rewrite",
+      "scan"
+    ],
+    "searchOk": true,
+    "searchKind": "search",
+    "searchMatchCount": 2,
+    "searchFirstPath": "src/a.ts",
+    "engineArgv": [
+      [
+        "--version"
+      ],
+      [
+        "--version"
+      ],
+      [
+        "run",
+        "-p",
+        "foo($A)",
+        "--lang",
+        "typescript",
+        "--json=stream",
+        "--strictness",
+        "smart",
+        "src"
+      ]
+    ],
+    "stderr": ""
+  },
+  "noEngine": {
+    "responseCount": 3,
+    "toolNames": [
+      "search",
+      "rewrite",
+      "scan"
+    ],
+    "searchCode": "BINARY_NOT_FOUND",
+    "searchIsError": true,
+    "stderr": ""
+  }
+}

@@ -1,0 +1,496 @@
+########## B1 EVIDENCE BUNDLE — 2026-10-08T15:41:28Z ##########
+
+##### new server sources (wc -l)
+    41 packages/mpd-mcp-astgrep/src/cli.ts
+   405 packages/mpd-mcp-astgrep/src/hints.ts
+    50 packages/mpd-mcp-astgrep/src/launch.ts
+   242 packages/mpd-mcp-astgrep/src/normalize.ts
+   152 packages/mpd-mcp-astgrep/src/protocol.ts
+   687 packages/mpd-mcp-astgrep/src/rewrite.ts
+   363 packages/mpd-mcp-astgrep/src/runner.ts
+   590 packages/mpd-mcp-astgrep/src/scan.ts
+   530 packages/mpd-mcp-astgrep/src/search.ts
+   503 packages/mpd-mcp-astgrep/src/server.ts
+  3563 total
+
+##### artifact
+total 88
+-rwxrwxr-x 1 haroldzhao haroldzhao 76468 Oct  8 23:40 cli.js
+-rwxrwxr-x 1 haroldzhao haroldzhao 11231 Oct  8 07:00 launch.js
+ddf7111ed8a847b34fc9ec88adf88421706aeaad46f47bb573337ebe028ba0cd  packages/mpd-mcp-astgrep/dist/cli.js
+8ebf954663ebdac75ede60f836a7b10777d1c696bd785919ba40391fab8efafa  packages/mpd-mcp-astgrep/dist/launch.js
+
+##### oracle recovery
+f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5  evidence/de-omo/mcp-astgrep/20261008T153559Z/oracle-vendored-cli.mjs
+
+##### differential harness (31 cases)
+cases=31 equal=31 different=0
+masked description lengths: ["search:582","rewrite:540","scan:505"]
+
+##### launch-path proof
+{
+  "launcher": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-astgrep/dist/launch.js",
+  "withEngine": {
+    "responseCount": 3,
+    "toolNames": [
+      "search",
+      "rewrite",
+      "scan"
+    ],
+    "searchOk": true,
+    "searchKind": "search",
+    "searchMatchCount": 2,
+    "searchFirstPath": "src/a.ts",
+    "engineArgv": [
+      [
+        "--version"
+      ],
+      [
+        "--version"
+      ],
+      [
+        "run",
+        "-p",
+        "foo($A)",
+        "--lang",
+        "typescript",
+        "--json=stream",
+        "--strictness",
+        "smart",
+        "src"
+      ]
+    ],
+    "stderr": ""
+  },
+  "noEngine": {
+    "responseCount": 3,
+    "toolNames": [
+      "search",
+      "rewrite",
+      "scan"
+    ],
+    "searchCode": "BINARY_NOT_FOUND",
+    "searchIsError": true,
+    "stderr": ""
+  }
+}
+
+########## final-gates.log ##########
+===== B1 FINAL GATE SWEEP 2026-10-08T15:41:06Z =====
+
+$ node scripts/verify-vendor.ts
+[verify-vendor] asset OK: skills 371 files
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS - 5 shipped asset(s) fingerprinted, upstream identity not checked
+exit=0
+
+$ node scripts/repin-vendor.ts --check
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)
+exit=0
+
+$ bun run verify:comments
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 376 TypeScript file(s) of 376 in the source set; inspected 32964 declaration(s); skipped 14761 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+
+$ node scripts/verify-dist-fresh.ts
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 5 NOT COVERED files listed — 684ms
+exit=0
+
+$ bun run verify:manifest
+ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 950 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+exit=0
+
+$ node scripts/verify-pack-closure.ts
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/outcome.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/repair-tracker.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/report-tools-commands.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/report-tools.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/verification/2026-10-08T1203Z/verdict.md: source mtime 2026-10-08T13:21:41.697Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+exit=1
+
+$ bun test packages/mpd-mcp-shared
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [0.09ms]
+
+ 27 pass
+ 0 fail
+ 72 expect() calls
+Ran 27 tests across 2 files. [137.00ms]
+exit=0
+
+$ bun test packages/mpd-dsh-adapter-plugin
+(fail) the cross-package coupling inventory is exactly the frozen set (independence gate) [83.80ms]
+
+ 180 pass
+ 2 fail
+ 870 expect() calls
+Ran 182 tests across 10 files. [1.97s]
+exit=1
+
+$ bun package s/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts --self-test
+error: Cannot run "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/package.json"
+note: Bun cannot run json files directly
+exit=1
+
+$ bun run typecheck (B1 scope check: errors outside packages/mpd-mcp-astgrep are pre-existing wave-A)
+
+$ bun run typecheck
+$ tsgo --noEmit
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(87,1): error TS1135: Argument expression expected.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(431,1): error TS1005: '}' expected.
+error: script "typecheck" exited with code 1
+exit=1
+
+########## gates-final.log ##########
+### verify:comments
+
+scanned 376 TypeScript file(s) of 376 in the source set; inspected 32962 declaration(s); skipped 14761 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+### verify-dist-fresh
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha 4c7534a206db… 19ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 8ebf954663eb… 15ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+exit=0
+### verify-pack-closure
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/gates-layout.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/gates-static.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/gates-structure.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/gates-text.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/html-lite.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/layout-probe.mjs: source mtime 2026-10-08T15:20:32.226Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/outcome.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/repair-tracker.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/report-tools-commands.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/report-tools.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/verification/2026-10-08T1203Z/verdict.md: source mtime 2026-10-08T13:21:41.697Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+exit=1
+
+########## gates-final2.log ##########
+###### node scripts/verify-vendor.ts
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS - 5 shipped asset(s) fingerprinted, upstream identity not checked
+exit=0
+###### node scripts/repin-vendor.ts --check
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)
+exit=0
+###### bun run verify:manifest
+ok    packed-content: npm pack --dry-run lists 950 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+exit=0
+
+########## gates-final3.log ##########
+### verify:comments
+scanned 376 TypeScript file(s) of 376 in the source set; inspected 32964 declaration(s); skipped 14761 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+### verify-dist-fresh
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha ddf7111ed8a8… 18ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 8ebf954663eb… 15ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+exit=0
+
+########## pack-closure-full.log ##########
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  TREE-DRIFT - docs/ differs from the source tree - dropped by the pack: verification/2026-10-08T1203Z/verdict.md; not in the source: (none)
+  packer: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/scripts/pack-mpd.ts
+  cli: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/scripts/mpd-ext.ts
+  packages dir: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages
+  patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml
+  packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (421 asset files); content bytes: 549 file(s) compared, 459 identical, 0 drift, 90 expected-after-pack; completeness: 498 declared source file(s) compared, 452 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-08T08:51:48.162Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time))
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ast-grep/AGENTS.md: source mtime 2026-10-08T15:19:52.259Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ast-grep/README.md: source mtime 2026-10-08T15:16:44.627Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ast-grep/SKILL.md: source mtime 2026-10-08T15:06:43.376Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/data-scientist/SKILL.md: source mtime 2026-10-08T14:59:23.804Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/data-scientist/references/uv-setup.md: source mtime 2026-10-08T14:58:23.417Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/debugging/SKILL.md: source mtime 2026-10-08T14:59:23.804Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/debugging/references/methodology/00-setup.md: source mtime 2026-10-08T14:58:23.437Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/debugging/references/methodology/02-investigate.md: source mtime 2026-10-08T15:06:43.376Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/debugging/references/methodology/06-fix.md: source mtime 2026-10-08T14:58:23.443Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/debugging/references/runtimes/go.md: source mtime 2026-10-08T14:58:23.451Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/debugging/references/runtimes/native-binary.md: source mtime 2026-10-08T14:58:23.453Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/debugging/references/runtimes/node.md: source mtime 2026-10-08T14:58:23.456Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/debugging/references/runtimes/python.md: source mtime 2026-10-08T14:58:23.459Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/debugging/references/runtimes/rust.md: source mtime 2026-10-08T14:58:23.461Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/readonly-deny.ts: source mtime 2026-10-08T13:21:41.763Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/web-client-adapt.ts: source mtime 2026-10-08T13:21:41.764Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/dsh-qa/scripts/workmate-library.ts: source mtime 2026-10-08T13:21:41.764Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/ATTRIBUTION.md: source mtime 2026-10-08T15:02:21.725Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/SKILL.md: source mtime 2026-10-08T15:20:13.691Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/references/design/README.md: source mtime 2026-10-08T14:58:23.507Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/references/design/_INDEX.md: source mtime 2026-10-08T14:58:23.485Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/references/design/aside.md: source mtime 2026-10-08T14:58:23.478Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/references/design/clone-from-url.md: source mtime 2026-10-08T15:20:13.808Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/references/design/design-system-architecture.md: source mtime 2026-10-08T14:58:23.483Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/references/design/interaction-skill.md: source mtime 2026-10-08T14:58:23.488Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/references/design/layout-skill.md: source mtime 2026-10-08T14:58:23.490Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/references/perfection/README.md: source mtime 2026-10-08T14:58:23.509Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/scripts/perfection/lighthouse-audit.py: source mtime 2026-10-08T14:58:23.512Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/init-deep/SKILL.md: source mtime 2026-10-08T14:59:23.805Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/lsp-setup/SKILL.md: source mtime 2026-10-08T15:16:48.019Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/lsp-setup/scripts/verify-lsp.ts: source mtime 2026-10-08T15:06:43.376Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/SKILL.md: source mtime 2026-10-08T14:59:23.805Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust-ub/miri-sanitizers-loom.md: source mtime 2026-10-08T14:58:23.605Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust-ub/ub-taxonomy.md: source mtime 2026-10-08T14:58:23.607Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/README.md: source mtime 2026-10-08T14:58:23.602Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/async-tokio.md: source mtime 2026-10-08T14:58:23.584Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/axum-stack.md: source mtime 2026-10-08T14:58:23.587Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/cargo-strict.md: source mtime 2026-10-08T14:58:23.589Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/clap-stack.md: source mtime 2026-10-08T14:58:23.591Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/concurrency.md: source mtime 2026-10-08T14:58:23.593Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/libraries.md: source mtime 2026-10-08T14:58:23.596Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/one-liners.md: source mtime 2026-10-08T14:58:23.597Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/proptest-insta.md: source mtime 2026-10-08T14:58:23.599Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/type-state.md: source mtime 2026-10-08T14:58:23.603Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/unsafe-discipline.md: source mtime 2026-10-08T14:58:23.609Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/zero-cost-safety.md: source mtime 2026-10-08T14:58:23.611Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/scripts/rust/check-no-excuse-rules.sh: source mtime 2026-10-08T14:58:23.614Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/scripts/rust/new-project.py: source mtime 2026-10-08T14:58:23.616Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/scripts/typescript/check-no-excuse-rules.ts: source mtime 2026-10-08T15:03:40.050Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/refactor/SKILL.md: source mtime 2026-10-08T15:20:45.738Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/remove-ai-slops/SKILL.md: source mtime 2026-10-08T14:59:23.806Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/review-work/SKILL.md: source mtime 2026-10-08T15:20:13.732Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ultimate-browsing/ATTRIBUTION.md: source mtime 2026-10-08T15:16:42.200Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ultimate-browsing/SKILL.md: source mtime 2026-10-08T15:20:06.850Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ultimate-browsing/engine/AGENTS.md: source mtime 2026-10-08T15:16:15.117Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ultimate-browsing/engine/templates/package.json: source mtime 2026-10-08T15:16:18.714Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ultimate-browsing/engine/templates/playwright_mobile_chrome.js: source mtime 2026-10-08T14:58:23.687Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ultimate-browsing/engine/templates/playwright_real_chrome.js: source mtime 2026-10-08T15:16:22.929Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ultimate-browsing/engine/tests/test_playwright_templates.py: source mtime 2026-10-08T14:58:23.693Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ultimate-browsing/references/insane-search/README.md: source mtime 2026-10-08T15:20:18.553Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ultimate-browsing/references/insane-search/playwright.md: source mtime 2026-10-08T15:20:21.842Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ultimate-browsing/scripts/extract_cookies.py: source mtime 2026-10-08T14:58:23.704Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-execute/SKILL.md: source mtime 2026-10-08T15:20:13.770Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-plan/SKILL.md: source mtime 2026-10-08T14:59:23.809Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-plan/references/full-workflow.md: source mtime 2026-10-08T14:58:23.735Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-plan/references/intent-clear.md: source mtime 2026-10-08T14:58:23.737Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-plan/references/intent-unclear.md: source mtime 2026-10-08T14:58:23.740Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/SKILL.md: source mtime 2026-10-08T15:20:32.159Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/AGENTS.md: source mtime 2026-10-08T15:19:53.624Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/SKILL.md: source mtime 2026-10-08T15:20:44.362Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/references/agent-browser-setup.md: source mtime 2026-10-08T15:20:44.402Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/scripts/cli.ts: source mtime 2026-10-08T15:05:17.583Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/scripts/image-diff.ts: source mtime 2026-10-08T15:03:31.166Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/scripts/png-decode.ts: source mtime 2026-10-08T15:05:17.583Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/scripts/tui-grid.ts: source mtime 2026-10-08T15:05:17.583Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/development.md: source mtime 2026-10-08T13:21:41.695Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/development.zh-CN.md: source mtime 2026-10-08T13:21:41.695Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/feature-audit.md: source mtime 2026-10-08T13:21:41.695Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/feature-audit.zh-CN.md: source mtime 2026-10-08T13:21:41.695Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/glossary.md: source mtime 2026-10-08T13:21:41.694Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/troubleshooting.md: source mtime 2026-10-08T13:21:41.694Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-mcp-astgrep/dist/cli.js: source mtime 2026-10-08T15:38:06.232Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-modelchain-plugin/README.md: source mtime 2026-10-08T13:21:41.754Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-modelchain-plugin/README.zh-CN.md: source mtime 2026-10-08T13:21:41.754Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-modelchain-plugin/dist/index.js: source mtime 2026-10-08T13:21:41.755Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-roles-plugin/README.md: source mtime 2026-10-08T13:21:41.755Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-roles-plugin/README.zh-CN.md: source mtime 2026-10-08T13:21:41.755Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-roles-plugin/dist/index.js: source mtime 2026-10-08T13:21:41.755Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tui-plugin/dist/index.js: source mtime 2026-10-08T13:21:41.759Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ast-grep/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.415Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/data-scientist/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.415Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/data-scientist/references/execution-surfaces.md: source mtime 2026-10-08T15:00:18.568Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/data-scientist/references/placement.md: source mtime 2026-10-08T15:00:18.568Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/data-scientist/references/polars-lane.md: source mtime 2026-10-08T15:00:18.568Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/data-scientist/references/visualization.md: source mtime 2026-10-08T15:00:18.568Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/data-scientist/scripts/ensure-js-deps.sh: source mtime 2026-10-08T15:01:01.793Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/data-scientist/scripts/ensure-py-deps.sh: source mtime 2026-10-08T15:01:01.796Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/debugging/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.415Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/references/design/ambience-skill.md: source mtime 2026-10-08T15:00:18.572Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/frontend/references/design/component-catalogs.md: source mtime 2026-10-08T15:00:18.572Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/git-master/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.415Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/init-deep/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.415Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/lsp-setup/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.415Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/api-design.md: source mtime 2026-10-08T14:59:38.078Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/programming/references/rust/macros.md: source mtime 2026-10-08T14:59:38.078Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/refactor/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/remove-ai-slops/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/review-work/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-execute/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-plan/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/references/deliverable-phase.md: source mtime 2026-10-08T15:20:34.356Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/references/report-gates.md: source mtime 2026-10-08T14:59:38.080Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/cli-support.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/contracts.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/css-lite.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/design-spec.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/entities.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/entry-guard.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/format-extract-css.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/format-extract.mjs: source mtime 2026-10-08T15:20:34.396Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/gates-figures.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/gates-layout.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/gates-static.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/gates-structure.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/gates-text.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/html-lite.mjs: source mtime 2026-10-08T15:00:18.566Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/layout-probe.mjs: source mtime 2026-10-08T15:20:32.226Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/outcome.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/repair-tracker.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/report-tools-commands.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/report-tools.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/verification/2026-10-08T1203Z/verdict.md: source mtime 2026-10-08T13:21:41.697Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+
+########## tests-and-deny.log ##########
+### bun test packages/mpd-mcp-shared
+
+ 27 pass
+ 0 fail
+ 72 expect() calls
+Ran 27 tests across 2 files. [130.00ms]
+exit=0
+### bun test packages/mpd-dsh-adapter-plugin
+
+ 180 pass
+ 2 fail
+ 870 expect() calls
+Ran 182 tests across 10 files. [1.93s]
+exit=1
+### node skills/dsh-qa/scripts/readonly-deny.ts
+[readonly-deny] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/workmate/roles-readonly/2026-10-08T15-38-41.801Z
+  positive: {"exit":1,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":2,"stubTrace":[{"call":1,"hasTools":true,"bytes":220809,"toolCount":103,"writeCapableVisible":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename"],"_toolN
+  enforcement: {"ok":false,"childRequests":0,"parentRequests":1,"childToolCounts":[],"parentToolCount":103,"childLeaksWriteCapable":[],"childHasStructuredOutput":false,"parentHasAllSeven":true,"note":"read-only authority is ENFORCED: the child's own requests cannot see any of the seven write-capable tools, while t
+  positiveOk: {"ok":false,"note":"the seven-name list reached tools.restrict(), the child was created and answered, and the child's visible toolset excludes all seven write-capable names"}
+  reinjectionDiagnostic: {"exit":1,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":2,"stubTrace":[{"call":1,"hasTools":true,"bytes":220765,"toolCount":103,"writeCapableVisible":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename"],"_toolN
+  reinjectionControl: {"ok":false,"mutationLoaded":false,"injectedNamesSeenByAdapter":[],"childRequestsUnderRestriction":0,"parentToolCount":103,"parentSeesWriteCapable":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename"],"refusalSeen":false,"note":"control: the m
+  reinjectionNote: "with the unregistered names re-injected, the sandbox boot still composed the child and emitted no refusal (refusalSeen=false) — the refusal is therefore NOT reproducible in this profile, so the positive lane carries the proof"
+  isolation: {"ok":true,"realWorkmateUntouched":true,"realWm":"/home/haroldzhao/.mpd/workmate"}
+exit=1
+
+########## frozen-set-deltas.log ##########
+### no-terminal-writes report
+  - packages/mpd-mcp-astgrep/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-astgrep\")"]
+UNFROZEN TERMINAL WRITES — 2 new write(s) that must go through the log sink:
+  packages/mpd-mcp-astgrep/src/cli.ts:23 [process.stderr.write]
+  packages/mpd-mcp-astgrep/src/protocol.ts:69 [process.stdout.write]
+### coupling report
+
+########## refreeze-print-inventory.log ##########
+### terminal-writes --print-inventory
+export const SWEEP_INVENTORY: Readonly<Record<string, number>> = {
+  "packages/mpd-mcp-astgrep/src/cli.ts": 1,
+  "packages/mpd-mcp-astgrep/src/protocol.ts": 1,
+}
+### coupling --print-inventory
+10:  "packages/mpd-mcp-astgrep/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
+11:  "packages/mpd-mcp-astgrep/src/launch.ts :: import { resolveAstGrepBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
+12:  "packages/mpd-mcp-astgrep/src/server.ts :: import { probeAstGrep, resolveAstGrepBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
+
+########## self-tests.log ##########
+===== B1 GATE SELF-TESTS (negative controls) =====
+
+$ node packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts --self-test
+[ok] a test file is out of band even though it calls console.log
+[ok] the declared exempt file WITH its anchor is classified exempt, not unfrozen
+[ok] the declared exempt file WITHOUT its anchor is STALE and its hits are NOT exempt
+[ok] with an EMPTY inventory a previously-frozen path is UNFROZEN again, and nothing is stale
+[ok] the ceiling rule still bites on a SEEDED table (the negative control for the shrink-only rule)
+[ok] the seeded fixture is RED (the gate would fail on it)
+
+VERDICT: PASS (10/10 checks)
+exit=0
+
+$ node packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts --self-test
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:607:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:276:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:381:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-dsh-adapter-plugin/src/shared'
+}
+
+Node.js v24.21.0
+exit=1
+
+$ node skills/dsh-qa/scripts/readonly-deny.ts --self-test
+[readonly-deny self-test] ok: 23 checks
+exit=0
+
+===== ast_grep dist greps (the contract the deny list rests on) =====
+1
+rewrite grep exit=0
+1
+scan grep exit=0
+
+$ bun packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts --self-test
+  ok   a NON-LITERAL provide is named as unreadable, never failed
+  ok   a COMMENT naming every forbidden shape is not a finding
+  ok   a non-.ts file under a scanned src/ is REPORTED out of band, never failed
+  ok   a STALE inventory entry reddens (the frozen set must track reality)
+  ok   exactly the four seeded couplings are frozen, three of them un-inventoried
+  ok   the fixture walker actually read the seeded band
+  ok   a coupling turns into a NONZERO exit code, a clean scan into zero
+SELF-TEST: PASS (14/14 checks)
+exit=0
+
+########## dist-fresh.log ##########
+  FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 251ae4c4d210… 21ms  <- packages/mpd-better-sidebar-host/src/index.ts
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha df52fc4dfb8b… 24ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 65f7ffc12dd4… 21ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha f8d222874b75… 22ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 456594271401… 20ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha ab353f7cb6d8… 21ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha ef1e1d06b960… 28ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha f8778fb4544b… 22ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha 52890183af7d… 23ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 15ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-goal-plugin/dist/index.js  sha 6c9b0dbdf9e3… 22ms  <- packages/mpd-goal-plugin/src/index.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 88fcd2d2463b… 19ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha d031fb12dae3… 23ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 8ebf954663eb… 16ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+  FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha f2da0d34b049… 15ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+  FRESH   packages/mpd-mcp-gitbash/dist/launch.js  sha 09edda944246… 15ms  <- packages/mpd-mcp-gitbash/src/launch.ts
+  FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha 2654ed63e841… 16ms  <- packages/mpd-mcp-lsp/src/launch.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha 620e622eda56… 22ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha b783ae2c8784… 24ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha d213a106bc5d… 28ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha d1a0f8cf6cb7… 20ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-roster-provider-plugin/dist/index.js  sha bc90875cb896… 22ms  <- packages/mpd-roster-provider-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 631bde7d805b… 21ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-core-plugin/dist/index.js  sha f1e744d10de6… 21ms  <- packages/mpd-team-core-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha d74198b51a1b… 19ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha a2949cdeeeaf… 25ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha c5bb01ab355d… 19ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 45f00df2cefe… 23ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha eeee5bbbd60a… 23ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-verify-plugin/dist/index.js  sha ea267323d751… 18ms  <- packages/mpd-verify-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 40157c0678ec… 23ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (5) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 5 NOT COVERED files listed — 683ms

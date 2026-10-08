@@ -1,10 +1,13 @@
 #!/usr/bin/env node
-// Offline build of the ast-grep / git-bash / lsp MCP servers: copy their sources from the IN-REPO
+// Offline build of the git-bash / lsp MCP servers: copy their sources from the IN-REPO
 // snapshot at vendor/mcp-src/ (read-only) into a temp workspace, resolve external dependencies from
 // the bun cache, then after bun build copy the dist artifacts into the mpd-dsh plugin package.
 // NO upstream checkout and NO network are needed: the snapshot IS the build input, and every path
 // below resolves from the repository root alone. The snapshot's origin, the one-time fetch that
 // produced it and the license it carries are recorded in vendor/mcp-src/README.md.
+// The ast-grep server is NOT built here any more (de-omo wave B1): it is written in this repository
+// and built from `packages/mpd-mcp-astgrep/src/cli.ts` by that package's own build script, so the
+// snapshot package `ast-grep-mcp` is no longer a build input of this script.
 // Artifacts go into the plugin package (plugin-form) with SHA256 recorded in BUILD.lock.
 import { spawnSync } from "node:child_process"
 import { createHash, randomUUID } from "node:crypto"
@@ -16,14 +19,14 @@ import { repoRootFrom } from "./lib/repo.ts"
 
 /** The repository root, derived from this script's own URL (`<root>/scripts/build-mcp.ts`). */
 const repoRoot = repoRootFrom(import.meta.url)
-// The build input is the IN-REPO snapshot whose seven package directories are the verbatim sources of
-// ast-grep-mcp / git-bash-mcp / lsp-daemon / lsp-core / mcp-stdio-core / utils / omo-config-core. The
+// The build input is the IN-REPO snapshot whose package directories are the verbatim sources of
+// git-bash-mcp / lsp-daemon / lsp-core / mcp-stdio-core / utils / omo-config-core. The
 // retired form read them out of an external `oh-my-openagent` checkout; nothing outside this
 // repository is consulted any more, so MPD_UPSTREAM_ROOT is no longer read at all.
 /** The in-repo source snapshot (`<root>/vendor/mcp-src/`) every copied package directory comes from. */
 const mcpSrcRoot = join(repoRoot, "vendor", "mcp-src")
 /** Snapshot package directories this build requires; a missing one is a loud FAIL, never an ENOENT stack. */
-const REQUIRED_SNAPSHOT_PACKAGES: readonly string[] = ["ast-grep-mcp", "git-bash-mcp", "lsp-daemon", "lsp-core", "mcp-stdio-core", "utils", "omo-config-core"]
+const REQUIRED_SNAPSHOT_PACKAGES: readonly string[] = ["git-bash-mcp", "lsp-daemon", "lsp-core", "mcp-stdio-core", "utils", "omo-config-core"]
 /** bun's install cache, from which every external dependency is linked instead of re-downloaded. */
 const cacheRoot = join(homedir(), ".bun", "install", "cache")
 
@@ -43,7 +46,6 @@ interface ServerSpec {
 
 /** The MCP servers built here, in build order. */
 const SERVERS: readonly ServerSpec[] = [
-  { name: "ast-grep", src: "ast-grep-mcp", pkg: "mpd-mcp-astgrep", entry: "src/cli.ts", argv: [] },
   { name: "git-bash", src: "git-bash-mcp", pkg: "mpd-mcp-gitbash", entry: "src/cli.ts", argv: [] },
   { name: "lsp", src: "lsp-daemon", pkg: "mpd-mcp-lsp", entry: "src/cli.ts", argv: ["mcp"] }
 ]
@@ -217,23 +219,6 @@ const MPD_SCRUB: Readonly<Record<string, ScrubConfig>> = {
       [/_(?:om)o/g, "_mpd"],
     ],
     residual: ["OMO_", ".omo", "omo-lsp", "omo/ping", /_(?:om)o/, "username: () => userInfo().username"],
-  },
-  "ast-grep": {
-    replace: [
-      ["OMO_AST_GREP_BIN_DIR", "MPD_AST_GREP_BIN_DIR"],
-      ["OMO_AST_GREP_SG_PATH", "MPD_AST_GREP_SG_PATH"],
-      ["OMO_AST_GREP_PROJECT_CWD", "MPD_AST_GREP_PROJECT_CWD"],
-      ["OMO_PROVISION_HINT", "MPD_PROVISION_HINT"],
-      [".omo", ".mpd"],
-      ["omoRuntimeCandidates", "mpdRuntimeCandidates"],
-      ["omo-runtime", "mpd-runtime"],
-      ["omo-ast-grep", "mpd-ast-grep"],
-      // The committed dist already reads the MPD forms here, so a pristine rebuild must be
-      // scrubbed into them or the byte-equality guard fails.
-      ["an OMO session", "an MPD session"],
-      ["OMO runtime", "MPD runtime"],
-    ],
-    residual: ["OMO_", ".omo", "omoRuntime", "omo-runtime", "omo-ast-grep", "OMO session", "OMO runtime"],
   },
   "git-bash": {
     // The upstream git-bash env contract is DELETED (DSH-only, owner ruling (c)): the env-key reads,

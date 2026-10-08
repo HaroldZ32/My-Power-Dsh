@@ -1,0 +1,44 @@
+===== B1 GATE SELF-TESTS (negative controls) =====
+
+$ node packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts --self-test
+[ok] a test file is out of band even though it calls console.log
+[ok] the declared exempt file WITH its anchor is classified exempt, not unfrozen
+[ok] the declared exempt file WITHOUT its anchor is STALE and its hits are NOT exempt
+[ok] with an EMPTY inventory a previously-frozen path is UNFROZEN again, and nothing is stale
+[ok] the ceiling rule still bites on a SEEDED table (the negative control for the shrink-only rule)
+[ok] the seeded fixture is RED (the gate would fail on it)
+
+VERDICT: PASS (10/10 checks)
+exit=0
+
+$ node packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts --self-test
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:607:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:276:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:381:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-dsh-adapter-plugin/src/shared'
+}
+
+Node.js v24.21.0
+exit=1
+
+$ node skills/dsh-qa/scripts/readonly-deny.ts --self-test
+[readonly-deny self-test] ok: 23 checks
+exit=0
+
+===== ast_grep dist greps (the contract the deny list rests on) =====
+1
+rewrite grep exit=0
+1
+scan grep exit=0
+
+$ bun packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts --self-test
+  ok   a NON-LITERAL provide is named as unreadable, never failed
+  ok   a COMMENT naming every forbidden shape is not a finding
+  ok   a non-.ts file under a scanned src/ is REPORTED out of band, never failed
+  ok   a STALE inventory entry reddens (the frozen set must track reality)
+  ok   exactly the four seeded couplings are frozen, three of them un-inventoried
+  ok   the fixture walker actually read the seeded band
+  ok   a coupling turns into a NONZERO exit code, a clean scan into zero
+SELF-TEST: PASS (14/14 checks)
+exit=0

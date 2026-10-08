@@ -1,0 +1,2 @@
+{"scenario":"scan-ruleparse","applying":false,"argv":["--version"]}
+{"scenario":"scan-ruleparse","applying":false,"argv":["scan","--inline-rules","id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n","--json=stream","src"]}

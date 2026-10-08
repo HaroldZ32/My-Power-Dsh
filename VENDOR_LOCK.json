@@ -12,11 +12,6 @@
       "source": "in-repo source snapshot of the three MCP servers and their four shared packages, copied at the pinned upstream commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29; this is the ONLY source scripts/build-mcp.ts reads (no external checkout, no network). Its origin, the one-time sparse fetch that produced it, the declared omission of the upstream AGENTS.md instruction files and the MEASURED licence (SUL-1.0; lsp-daemon self-declares MIT - NOT the MIT the wave plan assumed) are recorded in vendor/mcp-src/README.md",
       "treeSha": "af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c"
     },
-    "packages/mpd-mcp-astgrep/dist/cli.js": {
-      "fileCount": 1,
-      "source": "built offline via scripts/build-mcp.ts from the vendor/mcp-src/ast-grep-mcp snapshot",
-      "sha256": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5"
-    },
     "packages/mpd-mcp-gitbash/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.ts from the vendor/mcp-src/git-bash-mcp snapshot",

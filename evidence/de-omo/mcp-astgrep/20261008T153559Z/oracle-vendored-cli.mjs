@@ -1,310 +1,606 @@
 #!/usr/bin/env node
 
-// packages/mpd-mcp-shared/log-sink.ts
-import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-var LOG_SUBDIR = join(".mpd", "logs");
-var DEFAULT_MAX_BYTES = 1024 * 1024;
-var DEFAULT_MAX_LINE_BYTES = 8192;
-var DEFAULT_RING_LINES = 64;
-function truncationMarker(droppedBytes) {
-  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+// src/cli.ts
+import { argv, stderr } from "node:process";
+
+// ../mcp-stdio-core/src/record.ts
+function isPlainRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function resolveLogRoots(env = process.env, cwd) {
-  let working = cwd;
-  if (working === undefined) {
-    try {
-      working = process.cwd();
-    } catch {
-      working = undefined;
+// ../mcp-stdio-core/src/responses.ts
+function successResponse(id, result) {
+  return { jsonrpc: "2.0", id, result };
+}
+function errorResponse(id, code, message, data) {
+  return { jsonrpc: "2.0", id, error: data === undefined ? { code, message } : { code, message, data } };
+}
+function jsonRpcId(value) {
+  return typeof value === "string" || typeof value === "number" || value === null ? value : null;
+}
+function messageFromError(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+// ../mcp-stdio-core/src/transport.ts
+var HEADER_SEPARATOR = Buffer.from(`\r
+\r
+`);
+async function* readStdioJsonRpcMessages(input) {
+  let buffer = Buffer.alloc(0);
+  for await (const chunk of input) {
+    buffer = Buffer.concat([buffer, bufferFromChunk(chunk)]);
+    while (true) {
+      const result = readNextMessage(buffer);
+      if (result.kind === "incomplete")
+        break;
+      buffer = result.remaining;
+      if (result.message)
+        yield result.message;
     }
   }
-  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
-  const roots = [];
-  const seen = new Set;
-  for (const candidate of raw) {
-    if (typeof candidate !== "string" || candidate.trim().length === 0)
-      continue;
-    let absolute;
-    try {
-      absolute = resolve(candidate);
-    } catch {
-      continue;
-    }
-    if (seen.has(absolute))
-      continue;
-    seen.add(absolute);
-    roots.push(absolute);
+  const trailing = buffer.toString("utf8").trim();
+  if (trailing.length > 0) {
+    yield parseJsonPayload(trailing, "line");
   }
-  return roots;
 }
-function tryOpenRoot(root, name) {
+async function writeStdioJsonRpcResponse(output, response, responseMode) {
+  const body = JSON.stringify(response);
+  const payload = responseMode === "framed" ? `Content-Length: ${Buffer.byteLength(body, "utf8")}\r
+\r
+${body}` : `${body}
+`;
+  await writeChunk(output, payload);
+}
+function writeChunk(output, chunk) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const onError = (error) => {
+      if (settled)
+        return;
+      settled = true;
+      reject(error);
+    };
+    output.once("error", onError);
+    try {
+      output.write(chunk, (error) => {
+        if (settled)
+          return;
+        settled = true;
+        if (error) {
+          queueMicrotask(() => output.removeListener("error", onError));
+          reject(error);
+          return;
+        }
+        output.removeListener("error", onError);
+        resolve();
+      });
+    } catch (error) {
+      output.removeListener("error", onError);
+      if (settled)
+        return;
+      settled = true;
+      reject(error);
+    }
+  });
+}
+function readNextMessage(buffer) {
+  if (buffer.length === 0)
+    return { kind: "incomplete" };
+  return startsWithContentLength(buffer) ? readFramedMessage(buffer) : readLineMessage(buffer);
+}
+function readLineMessage(buffer) {
+  const newlineIndex = buffer.indexOf(10);
+  if (newlineIndex === -1)
+    return { kind: "incomplete" };
+  const line = buffer.subarray(0, newlineIndex).toString("utf8").replace(/\r$/, "");
+  if (line.trim().length === 0) {
+    return { kind: "complete", remaining: buffer.subarray(newlineIndex + 1) };
+  }
+  return {
+    kind: "complete",
+    message: parseJsonPayload(line, "line"),
+    remaining: buffer.subarray(newlineIndex + 1)
+  };
+}
+function readFramedMessage(buffer) {
+  const separatorIndex = buffer.indexOf(HEADER_SEPARATOR);
+  if (separatorIndex === -1)
+    return { kind: "incomplete" };
+  const headers = buffer.subarray(0, separatorIndex).toString("ascii");
+  const contentLength = parseContentLength(headers);
+  const bodyStart = separatorIndex + HEADER_SEPARATOR.length;
+  if (contentLength === undefined) {
+    return {
+      kind: "complete",
+      message: {
+        kind: "parse_error",
+        message: "Missing or invalid Content-Length header",
+        responseMode: "framed"
+      },
+      remaining: buffer.subarray(bodyStart)
+    };
+  }
+  const bodyEnd = bodyStart + contentLength;
+  if (buffer.length < bodyEnd)
+    return { kind: "incomplete" };
+  const body = buffer.subarray(bodyStart, bodyEnd).toString("utf8");
+  return {
+    kind: "complete",
+    message: parseJsonPayload(body, "framed"),
+    remaining: buffer.subarray(bodyEnd)
+  };
+}
+function startsWithContentLength(buffer) {
+  const prefix = buffer.subarray(0, "content-length:".length).toString("ascii").toLowerCase();
+  return prefix === "content-length:";
+}
+function parseContentLength(headers) {
+  for (const line of headers.split(`\r
+`)) {
+    const match = /^content-length:\s*(\d+)$/i.exec(line);
+    if (match === null)
+      continue;
+    const value = match[1];
+    if (value === undefined)
+      return;
+    return Number(value);
+  }
+  return;
+}
+function parseJsonPayload(payload, responseMode) {
   try {
-    const dir = join(root, LOG_SUBDIR);
-    mkdirSync(dir, { recursive: true });
-    const file = join(dir, `${name}.log`);
-    return { fd: openSync(file, "a"), file };
-  } catch {
-    return null;
+    return { kind: "request", payload: JSON.parse(payload), responseMode };
+  } catch (error) {
+    return { kind: "parse_error", message: error instanceof Error ? error.message : String(error), responseMode };
   }
 }
-function owningRoot(roots, file) {
-  for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
-      return root;
+function bufferFromChunk(chunk) {
+  if (Buffer.isBuffer(chunk))
+    return chunk;
+  if (typeof chunk === "string")
+    return Buffer.from(chunk);
+  throw new TypeError(`Unsupported stdio chunk type: ${typeof chunk}`);
+}
+
+// ../mcp-stdio-core/src/server.ts
+var DEFAULT_IDLE_TIMEOUT_MS = 10 * 60000;
+var DEFAULT_PARENT_POLL_INTERVAL_MS = 30000;
+var noopLog = () => {};
+function isProcessAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return !hasErrorCode(error, "ESRCH");
+  }
+}
+async function runJsonRpcStdioServer(config) {
+  const log = config.log ?? noopLog;
+  const idleTimeoutMs = config.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
+  let isClosed = false;
+  const idleTimer = createIdleTimer(idleTimeoutMs, log, () => {
+    isClosed = true;
+    config.onIdleTimeout?.();
+  });
+  const watchdog = createParentWatchdog(config.parentWatchdog, (parentPid, pollIntervalMs) => {
+    isClosed = true;
+    log("parent_exit", { parent_pid: parentPid, poll_interval_ms: pollIntervalMs });
+    config.onParentExit?.();
+    config.input.destroy();
+  });
+  log("stdio_started", { cwd: process.cwd(), idle_timeout_ms: idleTimeoutMs });
+  idleTimer.arm();
+  try {
+    for await (const message of readStdioJsonRpcMessages(config.input)) {
+      if (isClosed)
+        break;
+      idleTimer.arm();
+      if (message.kind === "parse_error") {
+        if (!await handleParseError(message, config, log))
+          break;
+        continue;
+      }
+      if (!await handleRequest(message, config, log))
+        break;
+    }
+  } catch (error) {
+    if (!(isClosed && hasErrorCode(error, "ERR_STREAM_PREMATURE_CLOSE")))
+      throw error;
+  } finally {
+    idleTimer.clear();
+    watchdog.clear();
+    log("stdio_stopped");
+  }
+}
+async function handleParseError(message, config, log) {
+  log("parse_error", { message: message.message });
+  const response = config.parseErrorResponse?.(message.message) ?? errorResponse(null, -32700, "Parse error", message.message);
+  if (response === undefined)
+    return true;
+  return writeResponse(response, {
+    output: config.output,
+    responseMode: message.responseMode,
+    log
+  });
+}
+async function handleRequest(message, config, log) {
+  const parsed = message.payload;
+  const id = isPlainRecord(parsed) ? jsonRpcId(parsed["id"]) : null;
+  const method = isPlainRecord(parsed) && typeof parsed["method"] === "string" ? parsed["method"] : null;
+  log("request", { id: id === null ? null : String(id), method });
+  let response;
+  try {
+    response = await config.handler(parsed, config.handlerOptions);
+  } catch (error) {
+    if (config.onHandlerError === undefined)
+      throw error;
+    config.onHandlerError(error);
+    return true;
+  }
+  if (response === undefined)
+    return true;
+  if (!await writeResponse(response, {
+    output: config.output,
+    responseMode: message.responseMode,
+    log
+  }))
+    return false;
+  log("response", { id: String(response.id), method, is_error: response.error !== undefined });
+  return true;
+}
+async function writeResponse(response, context) {
+  try {
+    await writeStdioJsonRpcResponse(context.output, response, context.responseMode);
+    return true;
+  } catch (error) {
+    if (!isTerminalOutputError(error))
+      throw error;
+    context.log("output_error", { message: messageFromError(error) });
+    return false;
+  }
+}
+function isTerminalOutputError(error) {
+  if (!(error instanceof Error) || !("code" in error))
+    return false;
+  return error.code === "EPIPE" || error.code === "ERR_STREAM_DESTROYED" || error.code === "ERR_STREAM_WRITE_AFTER_END";
+}
+function hasErrorCode(error, code) {
+  return error instanceof Error && "code" in error && error.code === code;
+}
+function createParentWatchdog(config, onDeadParent) {
+  if (config === undefined)
+    return { clear: () => {} };
+  const pollIntervalMs = config.pollIntervalMs ?? DEFAULT_PARENT_POLL_INTERVAL_MS;
+  if (pollIntervalMs <= 0)
+    return { clear: () => {} };
+  const parentPid = config.parentPid ?? process.ppid;
+  const probeAlive = config.probeAlive ?? isProcessAlive;
+  let fired = false;
+  const timer = setInterval(() => {
+    if (fired)
+      return;
+    const alive = probeAlive(parentPid);
+    config.onPoll?.(alive);
+    if (alive)
+      return;
+    fired = true;
+    onDeadParent(parentPid, pollIntervalMs);
+  }, pollIntervalMs);
+  timer.unref();
+  return {
+    clear: () => {
+      clearInterval(timer);
+    }
+  };
+}
+function createIdleTimer(idleTimeoutMs, log, onTimeout) {
+  let timer = null;
+  return {
+    arm: () => {
+      if (timer !== null)
+        clearTimeout(timer);
+      if (idleTimeoutMs <= 0)
+        return;
+      timer = setTimeout(() => {
+        log("idle_timeout", { idle_timeout_ms: idleTimeoutMs });
+        onTimeout();
+      }, idleTimeoutMs);
+      timer.unref();
+    },
+    clear: () => {
+      if (timer === null)
+        return;
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
+}
+// ../utils/src/runtime/which.ts
+import { accessSync, constants } from "node:fs";
+import { delimiter, join } from "node:path";
+var runtime = globalThis;
+function isUnsafeCommandName(commandName) {
+  if (commandName.includes("/") || commandName.includes("\\"))
+    return true;
+  if (commandName === "." || commandName === ".." || commandName.includes(".."))
+    return true;
+  if (/^[a-zA-Z]:/.test(commandName))
+    return true;
+  if (commandName.includes("\x00"))
+    return true;
+  return false;
+}
+function isExecutable(filePath) {
+  try {
+    accessSync(filePath, process.platform === "win32" ? constants.F_OK : constants.X_OK);
+    return true;
+  } catch (error) {
+    if (!(error instanceof Error) && Object.prototype.toString.call(error) !== "[object Error]") {
+      throw error;
+    }
+    return false;
+  }
+}
+function resolvePathValue() {
+  if (process.platform === "win32")
+    return process.env["Path"] ?? process.env["PATH"];
+  return process.env["PATH"];
+}
+function getWindowsCandidates(commandName) {
+  if (process.platform !== "win32")
+    return [commandName];
+  if (/\.[^\\/]+$/.test(commandName))
+    return [commandName];
+  return [commandName, `${commandName}.exe`, `${commandName}.cmd`, `${commandName}.bat`, `${commandName}.com`];
+}
+function bunWhich(commandName) {
+  if (!commandName)
+    return null;
+  if (isUnsafeCommandName(commandName))
+    return null;
+  const candidateNames = getWindowsCandidates(commandName);
+  for (const candidateName of candidateNames) {
+    const resolvedPath = runtime.Bun?.which(candidateName) ?? null;
+    if (resolvedPath !== null)
+      return resolvedPath;
+  }
+  const pathValue = resolvePathValue();
+  if (!pathValue)
+    return null;
+  const pathEntries = pathValue.split(delimiter).filter((pathEntry) => pathEntry.length > 0);
+  if (pathEntries.length === 0)
+    return null;
+  for (const pathEntry of pathEntries) {
+    for (const candidateName of candidateNames) {
+      const candidatePath = join(pathEntry, candidateName);
+      if (isExecutable(candidatePath))
+        return candidatePath;
+    }
   }
   return null;
 }
-var captured = null;
-function openLogSink(name, options = {}) {
-  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
-  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
-  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
-  const timestamps = options.timestamps ?? true;
-  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
-  let open = null;
-  for (const root of roots) {
-    const attempt = tryOpenRoot(root, name);
-    if (attempt !== null) {
-      open = attempt;
-      break;
-    }
-  }
-  let size = 0;
-  if (open !== null) {
-    try {
-      size = statSync(open.file).size;
-    } catch {
-      size = 0;
-    }
-  }
-  let accepted = 0;
-  let droppedCount = 0;
-  let rotations = 0;
-  const ring = [];
-  let undoCapture = null;
-  let rebindOutcome = "skipped";
-  let rebind = null;
-  const remember = (record) => {
-    if (ring.length >= ringLines) {
-      ring.shift();
-      droppedCount += 1;
-    }
-    ring.push(record);
-  };
-  const rotate = () => {
-    if (open === null)
-      return;
-    try {
-      closeSync(open.fd);
-      rmSync(`${open.file}.1`, { force: true });
-      renameSync(open.file, `${open.file}.1`);
-      open = { fd: openSync(open.file, "a"), file: open.file };
-      size = 0;
-      rotations += 1;
-      sink.rebindNow();
-    } catch {
-      try {
-        open = { fd: openSync(open.file, "a"), file: open.file };
-      } catch {
-        open = null;
-      }
-    }
-  };
-  const append = (record) => {
-    if (open === null) {
-      remember(record);
-      return;
-    }
-    const bytes = Buffer.byteLength(record, "utf8");
-    if (size > 0 && size + bytes > maxBytes)
-      rotate();
-    if (open === null) {
-      remember(record);
-      return;
-    }
-    try {
-      writeSync(open.fd, record);
-      size += bytes;
-    } catch {
-      remember(record);
-    }
-  };
-  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
-  const sink = {
-    name,
-    file: open?.file ?? null,
-    root: acceptedRoot,
-    write(line) {
-      try {
-        const body = line.endsWith(`
-`) ? line.slice(0, -1) : line;
-        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
-        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
-`;
-        accepted += 1;
-        append(record);
-      } catch {}
-    },
-    fd() {
-      return open?.fd ?? null;
-    },
-    written() {
-      return accepted;
-    },
-    dropped() {
-      return droppedCount;
-    },
-    rotations() {
-      return rotations;
-    },
-    ring() {
-      return [...ring];
-    },
-    stderrRebind() {
-      return rebindOutcome;
-    },
-    restore() {
-      if (undoCapture === null)
-        return;
-      undoCapture();
-      undoCapture = null;
-      if (captured === sink)
-        captured = null;
-    }
-  };
-  sink.attachCapture = (undo, onRebind) => {
-    undoCapture = undo;
-    rebind = onRebind;
-  };
-  sink.rebindNow = () => {
-    if (rebind === null)
-      return;
-    rebindOutcome = rebind();
-  };
-  sink.setRebindOutcome = (outcome) => {
-    rebindOutcome = outcome;
-  };
-  return sink;
+
+// ../utils/src/ast-grep/sg-candidates.ts
+import { homedir } from "node:os";
+import { join as join2 } from "node:path";
+
+// ../utils/src/ast-grep/sg-manifest.ts
+function normalizeRuntimePlatform(platform = process.platform) {
+  if (platform === "darwin" || platform === "linux" || platform === "win32")
+    return platform;
+  return "linux";
 }
-function capLine(body, maxLineBytes) {
-  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
-  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+function normalizeRuntimeArch(arch = process.arch) {
+  if (arch === "arm64" || arch === "aarch64")
+    return "arm64";
+  return "x64";
+}
+function runtimeSlug(platform = process.platform, arch = process.arch) {
+  return `${normalizeRuntimePlatform(platform)}-${normalizeRuntimeArch(arch)}`;
+}
+function sgBinaryName(platform = process.platform) {
+  return normalizeRuntimePlatform(platform) === "win32" ? "sg.exe" : "sg";
 }
 
-// packages/mpd-mcp-astgrep/src/protocol.ts
-import { createInterface } from "node:readline";
+// ../utils/src/ast-grep/install-script.ts
+var AST_GREP_BIN_DIR_ENV_KEY = "MPD_AST_GREP_BIN_DIR";
 
-// packages/mpd-mcp-astgrep/src/server.ts
-import { existsSync as existsSync2 } from "node:fs";
+// ../utils/src/ast-grep/types.ts
+var SG_PATH_ENV_KEY = "MPD_AST_GREP_SG_PATH";
+var SG_BINARY_NOT_FOUND = "BINARY_NOT_FOUND";
 
-// packages/mpd-mcp-shared/bin-resolve.ts
+// ../utils/src/ast-grep/sg-candidates.ts
+var HOMEBREW_PREFIXES = {
+  darwin: ["/opt/homebrew/bin", "/usr/local/bin"],
+  linux: ["/home/linuxbrew/.linuxbrew/bin", "/usr/local/bin"],
+  win32: []
+};
+function nonEmptyValue(value) {
+  const trimmed = value?.trim();
+  return trimmed === undefined || trimmed.length === 0 ? null : trimmed;
+}
+function astGrepBinaryName(platform) {
+  return platform === "win32" ? "ast-grep.exe" : "ast-grep";
+}
+function candidate(tier, path) {
+  return { path, tier };
+}
+function envOverrideCandidates(env) {
+  const override = nonEmptyValue(env[SG_PATH_ENV_KEY]);
+  return override === null ? [] : [candidate("env-override", override)];
+}
+function mpdRuntimeCandidates(options) {
+  const binaryName = sgBinaryName(options.platform);
+  const slug = runtimeSlug(options.platform, options.arch);
+  const paths = [];
+  if (options.runtimeDir !== undefined)
+    paths.push(join2(options.runtimeDir, binaryName));
+  const codexHome = nonEmptyValue(options.env["CODEX_HOME"]);
+  if (codexHome !== null)
+    paths.push(join2(codexHome, "runtime", "ast-grep", slug, binaryName));
+  paths.push(join2(options.homeDir, ".mpd", "runtime", "ast-grep", slug, binaryName));
+  return paths.map((path) => candidate("mpd-runtime", path));
+}
+function skillBinCandidates(options) {
+  const names = [astGrepBinaryName(options.platform), sgBinaryName(options.platform)];
+  const directories = [];
+  const cacheDir = nonEmptyValue(options.env[AST_GREP_BIN_DIR_ENV_KEY]);
+  if (cacheDir !== null)
+    directories.push(cacheDir);
+  if (options.packageDir !== undefined)
+    directories.push(join2(options.packageDir, "bin"));
+  return directories.flatMap((directory) => names.map((name) => candidate("skill-bin", join2(directory, name))));
+}
+function homebrewCandidates(platform) {
+  const prefixes = platform === "darwin" || platform === "linux" || platform === "win32" ? HOMEBREW_PREFIXES[platform] : [];
+  const names = [astGrepBinaryName(platform), sgBinaryName(platform)];
+  return prefixes.flatMap((prefix) => names.map((name) => candidate("homebrew", join2(prefix, name))));
+}
+function planSgCandidates(options) {
+  const env = options.env ?? process.env;
+  const platform = options.platform ?? process.platform;
+  const arch = options.arch ?? process.arch;
+  const homeDir = options.homeDir ?? homedir();
+  return {
+    afterPath: homebrewCandidates(platform),
+    beforePath: [
+      ...envOverrideCandidates(env),
+      ...mpdRuntimeCandidates({ arch, env, homeDir, platform, runtimeDir: options.runtimeDir }),
+      ...skillBinCandidates({ env, packageDir: options.packageDir, platform })
+    ],
+    pathCommands: ["ast-grep", "sg"]
+  };
+}
+
+// ../utils/src/ast-grep/sg-install-hints.ts
+var MPD_PROVISION_HINT = "Start an MPD session so the bundled ast-grep skill provisions the pinned runtime automatically";
+var ENV_OVERRIDE_HINT = `Or point ${SG_PATH_ENV_KEY} at an existing ast-grep binary`;
+var DARWIN_HINTS = [
+  "brew install ast-grep",
+  "npm install -g @ast-grep/cli",
+  "cargo install ast-grep --locked"
+];
+var LINUX_HINTS = [
+  "npm install -g @ast-grep/cli",
+  "cargo install ast-grep --locked",
+  "brew install ast-grep  # linuxbrew"
+];
+var WIN32_HINTS = [
+  "scoop install main/ast-grep",
+  "winget install ast-grep",
+  "choco install ast-grep",
+  "npm install -g @ast-grep/cli"
+];
+function platformHints(platform) {
+  if (platform === "darwin")
+    return DARWIN_HINTS;
+  if (platform === "win32")
+    return WIN32_HINTS;
+  return LINUX_HINTS;
+}
+function sgInstallHints(platform = process.platform) {
+  return [...platformHints(platform), MPD_PROVISION_HINT, ENV_OVERRIDE_HINT];
+}
+function sgBinaryNotFoundMessage(platform = process.platform) {
+  return `ast-grep binary not found for ${platform}: no candidate passed the --version probe across the env override, MPD runtime, skill bin cache, PATH, or Homebrew prefixes.`;
+}
+
+// ../utils/src/ast-grep/sg-resolver.ts
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, isAbsolute, join as join2, resolve as resolve2 } from "node:path";
-import { fileURLToPath } from "node:url";
-function executableSuffixes(env = process.env, platform = process.platform) {
-  if (platform !== "win32")
-    return [""];
-  const declared = String(env.PATHEXT ?? "").split(";").map((entry) => entry.trim().toLowerCase()).filter((entry) => entry === ".exe" || entry === ".com");
-  return declared.length > 0 ? declared : [".exe", ".com"];
+import { existsSync, statSync } from "node:fs";
+var SG_VERSION_PROBE_TIMEOUT_MS = 5000;
+var cacheEntry = null;
+function cacheFingerprint(options, plan) {
+  return JSON.stringify([
+    options.platform ?? process.platform,
+    options.arch ?? process.arch,
+    plan.beforePath.map((candidate2) => candidate2.path)
+  ]);
 }
-function candidateSpellings(name, env = process.env, platform = process.platform) {
-  const suffixes = executableSuffixes(env, platform);
-  if (suffixes.length === 1 && suffixes[0] === "")
-    return [name];
-  return [...suffixes.map((suffix) => name + suffix), name];
-}
-var AST_GREP_NAMES = ["ast-grep", "sg"];
-function bundleRootFrom(launcherUrl) {
-  let dir = dirname(fileURLToPath(launcherUrl));
-  for (let hop = 0;hop < 6; hop++) {
-    try {
-      const manifest = JSON.parse(readFileSync(join2(dir, "package.json"), "utf8"));
-      if (manifest.name === "@mpd-dsh/mpd")
-        return dir;
-    } catch {}
-    const parent = dirname(dir);
-    if (parent === dir)
-      break;
-    dir = parent;
-  }
-  return resolve2(dirname(fileURLToPath(launcherUrl)), "..", "..");
-}
-function nonEmpty(value) {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
-function probeAstGrep(binary) {
+function defaultFileExists(filePath) {
+  if (!existsSync(filePath))
+    return false;
   try {
-    const out = execFileSync(binary, ["--version"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-      timeout: 20000
-    });
-    return String(out).toLowerCase().includes("ast-grep");
+    const stats = statSync(filePath);
+    return stats.isFile() && stats.size > 0;
   } catch {
     return false;
   }
 }
-function packageJsonFor(launcherUrl, spec, opts) {
+function defaultVersionProbe(binaryPath) {
+  return String(execFileSync(binaryPath, ["--version"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+    timeout: SG_VERSION_PROBE_TIMEOUT_MS
+  }));
+}
+function probePasses(binaryPath, deps) {
   try {
-    if (typeof opts.requireResolve === "function")
-      return opts.requireResolve(spec);
-    return createRequire(launcherUrl).resolve(spec);
+    return deps.runVersionProbeSync(binaryPath).toLowerCase().includes("ast-grep");
   } catch {
-    return null;
+    return false;
   }
 }
-function firstAccepted(candidates, exists, probe) {
-  for (const c of candidates) {
-    if (!c.path || !exists(c.path))
-      continue;
-    if (probe && !probe(c.path))
-      continue;
-    return { binary: c.path, source: c.source };
+function acceptsCandidate(binaryPath, deps) {
+  return deps.fileExists(binaryPath) && probePasses(binaryPath, deps);
+}
+function firstAccepted(candidates, deps) {
+  for (const candidate2 of candidates) {
+    if (acceptsCandidate(candidate2.path, deps))
+      return { found: true, path: candidate2.path, tier: candidate2.tier };
   }
   return null;
 }
-function resolveAstGrepBinary(launcherUrl, opts = {}) {
+function pathCandidates(commands, deps) {
+  const resolved = [];
+  for (const commandName of commands) {
+    const found = deps.which(commandName);
+    if (found !== null)
+      resolved.push({ path: found, tier: "path" });
+  }
+  return resolved;
+}
+function notFound(platform) {
+  return {
+    error: { code: SG_BINARY_NOT_FOUND, hints: sgInstallHints(platform), message: sgBinaryNotFoundMessage(platform) },
+    found: false
+  };
+}
+function cacheIsStillValid(resolution, deps, revalidate) {
+  if (!resolution.found)
+    return false;
+  if (!deps.fileExists(resolution.path))
+    return false;
+  return !revalidate || probePasses(resolution.path, deps);
+}
+function resolverDeps(options) {
+  return {
+    fileExists: options.fileExists ?? defaultFileExists,
+    platform: options.platform ?? process.platform,
+    runVersionProbeSync: options.runVersionProbeSync ?? defaultVersionProbe,
+    which: options.which ?? bunWhich
+  };
+}
+function resolveSgBinarySync(options = {}) {
+  const deps = resolverDeps(options);
+  const useCache = options.cache ?? true;
   try {
-    const env = opts.env ?? process.env;
-    const platform = opts.platform ?? process.platform;
-    const exists = opts.exists ?? existsSync;
-    const probe = opts.probe ?? probeAstGrep;
-    const bundleRoot = opts.bundleRoot ?? bundleRootFrom(launcherUrl);
-    const candidates = [];
-    const spellings = (name) => candidateSpellings(name, env, platform);
-    const binDir = nonEmpty(env.MPD_AST_GREP_BIN_DIR);
-    if (binDir) {
-      for (const n of AST_GREP_NAMES)
-        for (const s of spellings(n))
-          candidates.push({ path: join2(binDir, s), source: "bin-dir" });
+    const plan = planSgCandidates(options);
+    const fingerprint = cacheFingerprint(options, plan);
+    if (useCache && cacheEntry !== null && cacheEntry.fingerprint === fingerprint) {
+      if (cacheIsStillValid(cacheEntry.resolution, deps, options.revalidate ?? false))
+        return cacheEntry.resolution;
+      cacheEntry = null;
     }
-    const pkgJson = packageJsonFor(launcherUrl, "@ast-grep/cli/package.json", opts);
-    if (pkgJson) {
-      const pkgDir = dirname(pkgJson);
-      for (const n of AST_GREP_NAMES)
-        for (const s of spellings(n))
-          candidates.push({ path: join2(pkgDir, s), source: "require" });
-    }
-    const binDirs = [
-      [join2(bundleRoot, ".toolchain", "node_modules", ".bin"), "toolchain"],
-      [join2(bundleRoot, "node_modules", ".bin"), "bundle-bin"]
-    ];
-    for (const [bin, source] of binDirs) {
-      for (const n of AST_GREP_NAMES)
-        for (const s of spellings(n))
-          candidates.push({ path: join2(bin, s), source });
-    }
-    return firstAccepted(candidates, exists, probe);
+    const resolution = firstAccepted(plan.beforePath, deps) ?? firstAccepted(pathCandidates(plan.pathCommands, deps), deps) ?? firstAccepted(plan.afterPath, deps) ?? notFound(deps.platform);
+    if (useCache && resolution.found)
+      cacheEntry = { fingerprint, resolution };
+    return resolution;
   } catch {
-    return null;
+    return notFound(deps.platform);
   }
 }
 
-// packages/mpd-mcp-astgrep/src/runner.ts
+// src/sg-runner.ts
 import { spawn } from "node:child_process";
 var MAX_JSON_RECORD_BYTES = 1024 * 1024;
 var MAX_STDERR_BYTES = 64 * 1024;
@@ -351,7 +647,7 @@ async function spawnSgRunner(input) {
   const startedAt = performance.now();
   if (input.signal?.aborted)
     throw new SgRunnerError("ABORTED", "ast-grep request was aborted");
-  return await new Promise((resolve3, reject) => {
+  return await new Promise((resolve, reject) => {
     const maxMatches = input.maxMatches ?? DEFAULT_MATCHES;
     const child = spawn(input.sgPath, [...input.args], {
       cwd: input.workdir,
@@ -512,7 +808,7 @@ async function spawnSgRunner(input) {
         return reject(new SgRunnerError("OUTPUT_PARSE_FAILED", "ast-grep produced no parseable JSON records", stderr, duration()));
       const limited = stopReason === "limit" && truncationReason !== null;
       const salvaged = malformed && records.length > 0;
-      resolve3({
+      resolve({
         records,
         truncated: limited || salvaged,
         reason: limited ? truncationReason : salvaged ? "sg_output_truncated" : null,
@@ -527,7 +823,7 @@ async function spawnSgRunner(input) {
   });
 }
 
-// packages/mpd-mcp-astgrep/src/normalize.ts
+// src/normalize.ts
 import { posix, win32 } from "node:path";
 function object(value, label) {
   if (typeof value !== "object" || value === null || Array.isArray(value))
@@ -626,13 +922,13 @@ function normalizeMatch(rawValue, workdir) {
   return normalized;
 }
 function normalizeRecords(records, workdir) {
-  return records.map((record) => normalizeMatch(record, workdir)).sort((left, right) => {
+  return records.map((record2) => normalizeMatch(record2, workdir)).sort((left, right) => {
     const pathOrder = left.path < right.path ? -1 : left.path > right.path ? 1 : 0;
     return pathOrder || left.range.start.byteOffset - right.range.start.byteOffset;
   });
 }
 
-// packages/mpd-mcp-astgrep/src/hints.ts
+// src/pattern-hints.ts
 var LANGUAGES = new Set([
   "bash",
   "c",
@@ -683,12 +979,6 @@ var LANG_ALIASES = {
 };
 var RE_BACKSLASH = /\\w|\\d|\\s|\\b/;
 var RE_DOT_STAR = /(?<!\$)\.\*|(?<!\$)\.\+/;
-var RE_DOUBLE_DOLLAR = /(?<!\$)\$\$(?!\$)[A-Za-z_]/;
-var RE_ANY_METAVAR = /(?<!\$)\$(?!\$)([A-Za-z_][A-Za-z0-9_]*)/g;
-var RE_PY_TRAILING_COLON = /^\s*(?:def|class)\s+\$?\w+[^:]*:\s*$/m;
-var RE_JS_INCOMPLETE = /^\s*(?:async\s+)?function\s+\$?\w+(?:\([^)]*\))?\s*$/m;
-var RE_GO_INCOMPLETE = /^\s*func\s+\$?\w+(?:\([^)]*\))?\s*$/m;
-var RE_RUST_INCOMPLETE = /^\s*fn\s+\$?\w+(?:\([^)]*\))?\s*$/m;
 function isRegexCharClass(pattern) {
   const trimmed = pattern.trim();
   if (!/^\[\^?[^\]]+\]$/.test(trimmed))
@@ -704,7 +994,15 @@ function isRegexCharClass(pattern) {
     return true;
   return false;
 }
+var RE_DOUBLE_DOLLAR = /(?<!\$)\$\$(?!\$)[A-Za-z_]/;
+var RE_ANY_METAVAR = /(?<!\$)\$(?!\$)([A-Za-z_][A-Za-z0-9_]*)/g;
+var RE_PY_TRAILING_COLON = /^\s*(?:def|class)\s+\$?\w+[^:]*:\s*$/m;
+var RE_JS_INCOMPLETE = /^\s*(?:async\s+)?function\s+\$?\w+(?:\([^)]*\))?\s*$/m;
+var RE_GO_INCOMPLETE = /^\s*func\s+\$?\w+(?:\([^)]*\))?\s*$/m;
+var RE_RUST_INCOMPLETE = /^\s*fn\s+\$?\w+(?:\([^)]*\))?\s*$/m;
 function normalizeLanguage(lang) {
+  if (typeof lang !== "string")
+    return null;
   const lower = lang.toLowerCase();
   const canonical = LANG_ALIASES[lower] ?? lower;
   return LANGUAGES.has(canonical) ? canonical : null;
@@ -720,7 +1018,7 @@ function isValidPaths(paths) {
     return false;
   if (paths.length === 0)
     return false;
-  return paths.every((path) => typeof path === "string" && path.length > 0);
+  return paths.every((p) => typeof p === "string" && p.length > 0);
 }
 function isValidLimit(limit) {
   return typeof limit === "number" && Number.isFinite(limit) && Number.isInteger(limit) && limit > 0;
@@ -728,8 +1026,8 @@ function isValidLimit(limit) {
 function extractMetavars(text) {
   const single = new Set;
   const multi = new Set;
-  let m;
   const reMulti = /\$\$\$([A-Z][A-Z0-9_]*)/g;
+  let m;
   while ((m = reMulti.exec(text)) !== null) {
     multi.add(m[1]);
   }
@@ -759,7 +1057,7 @@ function validatePatternHints(pattern, language, opts = {}) {
   if (opts.limit !== undefined && !isValidLimit(opts.limit)) {
     hints.push({ code: "INVALID_LIMIT", severity: "always-reject", message: "Limit must be a positive finite integer." });
   }
-  const alwaysReject = hints.find((hint) => hint.severity === "always-reject");
+  const alwaysReject = hints.find((h) => h.severity === "always-reject");
   if (alwaysReject) {
     return { ok: false, rejected: true, code: alwaysReject.code, hints };
   }
@@ -841,7 +1139,7 @@ function validatePatternHints(pattern, language, opts = {}) {
       message: "Literal '|' may be a TS union or bitwise-or. If regex alternation, use separate calls."
     });
   }
-  const hardReject = hints.find((hint) => hint.severity === "reject");
+  const hardReject = hints.find((h) => h.severity === "reject");
   if (hardReject && !force) {
     return { ok: false, rejected: true, code: "PATTERN_HINT_REJECTED", hints };
   }
@@ -884,7 +1182,7 @@ function validateRewriteHints(pattern, rewrite, language, opts = {}) {
       break;
     }
   }
-  const alwaysReject = hints.find((hint) => hint.severity === "always-reject");
+  const alwaysReject = hints.find((h) => h.severity === "always-reject");
   if (alwaysReject) {
     return { ok: false, rejected: true, code: alwaysReject.code, hints };
   }
@@ -894,7 +1192,7 @@ function validateRewriteHints(pattern, rewrite, language, opts = {}) {
   return { ok: true, rejected: false, code: null, hints };
 }
 
-// packages/mpd-mcp-astgrep/src/search.ts
+// src/tools/search.ts
 var MAX_PATTERN_BYTES = 16 * 1024;
 var MAX_GLOBS = 32;
 var MAX_PATHS = 64;
@@ -904,7 +1202,7 @@ var MAX_GLOB_LEN = 1024;
 var MAX_SELECTOR_LEN = 128;
 var MAX_WORKDIR_LEN = 4096;
 var SEARCH_TOOL_NAME = "search";
-var SEARCH_TOOL_DESCRIPTION = "Search code by syntax shape with ast-grep. Write the pattern as code, not as a regular expression, and make it parse as ONE AST node in the required language; keep `paths` narrow. `$NAME` and `$_` capture a single whole node, `$$$NAME` and `$$$` capture zero or more nodes; a capture name must be UPPERCASE (`$$NAME` is invalid), a partial token never captures, and repeating a name requires identical code in every position. Wrap syntax that cannot stand alone, or name a `selector` to match a sub-node. A parse warning means the query failed — it does not mean the code is absent.";
+var SEARCH_TOOL_DESCRIPTION = "Search code structurally with ast-grep. The pattern is code, not regex, and must parse as one AST node in the required language; use narrow paths. `$NAME` and `$_` match one whole node, while `$$$NAME` and `$$$` match zero-or-more nodes. Names are uppercase, `$$NAME` is invalid, partial-token captures do not work, and a repeated metavariable must match identical code. Wrap non-standalone syntax and use `selector` when needed. Parse warnings mean the query failed, not that the code is absent.";
 var LANGUAGES2 = [
   "bash",
   "c",
@@ -933,105 +1231,103 @@ var LANGUAGES2 = [
   "yaml"
 ];
 var STRICTNESS = ["cst", "smart", "ast", "relaxed", "signature"];
-
-class SearchArgumentError extends Error {
-  language;
-  constructor(message, language) {
-    super(message);
-    this.name = "SearchArgumentError";
-    this.language = language;
-  }
-}
 function codePoints(value) {
   let count = 0;
   for (const _ of value)
     count++;
   return count;
 }
+var searchInputSchema = {
+  parse(input) {
+    const result = parseSearchInput(input);
+    if (!result.ok)
+      throw new Error(result.error);
+    return result.value;
+  }
+};
 function parseSearchInput(input) {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
-    throw new SearchArgumentError("Input must be an object", "unknown");
+    return { ok: false, error: "Input must be an object" };
   }
   const obj = input;
-  const language = typeof obj.language === "string" ? obj.language : "unknown";
   if (typeof obj.pattern !== "string")
-    throw new SearchArgumentError("pattern must be a string", language);
+    return { ok: false, error: "pattern must be a string" };
   if (obj.pattern.length === 0)
-    throw new SearchArgumentError("pattern must be at least 1 character", language);
+    return { ok: false, error: "pattern must be at least 1 character" };
   if (Buffer.byteLength(obj.pattern, "utf8") > MAX_PATTERN_BYTES) {
-    throw new SearchArgumentError("pattern must be at most 16384 bytes", language);
+    return { ok: false, error: "pattern must be at most 16384 bytes" };
   }
   if (typeof obj.language !== "string" || !LANGUAGES2.includes(obj.language)) {
-    throw new SearchArgumentError(`language must be one of: ${LANGUAGES2.join(", ")}`, language);
+    return { ok: false, error: `language must be one of: ${LANGUAGES2.join(", ")}` };
   }
   if (!Array.isArray(obj.paths))
-    throw new SearchArgumentError("paths must be an array", language);
+    return { ok: false, error: "paths must be an array" };
   if (obj.paths.length < 1 || obj.paths.length > MAX_PATHS) {
-    throw new SearchArgumentError(`paths must have 1-${MAX_PATHS} entries`, language);
+    return { ok: false, error: `paths must have 1-${MAX_PATHS} entries` };
   }
-  for (const path of obj.paths) {
-    if (typeof path !== "string" || path.length === 0)
-      throw new SearchArgumentError("each path must be a non-empty string", language);
-    if (codePoints(path) > MAX_PATH_LEN)
-      throw new SearchArgumentError(`each path must be at most ${MAX_PATH_LEN} characters`, language);
+  for (const p of obj.paths) {
+    if (typeof p !== "string" || p.length === 0)
+      return { ok: false, error: "each path must be a non-empty string" };
+    if (codePoints(p) > MAX_PATH_LEN)
+      return { ok: false, error: `each path must be at most ${MAX_PATH_LEN} characters` };
   }
   if (obj.workdir !== undefined) {
     if (typeof obj.workdir !== "string")
-      throw new SearchArgumentError("workdir must be a string", language);
+      return { ok: false, error: "workdir must be a string" };
     if (obj.workdir.length === 0)
-      throw new SearchArgumentError("workdir must be at least 1 character", language);
+      return { ok: false, error: "workdir must be at least 1 character" };
     if (codePoints(obj.workdir) > MAX_WORKDIR_LEN)
-      throw new SearchArgumentError(`workdir must be at most ${MAX_WORKDIR_LEN} characters`, language);
+      return { ok: false, error: `workdir must be at most ${MAX_WORKDIR_LEN} characters` };
   }
   if (obj.globs !== undefined) {
     if (!Array.isArray(obj.globs))
-      throw new SearchArgumentError("globs must be an array", language);
+      return { ok: false, error: "globs must be an array" };
     if (obj.globs.length > MAX_GLOBS)
-      throw new SearchArgumentError(`globs must have at most ${MAX_GLOBS} entries`, language);
-    for (const glob of obj.globs) {
-      if (typeof glob !== "string" || glob.length === 0)
-        throw new SearchArgumentError("each glob must be a non-empty string", language);
-      if (codePoints(glob) > MAX_GLOB_LEN)
-        throw new SearchArgumentError(`each glob must be at most ${MAX_GLOB_LEN} characters`, language);
+      return { ok: false, error: `globs must have at most ${MAX_GLOBS} entries` };
+    for (const g of obj.globs) {
+      if (typeof g !== "string" || g.length === 0)
+        return { ok: false, error: "each glob must be a non-empty string" };
+      if (codePoints(g) > MAX_GLOB_LEN)
+        return { ok: false, error: `each glob must be at most ${MAX_GLOB_LEN} characters` };
     }
   }
   if (obj.selector !== undefined) {
     if (typeof obj.selector !== "string")
-      throw new SearchArgumentError("selector must be a string", language);
+      return { ok: false, error: "selector must be a string" };
     if (obj.selector.length === 0)
-      throw new SearchArgumentError("selector must be at least 1 character", language);
+      return { ok: false, error: "selector must be at least 1 character" };
     if (codePoints(obj.selector) > MAX_SELECTOR_LEN)
-      throw new SearchArgumentError(`selector must be at most ${MAX_SELECTOR_LEN} characters`, language);
+      return { ok: false, error: `selector must be at most ${MAX_SELECTOR_LEN} characters` };
   }
   let strictness = "smart";
   if (obj.strictness !== undefined) {
     if (typeof obj.strictness !== "string" || !STRICTNESS.includes(obj.strictness)) {
-      throw new SearchArgumentError(`strictness must be one of: ${STRICTNESS.join(", ")}`, language);
+      return { ok: false, error: `strictness must be one of: ${STRICTNESS.join(", ")}` };
     }
     strictness = obj.strictness;
   }
   let maxMatches = DEFAULT_MATCHES;
   if (obj.maxMatches !== undefined) {
     if (typeof obj.maxMatches !== "number" || !Number.isInteger(obj.maxMatches) || obj.maxMatches < 1 || obj.maxMatches > MAX_MATCHES) {
-      throw new SearchArgumentError(`maxMatches must be an integer between 1 and ${MAX_MATCHES}`, language);
+      return { ok: false, error: `maxMatches must be an integer between 1 and ${MAX_MATCHES}` };
     }
     maxMatches = obj.maxMatches;
   }
   let timeoutMs = DEFAULT_TIMEOUT_MS;
   if (obj.timeoutMs !== undefined) {
     if (typeof obj.timeoutMs !== "number" || !Number.isInteger(obj.timeoutMs) || obj.timeoutMs < MIN_TIMEOUT_MS || obj.timeoutMs > MAX_TIMEOUT_MS) {
-      throw new SearchArgumentError(`timeoutMs must be an integer between ${MIN_TIMEOUT_MS} and ${MAX_TIMEOUT_MS}`, language);
+      return { ok: false, error: `timeoutMs must be an integer between ${MIN_TIMEOUT_MS} and ${MAX_TIMEOUT_MS}` };
     }
     timeoutMs = obj.timeoutMs;
   }
   if (obj.includeHidden !== undefined && typeof obj.includeHidden !== "boolean") {
-    throw new SearchArgumentError("includeHidden must be a boolean", language);
+    return { ok: false, error: "includeHidden must be a boolean" };
   }
   if (obj.followSymlinks !== undefined && typeof obj.followSymlinks !== "boolean") {
-    throw new SearchArgumentError("followSymlinks must be a boolean", language);
+    return { ok: false, error: "followSymlinks must be a boolean" };
   }
   if (obj.force !== undefined && typeof obj.force !== "boolean") {
-    throw new SearchArgumentError("force must be a boolean", language);
+    return { ok: false, error: "force must be a boolean" };
   }
   const known = new Set([
     "pattern",
@@ -1049,21 +1345,24 @@ function parseSearchInput(input) {
   ]);
   for (const key of Object.keys(obj)) {
     if (!known.has(key))
-      throw new SearchArgumentError(`Unknown property: ${key}`, language);
+      return { ok: false, error: `Unknown property: ${key}` };
   }
   return {
-    pattern: obj.pattern,
-    language: obj.language,
-    paths: obj.paths,
-    workdir: obj.workdir,
-    globs: obj.globs,
-    selector: obj.selector,
-    strictness,
-    maxMatches,
-    timeoutMs,
-    includeHidden: obj.includeHidden,
-    followSymlinks: obj.followSymlinks,
-    force: obj.force
+    ok: true,
+    value: {
+      pattern: obj.pattern,
+      language: obj.language,
+      paths: obj.paths,
+      workdir: obj.workdir,
+      globs: obj.globs,
+      selector: obj.selector,
+      strictness,
+      maxMatches,
+      timeoutMs,
+      includeHidden: obj.includeHidden,
+      followSymlinks: obj.followSymlinks,
+      force: obj.force
+    }
   };
 }
 function buildSearchArgs(input) {
@@ -1117,8 +1416,8 @@ async function executeSearch(input, sgPath, signal) {
     limit: maxMatches
   });
   if (validation.rejected) {
-    const rejectHint = validation.hints.find((hint) => hint.severity === "always-reject" || hint.severity === "reject");
-    return makeError(validation.code ?? "INVALID_ARGUMENT", rejectHint?.message ?? "Pattern validation failed", input.language, "preflight", "", validation.hints.map((hint) => hint.message).join("; "), Math.round(performance.now() - startedAt));
+    const rejectHint = validation.hints.find((h) => h.severity === "always-reject" || h.severity === "reject");
+    return makeError(validation.code ?? "INVALID_ARGUMENT", rejectHint?.message ?? "Pattern validation failed", input.language, "preflight", "", validation.hints.map((h) => h.message).join("; "), Math.round(performance.now() - startedAt));
   }
   const args = buildSearchArgs(input);
   let runnerResult;
@@ -1140,9 +1439,9 @@ async function executeSearch(input, sgPath, signal) {
   if (detectPatternParseFailure(runnerResult.stderr)) {
     return makeError("PATTERN_PARSE_FAILED", "Pattern did not parse as one " + input.language + " AST node.", input.language, "search", runnerResult.stderr, "Use a complete function, call, declaration, or wrapped context.", runnerResult.durationMs);
   }
-  const warnings = validation.hints.map((hint) => hint.message);
+  const warnings = validation.hints.map((h) => h.message);
   const matches = normalizeRecords(runnerResult.records, workdir);
-  const fileSet = new Set(matches.map((match) => match.path));
+  const fileSet = new Set(matches.map((m) => m.path));
   const returnedFiles = fileSet.size;
   const truncated = runnerResult.truncated;
   const reason = runnerResult.reason;
@@ -1176,7 +1475,7 @@ async function executeSearch(input, sgPath, signal) {
   };
 }
 
-// packages/mpd-mcp-astgrep/src/rewrite.ts
+// src/tools/rewrite.ts
 var MAX_PATTERN_BYTES2 = 16 * 1024;
 var MAX_REWRITE_BYTES = 64 * 1024;
 var MAX_PATHS2 = 64;
@@ -1187,7 +1486,7 @@ var MAX_SELECTOR_CHARS = 128;
 var MAX_WORKDIR_CHARS = 4096;
 var MIN_TIMEOUT_MS2 = 1000;
 var REWRITE_TOOL_NAME = "rewrite";
-var REWRITE_TOOL_DESCRIPTION = "Preview an AST-aware rewrite, or apply it. The pattern obeys the same metavariable rules as `search`; the replacement may reference only metavariables the pattern captured, and an EMPTY replacement deletes the match. Nothing is written unless `apply` is true, and a truncated preview is refused rather than applied — narrow `paths` or raise `maxMatches`, then retry. Applying is two passes (a JSON preview, then a separate `--update-all` run), so the reported counts describe the preview, and a second apply is not guaranteed to be a no-op.";
+var REWRITE_TOOL_DESCRIPTION = "Preview or apply an AST-aware rewrite. The pattern follows the same metavariable rules as `search`; the replacement may only reference metavariables captured by the pattern, and an empty replacement deletes the match. Dry-run is the default. Apply uses a JSON preview followed by a separate `--update-all` process because `sg` cannot safely combine JSON output and mutation. Truncated previews are never applied, and rewrite idempotency is not guaranteed.";
 var APPLY_PREVIEW_WARNING = "Mutation counts are based on the preview pass; sg update-all does not return equivalent JSON.";
 var LANGUAGES3 = [
   "bash",
@@ -1528,7 +1827,7 @@ async function executeRewrite(rawInput, sgPath, signal, hooks) {
   };
 }
 
-// packages/mpd-mcp-astgrep/src/scan.ts
+// src/tools/scan.ts
 var MAX_PATHS3 = 64;
 var MAX_GLOBS3 = 32;
 var MIN_TIMEOUT_MS3 = 1000;
@@ -1536,7 +1835,7 @@ var MAX_PATH_LENGTH = 4096;
 var MAX_GLOB_LENGTH = 1024;
 var MAX_INLINE_RULE_BYTES = 64 * 1024;
 var SCAN_TOOL_NAME = "scan";
-var SCAN_TOOL_DESCRIPTION = "Run ast-grep YAML rules over files. Name exactly ONE rule source — `ruleFile` (a path) or `inlineRules` (the YAML text) — and never both; no ambient `sgconfig.yml` is consulted, so a scan is reproducible from its arguments alone. Nothing is written unless `apply` is true. `includeMetadata` adds each rule's metadata block to the matches. Applying runs a bounded JSON preview and then a separate plain `--update-all` pass, so the reported counts describe the preview; a truncated preview is never applied.";
+var SCAN_TOOL_DESCRIPTION = "Scan files with exactly one explicit ast-grep YAML rule source. Provide either ruleFile or inlineRules; ambient sgconfig.yml discovery is never used. Dry-run is the default. Apply uses a bounded JSON preview followed by a separate plain --update-all pass, and truncated previews are never applied.";
 function codePointLength2(value) {
   return [...value].length;
 }
@@ -1813,7 +2112,7 @@ async function executeScan(rawInput, sgPath, signal) {
   };
 }
 
-// packages/mpd-mcp-astgrep/src/server.ts
+// src/mcp.ts
 var AST_GREP_SERVER_NAME = "ast_grep";
 var AST_GREP_SERVER_VERSION = "0.1.0";
 var DEFAULT_PROTOCOL_VERSION = "2024-11-05";
@@ -1957,68 +2256,6 @@ var AST_GREP_MCP_TOOLS = [
     }
   }
 ];
-function isPlainRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function jsonRpcId(value) {
-  return typeof value === "string" || typeof value === "number" ? value : null;
-}
-function successResponse(id, result) {
-  return { jsonrpc: "2.0", id, result };
-}
-function errorResponse(id, code, message) {
-  return { jsonrpc: "2.0", id, error: { code, message } };
-}
-function toolResponse(id, payload, isError) {
-  return successResponse(id, {
-    content: [{ type: "text", text: JSON.stringify(payload) }],
-    isError
-  });
-}
-function toolFailure(id, code, message, hints = [], extra = {}) {
-  return toolResponse(id, {
-    schemaVersion: 1,
-    ok: false,
-    error: {
-      code,
-      message,
-      retryable: false,
-      phase: "preflight",
-      ...extra,
-      details: hints.length > 0 ? { hints } : {}
-    }
-  }, true);
-}
-function messageOf(error) {
-  return error instanceof Error ? error.message : String(error);
-}
-function hintsOf(error) {
-  if (!(error instanceof Error) || !("hints" in error))
-    return [];
-  const hints = error.hints;
-  return Array.isArray(hints) ? hints.filter((hint) => typeof hint === "string") : [];
-}
-function requestedProtocolVersion(params) {
-  if (!isPlainRecord(params) || typeof params["protocolVersion"] !== "string")
-    return DEFAULT_PROTOCOL_VERSION;
-  return params["protocolVersion"];
-}
-function resolveSgPath(options) {
-  if (options.resolveSgPath !== undefined)
-    return options.resolveSgPath();
-  const pinned = (process.env.MPD_AST_GREP_SG_PATH ?? "").trim();
-  if (pinned.length > 0 && existsSync2(pinned) && probeAstGrep(pinned))
-    return pinned;
-  const resolution = resolveAstGrepBinary(import.meta.url);
-  if (resolution !== null)
-    return resolution.binary;
-  throw Object.assign(new Error("ast-grep executable not found: no candidate passed the --version probe, and no ast-grep this bundle can link"), {
-    hints: [
-      "Install the MIT engine with `npm install -g @ast-grep/cli`, or set MPD_AST_GREP_SG_PATH to the absolute path of the ast-grep executable.",
-      "In a checkout, `node scripts/install-mcp.ts` installs it into <bundle>/.toolchain, which this server resolves automatically."
-    ]
-  });
-}
 async function handleAstGrepMcpRequest(input, options = {}) {
   if (!isPlainRecord(input))
     return errorResponse(null, -32600, "Invalid Request");
@@ -2041,12 +2278,36 @@ async function handleAstGrepMcpRequest(input, options = {}) {
     return await handleToolCall(id, input["params"], options);
   return errorResponse(id, -32601, `Method not found: ${String(method)}`);
 }
+async function runMcpStdioServer(input = process.stdin, output = process.stdout, options = {}) {
+  let active = null;
+  await runJsonRpcStdioServer({
+    input,
+    output,
+    handler: async (request) => {
+      const controller = new AbortController;
+      active = controller;
+      try {
+        return await handleAstGrepMcpRequest(request, { ...options, signal: controller.signal });
+      } finally {
+        if (active === controller)
+          active = null;
+      }
+    },
+    handlerOptions: undefined,
+    idleTimeoutMs: 0,
+    parentWatchdog: options.parentWatchdog ?? {},
+    log: options.lifecycleLog,
+    onParentExit: () => {
+      active?.abort(new Error("parent process exited"));
+    }
+  });
+}
 async function handleToolCall(id, params, options) {
   if (!isPlainRecord(params) || typeof params["name"] !== "string") {
     return errorResponse(id, -32602, "tools/call requires params.name");
   }
   const name = params["name"];
-  const args = isPlainRecord(params["arguments"]) ? params["arguments"] : {};
+  const args = coerceToolArguments(params["arguments"]);
   if (name !== SEARCH_TOOL_NAME && name !== REWRITE_TOOL_NAME && name !== SCAN_TOOL_NAME) {
     return toolFailure(id, "INVALID_ARGUMENT", `Unknown ast_grep tool: ${name}. Available tools: ${AST_GREP_MCP_TOOLS.map((tool) => tool.name).join(", ")}.`);
   }
@@ -2060,122 +2321,104 @@ async function handleToolCall(id, params, options) {
     const payload = await dispatch(name, args, sgPath, options);
     return toolResponse(id, payload, payload.ok !== true);
   } catch (error) {
-    if (error instanceof SearchArgumentError) {
+    if (error instanceof ToolArgumentError) {
       return toolFailure(id, "INVALID_ARGUMENT", error.message, [], { language: error.language });
     }
     return toolFailure(id, "SG_FAILED", messageOf(error));
   }
 }
+
+class ToolArgumentError extends Error {
+  language;
+  constructor(message, language) {
+    super(message);
+    this.name = "ToolArgumentError";
+    this.language = language;
+  }
+}
 async function dispatch(name, args, sgPath, options) {
+  const executors = options.executors ?? {};
+  const input = args;
   if (name === SEARCH_TOOL_NAME) {
-    return await executeSearch(parseSearchInput(args), sgPath, options.signal);
+    let parsed;
+    try {
+      parsed = searchInputSchema.parse(args);
+    } catch (error) {
+      throw new ToolArgumentError(messageOf(error), languageOf(args));
+    }
+    const execute2 = executors.search ?? ((value, path, signal) => executeSearch(value, path, signal));
+    return await execute2(parsed, sgPath, options.signal);
   }
   if (name === REWRITE_TOOL_NAME) {
-    return await executeRewrite(args, sgPath, options.signal);
+    const execute2 = executors.rewrite ?? ((value, path, signal) => executeRewrite(value, path, signal));
+    return await execute2(input, sgPath, options.signal);
   }
-  return await executeScan(args, sgPath, options.signal);
+  const execute = executors.scan ?? ((value, path, signal) => executeScan(value, path, signal));
+  return await execute(input, sgPath, options.signal);
+}
+function coerceToolArguments(value) {
+  return isPlainRecord(value) ? value : {};
+}
+function resolveSgPath(options) {
+  if (options.resolveSgPath !== undefined)
+    return options.resolveSgPath();
+  const resolution = resolveSgBinarySync();
+  if (!resolution.found) {
+    throw Object.assign(new Error(resolution.error.message), { hints: resolution.error.hints });
+  }
+  return resolution.path;
+}
+function toolResponse(id, payload, isError) {
+  return successResponse(id, {
+    content: [{ type: "text", text: JSON.stringify(payload) }],
+    isError
+  });
+}
+function toolFailure(id, code, message, hints = [], extra = {}) {
+  return toolResponse(id, {
+    schemaVersion: 1,
+    ok: false,
+    error: {
+      code,
+      message,
+      retryable: false,
+      phase: "preflight",
+      ...extra,
+      details: hints.length > 0 ? { hints } : {}
+    }
+  }, true);
+}
+function languageOf(args) {
+  return typeof args["language"] === "string" ? args["language"] : "unknown";
+}
+function messageOf(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function hintsOf(error) {
+  if (!(error instanceof Error) || !("hints" in error))
+    return [];
+  const hints = error.hints;
+  return Array.isArray(hints) ? hints.filter((hint) => typeof hint === "string") : [];
+}
+function requestedProtocolVersion(params) {
+  if (!isPlainRecord(params) || typeof params["protocolVersion"] !== "string")
+    return DEFAULT_PROTOCOL_VERSION;
+  return params["protocolVersion"];
 }
 
-// packages/mpd-mcp-astgrep/src/protocol.ts
-var PARENT_POLL_MS = 2000;
-function parseLine(line) {
-  try {
-    return { ok: true, value: JSON.parse(line) };
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : String(error) };
-  }
-}
-function parseErrorResponse(data) {
-  return { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error", data } };
-}
-async function runStdioServer(options = {}) {
-  const parentPid = process.ppid;
-  let active = null;
-  let closed = false;
-  let draining = false;
-  const queue = [];
-  let idle = null;
-  const write = (response) => {
-    try {
-      process.stdout.write(`${JSON.stringify(response)}
-`);
-    } catch {}
-  };
-  const drain = async () => {
-    if (draining)
-      return;
-    draining = true;
-    try {
-      while (queue.length > 0) {
-        const line = queue.shift();
-        const parsed = parseLine(line);
-        if (!parsed.ok) {
-          write(parseErrorResponse(parsed.message));
-          continue;
-        }
-        const controller = new AbortController;
-        active = controller;
-        try {
-          const response = await handleAstGrepMcpRequest(parsed.value, { ...options, signal: controller.signal });
-          if (response !== undefined)
-            write(response);
-        } catch (error) {
-          write({ jsonrpc: "2.0", id: null, error: { code: -32603, message: error instanceof Error ? error.message : String(error) } });
-        } finally {
-          if (active === controller)
-            active = null;
-        }
-      }
-    } finally {
-      draining = false;
-    }
-    if (closed && idle !== null) {
-      const settle = idle;
-      idle = null;
-      settle();
-    }
-  };
-  const reader = createInterface({ input: process.stdin, crlfDelay: Infinity });
-  reader.on("line", (line) => {
-    if (line.length === 0)
-      return;
-    queue.push(line);
-    drain();
-  });
-  reader.on("close", () => {
-    closed = true;
-    active?.abort(new Error("stdin closed"));
-    drain();
-  });
-  const watchdog = setInterval(() => {
-    if (process.ppid === parentPid)
-      return;
-    closed = true;
-    reader.close();
-    active?.abort(new Error("parent process exited"));
-    drain();
-  }, PARENT_POLL_MS);
-  watchdog.unref();
-  await new Promise((resolve3) => {
-    if (closed && queue.length === 0 && active === null) {
-      resolve3();
-      return;
-    }
-    idle = resolve3;
-  });
-  clearInterval(watchdog);
-  reader.close();
-}
-
-// packages/mpd-mcp-astgrep/src/cli.ts
-function reportFatal(error) {
-  const sink = openLogSink("mpd-mcp-astgrep");
-  sink.write(error instanceof Error ? error.stack ?? error.message : String(error));
-}
+// src/cli.ts
 async function main() {
-  await runStdioServer();
+  const [command = "mcp"] = argv.slice(2);
+  if (command === "mcp") {
+    await runMcpStdioServer(process.stdin, process.stdout);
+    return;
+  }
+  stderr.write(`Usage: mpd-ast-grep [mcp]
+`);
+  process.exitCode = 2;
 }
 main().catch((error) => {
-  reportFatal(error);
+  stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}
+`);
   process.exitCode = 1;
 });

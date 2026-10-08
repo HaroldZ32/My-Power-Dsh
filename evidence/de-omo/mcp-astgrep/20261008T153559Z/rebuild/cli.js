@@ -1,198 +1,5 @@
 #!/usr/bin/env node
 
-// packages/mpd-mcp-shared/log-sink.ts
-import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-var LOG_SUBDIR = join(".mpd", "logs");
-var DEFAULT_MAX_BYTES = 1024 * 1024;
-var DEFAULT_MAX_LINE_BYTES = 8192;
-var DEFAULT_RING_LINES = 64;
-function truncationMarker(droppedBytes) {
-  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
-}
-function resolveLogRoots(env = process.env, cwd) {
-  let working = cwd;
-  if (working === undefined) {
-    try {
-      working = process.cwd();
-    } catch {
-      working = undefined;
-    }
-  }
-  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
-  const roots = [];
-  const seen = new Set;
-  for (const candidate of raw) {
-    if (typeof candidate !== "string" || candidate.trim().length === 0)
-      continue;
-    let absolute;
-    try {
-      absolute = resolve(candidate);
-    } catch {
-      continue;
-    }
-    if (seen.has(absolute))
-      continue;
-    seen.add(absolute);
-    roots.push(absolute);
-  }
-  return roots;
-}
-function tryOpenRoot(root, name) {
-  try {
-    const dir = join(root, LOG_SUBDIR);
-    mkdirSync(dir, { recursive: true });
-    const file = join(dir, `${name}.log`);
-    return { fd: openSync(file, "a"), file };
-  } catch {
-    return null;
-  }
-}
-function owningRoot(roots, file) {
-  for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
-      return root;
-  }
-  return null;
-}
-var captured = null;
-function openLogSink(name, options = {}) {
-  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
-  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
-  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
-  const timestamps = options.timestamps ?? true;
-  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
-  let open = null;
-  for (const root of roots) {
-    const attempt = tryOpenRoot(root, name);
-    if (attempt !== null) {
-      open = attempt;
-      break;
-    }
-  }
-  let size = 0;
-  if (open !== null) {
-    try {
-      size = statSync(open.file).size;
-    } catch {
-      size = 0;
-    }
-  }
-  let accepted = 0;
-  let droppedCount = 0;
-  let rotations = 0;
-  const ring = [];
-  let undoCapture = null;
-  let rebindOutcome = "skipped";
-  let rebind = null;
-  const remember = (record) => {
-    if (ring.length >= ringLines) {
-      ring.shift();
-      droppedCount += 1;
-    }
-    ring.push(record);
-  };
-  const rotate = () => {
-    if (open === null)
-      return;
-    try {
-      closeSync(open.fd);
-      rmSync(`${open.file}.1`, { force: true });
-      renameSync(open.file, `${open.file}.1`);
-      open = { fd: openSync(open.file, "a"), file: open.file };
-      size = 0;
-      rotations += 1;
-      sink.rebindNow();
-    } catch {
-      try {
-        open = { fd: openSync(open.file, "a"), file: open.file };
-      } catch {
-        open = null;
-      }
-    }
-  };
-  const append = (record) => {
-    if (open === null) {
-      remember(record);
-      return;
-    }
-    const bytes = Buffer.byteLength(record, "utf8");
-    if (size > 0 && size + bytes > maxBytes)
-      rotate();
-    if (open === null) {
-      remember(record);
-      return;
-    }
-    try {
-      writeSync(open.fd, record);
-      size += bytes;
-    } catch {
-      remember(record);
-    }
-  };
-  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
-  const sink = {
-    name,
-    file: open?.file ?? null,
-    root: acceptedRoot,
-    write(line) {
-      try {
-        const body = line.endsWith(`
-`) ? line.slice(0, -1) : line;
-        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
-        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
-`;
-        accepted += 1;
-        append(record);
-      } catch {}
-    },
-    fd() {
-      return open?.fd ?? null;
-    },
-    written() {
-      return accepted;
-    },
-    dropped() {
-      return droppedCount;
-    },
-    rotations() {
-      return rotations;
-    },
-    ring() {
-      return [...ring];
-    },
-    stderrRebind() {
-      return rebindOutcome;
-    },
-    restore() {
-      if (undoCapture === null)
-        return;
-      undoCapture();
-      undoCapture = null;
-      if (captured === sink)
-        captured = null;
-    }
-  };
-  sink.attachCapture = (undo, onRebind) => {
-    undoCapture = undo;
-    rebind = onRebind;
-  };
-  sink.rebindNow = () => {
-    if (rebind === null)
-      return;
-    rebindOutcome = rebind();
-  };
-  sink.setRebindOutcome = (outcome) => {
-    rebindOutcome = outcome;
-  };
-  return sink;
-}
-function capLine(body, maxLineBytes) {
-  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
-  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
-}
-
 // packages/mpd-mcp-astgrep/src/protocol.ts
 import { createInterface } from "node:readline";
 
@@ -203,7 +10,7 @@ import { existsSync as existsSync2 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, isAbsolute, join as join2, resolve as resolve2 } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 function executableSuffixes(env = process.env, platform = process.platform) {
   if (platform !== "win32")
@@ -222,7 +29,7 @@ function bundleRootFrom(launcherUrl) {
   let dir = dirname(fileURLToPath(launcherUrl));
   for (let hop = 0;hop < 6; hop++) {
     try {
-      const manifest = JSON.parse(readFileSync(join2(dir, "package.json"), "utf8"));
+      const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
       if (manifest.name === "@mpd-dsh/mpd")
         return dir;
     } catch {}
@@ -231,7 +38,7 @@ function bundleRootFrom(launcherUrl) {
       break;
     dir = parent;
   }
-  return resolve2(dirname(fileURLToPath(launcherUrl)), "..", "..");
+  return resolve(dirname(fileURLToPath(launcherUrl)), "..", "..");
 }
 function nonEmpty(value) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
@@ -280,23 +87,23 @@ function resolveAstGrepBinary(launcherUrl, opts = {}) {
     if (binDir) {
       for (const n of AST_GREP_NAMES)
         for (const s of spellings(n))
-          candidates.push({ path: join2(binDir, s), source: "bin-dir" });
+          candidates.push({ path: join(binDir, s), source: "bin-dir" });
     }
     const pkgJson = packageJsonFor(launcherUrl, "@ast-grep/cli/package.json", opts);
     if (pkgJson) {
       const pkgDir = dirname(pkgJson);
       for (const n of AST_GREP_NAMES)
         for (const s of spellings(n))
-          candidates.push({ path: join2(pkgDir, s), source: "require" });
+          candidates.push({ path: join(pkgDir, s), source: "require" });
     }
     const binDirs = [
-      [join2(bundleRoot, ".toolchain", "node_modules", ".bin"), "toolchain"],
-      [join2(bundleRoot, "node_modules", ".bin"), "bundle-bin"]
+      [join(bundleRoot, ".toolchain", "node_modules", ".bin"), "toolchain"],
+      [join(bundleRoot, "node_modules", ".bin"), "bundle-bin"]
     ];
     for (const [bin, source] of binDirs) {
       for (const n of AST_GREP_NAMES)
         for (const s of spellings(n))
-          candidates.push({ path: join2(bin, s), source });
+          candidates.push({ path: join(bin, s), source });
     }
     return firstAccepted(candidates, exists, probe);
   } catch {
@@ -351,7 +158,7 @@ async function spawnSgRunner(input) {
   const startedAt = performance.now();
   if (input.signal?.aborted)
     throw new SgRunnerError("ABORTED", "ast-grep request was aborted");
-  return await new Promise((resolve3, reject) => {
+  return await new Promise((resolve2, reject) => {
     const maxMatches = input.maxMatches ?? DEFAULT_MATCHES;
     const child = spawn(input.sgPath, [...input.args], {
       cwd: input.workdir,
@@ -512,7 +319,7 @@ async function spawnSgRunner(input) {
         return reject(new SgRunnerError("OUTPUT_PARSE_FAILED", "ast-grep produced no parseable JSON records", stderr, duration()));
       const limited = stopReason === "limit" && truncationReason !== null;
       const salvaged = malformed && records.length > 0;
-      resolve3({
+      resolve2({
         records,
         truncated: limited || salvaged,
         reason: limited ? truncationReason : salvaged ? "sg_output_truncated" : null,
@@ -2007,12 +1814,12 @@ function resolveSgPath(options) {
   if (options.resolveSgPath !== undefined)
     return options.resolveSgPath();
   const pinned = (process.env.MPD_AST_GREP_SG_PATH ?? "").trim();
-  if (pinned.length > 0 && existsSync2(pinned) && probeAstGrep(pinned))
+  if (pinned.length > 0 && existsSync2(pinned))
     return pinned;
   const resolution = resolveAstGrepBinary(import.meta.url);
   if (resolution !== null)
     return resolution.binary;
-  throw Object.assign(new Error("ast-grep executable not found: no candidate passed the --version probe, and no ast-grep this bundle can link"), {
+  throw Object.assign(new Error("ast-grep executable not found: no MPD_AST_GREP_SG_PATH candidate, and no ast-grep the bundle can link"), {
     hints: [
       "Install the MIT engine with `npm install -g @ast-grep/cli`, or set MPD_AST_GREP_SG_PATH to the absolute path of the ast-grep executable.",
       "In a checkout, `node scripts/install-mcp.ts` installs it into <bundle>/.toolchain, which this server resolves automatically."
@@ -2078,21 +1885,22 @@ async function dispatch(name, args, sgPath, options) {
 
 // packages/mpd-mcp-astgrep/src/protocol.ts
 var PARENT_POLL_MS = 2000;
+var PARSE_ERROR_RESPONSE = {
+  jsonrpc: "2.0",
+  id: null,
+  error: { code: -32700, message: "Parse error" }
+};
 function parseLine(line) {
   try {
-    return { ok: true, value: JSON.parse(line) };
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+    return JSON.parse(line);
+  } catch {
+    return;
   }
-}
-function parseErrorResponse(data) {
-  return { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error", data } };
 }
 async function runStdioServer(options = {}) {
   const parentPid = process.ppid;
   let active = null;
   let closed = false;
-  let draining = false;
   const queue = [];
   let idle = null;
   const write = (response) => {
@@ -2102,32 +1910,25 @@ async function runStdioServer(options = {}) {
     } catch {}
   };
   const drain = async () => {
-    if (draining)
-      return;
-    draining = true;
-    try {
-      while (queue.length > 0) {
-        const line = queue.shift();
-        const parsed = parseLine(line);
-        if (!parsed.ok) {
-          write(parseErrorResponse(parsed.message));
-          continue;
-        }
-        const controller = new AbortController;
-        active = controller;
-        try {
-          const response = await handleAstGrepMcpRequest(parsed.value, { ...options, signal: controller.signal });
-          if (response !== undefined)
-            write(response);
-        } catch (error) {
-          write({ jsonrpc: "2.0", id: null, error: { code: -32603, message: error instanceof Error ? error.message : String(error) } });
-        } finally {
-          if (active === controller)
-            active = null;
-        }
+    while (queue.length > 0) {
+      const line = queue.shift();
+      const parsed = parseLine(line);
+      if (parsed === undefined) {
+        write(PARSE_ERROR_RESPONSE);
+        continue;
       }
-    } finally {
-      draining = false;
+      const controller = new AbortController;
+      active = controller;
+      try {
+        const response = await handleAstGrepMcpRequest(parsed, { ...options, signal: controller.signal });
+        if (response !== undefined)
+          write(response);
+      } catch (error) {
+        write({ jsonrpc: "2.0", id: null, error: { code: -32603, message: error instanceof Error ? error.message : String(error) } });
+      } finally {
+        if (active === controller)
+          active = null;
+      }
     }
     if (closed && idle !== null) {
       const settle = idle;
@@ -2156,26 +1957,23 @@ async function runStdioServer(options = {}) {
     drain();
   }, PARENT_POLL_MS);
   watchdog.unref();
-  await new Promise((resolve3) => {
+  await new Promise((resolve2) => {
     if (closed && queue.length === 0 && active === null) {
-      resolve3();
+      resolve2();
       return;
     }
-    idle = resolve3;
+    idle = resolve2;
   });
   clearInterval(watchdog);
   reader.close();
 }
 
 // packages/mpd-mcp-astgrep/src/cli.ts
-function reportFatal(error) {
-  const sink = openLogSink("mpd-mcp-astgrep");
-  sink.write(error instanceof Error ? error.stack ?? error.message : String(error));
-}
 async function main() {
   await runStdioServer();
 }
 main().catch((error) => {
-  reportFatal(error);
+  process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}
+`);
   process.exitCode = 1;
 });

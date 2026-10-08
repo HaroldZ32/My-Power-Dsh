@@ -1,0 +1,2 @@
+{"scenario":"scan-dry","applying":false,"argv":["--version"]}
+{"scenario":"scan-dry","applying":false,"argv":["scan","--rule","rules/no-foo.yml","--json=stream","src"]}

@@ -1,0 +1,2 @@
+{"scenario":"sgerr","applying":false,"argv":["--version"]}
+{"scenario":"sgerr","applying":false,"argv":["run","-p","foo($A)","--lang","typescript","--json=stream","--strictness","smart","src"]}
