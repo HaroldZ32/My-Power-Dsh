@@ -244,7 +244,6 @@ describe("the mpd-verify row", () => {
     const law = h.services.get(VERIFY_SERVICE)
     /** The guard's install, against the same stub registry. */
     const installed = installVerifyGuard(h.stub as never, {
-      presets: ["mpd"],
       law: () => law as never,
       workspaceRootOf: () => workspace,
       configValue: () => undefined,
@@ -280,7 +279,7 @@ describe("the mpd-verify row", () => {
     const h = harness(workspace)
     apply(h.ctx as never, { mode: "hard" })
     installVerifyGuard(h.stub as never, {
-      presets: ["mpd"], law: () => h.services.get(VERIFY_SERVICE) as never, workspaceRootOf: () => workspace,
+      law: () => h.services.get(VERIFY_SERVICE) as never, workspaceRootOf: () => workspace,
       configValue: () => undefined, warn: () => { /* the arms assert decisions, not warnings */ },
     })
     /** The installed guard. */
@@ -293,6 +292,15 @@ describe("the mpd-verify row", () => {
     // THE CAPTAIN MAY COMMIT: §5 makes the captain the ONE git writer, so the rule must not touch it.
     const captain = { session: { id: "captain-session", header: { cwd: workspace, agentPreset: "mpd" } } }
     expect(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: captain })).toBeUndefined()
+    // THE MEASURED DEPLOYMENT (T-92): the user's own top-level session records `agentPreset: "cordis"`
+    // and depth 0, and the PRESET must not matter — this arm is the defect, asserted through the shipped
+    // install path. Its code write is still refused by rule 4 (no loop, no escape, no delegation).
+    const cordisCaptain = { session: { id: "user-session", header: { cwd: workspace, agentPreset: "cordis", delegationDepth: 0 } } }
+    expect(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: cordisCaptain })).toBeUndefined()
+    expect(String(guard?.({ name: "write", arguments: { file_path: "packages/a/src/index.ts" }, agent: cordisCaptain }) ?? "")).toContain("verification law")
+    // AND THE RULE STILL BITES A CHILD under that same preset: the classification is position, not name.
+    const cordisChild = { session: { id: "child-session", header: { cwd: workspace, agentPreset: "cordis", delegationDepth: 1 } } }
+    expect(String(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: cordisChild }) ?? "")).toContain("one-git-writer rule")
     rmSync(workspace, { recursive: true, force: true })
   })
 
@@ -320,7 +328,7 @@ describe("the mpd-verify row", () => {
     /** The law's runtime. */
     const law = h.services.get(VERIFY_SERVICE)
     installVerifyGuard(h.stub as never, {
-      presets: ["mpd"], law: () => law as never, workspaceRootOf: () => workspace,
+      law: () => law as never, workspaceRootOf: () => workspace,
       configValue: () => undefined, warn: () => { /* not asserted here */ },
     })
     /** The installed guard. */
@@ -480,7 +488,7 @@ describe("the mpd-verify row", () => {
     // THE REAL GUARD, installed exactly as the roles row installs it: the refused attempt below must be a
     // refusal the SHIPPED envelope produced, not one this arm wrote down.
     installVerifyGuard(h.stub as never, {
-      presets: ["mpd"], law: () => h.services.get(VERIFY_SERVICE) as never, workspaceRootOf: () => workspace,
+      law: () => h.services.get(VERIFY_SERVICE) as never, workspaceRootOf: () => workspace,
       configValue: () => undefined, warn: () => { /* the arms assert decisions, not warnings */ },
     })
     /** The installed guard. */

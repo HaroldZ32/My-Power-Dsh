@@ -329,7 +329,7 @@ export interface CaptainWriteInput {
   workspaceRoot: string
   /** The calling session's key. */
   sessionId: string
-  /** True when the caller is this workspace's TOP-LEVEL mpd agent (never a child session). */
+  /** True when the caller is this workspace's TOP-LEVEL session: no parent session, delegation depth 0, never a preset name (T-92). */
   topLevel: boolean
   /** The loops known to the ledger. */
   loops: readonly ArmedLoopView[]
@@ -374,7 +374,8 @@ export function captainWriteDecision(input: CaptainWriteInput): WriteDecision {
   if (target.kind === "always") return { allow: "always", target }
   // A CHILD SESSION IS NOT THE CAPTAIN. This is the whole delegation doctrine in one line: a member,
   // a subagent, a workflow worker and a ralph round are all children, and they are exactly who the
-  // captain is supposed to hand code to. Only the workspace's top-level mpd agent is gated.
+  // captain is supposed to hand code to. Only the workspace's TOP-LEVEL session is gated — no parent
+  // session, delegation depth 0, never a preset name (`sessionIsTopLevel`, T-92).
   if (!input.topLevel) return { allow: "always", target }
   /** The instant the loop's expiry is compared against, as epoch milliseconds. */
   const nowMs = input.now.getTime()
@@ -402,7 +403,7 @@ export function writeDenial(toolName: string, target: WriteTarget): string {
   /** The path as the caller spelled it, quoted, so the sentence names what was refused. */
   const where = target.rel ?? target.raw
   return "verification law: `" + toolName + "` on the CODE path " + JSON.stringify(where)
-    + " is refused for this workspace's top-level agent"
+    + " is refused for this session, which the law gates directly"
     + (target.outside === true ? " (an absolute path outside the workspace root counts as code)" : "")
     + ". Code written here must be verified by a DIFFERENT agent working from the docs, so take one of the three routes: "
     + "(1) DELEGATE the write — give the scope to a write-capable member (a team work task, or mpd_role_spawn / a subagent), "
@@ -686,18 +687,33 @@ function stripHeredocBodies(command: string): string {
   return command.replace(/<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1[^\n]*\n[\s\S]*?\n\s*\2(?=\s|$|\n)/g, " ")
 }
 
+/**
+ * The session classes the ONE top-level predicate distinguishes (`sessionIsTopLevel` / `sessionRank` in
+ * `mpd-roles-plugin/src/complexity-gate.ts`), threaded into a denial so the sentence states what was
+ * DECIDED rather than a fact this module never tested:
+ * - `captain`: a session header with no parent session and delegation depth `0` — §5's one git writer;
+ * - `child`: a member/child session — its header carries a parent session or a delegation depth above 0;
+ * - `headerless`: no session header at all, which this module refuses FAIL-CLOSED.
+ */
+export type SessionClass = "captain" | "child" | "headerless"
+
 /** Everything {@link gitWriterDecision} needs. */
 export interface GitWriterInput {
   /** The `bash` tool's `command` argument. */
   command: unknown
-  /** True when the caller IS the workspace's top-level captain (§5's ONE git writer). */
+  /** True when the caller IS the workspace's top-level session (§5's ONE git writer). */
   topLevelCaptain: boolean
+  /**
+   * The caller's session class, as the ONE predicate classified it — used ONLY to word the denial.
+   * `undefined` (a caller that classified nothing) is read as `child`, the ordinary case.
+   */
+  callerClass?: SessionClass
 }
 
 /**
  * Decide one `bash` call against §5's one-git-writer rule.
  *
- * @param input - the command and whether the caller is the captain.
+ * @param input - the command, whether the caller is the captain, and the class the predicate decided.
  * @returns the denial sentence, or `undefined` when the call may proceed.
  */
 export function gitWriterDecision(input: GitWriterInput): string | undefined {
@@ -706,9 +722,27 @@ export function gitWriterDecision(input: GitWriterInput): string | undefined {
   /** The git write subcommand this command really invokes, if any. */
   const sub = gitWriteSubcommand(input.command)
   if (sub === undefined) return undefined
-  return "one-git-writer rule (AGENTS.md §5): this session is NOT the workspace's top-level captain, so it may not run"
-    + " `git " + sub + "`. Teammates share the captain's checkout and two writers race on the single `.git/HEAD` —"
-    + " measured 2026-09-14, a member's `reset HEAD~1` moved the `dev` tip. Read-only git (`git status` / `log` /"
-    + " `diff` / `show` / `grep` / `ls-files` / `rev-parse` / `merge-base` / `describe` / `blame`) stays open to you:"
-    + " edit files, run gates and write evidence, and ask the captain to commit."
+  return gitWriterDenial(sub, input.callerClass)
+}
+
+/**
+ * The §5 denial sentence: WHAT was decided — the class the ONE predicate returned, never a claim this
+ * module did not test — and the ONE legitimate route for a git write, the user's own shell.
+ *
+ * @param sub - the git write subcommand the command invokes.
+ * @param callerClass - the class the ONE predicate decided; `undefined` is read as `child`.
+ * @returns the sentence handed back to the model.
+ */
+function gitWriterDenial(sub: string, callerClass: SessionClass | undefined): string {
+  return "one-git-writer rule (AGENTS.md §5): "
+    + (callerClass === "headerless"
+      ? "this session carries no session header, so its place in this workspace's delegation tree could not be established"
+        + " and the rule refuses it FAIL-CLOSED; it"
+      : "this session is a member/child session of this workspace — its session header carries a parent session"
+        + " or a delegation depth above 0 — so it")
+    + " may not run `git " + sub + "`. Teammates share the captain's checkout and two writers race on the single `.git/HEAD` —"
+    + " measured 2026-09-14, a member's `reset HEAD~1` moved the `dev` tip. A git WRITE belongs in the user's OWN shell,"
+    + " which is the workspace's one git writer: edit files, run gates and write evidence here, and let that shell commit."
+    + " Read-only git (`git status` / `log` / `diff` / `show` / `grep` / `ls-files` / `rev-parse` / `merge-base` /"
+    + " `describe` / `blame`) stays open to you."
 }

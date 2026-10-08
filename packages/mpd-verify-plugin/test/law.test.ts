@@ -559,6 +559,37 @@ describe("the one-git-writer rule (§5, made mechanical)", () => {
       expect(gitWriterDecision({ command, topLevelCaptain: true })).toBeUndefined()
     }
   })
+  test("the DENIAL states the class the predicate decided, and names the user's own shell", () => {
+    /** The denial a member/child session receives. */
+    const child = gitWriterDecision({ command: "git commit -m x", topLevelCaptain: false, callerClass: "child" })
+    expect(child).toContain("member/child session of this workspace")
+    expect(child).toContain("parent session")
+    expect(child).toContain("user's OWN shell")
+    /** The denial a caller the predicate could NOT classify receives — the fail-closed case. */
+    const headerless = gitWriterDecision({ command: "git commit -m x", topLevelCaptain: false, callerClass: "headerless" })
+    expect(headerless).toContain("no session header")
+    // IT IS NOT CALLED A MEMBER: the sentence states the class that was really decided, never a guess.
+    expect(headerless).not.toContain("member/child session")
+    // NEITHER SENTENCE ASSERTS TOP-LEVELNESS — the old one claimed "NOT the workspace's top-level captain"
+    // after testing only a preset name, which is the defect T-92 records.
+    expect(child).not.toContain("top-level")
+    expect(headerless).not.toContain("top-level")
+  })
+  test("the captain-write denial makes no claim about top-levelness either", () => {
+    /** The sandbox workspace. */
+    const ws = sandbox()
+    /** The refusal a gated code write receives. */
+    const decision = captainWriteDecision({
+      toolName: "write", args: { file_path: "packages/a/src/index.ts" }, workspaceRoot: ws,
+      sessionId: "captain-session", topLevel: true, loops: [], escapeUses: 0, now: new Date(),
+    })
+    expect(decision.deny).toBeDefined()
+    expect(String(decision.deny)).not.toContain("top-level")
+    // The routes it must still name, so the sentence is informative rather than merely honest.
+    expect(String(decision.deny)).toContain("DELEGATE")
+    expect(String(decision.deny)).toContain("mpd_verify_open")
+    rmSync(ws, { recursive: true, force: true })
+  })
   test("read-only git stays open to everyone", () => {
     for (const command of ["git status", "git log --oneline -3", "git diff HEAD", "git show HEAD:x", "git grep guard", "git rev-parse HEAD", "git blame AGENTS.md"]) {
       expect(gitWriterDecision({ command, topLevelCaptain: false })).toBeUndefined()

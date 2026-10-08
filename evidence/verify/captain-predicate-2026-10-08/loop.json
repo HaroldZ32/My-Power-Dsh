@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "loopId": "loop-20261008T055942-e51e88",
+  "taskId": null,
+  "contract": ".mpd/plans/captain-test-fix.md",
+  "workspace": "/root/dshProj/My-Power-Dsh",
+  "sessionId": "fec39d70-a961-42fb-951c-89831d70c5e3",
+  "writer": {
+    "kind": "delegate",
+    "id": "delegate:pending"
+  },
+  "verifier": {
+    "id": "15e7e9f3-f3d5-4479-93ea-7f8e1adff3b1",
+    "boundAt": "2026-10-08T06:08:38.449Z"
+  },
+  "scope": [
+    "packages/mpd-roles-plugin/src",
+    "packages/mpd-roles-plugin/test",
+    "packages/mpd-roles-plugin/dist",
+    "packages/mpd-verify-plugin/src",
+    "packages/mpd-verify-plugin/test",
+    "packages/mpd-verify-plugin/dist"
+  ],
+  "status": "armed",
+  "openedVia": "tool",
+  "createdAt": "2026-10-08T05:59:42.361Z",
+  "expiresAt": "2026-10-09T05:59:42.361Z"
+}

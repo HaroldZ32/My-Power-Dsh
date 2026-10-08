@@ -150,7 +150,13 @@ export const GATE_PLAN_NAME_MAX = 60
 export const GATE_PLAN_EXCERPT_MAX = 500
 /** The shell name used when the goal's first line collapses to nothing (a whitespace-only turn). */
 export const GATE_PLAN_NAME_FALLBACK = "session-start complexity gate team"
-/** The presets whose top-level sessions the gate covers. */
+/**
+ * The presets whose top-level sessions the SESSION-START GATE covers — this gate's scope, nothing else.
+ *
+ * It is NOT the captain test: §5's captain is the workspace's TOP-LEVEL session (no parent session,
+ * delegation depth `0`) whatever preset it carries — {@link sessionIsTopLevel} decides that, and a
+ * preset-keyed substitute is the T-92 defect.
+ */
 export const DEFAULT_GATE_PRESETS: readonly string[] = ["mpd"]
 
 /** Distinct matches of one global pattern (`matchAll` needs the `g` flag). */
@@ -615,8 +621,15 @@ export function consumeFlagFromMessage(message: unknown, source: string): unknow
 }
 
 /**
- * Whether one agent's SESSION is covered by the gate: a top-level session of one of the
- * configured presets.
+ * Whether one agent's SESSION is covered by the SESSION-START GATE: a top-level session whose
+ * `agentPreset` is on the covered list, or a session with no preset at all.
+ *
+ * WHAT IT IS NOT — read this before reusing it: this is NOT the captain test. It answers "does the
+ * complexity gate apply to this session", and its preset conjunct is deliberate gate scoping
+ * (whether a `cordis`-preset top-level session should ALSO get the gate is a separate question).
+ * The workspace's captain — the ONE git writer of §5 and the only session rule 4 gates — is
+ * {@link sessionIsTopLevel}, a PRESET-FREE classification; the two must never be swapped for one
+ * another, which is exactly the defect T-92 records.
  *
  * A child session (subagent, teammate, workflow worker, ralph round) already belongs to a
  * parent's team — it must never be told to stage one of its own. A session that names a
@@ -636,4 +649,55 @@ export function sessionQualifies(agent: unknown, presets: readonly string[] = DE
   const preset = header.agentPreset
   if (preset === undefined) return true
   return presets.includes(String(preset))
+}
+
+/**
+ * How one agent's session sits in the delegation tree, as §5's captain rule classifies it:
+ * `captain` is the workspace's TOP-LEVEL session (a header exists, it carries no parent session and
+ * its `delegationDepth` is `0` or absent); `child` is a member/child session (a parent session, or a
+ * delegation depth above `0`); `headerless` is an agent whose session header is missing, which is
+ * never read as the captain — the classification fails CLOSED.
+ *
+ * PRESET-FREE BY CONSTRUCTION; see {@link sessionIsTopLevel}.
+ */
+export type SessionRank = "captain" | "child" | "headerless"
+
+/**
+ * Classify one agent's session for §5: the captain is the workspace's TOP-LEVEL session — no parent
+ * session, delegation depth `0` — and NOT a preset name.
+ *
+ * WHY `agentPreset` IS NEVER READ: every top-level session on this deployment records
+ * `agentPreset: "cordis"`, so a preset-keyed test made the captain branch UNREACHABLE and refused
+ * the user's own session its git writes while claiming a fact it never tested (T-92). The manual's
+ * definition is the session's position in the delegation tree; this implements exactly that.
+ *
+ * A value the harness never persists still fails closed: `delegationDepth` is validated on write as
+ * a non-negative safe integer, and anything other than `0` or absent is not the captain.
+ *
+ * @param agent - the live agent handle whose session header is classified.
+ * @returns the session's class.
+ */
+export function sessionRank(agent: unknown): SessionRank {
+  /** The agent's session header, which carries the parent link and the delegation depth. */
+  const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
+  if (header === undefined || header === null) return "headerless"
+  if (header.parentSession !== undefined) return "child"
+  /** The session's delegation depth; absent on a session the harness never recorded a depth for. */
+  const depth = header.delegationDepth
+  return depth === undefined || depth === 0 ? "captain" : "child"
+}
+
+/**
+ * Whether one agent's session IS this workspace's top-level session — the captain of §5's
+ * ONE-GIT-WRITER rule, and the only session rule 4 gates.
+ *
+ * The ONE predicate both rules read, so they can never disagree about who is the captain. It does
+ * NOT consult `agentPreset`, and it is NOT {@link sessionQualifies}: that one answers the
+ * session-start GATE's preset-scoped question and must never be substituted here.
+ *
+ * @param agent - the live agent handle whose session header is classified.
+ * @returns whether this session is the workspace's top-level session.
+ */
+export function sessionIsTopLevel(agent: unknown): boolean {
+  return sessionRank(agent) === "captain"
 }
