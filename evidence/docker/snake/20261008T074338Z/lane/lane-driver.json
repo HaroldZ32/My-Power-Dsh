@@ -1,0 +1,35 @@
+{
+  "startedAt": "2026-10-08T08:06:30.050Z",
+  "finishedAt": "2026-10-08T08:44:27.123Z",
+  "docker": "Docker version 29.8.2, build 7fc2dff",
+  "compose": "Docker Compose version v5.6.0",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 419,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-4U2I4a",
+  "liveRequested": true,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "live.",
+    "boot.llmTurn",
+    "ui."
+  ],
+  "unmeasured": [
+    "live.nativeExecutor"
+  ],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 -e MPD_E2E_LIVE_PROMPT -e MPD_E2E_BROWSER=1 mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=88 failed=3 null=3 FAILED=[build.bunInstall,boot.mcpTools,live.teamRecord] NULL=[tui.mergedPanelOpens,tui.mergedPanelOrder,live.nativeExecutor]",
+  "exitCode": 3
+}

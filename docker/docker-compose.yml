@@ -62,6 +62,14 @@ services:
       # 2026-10-02: a TUI pin whose peer range excludes the harness pin is REFUSED by
       # `dsh plugin --profile dsh-tui add`, so these two knobs move together.
       MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.14.0}
+      # THE TASK THE LIVE TURN RUNS (docker/entrypoint.sh step 15). OPTIONAL and empty by default:
+      # an empty string is what makes the entrypoint keep its own default team-plane prompt
+      # byte-for-byte, so every existing live arm keeps its present meaning. It MUST be interpolated
+      # HERE for the same measured reason as the pin above — compose forwards only what this file
+      # names, so a knob read solely by the entrypoint is unreachable from the host. The `:-` form is
+      # load-bearing: without it compose would warn about an unset variable and hand the container
+      # NOTHING, which would look identical to the default while proving nothing.
+      MPD_E2E_LIVE_PROMPT: ${MPD_E2E_LIVE_PROMPT:-}
     volumes:
       # The driver points this at evidence/docker/client-install/<stamp>/; the default keeps
       # `docker compose run` usable by hand and writes ./docker/out.
@@ -87,5 +95,9 @@ services:
       MPD_E2E_OUT: /out
       MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}
       MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.14.0}
+      # Same optional live-turn prompt as `mpd-client` (see the comment there): both services run the
+      # SAME entrypoint and therefore share step 15, so a knob named on only one of them would make
+      # the prompt depend on which service the operator drove.
+      MPD_E2E_LIVE_PROMPT: ${MPD_E2E_LIVE_PROMPT:-}
     volumes:
       - ${MPD_DOCKER_OUT:-./out}:/out

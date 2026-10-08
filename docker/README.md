@@ -227,6 +227,35 @@ docker tag  docker.m.daocloud.io/library/node:24-bookworm node:24-bookworm
 `docker compose build` then resolves both `FROM` stages from the local store, and the lane runs
 unchanged.
 
+### The live-turn prompt knob (`MPD_E2E_LIVE_PROMPT`)
+
+Step 15 of the container (`docker/entrypoint.sh`) drives a real headless agent session, and by default
+its task is a **team-plane smoke prompt**. `MPD_E2E_LIVE_PROMPT` REPLACES that task: when it is set and
+non-empty, its value is used verbatim as the turn's prompt, so the lane can be asked for a different
+piece of work. When it is unset or empty, the built-in prompt runs unchanged **byte for byte** — the
+knob is additive, never a behaviour change.
+
+It only matters on a live run, so the invocation is the live one:
+
+```bash
+export DEEPSEEK_API_KEY=…                 # forwarded BY NAME, never echoed into the argv
+export MPD_E2E_LIVE=1                     # the live arms are opt-in
+export MPD_E2E_LIVE_PROMPT='Write a playable snake game to <path> …'
+node scripts/docker-e2e.ts --live
+```
+
+Without `MPD_E2E_LIVE=1` (or without a forwarded `DEEPSEEK_API_KEY`) the run never reaches step 15, and
+the driver refuses `--live` outright when it holds no key. The driver forwards the prompt with
+`-e MPD_E2E_LIVE_PROMPT` — **by name, not by value**, the same way the credential travels — and
+`docker/docker-compose.yml` names `${MPD_E2E_LIVE_PROMPT:-}` in BOTH services' `environment:` block,
+which is what makes the variable reachable from the host at all: compose forwards only what the compose
+file interpolates.
+
+Which prompt a turn actually ran with is part of the evidence: step 15 prints a
+`[live-prompt] promptSource=… bytes=… firstLine="…"` line, records the same note as the `livePrompt`
+fact in `result.json`, and carries it in the `boot.llmTurn` assertion's `raw` field. A long
+caller-supplied prompt is therefore identifiable without being dumped into the log as a blob.
+
 ## Isolation model
 
 - `docker/docker-compose.yml` declares **one** service and **one** bind mount: the evidence `/out`

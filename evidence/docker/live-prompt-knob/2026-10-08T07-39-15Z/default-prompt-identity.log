@@ -1,0 +1,13 @@
+=== E1-c support: the DEFAULT prompt is byte-for-byte what HEAD shipped ===
+measured at: 2026-10-08T07:41:50Z
+HEAD commit: 3e144c15
+
+--- HEAD:docker/entrypoint.sh (pre-change assignment) ---
+1408:  LIVE_PROMPT="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action \"create\" (name it live-smoke, description \"docker live turn\"); (3) call agent_teams_plan with action \"add_member\" for a member named Reviewer; (4) call agent_teams_plan with action \"create_task\" with subject \"check the mount\"; (5) call agent_teams_plan with action \"approve\". Then reply with the single word DONE."
+--- working tree (the same literal, now LIVE_PROMPT_DEFAULT) ---
+1431:  LIVE_PROMPT_DEFAULT="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action \"create\" (name it live-smoke, description \"docker live turn\"); (3) call agent_teams_plan with action \"add_member\" for a member named Reviewer; (4) call agent_teams_plan with action \"create_task\" with subject \"check the mount\"; (5) call agent_teams_plan with action \"approve\". Then reply with the single word DONE."
+
+Both assignments are EVALUATED AS BASH (the escaped quotes are unescaped exactly as the shell does):
+eval(HEAD)  bytes=424 sha256=b9828b0fd730e077dd0f4585e2ce30718295036326ef49082da254a168f4c007
+eval(WT)    bytes=424 sha256=b9828b0fd730e077dd0f4585e2ce30718295036326ef49082da254a168f4c007
+VERDICT: byte-identical — the default live prompt is UNCHANGED by this lane

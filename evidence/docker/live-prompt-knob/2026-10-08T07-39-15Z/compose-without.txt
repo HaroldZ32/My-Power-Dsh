@@ -1,0 +1,43 @@
+name: docker
+services:
+  mpd-client:
+    environment:
+      MPD_E2E_DSH_VERSION: 0.2.0-rc.2
+      MPD_E2E_LIVE_PROMPT: ""
+      MPD_E2E_OUT: /out
+      MPD_E2E_TUI_VERSION: 0.14.0
+    image: mpd-docker-e2e:local
+    init: false
+    networks:
+      default: null
+    volumes:
+      - type: bind
+        source: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/out
+        target: /out
+        bind: {}
+    build:
+      context: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+      dockerfile: docker/Dockerfile
+  mpd-oneclick:
+    environment:
+      MPD_E2E_DSH_VERSION: 0.2.0-rc.2
+      MPD_E2E_INSTALL_MODE: oneclick
+      MPD_E2E_INSTALL_SPEC: git+file:///opt/oneclick.git
+      MPD_E2E_LIVE_PROMPT: ""
+      MPD_E2E_OUT: /out
+      MPD_E2E_TUI_VERSION: 0.14.0
+    image: mpd-docker-e2e:local
+    init: false
+    networks:
+      default: null
+    volumes:
+      - type: bind
+        source: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/out
+        target: /out
+        bind: {}
+    build:
+      context: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+      dockerfile: docker/Dockerfile
+networks:
+  default:
+    name: docker_default

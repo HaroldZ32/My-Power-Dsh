@@ -189,6 +189,33 @@ docker tag  docker.m.daocloud.io/library/node:24-bookworm node:24-bookworm
 
 此后 `docker compose build` 会直接从本地镜像库解析两个 `FROM` 阶段，lane 无需任何改动即可运行。
 
+### 实时回合的提示词开关（`MPD_E2E_LIVE_PROMPT`）
+
+容器的第 15 步（`docker/entrypoint.sh`）会驱动一次真实的 headless agent 会话，其任务默认是一段
+**团队平面冒烟提示词**。`MPD_E2E_LIVE_PROMPT` 会**替换**该任务：当它被设置且非空时，其值原样作为该回合的
+提示词，因此可以要求本 lane 去做另一件事。未设置或为空时，内置提示词**逐字节**保持不变——该开关只做增量，
+绝不改变行为。
+
+它只在实时运行中才有意义，因此调用方式就是实时的那一套：
+
+```bash
+export DEEPSEEK_API_KEY=…                 # 按“名字”转发，绝不写进 argv 被回显
+export MPD_E2E_LIVE=1                     # 实时类断言是可选开启的
+export MPD_E2E_LIVE_PROMPT='把一个可玩的贪吃蛇游戏写到 <路径> …'
+node scripts/docker-e2e.ts --live
+```
+
+没有 `MPD_E2E_LIVE=1`（或没有转发 `DEEPSEEK_API_KEY`）时，运行根本到不了第 15 步；而驱动在手里没有密钥时会
+直接拒绝 `--live`。驱动用 `-e MPD_E2E_LIVE_PROMPT` 转发该提示词——**按名字转发，而不是按值**，与凭据的传递
+方式一致——并且 `docker/docker-compose.yml` 在**两个**服务的 `environment:` 块里都写了
+`${MPD_E2E_LIVE_PROMPT:-}`，这正是该变量能从宿主机送达容器的原因：compose 只转发 compose 文件自己插值过的
+变量。
+
+某一回合实际用的是哪条提示词，本身就是证据的一部分：第 15 步会打印
+`[live-prompt] promptSource=… bytes=… firstLine="…"` 这一行，把同样的说明记录为 `result.json` 中的
+`livePrompt` 事实，并写入 `boot.llmTurn` 断言的 `raw` 字段。因此，即使调用方给的提示词很长，也能被识别出来，
+而不会被当作一团无法阅读的文本倾倒进日志。
+
 ## 隔离模型
 
 - `docker/docker-compose.yml` 只声明**一个**服务与**一个**绑定挂载：证据目录 `/out`。它不挂载 `$HOME`、

@@ -1,0 +1,9 @@
+recorded-utc: 2026-10-08T08:51:16Z
+~/.dsh/sessions projects=3
+--home-haroldzhao-MyProj-DshProj-My-Power-Dsh--
+drwx------  3 haroldzhao haroldzhao 4096 Oct  4 01:08 attachments
+drwx------  3 haroldzhao haroldzhao 4096 Oct  5 22:20 cache
+drwx------  2 haroldzhao haroldzhao 4096 Oct  8 16:50 llm-deepseek
+drwxrwxr-x  4 haroldzhao haroldzhao 4096 Oct  2 20:58 profiles
+drwx------  5 haroldzhao haroldzhao 4096 Oct  7 17:51 sessions
+drwx------  3 haroldzhao haroldzhao 4096 Oct  8 15:09 storages
