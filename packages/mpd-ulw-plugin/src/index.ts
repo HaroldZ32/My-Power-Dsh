@@ -1,12 +1,19 @@
 // C2 mpd-ulw-plugin v2: fixed-policy ultrawork engine on the DSH subagent seam.
-// Carries the full upstream discipline (waves, gates, ledger) and keeps mpd_ulw as
-// a lightweight compatibility alias. `/ulw` and `/ultrawork` make the engine
+// Carries the ultrawork discipline (waves, gates, ledger) in THIS bundle's own wording and keeps
+// mpd_ulw as a lightweight compatibility alias. `/ulw` and `/ultrawork` make the engine
 // directly user-invocable and inject the ULW ACTIVATION DIRECTIVE (the autonomy
 // policy; see ULW_ACTIVATION_DIRECTIVE below).
-// Policy (adapted from upstream ultrawork directive, base 8c57e46):
+// Provenance: the discipline's SHAPE is upstream's — it is re-expressed from the documented upstream
+// ultrawork discipline (base 8c57e46) — while the WORDING shipped here is OURS. No upstream prompt,
+// policy or error text was found or copied, and the clauses below name things that exist only in this
+// bundle (the `mpd` toolbox, the five `agent_teams_*` tools of this harness, `.mpd/ulw`, `mpdConfig`).
 //   discovery waves (stop after 2 fruitless), per-criterion PIN -> RED -> GREEN ->
 //   SURFACE -> CLEAN, plan gate, verification gate (max 2 re-reviews), final
 //   quality gate with per-lane ledger, subagent barrier, evidence never suppressed.
+// UN-DIFFED RESIDUAL, stated rather than smoothed over: four of those clauses could NOT be compared
+// against any upstream text — the PIN -> RED -> GREEN -> SURFACE -> CLEAN ladder, the
+// stop-after-2-fruitless-discovery-waves rule, the subagent barrier, and evidence-never-suppressed.
+// They are ours in wording; that they are upstream's in intent is UNPROVEN.
 import { mkdirSync, writeFileSync, appendFileSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"

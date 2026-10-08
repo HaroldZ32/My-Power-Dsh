@@ -1,0 +1,9 @@
+# integrity record of the ORIGINAL records this documentary repair left INTACT (never rewritten).
+# A purged log is a destroyed finding: these are the three overlap logs, the gate sweep, the
+# seed manifest and the pin list, with their sha256 and their last-write instant (UTC).
+4db9fb2ea061c41c346c1a40d4212d9c6452ea3aaf8d05deab920e34e2e29114  2026-10-08 16:44:12 UTC  analysis/overlap-previous.log
+57d9f0f40a0cca0edc6964056c1e71ecf32e4f0dd393e2536c6fc9510576b1db  2026-10-08 16:44:12 UTC  analysis/overlap-seeds.log
+1b0bcf295414a04ed4e88fb8cfcc9f019f6dddb0e3456dc48a898c1b4d49f612  2026-10-08 16:44:47 UTC  analysis/overlap-final.log
+029d2dcfa85faf53449c0af8db8d5da015f68c10d6e86c5f05655ad9d5a3ad21  2026-10-08 16:45:17 UTC  output.log
+4e33342bb90d755c4984b04a4f99f4064e8d19a5ff9683dbba56aeac2699688e  2026-10-08 16:44:55 UTC  seed-manifest.txt
+7acb6c80cba0360f02c5e2ecb46021ccbb3e9a200302a050c64dc0dafd43402a  2026-10-08 16:40:15 UTC  pins.tsv

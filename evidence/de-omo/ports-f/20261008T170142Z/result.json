@@ -1,0 +1,213 @@
+{
+  "wave": "F — the last two packages whose headers self-declared an upstream port",
+  "role": "SINGLE WRITER (Senior Engineer)",
+  "utc_stamp": "20261008T170142Z",
+  "branch_at_start": "feature/de-omo-wave-d-personas (read via git status/reflog-free read-only commands; the one-git-writer guard refused `git branch` for this member session, so the branch name is taken from the task brief, NOT re-verified by me)",
+  "hard_rule_compliance": {
+    "files_changed": [
+      "packages/mpd-memory-plugin/src/index.ts",
+      "packages/mpd-memory-plugin/dist/index.js",
+      "packages/mpd-memory-plugin/test/memory.test.ts",
+      "packages/mpd-memory-plugin/README.md",
+      "packages/mpd-memory-plugin/README.zh-CN.md",
+      "packages/mpd-ulw-plugin/src/index.ts",
+      "packages/mpd-ulw-plugin/README.md",
+      "packages/mpd-ulw-plugin/README.zh-CN.md",
+      "LICENSE-NOTICES.md",
+      "evidence/de-omo/ports-f/20261008T170142Z/{result.json,output.log}"
+    ],
+    "not_touched": [
+      "packages/mpd-roles-plugin/personas/** (wave D working-tree state left exactly as found)",
+      "evidence/de-omo/personas/** (wave D evidence left as found)",
+      "VENDOR_LOCK.json — NOT touched, and git status confirms it is unmodified: no fingerprinted asset changed"
+    ],
+    "git_write_commands": "none. All git invocations were read-only (status). The one-command-branch read was refused by the guard.",
+    "dist_note": "packages/mpd-ulw-plugin/dist/index.js rebuilt with the pinned toolchain but came out BYTE-IDENTICAL (the change is comment-only and the bundle emits no header comments), so it does not appear in git status; mpd-memory-plugin/dist/index.js DID change and was rebuilt."
+  },
+  "package_A_mpd_memory_plugin": {
+    "verdict": "DERIVED — the reducer slice was REWRITTEN",
+    "verdict_source": "the wave-F evidence pass (supplied as the frozen contract); NOT re-verified by me in this session (no upstream checkout, no network). The upstream URLs below are that pass's citations, recorded verbatim, not my own observation.",
+    "upstream_urls": [
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/memory-core/src/reflection/machine.ts",
+      "https://github.com/code-yeongyu/oh-my-openagent/blob/dev/packages/memory-core/src/journal/cursor.ts"
+    ],
+    "decisive_identifiers": [
+      "completeTransition — packages/memory-core/src/reflection/machine.ts (`export function completeTransition(`, `export interface CompleteTransition`)",
+      "reflected_completed_steps, steps_since_last_successful_reflection — packages/memory-core/src/journal/cursor.ts, inside ReflectionTranscriptState",
+      "reservation as a state field — machine.ts (`interface ReservationState`, then `MachineState.reservation`)",
+      "the package also mirrors upstream markdown memory files with frontmatter, a FactsQueue and the reflection state machine"
+    ],
+    "what_changed": {
+      "state_vocabulary": {
+        "reflected_completed_steps": "reflectionsCompleted",
+        "steps_since_last_successful_reflection": "stepsSinceReflection",
+        "reservation ({status: 'pending'|'completed', at})": "pendingReflection ({due: boolean, at})",
+        "completeTransition (tool-description mention)": "removed"
+      },
+      "behaviour": "unchanged beyond the rename/re-expression: the threshold predicate, the due predicate, the refusal precondition and the completion transition are semantically identical; the 5 pre-existing test arms pass unmodified. ONE DECLARED DIFFERENCE, stated because 'no behaviour change' must be precise: the reader now returns a CLOSED record (the five known keys), where the old reader passed the parsed object through and the writer round-tripped it. An UNKNOWN key hand-added to reflection.json is therefore dropped at the next write. Nothing in this repository writes such a key (the only writer is writeReflection), so no real state loses anything — and closing the shape is what keeps a legacy key from leaking back onto disk.",
+      "header": "rewritten: the package is now stated as mpd-owned code RE-EXPRESSED from documented behaviour, with the earlier draft's mirrored vocabulary recorded as HISTORY (base 8c57e46, SUL-1.0) and wave F named as the replacement.",
+      "readmes": "both READMEs rewritten: mpd-owned statement, the svn/VCS framing re-attributed to US, the history note, and a new 'Persisted state' section (heading tree kept in parity with the zh twin).",
+      "over_claim_corrected": "upstream memory-core is Git-only (GitMemoryRepo; no SvnMemoryRepo upstream), so the svn backend and the 'VCS abstraction with git AND svn backends' framing are OURS and are no longer presented as upstream-attributable. The header/README feature list was also trimmed to what this package ships (the upstream-described `dream` trigger is not implemented here).",
+      "tests": "ONE new arm added (persisted-state compatibility), one test renamed to drop the word 'reserved', one stale comment reworded. No existing assertion was weakened."
+    },
+    "persisted_state_question": {
+      "question": "May those field names be persisted in memory state files under .mpd/memory/**, and does anything write/read them?",
+      "answer": "YES, they are persisted — and NOTHING outside the package reads them.",
+      "evidence": [
+        "A live record exists at .mpd/memory/agents/agent-my-power-dsh/runtime/reflection.json carrying reflected_completed_steps=5, steps_since_last_successful_reflection=9 and reservation={status:'completed',at:'2026-10-07T23:01:50.533Z'}.",
+        "Repo-wide search for the three names + `reservation` in packages/**, skills/**, scripts/**, docs/**: the ONLY hits are this plugin's src, its dist and one test comment. The only external reader of the state file is skills/dsh-qa/scripts/memory-smoke.ts, and it reads the write counter `steps` alone."
+      ],
+      "decision_taken": "KEEP A READ-COMPAT PATH (no migration step): `adoptLegacyState` accepts a legacy record, maps it onto the current names and drops the legacy keys, so the next reflection update persists the current vocabulary only.",
+      "pin": "test arm 'a reflection record persisted under the pre-wave-F names is read, then rewritten under the current ones' seeds a legacy record, drives a full reflection through it and asserts both the counters and that no legacy key survives on disk.",
+      "falsifiability": "NEGATIVE CONTROL run on a scratch copy with the legacy mapping removed: the arm FAILS (expect(received).toBe(expected) Expected: true, Received: false at the `due` assertion; 5 pass / 1 fail, exit 1). With the mapping present: 6 pass / 0 fail, exit 0."
+    },
+    "reworded_provenance_text": {
+      "src_header": [
+        "// C6 mpd-memory-plugin: git/svn-backed memory engine with a reflection state machine.",
+        "// mpd-owned code: the engine's semantics — markdown memory files with frontmatter (description/",
+        "// kind/aliases/read_only), a journal plus a facts queue, and a step-count reflection reducer —",
+        "// are RE-EXPRESSED here from the DOCUMENTED BEHAVIOUR of the upstream project `memory-core`",
+        "// (base 8c57e46, SUL-1.0); no upstream source is translated.",
+        "// HISTORY: an earlier draft of the reducer mirrored upstream's state-machine vocabulary",
+        "// (`reflected_completed_steps`, `steps_since_last_successful_reflection`, `reservation`,",
+        "// `completeTransition`); de-omo wave F replaced it with the vocabulary below and left a READ-ONLY",
+        "// compatibility path for records already persisted under those names.",
+        "// OURS, not upstream's: the svn backend and the VCS abstraction over git AND svn",
+        "// (memory.vcs: git | svn | both; `both` commits to each). Upstream `memory-core` is Git-only —",
+        "// its `GitMemoryRepo` has no svn counterpart.",
+        "// Paths: <workspace>/.mpd/memory/agents/<slug>/{repo, runtime/...}.",
+        "import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync, statSync } from \"node:fs\"",
+        "import { spawnSync } from \"node:child_process\""
+      ],
+      "readme_en_lead": "**mpd-owned code.** … RE-EXPRESSED here from the DOCUMENTED BEHAVIOUR of the upstream package `memory-core` (base 8c57e46, SUL-1.0). No upstream source is translated … **The VCS abstraction and the svn backend are OURS, not upstream's.** Upstream `memory-core` is **Git-only** … *History.* … **de-omo wave F replaced that vocabulary** with this package's own: `reflectionsCompleted`, `stepsSinceReflection`, `pendingReflection`.",
+      "readme_zh_lead": "**本包是 mpd 自有代码。** … 依据上游包 `memory-core` 的**已记录行为**… 在此**重新表达**… **VCS 抽象与 svn 后端是我们自己的，不属于上游。** … *历史。* … **de-omo wave F 已用本包自己的词汇替换之**。"
+    },
+    "residual": "The compatibility reader necessarily SPELLS the three legacy names (they are the keys on disk); they are confined to one documented function and to the HISTORY lines, and are never written again. That is a deliberate, stated exception to 'no upstream vocabulary remains'."
+  },
+  "package_B_mpd_ulw_plugin": {
+    "verdict": "INDEPENDENT — reworded only; the policy was NOT rewritten",
+    "verdict_source": "the wave-F evidence pass (supplied as the frozen contract); not re-verified by me. No upstream prompt/policy/error text was found by that pass, and it found clauses that cannot exist upstream.",
+    "upstream_urls": [],
+    "what_changed": {
+      "src_header": "the note now reads: the discipline's SHAPE is upstream's (documented upstream ultrawork discipline, base 8c57e46), the WORDING shipped here is OURS, no upstream prompt/policy/error text was found or copied, and the clauses below name things that exist only in this bundle. The 'carries the FULL upstream discipline' over-claim is gone. Policy text itself untouched.",
+      "readme_en": "`## Policy (adapted from upstream ultrawork, base 8c57e46)` replaced by `## Policy — upstream shape, our wording` + the precise statement + the residual; the subagent-barrier bullet now says it is one of the four clauses with no upstream text to diff against.",
+      "readme_zh": "mirrored heading level and the same statement in 简体中文 (heading tree kept in parity).",
+      "policy_body": "UNCHANGED — the directive, the engine, the gates and the tools are byte-for-byte the same logic."
+    },
+    "reworded_provenance_text": {
+      "src_header": [
+        "// C2 mpd-ulw-plugin v2: fixed-policy ultrawork engine on the DSH subagent seam.",
+        "// Carries the ultrawork discipline (waves, gates, ledger) in THIS bundle's own wording and keeps",
+        "// mpd_ulw as a lightweight compatibility alias. `/ulw` and `/ultrawork` make the engine",
+        "// directly user-invocable and inject the ULW ACTIVATION DIRECTIVE (the autonomy",
+        "// policy; see ULW_ACTIVATION_DIRECTIVE below).",
+        "// Provenance: the discipline's SHAPE is upstream's — it is re-expressed from the documented upstream",
+        "// ultrawork discipline (base 8c57e46) — while the WORDING shipped here is OURS. No upstream prompt,",
+        "// policy or error text was found or copied, and the clauses below name things that exist only in this",
+        "// bundle (the `mpd` toolbox, the five `agent_teams_*` tools of this harness, `.mpd/ulw`, `mpdConfig`).",
+        "//   discovery waves (stop after 2 fruitless), per-criterion PIN -> RED -> GREEN ->",
+        "//   SURFACE -> CLEAN, plan gate, verification gate (max 2 re-reviews), final",
+        "//   quality gate with per-lane ledger, subagent barrier, evidence never suppressed.",
+        "// UN-DIFFED RESIDUAL, stated rather than smoothed over: four of those clauses could NOT be compared",
+        "// against any upstream text — the PIN -> RED -> GREEN -> SURFACE -> CLEAN ladder, the",
+        "// stop-after-2-fruitless-discovery-waves rule, the subagent barrier, and evidence-never-suppressed.",
+        "// They are ours in wording; that they are upstream's in intent is UNPROVEN."
+      ]
+    },
+    "residual": "FOUR clauses could not be compared against any upstream text (the ONE un-diffed residual, recorded in the header AND both READMEs): (1) the ladder PIN → RED → GREEN → SURFACE → CLEAN, (2) the 'stop after 2 fruitless discovery waves' rule, (3) the subagent barrier, (4) evidence-never-suppressed. They are OURS in wording; that they are upstream's in INTENT is UNPROVEN and is not claimed."
+  },
+  "license_notices": {
+    "file": "LICENSE-NOTICES.md",
+    "change": "new closing section 'Two self-declared upstream ports — settled (wave F)' recording both verdicts, the cited upstream URLs, what changed, the persisted-state bound and its answer, the corrected over-claim (Git-only upstream) and the one un-diffed residual.",
+    "history_preserved": "nothing was deleted: the file's opening derivation statement (upstream commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29, v5.0.0-beta.20) and every earlier wave record stand. The wave-F section explicitly states that the memory package's earlier draft DID mirror upstream vocabulary — a licence record that erases its own past is a defective record."
+  },
+  "gates_observed": [
+    {
+      "cmd": "bun test packages/mpd-memory-plugin",
+      "exit": 0,
+      "observed": "6 pass / 0 fail / 28 expect() calls / Ran 6 tests across 1 file [134.00ms]"
+    },
+    {
+      "cmd": "bun test packages/mpd-ulw-plugin",
+      "exit": 0,
+      "observed": "24 pass / 0 fail / 209 expect() calls / Ran 24 tests across 2 files [106.00ms]"
+    },
+    {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "observed": "scanned 364 TypeScript file(s) of 364; inspected 32738 declaration(s); VERDICT: PASS"
+    },
+    {
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed; memory dist sha e2cbb4f16dac…, ulw dist sha eeee5bbbd60a…; build toolchain bun 1.4.0 from the repository toolchain"
+    },
+    {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=47 failed=0 violations=0 exempt=24 derived=3 links=424 dead=0 — PASS (links=424 checked=396 resolved=396 dead=0)"
+    },
+    {
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "observed": "ok: 35 row ids match the 2-file bundle patch layer (… mpd-memory, … mpd-ulw …)"
+    },
+    {
+      "cmd": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "observed": "PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked; every asset OK (skills 371 files, codegraph serve.js, hashline vendor 8, boulder vendor 13, schemastery 19, bundle adopted 2, client.js 1)"
+    },
+    {
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "observed": "$ tsgo --noEmit — no diagnostics"
+    },
+    {
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "observed": "VERDICT: PASS — the install-time rules and the packaging contract hold."
+    }
+  ],
+  "gate_history_honest": "The FIRST typecheck run FAILED (exit 1) with two TS2367 diagnostics on my new refusal message: after `if (s.triggered !== true && s.pendingReflection?.due !== true)` TypeScript narrows `triggered` to `false` and `due` to `false | undefined`, so re-comparing them to `true` has no overlap (the old code escaped this only because `readReflection` returned `any`). Fixed by rendering what the predicate already established; then the whole nine-gate sweep was re-run from scratch AFTER rebuilding dist with the pinned toolchain. Both passes are in output.log; the final sweep is marked.",
+  "not_proven": [
+    "I did NOT re-verify the upstream citations: no upstream checkout and no network were used, and the verdicts are the frozen contract handed to this wave. The URLs and identifiers are recorded as the evidence pass's findings.",
+    "The rewrite replaces upstream VOCABULARY and STRUCTURE; I did not diff the remaining reducer against upstream source (impossible without the checkout), so 'no other translated slice remains' is NOT proven — it rests on the evidence pass's scope (~40 of 363 lines named as the derived slice).",
+    "`adoptLegacyState` covers the record shape the pre-wave-F code actually wrote. A hand-edited or third-party state file with a different legacy shape degrades to the initial state for the unmapped field (documented), and no attempt is made to recover it.",
+    "The four ULW clauses remain un-diffed by construction — the residual is recorded, not resolved.",
+    "No Docker/boot lane was run: the nine gates named by the task are the required set, and neither package changed a row, a preset or a tool schema.",
+    "The closed-record point above is a deliberate, bounded difference from the old pass-through reader; it is exercised by no existing test because no supported input carries an unknown key."
+  ],
+  "out_of_scope_observation": "An accidental repo-root `bun test` (a mis-chained command whose `cd` short-circuited) ran the WHOLE suite: 2110 pass / 18 fail, every failure in skills/visual-qa/scripts/cli.test.ts ('the Node bundle is spawned for image-diff without Bun on PATH', repeated). It is unrelated to this wave (no skill or bundle file was touched) and it is PRE-EXISTING: the repository's own evidence log evidence/terminal-silence/test-repairs/20261002T155522Z/full-bun-test-after.log records the same failures. Reported as a finding, not absorbed.",
+  "verification_handoff": {
+    "contract_for_the_verifier": ".mpd/plans/de-omo-decoupling.md §15 + this result.json",
+    "reproduce": [
+      "bun test packages/mpd-memory-plugin",
+      "bun test packages/mpd-ulw-plugin",
+      "bun run verify:comments",
+      "node scripts/verify-dist-fresh.ts",
+      "bun run verify:docs",
+      "bun run verify:rows",
+      "node scripts/verify-vendor.ts",
+      "bun run typecheck",
+      "bun run verify:manifest"
+    ],
+    "independent_checks_available": [
+      "cat .mpd/memory/agents/agent-my-power-dsh/runtime/reflection.json — the legacy record that makes the compat path necessary",
+      "grep the three legacy names across the tree — they must appear only in the HISTORY lines and in adoptLegacyState",
+      "re-run the negative control by deleting the legacy mapping from a scratch copy of the package"
+    ]
+  },
+  "sha256": {
+    "packages/mpd-memory-plugin/src/index.ts": "6ca9c62e27ca52b87dbc113b8619fbf4dfefea9c89e444478f5dbd3f761c876e",
+    "packages/mpd-memory-plugin/dist/index.js": "e2cbb4f16dacbd91c9ea28f5fb1017d9b9fd6de6a1a0f83a7188488cf4a46527",
+    "packages/mpd-memory-plugin/test/memory.test.ts": "d387e92d5042c90f701ef7b77dbcd7168a38ed284a36707c8cb060a2ddb891b5",
+    "packages/mpd-memory-plugin/README.md": "2c814dd5eedd72dcd0f90b762cd7f6ae72516bf799f684ff3731eba0ec3468b4",
+    "packages/mpd-memory-plugin/README.zh-CN.md": "57c764a6225cbf7ab87c2bb5247c0685ba0e6b2aaa17cf30913c1a19d6dd9271",
+    "packages/mpd-ulw-plugin/src/index.ts": "af3fdc2ccc7faabe6f00f51fed79f0f9832784330818afd9bb3e1b046d15eeec",
+    "packages/mpd-ulw-plugin/dist/index.js": "eeee5bbbd60a6e2e2b5e25dd3f94675bdd3855de3db4fd3eb416cab41d407648",
+    "packages/mpd-ulw-plugin/README.md": "4bdf829910e9d2eddf7cf48e3b2d000aed81dc8ef0504313e838e2e0a18f7a1a",
+    "packages/mpd-ulw-plugin/README.zh-CN.md": "dbba9cfc3fdc61e18e007bcc116bea76b258c59c60fd1e29691ece9faa5e372f",
+    "LICENSE-NOTICES.md": "72ae37c8eddfc87ac94c435b3cbf070e04a8fc24cd48b5111006dfc7f13e779e",
+    "VENDOR_LOCK.json (UNCHANGED)": "d37e04295a096b073f2b707e38be9b4389777d2843f16e2de48f6f2fbd1c7b0b"
+  }
+}

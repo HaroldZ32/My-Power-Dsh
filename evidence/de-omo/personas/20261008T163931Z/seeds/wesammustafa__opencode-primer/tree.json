@@ -1,0 +1,663 @@
+{
+  "sha": "fe71432a721ea423939193e667d510725477b79a",
+  "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/fe71432a721ea423939193e667d510725477b79a",
+  "tree": [
+    {
+      "path": ".editorconfig",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ddcfd6318fe23d0ad43f940719ccd483addd08b9",
+      "size": 348,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/ddcfd6318fe23d0ad43f940719ccd483addd08b9"
+    },
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "227c60983b46e7dc0b4640c6b3e680b6f406318f",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/227c60983b46e7dc0b4640c6b3e680b6f406318f"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "09e0190e270c2006068a3e80230596ef58701066",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/09e0190e270c2006068a3e80230596ef58701066"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "89e173b756ba4bbc41e2cd6595fb25589e76525b",
+      "size": 658,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/89e173b756ba4bbc41e2cd6595fb25589e76525b"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ddf4002f88e9ae6a5bfb5db07e9b3d293d5d4844",
+      "size": 466,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/ddf4002f88e9ae6a5bfb5db07e9b3d293d5d4844"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87129c32b5729300d3cc3098dc7de12d02068a45",
+      "size": 563,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/87129c32b5729300d3cc3098dc7de12d02068a45"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ce588e6ae92ec69fe1760fe67ff44239f6b341c",
+      "size": 1084,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/5ce588e6ae92ec69fe1760fe67ff44239f6b341c"
+    },
+    {
+      "path": ".github/codespell-ignore.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f0f1840b863215ccc4f3b23ea50d475bf0dfeb3",
+      "size": 117,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/6f0f1840b863215ccc4f3b23ea50d475bf0dfeb3"
+    },
+    {
+      "path": ".github/markdown-link-check.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38fb9be51c4669b35f4d8872b2e13c84a73a8a60",
+      "size": 678,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/38fb9be51c4669b35f4d8872b2e13c84a73a8a60"
+    },
+    {
+      "path": ".github/workflows",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fadfdbad38a2f37f120cdf28b8bee9e07741a0ff",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/fadfdbad38a2f37f120cdf28b8bee9e07741a0ff"
+    },
+    {
+      "path": ".github/workflows/lint-docs.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "49e66d04ed26eff136c337b668d9e0a969e210e5",
+      "size": 1345,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/49e66d04ed26eff136c337b668d9e0a969e210e5"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "98596054388dc2f5af07812a92f343e3748ce8b5",
+      "size": 2308,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/98596054388dc2f5af07812a92f343e3748ce8b5"
+    },
+    {
+      "path": ".markdownlint.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "200dc10cec4c33ff4838135a4986eca2d667e5ab",
+      "size": 448,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/200dc10cec4c33ff4838135a4986eca2d667e5ab"
+    },
+    {
+      "path": ".markdownlintignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "96d1be952fdf54c0672633380870c37ce57eb047",
+      "size": 89,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/96d1be952fdf54c0672633380870c37ce57eb047"
+    },
+    {
+      "path": ".opencode",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5707fc3f452013defbb2f74bb7c547998b69e133",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/5707fc3f452013defbb2f74bb7c547998b69e133"
+    },
+    {
+      "path": ".opencode/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d529794e3c31ba6185b6ab9109cf7f02937e4824",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/d529794e3c31ba6185b6ab9109cf7f02937e4824"
+    },
+    {
+      "path": ".opencode/agents/code-reviewer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "58afbec8ecf31798df4ae469043167f6292fed9e",
+      "size": 2022,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/58afbec8ecf31798df4ae469043167f6292fed9e"
+    },
+    {
+      "path": ".opencode/agents/security-auditor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3cde73a27a640211adadb294910cbe57d20d8b06",
+      "size": 2376,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/3cde73a27a640211adadb294910cbe57d20d8b06"
+    },
+    {
+      "path": ".opencode/commands",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a477dca39b7f54a6f1b26d33d58053db347ece21",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/a477dca39b7f54a6f1b26d33d58053db347ece21"
+    },
+    {
+      "path": ".opencode/commands/optimize.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1f45bf257a668b4e79fdbbe444cbb0902c384368",
+      "size": 1253,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/1f45bf257a668b4e79fdbbe444cbb0902c384368"
+    },
+    {
+      "path": ".opencode/commands/pr.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e4b4a1cb17ce462ef017d0d69ebdcc866d75df5f",
+      "size": 1033,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/e4b4a1cb17ce462ef017d0d69ebdcc866d75df5f"
+    },
+    {
+      "path": ".opencode/commands/review.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "efdb2bf008c129f3016edf074a2f8294f05853fc",
+      "size": 938,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/efdb2bf008c129f3016edf074a2f8294f05853fc"
+    },
+    {
+      "path": ".opencode/commands/test.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e57b13f9c306edc0343e8d3c8436b013db77576f",
+      "size": 1191,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/e57b13f9c306edc0343e8d3c8436b013db77576f"
+    },
+    {
+      "path": ".opencode/plugins",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "96d80d9c0cb6ec818993e25f74ddf1c14c81ce8e",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/96d80d9c0cb6ec818993e25f74ddf1c14c81ce8e"
+    },
+    {
+      "path": ".opencode/plugins/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7061bcc3c7740548c23ff41ae4c2e88a26dfbbf3",
+      "size": 1521,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/7061bcc3c7740548c23ff41ae4c2e88a26dfbbf3"
+    },
+    {
+      "path": ".opencode/plugins/audit-log.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf9bb5aecba22e948761ebecf25bae9d53dc6ff0",
+      "size": 1321,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/cf9bb5aecba22e948761ebecf25bae9d53dc6ff0"
+    },
+    {
+      "path": ".opencode/plugins/protect-secrets.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "18f6c921cd32d02fed6478295c58bc0c5f2bfd16",
+      "size": 1417,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/18f6c921cd32d02fed6478295c58bc0c5f2bfd16"
+    },
+    {
+      "path": ".opencode/skills",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "de632e691c9f8ed25c78ae661b910bb5402599aa",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/de632e691c9f8ed25c78ae661b910bb5402599aa"
+    },
+    {
+      "path": ".opencode/skills/git-release",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "324097c1726d0f16ed2cc08c9dfbd0257cc38f5e",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/324097c1726d0f16ed2cc08c9dfbd0257cc38f5e"
+    },
+    {
+      "path": ".opencode/skills/git-release/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40f0bb600ee482677f2e79f54975c49795700ea0",
+      "size": 1640,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/40f0bb600ee482677f2e79f54975c49795700ea0"
+    },
+    {
+      "path": "AGENTS.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "00b6f807d2d36c33be6a5b2ab7f562ba03ec8981",
+      "size": 7060,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/00b6f807d2d36c33be6a5b2ab7f562ba03ec8981"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3630afc4d1793eaa169a4ee6b8cce20264ce4f30",
+      "size": 2378,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/3630afc4d1793eaa169a4ee6b8cce20264ce4f30"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3941aa42909e4579c92b2596a12b18a63712fcb2",
+      "size": 4460,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/3941aa42909e4579c92b2596a12b18a63712fcb2"
+    },
+    {
+      "path": "Images",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "12cf9e076926250b33ab1c2faed60e3a9b39a26a",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/12cf9e076926250b33ab1c2faed60e3a9b39a26a"
+    },
+    {
+      "path": "Images/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2c509e79e9a2c9e8e79ff4354a66e27fca50af4f",
+      "size": 957,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/2c509e79e9a2c9e8e79ff4354a66e27fca50af4f"
+    },
+    {
+      "path": "Images/banner.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f5cd4ef4b144f577db3d4565bd11bf1e1ea21f0a",
+      "size": 4620,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/f5cd4ef4b144f577db3d4565bd11bf1e1ea21f0a"
+    },
+    {
+      "path": "Images/social-preview.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3afba180814e3b423a61053ee0bdb6338e52e93b",
+      "size": 285064,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/3afba180814e3b423a61053ee0bdb6338e52e93b"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "880ca931eca5da1002ac73147e5030832dd032ae",
+      "size": 1093,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/880ca931eca5da1002ac73147e5030832dd032ae"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1c87628dc007b47fefc58355e9a83570dedce321",
+      "size": 34288,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/1c87628dc007b47fefc58355e9a83570dedce321"
+    },
+    {
+      "path": "SECURITY.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f213dec987d545096537b8aa0233bb26519f645",
+      "size": 1912,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/8f213dec987d545096537b8aa0233bb26519f645"
+    },
+    {
+      "path": "docs",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "193544108b637192297a49a37eeb5d59e71dd900",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/193544108b637192297a49a37eeb5d59e71dd900"
+    },
+    {
+      "path": "docs/agents.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3cadef49679e78b2d2df2f5e543cec0370efb301",
+      "size": 7762,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/3cadef49679e78b2d2df2f5e543cec0370efb301"
+    },
+    {
+      "path": "docs/commands.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b78852f92ae8c09ce83092cce503a8b729af534c",
+      "size": 5616,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/b78852f92ae8c09ce83092cce503a8b729af534c"
+    },
+    {
+      "path": "docs/mcp.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d5bda5457444baac7e30ef46aa679538922e2ae",
+      "size": 7815,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/2d5bda5457444baac7e30ef46aa679538922e2ae"
+    },
+    {
+      "path": "docs/migration.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b0415b3e19f74921668b96d36c6fe775681f806a",
+      "size": 9948,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/b0415b3e19f74921668b96d36c6fe775681f806a"
+    },
+    {
+      "path": "docs/plugins.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "adefaece0bf37cb4a2ffbca8eedcff715b403c37",
+      "size": 8401,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/adefaece0bf37cb4a2ffbca8eedcff715b403c37"
+    },
+    {
+      "path": "docs/quickstart.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc11fe1667634528f5297816823dda1e890bcfe3",
+      "size": 3379,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/cc11fe1667634528f5297816823dda1e890bcfe3"
+    },
+    {
+      "path": "docs/reference",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7938b4f3fdcd12e981a8974dfc23895f6039ec3c",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/7938b4f3fdcd12e981a8974dfc23895f6039ec3c"
+    },
+    {
+      "path": "docs/reference/changelog.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "022874bdab8c7b0617b6895f1f0a5022a02d578f",
+      "size": 5631,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/022874bdab8c7b0617b6895f1f0a5022a02d578f"
+    },
+    {
+      "path": "docs/reference/cli.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aab9d0a6eaa863836d0904fd8094582b1e6edee4",
+      "size": 7039,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/aab9d0a6eaa863836d0904fd8094582b1e6edee4"
+    },
+    {
+      "path": "docs/reference/faq.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "26303e98ee7dd4cfa023e34411f98978b1d4a35f",
+      "size": 10159,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/26303e98ee7dd4cfa023e34411f98978b1d4a35f"
+    },
+    {
+      "path": "docs/reference/further-reading.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "982a5fae87469f63e808f3e8319992f66745b25f",
+      "size": 3948,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/982a5fae87469f63e808f3e8319992f66745b25f"
+    },
+    {
+      "path": "docs/reference/permissions.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "81eff34aeed5ab927a8545ad63176d620f3901cb",
+      "size": 5611,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/81eff34aeed5ab927a8545ad63176d620f3901cb"
+    },
+    {
+      "path": "docs/reference/slash-commands.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be98dc3772e83990b2dc2f764cdc95492ea6e1db",
+      "size": 1836,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/be98dc3772e83990b2dc2f764cdc95492ea6e1db"
+    },
+    {
+      "path": "docs/skills.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ba1d93d80db62a5d37f46bef9e4ccb33d4c870e6",
+      "size": 6653,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/ba1d93d80db62a5d37f46bef9e4ccb33d4c870e6"
+    },
+    {
+      "path": "docs/tui.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7eeadc4b90f714b3ae970ba5acfb5bd4687ec805",
+      "size": 7174,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/7eeadc4b90f714b3ae970ba5acfb5bd4687ec805"
+    },
+    {
+      "path": "docs/workflows.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a24c80dbcb9f2269008ec433c4dfd953f6321992",
+      "size": 7549,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/a24c80dbcb9f2269008ec433c4dfd953f6321992"
+    },
+    {
+      "path": "docs/zen.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dd0255d1f8bf90ab3d8601781f4fe68033584ea8",
+      "size": 9481,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/dd0255d1f8bf90ab3d8601781f4fe68033584ea8"
+    },
+    {
+      "path": "mcp-servers",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "34f1f667413b4b43405097bea69c9547285a8292",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/34f1f667413b4b43405097bea69c9547285a8292"
+    },
+    {
+      "path": "mcp-servers/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "63bd69e9601e2af4682c8384074920912179eeef",
+      "size": 2511,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/63bd69e9601e2af4682c8384074920912179eeef"
+    },
+    {
+      "path": "mcp-servers/context7.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "550e9698c368e985744daa09ce52076eee1fa38b",
+      "size": 3314,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/550e9698c368e985744daa09ce52076eee1fa38b"
+    },
+    {
+      "path": "mcp-servers/grep.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3a21320e0995349099e500d8aec132a52cfa78a6",
+      "size": 2715,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/3a21320e0995349099e500d8aec132a52cfa78a6"
+    },
+    {
+      "path": "mcp-servers/playwright.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a85144183a99c265974a2269b2110309d9746f3e",
+      "size": 3109,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/a85144183a99c265974a2269b2110309d9746f3e"
+    },
+    {
+      "path": "mcp-servers/sentry.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe8a35617cf3ec57b6c45f9318c72d57af1d7f78",
+      "size": 2666,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/fe8a35617cf3ec57b6c45f9318c72d57af1d7f78"
+    },
+    {
+      "path": "opencode.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a05f3490a2c9b15df7673a9eff1b19a4c5df9335",
+      "size": 995,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/a05f3490a2c9b15df7673a9eff1b19a4c5df9335"
+    },
+    {
+      "path": "specialized-agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "69752cf3b1e622718edfc23cff71a9697c0cfb3f",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/69752cf3b1e622718edfc23cff71a9697c0cfb3f"
+    },
+    {
+      "path": "specialized-agents/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a38b908dcb591b871b9c5970c252595b37db451c",
+      "size": 4691,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/a38b908dcb591b871b9c5970c252595b37db451c"
+    },
+    {
+      "path": "specialized-agents/descriptions",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "364880f91749bd773109aa3aca79c4bf4fcfc807",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/364880f91749bd773109aa3aca79c4bf4fcfc807"
+    },
+    {
+      "path": "specialized-agents/descriptions/backend-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "015b2eb65eacbd84073b4f6390976ebbacabdbe1",
+      "size": 737,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/015b2eb65eacbd84073b4f6390976ebbacabdbe1"
+    },
+    {
+      "path": "specialized-agents/descriptions/code-reviewer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1cbd60b6d417894a5a595ffa52340b1561a03f0c",
+      "size": 707,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/1cbd60b6d417894a5a595ffa52340b1561a03f0c"
+    },
+    {
+      "path": "specialized-agents/descriptions/database-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "34b0d7b63b1099d3943922f3d6b2354b0aec8840",
+      "size": 777,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/34b0d7b63b1099d3943922f3d6b2354b0aec8840"
+    },
+    {
+      "path": "specialized-agents/descriptions/frontend-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d44d09b53d77eec32ab2d41a6d2573e0d5c7e90b",
+      "size": 708,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/d44d09b53d77eec32ab2d41a6d2573e0d5c7e90b"
+    },
+    {
+      "path": "specialized-agents/descriptions/security-reviewer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1cc826d207677e3c3881048d2d03a1ca6c320f3d",
+      "size": 793,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/1cc826d207677e3c3881048d2d03a1ca6c320f3d"
+    },
+    {
+      "path": "specialized-agents/descriptions/tech-lead.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b13c4e086a973e21716d61220ded16d5aa5d48ba",
+      "size": 792,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/b13c4e086a973e21716d61220ded16d5aa5d48ba"
+    },
+    {
+      "path": "specialized-agents/descriptions/ux-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2204c26f1f73990e166ab1ff3a9f7371ae6982af",
+      "size": 956,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/2204c26f1f73990e166ab1ff3a9f7371ae6982af"
+    },
+    {
+      "path": "specialized-agents/system-prompts",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d6a15325f6b3784d3d8ee9a97f1aad143200f2f9",
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/trees/d6a15325f6b3784d3d8ee9a97f1aad143200f2f9"
+    },
+    {
+      "path": "specialized-agents/system-prompts/backend-engineer-prompt.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "32c2466ccf005986e6c389cfa40c85f375bcc0fa",
+      "size": 3790,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/32c2466ccf005986e6c389cfa40c85f375bcc0fa"
+    },
+    {
+      "path": "specialized-agents/system-prompts/code-reviewer-prompt.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59ad4642e186117ca96ce781c1016569b1f2d0eb",
+      "size": 2783,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/59ad4642e186117ca96ce781c1016569b1f2d0eb"
+    },
+    {
+      "path": "specialized-agents/system-prompts/database-engineer-prompt.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2f54fd0abf0e44e2d8f8cfe42c0aa84bdbcdcd1f",
+      "size": 4750,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/2f54fd0abf0e44e2d8f8cfe42c0aa84bdbcdcd1f"
+    },
+    {
+      "path": "specialized-agents/system-prompts/frontend-engineer-prompt.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8191edf18f4068116b76c7e7c2fc439ddf33f7a",
+      "size": 4336,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/d8191edf18f4068116b76c7e7c2fc439ddf33f7a"
+    },
+    {
+      "path": "specialized-agents/system-prompts/security-reviewer-prompt.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6fd395e3dbfcd13e54a6a86bdd7db5619ae8fcd9",
+      "size": 3220,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/6fd395e3dbfcd13e54a6a86bdd7db5619ae8fcd9"
+    },
+    {
+      "path": "specialized-agents/system-prompts/tech-lead-prompt.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e63082ddcd57232781b25a2065a04897af445089",
+      "size": 4184,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/e63082ddcd57232781b25a2065a04897af445089"
+    },
+    {
+      "path": "specialized-agents/system-prompts/ux-engineer-prompt.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "58bcc3a8052d721922bcbf2eacd2883b0eeee533",
+      "size": 4071,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/58bcc3a8052d721922bcbf2eacd2883b0eeee533"
+    },
+    {
+      "path": "tui.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8de5eb3305eb277103817bdef65e7c8d83980b2",
+      "size": 278,
+      "url": "https://api.github.com/repos/wesammustafa/opencode-primer/git/blobs/b8de5eb3305eb277103817bdef65e7c8d83980b2"
+    }
+  ],
+  "truncated": false
+}

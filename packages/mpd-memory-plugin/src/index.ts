@@ -1,9 +1,15 @@
 // C6 mpd-memory-plugin: git/svn-backed memory engine with a reflection state machine.
-// Focused port of the upstream project memory-core semantics (base 8c57e46;
-// SUL-1.0, inherited from upstream): markdown memory files with frontmatter (description/
-// kind/aliases/read_only), journal + facts queues, reflection reducer with
-// step-count/manual/dream triggers and reservation state, VCS abstraction with
-// git AND svn backends (memory.vcs: git | svn | both; both commits to each).
+// mpd-owned code: the engine's semantics — markdown memory files with frontmatter (description/
+// kind/aliases/read_only), a journal plus a facts queue, and a step-count reflection reducer —
+// are RE-EXPRESSED here from the DOCUMENTED BEHAVIOUR of the upstream project `memory-core`
+// (base 8c57e46, SUL-1.0); no upstream source is translated.
+// HISTORY: an earlier draft of the reducer mirrored upstream's state-machine vocabulary
+// (`reflected_completed_steps`, `steps_since_last_successful_reflection`, `reservation`,
+// `completeTransition`); de-omo wave F replaced it with the vocabulary below and left a READ-ONLY
+// compatibility path for records already persisted under those names.
+// OURS, not upstream's: the svn backend and the VCS abstraction over git AND svn
+// (memory.vcs: git | svn | both; `both` commits to each). Upstream `memory-core` is Git-only —
+// its `GitMemoryRepo` has no svn counterpart.
 // Paths: <workspace>/.mpd/memory/agents/<slug>/{repo, runtime/...}.
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync, statSync } from "node:fs"
 import { spawnSync } from "node:child_process"
@@ -189,6 +195,57 @@ function safeMemoryPath(memoryDir: string, name: string): string {
   return target
 }
 
+/** One reflection claim: `due` while the completion is still owed, and `at` the instant it was raised or settled. */
+type PendingReflection = { due: boolean; at: string }
+
+/** The reflection state persisted at `<runtime>/reflection.json`: the write counter, the completion counter and the claim. */
+type ReflectionState = {
+  /** Every memory write recorded for this agent, ever. */
+  steps: number
+  /** How many reflections have been completed. */
+  reflectionsCompleted: number
+  /** Writes since the last completed reflection; crossing `reflectionEvery` raises a claim. */
+  stepsSinceReflection: number
+  /** The outstanding claim, or null when none is open. */
+  pendingReflection: PendingReflection | null
+  /** True from the threshold crossing until the completion that settles the claim. */
+  triggered: boolean
+}
+
+/** The state of an agent that has never written: every counter zero and no claim outstanding. */
+function initialState(): ReflectionState {
+  return { steps: 0, reflectionsCompleted: 0, stepsSinceReflection: 0, pendingReflection: null, triggered: false }
+}
+
+/**
+ * Put a parsed state record under the field names this package writes today.
+ *
+ * THE COMPATIBILITY BOUND: records persisted before de-omo wave F carry the earlier draft's names
+ * (`reflected_completed_steps`, `steps_since_last_successful_reflection`, `reservation`) and real ones
+ * exist on disk, so a legacy name is READ here and never written again — the next `writeReflection`
+ * persists the current names only.
+ *
+ * @param raw - the parsed state file, of unknown shape because it may predate this vocabulary.
+ * @returns the state under the current names; an unreadable record degrades to the initial state.
+ */
+function adoptLegacyState(raw: any): ReflectionState {
+  /** The parsed record, or an empty stand-in when the file held a non-object. */
+  const s: any = raw && typeof raw === "object" ? raw : {}
+  /** The pre-wave-F claim object, mapped below when the current name is absent. */
+  const legacyClaim = s.reservation
+  return {
+    steps: s.steps ?? 0,
+    reflectionsCompleted: s.reflectionsCompleted ?? s.reflected_completed_steps ?? 0,
+    stepsSinceReflection: s.stepsSinceReflection ?? s.steps_since_last_successful_reflection ?? 0,
+    pendingReflection: s.pendingReflection !== undefined
+      ? (s.pendingReflection ?? null)
+      : legacyClaim == null || typeof legacyClaim !== "object"
+        ? null
+        : { due: legacyClaim.status === "pending", at: String(legacyClaim.at ?? "") },
+    triggered: s.triggered ?? false
+  }
+}
+
 /**
  * Register the five memory tools and the reflection state machine behind them.
  *
@@ -210,11 +267,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   /** Path of the append-only journal, one JSON record per tool effect. */
   function journalPath(d: any): string { return join(d.runtime, "journal.jsonl") }
 
-  /** Read the reflection state; a missing or unparseable file reads as the initial state, so the machine can always be driven. */
-  function readReflection(d: any): any {
-    try { return JSON.parse(readFileSync(statePath(d), "utf8")) } catch {
-      return { steps: 0, reflected_completed_steps: 0, steps_since_last_successful_reflection: 0, reservation: null, triggered: false }
-    }
+  /** Read the reflection state, adopting a record persisted under the pre-wave-F names; a missing or unparseable file reads as the initial state, so the machine can always be driven. */
+  function readReflection(d: any): ReflectionState {
+    try { return adoptLegacyState(JSON.parse(readFileSync(statePath(d), "utf8"))) } catch { return initialState() }
   }
   /** Persist the reflection state, pretty-printed so a human can read the counters. */
   function writeReflection(d: any, s: any): void { writeFileSync(statePath(d), JSON.stringify(s, null, 2)) }
@@ -248,8 +303,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The reflection state after this write's step increment. */
       const ref = readReflection(d)
       ref.steps = (ref.steps ?? 0) + 1
-      ref.steps_since_last_successful_reflection = (ref.steps_since_last_successful_reflection ?? 0) + 1
-      if ((ref.steps_since_last_successful_reflection ?? 0) >= reflectionEvery) { ref.triggered = true; ref.reservation = { status: "pending", at: new Date().toISOString() } }
+      ref.stepsSinceReflection = (ref.stepsSinceReflection ?? 0) + 1
+      if ((ref.stepsSinceReflection ?? 0) >= reflectionEvery) { ref.triggered = true; ref.pendingReflection = { due: true, at: new Date().toISOString() } }
       writeReflection(d, ref)
       appendJournal(d, "write", { file: basename(file), kind: meta.kind, vcs: cfg.vcs ?? "git" })
       return { file, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: ref.triggered === true, vcs: cfg.vcs ?? "git", errors: errs }
@@ -295,7 +350,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_memory_reflect",
-    description: "Inspect the reflection state machine: trigger status, reservation, step counters; returns the due hint when a reflection is pending. Crossing the step-count threshold marks a pending reflection; completeTransition equivalent is mpd_memory_reflect_complete.",
+    description: "Inspect the reflection state machine: trigger status, the pending claim and the step counters; returns the due hint when a reflection is owed. Crossing the step-count threshold raises the claim; `mpd_memory_reflect_complete` settles it.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { state: { type: "object" }, due: { type: "boolean" } }, required: ["state", "due"] }, render: (_a: unknown, v: any) => textBlock("reflection state: " + JSON.stringify(v.state, null, 1) + (v.due ? "\nREFLECTION DUE" : "")) },
     execute: async (_args: any, exec: any) => {
@@ -303,13 +358,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const d = ensureDirs(cfg, dsh, exec)
       /** The current reflection state, as persisted by the last write or completion. */
       const s = readReflection(d)
-      return { state: s, due: s.triggered === true || s.reservation?.status === "pending" }
+      return { state: s, due: s.triggered === true || s.pendingReflection?.due === true }
     }
   })
 
   dsh.registerTool({
     name: "mpd_memory_reflect_complete",
-    description: "Complete a pending reflection transition: writes the reflection content as a memory entry (kind=reflection), advances reflected_completed_steps / resets steps_since_last_successful_reflection, clears the reservation and commits.",
+    description: "Complete the reflection this agent owes: writes the reflection content as a memory entry (kind=reflection), advances reflectionsCompleted, resets stepsSinceReflection, settles the pending claim and commits.",
     parameters: { type: "object", properties: { content: { type: "string" }, title: { type: "string" } }, required: ["content"], additionalProperties: false },
     output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a: unknown, v: any) => textBlock("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
     execute: async (args: any, exec: any) => {
@@ -318,11 +373,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The reflection state as persisted, and the value this transition mutates when it is legal. */
       const s = readReflection(d)
       // THE PRECONDITION: `mpd_memory_reflect` reports `due` under exactly this predicate. Without it a
-      // completion ran with nothing pending: it wrote a reflection entry, bumped
-      // `reflected_completed_steps`, zeroed `steps_since_last_successful_reflection` and stamped
-      // `reservation: {status:"completed"}`, stranding the counters of a machine that never triggered.
-      if (s.triggered !== true && s.reservation?.status !== "pending") {
-        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered === true) + ", reservation=" + String(s.reservation?.status ?? "none") + ", steps_since_last_successful_reflection=" + String(s.steps_since_last_successful_reflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.")
+      // completion ran with nothing owed: it wrote a reflection entry, bumped
+      // `reflectionsCompleted`, zeroed `stepsSinceReflection` and stamped
+      // `pendingReflection: {due:false}`, stranding the counters of a machine that never triggered.
+      if (s.triggered !== true && s.pendingReflection?.due !== true) {
+        // The message renders what the predicate above has already established: `triggered` is exactly
+        // false here, so the only distinction left is "a claim exists but is settled" vs "no claim".
+        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered) + ", pendingReflection=" + (s.pendingReflection?.due === false ? "settled" : "none") + ", stepsSinceReflection=" + String(s.stepsSinceReflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.")
       }
       ensureVcs(cfg, d)
       /** The reflection entry's file stem: a fixed prefix plus a base-36 timestamp. */
@@ -333,12 +390,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const meta = { description: String(args?.title ?? "reflection"), kind: "reflection" }
       writeFileSync(file, "---\n" + JSON.stringify(meta) + "\n---\n" + String(args?.content) + "\n")
       commitAll(cfg, d, "memory: reflection " + name)
-      // The state read at the top of this call, advanced by one completed transition: the reservation
-      // is cleared and the counter re-armed for the next threshold.
-      s.reflected_completed_steps = (s.reflected_completed_steps ?? 0) + 1
-      s.steps_since_last_successful_reflection = 0
+      // The state read at the top of this call, advanced by one completed reflection: the claim is
+      // settled and the step counter re-armed for the next threshold.
+      s.reflectionsCompleted = (s.reflectionsCompleted ?? 0) + 1
+      s.stepsSinceReflection = 0
       s.triggered = false
-      s.reservation = { status: "completed", at: new Date().toISOString() }
+      s.pendingReflection = { due: false, at: new Date().toISOString() }
       writeReflection(d, s)
       appendJournal(d, "reflection", { file: basename(file) })
       return { completed: true, file }
