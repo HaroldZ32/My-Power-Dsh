@@ -57,9 +57,11 @@
 
 ## 已退役的 dsh-agent-teams：版本与**保留**主体尚未跟进的上游差距
 
-**请把本节读作保留代码的历史，而不是随包能力。** 内置的 `agent-teams` 主体作为来源记录保留在
-`packages/mpd-agent-teams-plugin/`，自 0.1.7-rc.2 起没有任何 loader 行挂载它 —— 那一次由官方
-Agent Teams 插件取代（见上文团队模式行与 `docs/plan-0.1.7-adaptation.md`）。
+**请把本节读作保留代码的历史，而不是随包能力。** 内置的 `agent-teams` 主体（含其 `_deps/` 闭包，
+共 768 个文件）已在 de-vendor 波次（2026-10-07）中从 `packages/mpd-agent-teams-plugin/` **删除**；
+自 0.1.7-rc.2 起就没有任何 loader 行挂载它 —— 那一次由官方 Agent Teams 插件取代（见上文团队模式行、
+`docs/plan-0.1.7-adaptation.md`，以及 `docs/design.md`、`docs/independence.md` §5 与
+`LICENSE-NOTICES.md` 中的删除记录）。
 
 保留版本为 `0.1.16-rc.3-mpd`：**0.1.14 本体** + 该宿主世代所需的上游 **0.1.16-rc.3** 增量 ——
 `lib/harness-compat.ts`（在 harness **0.1.5-rc.2+** 上经公开的

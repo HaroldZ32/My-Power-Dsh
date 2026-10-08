@@ -1606,6 +1606,9 @@ var LEGACY_CHAIN_KEYS = {
 function toKebabKey(role) {
   return String(role ?? "").replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 }
+function roleNameKey(role) {
+  return String(role ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
 function resolveRole(role, chains) {
   const key = toKebabKey(role);
   let chain = chains[key] ?? DEFAULT_CHAINS[key] ?? DEFAULT_CHAINS.sisyphus;
@@ -1648,13 +1651,17 @@ function apply(ctx, config = {}) {
       render: (_args, value) => [{ type: "text", text: "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" }]
     },
     execute: async (args) => {
-      const role = String(args?.role ?? "sisyphus");
+      const role = String(args?.role ?? "").trim();
       const rolesService = ctx.get?.("mpdRoles");
+      const names = (rolesService?.list?.() ?? []).map((r) => String(r?.name ?? "")).filter((n) => n !== "");
       const spec = rolesService?.get?.(role);
-      if (spec && Array.isArray(spec.chain) && spec.chain.length > 0) {
+      if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
+        throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"));
+      }
+      if (Array.isArray(spec.chain) && spec.chain.length > 0) {
         return { provider: spec.chain[0].provider, model: spec.chain[0].model, chain: spec.chain.map((c) => ({ ...c })) };
       }
-      return resolveRole(role, chains);
+      return resolveRole(String(spec.id), chains);
     }
   });
   dsh.registerTool({

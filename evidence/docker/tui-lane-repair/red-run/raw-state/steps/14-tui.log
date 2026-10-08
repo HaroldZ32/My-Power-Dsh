@@ -1,0 +1,29 @@
+[record] tui.hostInstall=true — the TUI host installs globally and lands on PATH
+[record] tui.pluginAddHost=true — the TUI host bundle installs into the dsh-tui profile
+[record] tui.pluginAddBundle=true — THIS bundle installs into the dsh-tui profile as the third patch layer
+[record] tui.compose=true — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)
+[record] tui.presetPreference=true — the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.14.0 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd
+[record] tui.presetRow=true — the mpd preset row is composed in the TUI plane
+[record] tui.mpdTuiRow=true — the bundle's mpd-tui row is composed in the TUI plane
+[record] tui.agentTeamRows=true — all three official Agent Teams rows are composed in the TUI plane
+[record] tui.teamSceneOtherSessionInvisible=null — NOT MEASURED: the state under test could not be built — the foreign board bound as bound=false to key=session-1a518be7-f88a-44ac-9752-f6eb897d3213 ({}) for sibling session session-1a518be7-f88a-44ac-9752-f6eb897d3213 while this TUI runs as cbb433f5-aef5-4570-8604-26075b65835d, and the product's NO_SESSION_TEAM_MARKER was read as [no team in this session] from packages/mpd-tui-plugin/src/team-state.ts#NO_SESSION_TEAM_MARKER
+[record] tui.teamFixtureBound=false — the fixture was NOT bound to cbb433f5-aef5-4570-8604-26075b65835d: the read-back does not carry BOTH spellings on disk (expected teams.json active[<sessionKey>] = "tui-scene" AND the record's leadSessionId = <sessionKey>) — the scene will draw its empty state whatever the drawing code does
+[record] tui.teamSceneOpened=false — the /mpd team scene opened on a real terminal
+[record] tui.teamGraphDrawn=false — the boxes were NOT drawn one per task: the record carries 0 task(s) and the pane's rounded corners are ╭0 ╮0 ╰0 ╯0, each of which must equal the task count
+[record] tui.teamGraphEdges=true — the dependency EDGES were drawn with box-drawing junctions
+[record] tui.teamGraphContent=false — the pane does not carry the record's own data: ids read from the record=0 missing=[none] pinnedFocus=[none] — each record id must be DRAWN, and one 'j' keystroke must reach a task's own subject in the pinned detail body
+[record] tui.mergedPanelOpens=null — the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above
+[record] tui.mergedPanelOrder=null — the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry
+[record] tui.hostDashboardKeyIntact=true — Ctrl+A stayed the HOST's key on this host, as frozen R4 requires wherever the panel seam is present: with the seeded team present it did NOT open MPD's merged panel, and after the team record was removed it still did not. The panel is reached through MPD's own entry points instead (tui.mergedPanelOpens above proves /mpd panel)
+[record] tui.noDirectTuiSeam=true — the D6 gate (no file outside mpd-tui-adapter-plugin names a ctx.tui* seam) passed on a byte-identical copy of the INSTALLED tree, executed where node can strip types
+[record] live.tui.turnStarted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.turnCompleted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.noErrorTurns=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.noMalformedToolJson=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.toolCallsParsed=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.mpdToolCalled=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.assistantReplied=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] tui.boot=true — the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)
+[record] tui.noFatalSignatures=true — no fatal apply/module/preset signature in the TUI pane or log
+[record] tui.sessionPreset=true — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)
+[record] tui.laneExit=false — the TUI lane finished with failing or missing assertions

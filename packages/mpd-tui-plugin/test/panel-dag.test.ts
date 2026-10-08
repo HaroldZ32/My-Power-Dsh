@@ -271,7 +271,7 @@ interface Kit {
  * @param options - the panel width, and whether this host exposes the animation timer at all.
  * @returns the kit.
  */
-function makeKit(options: { columns?: number; rows?: number; animation?: "absent" | "value" | "nan" } = {}): Kit {
+function makeKit(options: { columns?: number; rows?: number; animation?: "absent" | "value" | "nan"; clock?: number } = {}): Kit {
   /** The width this panel reports. */
   const columns = options.columns ?? 80
   /** Hook state, keyed by hook position, as React keys its own cells. */
@@ -332,8 +332,12 @@ function makeKit(options: { columns?: number; rows?: number; animation?: "absent
     useTerminalSize: (): { columns: number; rows: number } => ({ columns, rows: options.rows ?? 40 }),
   }
   if (options.animation !== "absent") {
+    // `clock` PINS THE FRAME: the phase is `floor(clock / intervalMs) % frames`, so a caller that wants
+    // a specific frame of the cycle passes `DAG_ANIM.intervalMs * frame` and gets exactly that frame —
+    // which is what lets an arm measure the drawing at EVERY phase instead of at whichever one the
+    // default clock happens to select.
     ui.useAnimationTime = (intervalMs: number | null): number =>
-      options.animation === "nan" ? Number.NaN : intervalMs === null ? 0 : DAG_ANIM.intervalMs * 2
+      options.animation === "nan" ? Number.NaN : intervalMs === null ? 0 : options.clock ?? DAG_ANIM.intervalMs * 2
   }
 
   /** Every character inside one node, symbols joined with nothing. */
@@ -588,14 +592,20 @@ describe("the legend", () => {
       // single thing a legend exists to prevent.
       expect(joined).toContain(DAG_TONE_GLYPH[state] as string)
       expect(joined).toContain(state)
-      expect(joined).toContain(`${DAG_TONE_GLYPH[state]} ${state}`)
     }
-    // THE DISAMBIGUATION. `blocked` and `open` share the `○` glyph by design, and the drawing module's
-    // own legend omits `blocked` entirely — so this legend must name the TIE, or the reader has no way
-    // to tell a waiting task from one that is merely not started.
+    // ONE ENTRY PER MARK, AND EVERY CARRIER NAMED ON IT. `blocked` and `open` share the `○` glyph by
+    // design, so that mark must be printed ONCE and its entry must name BOTH states — the pre-fix key
+    // printed `○ open=blocked · ○ blocked=open`, which is one fact twice with a false equivalence in it.
     expect(DAG_TONE_GLYPH.blocked).toBe(DAG_TONE_GLYPH.open)
-    expect(joined).toContain(`○ blocked=open`)
-    expect(joined).toContain(`○ open=blocked`)
+    /** The shared mark's own entries: every entry the legend opens with that mark. */
+    const sharedEntries = joined.split(" · ").filter((entry) => entry.startsWith(`${DAG_TONE_GLYPH.blocked ?? "?"} `))
+    expect(sharedEntries).toHaveLength(1)
+    expect(sharedEntries[0] ?? "").toContain("blocked")
+    expect(sharedEntries[0] ?? "").toContain("open")
+    // NO EQUIVALENCE CLAIM SURVIVES: `=` said the two states ARE each other, which is not what a shared
+    // mark means. This also catches the shortcut that drops the `=` but still prints the pair twice (the
+    // length arm above), so the two arms fail together on exactly the defect the user reported.
+    expect(joined).not.toContain("=")
     // The drawing's own arrow sentence is forwarded, not re-invented: `graph.ts` owns what its arrows
     // mean, and the full-screen scene renders the same line.
     expect(lines[0]).toContain("arrow")
@@ -613,12 +623,12 @@ describe("the legend", () => {
     expect(legendLinesFor(0, ["x"])).toEqual([])
   })
 
-  test("the state key is composed ONCE at every width — no state entry is printed twice", () => {
+  test("the state key is composed ONCE at every width — no state is ever named twice", () => {
     // THE DEFECT THIS PINS. The drawing module's own FIVE-state key used to be composed UNDER this
     // six-state one, so every one of its entries was printed twice — and the drawing's copy could not
-    // name `blocked` at all, which is exactly the ambiguity this key exists to resolve. The arm sweeps
-    // the widths a panel or a scene can be handed and, per state, counts the composed ROWS carrying that
-    // state's entry: a second row carrying it is the redundant key coming back.
+    // name `blocked` at all, which is exactly the ambiguity this key exists to resolve. It counts
+    // NAMED STATES rather than matched substrings: the pre-fix key named `open` and `blocked` twice
+    // EACH (once as `open=blocked`, once as `blocked=open`), and that count is what has to stay at one.
     for (const cols of [28, 40, 58, 78, 98, 154, 200]) {
       /** The composed legend at this width: the drawing's arrow sentence, then this key. */
       const lines = legendLinesFor(cols, legendLines(cols))
@@ -626,13 +636,14 @@ describe("the legend", () => {
       const drawing = legendLines(cols)
       // The drawing contributes AT MOST the arrow/focus sentence; every other row is this key's.
       expect(`${cols} drawing rows at most one: ${drawing.length <= 1}`).toBe(`${cols} drawing rows at most one: true`)
+      // The key's own rows only: the arrow sentence is excluded so a word in it cannot be miscounted.
+      /** Every composed row after the drawing's own, joined so a WRAPPED key reads as one text. */
+      const key = lines.slice(drawing.length).join(" · ")
       for (const state of DAG_STATE_TONES) {
-        /** This state's entry as the composer prints it (`glyph name`, or `glyph name=twin`). */
-        const entry = `${DAG_TONE_GLYPH[state]} ${state}`
-        /** The composed rows carrying it; a substring match, so a WRAPPED key row still counts. */
-        const carrying = lines.filter((line) => line.includes(entry))
-        // EXACTLY ONE row, at every width: wrapping a key is allowed, printing it twice is not.
-        expect(`${cols} ${entry} rows=${carrying.length}`).toBe(`${cols} ${entry} rows=1`)
+        /** How many times the key NAMES this state, counted as whole words so `blocked` != `blocker`. */
+        const named = (key.match(new RegExp(`\\b${state}\\b`, "g")) ?? []).length
+        // EXACTLY ONCE, at every width: wrapping a key is allowed, naming a state twice is not.
+        expect(`${cols} ${state} named=${named}`).toBe(`${cols} ${state} named=1`)
       }
     }
   })
@@ -963,20 +974,94 @@ describe("the DAG page's layout choice", () => {
 // ── the animation (frozen clause R8) ────────────────────────────────────────
 
 describe("the running-node animation and its degradation", () => {
-  test("the host timer drives the breath, and the static frame is the orbit's head", () => {
-    // THE ORBIT is a small, closed set: whatever the timer answers, the glyph is one of these, and the
-    // STATIC frame is the FIRST of them — so a degraded panel draws a glyph the animated one also uses
-    // on half its frames, and a running task is never mistaken for a task in another state.
+  test("every frame is ONE CELL, the frames DIFFER, and the static frame is the orbit's head", () => {
+    // THE ORBIT IS THE CONTRACT'S OWN TABLE (`DAG_ANIM.runningFrames`), so whatever the timer answers
+    // the drawn mark is a published frame. The STATIC frame is the table's head — the contract's own
+    // `running` glyph — so a degraded panel draws the character the legend names for this state.
     /** Every glyph the orbit can produce, in frame order. */
     const orbit = [0, 1, 2, 3].map((phase) => runningGlyph(phase))
     expect(runningGlyph(DAG_ANIM.staticPhase)).toBe(DAG_TONE_GLYPH.running as string)
-    for (const glyph of orbit) expect(glyph.length).toBeGreaterThan(0)
-    // The contract's own running glyph is at the head of the orbit and returns every other frame; the
-    // orbit's other marks are the same glyph plus a dot, never a glyph that means a DIFFERENT state.
-    expect(orbit.filter((glyph) => glyph === (DAG_TONE_GLYPH.running as string)).length).toBeGreaterThanOrEqual(2)
-    for (const glyph of orbit) expect(glyph.slice(0, 1)).toBe(DAG_TONE_GLYPH.running as string)
+    expect(orbit[DAG_ANIM.staticPhase]).toBe(DAG_TONE_GLYPH.running as string)
+    // THE WIDTH INVARIANT, which is the whole of the reported defect: the label EMBEDS this mark, so one
+    // cell per frame is what keeps the label's width still across the cycle. The orbit this replaced
+    // returned 1, 2, 1 and 3 cells (`base`, `base·`, `base`, `base··`), so the box around the label was
+    // re-laid-out on every tick and its right border advanced and retreated.
+    for (const glyph of orbit) expect(cellWidth(glyph)).toBe(1)
+    // THE ANIMATION IS KEPT: one static frame would satisfy the width above and violate the ruling.
+    expect(new Set(orbit).size).toBe(DAG_ANIM.frames)
+    // NO FRAME IS ANOTHER STATE'S MARK: a running task must never read as blocked, open, failed or
+    // cancelled, so the orbit keeps out of every mark the contract publishes for another state. A bare
+    // space or a lone dot is out too — that reads as "no state" rather than as "alive".
+    /** The marks the contract publishes for every state OTHER than `running`. */
+    const foreign = DAG_STATE_TONES.filter((state) => state !== "running").map((state) => DAG_TONE_GLYPH[state])
+    for (const glyph of orbit) expect(foreign).not.toContain(glyph)
+    for (const glyph of orbit) expect(glyph.trim()).not.toBe("")
     // The quantisation is the contract's own frame count: the orbit closes after `DAG_ANIM.frames` steps.
     expect(runningGlyph(DAG_ANIM.frames)).toBe(runningGlyph(0))
+  })
+
+  test("the DRAWN running label keeps ONE width across every frame of the cycle", () => {
+    // THE MEASUREMENT THE WIDTH FIX RESTS ON, read off the DRAWN ROWS rather than off the glyph helper:
+    // the layout sizes the node box from the label, and the page substitutes the frame into that label
+    // AFTER the layout, so a frame of a different width spills past the box and drags its border. The
+    // host clock is pinned per frame, so EVERY phase of the contract's orbit is drawn once and measured.
+    /** The running task's id, which is how its label row is found among the drawn rows. */
+    const runningId = chainTasks().find((task) => task.visual === "running")?.id as string
+    /** The page the panel registers, over the fixture board. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    /** The contract's own running glyph: the orbit's head, and the mark the label row carries at it. */
+    const headMark = DAG_TONE_GLYPH.running ?? "◐"
+    /** One reading per frame: the frame index, its glyph, the label row, that row's cells, the page. */
+    const measured = DAG_ANIM.runningFrames.map((_frame, phase) => {
+      /** A host double whose clock answers EXACTLY this frame: phase = `floor(clock / intervalMs)`. */
+      const kit = makeKit({ columns: 80, animation: "value", clock: DAG_ANIM.intervalMs * phase })
+      /** Every row this frame drew, in draw order. */
+      const frameRows = kit.rows(render(page, kit, makeHost()))
+      /** The drawn row carrying the running task's label, or "" when no row carries it. */
+      const row = frameRows.find((candidate) => candidate.includes(runningId)) ?? ""
+      return { phase, glyph: runningGlyph(phase), row, cells: cellWidth(row), frameRows }
+    })
+    // THE READING ITSELF, printed so the report can quote it as a measurement rather than a restatement.
+    for (const item of measured) console.log(`frame ${item.phase} glyph ${item.glyph} cells ${item.cells} row ${JSON.stringify(item.row)}`)
+    // EVERY FRAME DRAWS AT THE SAME WIDTH — the falsifier for the reported defect. The pre-fix orbit drew
+    // one and two cells MORE on its second and fourth frames, so this set held two or three widths.
+    expect(new Set(measured.map((item) => item.cells)).size).toBe(1)
+    // AND THE DRAWING REALLY BREATHED: four identical readings would make the width claim vacuous.
+    expect(new Set(measured.map((item) => item.glyph)).size).toBe(DAG_ANIM.frames)
+    // The measured row really IS the running node's label: an arm that measured "" would prove nothing.
+    expect(measured.every((item) => item.row.includes(runningId) && item.cells > 0)).toBe(true)
+    // NOTHING ELSE ON THE PAGE MOVED, which is the part a label-width reading alone cannot claim: the
+    // head frame and the frame one step into the cycle are compared ROW BY ROW over the WHOLE page. Only
+    // the node's own label rows may differ, and each may differ only in its mark — same cell count — so
+    // every box column, border cell, pad and box-drawing character is byte-identical between the frames.
+    /** The frame drawn at the orbit's head. */
+    const headFrame = measured[DAG_ANIM.staticPhase]?.frameRows ?? []
+    /** The frame drawn one step into the cycle, which draws a DIFFERENT mark. */
+    const nextFrame = measured[DAG_ANIM.staticPhase + 1]?.frameRows ?? []
+    expect(headFrame.length).toBeGreaterThan(0)
+    expect(nextFrame).toHaveLength(headFrame.length)
+    /** Every row index whose drawn content differs between those two frames. */
+    const moved = headFrame.map((text, index) => (text === nextFrame[index] ? -1 : index)).filter((index) => index >= 0)
+    // The breath is VISIBLE in the drawing (a page that did not change at all would make the reading
+    // above vacuous), and every row it touched is a label row of the running node.
+    expect(moved.length).toBeGreaterThan(0)
+    for (const index of moved) {
+      expect(headFrame[index] ?? "").toContain(headMark)
+      expect(cellWidth(headFrame[index] ?? "")).toBe(cellWidth(nextFrame[index] ?? ""))
+    }
+    console.log(`frames ${DAG_ANIM.staticPhase} and ${DAG_ANIM.staticPhase + 1}: ${moved.length} of ${headFrame.length} drawn rows differ, all label rows, none by a cell`)
+    // POSITIVE CONTROL — THE INSTRUMENT CAN SEE THE DEFECT. The pre-fix orbit is rebuilt here from its
+    // own mechanism (the state glyph, then the same glyph with one and two dots appended) and pushed
+    // through the SAME reading; its widths must VARY, or a constant reading above would be evidence of
+    // a blind instrument rather than of a still frame.
+    /** The label row as drawn at the orbit's head, the string the frames are substituted into. */
+    const headRow = measured[DAG_ANIM.staticPhase]?.row ?? ""
+    /** The orbit this fix replaced, rebuilt verbatim: `base`, `base·`, `base`, `base··`. */
+    const preFixFrames = [headMark, `${headMark}·`, headMark, `${headMark}··`]
+    /** The widths that mechanism would have measured off the same row. */
+    const preFixCells = preFixFrames.map((frame) => cellWidth(headRow.replace(headMark, frame)))
+    expect(preFixCells).toEqual([6, 7, 6, 8])
+    expect(new Set(preFixCells).size).toBeGreaterThan(1)
   })
 
   test("a host with NO timer draws the static frame instead of throwing", () => {
@@ -995,12 +1080,19 @@ describe("the running-node animation and its degradation", () => {
     // The running task is still drawn, and its glyph is the CONTRACT's — the drawing is unaffected by
     // the missing timer, which is exactly the promise (a lost animation must not lose the panel).
     expect(rows.join("\n")).toContain("◐")
-    // NEGATIVE CONTROL: the same panel on a host WITH the timer draws the breathed glyph.
+    // NEGATIVE CONTROL: the same panel on a host WITH the timer draws the BREATHED frame. The kit's
+    // clock is phase 2 (`makeKit`'s default, two ticks), and that frame is a mark the legend NEVER
+    // prints — so finding it in the rows can only mean the node's label itself was advanced, which is
+    // what keeps this control non-vacuous. Asserting the head glyph here would now pass on the legend
+    // alone, and the arm would prove nothing about the drawing.
     /** The kit of a host with the timer. */
     const timed = makeKit({ columns: 80, animation: "value" })
     /** The breathed render's rows. */
     const animated = timed.rows(render(page, timed, makeHost()))
-    expect(animated.join("\n")).toContain(DAG_TONE_GLYPH.running as string)
+    /** The frame the kit's default clock selects, read through the contract so this arm cannot be stale. */
+    const breath = runningGlyph(2)
+    expect(breath).not.toBe(DAG_TONE_GLYPH.running as string)
+    expect(animated.join("\n")).toContain(breath)
     expect(tasks.some((task) => task.visual === "running")).toBe(true)
   })
 

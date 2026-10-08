@@ -1,0 +1,14 @@
+# In-container identity of the lane under test
+measured_at_utc: 2026-10-08T12:00:09Z
+container: docker-mpd-client-run-5c6b5cd2316c
+
+## host checkout (frozen for this run)
+226cdb1c84b9eff09a3260aa9aec33abe40bacb87358c833dcb5db9557094b00  docker/tui-lane.sh
+
+## inside the container
+$ docker exec docker-mpd-client-run-5c6b5cd2316c sha256sum /opt/mpd-e2e/tui-lane.sh
+226cdb1c84b9eff09a3260aa9aec33abe40bacb87358c833dcb5db9557094b00  /opt/mpd-e2e/tui-lane.sh
+$ docker exec docker-mpd-client-run-5c6b5cd2316c sha256sum /opt/mpd/docker/tui-lane.sh
+226cdb1c84b9eff09a3260aa9aec33abe40bacb87358c833dcb5db9557094b00  /opt/mpd/docker/tui-lane.sh
+
+the three hashes above must be IDENTICAL: the container's verdict is a verdict on the frozen revision.

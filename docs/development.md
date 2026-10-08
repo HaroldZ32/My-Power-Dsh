@@ -16,7 +16,7 @@ How to build, test, QA, pack and release this repository.
 │   ├── pack-mpd.ts       assemble dist/mpd-package/ (Plan D bundle)
 │   ├── build-mpd-client.ts  compose the combined web client (client.js)
 │   ├── build-mcp.ts      offline build of the ast-grep/git-bash/lsp MCP servers
-│   ├── vendor-agent-teams.ts  materialize the RETAINED (unmounted) agent-teams server closure (_deps/)
+│   ├── repin-vendor.ts   re-derive the VENDOR_LOCK asset fingerprints (dry-run default; --check asserts, --write applies)
 │   ├── install-profile.ts    legacy installer (default dry-run; --dsh-home for QA)
 │   ├── mpd-ext.ts        extension developer CLI: validate / scaffold / list / --self-test
 │   ├── bootstrap.ts      preflight + vendor check (P0-era, kept as checks)
@@ -40,7 +40,7 @@ bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packa
 The committed `dist/` bytes ARE a build product: `bun run verify:dist` rebuilds every
 `packages/*/src` entry twice into a temp dir and compares the result byte-for-byte with the
 committed file, so a source change and its rebuild belong in the SAME commit. The build
-toolchain is recorded by the `buildToolchain` field in `package.json` (`bun@1.4.2`), because a different
+toolchain is recorded by the `buildToolchain` field in `package.json` (`bun@1.4.0`), because a different
 bun minor rewrites the injected helper preamble and the minifier's variable names - the
 rebuild is byte-identical on the pinned version and reddens `verify:dist` plus the F1 arms of
 `packages/mpd-ext-plugin/test/adapter-identity.test.ts` and
@@ -127,7 +127,6 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 | `tui-spec-conformance` | the HOST's own pinned conformance suite against our manifest and a captured host descriptor, with the suite revision and every input digest recorded, and the three-way sha256 identity of the payload re-measured | `bun skills/dsh-qa/scripts/tui-spec-conformance.ts` |
 | `tui-settings-bridge` | the TUI arm of the settings bridge, judged against the BUILT bytes: every `/settings` hint carries the post-bridge disclosure (`a save writes <workspace>/.mpd/mpd.jsonc … after a restart`), the pre-bridge "not bridged" sentence is DELETED, the `no-live-session` runtime notice is present AND wired into the status-line composition, and the TUI dist performs ZERO filesystem writes | `bun skills/dsh-qa/scripts/tui-settings-bridge.ts` |
 
-| `agent-teams-adopt` (historical C1 — the RETIRED vendored body; the team path now runs on the official plugin) | MIT notice + adoption wiring | `node skills/dsh-qa/scripts/agent-teams-adopt.ts` |
 | `extension-lifecycle` (**new**) | the extension interface on a REAL mounted boot (sandboxed `DSH_HOME` + `HOME` + session cwd; the rows are composed from THIS checkout, and the model step is answered by a local OpenAI-shaped stub, so no provider credential is needed): a data-plane extension in `<sandbox-ws>/.mpd/extensions/` appears in `mpd_ext_list`, its flow loads, its role spawns, a broken extension of each kind leaves the good ones working, and two sessions with different cwds on one host see only their own project extensions | `bun skills/dsh-qa/scripts/extension-lifecycle.ts` |
 | `extension-mcp-bridge` (**new**) | the runtime stdio MCP bridge on the same REAL mounted boot + stub recipe: a declared server publishes `mcp__<server>__<tool>` in both tool-list readings and a real tool call succeeds, while the dead/hang/schema/dup arms prove one failing server never breaks the others | `bun skills/dsh-qa/scripts/extension-mcp-bridge.ts` |
 
@@ -145,9 +144,7 @@ lane that spawns `bun` dies instantly with `EROFS accessing temporary directory`
 which is what a run that never reached an assertion looks like. (2) A case that COPIES a script or a
 plugin `src/` into a scratch tree must stage the shared modules that copy imports (`scripts/lib/`, or
 the sibling `packages/mpd-dsh-adapter-plugin/src/`), or the arm reddens with
-`ERR_MODULE_NOT_FOUND` for a reason it is not about; `stageScript()` in
-`packages/mpd-agent-teams-plugin/self-fix-tests/scratch-scripts.ts` is the helper for the scripts
-shape.
+`ERR_MODULE_NOT_FOUND` for a reason it is not about.
 
 **TUI lanes and the TUI packaging path.** The six DSH-TUI cases above ship the usual offline
 `--self-test`, but their LIVE legs need a real terminal: `dsh-tui` refuses to boot when stdout is not a
@@ -212,8 +209,8 @@ No evidence on disk for a gate = the change is not complete.
    exit-0 with a broken boot). Since the 2026-09-17 packaging change this is checked, not eyeballed:
    `node scripts/verify-pack-closure.ts` asserts the packer's root-asset table and, when the
    artifact exists, that every declared asset arrived, `docs/`+`templates/`+`agent-references/`
-   match the source file for file, the three named reference files (`index.md`,
-   `troubleshooting.md`, `agent-teams-deltas.md`) are present, the packed manifest's
+   match the source file for file, the two named reference files (`index.md`,
+   `troubleshooting.md`) are present, the packed manifest's
    `files`/`exports` agree with what is on disk, and the CLI's compiled validator entry is present.
 6. Merge `--no-ff` into `master` with a `release: vX.Y.Z …` message, create the annotated tag
    (`git tag -a vX.Y.Z`), and push `master` + the tag (and `dev`).
@@ -227,10 +224,11 @@ evidence.
 
 ## 8. Vendoring & baseline
 
-- `scripts/vendor-agent-teams.ts` re-materializes the RETAINED (unmounted) agent-teams server
-  runtime closure (`packages/mpd-agent-teams-plugin/_deps/`) from the host installation
-  (`DSH_HOST_NM`), rewriting bare `@deepseek-ai/*` + `zod` imports to relative paths —
-  the client bundle keeps bare imports (the web app bundler provides them).
+- `scripts/repin-vendor.ts` re-derives the asset fingerprints `VENDOR_LOCK.json` carries: `--check`
+  asserts, `--write` applies, and it refuses this repository's own lock without
+  `--i-know-this-is-the-captains-step`, because a wave's single re-pin is the captain's
+  commit-time step (AGENTS.md §9/§11). The MCP servers' sources are snapshotted in-repo at
+  `vendor/mcp-src/**` as the build-time input for `node scripts/build-mcp.ts`.
 - `VENDOR_LOCK.json` pins the upstream commit/version + asset fingerprints;
   `verify-vendor.ts` blocks on mismatch. Upstream is never chased — a baseline change
   needs a deliberate branch + evidence.

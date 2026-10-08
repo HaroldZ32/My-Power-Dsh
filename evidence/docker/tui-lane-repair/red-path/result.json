@@ -1,0 +1,73 @@
+{
+  "subject": "docker/tui-lane.sh RED reporting path (finding F1 / acceptance condition iii)",
+  "lane": {
+    "path": "docker/tui-lane.sh",
+    "sha256_before": "226cdb1c84b9eff09a3260aa9aec33abe40bacb87358c833dcb5db9557094b00",
+    "sha256_after": "226cdb1c84b9eff09a3260aa9aec33abe40bacb87358c833dcb5db9557094b00",
+    "mtime": "2026-10-08T11:55:40Z",
+    "modified_by_this_work": false,
+    "container_lane_run": false
+  },
+  "harness": {
+    "path": "evidence/docker/tui-lane-repair/red-path/run-red-path-harness.sh",
+    "sha256": "618d55165574abf4f97adec87f342000cfbc9116e77838f6160a859784e2d2e2",
+    "bash": "GNU bash, version 5.3.9(1)-release",
+    "extracted_from_frozen_lane": {
+      "prologue.sh": {
+        "span": "json_escape() { .. trap 'on_exit' EXIT",
+        "lines": 48,
+        "sha256": "e5c49b9930ff315aca4c922b789809be9a241d53b37bff9f4413003cb920e3dc"
+      },
+      "epilogue.sh": {
+        "span": "# Summarise: .. exit 1",
+        "lines": 23,
+        "sha256": "179394fd34c0205da13518c35cf866ca4c4382de0c115717ce3ffffaabdccbec"
+      }
+    }
+  },
+  "assertions": { "total": 32, "failed": 0, "harness_exit": 0 },
+  "observation_1_ordinary_red_exit": {
+    "arm": "a-red",
+    "process_exit": 1,
+    "terminal_record_console": "[record] tui.laneExit=false — the TUI lane finished with failing or missing assertions",
+    "terminal_record_state": "{\"name\":\"tui.laneExit\",\"ok\":false,\"reason\":\"the TUI lane finished with failing or missing assertions\",\"raw\":\"records=21 failed=4\"}",
+    "tui_laneExit_records": 1,
+    "abort_exit_claims_console": 0,
+    "abort_exit_claims_state": 0,
+    "net_EXIT_trap_claims": 0,
+    "holds": true
+  },
+  "observation_2a_genuine_abort_exit_net": {
+    "arm": "b-exitnet",
+    "trigger": "set -u unbound variable (lane's measured 2026-10-06 incident class)",
+    "process_exit": 1,
+    "state_record_raw": "abort=exit-1 net=EXIT-trap",
+    "holds": true
+  },
+  "observation_2b_genuine_abort_err_trap": {
+    "arm": "c-errtrap",
+    "trigger": "unguarded step failing with code 9 (shape of lane line 172)",
+    "process_exit": 9,
+    "state_record_reason": "the TUI lane aborted (exit 9) — see this step's log; earlier tui.* records are the assertions that had already run",
+    "state_record_raw": "line=88",
+    "tui_laneExit_records": 1,
+    "net_EXIT_trap_claims": 0,
+    "holds": true
+  },
+  "falsifiability_control": {
+    "arm": "a-red-nofix",
+    "mutation": "the single line LANE_EXIT_RECORDED=1 deleted from the extracted epilogue",
+    "diff": "109d108 < LANE_EXIT_RECORDED=1",
+    "tui_laneExit_records": 2,
+    "second_record_raw": "abort=exit-1 net=EXIT-trap",
+    "reading": "the harness reproduces the pre-repair double report, so it can fail"
+  },
+  "fidelity_anchor": {
+    "real_run_log": "evidence/docker/tui-lane-verify/2026-10-08T12-06Z/lane.log",
+    "line": "[record] tui.laneExit=true — the TUI lane ran to completion with every assertion green",
+    "harness_green_arm_line": "identical",
+    "harness_green_arm_raw": "records=21"
+  },
+  "closes_condition_iii": "mechanism: yes, with a controlled pair; contract wording (a REAL run's console.log/result.json): not literally — no container lane run was performed",
+  "reproduce": "bash evidence/docker/tui-lane-repair/red-path/run-red-path-harness.sh"
+}

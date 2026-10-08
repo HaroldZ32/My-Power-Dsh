@@ -1,0 +1,38 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-tui-plugin/test/panel-legend-mount.test.ts:
+(pass) C4 · the negative control — this harness CAN see an accumulating row > the pre-fix key shape accumulates, so the green arms above are falsifiable [1069.79ms]
+(pass) C4 · the legend does not accumulate across the click/pin interaction (mounted instance) > the legend's row count is STABLE across N clicks — 3 after the mount (arrow + wrapped key) and 3 after every click [1363.83ms]
+(pass) C4 · the legend does not accumulate across the click/pin interaction (mounted instance) > the legend and the pin body key every row distinctly among their own siblings [760.35ms]
+(pass) C4 · the legend does not accumulate across the click/pin interaction (mounted instance) > the workmate page keys two same-prefix problems as two rows, not one key twice [152.26ms]
+(pass) A1 · the composed legend prints the state key exactly once (mounted instance, 156 columns) > exactly ONE frame row starts with the contract's first state entry [159.16ms]
+
+packages/mpd-tui-plugin/test/scene-visuals.test.ts:
+(pass) every surface draws the frozen contract's colours > the drawing engine's table and the contract's table agree tone for tone [0.07ms]
+(pass) every surface draws the frozen contract's colours > the board, the team, the plan and the merged scene draw only contract colours [9.91ms]
+(pass) every surface draws the frozen contract's colours > no surface module spells a colour of its own [1.02ms]
+(pass) every layout row fits the viewport it was laid out for > the drawing and the legend fit at 100, 60 and 40 columns [1.46ms]
+(pass) every layout row fits the viewport it was laid out for > the frame carries a border TITLE the host can actually render [0.82ms]
+(pass) every layout row fits the viewport it was laid out for > the DAG a scene draws never exceeds the width it was laid out for [2.49ms]
+(pass) a CJK fixture does not shear the layout > every boxed node row ENDS ON ITS BORDER COLUMN, wide glyphs included [1.79ms]
+(pass) a CJK fixture does not shear the layout > a wide-glyph label survives the clamps the scene applies [0.39ms]
+(pass) a CJK fixture does not shear the layout > a hostile team name cannot reach a border title unclamped [0.37ms]
+(pass) the running mark breathes on a timer and freezes without one > a host with NO timer draws the STATIC frame [0.31ms]
+(pass) the running mark breathes on a timer and freezes without one > a host WITH a timer draws the phase its clock reports, and every frame is CELL-STABLE [1.16ms]
+(pass) the running mark breathes on a timer and freezes without one > a NON-FINITE clock degrades to the static frame instead of throwing [0.64ms]
+(pass) the running mark breathes on a timer and freezes without one > the mark draws the state's own glyph for every non-running tone [0.04ms]
+(pass) the legend is composed, and it disambiguates the two states that share a glyph > the drawing's arrow line is forwarded, and the contract's ONE state key follows it [0.99ms]
+(pass) the legend is composed, and it disambiguates the two states that share a glyph > the legend sits UNDER its DAG and stays dimmed [0.63ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > a label row splits byte-for-byte, and prose is left whole [0.11ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the label column draws in the label's own tone [0.06ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the tally tone ladder reports the loudest state the board carries [0.06ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the host's own subagent states map onto the same six tones [0.04ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the progress bar is drawn from the contract's own cells [0.07ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the chrome title joins what exists and never leaves a dangling separator [0.02ms]
+(pass) the text-only surfaces stay inside their budgets > the status row publishes at most its documented cells, and never shears a wide glyph [0.32ms]
+(pass) the text-only surfaces stay inside their budgets > the status mark reports the workspace's dominant state, in the contract's glyphs [0.11ms]
+
+ 28 pass
+ 0 fail
+ 609 expect() calls
+Ran 28 tests across 2 files. [3.81s]

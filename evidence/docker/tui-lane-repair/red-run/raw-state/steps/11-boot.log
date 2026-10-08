@@ -1,0 +1,19 @@
+[docker-probe] APPLIED=ok
+[docker-probe] CORE_TOOLS=6/6
+[docker-probe] CORE_TOOLS_MISSING=
+[docker-probe] MCP_TOOLS=3/3
+[docker-probe] MCP_TOOLS_MISSING=
+[docker-probe] TEAM_TOOLS_ROOT=0/9
+[docker-probe] AGENTS_AT_APPLY=0
+[docker-probe] RETIRED_TOOLS_PRESENT=
+[docker-probe] ADAPTER_SERVICE=present
+[docker-probe] ADAPTER_CAPS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals
+[docker-probe] ADAPTER_TOOL_CALL=ok
+[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService
+[docker-probe] AGENT_TEAMS_METHODS=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+[docker-probe] DONE=1
+dsh web: http://127.0.0.1:3197/?token=Y1j8LmFDzB_288J2sBFSyxYoL2VqX3y1fEjv9MFGM30
+[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-f2cc2acf-a540-4568-9885-a62aeb82 scopelessRead=0/9
+[docker-probe] AGENT_VISIBLE_TOOLS=105 agent=session-f2cc2acf-a540-4568-9885-a62aeb82
+[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-1a518be7-f88a-44ac-9752-f6eb897d scopelessRead=0/9
+[docker-probe] AGENT_VISIBLE_TOOLS=105 agent=session-1a518be7-f88a-44ac-9752-f6eb897d

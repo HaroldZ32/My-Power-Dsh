@@ -193,6 +193,26 @@ export const DAG_CHROME = Object.freeze({
 } as const)
 
 /**
+ * The marks a RUNNING surface breathes through, in draw order — THE ONE TABLE EVERY ANIMATION READS
+ * (the DAG page's node label and the subagent panel's row marker).
+ *
+ * IT IS DECLARED BEFORE `DAG_ANIM` ON PURPOSE: the cycle's frame COUNT is derived from this table, so
+ * the count and the orbit are ONE fact. A literal count beside a table is a latent incoherence — add a
+ * frame and the phase arithmetic can no longer reach it (or it aliases), and the symptom is a frame
+ * that never draws rather than a crash.
+ *
+ * EVERY ENTRY IS EXACTLY ONE CELL: the DAG label EMBEDS its frame, so a frame of a different width
+ * makes the label change width on the tick, which re-lays-out the box drawn around it — the right
+ * border then advances and retreats, which is the user's report that the animation breaks the frame.
+ * The head is the contract's own `running` glyph, so the frame a timer-less host draws
+ * (`staticPhase`) is the character the legend names for this state; `?? "◐"` keeps the orbit
+ * drawable rather than empty if the contract ever stops declaring a running glyph. No entry is a
+ * mark another state owns (`✓ ✗ ○ ⊘`) and none is a bare space or dot, which would read as "no
+ * state" for a quarter of the cycle.
+ */
+const RUNNING_FRAMES: readonly string[] = Object.freeze([DAG_TONE_GLYPH.running ?? "◐", "◓", "◑", "◒"])
+
+/**
  * The animation budget for a running node.
  *
  * `intervalMs` is the tick the host's `useAnimationTime` is asked for; a host that offers no timer
@@ -201,10 +221,12 @@ export const DAG_CHROME = Object.freeze({
 export const DAG_ANIM = Object.freeze({
   /** The tick interval; ~8fps is smooth enough for a breathing dot and cheap on a terminal. */
   intervalMs: 125,
-  /** The number of distinct frames the breathing cycle is quantised to. */
-  frames: 4,
-  /** The frame index a surface draws when the host exposes no animation timer. */
+  /** The number of distinct frames the breathing cycle is quantised to, DERIVED from `runningFrames`. */
+  frames: RUNNING_FRAMES.length,
+  /** The frame index a surface draws when the host exposes no animation timer; frame 0, the orbit's head. */
   staticPhase: 0,
+  /** The marks a RUNNING surface breathes through, in draw order; see {@link RUNNING_FRAMES}. */
+  runningFrames: RUNNING_FRAMES,
 } as const)
 
 // `DAG_PANEL_SLUG` STOOD HERE AND IS DELETED (wave `tui-014-adaptation`, clause C3), decided from the

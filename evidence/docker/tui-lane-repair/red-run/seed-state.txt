@@ -1,0 +1,42 @@
+# The ONE environment precondition, and what the container did with it
+
+## 1. The seed (reproduced by seed.sh)
+
+    mkdir -p "<seed>/ws/.mpd/team/teams"
+    ln -sfn /dev/null "<seed>/ws/.mpd/team/teams.json"
+    ln -sfn /dev/null "<seed>/ws/.mpd/team/teams/tui-scene.json"
+
+The seed directory was bind-mounted over the lane's own workspace mount:
+`docker compose run --rm -T -e MPD_E2E_BROWSER=1 -v <EVID>/scratch:/work mpd-client`
+(the service's own `${MPD_DOCKER_OUT}:/out` bind is untouched; see run-command.txt).
+
+WHY /dev/null AND NOT A READ-ONLY MOUNT: the lane's own fixture seed is UNGUARDED —
+
+    docker/tui-lane.sh:372  cat >"$WORK_DIR/ws/.mpd/team/teams/tui-scene.json" <<'TEAMJSON'
+    docker/tui-lane.sh:395  printf '{"version":1,"active":{}}' >"$WORK_DIR/ws/.mpd/team/teams.json"
+
+— so a read-only target makes those two lines fail, which fires the ERR trap and produces the
+ABORT (the WRONG half of the repair). A /dev/null target accepts both writes with exit 0 and
+persists nothing, so the lane reaches its TERMINAL red path with the fixture bound to no session.
+
+## 2. The seed as it sat on disk BEFORE the container started
+
+    lrwxrwxrwx 1 haroldzhao haroldzhao 9 Oct  8 20:24 teams.json -> /dev/null
+    lrwxrwxrwx 1 haroldzhao haroldzhao 9 Oct  8 20:24 tui-scene.json -> /dev/null
+
+Re-verified from INSIDE the image before the run (seed-preflight.txt): the lane's own two writes
+exit 0, and both files read back UNPARSABLE, so the lane's binding probe cannot confirm either
+spelling the product's `createTeam` writes.
+
+## 3. The same tree AFTER the run (captured before the 890 MB scratch tree was pruned)
+
+    .../scratch/ws/.mpd/team/:
+    drwxrwxr-x 2 ... teams
+    drwxr-xr-x 3 ... watchdog
+
+    .../scratch/ws/.mpd/team/teams/:
+    (empty)
+
+Both seeded links are gone: the lane's own Ctrl+A phase removes the fixture
+(`rm -f "$WORK_DIR/ws/.mpd/team/teams/tui-scene.json" "$WORK_DIR/ws/.mpd/team/teams.json"`), which
+is the last thing it does with it. The run's records were already written by then.

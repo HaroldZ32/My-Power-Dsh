@@ -40,18 +40,21 @@ solo `mpd_role_spawn` produces. Address a role by that name in any spelling —
 `Plan Reviewer` (case-, space-, hyphen- and underscore-insensitive). No surface
 advertises an upstream alias: a role is described by what it does.
 
-*Compatibility (internal, undocumented on any surface):* the roster also still accepts
-its stable internal keys — the chain keys used by `mpd-modelchain-plugin` and by
-`personas/<key>.md` (`oracle`, `sisyphus-junior`, …), the camelCase spellings
-(`sisyphusJunior`) and the legacy `mpd-<key>` form — so existing chains and callers keep
-working. They are never returned, listed or required. The **workmate library does not
-resolve a base this way**: `mpd_workmate_init` matches the functional NAME only (a stable
-id is refused with a names-only error), and `meta.baseId` is kept purely as internal
-provenance that no tool output, route or GUI exposes.
+*Internal keys (never tool input):* the stable internal keys — the chain keys used by
+`mpd-modelchain-plugin` and by `personas/<key>.md` (`oracle`, `sisyphus-junior`, …), the
+camelCase spellings (`sisyphusJunior`) and the legacy `mpd-<key>` form — stay resolvable on
+the **service path** (`ctx.get("mpdRoles").get(key)`), so existing chains and internal
+callers keep working. They are **refused as tool input**: `mpd_role_spawn`,
+`mpd_role_persona` and `mpd_modelchain_resolve` accept a NAME spelling only and answer a
+loud error that lists the roster names — it never repeats the rejected key, and an id is
+never returned, listed or required. The **workmate library behaves the same way**:
+`mpd_workmate_init` matches the functional NAME only (a stable id is refused with a
+names-only error), and `meta.baseId` is kept purely as internal provenance that no tool
+output, route or GUI exposes.
 
-`ctx.get("mpdRoles").get(key)` uses that same resolution, which is how
-`mpd_modelchain_resolve` and the roster tools address a role; the workmate library
-(`mpd_workmate_init base=...`) instead addresses it by functional NAME.
+`ctx.get("mpdRoles").get(key)` still uses that same resolution — it is the INTERNAL path.
+The tool-facing path accepts NAME spellings only, so `mpd_modelchain_resolve`, the roster
+tools and the workmate library (`mpd_workmate_init base=...`) all address a role by name.
 
 ## Extension-contributed roles
 

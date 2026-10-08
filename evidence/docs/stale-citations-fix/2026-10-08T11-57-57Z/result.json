@@ -1,0 +1,184 @@
+{
+  "task": "T5 - fix the stale citations in docs/development.md(+zh), docs/feature-audit.md(+zh) and agent-references/troubleshooting.md",
+  "agent": "Senior Engineer (docs)",
+  "sessionId": "67c76268-17cb-4773-bfc2-eb110445b04d",
+  "gate": {
+    "cmd": "bun run verify:docs",
+    "verdict": "PASS",
+    "line": "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=23 derived=3 links=424 dead=0 - PASS"
+  },
+  "ruleApplied": "Fix the REFERENCE, never invent a capability: every path/command/version written was checked on disk first and the check is quoted.",
+  "changes": [
+    {
+      "file": "docs/development.md",
+      "line": "19 (repo layout)",
+      "wrong": "`scripts/vendor-agent-teams.ts` - materialize the RETAINED (unmounted) agent-teams server closure (_deps/)",
+      "replacement": "`scripts/repin-vendor.ts` - re-derive the VENDOR_LOCK asset fingerprints (dry-run default; --check asserts, --write applies)",
+      "verified": "scripts/ holds 31 entries and vendor-agent-teams.ts is ABSENT; repin-vendor.ts EXISTS; its parser sets --check/--write and the default mode is dry-run (scripts/repin-vendor.ts:520-521,598)"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": "19",
+      "wrong": "same dead script, zh wording",
+      "replacement": "same, localised",
+      "verified": "same as above"
+    },
+    {
+      "file": "docs/development.md",
+      "line": "43",
+      "wrong": "(`bun@1.4.2`)",
+      "replacement": "(`bun@1.4.0`)",
+      "verified": "package.json:5 buildToolchain=bun@1.4.0; .github/workflows/gates.yml:73 bun-version: \"1.4.0\""
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": "42",
+      "wrong": "（`bun@1.4.2`）",
+      "replacement": "（`bun@1.4.0`）",
+      "verified": "same as above"
+    },
+    {
+      "file": "docs/development.md",
+      "line": "130",
+      "wrong": "the QA case row `agent-teams-adopt` -> `node skills/dsh-qa/scripts/agent-teams-adopt.ts`",
+      "replacement": "row DELETED (a table of runnable cases must not carry a command that cannot run)",
+      "verified": "skills/dsh-qa/scripts/agent-teams-adopt.ts ABSENT; grep -c agent-teams skills/dsh-qa/cases.json = 0"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": "119",
+      "wrong": "the same QA case row",
+      "replacement": "row DELETED",
+      "verified": "same as above"
+    },
+    {
+      "file": "docs/development.md",
+      "line": "148-150",
+      "wrong": "`stageScript()` in `packages/mpd-agent-teams-plugin/self-fix-tests/scratch-scripts.ts` is the helper for the scripts shape.",
+      "replacement": "clause DELETED; the requirement (stage `scripts/lib/` or the sibling `packages/mpd-dsh-adapter-plugin/src/`) is kept - it is still true and still live",
+      "verified": "`packages/*/self-fix-tests` matches NOTHING; `stageScript` appears NOWHERE under skills/ or scripts/"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": "134-135",
+      "wrong": "the same helper clause, zh wording",
+      "replacement": "clause DELETED",
+      "verified": "same as above"
+    },
+    {
+      "file": "docs/development.md",
+      "line": "215-216",
+      "wrong": "the three named reference files (`index.md`, `troubleshooting.md`, `agent-teams-deltas.md`)",
+      "replacement": "the two named reference files (`index.md`, `troubleshooting.md`)",
+      "verified": "scripts/verify-pack-closure.ts:398 REQUIRED_REFERENCE_FILES = [\"index.md\", \"troubleshooting.md\"] (TWO); agent-references/ holds 10 files and agent-teams-deltas.md is ABSENT - the docs gate itself prints that absence as a DERIVED note"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": "193-194",
+      "wrong": "三个具名参考文件（`index.md`、`troubleshooting.md`、`agent-teams-deltas.md`）",
+      "replacement": "两个具名参考文件（`index.md`、`troubleshooting.md`）",
+      "verified": "same as above"
+    },
+    {
+      "file": "docs/development.md",
+      "line": "230-233",
+      "wrong": "the `scripts/vendor-agent-teams.ts` bullet (materialize `packages/mpd-agent-teams-plugin/_deps/` from `DSH_HOST_NM`)",
+      "replacement": "the live baseline: `scripts/repin-vendor.ts` (--check/--write, refuses the repo's own lock without --i-know-this-is-the-captains-step) + `vendor/mcp-src/**` as the build-time input for `node scripts/build-mcp.ts`",
+      "verified": "repin-vendor.ts EXISTS with those flags; OVERRIDE_FLAG = --i-know-this-is-the-captains-step (scripts/repin-vendor.ts:45); vendor/mcp-src EXISTS; build-mcp.ts:24 reads join(repoRoot,\"vendor\",\"mcp-src\")"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": "207-210",
+      "wrong": "the same vendoring bullet, zh wording",
+      "replacement": "the same live baseline, localised",
+      "verified": "same as above"
+    },
+    {
+      "file": "docs/feature-audit.md",
+      "line": "63-66",
+      "wrong": "The vendored `agent-teams` body IS KEPT at `packages/mpd-agent-teams-plugin/` as provenance",
+      "replacement": "was DELETED at `packages/mpd-agent-teams-plugin/` (768 files, `_deps/` included) by the de-vendor wave (2026-10-07)",
+      "verified": "packages/mpd-agent-teams-plugin ABSENT; the three named authorities all record the deletion: docs/design.md (\"The adopted team body is DELETED ... 768 files\"), docs/independence.md (\"is DELETED - the measured count is 768 files\"), LICENSE-NOTICES.md (\"adopted plugin, DELETED\"). The valid pointers docs/plan-0.1.7-adaptation.md, docs/design.md, docs/independence.md, LICENSE-NOTICES.md all EXIST"
+    },
+    {
+      "file": "docs/feature-audit.zh-CN.md",
+      "line": "60-62",
+      "wrong": "the same present-tense kept claim, zh wording",
+      "replacement": "the same correction, localised",
+      "verified": "same as above"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": "24",
+      "wrong": "(e.g. `agent_teams_update_task` still answers with the pre-fix wording)",
+      "replacement": "parenthetical DELETED; the row's live remedy (node scripts/mpd-bg.ts reload-check, T-21) is untouched",
+      "verified": "agent_teams_update_task is not among the five live tools (agent_teams_plan/task/dispatch/mail/control, packages/mpd-team-core-plugin/src/index.ts:520,857,1007,1186,1292)"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": "28",
+      "wrong": "the row's call shape `{task_id, status, attempt_id[, verdict]}` presented as live",
+      "replacement": "leading RETIRED SURFACE marker + the live closed parameter block",
+      "verified": "live agent_teams_task parameters are exactly action/task_id/claimant/note/expected_revision, additionalProperties:false (index.ts:862-869) - there is no status/attempt_id parameter"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": "51",
+      "wrong": "ONE external pause mechanism - `agent_teams_halt` (cleared by `agent_teams_resume`); the quoted readout `PAUSED - mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation active|none`; `claim_task`/`update_task`; the `kick` clause; the pin `test/lane-c-wave2.test.ts`",
+      "replacement": "the live surface: TWO holds that BOTH stop a pass (`agent_teams_control {action:\"halt\"|\"resume\"}` on <workspace>/.mpd/team/hold.json, and `session-watchdog-hold`/`-resume`), the live readout quoted verbatim from the renderer, `agent_teams_task` claim/contract/complete, single live pin",
+      "verified": "team-core index.ts:345 \"different things and BOTH stop a pass: `hold.json` halts the workspace, the watchdog's halts one team\"; index.ts:13 <workspace>/.mpd/team/hold.json; watchdog actions.ts:327 renders \": PAUSED - the watchdog's preserving hold (the only pause mechanism; the official team service exposes no halt)\", pause.mechanism=\"watchdog-hold\" (actions.ts:366); holds-lifecycle.test.ts:400 asserts not.toContain(\"agent_teams_halt\"); `kick` is ABSENT from the live team packages; lane-c-wave2.test.ts is ABSENT (reported, replaced by the LIVE holds-lifecycle.test.ts which exists)"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": "52",
+      "wrong": "`agent_teams_update_task` / `agent_teams_task_contract` and the advice to echo `acceptanceResults`/`commandsRun`/`changedPaths`",
+      "replacement": "leading RETIRED SURFACE marker + the live verbs (`agent_teams_task` claim/contract/complete) and the live record path",
+      "verified": "acceptanceResults/commandsRun appear in ZERO files under packages/*/src AND ZERO files in the installed official package node_modules/@deepseek-ai/dsh-experimental-agent-team/lib; live contract carries acceptance TEXT, no acceptance[] key (team-web.ts:460-461); record path .mpd/team/teams/<id>.json is AGENTS.md section 1's own path and is on disk"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": "106",
+      "wrong": "the same `acceptanceResults`/`commandsRun` class stated in the present tense, with `agent_teams_task_contract` as the fix",
+      "replacement": "leading RETIRED SURFACE marker; the historical quality gate is kept as the record it is",
+      "verified": "same as line 52"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": "107",
+      "wrong": "`agent_teams_task_contract` presented as the way to read a source task",
+      "replacement": "leading RETIRED SURFACE marker naming the live creation surface and the live contract read",
+      "verified": "live create_task shape is {subject, description, blocked_by?, write_scopes?, owner?} - no kind/sourceTaskId/sourceFindingIds (index.ts:534-537)"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": "109",
+      "wrong": "`agent_teams_reassign_task`'s own description cited as the authority",
+      "replacement": "RETIRED SURFACE marker + the live ownership rule (owner spellings or the RECORDED Lead session) and the live 5-action enum",
+      "verified": "the five live tools have no reassign; casCloseTask admits isOwner (caller spellings) or isRecordLead (leadSessionId) ONLY (packages/mpd-team-core-plugin/src/team-store.ts)"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": "110",
+      "wrong": "`agent_teams_update_task`'s `amend` cited as a live closed object, with `packages/mpd-agent-teams-plugin/lib/tools.ts` as THE authority and `amendChangesDefinition` as its honorer",
+      "replacement": "RETIRED SURFACE marker: the authority path and symbol are gone, the live task tool has no amend action, and the live editable artifact is the PLAN via `agent_teams_plan {action:\"edit\"}`",
+      "verified": "amendChangesDefinition appears NOWHERE under packages/; the live agent_teams_task enum is claim/contract/release/complete/fail (index.ts:865); agent_teams_plan edit's replacement fields are members/tasks (index.ts:538-539)"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": "114",
+      "wrong": "`agent_teams_reassign_task` named as live and `agent_teams_task_contract` as the contract reader",
+      "replacement": "leading RETIRED SURFACE marker + the live contract read inline",
+      "verified": "same as lines 52/109"
+    }
+  ],
+  "bounds": [
+    "DOCS-GATE PASS is a pairing/link/heading verdict, NOT a proof that the replacements I quote are TRUE - the truth of each replacement rests on the on-disk checks quoted above, recorded in output.log section 2.",
+    "docs/feature-audit.md's present tense at the following sentence (\"The retained plugin IS 0.1.16-rc.3-mpd\") was NOT changed: the captain scoped the fix to :63-66 and the section is explicitly framed as history. REPORTED, not edited.",
+    "docs/development.md:37 still shows a bare `bun build ...` (PATH bun). AGENTS.md section 6 records the pinned-toolchain trap (T16): a PATH bun minor rewrites the helper preamble and produces STALE dist bytes. The T5 card scoped the defect to the version token and said fix only the listed items, so the command line was left alone. REPORTED, not edited.",
+    "agent-references/troubleshooting.md:50 cites `bun test packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts`, which is ABSENT. No live file pins that exact T-18 assertion, so I did NOT invent a replacement pin. REPORTED, not edited.",
+    "The same file's banner covers deleted PATHS, so rows citing `packages/mpd-agent-teams-plugin/**` as the historical record were left intact; only PRESENT-TENSE tool verbs were re-pointed.",
+    "My docs edits make dist/mpd-package/docs/** STALE (measured: diff docs/development.md vs dist/mpd-package/docs/development.md differs). dist/mpd-package is a DERIVED surface owned by the integration task (AGENTS.md section 7, T-88) - a re-pack is required there, and it is not my lane.",
+    "The captain's item 2 (an upstream stable id recorded as an accepted role alias) does NOT exist in docs/feature-audit.md or its twin: a case-insensitive grep for alias/accept/by-id found no such claim there, and the two files' roster row states the upstream spec plus the mpd DISPLAY names, both of which stay true. The statement lives in packages/mpd-roles-plugin/README.md (\"the roster also still accepts its stable internal keys ... `personas/<key>.md`, the camelCase spellings, the legacy `mpd-<key>` form\") and packages/mpd-modelchain-plugin/README.md (\"Resolve the provider/model route for an upstream role id\") - both in the ROSTER writer's write scope, not mine. REPORTED, not edited."
+  ],
+  "reportedNotFixed": true
+}

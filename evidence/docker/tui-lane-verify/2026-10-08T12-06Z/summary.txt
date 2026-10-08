@@ -1,0 +1,7 @@
+VERBATIM driver verdict line (my independent run, stamp 2026-10-08T12-05-34Z):
+ok=true complete=false passed=66 failed=0 null=30 NULL=[tui.mergedPanelOpens,tui.mergedPanelOrder,live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns,live.web.noMalformedToolJson,live.web.toolCallsParsed,live.web.mpdToolCalled,live.web.assistantReplied,live.tui.turnStarted,live.tui.turnCompleted,live.tui.noErrorTurns,live.tui.noMalformedToolJson,live.tui.toolCallsParsed,live.tui.mpdToolCalled,live.tui.assistantReplied,live.headless.turnStarted,live.headless.turnCompleted,live.headless.noErrorTurns,live.headless.noMalformedToolJson,live.headless.toolCallsParsed,live.headless.mpdToolCalled,live.headless.assistantReplied,live.teamRecord,live.nativeExecutor,live.headlessPresetRow,boot.llmTurn]
+
+command: node scripts/docker-e2e.ts --mode source --require-docker
+job: bash-407 (managed background job, stdio to evidence/docker/tui-lane-verify/2026-10-08T12-06Z/lane.log)
+container exit: 0
+driver exitCode: 0

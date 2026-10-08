@@ -668,8 +668,9 @@ slot, workmate) stay here.
   `mpd_role_persona`) as teammate instantiation templates for the OFFICIAL Agent Teams plugin
   (`spawn_teammate`, whose persona the captain takes from `mpd_role_persona`). The eleven members are
   addressed by NAME: Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer,
-  Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id` is INTERNAL — exposed by NO
-  tool output, render, web route or GUI. The **read-only discipline is the exported deny list**, exactly
+  Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id` is INTERNAL — refused as TOOL
+  INPUT (a NAME spelling only; the `mpdRoles.get` service path still resolves it) and exposed by NO tool
+  output, render, web route or GUI. The **read-only discipline is the exported deny list**, exactly
   seven names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted by `roles.test.ts`):
   `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`,
   `mcp__lsp__rename` (a shell writes files, so `bash` stays denied; `read`/`glob`/`grep` stay available).

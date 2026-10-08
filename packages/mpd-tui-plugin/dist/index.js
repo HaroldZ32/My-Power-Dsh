@@ -4671,10 +4671,12 @@ var DAG_CHROME = Object.freeze({
   barFull: "█",
   barEmpty: "░"
 });
+var RUNNING_FRAMES = Object.freeze([DAG_TONE_GLYPH.running ?? "◐", "◓", "◑", "◒"]);
 var DAG_ANIM = Object.freeze({
   intervalMs: 125,
-  frames: 4,
-  staticPhase: 0
+  frames: RUNNING_FRAMES.length,
+  staticPhase: 0,
+  runningFrames: RUNNING_FRAMES
 });
 var WORKMATE_PANEL_SLUG = "workmate";
 var DAG_PANEL_MIN_COLUMNS = 28;
@@ -5199,10 +5201,11 @@ function panelKeyEvent(event) {
   };
 }
 function runningGlyph(phase) {
-  const base = DAG_TONE_GLYPH.running ?? "◐";
-  const orbit = [base, `${base}·`, base, `${base}··`];
-  const index = (Math.floor(phase) % orbit.length + orbit.length) % orbit.length;
-  return orbit[index];
+  const frames = DAG_ANIM.runningFrames;
+  if (frames.length === 0)
+    return DAG_TONE_GLYPH.running ?? "◐";
+  const index = (Math.floor(phase) % frames.length + frames.length) % frames.length;
+  return frames[index] ?? DAG_TONE_GLYPH.running ?? "◐";
 }
 function visualGlyph(visual) {
   return DAG_TONE_GLYPH[visual] ?? "?";
@@ -5221,11 +5224,16 @@ function legendLinesFor(cols, arrowLines) {
   };
   for (const line of arrowLines)
     push2(line);
-  const entries = DAG_STATE_TONES.map((state) => {
+  const groups = [];
+  for (const state of DAG_STATE_TONES) {
     const glyph = DAG_TONE_GLYPH[state] ?? "?";
-    const twin = DAG_STATE_TONES.find((other) => other !== state && DAG_TONE_GLYPH[other] === DAG_TONE_GLYPH[state]);
-    return twin === undefined ? `${glyph} ${state}` : `${glyph} ${state}=${twin}`;
-  });
+    const existing = groups.find((group) => group.glyph === glyph);
+    if (existing === undefined)
+      groups.push({ glyph, states: [state] });
+    else
+      existing.states.push(state);
+  }
+  const entries = groups.map((group) => `${group.glyph} ${group.states.join("/")}`);
   const oneLine = entries.join(" · ");
   if (cellWidth(oneLine) <= width) {
     push2(oneLine);
@@ -5853,10 +5861,10 @@ function barCells(filled, total, cells) {
   const lit = whole === 0 ? 0 : Math.min(width, Math.max(part > 0 ? 1 : 0, Math.round(part / whole * width)));
   return DAG_CHROME.barFull.repeat(lit) + DAG_CHROME.barEmpty.repeat(width - lit);
 }
-var RUNNING_FRAMES = Object.freeze([DAG_TONE_GLYPH.running ?? "◐", "◓", "◑", "◒"]);
+var RUNNING_FRAMES2 = DAG_ANIM.runningFrames;
 function runningMarker(phase) {
-  const index = Number.isFinite(phase) ? (Math.floor(phase) % RUNNING_FRAMES.length + RUNNING_FRAMES.length) % RUNNING_FRAMES.length : DAG_ANIM.staticPhase;
-  return RUNNING_FRAMES[index] ?? DAG_TONE_GLYPH.running ?? "◐";
+  const index = Number.isFinite(phase) ? (Math.floor(phase) % RUNNING_FRAMES2.length + RUNNING_FRAMES2.length) % RUNNING_FRAMES2.length : DAG_ANIM.staticPhase;
+  return RUNNING_FRAMES2[index] ?? DAG_TONE_GLYPH.running ?? "◐";
 }
 function animPhase(timeMs) {
   if (!Number.isFinite(timeMs) || timeMs <= 0)

@@ -1,0 +1,100 @@
+== T5 stale-citation fix — evidence ==
+captured_at_utc: 2026-10-08T11:57:57Z
+agent: Senior Engineer (docs), session 67c76268-17cb-4773-bfc2-eb110445b04d
+
+== 1. FACTS VERIFIED BEFORE WRITING (every path/version the fix names) ==
+-- scripts/ entries: 31; vendor-agent-teams.ts present? --
+ls: cannot access 'scripts/vendor-agent-teams.ts': No such file or directory
+ABSENT (confirms the defect)
+-- repin-vendor.ts present? --
+scripts/repin-vendor.ts
+-- package.json buildToolchain --
+5:  "buildToolchain": "bun@1.4.0",
+-- .github/workflows/gates.yml bun-version --
+73:          bun-version: "1.4.0"
+-- packages/mpd-agent-teams-plugin present? --
+ls: cannot access 'packages/mpd-agent-teams-plugin': No such file or directory
+ABSENT
+-- packages/*/_deps present? --
+ls: cannot access 'packages/*/_deps': No such file or directory
+ABSENT
+-- packages/*/self-fix-tests present? --
+ls: cannot access 'packages/*/self-fix-tests': No such file or directory
+ABSENT
+-- skills/dsh-qa/scripts/agent-teams-adopt.ts present? --
+ls: cannot access 'skills/dsh-qa/scripts/agent-teams-adopt.ts': No such file or directory
+ABSENT
+-- agent-teams in skills/dsh-qa/cases.json --
+0
+0 matches
+-- agent-references/ listing (10 files) --
+glossary.md
+index.md
+installer-and-profiles.md
+overview-and-provenance.md
+plugin-authoring.md
+qa-discipline.md
+seam-adapters.md
+troubleshooting.md
+upstream-dsh-tui-seam-request.md
+verification-flow.md
+-- agent-teams-deltas.md present? --
+ls: cannot access 'agent-references/agent-teams-deltas.md': No such file or directory
+ABSENT
+-- the pack gate's own required-reference list --
+398:const REQUIRED_REFERENCE_FILES: readonly string[] = ["index.md", "troubleshooting.md"]
+948:  for (const file of REQUIRED_REFERENCE_FILES) {
+955:  stats.referenceFiles = REQUIRED_REFERENCE_FILES.filter((file: string): boolean => existsSync(join(packed, "agent-references", file))).length
+1123:  for (const file of REQUIRED_REFERENCE_FILES) {
+1235:    console.log(PREFIX + " ok: " + s.classA + " dist/index.js row(s) + " + s.classB + " adopted lib/index.ts row(s) + " + s.classC + " mcp row(s) of the bundle patch all resolve; " + s.pluginCount + " PLUGIN_PKGS + " + s.mcpCount + " MCP_PKGS entries all exist; root assets " + s.rootAssets.join("/") + " declared and present; CLI validator surface " + s.shimExports.length + " exports in step; " + packedLine + (packedStats.packed === "checked" ? "; agent references " + packedStats.referenceFiles + "/" + REQUIRED_REFERENCE_FILES.length + "; root files " + packedStats.rootFiles + "/" + REQUIRED_ROOT_FILES.length + "; declared packages " + packedStats.packedPackages.present + "/" + packedStats.packedPackages.declared + " present in the artifact" + contentLine + completenessLine + stampLine + exemptLine : ""))
+1488:      for (const file of REQUIRED_REFERENCE_FILES) put(fxPacked, "agent-references/" + file, "# fixture reference\n")
+1499:    for (const file of REQUIRED_REFERENCE_FILES) put(fxSource, "agent-references/" + file, "# fixture reference\n")
+-- vendor/mcp-src present? --
+vendor/mcp-src
+-- build-mcp.ts reads it --
+24:const mcpSrcRoot = join(repoRoot, "vendor", "mcp-src")
+-- stageScript anywhere under skills/ or scripts/ --
+ABSENT
+
+== 2. LIVE TEAM SURFACE (what the troubleshooting rows were re-pointed to) ==
+-- the five agent_teams_* tools registered by mpd-team-core --
+1292:"agent_teams_control"
+1007:"agent_teams_dispatch"
+1186:"agent_teams_mail"
+520:"agent_teams_plan"
+857:"agent_teams_task"
+-- live agent_teams_task parameter keys --
+      properties: {
+        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail"], description: "What to do." },
+        task_id: { type: "string", description: "the task id; `release` takes the task to free." },
+        claimant: { type: "string", description: "claim: who claims it (default: the caller)." },
+        note: { type: "string", description: "complete/fail: one line recorded on the row." },
+        expected_revision: { type: "number", description: "complete/fail: the revision you decided on; stale is refused." },
+      },
+      required: ["action"],
+-- acceptanceResults / commandsRun under packages/*/src --
+NONE
+-- acceptanceResults / commandsRun in the INSTALLED official team package --
+  files with acceptanceResults: 0
+  files with commandsRun:       0
+-- amendChangesDefinition anywhere under packages/ --
+ABSENT
+-- kick in the live team packages --
+ABSENT
+-- session-watchdog-status live pause rendering (actions.ts) --
+327:            lines.push(team.teamId + ": PAUSED — the watchdog's preserving hold (the only pause mechanism; the official team service exposes no halt)")
+-- gate that forbids naming agent_teams_halt --
+400:        expect(text).not.toContain("agent_teams_halt")
+-- the two holds, verbatim (team-core) --
+345:   * different things and BOTH stop a pass: `hold.json` halts the workspace, the watchdog's halts one
+-- lane-c-wave2.test.ts pin cited by the OLD row --
+ls: cannot access 'packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts': No such file or directory
+ABSENT (reported, not replaced)
+
+== 3. THE GATE ==
+note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=424 checked=396 resolved=396 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=24 ignoredAnchorOnly=4 files=114
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=23 derived=3 links=424 dead=0 — PASS

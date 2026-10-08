@@ -1,0 +1,1 @@
+cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh && MPD_DOCKER_OUT=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/docker/tui-lane-repair/red-run bash /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/docker/tui-lane-repair/red-run/run-red.sh > /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/docker/tui-lane-repair/red-run/console.log 2>&1

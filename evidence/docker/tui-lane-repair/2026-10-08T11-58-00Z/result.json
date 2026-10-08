@@ -1,0 +1,95 @@
+{
+  "taskId": "T3",
+  "subject": "Finish the Docker TUI lane repair and prove it with a real lane run",
+  "author": "Senior Engineer (member M1, session 169cdd69-c099-4327-ae3e-e9803dc4e8e1)",
+  "kind": "work",
+  "run": {
+    "command": "node scripts/docker-e2e.ts --mode source --require-docker",
+    "mode": "source",
+    "dockerVersion": "Docker version 29.8.2, build 7fc2dff (rootless)",
+    "driverExitCode": 0,
+    "startedAt": "2026-10-08T11:56:41.803Z",
+    "finishedAt": "2026-10-08T12:03:01.815Z",
+    "summaryLine": "[report] ok=true complete=false passed=66 failed=0 null=30 scrubbed=true -> /out/result.json",
+    "summary": { "total": 96, "passed": 66, "failed": 0, "null": 30, "failedNames": [] },
+    "evidenceDir": "evidence/docker/client-install/2026-10-08T11-56-41Z"
+  },
+  "frozenRevision": {
+    "head": "20f312636b1f6fcdb43441d785494d98c3b8df08",
+    "dockerTuiLaneSha256": "226cdb1c84b9eff09a3260aa9aec33abe40bacb87358c833dcb5db9557094b00",
+    "measuredAtUtc": "2026-10-08T11:55:00Z",
+    "reReadAfterRunUnchanged": true,
+    "inContainerApparatusSha256Identical": true,
+    "inContainerWitness": "evidence/docker/tui-lane-repair/2026-10-08T11-58-00Z/lane-identity-in-container.txt"
+  },
+  "requirements": [
+    {
+      "id": 1,
+      "claim": "the seeded fixture is bound to the live session the TUI runs as",
+      "status": "implemented (inherited, uncommitted) and now verified on a real run",
+      "rows": { "tui.teamFixtureBound": true },
+      "raw": "session=4d62504c-9919-4045-8f78-d4fb4468f739 source=created-during-this-boot-under-this-project-key projectKey=--work-ws-- index={\"session-8f9c858f-5c29-4261-a2f7-8e3d443fd059\":\"tui-scene\",\"4d62504c-9919-4045-8f78-d4fb4468f739\":\"tui-scene\"};recordLeadSessionId=4d62504c-9919-4045-8f78-d4fb4468f739"
+    },
+    {
+      "id": 2,
+      "claim": "every existing arm keeps its meaning",
+      "status": "green",
+      "rows": {
+        "tui.teamSceneOpened": true,
+        "tui.teamGraphDrawn": true,
+        "tui.teamGraphEdges": true,
+        "tui.teamGraphContent": true
+      },
+      "raw": "corners=╭3 ╮3 ╰3 ╯3 tasksFromRecord=3 ids=T1,T2,T3 ; missing=[none] pinnedFocus=T1 detail=[T1 · requirement · freeze the contract]"
+    },
+    {
+      "id": 3,
+      "claim": "a session with NO bound board draws the product's own empty state and does NOT draw a sibling session's board",
+      "status": "IMPLEMENTED in this task; green and non-vacuous on a real run",
+      "row": { "tui.teamSceneOtherSessionInvisible": true },
+      "raw": "otherSession=session-8f9c858f-5c29-4261-a2f7-8e3d443fd059 liveSession=4d62504c-9919-4045-8f78-d4fb4468f739 otherKey=session-8f9c858f-5c29-4261-a2f7-8e3d443fd059 index={\"session-8f9c858f-5c29-4261-a2f7-8e3d443fd059\":\"tui-scene\"} marker=[no team in this session] markerSite=packages/mpd-tui-plugin/src/team-state.ts#NO_SESSION_TEAM_MARKER assertedAbsent=[T1,T2,T3] foundDrawn=[none] corners=0 pane=pane-teamOtherSession.txt",
+      "paneEvidence": "evidence/docker/client-install/2026-10-08T11-56-41Z/tui-panes/pane-teamOtherSession.txt line 4: '│ no team in this session — stage one with agent_teams_plan, then approve it │'",
+      "markerAssertion": "SUBSTRING test against the constant read out of the product's own source declaration (never retyped); the pane line carries a suffix, so equality would have reddened a correct product",
+      "vacuityGuard": "otherSession != liveSession, otherKey is the sibling's own key, the index at capture time carried ONLY the sibling's binding, and the asserted-absent id list is recorded on the row; an empty instrument records null with the reason, never a pass"
+    },
+    {
+      "id": 4,
+      "claim": "the lane distinguishes a normal red terminal exit from a real abort (no false abort record)",
+      "status": "IMPLEMENTED in this task; proven on a real run",
+      "mechanism": "LANE_EXIT_RECORDED=1 is set by the terminal red path immediately before its exit 1 — the same predicate on_err already sets, because the meaning is 'this exit already carries a tui.laneExit record' and the terminal path writes that record. No new flag was added.",
+      "evidence": {
+        "rowsNamedTuiLaneExitInResultJson": 1,
+        "grepCountFalseAbortText": 0,
+        "grepCountAbortExitText": 0,
+        "terminalGreenReason": "the TUI lane ran to completion with every assertion green",
+        "terminalGreenRaw": "records=21"
+      },
+      "errTrapProtection": "unchanged: an exit nobody recorded (the ERR trap, or a set -u abort) still publishes the abort record with its own reason"
+    },
+    {
+      "id": 5,
+      "claim": "the re-run proves passed=<n> failed=0 null=<n> with the null classes separated",
+      "status": "met",
+      "acceptanceLine": "passed=66 failed=0 null=30",
+      "nullClasses": {
+        "credentialGated": 28,
+        "credentialGatedBreakdown": "27 live.* rows plus boot.llmTurn (not prefixed live.*, gated the same way)",
+        "hostObservability": 2,
+        "hostObservabilityNames": ["tui.mergedPanelOpens", "tui.mergedPanelOrder"]
+      },
+      "deltaVsFailingRun": "passed 60 -> 66 (the four previously red tui.* rows + the two new rows); null stayed 30"
+    }
+  ],
+  "filesChanged": [
+    "docker/tui-lane.sh",
+    "docker/README.md",
+    "docker/README.zh-CN.md",
+    "evidence/docker/tui-lane-repair/2026-10-08T11-58-00Z/**"
+  ],
+  "bounds": [
+    "writer's report, not an independent verdict — T4 owns the verdict on this frozen hash",
+    "one lane run at this revision; the empty-state pane is one capture",
+    "the live.* rows stay unexercised: no credential is staged in the container by design",
+    "the README assertion count is a static count of the lane's tui.* writers, cross-checked against the run's own records=21 plus the terminal row"
+  ]
+}

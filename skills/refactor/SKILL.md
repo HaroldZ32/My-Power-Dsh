@@ -102,7 +102,7 @@ TodoWrite([
 
 ## 1.1: Launch Parallel Explore Agents (BACKGROUND)
 
-Fire ALL of these simultaneously using DSH \`subagent\` with \`run_in_background: true\` (DSH: \`subagent(description=..., prompt=..., run_in_background: true, persona="<fetch via mpd_role_persona(role=explore)>")\`):
+Fire ALL of these simultaneously using DSH \`subagent\` with \`run_in_background: true\` (DSH: \`subagent(description=..., prompt=..., run_in_background: true, persona="<fetch via mpd_role_persona(role=Explorer)>")\`):
 
 \`\`\`
 // Agent 1: Find the refactoring target
@@ -141,7 +141,7 @@ subagent(
 )
 \`\`\`
 
-**DSH:** \`subagent(description=..., prompt=..., run_in_background: true, persona="<fetch via mpd_role_persona(role=explore)>")\`
+**DSH:** \`subagent(description=..., prompt=..., run_in_background: true, persona="<fetch via mpd_role_persona(role=Explorer)>")\`
 
 ## 1.2: Direct Tool Exploration (WHILE AGENTS RUN)
 
@@ -268,7 +268,7 @@ ls -la *_test.go
 \`\`\`
 // Find all tests related to target
 subagent(
-  run_in_background=false,  // Need this synchronously; DSH: subagent(description=..., prompt=..., run_in_background: false, persona="<fetch via mpd_role_persona(role=explore)>")
+  run_in_background=false,  // Need this synchronously; DSH: subagent(description=..., prompt=..., run_in_background: false, persona="<fetch via mpd_role_persona(role=Explorer)>")
   prompt="Analyze test coverage for [TARGET]:
   1. Which test files cover this code?
   2. What test cases exist?
@@ -655,18 +655,18 @@ Record the chosen path in the TodoWrite list.
 2. Call \`agent_teams_status\` and verify no active \`refactor-squad\` team exists; if one does, dismantle the orphan before proceeding.
 3. Declare the team with \`agent_teams_create(name="refactor-squad")\` — the current session is the Lead.
 
-**Team spec** — add four continuable implementation members, each with the \`hephaestus\` role persona (fetch via `mpd_role_persona(role="hephaestus")`):
+**Team spec** — add four continuable implementation members, each with the \`hephaestus\` role persona (fetch via `mpd_role_persona(role="Deep Worker")`):
 
 \`\`\`
-agent_teams_add_member(name="worker-mech-1", description="mechanical refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=hephaestus)>", prompt="You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via agent_teams_send_message(target=\"lead\", content=<files touched + lsp status + diff summary>) + agent_teams_update_task(status=completed). Never run tests — the external verifier handles that. Never git add, never --continue.")
-agent_teams_add_member(name="worker-mech-2", description="mechanical refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=hephaestus)>", prompt="Same contract as worker-mech-1.")
-agent_teams_add_member(name="worker-reason-1", description="reasoning refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=hephaestus)>", prompt="You handle logic-preserving refactors that need reasoning (extract function, restructure conditional, pattern transformation, cross-file API change). Read the task description's plan step carefully. Use the ast-grep skill helper or sg CLI to preview structural rewrites first, review the preview, then execute. If the step is ambiguous or would require out-of-scope changes, STOP and send agent_teams_send_message(target=\"lead\", content=\"UNCLEAR: <reason>\") + agent_teams_update_task(status=pending). Same reporting contract as the mechanical workers. Never run tests.")
-agent_teams_add_member(name="worker-reason-2", description="reasoning refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=hephaestus)>", prompt="Same contract as worker-reason-1.")
+agent_teams_add_member(name="worker-mech-1", description="mechanical refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via agent_teams_send_message(target=\"lead\", content=<files touched + lsp status + diff summary>) + agent_teams_update_task(status=completed). Never run tests — the external verifier handles that. Never git add, never --continue.")
+agent_teams_add_member(name="worker-mech-2", description="mechanical refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="Same contract as worker-mech-1.")
+agent_teams_add_member(name="worker-reason-1", description="reasoning refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="You handle logic-preserving refactors that need reasoning (extract function, restructure conditional, pattern transformation, cross-file API change). Read the task description's plan step carefully. Use the ast-grep skill helper or sg CLI to preview structural rewrites first, review the preview, then execute. If the step is ambiguous or would require out-of-scope changes, STOP and send agent_teams_send_message(target=\"lead\", content=\"UNCLEAR: <reason>\") + agent_teams_update_task(status=pending). Same reporting contract as the mechanical workers. Never run tests.")
+agent_teams_add_member(name="worker-reason-2", description="reasoning refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="Same contract as worker-reason-1.")
 \`\`\`
 
 Rationale for this composition:
 - **4 workers, well inside the cap.** \`agent_teams\` \`maxMembers\` defaults to 8 (compose up to it by need — 5+ workers just queue); the verifier stays OUTSIDE the team.
-- **No verifier team member.** Verification needs pro-model deep reasoning; the verifier runs OUTSIDE the team as a \`subagent(persona="<fetch via mpd_role_persona(role=oracle)>", agentOptions={model: "deepseek-v4-pro"})\`.
+- **No verifier team member.** Verification needs pro-model deep reasoning; the verifier runs OUTSIDE the team as a \`subagent(persona="<fetch via mpd_role_persona(role=Architect)>", agentOptions={model: "deepseek-v4-pro"})\`.
 - **2 mechanical + 2 reasoning** workers — mirrors the plan's split (both use the \`hephaestus\` roster role).
 
 **Team lifecycle** (one team, reused until Phase 6 cleanup):
@@ -698,12 +698,12 @@ While any team task is \`pending | in_progress\`:
   subagent(
     description="verify step <N>",
     run_in_background=true,
-    persona="<fetch via mpd_role_persona(role=oracle)>",
+    persona="<fetch via mpd_role_persona(role=Architect)>",
     agentOptions={model: "deepseek-v4-pro"},
     prompt=<files touched + verify-spec commands + instruction to return "PASS" or "FAIL:<failing test + specific error + suggested revert hunks>">
   )
   \`\`\`
-  If the \`oracle\` role is unavailable, fall back to \`mpd_role_spawn(role="momus", ...)\` (still pro model). Do not create a commit checkpoint until the verifier returns PASS.
+  If the \`oracle\` role is unavailable, fall back to \`mpd_role_spawn(role="Plan Reviewer", ...)\` (still pro model). Do not create a commit checkpoint until the verifier returns PASS.
 - On a verifier PASS: make the commit checkpoint for that step (see original 5.3). Proceed.
 - On a verifier FAIL: Lead decides:
   - **Retry with fix hint**: \`agent_teams_update_task(status=pending)\` on the original step + \`agent_teams_send_message(target=<original member>, content=<specific failure from verifier>)\`. Runtime reassigns.

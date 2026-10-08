@@ -236,9 +236,11 @@ export function barCells(filled: number, total: number, cells: number): string {
  *
  * Frame {@link DAG_ANIM.staticPhase} IS the published `running` state glyph, so a host with no timer
  * draws exactly the character the legend says means `running` — the degraded frame is the static one,
- * never a stalled intermediate.
+ * never a stalled intermediate. The table is the CONTRACT's own (`DAG_ANIM.runningFrames`) because the
+ * DAG page's node label breathes through the same marks: a second copy here would be two animations of
+ * one state, and the first edit to either would leave the two surfaces breathing differently.
  */
-export const RUNNING_FRAMES: readonly string[] = Object.freeze([DAG_TONE_GLYPH.running ?? "◐", "◓", "◑", "◒"])
+export const RUNNING_FRAMES: readonly string[] = DAG_ANIM.runningFrames
 
 /**
  * The running marker at one phase, wrapping rather than going out of range.

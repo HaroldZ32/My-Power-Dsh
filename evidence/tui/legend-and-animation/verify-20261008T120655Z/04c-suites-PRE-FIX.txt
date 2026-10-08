@@ -1,0 +1,68 @@
+bun test v1.4.0 (34cbb9a40)
+
+test/panel-legend-mount.test.ts:
+(pass) C4 · the negative control — this harness CAN see an accumulating row > the pre-fix key shape accumulates, so the green arms above are falsifiable [1066.83ms]
+(pass) C4 · the legend does not accumulate across the click/pin interaction (mounted instance) > the legend's row count is STABLE across N clicks — 3 after the mount (arrow + wrapped key) and 3 after every click [1362.93ms]
+(pass) C4 · the legend does not accumulate across the click/pin interaction (mounted instance) > the legend and the pin body key every row distinctly among their own siblings [760.19ms]
+(pass) C4 · the legend does not accumulate across the click/pin interaction (mounted instance) > the workmate page keys two same-prefix problems as two rows, not one key twice [152.60ms]
+506 |       // drawn as the same `○`, so the mounted key must contain ONE entry for that mark carrying both
+507 |       // names. The pre-fix key printed the pair twice (`○ open=blocked · ○ blocked=open`) with an `=`
+508 |       // asserting they are each other; this is the reading the user reported as a duplicate.
+509 |       /** The entries the mounted key row opens with the shared mark. */
+510 |       const sharedEntries = stateRows[0].split(" · ").filter((entry) => entry.startsWith(`${DAG_TONE_GLYPH.blocked ?? "?"} `))
+511 |       expect(sharedEntries).toHaveLength(1)
+                                  ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/legend-and-animation/verify-20261008T120655Z/harness/pre-fix/packages/mpd-tui-plugin/test/panel-legend-mount.test.ts:511:29)
+(fail) A1 · the composed legend prints the state key exactly once (mounted instance, 156 columns) > exactly ONE frame row starts with the contract's first state entry [154.46ms]
+
+test/scene-visuals.test.ts:
+(pass) every surface draws the frozen contract's colours > the drawing engine's table and the contract's table agree tone for tone [0.06ms]
+(pass) every surface draws the frozen contract's colours > the board, the team, the plan and the merged scene draw only contract colours [6.96ms]
+(pass) every surface draws the frozen contract's colours > no surface module spells a colour of its own [0.95ms]
+(pass) every layout row fits the viewport it was laid out for > the drawing and the legend fit at 100, 60 and 40 columns [1.38ms]
+(pass) every layout row fits the viewport it was laid out for > the frame carries a border TITLE the host can actually render [0.74ms]
+(pass) every layout row fits the viewport it was laid out for > the DAG a scene draws never exceeds the width it was laid out for [2.31ms]
+(pass) a CJK fixture does not shear the layout > every boxed node row ENDS ON ITS BORDER COLUMN, wide glyphs included [1.75ms]
+(pass) a CJK fixture does not shear the layout > a wide-glyph label survives the clamps the scene applies [0.38ms]
+(pass) a CJK fixture does not shear the layout > a hostile team name cannot reach a border title unclamped [0.29ms]
+(pass) the running mark breathes on a timer and freezes without one > a host with NO timer draws the STATIC frame [0.31ms]
+(pass) the running mark breathes on a timer and freezes without one > a host WITH a timer draws the phase its clock reports, and every frame is CELL-STABLE [1.02ms]
+(pass) the running mark breathes on a timer and freezes without one > a NON-FINITE clock degrades to the static frame instead of throwing [0.61ms]
+(pass) the running mark breathes on a timer and freezes without one > the mark draws the state's own glyph for every non-running tone [0.04ms]
+809 |       /** The contract's own key line, the last line the composer produced. */
+810 |       const stateKey = composed.at(-1) ?? ""
+811 |       for (const state of DAG_STATE_TONES) {
+812 |         /** How many times this key NAMES the state, counted as a whole word so `blocked` != `blocker`. */
+813 |         const named = (stateKey.match(new RegExp(`\\b${state}\\b`, "g")) ?? []).length
+814 |         expect(`${state} named=${named}`).toBe(`${state} named=1`)
+                                                ^
+error: expect(received).toBe(expected)
+
+Expected: "open named=1"
+Received: "open named=2"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/legend-and-animation/verify-20261008T120655Z/harness/pre-fix/packages/mpd-tui-plugin/test/scene-visuals.test.ts:814:43)
+(fail) the legend is composed, and it disambiguates the two states that share a glyph > the drawing's arrow line is forwarded, and the contract's ONE state key follows it [0.84ms]
+(pass) the legend is composed, and it disambiguates the two states that share a glyph > the legend sits UNDER its DAG and stays dimmed [0.60ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > a label row splits byte-for-byte, and prose is left whole [0.11ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the label column draws in the label's own tone [0.07ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the tally tone ladder reports the loudest state the board carries [0.05ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the host's own subagent states map onto the same six tones [0.04ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the progress bar is drawn from the contract's own cells [0.08ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the chrome title joins what exists and never leaves a dangling separator [0.02ms]
+(pass) the text-only surfaces stay inside their budgets > the status row publishes at most its documented cells, and never shears a wide glyph [0.33ms]
+(pass) the text-only surfaces stay inside their budgets > the status mark reports the workspace's dominant state, in the contract's glyphs [0.09ms]
+
+2 tests failed:
+(fail) A1 · the composed legend prints the state key exactly once (mounted instance, 156 columns) > exactly ONE frame row starts with the contract's first state entry [154.46ms]
+(fail) the legend is composed, and it disambiguates the two states that share a glyph > the drawing's arrow line is forwarded, and the contract's ONE state key follows it [0.84ms]
+
+ 26 pass
+ 2 fail
+ 580 expect() calls
+Ran 28 tests across 2 files. [3.62s]

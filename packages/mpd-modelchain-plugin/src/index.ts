@@ -73,6 +73,21 @@ function toKebabKey(role: string): string {
 }
 
 /**
+ * Collapse a role key to its NAME spelling: case-, space-, hyphen- and underscore-insensitive.
+ *
+ * The same collapse the roster tools apply, restated here rather than imported because a
+ * cross-package import would be a NEW entry in the frozen coupling inventory
+ * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`, which may
+ * only shrink) — so the roster reaches this row as a SERVICE, never as source.
+ *
+ * @param role - the role key as the caller spelled it.
+ * @returns its letters and digits only, lowercased; an empty string for a blank key.
+ */
+function roleNameKey(role: string): string {
+  return String(role ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "")
+}
+
+/**
  * Resolve one role to its route: the first entry of the role's own chain, or of the shipped default
  * chain, or of `sisyphus` when the role is unknown or its chain is empty.
  *
@@ -137,16 +152,27 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       render: (_args: any, value: any) => [{ type: "text", text: "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" }]
     },
     execute: async (args: any) => {
-      /** The requested role, defaulting to the generic `sisyphus` chain when the caller named none. */
-      const role = String(args?.role ?? "sisyphus")
-      // Source of truth: the mpd-roles roster chains (DEFAULT_CHAINS kept as fallback).
-      const rolesService = ctx.get?.("mpdRoles") as { get?: (k: string) => any } | undefined
-      /** The roster's own spec for this role, when the roster service is mounted and knows the name. */
+      /** The role as the caller spelled it. There is NO default: an unnamed role is refused
+       *  rather than silently answered with another role's route (the defect this replaces). */
+      const role = String(args?.role ?? "").trim()
+      // Source of truth: the mpd-roles roster chains (DEFAULT_CHAINS kept as fallback). The roster
+      // is read per call — a sibling-provided service is only reliably visible after all rows apply.
+      const rolesService = ctx.get?.("mpdRoles") as { get?: (k: string) => any; list?: () => any[] } | undefined
+      /** Every name the mounted roster answers to: the ONLY vocabulary this tool accepts, and the
+       *  only thing a refusal names — built from the roster, never from the rejected argument. */
+      const names = (rolesService?.list?.() ?? []).map((r: any) => String(r?.name ?? "")).filter((n: string) => n !== "")
+      /** The role the roster resolves for this key. The service resolves the INTERNAL id and the
+       *  legacy aliases too, so the key is accepted only when it spells the resolved role's NAME. */
       const spec = rolesService?.get?.(role)
-      if (spec && Array.isArray(spec.chain) && spec.chain.length > 0) {
+      if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
+        throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"))
+      }
+      if (Array.isArray(spec.chain) && spec.chain.length > 0) {
         return { provider: spec.chain[0].provider, model: spec.chain[0].model, chain: spec.chain.map((c: any) => ({ ...c })) }
       }
-      return resolveRole(role, chains)
+      // This role carries no chain of its own: fall back to the shipped/configured table, keyed by
+      // the INTERNAL id (`resolveRole`'s keys and the `modelchain.<id>` config keys are ids).
+      return resolveRole(String(spec.id), chains)
     }
   })
 

@@ -88,10 +88,10 @@ When exploration is exhausted and the unknowns are answered, record the gate in 
 Fan out read-only research before deciding. Every delegated prompt names TASK / DELIVERABLE / SCOPE / VERIFY, states the role inside the prompt, and includes only the context the child needs; pass the matching preset id as `persona` when the spawn surface exposes it:
 
 ```
-subagent(label="Map the implementation surface", run_in_background: true, prompt="TASK: act as an explorer. DELIVERABLE: ... SCOPE: ... VERIFY: ...")  # roster way: mpd_role_spawn(role="explore", task=...)
+subagent(label="Map the implementation surface", run_in_background: true, prompt="TASK: act as an explorer. DELIVERABLE: ... SCOPE: ... VERIFY: ...")  # roster way: mpd_role_spawn(role="Explorer", task=...)
 ```
 
-Roles - the ONLY subagents you may spawn (all read-only, plus `oracle` for the high-accuracy review), via `mpd_role_spawn`/`subagent`: `explore` (internal patterns/conventions/tests), `librarian` (external docs/contracts), `metis` (gap analysis), `momus` (high-accuracy plan review). Never dispatch an implementer role (`hephaestus` / `sisyphus-junior`) - planning spawns no implementers - and never instruct a child to edit files. Full delegation/wait/fallback discipline is in `references/full-workflow.md`.
+Roles - the ONLY subagents you may spawn (all read-only, plus `Architect` for the high-accuracy review), via `mpd_role_spawn`/`subagent`: `Explorer` (internal patterns/conventions/tests), `Researcher` (external docs/contracts), `Reviewer` (gap analysis), `Plan Reviewer` (high-accuracy plan review). Never dispatch an implementer role (`Deep Worker` / `Junior Engineer`) - planning spawns no implementers - and never instruct a child to edit files. Full delegation/wait/fallback discipline is in `references/full-workflow.md`.
 
 ## Stop rules
 

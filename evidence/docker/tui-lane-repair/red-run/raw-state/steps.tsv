@@ -1,0 +1,14 @@
+01-apt-update	0	6	01-apt-update.log	apt-get update 
+01-apt-install	0	9	01-apt-install.log	env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux 
+03-bun	0	9	03-bun.log	bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash 
+04-pnpm	0	4	04-pnpm.log	npm i -g pnpm@11.23.0 
+05-dsh	0	88	05-dsh.log	npm i -g @deepseek-ai/dsh@0.2.0-rc.2 
+06-copy	0	0	06-copy.log	cp -a /src/. /opt/mpd/ 
+07-bun-install	0	13	07-bun-install.log	bash -c cd '/opt/mpd' && bun install 
+08-rebuild	0	0	08-rebuild.log	node /opt/mpd-e2e/lib/rebuild.ts --repo /opt/mpd --json /work/rebuild.json 
+09-install	0	1	09-install.log	bash -c cd '/opt/mpd' && dsh plugin --profile web add '.' 
+10-dump	0	0	10-dump.log	node /opt/mpd/scripts/dump-config.ts --profile web 
+11-boot	-1	11	11-boot.log	dsh --profile web --patch probe.yml --port 3197 --no-open (background; terminated by the harness after the assertions)
+12-web-live	0	0	12-web-live.log	skipped: no live credential staged
+13-browser	0	0	13-browser.log	node browser-lane.ts (Chromium drives the real Web GUI)
+14-tui	1	0	14-tui.log	bash docker/tui-lane.sh

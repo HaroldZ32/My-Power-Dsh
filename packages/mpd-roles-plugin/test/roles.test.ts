@@ -92,28 +92,27 @@ test("normalizeRoleKey: team-style normal names resolve to the same role as thei
   expect(normalizeRoleKey("Vision Analyst")).toBe("multimodal-looker")
 })
 
-test("a one-shot spawn is labelled with the team-style normal name, not the id", async () => {
+test("a one-shot spawn is labelled with the team-style normal name, and an id is refused", async () => {
   /** A fresh apply recorded surfaces: registrations, spawn specs and one exec. */
   const { tools, spawned, exec } = makePlugin()
   /** The mpd_role_spawn definition, located by name rather than by index. */
   const spawn = tools.find((t) => t.name === "mpd_role_spawn")
   /** The spawn result when the role is addressed by its normal display name. */
-  const byName = await spawn.execute({ role: "Deep Worker", task: "implement Y" }, exec)
-  expect(spawned[0].label).toBe("Deep Worker")
-  expect(byName.role).toBe("Deep Worker")
-  /** The spawn result when the same role is addressed by its stable id. */
-  const byId = await spawn.execute({ role: "momus", task: "review the plan" }, exec)
-  expect(spawned[1].label).toBe("Plan Reviewer")
-  expect(byId.role).toBe("Plan Reviewer")
+  const byName = await spawn.execute({ role: "Plan Reviewer", task: "review the plan" }, exec)
+  expect(spawned[0].label).toBe("Plan Reviewer")
+  expect(byName.role).toBe("Plan Reviewer")
+  /** The SAME role addressed by its stable id: refused loudly, and nothing is spawned for it. */
+  await expect(spawn.execute({ role: "momus", task: "review the plan" }, exec)).rejects.toThrow(/unknown role/)
+  expect(spawned.length).toBe(1)
 })
 
 /**
- * The alias guard. The roster's stable ids are inherited upstream keys: they stay
- * ACCEPTED (chain lookup, persona asset names, legacy callers), but no surface may
- * ADVERTISE one — every description, parameter and rendered line addresses a role by
- * its name and says what it does. Word-boundary matching keeps the honest English
- * words that merely contain an id as a substring (the "Explorer" role contains
- * "explore") from failing this guard.
+ * The alias guard. The roster's stable ids are inherited upstream keys: the INTERNAL normalizer
+ * and the `mpdRoles` service still resolve them (chain lookup, persona asset names, legacy
+ * callers), but the TOOL surface refuses them, and no surface may ADVERTISE one — every
+ * description, parameter, rendered line AND refusal addresses a role by its name and says what it
+ * does. Word-boundary matching keeps the honest English words that merely contain an id as a
+ * substring (the "Explorer" role contains "explore") from failing this guard.
  */
 test("no surface advertises an upstream alias: names plus what a role does", async () => {
   /** A second fresh apply, shared by the alias and payload arms. */
@@ -130,6 +129,16 @@ test("no surface advertises an upstream alias: names plus what a role does", asy
   const spawnRes = await spawn.execute({ role: "Plan Reviewer", task: "review the plan" }, exec)
   /** A resolved persona result; its persona text is masked before the scan. */
   const personaRes = await persona.execute({ role: "Architect" }, {})
+  /** Each tool's refusal when it is handed an internal key: collected, then scanned like a surface. */
+  const refusals: string[] = []
+  for (const [tool, rejected] of [[spawn, "momus"], [persona, "oracle"], [persona, "sisyphusJunior"], [spawn, "mpd-metis"]]) {
+    try {
+      await tool.execute({ role: rejected, task: "review" }, exec)
+      refusals.push("")
+    } catch (error) {
+      refusals.push(error instanceof Error ? error.message : String(error))
+    }
+  }
   /** Every model-facing string a caller can read, scanned for an advertised alias. */
   const surfaces = [
     list.description, JSON.stringify(list.parameters), list.output.render({}, listRes)[0].text,
@@ -137,7 +146,11 @@ test("no surface advertises an upstream alias: names plus what a role does", asy
     persona.description, JSON.stringify(persona.parameters), persona.output.render({}, personaRes)[0].text,
     JSON.stringify(personaRes).replace(/"persona":"[^"]*"/, '"persona":"…"'), // the persona TEXT is the role's own instructions
     rosterFunctionList(), rosterNameList(),
+    // …and every REFUSAL: an error is model-facing text too, so it names accepted names only and
+    // never repeats the rejected key — repeating it would advertise exactly what this guard forbids.
+    ...refusals,
   ]
+  expect(refusals.every((line) => line !== ""), "every internal key is refused").toBe(true)
   for (const surface of surfaces) {
     for (const role of ROLES) {
       /** Word-boundary matcher for one role id, so honest English words are not flagged. */
@@ -153,6 +166,32 @@ test("no surface advertises an upstream alias: names plus what a role does", asy
   expect(spawned[0].label).toBe("Plan Reviewer")
 })
 
+/**
+ * The input-only gate. Tool input accepts a NAME in any spelling and NOTHING else: the stable id,
+ * the legacy `mpd-<id>` form and the camelCase chain key are INTERNAL keys that the SERVICE path
+ * keeps resolving — tightening the shared normalizer instead of gating the input would have
+ * silently broken that internal path, which is why this test asserts both sides at once.
+ */
+test("tool input takes a NAME only; the mpdRoles service still resolves internal keys", async () => {
+  /** A fresh apply: its tools are the gated surface, its service the ungated internal one. */
+  const { tools, provided } = makePlugin()
+  /** The persona tool, the gated surface with no spawn side effect. */
+  const persona = tools.find((t) => t.name === "mpd_role_persona")
+  /** Every spelling of one role's NAME resolves to that role (case/space/hyphen/underscore/collapsed). */
+  for (const spelling of ["Plan Reviewer", "plan reviewer", "PLAN-REVIEWER", "plan_reviewer", "planreviewer"]) {
+    expect((await persona.execute({ role: spelling }, {})).role).toBe("Plan Reviewer")
+  }
+  /** Every internal key of that same role is REFUSED as tool input… */
+  for (const key of ["momus", "mpd-momus"]) {
+    await expect(persona.execute({ role: key }, {})).rejects.toThrow(/unknown role/)
+  }
+  /** …while the internal service path keeps resolving both of them. */
+  expect(provided.mpdRoles.get("momus").name).toBe("Plan Reviewer")
+  expect(provided.mpdRoles.get("mpd-momus").id).toBe("momus")
+  /** An unknown name is refused too — there is no silent fallback on the tool surface. */
+  await expect(persona.execute({ role: "bogus" }, {})).rejects.toThrow(/unknown role/)
+})
+
 test("the roster tool payloads carry no id field (an alias is not part of a result)", async () => {
   /** A third fresh apply, used for the payload-key arm. */
   const { tools, exec } = makePlugin()
@@ -165,9 +204,9 @@ test("the roster tool payloads carry no id field (an alias is not part of a resu
   /** A resolved list payload; only its roles entries are key-checked. */
   const listRes = await list.execute({}, {})
   /** A resolved spawn payload, checked for an id key. */
-  const spawnRes = await spawn.execute({ role: "momus", task: "review" }, exec)
+  const spawnRes = await spawn.execute({ role: "Plan Reviewer", task: "review" }, exec)
   /** A resolved persona payload, checked for an id key. */
-  const personaRes = await persona.execute({ role: "momus" }, {})
+  const personaRes = await persona.execute({ role: "Plan Reviewer" }, {})
   expect(Object.keys(listRes.roles[0])).not.toContain("id")
   expect(Object.keys(spawnRes)).not.toContain("id")
   expect(Object.keys(personaRes)).not.toContain("id")
@@ -197,7 +236,7 @@ test("mpd_role_persona returns the extracted persona text under the role's NAME"
   /** The mpd_role_persona definition under test. */
   const tool = tools.find((t) => t.name === "mpd_role_persona")
   /** The persona result: the extracted text plus the character count it reports. */
-  const res = await tool.execute({ role: "oracle" }, {})
+  const res = await tool.execute({ role: "Architect" }, {})
   expect(res.role).toBe("Architect")
   expect(res.persona).toContain("read-only")
   expect(res.persona).toContain("the Architect")
@@ -210,7 +249,7 @@ test("mpd_role_spawn: read-only roles get write-deny toolFilter, workers none", 
   /** The spawn tool the read-only discipline is asserted through. */
   const spawn = tools.find((t) => t.name === "mpd_role_spawn")
   /** The read-only role spawn result, which reports the subagent own status. */
-  const ro = await spawn.execute({ role: "oracle", task: "review X" }, exec)
+  const ro = await spawn.execute({ role: "Architect", task: "review X" }, exec)
   expect(spawned[0].toolFilter).toEqual({ deny: READONLY_DENY })
   expect(spawned[0].persona).toContain("read-only")
   expect(spawned[0].agentOptions.model).toBe("deepseek-v4-flash")
@@ -221,7 +260,7 @@ test("mpd_role_spawn: read-only roles get write-deny toolFilter, workers none", 
   const workerCtx = makePlugin()
   /** The spawn tool from that second apply. */
   const worker = workerCtx.tools.find((t) => t.name === "mpd_role_spawn")
-  await worker.execute({ role: "hephaestus", task: "implement Y", model: "deepseek-v4-flash" }, workerCtx.exec)
+  await worker.execute({ role: "Deep Worker", task: "implement Y", model: "deepseek-v4-flash" }, workerCtx.exec)
   expect(workerCtx.spawned[0].toolFilter).toBeUndefined()
   expect(workerCtx.spawned[0].agentOptions.model).toBe("deepseek-v4-flash")
 })
@@ -250,7 +289,7 @@ test("read-only deny list covers every write-capable tool (no shell/AST/LSP writ
   const { tools, spawned, exec } = makePlugin()
   /** The spawn tool whose recorded filter is the one-shot enforcement surface. */
   const spawn = tools.find((t) => t.name === "mpd_role_spawn")
-  await spawn.execute({ role: "oracle", task: "review X" }, exec)
+  await spawn.execute({ role: "Architect", task: "review X" }, exec)
   /** The deny list as the fake subagents.start recorded it; the read-only spawn above always carries a filter, so the assertion only removes the optionality. */
   const deny = spawned[0].toolFilter!.deny as string[]
   for (const t of writeTools) expect(deny).toContain(t)

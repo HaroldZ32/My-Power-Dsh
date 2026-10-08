@@ -1513,26 +1513,28 @@ export function panelKeyEvent(event: unknown): PanelKeyEventLike | undefined {
 }
 
 /**
- * The frame index a running node's breathing dot draws this render.
+ * The frame a running node's breathing mark draws this render.
  *
- * The animation is an ORBIT over the contract's own state glyph: the dot never becomes a glyph that
- * means something else (`DAG_TONE_GLYPH.running` stays at the head of the orbit, and the tail is the
- * already-anywhere `·`), so a running task cannot be misread as a task in another state.
+ * THE ORBIT IS THE CONTRACT'S TABLE (`DAG_ANIM.runningFrames`), never one assembled here by appending
+ * characters to the state glyph. This function used to return 1, 2, 1 and 3 cells across its cycle
+ * (`base`, `base·`, `base`, `base··`); because the node's label EMBEDS the frame, the label's width
+ * moved every tick and the box drawn around it was re-laid-out — the border visibly advanced and
+ * retreated, which is the user's report that the animation breaks the frame. Every frame is now
+ * exactly one cell, so a label cannot change width, while the frames still DIFFER, so a running task
+ * reads as alive rather than frozen. No frame is a mark another state owns (`✓ ✗ ○ ⊘`), so a running
+ * node can never be misread as a task in another state.
  * @param phase - the frame index from {@link useRunningPhase}.
- * @returns the glyph to draw for a running node.
+ * @returns the glyph to draw for a running node; one cell, at every phase.
  */
 export function runningGlyph(phase: number): string {
-  /** The contract's own running glyph; `◐` when the contract stops declaring one. */
-  const base = DAG_TONE_GLYPH.running ?? "◐"
-  // THE ORBIT BEGINS AT THE BASE GLYPH AND NEVER DROPS IT: every frame carries the state mark, so a
-  // frame can never read as "no state at all" — an earlier orbit whose last frame was a bare `·`
-  // measured as a running task that vanished for a quarter of the cycle. The dot count rises and falls
-  // from the base frame, which is what makes the cycle read as a breath rather than as a flicker.
-  /** The breathing orbit, indexed by the quantised frame. */
-  const orbit = [base, `${base}·`, base, `${base}··`]
-  /** The frame index, floored and wrapped so any number is drawable. */
-  const index = ((Math.floor(phase) % orbit.length) + orbit.length) % orbit.length
-  return orbit[index]
+  /** The contract's frames; an empty table leaves the state's own glyph as the only honest mark. */
+  const frames = DAG_ANIM.runningFrames
+  if (frames.length === 0) return DAG_TONE_GLYPH.running ?? "◐"
+  /** The frame index, floored and wrapped so any finite phase is drawable. */
+  const index = ((Math.floor(phase) % frames.length) + frames.length) % frames.length
+  // The `??` is the degradation path for a NON-FINITE phase: `frames[NaN]` is undefined, and the
+  // state's own glyph is the honest mark for a clock that names no frame.
+  return frames[index] ?? DAG_TONE_GLYPH.running ?? "◐"
 }
 
 /**
@@ -1567,12 +1569,13 @@ export function visualTone(visual: string): DagTone {
  * THE STATE KEY IS OWNED HERE, AND IT IS THE ONLY ONE. The arrow/focus sentence is `graph.ts`'s
  * `legendLines` — the drawing module owns what its own arrows mean, and the full-screen scene renders
  * the same line, so the two surfaces cannot describe an edge differently. The STATE KEY is built here
- * from `dag-theme.ts` `DAG_STATE_TONES` + `DAG_TONE_GLYPH`, and it names all SIX states, so `blocked`
- * and `open` — which share the `○` glyph by design — are told apart by the twin each entry carries.
- * The drawing module's own FIVE-state key was DELETED (user requirement: the DAG legend printed the
- * state key twice): it omitted `blocked`, so it could not tell `○ blocked` from `○ open`, and printed
- * under this key it was the same legend a second time. NO GLYPH IS SPELLED HERE — every mark is
- * interpolated from the contract, so the legend cannot drift from the drawing.
+ * from `dag-theme.ts` `DAG_STATE_TONES` + `DAG_TONE_GLYPH`, and it prints ONE ENTRY PER MARK, naming
+ * every state that carries that mark — `blocked` and `open` SHARE the `○` glyph by design, and naming
+ * them on one entry is what tells a reader the mark means either state rather than printing the same
+ * fact twice. The drawing module's own FIVE-state key was DELETED (user requirement: the DAG legend
+ * printed the state key twice): it omitted `blocked`, so it could not tell `○ blocked` from `○ open`,
+ * and printed under this key it was the same legend a second time. NO GLYPH IS SPELLED HERE — every
+ * mark is interpolated from the contract, so the legend cannot drift from the drawing.
  * @param cols - the cells available on the page's rows.
  * @param arrowLines - the drawing module's own arrow/focus lines, already sanitized by its owner.
  * @returns the legend lines, each inside `cols`, in print order.
@@ -1590,15 +1593,25 @@ export function legendLinesFor(cols: number, arrowLines: readonly string[]): str
   for (const line of arrowLines) push(line)
   // THE STATE KEY, widest wording first, DROPPED rather than cut: a legend that reads `✗ fai` is a
   // truncated falsehood, and dropping a whole line of a key is honest about what does not fit.
-  /** Each state's `glyph name` entry, read out of the contract. */
-  const entries: string[] = DAG_STATE_TONES.map((state) => {
+  //
+  // ONE ENTRY PER MARK, NOT PER STATE. Each entry used to be built per state with the FIRST other state
+  // carrying the same mark appended after `=`, and that lookup was evaluated independently per state —
+  // so BOTH directions fired and the key read `○ open=blocked · ○ blocked=open`: one fact printed
+  // twice, with an `=` asserting that the two states ARE each other, which is false; they share a MARK,
+  // not a meaning. The states are grouped by the mark the contract gives them instead, so a shared mark
+  // is printed ONCE and its entry names every state that carries it.
+  /** The marks, each carrying the states drawn as it, in the contract's own print order. */
+  const groups: Array<{ glyph: string; states: string[] }> = []
+  for (const state of DAG_STATE_TONES) {
     /** The state's own glyph, `?` when the contract stops declaring one. */
     const glyph = DAG_TONE_GLYPH[state] ?? "?"
-    /** The glyph of the FIRST state this one shares a mark with, when they share one. */
-    const twin = DAG_STATE_TONES.find((other) => other !== state && DAG_TONE_GLYPH[other] === DAG_TONE_GLYPH[state])
-    /** The name as printed: a shared glyph names its twin, which is how `blocked` and `open` are told apart. */
-    return twin === undefined ? `${glyph} ${state}` : `${glyph} ${state}=${twin}`
-  })
+    /** The group an EARLIER state already opened for this mark, when two states share one. */
+    const existing = groups.find((group) => group.glyph === glyph)
+    if (existing === undefined) groups.push({ glyph, states: [state] })
+    else existing.states.push(state)
+  }
+  /** Each mark's entry: its glyph, then EVERY state it stands for, in the contract's own order. */
+  const entries: string[] = groups.map((group) => `${group.glyph} ${group.states.join("/")}`)
   /** Every entry on one line; the widest wording of the key. */
   const oneLine = entries.join(" · ")
   if (cellWidth(oneLine) <= width) {
