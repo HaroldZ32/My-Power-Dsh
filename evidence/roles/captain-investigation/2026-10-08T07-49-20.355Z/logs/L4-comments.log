@@ -1,0 +1,11 @@
+# verify-comment-coverage
+
+scanned 366 TypeScript file(s) of 366 in the source set; inspected 32203 declaration(s); skipped 14468 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-roles-plugin/test/captain-investigation-evidence.ts (1)
+  192: comment — message
+
+$ node scripts/verify-comment-coverage.ts
+error: script "verify:comments" exited with code 1

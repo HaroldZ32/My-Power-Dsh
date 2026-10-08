@@ -325,7 +325,12 @@ lands (§9/§11).
      a Senior Engineer or Deep Worker, an evidence question to a Researcher or Explorer, a verdict
      to a Reviewer. The captain executes only what must not be delegated by rule — the single git
      writer, contract amendments and plan/roster shaping, releasing a watchdog hold, and the final
-     integration — and does so without framing it as "working solo".
+     integration — and does so without framing it as "working solo". RECONNAISSANCE is not in that set:
+     `read`/`grep`/`glob` on a SOURCE path are REFUSED for the top-level session (while the documentation
+     band `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**` and the root `*.md` stays readable),
+     so finding files and reading code are DELEGATED. **Long form — the reserved set, the readable band
+     and the `captain.investigation` knob: `agent-references/verification-flow.md`, "§5 rule 2 — the
+     captain's reserved set".**
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement
      task (the frozen acceptance contract), a work task and a review task rather than one lumped
      implementation task; finding-driven work uses `kind=repair` + `sourceTaskId`/
@@ -341,13 +346,9 @@ lands (§9/§11).
      A PASS with no cited documents or no gate evidence is REFUSED by the record validator, and a FAIL
      bounces the work back to a writer as a `kind=repair` task rather than being quietly fixed. Where
      the law cannot be mechanical (a composition with no `tools.guard` seam), the bound is STATED —
-     the boot line says `verifyGate=absent` — never implied. The tool surface is one row,
-     `mpd-verify-plugin`: `mpd_verify_open` / `_escape` / `_seat` / `_evidence` / `_record`, and the
-     envelope denies a bound verifier the shell, the source-returning tools and every board mutation.
-     **Two sentences this rule REPLACES**: "execute directly when it does not [help to delegate]" is no
-     longer an option for code, and "verify everything a subagent claims yourself" is no longer how the
-     main agent closes work — a claim is closed by a DIFFERENT agent's recorded verdict, and the main
-     agent's own reading of a result is INTEGRATION, which is not verification.
+     the boot line says `verifyGate=absent` — never implied. **Long form — the tool surface (the five
+     `mpd_verify_*` tools) and the two sentences this rule REPLACES: `agent-references/verification-flow.md`,
+     "§5 rule 2 — the captain's reserved set".**
   5. **The board has terminal verbs, and dispatch honours the declared owner.** `agent_teams_task`
      carries `complete`/`fail` (owner-only, optional `note`, optional `expected_revision`
      compare-and-set; a FAIL releases its dependents per OPT-1) — without them a dependency edge could
@@ -487,10 +488,9 @@ bound and the conformance failure modes — is in `agent-references/qa-disciplin
   `evidence/dsh-qa/codegraph/`). The store is a CONCATENATED-ZSTD-FRAME container, so decode frame by
   frame (a naive single `zstdDecompressSync` sees the header frame only and reports "no tool call").
 - Evidence path: `evidence/<domain>/<slug>/<timestamp>/{result.json, output.log}`.
-- **Durable anchors (T-90): an ARTIFACT PATH is the anchor — a mailbox id is not a link.** A line
-  pointer rots by an EDIT (T-55) and a mailbox id rots by a MAILBOX CLEARING, so the artifact is the
-  primary anchor, the relay is secondary, and the id is provenance, not an anchor; a seat that must cite
-  an EXCHANGE copies the quoted bytes into its own artifact. This is a CLASS rule, not a pattern hunt.
+- **Durable anchors (T-90): an ARTIFACT PATH is the anchor — a mailbox id is not a link.** A line pointer
+  rots by an EDIT (T-55), a mailbox id by a MAILBOX CLEARING; a seat citing an EXCHANGE copies the quoted
+  bytes into its own artifact. **Long form — `agent-references/qa-discipline.md`.**
 - **Derived surfaces are declared at PLAN time (T-88): `packages/*/dist/**`, `dist/mpd-package/**`,
   `VENDOR_LOCK.json` and `.mpd/plans/**` belong to the INTEGRATION task's `inScope` at CREATION.** A
   LANE must not declare a `dist/**` pattern for itself (the platform's `inScope overlaps` validator
