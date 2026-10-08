@@ -170,9 +170,9 @@ printf '{\n  "completed": true,\n  "version": 1\n}\n' >/data/home-tui/.dsh-tui/o
 printf '{\n  "preset": "mpd"\n}\n' >/data/home-tui/.dsh-tui/agent-preset.json
 export DSH_TUI_NO_LAUNCHPAD=1
 log "starting the TUI inside tmux (socket /data/tui.sock)"
-npm i -g "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.13.0}" >>"$LOG_DIR/tui-install.log" 2>&1
+npm i -g "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.14.0}" >>"$LOG_DIR/tui-install.log" 2>&1
 DSH_HOME=/data/dsh-tui HOME=/data/home-tui mkdir -p /data/dsh-tui /data/home-tui /data/ws
-DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.13.0}" >>"$LOG_DIR/tui-add.log" 2>&1
+DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.14.0}" >>"$LOG_DIR/tui-add.log" 2>&1
 ( cd /src && DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add . >>"$LOG_DIR/tui-add.log" 2>&1 )
 tmux -f /dev/null -S /data/tui.sock new-session -d -s tui -x 220 -y 50 -c /data/ws
 tmux -S /data/tui.sock pipe-pane -t tui -o "cat > /data/tui-pane.log" 2>/dev/null || true

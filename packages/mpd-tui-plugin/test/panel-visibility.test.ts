@@ -22,7 +22,7 @@ import { EventEmitter } from "node:events"
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 
-import { PANEL_KEEPER_LADDER_MS, createPanelEnableKeeper, probeHostPrefs } from "../../mpd-tui-adapter-plugin/src/index.js"
+import { PANEL_KEEPER_LADDER_MS, createPanelEnableKeeper, probeHostPrefs, type TuiHostPrefsLike } from "../../mpd-tui-adapter-plugin/src/index.js"
 import {
   createPanelComponent,
   PANEL_DESCRIPTOR_FROZEN,
@@ -32,8 +32,8 @@ import {
   PANEL_SLUG,
   PANEL_TITLE,
 } from "../src/panel"
-import { createDagPanelComponent, DAG_PANEL_DESCRIPTOR_FROZEN, DAG_PANEL_ICON, DAG_PANEL_TITLE } from "../src/panel-dag"
-import { createWorkmatePanelComponent, WORKMATE_PANEL_DESCRIPTOR_FROZEN, WORKMATE_PANEL_ICON, WORKMATE_PANEL_TITLE } from "../src/panel-workmate"
+import { createDagPanelComponent, DAG_PANEL_TITLE } from "../src/panel-dag"
+import { createWorkmatePanelComponent, WORKMATE_PANEL_DESCRIPTOR_FROZEN, WORKMATE_PANEL_ICON, WORKMATE_PANEL_ID, WORKMATE_PANEL_TITLE } from "../src/panel-workmate"
 import { cellWidth, clampCells } from "../src/sanitize"
 import { toneColor } from "../src/panel-core"
 
@@ -87,14 +87,72 @@ const dimensions = await import(DIMENSIONS_PATH) as {
   resolveSidePanelGeometry(input: { columns: number; open: boolean; zoom: boolean; ratio: number }): { chat: number; panel: number } | null
 }
 
+/**
+ * The slugs THIS BUNDLE registers as sidebar panels, read from the modules that own them.
+ *
+ * Read rather than spelled so the arm re-judges itself when a page is renamed or when the two-panel
+ * merge changes which pages exist: the claim being made is "the host's default names none of OUR
+ * panels", and a literal would make that claim about a name the bundle may no longer use.
+ * @returns the slugs, in registration order.
+ */
+function ourPanelSlugs(): string[] {
+  return [PANEL_SLUG, WORKMATE_PANEL_ID]
+}
+
+/**
+ * The ids the INSTALLED host's own registry carries as BUILTINS.
+ *
+ * The registry is the authority, and this calls the host's own `registerBuiltinPanels()` so the answer
+ * is the host's rather than a list restated here: a host that adds, renames or retires a builtin
+ * re-judges the arms below instead of sliding past a frozen literal — which is exactly how the
+ * `todo,jobs,agents` literal became a red arm when 0.14.0 moved the default to eight builtins.
+ * @returns the builtin panel ids the host registers.
+ */
+async function hostBuiltinPanelIds(): Promise<Set<string>> {
+  /** The host's panel registry, loaded from the installed package. */
+  const registry = (await import(join(HOST, "lib", "types", "components", "sidePanel", "PanelStore.js"))) as {
+    panelStore: { list(): readonly { readonly definition: { readonly id: string; readonly source?: string } }[] }
+  }
+  /** The host's own builtin registration, called so the registry is populated before it is read. */
+  const builtins = (await import(join(HOST, "lib", "types", "components", "sidePanel", "builtinPanels.js"))) as { registerBuiltinPanels(): void }
+  builtins.registerBuiltinPanels()
+  /** The ids the registry carries under the builtin source. */
+  const ids = new Set<string>()
+  for (const entry of registry.panelStore.list()) {
+    if (entry.definition.source === "builtin") ids.add(entry.definition.id)
+  }
+  return ids
+}
+
 describe("R13 · the host's panel enablement rule (read from the installed host)", () => {
-  test("the default enabled CSV names the three builtins and NOTHING of ours", () => {
-    expect(prefs.DEFAULT_SIDE_PANEL_IDS).toBe("todo,jobs,agents")
-    // The load-bearing half: an unconfigured host cannot show a plugin panel, because the default
-    // list simply does not contain one. Every visibility claim must therefore explain the ADD.
-    expect(prefs.parseSidePanelIds(prefs.DEFAULT_SIDE_PANEL_IDS)).not.toContain("todo:team")
-    for (const id of prefs.parseSidePanelIds(prefs.DEFAULT_SIDE_PANEL_IDS)) {
+  test("the default enabled CSV names BUILTINS ONLY and NOTHING of ours", async () => {
+    /** The ids the default CSV enables, read through the host's own parser. */
+    const defaults = prefs.parseSidePanelIds(prefs.DEFAULT_SIDE_PANEL_IDS)
+    // NON-VACUOUS: an EMPTY default would satisfy every "contains nothing of ours" claim below while
+    // proving nothing at all, so the list must name at least one panel before it is believed.
+    expect(defaults.length).toBeGreaterThan(0)
+    /** The ids the INSTALLED host registers as its own panels, read from its own registry. */
+    const builtins = await hostBuiltinPanelIds()
+    // The registry must really have answered: a store that listed nothing would make the subset claim
+    // below vacuously true, which is the direction this arm exists to catch.
+    expect(builtins.size).toBeGreaterThan(0)
+    for (const id of defaults) {
+      // THE LOAD-BEARING HALF: every default id is one of the HOST's OWN panels. An unconfigured host
+      // therefore shows no plugin panel at all — the default cannot be the reason ours appear, and every
+      // visibility claim has to explain the ADD (the adapter's keeper, or the user's settings).
+      expect(builtins.has(id)).toBe(true)
+      // …and the default the host ships is legal by the host's own rule, which is the other half of "the
+      // host could have accepted this id".
       expect(prefs.SIDE_PANEL_ID_PATTERN.test(id)).toBe(true)
+    }
+    // NOTHING OF OURS, checked against the slugs THIS BUNDLE registers rather than against a spelling
+    // written here: the host composes a plugin panel's id as `<pluginId>:<slug>`, so a bundle panel
+    // could only ever arrive as one of these two forms, and renaming a page re-judges this arm.
+    for (const id of defaults) {
+      for (const slug of ourPanelSlugs()) {
+        expect(id).not.toBe(slug)
+        expect(id.endsWith(`:${slug}`)).toBe(false)
+      }
     }
   })
 
@@ -128,10 +186,19 @@ describe("R13 · the host's panel enablement rule (read from the installed host)
     /** The settings adapter's source: the apply path that mirrors configuration into the live stores. */
     const source = readFileSync(PLUGIN_PATH, "utf8")
     expect(source).toContain("applySidePanelPanels(config.sidePanel?.panels)")
-    // The configured value's own default is the three builtins (the schema default), so an unedited
-    // config re-applies `todo,jobs,agents` and drops any id a plugin appended.
+    // The configured value's own default is the schema default, so an unedited config re-applies a
+    // builtins-only list and drops any id a plugin appended. THE VALUE IS ASSERTED AS AN INVARIANT —
+    // idempotence — rather than as a CSV literal: a hard-coded list, old or new, is a defect, because it
+    // makes this file's claim about the version of the host it was written against instead of about the
+    // rule. Normalizing an already-normalized CSV is a no-op, so whatever the host re-applies is stable
+    // across every re-apply the session performs.
     expect(source).toContain("DEFAULT_SIDE_PANEL_IDS")
-    expect(prefs.normalizeSidePanelPanels(prefs.DEFAULT_SIDE_PANEL_IDS)).toBe("todo,jobs,agents")
+    /** The default CSV after the host's own normalization — what a config re-apply actually writes. */
+    const once = prefs.normalizeSidePanelPanels(prefs.DEFAULT_SIDE_PANEL_IDS)
+    expect(prefs.normalizeSidePanelPanels(once)).toBe(once)
+    // …and it is a real, non-empty list: idempotence alone would be satisfied by an empty string, which
+    // is the one answer that would make the "names builtins only" arm above vacuous.
+    expect(prefs.parseSidePanelIds(once).length).toBeGreaterThan(0)
   })
 })
 
@@ -412,6 +479,196 @@ describe("R13c · the enable-list keeper (this bundle's bounded re-assert)", () 
 })
 
 /**
+ * A host-store double with the INSTALLED host's own live-setting semantics.
+ *
+ * Read from `lib/types/tuiDisplayPrefs.js`'s `createLiveSetting` rather than invented: `apply`
+ * normalizes, stores, and notifies every listener ONLY when the value actually CHANGED. That
+ * conditional notification is the whole reason the keeper can tell the host's configuration mirror
+ * apart from its own echo, so a double that always notified would test a different store.
+ * @param initial - the CSV the store holds before anything is applied.
+ * @returns the store, every CSV applied through it in order, and the live listener count.
+ */
+function fakeFeedStore(initial: string): {
+  readonly store: TuiHostPrefsLike
+  readonly applied: string[]
+  readonly csv: () => string
+  readonly listeners: () => number
+  readonly hostApply: (value: string) => void
+} {
+  /** The CSV the store holds. */
+  let csv = initial
+  /** Every value applied through the store, the host's rewrites included. */
+  const applied: string[] = []
+  /** The store's live listeners — the keeper's one subscription, while it holds one. */
+  const listeners = new Set<() => void>()
+  /** One apply, exactly as the host's `createLiveSetting` performs it. */
+  const applyValue = (value: string): void => {
+    applied.push(value)
+    if (value === csv) return
+    csv = value
+    for (const listener of [...listeners]) listener()
+  }
+  return {
+    store: {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => {
+        applyValue(String(value))
+        return csv
+      },
+      subscribeSidePanelPanels: (listener: () => void): unknown => {
+        listeners.add(listener)
+        return (): void => {
+          listeners.delete(listener)
+        }
+      },
+    },
+    applied,
+    csv: (): string => csv,
+    listeners: (): number => listeners.size,
+    // THE HOST'S OWN REWRITE — the configuration mirror's `applySidePanelPanels(config.sidePanel?.panels)`
+    // reaches the SAME store, so this is the same apply and not a second path. Named apart here so an arm
+    // can say who wrote, which is what makes "the keeper wrote exactly once" assertable.
+    hostApply: (value: string): void => applyValue(value),
+  }
+}
+
+describe("R13d · the enable-list keeper's CHANGE FEED (the durable repair)", () => {
+  test("the host's OWN append does NOT stand the keeper down, and the mirror's rewrite IS repaired", async () => {
+    // THE MEASURED DEFECT, AS AN ARM. The host's `tuiPanels.register` appends our ids at about +1056 ms —
+    // the same moment this keeper arms — and the old ladder read that list at +1000 ms from arming and
+    // stood down, so the configuration mirror's rewrite at about +5403 ms was never answered and the
+    // panels left the sidebar for the rest of the session (F5, the user's 「侧边栏挂掉了」).
+    /** The store, seeded with the state the host's own append leaves behind. */
+    const fake = fakeFeedStore("todo,jobs,agents,act1:team,act1:dag,act1:workmate")
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule })
+    keeper.observe("act1:team")
+    keeper.observe("act1:dag")
+    keeper.observe("act1:workmate")
+    // The first ladder tick is also where the feed is detected; from there the ladder is cancelled.
+    await clock.runNext()
+    expect(fake.listeners()).toBe(1)
+    expect(keeper.outcome().detail).toContain("change feed")
+    expect(clock.cancelled).toBe(PANEL_KEEPER_LADDER_MS.length)
+    // NOTHING WAS WRITTEN: the list already named us, and a read that names us is not a repair.
+    expect(fake.applied).toEqual([])
+    // THE MIRROR REWRITES THE CSV, exactly as `applySidePanelPanels(config.sidePanel?.panels)` does.
+    fake.hostApply("todo,jobs,agents")
+    expect(fake.csv()).toBe("todo,jobs,agents,act1:team,act1:dag,act1:workmate")
+    expect(keeper.outcome().reasserted).toBe(1)
+    expect(keeper.outcome().state).toBe("confirmed")
+  })
+
+  test("our OWN write cannot re-enter the decision — one rewrite, exactly one repair", async () => {
+    // THE BOUND, asserted rather than asserted-about: writes are appended to a list, and the store
+    // notifies synchronously on every change, so a keeper that answered its own echo would run away and
+    // this arm would see an unbounded `applied` list instead of three entries.
+    /** The store, seeded with a rewritten list that names none of us. */
+    const fake = fakeFeedStore("todo,jobs,agents")
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule })
+    keeper.observe("act1:team")
+    keeper.observe("act1:dag")
+    await clock.runNext()
+    // The arm-time read repairs the list it found (that read may repair, it may not stand down)…
+    expect(fake.csv()).toBe("todo,jobs,agents,act1:team,act1:dag")
+    expect(keeper.outcome().reasserted).toBe(1)
+    // …and its OWN echo, which the store delivered synchronously, added nothing: exactly one write.
+    expect(fake.applied).toEqual(["todo,jobs,agents,act1:team,act1:dag"])
+    expect(fake.listeners()).toBe(1)
+    // A second rewrite is answered once more, and again exactly once.
+    fake.hostApply("todo,jobs,agents")
+    expect(keeper.outcome().reasserted).toBe(2)
+    expect(fake.applied).toEqual(["todo,jobs,agents,act1:team,act1:dag", "todo,jobs,agents", "todo,jobs,agents,act1:team,act1:dag"])
+  })
+
+  test("a list that NAMES one of ours ends the keeper for good — and a later rewrite is left alone", async () => {
+    // THE STAND-DOWN RULE, unchanged from the ladder's own: the moment the CSV names ANY of our ids a
+    // configuration has taken a position on this bundle, so the keeper retires rather than overruling it.
+    /** The store, seeded with a rewrite that names none of us. */
+    const fake = fakeFeedStore("todo,jobs,agents")
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule })
+    keeper.observe("act1:team")
+    keeper.observe("act1:dag")
+    await clock.runNext()
+    // The USER enables one of ours through `/settings`: a list that names us and not the other.
+    fake.hostApply("act1:team")
+    expect(keeper.outcome().detail).toContain("standing down")
+    // The subscription is RELEASED, which is the difference between "retired" and "quiet".
+    expect(fake.listeners()).toBe(0)
+    /** How many writes the keeper had made when it retired. */
+    const writesAtRetirement = keeper.outcome().reasserted
+    // A LATER rewrite is NOT repaired — the position the user took is respected for the rest of the scope.
+    fake.hostApply("todo,jobs,agents")
+    expect(fake.csv()).toBe("todo,jobs,agents")
+    expect(keeper.outcome().reasserted).toBe(writesAtRetirement)
+  })
+
+  test("`stop()` releases the host's feed with the scope — and a retired keeper never writes again", async () => {
+    /** The store, seeded with a rewrite that names none of us. */
+    const fake = fakeFeedStore("todo,jobs,agents")
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule })
+    keeper.observe("act1:team")
+    await clock.runNext()
+    expect(fake.listeners()).toBe(1)
+    keeper.stop()
+    // THE LISTENER LEAVES WITH THE SCOPE: a hot reload must not leave a writer attached to the host's
+    // live setting whose composition no longer exists.
+    expect(fake.listeners()).toBe(0)
+    /** How many writes the keeper had made when it was retired. */
+    const writesAtRetirement = keeper.outcome().reasserted
+    fake.hostApply("todo,jobs,agents")
+    expect(keeper.outcome().reasserted).toBe(writesAtRetirement)
+  })
+
+  test("NEGATIVE CONTROL: a store with NO feed keeps the ladder, and a THROWING feed degrades to it", async () => {
+    // THE DEGRADATION HALF. A host build whose live setting exposes no change feed must lose nothing: the
+    // bounded ladder is still there, and it still repairs — otherwise this wave would have traded one
+    // missing repair for another.
+    /** A store with the same live-setting semantics and NO `subscribeSidePanelPanels` member. */
+    const withoutFeed = fakeFeedStore("todo,jobs,agents")
+    /** The store as a pre-feed build would expose it: the subscription member simply absent. */
+    const bareStore = { getSidePanelPanels: withoutFeed.store.getSidePanelPanels, applySidePanelPanels: withoutFeed.store.applySidePanelPanels }
+    /** The controllable clock for the ladder path. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: bareStore }), schedule: clock.schedule })
+    keeper.observe("act1:team")
+    await clock.runNext()
+    // THE LADDER IS STILL THE PATH: nothing was cancelled, and the tick repaired the list.
+    expect(clock.cancelled).toBe(0)
+    expect(withoutFeed.csv()).toBe("todo,jobs,agents,act1:team")
+    expect(keeper.outcome().reasserted).toBe(1)
+    // A FEED THAT THROWS is recorded and the ladder carries on, rather than taking the boot down.
+    /** A store whose subscription refuses, as a reshaped host build would. */
+    const throwingFeed = {
+      getSidePanelPanels: (): unknown => "todo,jobs,agents",
+      applySidePanelPanels: (value: unknown): unknown => value,
+      subscribeSidePanelPanels: (): unknown => { throw new Error("reshaped feed") },
+    }
+    /** The controllable clock for the throwing-feed path. */
+    const throwingClock = fakeClock()
+    /** The keeper under test. */
+    const throwingKeeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: throwingFeed }), schedule: throwingClock.schedule })
+    throwingKeeper.observe("act1:team")
+    await throwingClock.runNext()
+    expect(throwingKeeper.outcome().detail).toContain("reshaped feed")
+    // THE LADDER SURVIVES the refusal: no tick was cancelled, so the repair path is still armed.
+    expect(throwingClock.cancelled).toBe(0)
+  })
+})
+
+/**
  * A controllable clock: the keeper's ladder is scheduled, never fired, so the arm owns the timing.
  *
  * The keeper's own contract is "a bounded ladder"; a test that slept for 25 real seconds would be
@@ -438,7 +695,15 @@ function fakeClock(): {
     schedule: (run: () => void, delayMs: number): (() => void) => {
       delays.push(delayMs)
       pending.push(run)
-      return (): void => { cancelled += 1 }
+      // THE CANCELLER REALLY DROPS THE TICK, and that matters to the feed arms: once the keeper hands the
+      // job to the host's change feed it cancels the whole ladder, and a double that kept those ticks
+      // queued would let an arm run a ladder tick the real keeper had already retired.
+      return (): void => {
+        cancelled += 1
+        /** Where this tick still sits in the queue, or -1 when it has already run. */
+        const at = pending.indexOf(run)
+        if (at >= 0) pending.splice(at, 1)
+      }
     },
     /** Fire the next pending tick and let the keeper's promise chain settle. */
     runNext: async (): Promise<void> => {
@@ -495,13 +760,16 @@ function hostBuiltinIcons(): string[] {
 }
 
 describe("AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's", () => {
-  test("the three icons measure ONE cell under BOTH measures — ours and the host's own", () => {
+  test("the TWO surviving icons measure ONE cell under BOTH measures — ours and the host's own", () => {
     /** The host's own measure, the one that decides whether a registration is accepted. */
     const stringWidth = hostStringWidth()
+    // AMENDED (wave `tui-014-adaptation`, clause C3) — TWO panels, not three: the DAG page merged into
+    // the MPD panel, so its own `◈` is declared by nothing and the surviving icons are the MPD panel's
+    // and the workmate page's. The CLAIM is unchanged: one cell each, under both measures.
     // BOTH MEASURES ARE ASSERTED because they disagree about some symbols: this plugin's `cellWidth`
     // treats a CJK-width glyph as two cells, the host's `string-width` follows Unicode's East Asian
     // Width property — and the host's answer is the one that can silently turn a registration down.
-    for (const icon of [PANEL_ICON, DAG_PANEL_ICON, WORKMATE_PANEL_ICON]) {
+    for (const icon of [PANEL_ICON, WORKMATE_PANEL_ICON]) {
       expect(cellWidth(icon)).toBe(1)
       expect(stringWidth(icon)).toBe(1)
       // ONE CODE POINT IS NOT THE CLAIM — one CELL is: a wide glyph is one code point and two cells.
@@ -509,27 +777,30 @@ describe("AC8 · each MPD page carries its OWN one-cell icon, and none borrows t
     }
   })
 
-  test("the seven built-in icons are read from the host, and none of the three MPD pages wears one", () => {
+  test("the host's built-in icons are read from the host, and neither surviving MPD page wears one", () => {
     /** The host's own tab icons. */
     const builtins = hostBuiltinIcons()
     // The collision this wave had to fix, named so a host that renames its tabs cannot make the arm
     // vacuous: `◆` (U+25C6) is the host's `agents` tab, and it was this bundle's workmate icon.
     expect(builtins).toContain("◆")
     expect(builtins.length).toBeGreaterThanOrEqual(6)
-    for (const icon of [PANEL_ICON, DAG_PANEL_ICON, WORKMATE_PANEL_ICON]) {
+    for (const icon of [PANEL_ICON, WORKMATE_PANEL_ICON]) {
       expect(builtins).not.toContain(icon)
     }
-    // …and the three are distinct from EACH OTHER: three pages, three identities.
-    expect(new Set([PANEL_ICON, DAG_PANEL_ICON, WORKMATE_PANEL_ICON]).size).toBe(3)
+    // …and the two are distinct from EACH OTHER: two panels, two identities.
+    expect(new Set([PANEL_ICON, WORKMATE_PANEL_ICON]).size).toBe(2)
   })
 
-  test("the merged page DECLARES its icon — it no longer falls back to the letter `M`", () => {
+  test("BOTH surviving descriptors DECLARE their icon — neither falls back to its title's first letter", () => {
     // The host falls back to `title.slice(0, 1)` when a panel declares no icon, which is exactly the
-    // `M` this arm exists to keep away: the descriptor must carry the module's own glyph.
+    // `M` this arm exists to keep away: each descriptor must carry its own glyph.
     expect(PANEL_DESCRIPTOR_FROZEN.icon).toBe(PANEL_ICON)
     expect(PANEL_DESCRIPTOR_FROZEN.icon).not.toBe(PANEL_TITLE.slice(0, 1))
-    expect(DAG_PANEL_DESCRIPTOR_FROZEN.icon).toBe(DAG_PANEL_ICON)
     expect(WORKMATE_PANEL_DESCRIPTOR_FROZEN.icon).toBe(WORKMATE_PANEL_ICON)
+    // AMENDED (clause C3) — the DAG page's own descriptor is GONE, and the page's title now belongs to
+    // the surviving MPD panel, so the ONE title the reader sees is asserted to be that descriptor's:
+    // a page drawing one name while the host's bar draws another is the drift this arm now catches.
+    expect(DAG_PANEL_TITLE).toBe(PANEL_TITLE)
   })
 
   test("NO MPD descriptor declares `capabilities` — the host drops the field, so it would be a dead promise", () => {
@@ -546,7 +817,8 @@ describe("AC8 · each MPD page carries its OWN one-cell icon, and none borrows t
     /** The side-panel column, where `canExpand` lives. */
     const column = readFileSync(join(HOST, "lib", "types", "components", "sidePanel", "SidePanelColumn.js"), "utf8")
     expect(column).toContain("definition.capabilities?.fullscreen === true")
-    for (const descriptor of [PANEL_DESCRIPTOR_FROZEN, DAG_PANEL_DESCRIPTOR_FROZEN, WORKMATE_PANEL_DESCRIPTOR_FROZEN]) {
+    // EVERY SURVIVING descriptor — two of them after the clause C3 merge — declines the field.
+    for (const descriptor of [PANEL_DESCRIPTOR_FROZEN, WORKMATE_PANEL_DESCRIPTOR_FROZEN]) {
       expect(Object.hasOwn(descriptor, "capabilities")).toBe(false)
     }
   })
@@ -818,7 +1090,7 @@ describe("AC8b · MPD's own `⤢` control, drawn in each page's title row", () =
     // reader needs it least. Both halves are measured here — the shipped ordering and the old one.
     /** The kit at the descriptor's own floor: 28 columns, i.e. 26 content cells inside the frame. */
     const kit = chromeKit(28)
-    /** The page, wired as `registerDagPanel` wires it. */
+    /** The page, wired as the surviving MPD panel wires it. */
     const component = createDagPanelComponent(() => undefined, { openFullscreen: () => true }) as (props: unknown) => unknown
     /** The rendered page. */
     const tree = chromeRender(kit, component, CHROME_HOST)
@@ -941,11 +1213,18 @@ function titleRowOf(lines: string[], title: string): string | undefined {
 }
 
 describe("AC8b · the control OCCUPIES CELLS under the host's real layout engine", () => {
-  test("each of the three pages draws `⤢` at the RIGHT EDGE of its title row — at 28 and at 40 columns", async () => {
-    /** The three pages, each with the title its own frame carries and an opener wired. */
+  test("each SURVIVING MPD page draws `⤢` at the RIGHT EDGE of its title row — at 28 and at 40 columns", async () => {
+    // WHAT THIS LISTS, SAID PLAINLY (clause C3): the wave ships exactly TWO MPD registrations — the MPD
+    // panel and the workmate page — and the list below holds THREE ENTRIES that are only TWO pages. The
+    // first two are the SAME page reached two ways, and that is the point of keeping both: one entry
+    // renders it the way a composition does (through the registered slot, `createPanelComponent`), and
+    // the other renders the page's OWN component directly (`createDagPanelComponent`), so a regression in
+    // either the slot's forwarding or the component's own title row reddens here rather than in only one
+    // of the two. NEITHER ENTRY IS A RETIRED SURFACE: both render the page the sidebar actually shows.
+    /** The two surviving pages, the MPD one reached through its slot and as its own component. */
     const pages: Array<{ label: string; title: string; component: unknown }> = [
-      { label: "merged MPD", title: PANEL_TITLE, component: createPanelComponent(() => undefined, { openFullscreen: () => true }) },
-      { label: "MPD DAG", title: DAG_PANEL_TITLE, component: createDagPanelComponent(() => undefined, { openFullscreen: () => true }) },
+      { label: "MPD through its registered slot", title: PANEL_TITLE, component: createPanelComponent(() => undefined, { openFullscreen: () => true }) },
+      { label: "MPD as its own component", title: DAG_PANEL_TITLE, component: createDagPanelComponent(() => undefined, { openFullscreen: () => true }) },
       {
         label: "MPD workmate",
         title: WORKMATE_PANEL_TITLE,

@@ -1,0 +1,32 @@
+{
+  "note": "the SAME drive and the SAME assertion (`assertApprovalHappened`) with the confirmation step bypassed — this run MUST fail",
+  "expected": "fail",
+  "observed": "fail",
+  "green": {
+    "mode": "typed",
+    "pass": true,
+    "reason": "the harness boundary recorded 1 call(s) to agent_teams_plan",
+    "message": "approved: plan-20261008T030456Z running · members 2 · tasks 2"
+  },
+  "reds": [
+    {
+      "mode": "empty",
+      "pass": false,
+      "reason": "no call to agent_teams_plan reached the harness boundary (calls=0)",
+      "message": "confirmation does not match this team"
+    },
+    {
+      "mode": "wrong-id",
+      "pass": false,
+      "reason": "no call to agent_teams_plan reached the harness boundary (calls=0)",
+      "message": "confirmation does not match this team"
+    },
+    {
+      "mode": "cancelled",
+      "pass": false,
+      "reason": "no call to agent_teams_plan reached the harness boundary (calls=0)",
+      "message": "confirmation does not match this team"
+    }
+  ],
+  "discriminatingPower": true
+}

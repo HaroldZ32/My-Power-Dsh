@@ -1,0 +1,15 @@
+[tui-mount] installing the host into the sandbox profile (network required): /root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b
+[tui-mount] host install exit=0
+[tui-mount] bundle install exit=0
+[tui-mount] install log=evidence/tui/lanes/2026-10-08T03-02-56.630Z/install.log
+[tui-mount] sandbox root=/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b explicit=true warm=true fresh=false
+[tui-mount] dsh-tui home fixture=.mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/onboarding.json, .mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/agent-preset.json preset=mpd
+[tui-mount] launchpad gate DSH_TUI_NO_LAUNCHPAD=1
+[tui-mount] profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+[tui-mount] dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+[tui-mount] statusLine=true counters=true crashes=[]
+[tui-mount] session keys created=["--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--"] inherited=[]
+[tui-mount] preset=mpd session=92b4d858-602b-47ee-82bb-e7eb2271bf93 isolationOffenders=0
+[tui-mount] ok=true -> /root/dshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-08T03-02-56.630Z
+[tui-mount] PASS: third layer mounted, 1 session record(s) decoded, zero apply-crash signatures
+LANE1B_EXIT=0

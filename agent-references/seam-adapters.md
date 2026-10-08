@@ -24,7 +24,19 @@ Resolve them with `resolveDshAdapter(ctx)` / `createLazyDshAdapter(ctx, { label 
 `resolveTuiAdapter(ctx)` / `createLazyTuiAdapter(ctx, { label })`; each falls back to a row-private
 `create*Adapter` so a package stays usable in a unit test with a host double.
 
-## The TUI plane, in detail (dsh-tui 0.12.0 → 0.13.0)
+## The TUI plane, in detail (dsh-tui 0.12.0 → 0.14.0)
+
+**The 0.14.0 reading (measured 2026-10-08, wave `tui-014-adaptation`): NOTHING in this section moved.**
+The fifteen plugin-facing seam modules and their `.d.ts` declarations under the host's
+`lib/types/dsh-adapter/` — `panels`, `scenes`, `status`, `renderers`, `settings-sections`, `shortcuts`,
+`dialogs`, `command-trees`, `plugin-host`, `toast`, `themes`, `plugin-storage`, `message-observer`,
+`effect-ledger`, `workspaces` — are **byte-identical** between 0.13.0 and 0.14.0; there is no sixteenth
+seam, and the harness `peerDependencies` lists still end at `0.2.0-rc.2`, so `MPD_E2E_DSH_VERSION` does
+not move. **No adapter code change was needed for the seam surface.** What 0.14.0 does change sits
+outside the seams: the Claude backend peer (`@anthropic-ai/claude-agent-sdk` 0.3.287), the `ws`
+runtime dependency (`^8.21.3`), an eighth builtin sidebar panel (`btw`) and a rewritten carousel
+`PanelBar` that no longer paints a descriptor's `icon` (the field stays required and declared). The
+reader-facing table is `docs/tui.md` §11.6.
 
 The plugin-facing seams are exactly: `tuiScenes`, `tuiStatus`, `tuiRenderers`, `tuiSettingsSections`,
 `tuiShortcuts`, `tuiDialogs`, `tuiCommandTrees`, `tuiPluginHost`, `tuiToast`, `tuiThemes`,
@@ -192,13 +204,48 @@ with no panel seam.
 
 **What 0.13.0 changed (wave `dsh-tui-013-adaptation`).** The release ships `ctx.tuiPanels`, so the same
 merge now lives in a RIGHT-SIDEBAR panel: `packages/mpd-tui-plugin/src/panel.ts` registers ONE panel
-(`id` slug `team`, title `MPD`, `minColumns` 32, `order` 10, NO `compact` — 0.13.0 stores that slot but
-does not mount it) whose body is the host's curated `host.snapshot().subagents` rows FIRST and the MPD
-dependency DAG below, reusing `subagent-scene.ts` + `graph.ts` rather than re-rendering them. `alt+a`
-and `/mpd panel` route through `tuiPanels.open()` whenever the seam is bound and a discovered id
-exists, and FALL BACK to the full-screen scene on any refusal (rate limit, an id the host no longer
-owns, or no live panel consumer) — never a silent no-op. Because the panel seam exists, the Ctrl+A
-host-input contact is version-gated OFF (see above), which is the outcome the upstream ask was for.
+(`id` slug `team`, title `MPD`, `minColumns` 28 since the width-band repair — 32 was the defect — `order`
+10, NO `compact` — the host stores that slot but does not mount it) whose body renders the host's curated
+`host.snapshot().subagents` rows ABOVE the MPD dependency DAG. `alt+a`, `/mpd panel` and `/mpd subagents`
+route through `tuiPanels.open()` whenever the seam is bound and a discovered id exists, and FALL BACK to
+the full-screen scene on any refusal (rate limit, an id the host no longer owns, or no live panel
+consumer) — never a silent no-op. Because the panel seam exists, the Ctrl+A host-input contact is
+version-gated OFF (see above), which is the outcome the upstream ask was for.
+
+**What the 0.14.0 wave changed (wave `tui-014-adaptation`).** Three things, all of them in the consumer
+rather than in this seam:
+
+1. **The sidebar carries TWO pages, not three.** The rich page `panel-dag.ts` and the plain merged page
+   `panel.ts` collapsed into ONE registration — `team` / title `MPD` / icon `❖` / `order` 10 — which
+   renders the DAG page's frame, header + progress, legend, key-hint footer, click-to-pin detail body and
+   badge with the host's curated subagent rows above the drawing. The standalone `dag` registration is
+   RETIRED (its `◈` icon is declared by nothing) and the workmate page (`workmate` / `MPD workmate` /
+   `⬢` / `order` 12) is untouched. **No user-visible entry point became a dead end**: `/mpd dag` re-aims
+   onto the MPD panel's discovered id with the RICH `mpd-tui-team` scene as that route's fallback, and
+   the adapter's recorded id set is DISCOVERED from what registered, so it carries two ids and never a
+   composed three.
+2. **The panel's own `⤢` opens the rich scene, not a bare one.** `registerPanelSurface` takes the
+   route's fallback (`mpd-tui-subagents`) and the page's `⤢` target (`mpd-tui-team`) as two separate
+   options, because they answer two different questions. The host's own `⤢` remains unreachable: the
+   0.14.0 descriptor is still frozen without `capabilities` while `SidePanelColumn.js`'s `canExpand`
+   reads `definition.capabilities?.fullscreen === true`, so `capabilities` stays undeclared — a dead
+   button is not shipped. The `icon` field stays REQUIRED and declared even though 0.14.0's carousel
+   `PanelBar` no longer paints it (`grep -c icon …/PanelBar.js` is 0 on the installed host).
+3. **The enable-list keeper is FEED-FIRST and the panel-id record carries provenance.** The keeper now
+   installs the host's own `subscribeSidePanelPanels` subscription (released with the injected scope)
+   so a config re-apply that wipes the CSV is repaired as it happens; the bounded tick ladder survives
+   only as the degrade path, and the stand-down rule is unchanged (a list naming ANY of our ids means a
+   configuration has taken a position — the keeper stops for good, and our own write contains our ids,
+   so it cannot loop). The record at `<workspace>/.mpd/logs/mpd-tui-panels.json` is schema version 2
+   with `provenance {hostRoot, hostVersion, readBack, activation}`, and the recorder REFUSES to write
+   one it cannot trace to an installed host package and a host read-back — measured because a UNIT TEST
+   run had poisoned it with the impossible `act0:*` ids (the host's `pluginIdFor` fallback
+   pre-increments, so the first bare activation is `act1`). **Bound, not gloss:** the record is only
+   trustworthy right after a REAL boot, and the READ side (`scripts/mpd-tui-panels.ts`) enforces the
+   same proof on its own read: it REFUSES (exit 1, dry run and `--apply` alike) a record with no
+   `provenance`, a blank `hostVersion`, no `readBack`, or `activation === "act0"`, names the failed
+   field, and points at `--ids a,b,c` — measured against the polluted version-1 record, whose sha256 is
+   unchanged by the refused run.
 
 **What is NOT granted, and is measured rather than assumed.** The seam is a sidebar panel: it still
 cannot enter or extend the host's own subagent dashboard, so the dashboard itself is untouched. And the

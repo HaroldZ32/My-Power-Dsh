@@ -59,7 +59,6 @@ import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
 import type { PanelOpenOutcome } from "./panel.js"
 import { requestSubagentDetail, takeSubagentDetailRequest } from "./subagent-scene.js"
-import { registerDagPanel } from "./panel-dag.js"
 import { registerWorkmatePanel } from "./panel-workmate.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
 import { readPlanView, type MpdPlanView } from "./team-state.js"
@@ -566,13 +565,23 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openPlan: () => false,
         openSubagents: () => false,
       }
-  // ── the sidebar panel (dsh-tui 0.13.0, frozen R2/R3) ─────────────────────
-  // ONE panel, carrying the SAME merged view the full-screen scene draws: the host's curated
-  // `host.snapshot().subagents` rows FIRST, then the MPD dependency DAG. The two surfaces share one
-  // `readWorkflow` closure, so they cannot describe one team differently, and the descriptor is the
-  // frozen one (`id: "team"`, `title: "MPD"`, `minColumns: 32`, `order: 10`, no icon, no `compact`).
-  // Registering it is safe on every host build: the adapter's deferred binder queues the call until
-  // the seam binds and settles it as `absent` where the host has no panel seam at all.
+  // ── the sidebar's TWO panels (frozen clause C3) ──────────────────────────
+  // EXACTLY TWO, and the collapse is named here because it is the clause's whole subject: the MPD panel
+  // (the rich DAG page, with the host's curated `host.snapshot().subagents` rows drawn ABOVE the drawing
+  // inside its frame) and the workmate page. The standalone merged page and the standalone DAG page do
+  // not both survive — ONE descriptor (`id: "team"`, `title: "MPD"`, icon `❖`, `order: 10`), ONE slug and
+  // ONE ordered position remain, and the merged slot now RENDERS the DAG page's rich component (see
+  // `panel.ts`'s `createPanelComponent`).
+  //
+  // WHY THE SLOT AND NOT THE DAG's OWN REGISTRATION SURVIVED: this seam owns the ONE routed open with its
+  // four outcomes and its refusal path, and `/mpd panel`, `/mpd subagents`, `/mpd dag`, `alt+a` and the
+  // Ctrl+A contact all already route through it. Keeping the route while replacing what it renders is what
+  // makes it impossible for a user-visible entry point to become a dead end.
+  //
+  // The host budgets a plugin at FOUR panels (`MAX_PANELS_PER_PLUGIN` in `lib/types/dsh-adapter/panels.js`)
+  // and this row now contributes TWO, so the budget is met with room to spare.
+  // Registering is safe on every host build: the adapter's deferred binder queues the call until the seam
+  // binds and settles it as `absent` where the host has no panel seam at all.
   const panel = registerPanelSurface(tui, {
     enabled: resolved.panel,
     // The panel reads the SAME projection the Ctrl+A contact reads (`readDashboardWorkflow`, the
@@ -582,6 +591,16 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     // THE FALLBACK IS THE EXISTING SURFACE, never a silent no-op: every refusal lands on the scene
     // this wave must not lose (frozen R4/R5).
     openMergedScene: () => scene.openSubagents(),
+    // THE `⤢` CONTROL'S OWN SURFACE (frozen clause C5): the rich team scene, chosen by the ONE property
+    // the clause names — the reader must not fall from a rich page into a bare one. `scenes.ts`'s team
+    // scene draws the DAG, the composed legend, the focused task's detail pane (the pin's full-screen
+    // form), the key hints and the frame, which is the grammar this page draws with; the merged subagents
+    // scene stays the ROUTE's fallback below, where it is the honest answer.
+    openFullscreenScene: () => scene.openTeam(),
+    // THE SECOND CLICK ON A PINNED TASK rides the page this slot now renders, so its dep is forwarded
+    // here. An arrow rather than the binding itself because `openAgentPage` closes over the scene handle
+    // declared below; the option is read at render time, long after this line has run.
+    openAgentPage: (agentId: string): boolean => openAgentPage(agentId),
     log,
   })
   // ── the agent work page (AC6, scene side) ────────────────────────────────
@@ -601,30 +620,16 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     log.debug(`openAgentPage(${agentId}): no subagent scene is reachable here; the request was cleared`)
     return false
   }
-  // ── the two INDEPENDENT pages (frozen R1/R12) ────────────────────────────
-  // The DAG page and the workmate page are their own panels, registered through the SAME adapter and
-  // fed by the SAME projections the merged panel uses, so three surfaces cannot describe one team or
-  // one library differently. The host budgets a plugin at FOUR panels (host `MAX_PANELS_PER_PLUGIN`
-  // in `lib/types/dsh-adapter/panels.js`), and this row now contributes THREE (team, dag, workmate) —
-  // inside the budget with one slot to spare. Each slug is a single lowercase word (`dag`,
-  // `workmate`), which is what the host's own `SUB_ID_PATTERN` requires before it prefixes the id.
+  // ── the ONE remaining independent page (frozen R12) ──────────────────────
+  // The workmate page is a panel of its own, registered through the SAME adapter and fed by the SAME
+  // projections the MPD panel uses, so two surfaces cannot describe one library differently. The DAG
+  // page's own registration is GONE: it merged into the MPD panel above (clause C3), and its slug,
+  // descriptor and order collapsed with it — a second registration would be the "both survive" the clause
+  // forbids, and the adapter's recorded id set is DISCOVERED from what actually registers, so it records
+  // the two surviving ids rather than three.
   //
-  // A HOST THAT CANNOT SERVE A PANEL STILL GETS A SURFACE: each page's `openScene` fallback is the
-  // existing full-screen view that already carries this content (the merged subagents scene, the
-  // board), never a silent no-op — the same rule the merged panel follows.
-  const dagPanel = registerDagPanel(tui, {
-    enabled: resolved.panel,
-    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
-    openScene: () => scene.openSubagents(),
-    // The page's own `⤢` control calls THIS, and it is deliberately the same full-screen surface the
-    // `openScene` fallback above names: one route, so the button and the fallback cannot part ways.
-    openFullscreen: () => scene.openSubagents(),
-    // The page's own "open that member's work page" route. `panel-dag.ts` forwards it into the page's
-    // component; the boolean is the page's own answer and the reason it can say "no page was reached"
-    // instead of pretending it opened one.
-    openAgentPage,
-    log,
-  })
+  // A HOST THAT CANNOT SERVE A PANEL STILL GETS A SURFACE: this page's `openScene` fallback is the
+  // existing full-screen board view, never a silent no-op — the same rule the MPD panel follows.
   // The workmate page: the durable library under the user's HOME, with the board scene (which already
   // lists it) as the full-screen surface for a host that cannot serve a panel.
   const workmatePanel = registerWorkmatePanel(tui, {
@@ -768,12 +773,16 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
           const route = openMergedPanel()
           return { outcome: route.outcome, id: route.id }
         },
-        // `/mpd dag` and `/mpd workmate`: the two independent pages (frozen R1/R12) reach the SAME
-        // arbitrated route as `alt+a`, so a host without a usable panel seam lands on each page's own
-        // full-screen surface instead of nothing.
+        // `/mpd dag` and `/mpd workmate`: BOTH still resolve a LIVE surface (clause C3's no-dead-end
+        // constraint). `/mpd dag` re-aims onto the MPD panel — the DAG page IS that panel now, so the
+        // route reaches the very page it names rather than a second registration of it — and `/mpd
+        // workmate` keeps the page that did not merge.
         openDag: () => {
-          /** How the routed open of the DAG page ended. */
-          const route = openPage(dagPanel)
+          // THE SAME ARBITRATION, WITH THIS PAGE'S OWN FALLBACK: the panel when the host serves it, else
+          // the surface that carries the DAG page's appearance (C5) rather than the one that carries the
+          // host's rows. `openPage` is the existing helper, so this route cannot drift from the others.
+          /** How the routed open of the MPD panel ended: the DAG page lives inside it. */
+          const route = openPage({ id: (): string | undefined => panel.id(), openScene: (): boolean => scene.openTeam() })
           return { outcome: route.outcome, id: route.id }
         },
         openWorkmate: () => {
@@ -818,11 +827,10 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // this row does not carry — see `PanelRegistrationHandle.id`).
   outcomes.push({ id: "panel", outcome: panel.outcome() })
   log.debug(`sidebar panel id: ${panel.id() ?? "(not discovered)"}`)
-  // The two PAGES report under their own names for the same reason: `panel.id()` names one discovered
-  // host id, and each page composes a DIFFERENT one (`<pluginId>:dag`, `<pluginId>:workmate`), so a
-  // single line could not tell an operator which page the host actually admitted.
-  outcomes.push({ id: "dagPanel", outcome: dagPanel.outcome() })
-  log.debug(`sidebar DAG page id: ${dagPanel.id() ?? "(not discovered)"}`)
+  // The workmate page reports under its own name for the same reason: `panel.id()` names one discovered
+  // host id and this page composes a DIFFERENT one (`<pluginId>:workmate`), so a single line could not
+  // tell an operator which page the host actually admitted. The DAG page's own entry is gone with its
+  // registration: its id would now be the SAME `<pluginId>:team` the `panel` entry already reports.
   outcomes.push({ id: "workmatePanel", outcome: workmatePanel.outcome() })
   log.debug(`sidebar workmate page id: ${workmatePanel.id() ?? "(not discovered)"}`)
   // The takeover ROLE is reported under its own name (it rides the status seam, which reports

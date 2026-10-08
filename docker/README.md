@@ -94,10 +94,11 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 14. Records `boot.llmTurn` as **`null` with a reason** — see below.
 15. **Runs the DSH-TUI edition** (`docker/tui-lane.sh`) — the one profile a developer host cannot
     exercise, because the TUI host must be installed from npm into a writable global prefix and booted
-    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.13.0` — the dsh-tui release this
+    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.14.0` — the dsh-tui release this
     bundle now targets, whose peer ranges still cover the whole band this lane runs (`0.1.7-rc.2`,
     `0.2.0-rc.1` and `0.2.0-rc.2`; `0.11.2` stops at `0.2.0-rc.1`, and `dsh plugin --profile dsh-tui
-    add` is then REFUSED on peer ranges). `0.12.0` was the pin before it, kept as history. Override it
+    add` is then REFUSED on peer ranges). `0.13.0` and `0.12.0` were the pins before it, kept as
+    history. Override it
     with `MPD_E2E_TUI_VERSION`, and keep it in step with `MPD_E2E_DSH_VERSION`. It installs THIS bundle
     into the `dsh-tui` profile as the third
     patch layer, and records fifteen assertions: host install, both `plugin add` calls, composition,

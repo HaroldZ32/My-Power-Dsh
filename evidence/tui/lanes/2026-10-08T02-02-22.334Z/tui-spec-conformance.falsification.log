@@ -1,0 +1,2 @@
+[tui-spec-conformance self-test] ok: matrix mapping two-sided, identity table reproduces on 8 files
+FALSIFICATION_EXIT=0

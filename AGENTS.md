@@ -125,7 +125,8 @@ provenance narrative is in `agent-references/overview-and-provenance.md`.
   text. `team.gate` in `mpd.jsonc` selects `mechanical` (the default) | `advisory` | `off`: without the
   tool mounted, or under `advisory`, the ONE notice is advisory and says `NO team was staged`, and the
   captain stages a team itself when the work warrants one — or continues solo and says so. Signal D is an
-  ACTIVE boulder work for this workspace (`status: "active"` in `.mpd/boulder.json`) — a plan FILE alone
+  ACTIVE boulder work for this workspace (`status: "active"` in `<workspace>/.mpd/boulder.json`, which is
+  gitignored RUNTIME STATE and not a shipped repo path) — a plan FILE alone
   is NOT a signal (repaired 2026-10-07). Softer signals and the retired path:
   `agent-references/overview-and-provenance.md`.
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the
@@ -298,6 +299,9 @@ lands (§9/§11).
   gates and writes evidence, and the **captain alone** commits and branches — or the captain serializes
   ONE delegated writer and freezes everyone else first. Read-only `status`/`log`/`diff`/`show`/`grep`
   stay open to all. Tag `backup/<branch>-<sha>` before any history-writing step.
+  **WHO THE CAPTAIN IS:** the workspace's **top-level session** (no parent session, delegation depth
+  `0`) — NOT a preset name. `verify-guard.ts` uses that predicate for this rule and for rule 4; the
+  preset-keyed variant that made the captain branch unreachable here is `T-92` in the reference table.
 - **Every change lands through a BRANCH + a PULL REQUEST — binding (user-set, 2026-10-06).** Nothing is
   committed straight to `dev` or `master`: cut a `feature/<slug>` or `fix/<slug>` branch, commit the wave
   there, push it, and open a PR against `dev`. **A PR DESCRIPTION IS BILINGUAL**: it carries BOTH an
@@ -636,30 +640,21 @@ agent-teams dispatch defects, the failed-dependency pinning trap, the `inScope o
 profile-row loss after an unrelated install.
 
 **Harness-owned frictions — CLOSED by a rule plus a helper** (user decision 2026-09-17). Each is DSH
-behaviour or deliberate design that we do not fight; each is now "known, with a one-command fallback",
-and the detail lives in `agent-references/troubleshooting.md`:
+behaviour we do not fight; the detail and the measurements are in `agent-references/troubleshooting.md`.
 
-- **T-21 — no plugin-module hot reload.** ESM caches a module at session start, so an edit is invisible
-  until `dsh` restarts. Ask instead of guessing: `node scripts/mpd-bg.ts reload-check <module-path>`
-  → `RESTART-REQUIRED` / `FRESH` / `NO-LIVE-SESSION`.
-- **T-23 — fresh `/tmp` per bash call + `bwrap --die-with-parent`.** Long work MUST be a managed
-  background job (the bash tool's `run_in_background`), never `nohup`; start it through
-  `node scripts/mpd-bg.ts run --log <workspace-path> -- <cmd>` so the output lands in a file.
-- **T-24 — MCP children inherit fds.** Never pipe a long-lived `dsh`: `mpd-bg run` always hands the
-  child a FILE as stdout+stderr, and `node scripts/mpd-bg.ts probe <pidfile>` is a kernel-only
-  liveness check that cannot self-match a pattern.
-- **T-26 — the file sandbox is workspace-write.** `node scripts/mpd-bg.ts check-write <path>` answers
-  before a write is attempted; cross-area work needs a declared extra-write root.
-- **T-43 — the workmate library lives under `HOME`.** QA/verification MUST boot with `HOME=<sandbox>`;
-  the plugin refuses a mutation that would write the REAL `~/.mpd/workmate` (`403 real-home-refused`)
-  unless `MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1` is set deliberately. A normal session is unaffected.
-- **T-54 — a sandboxed profile copy must sit at the SAME directory depth** as the installed profile
-  (the bundle dependency is a RELATIVE symlink of `..` segments); copy siblings at that depth.
-- **T-55 — cite code by SYMBOL, never by line number** (a line pointer rots: one drifted from off-by-3
-  to off-by-15 before a review caught it).
+- **T-21** no plugin-module hot reload -> ask with `node scripts/mpd-bg.ts reload-check <module-path>`.
+- **T-23** fresh `/tmp` per bash call + `bwrap --die-with-parent` -> long work is a managed background
+  job (`run_in_background`), started through `node scripts/mpd-bg.ts run --log <file> -- <cmd>`.
+- **T-24** MCP children inherit fds -> never pipe a long-lived `dsh`; probe liveness with
+  `node scripts/mpd-bg.ts probe <pidfile>`.
+- **T-26** the file sandbox is workspace-write -> `node scripts/mpd-bg.ts check-write <path>` first.
+- **T-43** the workmate library lives under `HOME` -> QA must boot with `HOME=<sandbox>`.
+- **T-54** a sandboxed profile copy sits at the SAME directory depth as the installed profile.
+- **T-55** cite code by SYMBOL, never by line number.
+- **T-92** `sessionQualifies` must not decide "is this the captain" by PRESET NAME (see §5).
 
-All seven are verified by `node scripts/mpd-bg.ts --self-test` (13 arms) plus the two sandbox cases in
-`evidence/platform/harness-close/`.
+All seven of T-21..T-55 are verified by `node scripts/mpd-bg.ts --self-test` (13 arms) plus the two
+sandbox cases in `evidence/platform/harness-close/`.
 
 ---
 

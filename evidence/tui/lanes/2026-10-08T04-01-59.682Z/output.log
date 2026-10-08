@@ -1,0 +1,10 @@
+dsh-tui home fixture=.mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/onboarding.json, .mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/agent-preset.json preset=mpd
+seeded workmate library at .mpd/recon/qa/tui-lanes/tui-014b/home/.mpd/workmate/qa-tui-probe
+dropped the previous run's watchdog replay state: .mpd/recon/qa/tui-lanes/tui-014b/ws/.mpd/team/watchdog/incidents.jsonl, .mpd/recon/qa/tui-lanes/tui-014b/ws/.mpd/team/watchdog/read-watermark.json
+model-echo check: runSessions=1 checked=0 offenders=0 (must be 0)
+harness command records THIS run: [{"sessionId":"b6b3ba67-0981-47b5-828e-2bd6595a0c48","commandId":"cmd-52b991a7-1","kind":"success","text":"mpd workmates（1）：qa-tui-probe"},{"sessionId":"b6b3ba67-0981-47b5-828e-2bd6595a0c48","commandId":"cmd-52b991a7-2","kind":"success","text":"mpd 侧栏面板：宿主已接受 act1:team；若没有出现面板，请在 /settings → 侧栏里把 act1:team 加入面板列表，并按 Ctrl+B 展开（或开启“启动时展开侧栏”）"},{"sessionId":"b6b3ba67-0981-47b5-828e-2bd6595a0c48","commandId":"cmd-52b991a7-3","kind":"success"}]
+surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiPanels=rendered tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=rendered tuiDialogs=rendered
+panel registration id=act1:team ok=true
+negative control ok=false (must be false)
+board-opened events in the sandbox store=2 scene-reported transcript rows=0
+renderer cross-check: the plugin APPENDED its log-only event (proven in the session store) but the host projected NO row: the Channel's own row count and the captured transcript are both empty, so this is a PROJECTION gap, not a registration one

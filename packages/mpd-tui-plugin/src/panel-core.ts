@@ -1516,3 +1516,128 @@ export function panelFloorColumns(which: "dag" | "workmate" | "merged"): number 
   // contract's value rather than a second constant that could drift from it.
   return DAG_PANEL_MIN_COLUMNS
 }
+
+// ── THE PAGE CHROME, SHARED BY EVERY MPD PAGE ─────────────────────────────────────────────────────
+// IT LIVES IN THE CORE, not in `panel.ts`, so a page that DRAWS it can import it without importing
+// the module that REGISTERS a page: the MPD panel needs the DAG page's renderer, and a page that had
+// to reach back into `panel.ts` for its own title row would make those two modules a cycle.
+/**
+ * The full-screen affordance every MPD page draws ITSELF: `⤢`, the host's own glyph for the gesture.
+ *
+ * WHY IT IS OURS — measured on the installed dsh-tui 0.13.0: `dsh-adapter/panels.js` freezes a plugin
+ * descriptor into a definition carrying `{id, title, icon, order, minColumns, source, pluginId,
+ * mountPolicy, component, compact}` — NO `capabilities` field — while
+ * `components/sidePanel/SidePanelColumn.js`'s `canExpand` reads `definition.capabilities?.fullscreen
+ * === true` and `Chat.js` maps BUILT-IN ids only. The host can therefore NEVER draw its own `⤢` for an
+ * MPD page, and declaring a `capabilities` field would be a promise the host silently drops. So the
+ * page draws the control in its own title row and gives it the host PanelBar's own treatment: the
+ * glyph is the panel's dim tone at rest and BOLD in the focus tone while the pointer is over it.
+ */
+export const PANEL_FULLSCREEN_GLYPH = "⤢"
+
+/** The cells the control reserves at the right of a page's title row: one gap plus the glyph itself. */
+export const PANEL_FULLSCREEN_CELLS = 2
+
+/** How many rows a page's title row costs: ONE, drawn OUTSIDE the page's scrolling window. */
+export const PANEL_TITLE_ROW_ROWS = 1
+
+/** What one page's title row needs to draw itself. */
+export interface PanelTitleRowOptions {
+  /** The row's React key, unique inside this page's child list. */
+  key: string
+  /** The page's own title, drawn at the left of the row. */
+  title: string
+  /** The cells the row may draw in — the page's measured content width. */
+  cols: number
+  /** Opens the page's full-screen scene. Absent when the caller has no full-screen surface to offer. */
+  open?: () => boolean
+}
+
+/**
+ * Stop one pointer event from also reaching the host's own click handling.
+ *
+ * The host's PanelBar does exactly this for its own `⤢` (`event.stopImmediatePropagation()`), and the
+ * same need exists here for the same reason: the panel column has a click-to-focus fallback, so a
+ * control that let the event bubble would both open the full-screen scene and re-focus the column.
+ * @param event - the host's pointer event, of unknown shape at this boundary.
+ */
+function swallowPointerEvent(event: unknown): void {
+  if (event === null || typeof event !== "object") return
+  /** The host event's own propagation stopper, when this build carries one. */
+  const stop = (event as { stopImmediatePropagation?: unknown }).stopImmediatePropagation
+  if (typeof stop === "function") (stop as () => void).call(event)
+}
+
+/**
+ * The page's own title row: the title at the left, MPD's `⤢` at the right.
+ *
+ * It is drawn OUTSIDE the page's scrolling window, so the control stays at the same cell no matter
+ * where the page is scrolled — a control that scrolls away is one the reader cannot find twice.
+ *
+ * THE ROW IS UNCONDITIONAL; only its HANDLER needs an opener. Every MPD page draws the same chrome —
+ * the user learns one affordance and finds it in the same cell on both surviving pages — and the one
+ * construction that has no full-screen surface to offer (a unit arm, never the registered page) draws
+ * the glyph without a click target rather than a page whose chrome silently differs. Registration
+ * always passes an opener, so the form the user meets is always the clickable one.
+ *
+ * A HELPER THAT OPENS A HOOK: it is called from a page's render body in the same position on every
+ * render, so the state cell it opens (the hover flag) is that page's own hook slot.
+ * @param kit - the proved host kit.
+ * @param options - the row's key, title, width and full-screen opener.
+ * @returns the title row element, one host row high.
+ */
+export function usePanelTitleRow(kit: PanelKit, options: PanelTitleRowOptions): unknown {
+  /** The control's hover flag (the host PanelBar's own feedback device). */
+  const hoverState = kit.React.useState(false)
+  /** Whether the pointer is over the control right now. */
+  const hovered = hoverState[0] === true
+  /** Sets the hover flag. */
+  const setHovered = hoverState[1] as (next: unknown) => void
+  // The title is clamped to what is LEFT of the two reserved cells: a long title must not push the
+  // control off the row's right edge, which is the one cell the control is reached by.
+  /** The title as this page may draw it. */
+  const title = panelText(options.title, Math.max(1, options.cols - PANEL_FULLSCREEN_CELLS))
+  return kit.React.createElement(
+    kit.ui.Box,
+    // THE ROW MUST NOT DECLARE `width: "100%"` — MEASURED, and this is the whole reason the control was
+    // invisible on a real terminal while every prop-recording double passed. The frame around this row
+    // is itself `width: "100%"` with a border, so a child asking for `100%` resolves to the frame's
+    // BORDER box (28 cells at the floor) rather than to its 26-cell interior: the row then lays out two
+    // cells too wide, the title's `flexGrow` eats the whole of it, and the control is pushed past the
+    // right border and CLIPPED. The headless probe
+    // (`evidence/tui/dag-highlight/chrome-layout/probe-row.ts`, the host's own ink) prints, at 28
+    // columns, `│MPD DAG                   │` for that shape against `│MPD DAG                  ⤢│` for
+    // this one. `justifyContent: "space-between"` with an auto width spreads the two children to the
+    // row's real edges, which is what "the control at the right of the title row" has to mean.
+    { key: options.key, flexDirection: "row", justifyContent: "space-between", flexShrink: 0 },
+    kit.React.createElement(
+      kit.ui.Box,
+      { key: `${options.key}-title`, flexShrink: 1, overflow: "hidden" },
+      kit.React.createElement(kit.ui.Text, { key: `${options.key}-text`, color: toneColor("dim") }, title),
+    ),
+    kit.React.createElement(
+      kit.ui.Box,
+      {
+        key: `${options.key}-fullscreen`,
+        flexShrink: 0,
+        // NO `marginLeft`: `space-between` owns the gap, and a margin here would be a second, invisible
+        // claim on the same two cells — the row has exactly one owner for its spacing.
+        onMouseEnter: (): void => setHovered(true),
+        onMouseLeave: (): void => setHovered(false),
+        ...(options.open === undefined
+          ? {}
+          : {
+              onClick: (event: unknown): void => {
+                swallowPointerEvent(event)
+                options.open?.()
+              },
+            }),
+      },
+      kit.React.createElement(
+        kit.ui.Text,
+        { key: `${options.key}-glyph`, bold: hovered, color: hovered ? toneColor("focus") : toneColor("dim") },
+        PANEL_FULLSCREEN_GLYPH,
+      ),
+    ),
+  )
+}

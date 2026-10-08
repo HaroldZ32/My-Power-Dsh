@@ -658,7 +658,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
     /** The guard's install outcome, reported on the team-plane boot signature below. */
     const verifyGuard = installVerifyGuard(dsh, {
-      presets: ["mpd"],
+      // NO PRESET SCOPE: §5's captain is the workspace's TOP-LEVEL session (no parent session,
+      // delegation depth 0), never a preset name — the `presets: ["mpd"]` that used to sit here made
+      // the captain branch unreachable on this deployment's `cordis`-preset top-level session (T-92).
       law: lawAccess,
       workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
       configValue,

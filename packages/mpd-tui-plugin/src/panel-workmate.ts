@@ -24,10 +24,11 @@ import { join } from "node:path"
 import type { PanelRegistrationHandle, SeamOutcome, TuiAdapter } from "./types.js"
 import type { Log } from "./log.js"
 import { DAG_CHROME, WORKMATE_PANEL_MIN_COLUMNS, WORKMATE_PANEL_SLUG } from "./dag-theme.js"
-// THE CHROME COMES FROM THE MERGED PAGE, not a second implementation of it: the `⤢` control, its
-// hover treatment and the row it sits in are ONE definition, so the three MPD pages cannot drift into
-// three different-looking affordances.
-import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow, type PanelPageOptions } from "./panel.js"
+// THE CHROME COMES FROM THE SHARED CORE, not a second implementation of it: the `⤢` control, its
+// hover treatment and the row it sits in are ONE definition, so the two MPD pages this bundle ships
+// (the MPD panel and this workmate page) cannot drift into two different-looking affordances.
+import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow } from "./panel-core.js"
+import type { PanelPageOptions } from "./panel.js"
 import {
   clampScroll,
   PANEL_CHROME_ROWS,
@@ -484,7 +485,16 @@ export function createWorkmatePanelComponent(readLibrary: () => WorkmateLibrary,
       // THE PROBLEMS COME LAST and are REPORTED rather than hidden: an orphan directory or a truncated
       // library is a fact about the shelf the reader can act on, and a page that silently dropped it
       // would make a damaged library look like an empty one.
-      for (const problem of library.problems) children.push(textRow(kit, problem, { key: `p-${problem.slice(0, 24)}`, tone: "failed", maxCells: contentCols }))
+      // THE SAME POSITION-KEY RULE THE DAG PAGE'S LISTS USE: two problems that agree for the key's whole
+      // length would collide on one React key, and a collided key makes React draw the row again on every
+      // re-render rather than updating it. A problem string is host-controlled path text, so agreement
+      // over a 24-character prefix is ordinary rather than exotic; the position cannot collide at all.
+      /** The problem row being pushed, so the key is the position and cannot collide. */
+      let problemRow = 0
+      for (const problem of library.problems) {
+        children.push(textRow(kit, problem, { key: `p-${problemRow}`, tone: "failed", maxCells: contentCols }))
+        problemRow += 1
+      }
     }
     // ── THE SELF-WINDOWED BODY ──────────────────────────────────────────────
     // The same device as the DAG page, for the same reason: the host's `ScrollBox` `ref` is stripped

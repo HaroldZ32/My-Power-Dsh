@@ -14,7 +14,7 @@
 // so the boot happens inside tmux and this process owns the whole lifecycle; the
 // profile is WARM in the sandbox root and is never silently reinstalled.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -143,6 +143,11 @@ import type { TuiHomeFixture } from "./lib/tui-lane.ts"
 /**
  * The dsh-tui host this lane installs into the sandbox profile.
  *
+ * MOVED 0.13.0 -> 0.14.0 (2026-10-08): the wave that adapts the bundle to 0.14.0 re-measures here.
+ * Its peer ranges are unchanged (still `|| 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2`) and its
+ * `lib/types/dsh-adapter/panels.js` seam module is byte-identical to 0.13.0's, so the fixture keeps
+ * the same seam; the bullets below stay as the record of the earlier moves.
+ *
  * MOVED 0.12.0 -> 0.13.0 (2026-10-06): 0.13.0 is the release that adds the `ctx.tuiPanels`
  * sidebar-panel seam (host row `dsh-tui-panels`, export `./panels`), and it is the first dsh-tui
  * release this bundle adopts a seam FROM. This lane therefore seeds its fixture from the same host
@@ -163,7 +168,7 @@ import type { TuiHomeFixture } from "./lib/tui-lane.ts"
  *
  * The env override matches the Docker lane's knob, so one variable moves both.
  */
-const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.13.0")
+const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.14.0")
 
 /** What the `--install` arm attempted, and where it recorded the attempt. */
 interface InstallAttempt {

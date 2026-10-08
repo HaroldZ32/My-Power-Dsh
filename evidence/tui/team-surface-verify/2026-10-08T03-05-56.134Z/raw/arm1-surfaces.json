@@ -1,0 +1,150 @@
+{
+  "registered": [
+    {
+      "id": "mpd-tui-board",
+      "title": "MPD 面板"
+    },
+    {
+      "id": "mpd-tui-team",
+      "title": "MPD 团队"
+    },
+    {
+      "id": "mpd-tui-plan",
+      "title": "MPD 计划审批"
+    },
+    {
+      "id": "mpd-tui-subagents",
+      "title": "MPD 子代理 · 团队"
+    }
+  ],
+  "commands": [
+    "mpd",
+    "mpd-model"
+  ],
+  "installErrors": [
+    "core apply: mpd-dsh-adapter: the harness tools service exposes no register()"
+  ],
+  "green": {
+    "message": "approved: plan-20261008T030456Z running · members 2 · tasks 2",
+    "attempts": [
+      {
+        "name": "agent_teams_plan",
+        "confirmation": "approve plan-20261008T030456Z",
+        "agentId": "fixture-captain-session",
+        "callIdPresent": true
+      }
+    ],
+    "facts": {
+      "titleLine": "",
+      "teamLine": "team",
+      "instruction": "approval needs the exact phrase typed below, then Ctrl+X",
+      "requiredLine": "required",
+      "requiredPhrase": "required",
+      "echoLine": "confirm",
+      "confirmEcho": "",
+      "runnableLine": "runnable",
+      "message": "approved: plan-20261008T030456Z running · members 2 · tasks 2",
+      "emptyState": ""
+    }
+  },
+  "reds": [
+    {
+      "mode": "empty",
+      "message": "confirmation does not match this team",
+      "attempts": [],
+      "facts": {
+        "titleLine": "",
+        "teamLine": "team",
+        "instruction": "approval needs the exact phrase typed below, then Ctrl+X",
+        "requiredLine": "required",
+        "requiredPhrase": "required",
+        "echoLine": "confirm",
+        "confirmEcho": "",
+        "runnableLine": "runnable",
+        "message": "confirmation does not match this team",
+        "emptyState": ""
+      }
+    },
+    {
+      "mode": "wrong-id",
+      "message": "confirmation does not match this team",
+      "attempts": [],
+      "facts": {
+        "titleLine": "",
+        "teamLine": "team",
+        "instruction": "approval needs the exact phrase typed below, then Ctrl+X",
+        "requiredLine": "required",
+        "requiredPhrase": "required",
+        "echoLine": "confirm",
+        "confirmEcho": "",
+        "runnableLine": "runnable",
+        "message": "confirmation does not match this team",
+        "emptyState": ""
+      }
+    },
+    {
+      "mode": "cancelled",
+      "message": "confirmation does not match this team",
+      "attempts": [],
+      "facts": {
+        "titleLine": "",
+        "teamLine": "team",
+        "instruction": "approval needs the exact phrase typed below, then Ctrl+X",
+        "requiredLine": "required",
+        "requiredPhrase": "required",
+        "echoLine": "confirm",
+        "confirmEcho": "",
+        "runnableLine": "runnable",
+        "message": "confirmation does not match this team",
+        "emptyState": ""
+      }
+    }
+  ],
+  "emptyArms": [
+    {
+      "name": "malformed-record",
+      "facts": {
+        "titleLine": "",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team (none)"
+      }
+    },
+    {
+      "name": "non-staged-record",
+      "facts": {
+        "titleLine": "",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team mpd-fixture-1 (phase idle)"
+      }
+    },
+    {
+      "name": "absent-record",
+      "facts": {
+        "titleLine": "",
+        "teamLine": "",
+        "instruction": "",
+        "requiredLine": "",
+        "requiredPhrase": "",
+        "echoLine": "",
+        "confirmEcho": "",
+        "runnableLine": "",
+        "message": "",
+        "emptyState": "no staged plan for team (none)"
+      }
+    }
+  ]
+}

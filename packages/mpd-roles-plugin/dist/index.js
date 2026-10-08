@@ -440,6 +440,18 @@ function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
     return true;
   return presets.includes(String(preset));
 }
+function sessionRank(agent) {
+  const header = agent?.session?.header;
+  if (header === undefined || header === null)
+    return "headerless";
+  if (header.parentSession !== undefined)
+    return "child";
+  const depth = header.delegationDepth;
+  return depth === undefined || depth === 0 ? "captain" : "child";
+}
+function sessionIsTopLevel(agent) {
+  return sessionRank(agent) === "captain";
+}
 
 // packages/mpd-verify-plugin/src/law.ts
 var GATED_WRITE_TOOLS = [
@@ -583,7 +595,7 @@ function captainWriteDecision(input) {
 }
 function writeDenial(toolName, target) {
   const where = target.rel ?? target.raw;
-  return "verification law: `" + toolName + "` on the CODE path " + JSON.stringify(where) + " is refused for this workspace's top-level agent" + (target.outside === true ? " (an absolute path outside the workspace root counts as code)" : "") + ". Code written here must be verified by a DIFFERENT agent working from the docs, so take one of the three routes: " + "(1) DELEGATE the write — give the scope to a write-capable member (a team work task, or mpd_role_spawn / a subagent), " + "which is the normal path; " + '(2) OPEN A SELF-WRITER LOOP with mpd_verify_open {writer:"self", selfWriteReason:"…", verifier:"<another agent>"} ' + "naming a verifier that is NOT you, which permits writes inside the loop's scope until it expires; " + '(3) take the COUNTED ESCAPE with mpd_verify_escape {reason:"…"}, which logs a row and allows one write. ' + "Docs, `*.md`, `LICENSE*`, `.mpd/**`, `docs/**`, `evidence/**` and `agent-references/**` are never gated.";
+  return "verification law: `" + toolName + "` on the CODE path " + JSON.stringify(where) + " is refused for this session, which the law gates directly" + (target.outside === true ? " (an absolute path outside the workspace root counts as code)" : "") + ". Code written here must be verified by a DIFFERENT agent working from the docs, so take one of the three routes: " + "(1) DELEGATE the write — give the scope to a write-capable member (a team work task, or mpd_role_spawn / a subagent), " + "which is the normal path; " + '(2) OPEN A SELF-WRITER LOOP with mpd_verify_open {writer:"self", selfWriteReason:"…", verifier:"<another agent>"} ' + "naming a verifier that is NOT you, which permits writes inside the loop's scope until it expires; " + '(3) take the COUNTED ESCAPE with mpd_verify_escape {reason:"…"}, which logs a row and allows one write. ' + "Docs, `*.md`, `LICENSE*`, `.mpd/**`, `docs/**`, `evidence/**` and `agent-references/**` are never gated.";
 }
 function verifierEnvelopeDecision(input) {
   const seat = input.seat;
@@ -699,7 +711,10 @@ function gitWriterDecision(input) {
   const sub = gitWriteSubcommand(input.command);
   if (sub === undefined)
     return;
-  return "one-git-writer rule (AGENTS.md §5): this session is NOT the workspace's top-level captain, so it may not run" + " `git " + sub + "`. Teammates share the captain's checkout and two writers race on the single `.git/HEAD` —" + " measured 2026-09-14, a member's `reset HEAD~1` moved the `dev` tip. Read-only git (`git status` / `log` /" + " `diff` / `show` / `grep` / `ls-files` / `rev-parse` / `merge-base` / `describe` / `blame`) stays open to you:" + " edit files, run gates and write evidence, and ask the captain to commit.";
+  return gitWriterDenial(sub, input.callerClass);
+}
+function gitWriterDenial(sub, callerClass) {
+  return "one-git-writer rule (AGENTS.md §5): " + (callerClass === "headerless" ? "this session carries no session header, so its place in this workspace's delegation tree could not be established" + " and the rule refuses it FAIL-CLOSED; it" : "this session is a member/child session of this workspace — its session header carries a parent session" + " or a delegation depth above 0 — so it") + " may not run `git " + sub + "`. Teammates share the captain's checkout and two writers race on the single `.git/HEAD` —" + " measured 2026-09-14, a member's `reset HEAD~1` moved the `dev` tip. A git WRITE belongs in the user's OWN shell," + " which is the workspace's one git writer: edit files, run gates and write evidence here, and let that shell commit." + " Read-only git (`git status` / `log` / `diff` / `show` / `grep` / `ls-files` / `rev-parse` / `merge-base` /" + " `describe` / `blame`) stays open to you.";
 }
 
 // packages/mpd-roles-plugin/src/verify-guard.ts
@@ -738,10 +753,11 @@ function verifyGuardDecision(exec, options) {
       return;
     }
     if (toolName === "bash" || toolName === "powershell" || toolName === "pwsh") {
-      const isCaptain = sessionQualifies(agent, options.presets);
+      const isCaptain = sessionIsTopLevel(agent);
       const gitDeny = gitWriterDecision({
         command: exec?.arguments?.command,
-        topLevelCaptain: isCaptain
+        topLevelCaptain: isCaptain,
+        callerClass: sessionRank(agent)
       });
       if (gitDeny !== undefined)
         return advisoryOr(mode(options.mode), gitDeny, options.warn);
@@ -751,7 +767,7 @@ function verifyGuardDecision(exec, options) {
       args: exec?.arguments,
       workspaceRoot: options.workspaceRoot,
       sessionId,
-      topLevel: sessionQualifies(agent, options.presets),
+      topLevel: sessionIsTopLevel(agent),
       loops: law.armedLoops(options.workspaceRoot),
       escapeUses: law.escapeUses(sessionId),
       now: options.now
@@ -790,7 +806,6 @@ function installVerifyGuard(dsh, options) {
       return { installed: false, reason: "no-guard-seam" };
     }
     const dispose = dsh.guardTool((exec) => verifyGuardDecision(exec, {
-      presets: options.presets,
       law: options.law(),
       mode: resolveVerifyMode(options.configValue("verify.mode")),
       workspaceRoot: (() => {
@@ -3074,7 +3089,6 @@ Work with the tools your role requires (read-only roles must never modify anythi
       }
     };
     const verifyGuard = installVerifyGuard(dsh, {
-      presets: ["mpd"],
       law: lawAccess,
       workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
       configValue,

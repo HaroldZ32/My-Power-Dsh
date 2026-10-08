@@ -8,8 +8,9 @@
 // would duplicate by inlining).
 //
 // TWO RULES, ONE HOOK:
-//   1. the CAPTAIN's write rule — the workspace's top-level mpd agent may not write a code path without an
-//      armed loop, a counted escape, or a delegation;
+//   1. the CAPTAIN's write rule — the workspace's TOP-LEVEL session (no parent session, delegation
+//      depth 0, and NOT a preset name: see `sessionIsTopLevel` in `./complexity-gate.ts`) may not write
+//      a code path without an armed loop, a counted escape, or a delegation;
 //   2. the VERIFIER's envelope — a bound verifier seat may not reach the implementation, the shell or the
 //      board before it has recorded a verdict.
 //
@@ -18,7 +19,7 @@
 // than an outage. It degrades with ONE warning when the law's service is absent — the boot line then says
 // `verifyGate=absent`, which is the honest bound, never silence.
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
-import { sessionQualifies } from "./complexity-gate.ts"
+import { sessionIsTopLevel, sessionRank } from "./complexity-gate.ts"
 import type { ArmedLoopView, VerifierSeatView } from "../../mpd-verify-plugin/src/law.ts"
 import {
   captainWriteDecision,
@@ -51,10 +52,14 @@ export interface VerifyLawAccess {
   seatFor(workspace: string, sessionId: string): VerifierSeatView | undefined
 }
 
-/** What installing the guard needs. */
+/**
+ * What installing the guard needs.
+ *
+ * THERE IS NO PRESET KNOB — deliberately, and it must not come back: §5's captain is the workspace's
+ * TOP-LEVEL session (no parent session, delegation depth 0), never a preset name, so no default here
+ * may silently narrow the captain test. Both rules below read that ONE predicate (T-92).
+ */
 export interface VerifyGuardOptions {
-  /** The sessions the captain rule covers; a session on another preset is not the captain. */
-  presets: readonly string[]
   /** Resolve the law's runtime PER CALL; `undefined` degrades the guard to a stated rule. */
   law: () => VerifyLawAccess | undefined
   /** The workspace root of one call, from the adapter. */
@@ -83,14 +88,12 @@ export interface VerifyGuardInstall {
  * the plugin installs exactly the function the QA case proved.
  *
  * @param exec - the harness's execution object (tool name, arguments and the live agent).
- * @param options - the covered presets, the law accessor, the workspace root and the instant.
+ * @param options - the law accessor, the mode, the workspace root and the instant.
  * @returns the denial to hand the harness, or `undefined`.
  */
 export function verifyGuardDecision(
   exec: unknown,
   options: {
-    /** The sessions the captain rule covers. */
-    presets: readonly string[]
     /** The law's runtime, or `undefined` when the verify row is absent. */
     law: VerifyLawAccess | undefined
     /** The mode in force. */
@@ -140,28 +143,33 @@ export function verifyGuardDecision(
     }
     // RULE 3 — §5's ONE-GIT-WRITER RULE. A member/child session may not run a git WRITE command; the
     // captain may, and read-only git stays open to everyone. Checked for `bash` ONLY, because that is
-    // the one tool that can carry a command string at all.
+    // the one tool that can carry a command string at all. THE CAPTAIN IS THE WORKSPACE'S TOP-LEVEL
+    // SESSION — a header, no parent session, delegation depth 0 — and never a preset name (T-92).
     if (toolName === "bash" || toolName === "powershell" || toolName === "pwsh") {
-      /** Whether this caller is the workspace's top-level captain. */
-      const isCaptain = sessionQualifies(agent, options.presets)
+      /** Whether this caller is the workspace's top-level session: §5's one git writer. */
+      const isCaptain = sessionIsTopLevel(agent)
       /** The §5 decision for this command. */
       const gitDeny = gitWriterDecision({
         command: (exec as { arguments?: Record<string, unknown> } | undefined)?.arguments?.command,
         topLevelCaptain: isCaptain,
+        // THE DENIAL STATES WHAT WAS DECIDED, so the class is threaded from the SAME classification the
+        // boolean above comes from — `law.ts` never re-derives (or invents) a reason of its own.
+        callerClass: sessionRank(agent),
       })
       if (gitDeny !== undefined) return advisoryOr(mode(options.mode), gitDeny, options.warn)
     }
-    // RULE 1 — THE CAPTAIN'S WRITE RULE. Only a TOP-LEVEL mpd session is the captain: a member, a
-    // subagent, a workflow worker and a ralph round are children, and they are precisely who the captain
-    // is supposed to hand code to. The classification is the session gate's own, reused rather than
-    // re-derived, so the two rules can never disagree about who is top-level.
+    // RULE 1 — THE CAPTAIN'S WRITE RULE. Only the workspace's TOP-LEVEL session is the captain — no
+    // parent session, delegation depth 0, NOT a preset name: a member, a subagent, a workflow worker
+    // and a ralph round are children, and they are precisely who the captain is supposed to hand code
+    // to. The classification is the session gate's own predicate (`sessionIsTopLevel`), reused rather
+    // than re-derived, so rules 1, 3 and the manual can never disagree about who is top-level.
     /** The decision for this call. */
     const decision = captainWriteDecision({
       toolName,
       args: (exec as { arguments?: Record<string, unknown> } | undefined)?.arguments,
       workspaceRoot: options.workspaceRoot,
       sessionId,
-      topLevel: sessionQualifies(agent, options.presets),
+      topLevel: sessionIsTopLevel(agent),
       loops: law.armedLoops(options.workspaceRoot),
       escapeUses: law.escapeUses(sessionId),
       now: options.now,
@@ -230,7 +238,7 @@ function escalation(sessionId: string, toolName: string, path: string): string {
  * and the row's boot line says `verifyGate=absent` rather than implying an enforcement that is not there.
  *
  * @param dsh - the adapter's capability probe and its `guardTool` seam.
- * @param options - the covered presets, the law accessor, the root resolver and the config reader.
+ * @param options - the law accessor, the root resolver and the config reader.
  * @returns the install outcome.
  */
 export function installVerifyGuard(
@@ -245,7 +253,6 @@ export function installVerifyGuard(
     }
     /** The registry's disposer, returned so the row can release the guard. */
     const dispose = dsh.guardTool((exec) => verifyGuardDecision(exec, {
-      presets: options.presets,
       law: options.law(),
       mode: resolveVerifyMode(options.configValue("verify.mode")),
       workspaceRoot: ((): string => { try { return options.workspaceRootOf(exec) } catch { return "" } })(),

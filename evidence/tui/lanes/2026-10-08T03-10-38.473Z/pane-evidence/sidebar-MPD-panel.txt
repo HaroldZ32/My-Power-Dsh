@@ -1,0 +1,16 @@
+SOURCE: evidence/tui/lanes/2026-10-08T03-04-51.787Z/scene.pane.txt (tui-panels lane, pane capture)
+COLUMN: sidebar region starts at char col 217
+
+  2| ◀            ○        ○        ○        ○     MPD      ○        ○        ○        ○        ○    ▶
+  3|─────────────────────────────────────────────────────────────────────────────────────────────────────
+  4|┌MPD────────────────────────────────────────────────────────────────────────────────────────────────┐
+  5|│MPD                                                                                               ⤢│
+  6|│subagents  0 total · 0 running · 0 completed · 0 failed                                            │
+  7|│⚪ No subagents in the current session                                                             │
+  8|│  Subagents appear here once the main agent starts Task delegations                                │
+  9|│no team in this workspace — `agent_teams_plan` stages one                                          │
+ 10|│▼/▸ blocker above → dependent below · ▶ focus lights its chain                                     │
+ 11|│✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled                                          │
+ 12|│✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open · ⊘ cancelled                 │
+ 13|│⤢ fullscreen · ↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll                                 │
+ 14|│                                                                                                   │

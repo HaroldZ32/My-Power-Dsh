@@ -411,7 +411,8 @@ describe("the panel registration (frozen descriptor, discovered id)", () => {
     expect(descriptor?.minColumns).toBe(28)
     expect(descriptor?.order).toBe(10)
     // AMENDED (wave `tui-dag-highlight`, AC8) — the merged page now declares its OWN icon: without one the
-    // host fell back to the letter `M`, and the three MPD pages were not told apart at a glance. The
+    // host fell back to the letter `M`, and the MPD pages (three at the time of THAT wave; two since this
+    // wave's clause C3 merge) were not told apart at a glance. The
     // host REJECTS an icon that is not exactly one display cell, so both halves are asserted: the
     // descriptor carries the module's own icon, and that icon measures ONE cell under the plugin's own
     // rule. It is asserted SYMBOLICALLY (`PANEL_ICON`), so the Chrome lane's choice of glyph is its own
@@ -667,21 +668,43 @@ describe("the panel component (both sections, props kit only)", () => {
     // row (AC8) above these lines and a bare unit arm passes no opener, so the arm asserts the ORDER —
     // the host's four section rows consecutively, then the DAG — and leaves where the chrome ends to the
     // Chrome lane's own suite.
+    // AMENDED (clause C3): the host's rows are now drawn INSIDE the rich page's frame, so each is clamped
+    // to the frame's interior exactly as every other row of that page is. The host's sentences are longer
+    // than a 32-cell interior, so the needles below are SHORTER THAN THE FULL ROW on purpose — a needle
+    // that no longer fits would redden for a layout reason rather than for the ordering this arm is about.
     /** The first row the host's own section occupies, after whatever chrome precedes it. */
-    const firstHostRow = indexOfRow("subagents  2 total · 1 running · 1 completed · 0 failed")
+    const firstHostRow = indexOfRow("subagents  2 total")
     expect(firstHostRow).toBeGreaterThanOrEqual(0)
-    expect(indexOfRow("🟡 1 running · 🟢 1 completed · 🔴 0 failed")).toBe(firstHostRow + 1)
-    expect(indexOfRow("🟡 Panel Engineer · continuable · running")).toBe(firstHostRow + 2)
-    expect(indexOfRow("🟢 Plan Reviewer · one-shot · completed")).toBe(firstHostRow + 3)
+    // EVERY HOST ROW SITS IN THE HOST'S SECTION, above the drawing. THE SECTION'S OWN INTERNAL ORDER is the
+    // host projection's array order, rendered by ONE loop with no reordering, and it is asserted where it
+    // is produced (`subagentSectionRows`' own arms) rather than re-derived from this suite's flattening:
+    // that flattener counts each child of a Box as its own line, so a fixed offset here would pin the
+    // SHAPE OF THE CHROME above the section, which belongs to every other arm and not to this one.
     // SECTION (b): the MPD DAG, drawn for the width the props' `useTerminalSize()` reported.
-    expect(indexOfRow("task dependency graph")).toBeGreaterThan(firstHostRow + 3)
+    //
+    // AMENDED (wave `tui-014-adaptation`, clause C3) — THE VALUE UNDER TEST IS NOW THE RICH PAGE. The
+    // phrase `task dependency graph` belonged to the retired merged renderer; the merged slot renders
+    // `panel-dag.ts`'s component, so the drawing is anchored on the page's OWN mode line
+    // (`view <mode> · N tasks · ranks <derived|served>`), which it draws directly under the drawing —
+    // a claim about the page's own vocabulary rather than about a sentence a later edit could reword.
+    /** The row the drawing ends on: the mode line the page draws beneath it. */
+    const modeRow = indexOfRow("ranks")
+    expect(modeRow).toBeGreaterThan(firstHostRow)
+    for (const needle of ["1 running", "Panel Engineer", "Plan Reviewer"]) {
+      expect(indexOfRow(needle)).toBeGreaterThanOrEqual(firstHostRow)
+      expect(indexOfRow(needle)).toBeLessThan(modeRow)
+    }
     // AMENDED (wave `tui-dag-highlight`, AC1/AC2) — the VALUE UNDER TEST changed by the frozen contract,
     // not the arm's claim: the node box is now the COMPACT 3-row form and its label is exactly
     // `状态符号 + 任务号`, so the kind abbreviation and the subject are GONE from the drawing and the old
     // needles (`│ ✓ T1 WRK build the panel`) pinned a label the wave removed. What this arm still
     // asserts is unchanged: both tasks are drawn, and they are drawn BELOW the host's own section.
-    expect(indexOfRow("│ ✓ T1")).toBeGreaterThan(indexOfRow("task dependency graph"))
-    expect(indexOfRow("│ ○ T2")).toBeGreaterThan(indexOfRow("task dependency graph"))
+    // BOTH TASKS ARE DRAWN, below the host's own section: the drawing's own rows carry their ids.
+    expect(indexOfRow("T1")).toBeGreaterThan(firstHostRow)
+    expect(indexOfRow("T2")).toBeGreaterThan(indexOfRow("T1"))
+    // …and the whole drawing sits ABOVE the mode line that closes it, which is what makes `modeRow` the
+    // drawing's end rather than an arbitrary row.
+    expect(indexOfRow("T2")).toBeLessThan(modeRow)
     // THE LEGEND'S OWN WIDTH CONTRACT, asserted as the WIDTH-DEPENDENT behaviour it is.
     //
     // AMENDED DELIBERATELY (2026-10-13), and the reason is a change in the VALUE UNDER TEST rather than a
@@ -703,13 +726,20 @@ describe("the panel component (both sections, props kit only)", () => {
     expect(text).toContain("▶ focus")
     expect(legendLines(80)[0]).toContain("blocker above → dependent below")
     expect(legendLines(32)[0]).toContain("arrow")
-    // The divider separates the two sources.
-    expect(text).toContain("─")
-    // THE ORDER (frozen clause R3): the host's curated rows come FIRST, the MPD DAG below them — no
-    // host row may appear after the DAG's own header.
-    expect(indexOfRow("subagents  2 total")).toBeLessThan(indexOfRow("task dependency graph"))
-    expect(indexOfRow("🟡 Panel Engineer")).toBeLessThan(indexOfRow("task dependency graph"))
-    expect(indexOfRow("🟢 Plan Reviewer")).toBeLessThan(indexOfRow("task dependency graph"))
+    // THE ORDER (frozen clause R3, and clause C3's own constraint): the host's curated rows come FIRST
+    // and the drawing comes below them — no host row may appear inside the drawing. What SEPARATES the two
+    // sources is now the page's own header row (the team's phase and task tally) rather than the retired
+    // renderer's divider, and the arm asserts that too: the reader must be able to tell where the host's
+    // contribution ends and MPD's begins.
+    /** The page's own header row, which sits between the host's section and the drawing. */
+    const ownHeaderRow = indexOfRow("phase")
+    expect(ownHeaderRow).toBeGreaterThan(firstHostRow)
+    expect(ownHeaderRow).toBeLessThan(modeRow)
+    expect(indexOfRow("subagents  2 total")).toBeLessThan(modeRow)
+    expect(indexOfRow("Panel Engineer")).toBeLessThan(modeRow)
+    expect(indexOfRow("Plan Reviewer")).toBeLessThan(modeRow)
+    expect(indexOfRow("🟡 Panel Engineer")).toBeLessThan(modeRow)
+    expect(indexOfRow("🟢 Plan Reviewer")).toBeLessThan(modeRow)
     // THE ASSERTION MOVED FROM THE LAYOUT'S WIDTH TO THE WINDOW'S (frozen clause T1, captain's ruling
     // R6 — the second-most consequential re-point of the wave). Under NATURAL width the drawing is NO
     // LONGER bounded by the panel, so "every box row fits the panel" stopped being true BY DESIGN: the
@@ -744,8 +774,15 @@ describe("the panel component (both sections, props kit only)", () => {
     const component = createPanelComponent(() => undefined) as (props: unknown) => unknown
     /** The rendered tree for a snapshot with no subagents. */
     const text = kit.text(component({ React: kit.React, ui: kit.ui, host: { snapshot: () => ({ subagents: [] }) } }))
-    expect(text).toContain("No subagents in the current session")
-    expect(text).toContain("task dependency graph: no team in this workspace")
+    // AMENDED (clause C3): the host's sentence is clamped to the rich frame's interior like every other
+    // row of that page, so the needle is its surviving prefix rather than the whole sentence.
+    expect(text).toContain("No subagents in the current se")
+    // AMENDED (clause C3): the empty state is the RICH page's own sentence, which names the CALL that
+    // fills the drawing rather than the retired renderer's `task dependency graph:` prefix. The claim is
+    // unchanged — the page says WHY there is no drawing instead of showing an empty frame.
+    // …and the empty state names the call that fills the drawing. The sentence is clamped to the frame's
+    // interior like every other row, so the needle is the prefix that survives.
+    expect(text).toContain("no team in this workspace")
   })
 
   test("survives a hostile host: no React, no kit, no snapshot — and never throws", () => {

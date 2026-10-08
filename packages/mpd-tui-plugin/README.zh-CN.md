@@ -26,7 +26,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 | 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd panel`、`/mpd dag`、`/mpd workmate`、`/mpd workmates` 补全，以及 `/mpd-model` 根；两个根与每个子项都在 `descriptions` 中同时提供中英双语，由宿主按其当前 `/lang` 解析 |
 | 模型菜单（R3） | `ctx.tuiDialogs` + 共享的目录/设置接缝 | **`/mpd-model`** —— 一个真正的选择式菜单，依次选择 槽位 → 提供商 → 模型 → 推理强度，并把所选路由写入 `/settings` 区块所编辑的 `mpd-config` 条目。选项来自该区块**自己**的投影（`teamModelOptionLists`）与同一份实时模型目录，因此菜单与设置行不可能互相矛盾；输出结果携带与区块完全相同的披露语句。任一档取消即不写入任何内容 |
 | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+a` 子代理 + 团队面板 · `alt+t` 团队工作流 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
-| 侧栏页面（dsh-tui 0.13.0） | `ctx.tuiPanels`（经适配器） | **三个**页面 —— `team`（`MPD`、`order` 10、合并视图）、`dag`（`MPD DAG`、`◈`、`order` 11）与 `workmate`（`MPD workmate`、`⬢`、`order` 12）——合并页声明 `❖`，因此三者都不会退回字母，也都不与宿主的标签页图标相撞；三者的 `minColumns` 都是 28，且都不声明 `compact`。接缝已绑定时，`alt+a` / `/mpd panel` 经 `tuiPanels.open()` 路由到合并视图；`/mpd dag` 与 `/mpd workmate` 路由到各自的页面。**任何**拒绝都会回退到该页自己的全屏场景（`team`/`dag` 用 `mpd-tui-subagents`，`workmate` 用看板场景）—— 绝不静默无操作 —— 每条命令都会打印一行双语状态，点名它到达的界面与最终 id。页面能否出现在屏幕上由宿主自己的两个开关决定，见下方"如何到达"一段 |
+| 侧栏页面（dsh-tui 0.13.0+，已适配 0.14.0） | `ctx.tuiPanels`（经适配器） | 自 0.14.0 波次起是**两个**页面 —— `team`（`MPD`、`❖`、`order` 10，合并的**富**视图：宿主自己整理的子代理行位于 DAG 页的外框/图例/按键/钉住正文之上）与 `workmate`（`MPD workmate`、`⬢`、`order` 12）。独立的 `dag` 页已**退役**并合并进 `MPD`（用户条款「DAG页作为MPD面板」），因此 `/mpd dag` 改瞄到 `MPD` 面板、以富形态团队场景作为回退 —— 没有任何路由、选择器条目或 `⤢` 变成死路。两个页面都声明图标（与宿主的八个内置标签页不同）、都不声明 `compact`，且都请求 `minColumns` 28。接缝已绑定时，`alt+a`、`/mpd panel` 与 `/mpd subagents` 经 `tuiPanels.open()` 路由到 MPD 面板；`/mpd dag` 改瞄到同一面板，`/mpd workmate` 路由到它自己的页面。**任何**拒绝都会回退到一个全屏界面（路由回退用 `mpd-tui-subagents`，MPD 页自己的 `⤢` 用富形态 `mpd-tui-team` 场景，`workmate` 用看板场景）—— 绝不静默无操作 —— 每条命令都会打印一行双语状态，点名它到达的界面与最终 id。页面能否出现在屏幕上由宿主自己的两个开关决定，见下方"如何到达"一段 |
 | 合并面板 | `ctx.tuiScenes` | `mpd-tui-subagents`——宿主自己的子代理行（含其 运行中/已完成/失败 计数）、团队正文，以及每条**已绘制**依赖边都以方向箭头 `▼` 收尾、下方带图例的任务 DAG：它是**回退**界面 —— 宿主没有面板接缝、或拒绝了打开请求时，`alt+a` 与 `/mpd panel` 落到这里；在 0.13.0 之前的宿主上，工作区存在团队时也可用 **`Ctrl+A`** 打开（见下方接管说明）。`enter` 打开选中子代理的详情，`i` 中断选中的活跃运行，鼠标点击选中行 |
 | `Ctrl+A` 接管 | 一个 `ctx.tuiStatus` 视图 + 适配器的宿主输入接触面 | 当团队投影含有一个至少带一项任务的团队时，`Ctrl+A` 打开合并面板而非宿主自带的 dashboard；没有团队时——或宿主输入总线无法被适配器触达时——该键行为与今天完全一致（`tui.dashboardKey`，默认 `true`；见"明确不声明"第 7–9 条） |
 | 对话框 | `ctx.tuiDialogs` | 托管式 workmate 选择器（`select`） |
@@ -35,50 +35,62 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 支撑面（不属于上述七个接缝）：harness 命令注册表上的 `/mpd` 命令、`mpd` 设置
 命名空间注册、以及 log-only 的 `mpd-tui/board-opened` 会话记录。
 
-### 三个侧栏页面（dsh-tui 0.13.0）：合并视图、DAG 与 workmate 书架
+### 两个侧栏页面（0.14.0 波次起）：合并的富页面 `MPD` 与 workmate 书架
 
-本包通过宿主的 `tuiPanels` 接缝贡献**三个**页面，每个页面都有自己在模块作用域**冻结**的描述符
+本包通过宿主的 `tuiPanels` 接缝贡献**两个**页面，每个页面都有自己在模块作用域**冻结**的描述符
 （`*_DESCRIPTOR_FROZEN`），且都在宿主自己的 `MAX_PANELS_PER_PLUGIN = 4` 配额之内：
 
 | 模块 | slug（宿主会用本次激活的插件 id 加前缀） | 标题 | 图标 | `order` | `minColumns` |
 |---|---|---|---|---|---|
 | `src/panel.ts` | `team` | `MPD` | `❖` | 10 | 28 |
-| `src/panel-dag.ts` | `dag` | `MPD DAG` | `◈` | 11 | 28 |
 | `src/panel-workmate.ts` | `workmate` | `MPD workmate` | `⬢` | 12 | 28 |
 
-**每个图标都必须与宿主自己的七个标签页图标不同**——`≡`（它的 `todo` 面板）、`▸`（jobs）、`◆`（agents）、
-`ⓘ`（info）、`∿`（trajectory）、`⌗`（workspace）、`♥`（companion）——并且在**本包的 `sanitize.cellWidth`
+**本节过去列出的第三个页面——`src/panel-dag.ts` 那个独立的 `dag` 页——已退役并合并进 `MPD` 面板**
+（用户条款「DAG页作为MPD面板」；本波次的记录见 `docs/tui.md` §11.6）。两个描述符、两个 slug、两个排序位
+最终只留下**一个**：存活槽位渲染的是 DAG 页的富正文（外框、表头 + 进度、图例、按键页脚、点击钉住的详情体、
+三种布局、徽标），宿主自己整理的子代理行画在图形**上方**、同处一个外框之内；那份单独的朴素合并渲染器被
+删除，而不是与它并列保留。**没有任何入口变成死路**：`/mpd dag` 改瞄到 `MPD` 面板被发现的 id（该路由的回退
+是富形态团队场景），而 `/mpd panel`、`/mpd subagents` 与 `alt+a` 本来就都走同一个槽位。已退役页面声明的
+`◈` 图标现在不被任何页面声明。
+
+**每个图标都必须与宿主自己的标签页图标不同**——`≡`（它的 `todo` 面板）、`▸`（jobs）、`◆`（agents）、
+`ⓘ`（info）、`∿`（trajectory）、`⌗`（workspace）、`?`（`btw`，0.14.0 新增的第八个内置面板）、
+`♥`（companion）——并且在**本包的 `sanitize.cellWidth`
 与宿主的 `stringWidth` 下都恰好是一个单元格**，因为图标不是恰好一格的注册会被宿主**拒绝**。合并页过去
 不声明图标，于是宿主画出兜底字母 `M`；workmate 页过去声明 `◆`，它与宿主自己的 `agents` 标签页逐字节
-相同，根本算不上"独特的符号"。两者都在此修正，整套图标由包测试套件断言。
+相同，根本算不上"独特的符号"。两者都在此修正，整套图标由包测试套件**对着宿主自己的注册表**断言，而不是
+对着一个字面量清单——因为 0.14.0 的 `PanelBar` 已不再**绘制**图标：该字段仍被要求、也仍被声明，只是不再
+被画出来（已安装 0.14.0 上 `grep -c icon …/PanelBar.js` 为 0）。
 
-三个页面的 `apiVersion` 都是 1（0.13.0 只接受这个值），且都**不声明 `compact`**：0.13.0 会校验并保存
+两个页面的 `apiVersion` 都是 1（唯一被接受的值），且都**不声明 `compact`**：宿主会校验并保存
 那个行槽位，却**不挂载**它的渲染槽位，声明它就等于主张一个宿主永远不会绘制的界面。
 
-**三页都向宿主请求 `minColumns` 28 —— 那正是宿主自己的底线 —— 而这个数字就是"面板看不见"这一缺陷的
+**两页都向宿主请求 `minColumns` 28 —— 那正是宿主自己的底线 —— 而这个数字就是"面板看不见"这一缺陷的
 修复。** 宿主的 `components/sidePanel/PanelHost.js` 会计算
 `tooNarrow = def.minColumns !== undefined && width < def.minColumns`，为真时用一条 `panel-too-narrow`
 提示**顶替**页面正文；而 `components/sidePanel/dimensions.js` 在分栏阈值处把面板列固定为它自己的
 `PANEL_MIN_COLUMNS = 28`。旧的描述符向宿主请求 32，于是出现了一整段终端宽度：侧栏能打开、标签页也在，
 用户看到的却是一条拒绝提示而不是团队图。宿主的描述符校验器对 32 照收不误，注册阶段不会变红 —— 只有按
-宽度分段的测试才抓得到这类问题。28 列下的可读性是**页面自己**的职责（DAG 页按实际拿到的宽度在
+宽度分段的测试才抓得到这类问题。28 列下的可读性是**页面自己**的职责（页面按实际拿到的宽度在
 `boxes`／`rail`／`list` 之间选择），绝不是要求宿主把列加宽。
 
 注册在每一个宿主版本上都是安全的：apply 时的 `registerPanel(...)` 被适配器的延迟绑定器**入队**，在
 没有 `tuiPanels` 服务的宿主上结算为 `absent`，且绝不抛错。最终 id 不在这里拼装 —— 它是从宿主自己的
-`list()` 回读中**发现**的，因此在真机 0.13.0 宿主上调试行写作 `sidebar panel id: act1:team`（实测），
-其它地方则是 `(not discovered)`。
+`list()` 回读中**发现**的，因此在真机宿主上调试行写作 `sidebar panel id: act1:team`（实测），
+其它地方则是 `(not discovered)`；记录下来的集合就是**实际注册成功**的那些 id，因此它只带存活的两个，
+不再有第三个。
 
 **用户究竟怎么走到某一页 —— 在断定"面板不见了"之前请先读这一段。** 最终 id 是**动态**的
-（`<activationId>:<slug>`；实测为 `act1:team`、`act1:dag`、`act1:workmate`，该组合里那个 plain loader
-行不携带任何 Component 身份），所以任何地方都不写死它：请从宿主的 `/panel ` 补全列表得知，或直接读
+（`<activationId>:<slug>`；合并前实测为 `act1:team`、`act1:dag`、`act1:workmate`，该组合里那个 plain
+loader 行不携带任何 Component 身份），所以任何地方都不写死它：请从宿主的 `/panel ` 补全列表得知，或直接读
 `/mpd panel`、`/mpd dag`、`/mpd workmate` 打印的那一行（各自都会点名它实际走到的 id）。注册一个页面**本身
 并不会**让它出现在屏幕上 —— 决定这件事的是**宿主自己行配置里的两个开关**，而本包无法代设（补丁行绝不能
 id 指向宿主拥有的行）：
 
-1. **该页必须在启用列表里** —— `/settings` → 侧栏 → *启用的面板*（`dsh-tui.sidePanel.panels`，默认
-   `todo,jobs,agents`）：把该页的最终 id 加进去。宿主会保留一个格式合法但**尚无面板认领**的 id，因此在
-   插件注册之前先写入 `act1:dag` 也没问题；默认列表正是新装配置只显示宿主自有标签页的原因。
+1. **该页必须在启用列表里** —— `/settings` → 侧栏 → *启用的面板*（`dsh-tui.sidePanel.panels`；0.13.0 上
+   默认 `todo,jobs,agents`，0.14.0 上是 `todo,jobs,agents,info,trajectory,workspace,btw,companion`）：
+   把该页的最终 id 加进去。宿主会保留一个格式合法但**尚无面板认领**的 id，因此在
+   插件注册之前先写入 `act1:team` 也没问题；默认列表正是新装配置只显示宿主自有标签页的原因。
 2. **侧栏必须打开** —— 按 `Ctrl+B`（宿主的三态切换），或打开 *启动时展开侧栏*
    （`dsh-tui.sidePanel.open`，默认 `false`）。
 
@@ -92,9 +104,22 @@ id 指向宿主拥有的行）：
   自己的 `list()` 回读产出的那些 id**，而且只在启用列表里**一个我们的 id 都没有**时才动作；它把整组 id
   **一次性追加在用户列表之后**，从不删除任何一个 token，也从不改变顺序。如果列表里出现了**任何一个**我们的
   id，那就说明**配置已经就本 bundle 表态了** —— 你在 `/settings` 里启用了我们、或跑了下面的脚本、或故意
-  只删掉了其中几个而留下其余的 —— 此时守卫**主动退让**，因此它绝不会把你本想移除的页面又放回去。它在启动后
-  的前 ~25 秒内走完六个 tick 然后**永久停止**。它发现的 id 会记录到
-  `<workspace>/.mpd/logs/mpd-tui-panels.json`，因为没有任何源码常量能知道它们。这是该适配器的**第二处**
+  只删掉了其中几个而留下其余的 —— 此时守卫**主动退让**，因此它绝不会把你本想移除的页面又放回去。
+  **自 0.14.0 波次起守卫改为"订阅优先"**：它装上宿主自己的 `subscribeSidePanelPanels` 订阅，所以被宿主
+  配置重应用抹掉的列表会**当场**被修复，而不是事后补救；有界的 tick 阶梯（前 ~25 秒内六个 tick，然后永久
+  停止）只作为"宿主不提供该订阅"时的降级路径保留。订阅随注入作用域释放、在没有该模块的宿主上绝不抛错，而
+  我们自己的写入包含我们的 id，所以循环也就此结束。它发现的 id 会记录到
+  `<workspace>/.mpd/logs/mpd-tui-panels.json`，因为没有任何源码常量能知道它们 —— **而记录现在带来源信息
+  （provenance）**（`{hostRoot, hostVersion, readBack, activation}`，记录 schema 版本 2）：一次单元测试
+  运行曾用不可能的 `act0:*` id 驱动过真实记录器（已安装宿主的 `pluginIdFor` 计数器先自增，所以第一个裸
+  激活是 `act1`），而记录器现在**拒绝**写入任何无法追溯到已安装宿主包与宿主回读的记录。**读取**侧守住同一
+  份证明，因此被污染的记录再也到不了用户的 profile patch：`node scripts/mpd-tui-panels.ts` 会**拒绝**
+  （试运行与 `--apply` 一视同仁，退出码 1）不带 `provenance`、`hostVersion` 为空、缺 `readBack` 或
+  `activation === "act0"` 的记录，点名失败的字段并指向 `--ids a,b,c` 这个逃生口。实测（针对被污染的
+  version-1 记录）：`REFUSED …`、退出 1、该次运行不改变记录 sha256、`--ids act1:team,act1:workmate`
+  被接受、脚本 `--self-test` 全绿（每种拒绝形状一条臂）。**磁盘上的文件仍是那份被污染的 version-1 记录，
+  直到宿主的真机启动把它重写**——这就是补救命令今天会拒绝它、而 `--ids` 被记录为逃生口的原因。这是该适配器的
+  **第二处**
   宿主内部接触（第一处是 `Ctrl+A` 的 `useStdin` 触点；AGENTS.md §6 明确给这类接触计数，因此两处都在该文件里
   点名）。
   **明码标出的残留风险**：如果一个用户故意把我们**全部**移除，剩下的列表与全新配置**无法区分**，因此守卫
@@ -110,8 +135,10 @@ id 指向宿主拥有的行）：
 
 两个开关就位后，`/panel <id>` 切到该页（`/panel toggle`、`focus`、`zoom` 是另外几种形式），`Alt+Z`
 缩放当前面板。**未设**时的实测：标签栏读作 `│ ‹ 待办 › ▸ ◆`，宿主活的启用列表是
-`toggle, focus, zoom, todo, jobs, agents`。**设好**时的实测（120 列）：标签栏出现
-`‹ MPD ›`、`‹ MPD DAG ›` 与 `‹ MPD workmate ›`，页面正文渲染出来。面板列只在宿主分栏处存在 ——
+`toggle, focus, zoom, todo, jobs, agents`。**设好**时的实测（120 列，这是合并**前**那套三个页面的集合）：
+标签栏出现
+`‹ MPD ›`、`‹ MPD DAG ›` 与 `‹ MPD workmate ›`，页面正文渲染出来。**合并之后标签栏只有两个 MPD 标签页
+—— `‹ MPD ›` 与 `‹ MPD workmate ›`。** 面板列只在宿主分栏处存在 ——
 同一份抓取在 80 列与 48 列上报 `split=false`，即根本没有面板列：那是宿主自己的阈值，不是 MPD 的设置项。
 
 出于同样的原因，`/mpd panel` 的句子刻意保守：*"宿主已接受 {id}；若没有出现面板，请在 /settings → 侧栏
@@ -137,10 +164,13 @@ id 指向宿主拥有的行）：
 `panel.refused` / `panel.unavailable`），因此回退永远不会被读成"面板已打开"，而**已绑定**接缝却**拒绝**注册
 的宿主会报成"被拒绝"，绝不会被读成"该宿主不提供面板接缝"。
 
-**两个独立页面走同一条路由。** `/mpd dag` 与 `/mpd workmate` 调用 `openPage(...)`，与合并视图共用同一套
-仲裁，并各自带自己的**兜底**场景（`dag` → 全屏合并子代理场景，`workmate` → 看板场景）；两者都打印
-`slug · <同一句路由结果>`，因此那一行既点名宿主接纳的是**哪一页**，也点名它实际走到的最终 id。裸 `/mpd`
-的动作选择器同样多了这两个动作，而每个子命令行都携带双语描述，交给宿主按自己的 `/lang` 解析。
+**路由都走同一套仲裁，而被退役的页面没有留下空洞。** `/mpd dag` 现在改瞄到 `MPD` 面板 —— DAG 页**就是**
+那个面板，所以这条路由走到它点名的那个页面，而不是去注册第二个 —— 并以**富形态团队场景**
+（`mpd-tui-team`）作为该路由的回退（读者不该从一个富页面掉进一个贫页面）；`/mpd workmate` 保留自己的
+页面与看板场景兜底。两者都打印
+`slug · <同一句路由结果>`，因此那一行既点名宿主接纳的是**哪一页**，也点名它实际走到的最终 id，而回退永远
+不会被读成"面板已打开"。裸 `/mpd`
+的动作选择器保留这两个动作，而每个子命令行都携带双语描述，交给宿主按自己的 `/lang` 解析。
 
 **`Ctrl+A` 按版本设闸。** 在提供面板接缝的宿主上，旧的宿主输入接触面被直接跳过 —— 无论配置层说什么，
 `takeoverArmed(seamBound, savedKnob, floor)` 都返回 `false`，聚合行会点名原因，`Ctrl+A` 保留宿主
@@ -171,14 +201,17 @@ id、侧栏也打开时，本波（DAG 高亮）的真机 PTY 抓取里标签栏
 `evidence/tui/lanes/2026-10-06T10-27-53.571Z/`（8 个界面中 7 个渲染，面板行绿、负对照红）、
 `evidence/tui/lanes/2026-10-06T10-28-57.807Z/`（宿主的 `Ctrl+A` **保持惰性**，而 `/mpd panel` 证明了
 侧栏注册 + 被接受的打开）、`evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`，以及
-—— 针对**本次**波次的三个页面 —— `evidence/tui/dag-port/verification/pty/frozen/`（冻结版本的真机 PTY
+—— 针对**合并前**那套三个页面（0.14.0 波次已替换掉它）——
+`evidence/tui/dag-port/verification/pty/frozen/`（冻结版本的真机 PTY
 抓取：标签栏里的三个 MPD 标签页、pin/unpin 键位、以及带 `split=false` 分支的宽度矩阵）与
 `evidence/tui/dag-port/seam-guard/20261006T135423Z/T6-WIRING.md`（接线与 R26 措辞）。
 
-### DAG 页面：自适应纵排 rank、六种状态色调与图例
+### DAG 页的正文：自适应纵排 rank、六种状态色调与图例
 
-`src/panel-dag.ts` 把依赖 DAG 做成**独立**页面（冻结条款 R1），带上合并面板负担不起的外框：带边框的
-框架、点名团队与其进度的表头、图形本体、图例，以及一行只列本页真正处理的按键的页脚。
+`src/panel-dag.ts` 是依赖 DAG 的**富正文**，带上合并前的朴素合并页负担不起的外框：带边框的
+框架、点名团队与其进度的表头、图形本体、图例，以及一行只列本页真正处理的按键的页脚。**自 0.14.0 波次起，
+它正是 `MPD` 侧栏面板所渲染的内容**（用户条款「DAG页作为MPD面板」）：该模块保留渲染体、只失去自己的注册，
+而宿主自己整理的子代理行画在它上方、同处一个外框之内。以下特性都不受这次合并影响。
 
 - **纵排、且自适应，任何地方都没有固定尺寸。** rank 是**纵向**轴（自上而下），图形直接**复用**
   `graph.ts` 而不是另写一套：`layoutBoxes`（每个任务一个带框盒子）、`layoutRail`（缩进森林）、
@@ -493,7 +526,8 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
     作为**出处**保留，**它并不是本次构建画出的东西** —— workmate 图标变了（`◆` 就是宿主自己的 `agents` 标签页），
     合并页则新增了 `❖`。
     未设时标签栏只有宿主自己的三个标签页，而 80/48 列下宿主上报 `split=false`，即根本没有面板列。页面 id 是
-    **动态**的（`<activationId>:<slug>`；实测 `act1:team`、`act1:dag`、`act1:workmate`），而补丁行不得
+    **动态**的（`<activationId>:<slug>`；合并前实测 `act1:team`、`act1:dag`、`act1:workmate` —— 记录下来的
+    集合就是**实际注册成功**的那些 id，因此现在只带存活的两个，不再有第三个），而补丁行不得
     id 指向宿主的行去代设这两个开关，所以补救只能写成给用户的具名步骤（见"如何到达"一段）。插件自己知道的
     只有"id 已被拼装 + `open()` 请求已被接受" —— 绝不是"已经画出来了"：宿主的事件集合里没有
     `opened`/`focused`（那是宿主明确的 TODO）。
