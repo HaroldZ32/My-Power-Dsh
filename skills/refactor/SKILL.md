@@ -3,8 +3,6 @@ name: refactor
 description: "Intelligent refactor command. Triggers: refactor, refactoring, cleanup, restructure, extract, simplify, modernize."
 ---
 
-export const REFACTOR_TEMPLATE = `# Intelligent Refactor Command
-
 ## Usage
 \`\`\`
 /refactor <refactoring-target> [--scope=<file|module|project>] [--strategy=<safe|aggressive>]
@@ -107,6 +105,7 @@ Fire ALL of these simultaneously using DSH \`subagent\` with \`run_in_background
 \`\`\`
 // Agent 1: Find the refactoring target
 subagent(
+  subagent_type="explore",
   run_in_background=true,
   prompt="Find all occurrences and definitions of [TARGET].
   Report: file paths, line numbers, usage patterns."
@@ -114,6 +113,7 @@ subagent(
 
 // Agent 2: Find related code
 subagent(
+  subagent_type="explore",
   run_in_background=true,
   prompt="Find all code that imports, uses, or depends on [TARGET].
   Report: dependency chains, import graphs."
@@ -121,6 +121,7 @@ subagent(
 
 // Agent 3: Find similar patterns
 subagent(
+  subagent_type="explore",
   run_in_background=true,
   prompt="Find similar code patterns to [TARGET] in the codebase.
   Report: analogous implementations, established conventions."
@@ -128,6 +129,7 @@ subagent(
 
 // Agent 4: Find tests
 subagent(
+  subagent_type="explore",
   run_in_background=true,
   prompt="Find all test files related to [TARGET].
   Report: test file paths, test case names, coverage indicators."
@@ -135,13 +137,12 @@ subagent(
 
 // Agent 5: Architecture context
 subagent(
+  subagent_type="explore",
   run_in_background=true,
   prompt="Find architectural patterns and module organization around [TARGET].
   Report: module boundaries, layer structure, design patterns in use."
 )
 \`\`\`
-
-**DSH:** \`subagent(description=..., prompt=..., run_in_background: true, persona="<fetch via mpd_role_persona(role=Explorer)>")\`
 
 ## 1.2: Direct Tool Exploration (WHILE AGENTS RUN)
 
@@ -338,7 +339,8 @@ After each refactoring step:
 
 \`\`\`
 Task(
-  subprompt="Create a detailed refactoring plan:
+  subagent_type="plan",
+  prompt="Create a detailed refactoring plan:
 
   ## Refactoring Goal
   [User's original request]
@@ -633,7 +635,7 @@ When invoking the Plan agent in Phase 4.1, append this additional requirement to
 **Classification rules** the plan agent must apply to each step:
 - \`mechanical\`: edits without call-site logic — LSP rename, extract variable, inline, simple move, signature change.
 - \`reasoning\`: logic-preserving refactors — extract function, restructure conditional, pattern transformation, cross-file API change.
-- Both kinds run on the \`hephaestus\` implementation role (mpd-roles roster) in DSH; the label only routes a step to a mechanical or reasoning worker.
+- Both kinds run on the \`Deep Worker\` implementation role (mpd-roles roster) in DSH; the label only routes a step to a mechanical or reasoning worker.
 - Recommend \`team\` path when \`file_independent_steps >= 3\`; recommend \`legacy\` otherwise.
 
 ## Phase 5 override: Dispatch path selection
@@ -642,7 +644,7 @@ Read the Team Staffing Recommendation from Phase 4. If any required field is mis
 
 Then choose the path:
 
-- **Team path (5.1-T)**: when the plan recommends \`team\` AND \`file_independent_steps >= 3\`. Members execute in parallel, Lead orchestrates, a pro-model verifier lives outside the team.
+- **Team path (5.1-T)**: when the plan recommends \`team\` AND \`file_independent_steps >= 3\`. Members execute in parallel, Lead orchestrates, a \`deep\` verifier lives outside the team.
 - **Legacy path (5.1-L)**: otherwise. Use the original 5.1 / 5.2 / 5.3 flow from above.
 
 Record the chosen path in the TodoWrite list.
@@ -651,64 +653,80 @@ Record the chosen path in the TodoWrite list.
 
 **Precondition checks** (fail hard if any step fails):
 
-1. The \`agent_teams_*\` protocol comes from the vendored dsh-agent-teams plugin (member lifecycle, message protocol, and limits) — no skill load is required.
-2. Call \`agent_teams_status\` and verify no active \`refactor-squad\` team exists; if one does, dismantle the orphan before proceeding.
-3. Declare the team with \`agent_teams_create(name="refactor-squad")\` — the current session is the Lead.
+1. Load the \`team-mode\` skill via the \`skill\` tool for lifecycle, message protocol, and limits.
+2. Call \`team_list\` and verify no active \`refactor-squad\` run exists; if one does, shutdown + delete the orphan before proceeding.
+3. If \`.mpd/teams/refactor-squad/config.json\` is missing, write it using the spec below.
 
-**Team spec** — add four continuable implementation members, each with the \`hephaestus\` role persona (fetch via `mpd_role_persona(role="Deep Worker")`):
+**Team spec** (\`.mpd/teams/refactor-squad/config.json\`):
 
-\`\`\`
-agent_teams_add_member(name="worker-mech-1", description="mechanical refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via agent_teams_send_message(target=\"lead\", content=<files touched + lsp status + diff summary>) + agent_teams_update_task(status=completed). Never run tests — the external verifier handles that. Never git add, never --continue.")
-agent_teams_add_member(name="worker-mech-2", description="mechanical refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="Same contract as worker-mech-1.")
-agent_teams_add_member(name="worker-reason-1", description="reasoning refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="You handle logic-preserving refactors that need reasoning (extract function, restructure conditional, pattern transformation, cross-file API change). Read the task description's plan step carefully. Use the ast-grep skill helper or sg CLI to preview structural rewrites first, review the preview, then execute. If the step is ambiguous or would require out-of-scope changes, STOP and send agent_teams_send_message(target=\"lead\", content=\"UNCLEAR: <reason>\") + agent_teams_update_task(status=pending). Same reporting contract as the mechanical workers. Never run tests.")
-agent_teams_add_member(name="worker-reason-2", description="reasoning refactor worker", context="fresh", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="Same contract as worker-reason-1.")
+\`\`\`json
+{
+  "name": "refactor-squad",
+  "lead": { "kind": "subagent_type", "subagent_type": "Lead" },
+  "members": [
+    {
+      "kind": "category",
+      "category": "quick",
+      "prompt": "You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via team_send_message(teamRunId=<id>, to=\"lead\", summary=<files touched>, body=<lsp status + diff summary>) + team_task_update(status=completed). Never run tests — the external verifier handles that. Never git add, never --continue."
+    },
+    { "kind": "category", "category": "quick", "prompt": "Same contract as peer quick worker." },
+    {
+      "kind": "category",
+      "category": "unspecified-low",
+      "prompt": "You handle logic-preserving refactors that need reasoning (extract function, restructure conditional, pattern transformation, cross-file API change). Read the task description's plan step carefully. Use the ast-grep skill helper or sg CLI to preview structural rewrites first, review the preview, then execute. If the step is ambiguous or would require out-of-scope changes, STOP and send team_send_message(teamRunId=<id>, to=\"lead\", summary=\"UNCLEAR\", body=<reason>) + team_task_update(status=pending). Same reporting contract as peer quick workers. Never run tests."
+    },
+    { "kind": "category", "category": "unspecified-low", "prompt": "Same contract as peer unspecified-low worker." }
+  ]
+}
 \`\`\`
 
 Rationale for this composition:
-- **4 workers, well inside the cap.** \`agent_teams\` \`maxMembers\` defaults to 8 (compose up to it by need — 5+ workers just queue); the verifier stays OUTSIDE the team.
-- **No verifier team member.** Verification needs pro-model deep reasoning; the verifier runs OUTSIDE the team as a \`subagent(persona="<fetch via mpd_role_persona(role=Architect)>", agentOptions={model: "deepseek-v4-pro"})\`.
-- **2 mechanical + 2 reasoning** workers — mirrors the plan's split (both use the \`hephaestus\` roster role).
+- **4 workers = team mode's parallel cap.** 5+ just queues.
+- **No verifier team member.** Verification needs \`deep-high\` reasoning (or \`unspecified-high\` fallback). In-team category routing downcasts to the category worker, which is weaker than required — the verifier runs OUTSIDE the team as a \`task(category="deep-high")\`.
+- **quick × 2** for mechanical edits, **unspecified-low × 2** for reasoning edits — mirrors the plan's split.
 
 **Team lifecycle** (one team, reused until Phase 6 cleanup):
 
-1. \`agent_teams_create(name="refactor-squad")\` — the current session is the Lead.
+1. \`team_create(teamName="refactor-squad")\`. Record \`teamRunId\`.
 2. Broadcast the refactor Intent Card ONCE (keep task descriptions slim):
    \`\`\`
-   agent_teams_send_message(
-     target="*",
-     content=<codemap summary + constraints + established patterns from Phase 2>
+   team_send_message(
+     teamRunId=<id>, to="*", kind="announcement",
+     summary="refactor-intent",
+     body=<codemap summary + constraints + established patterns from Phase 2>
    )
    \`\`\`
 3. Broadcast the verification spec ONCE:
    \`\`\`
-   agent_teams_send_message(
-     target="*",
-     content=<exact test/typecheck/lint commands + expected pass counts + regression indicators from Phase 3.4>
+   team_send_message(
+     teamRunId=<id>, to="*", kind="announcement",
+     summary="verify-spec",
+     body=<exact test/typecheck/lint commands + expected pass counts + regression indicators from Phase 3.4>
    )
    \`\`\`
-4. For each plan step, \`agent_teams_create_task(subject="refactor step <N>: <short>", description=<per-step instructions from plan, including target files and line ranges, rollback strategy>, blockedBy=<from plan's per_step_assignment>)\`.
+4. For each plan step, \`team_task_create(teamRunId=<id>, subject="refactor step <N>: <short>", description=<per-step instructions from plan, including target files and line ranges, rollback strategy>, blockedBy=<from plan's per_step_assignment>)\`.
 
 **Lead monitoring loop**:
 
-While any team task is \`pending | in_progress\`:
+While any team task is \`pending | claimed | in_progress\`:
 
-- Wait for \`<system-reminder>\` or member messages. Avoid tight polling; a single \`agent_teams_status\` check is acceptable if no notification arrives within roughly 10 seconds of expected completion.
-- On a worker completion report, immediately dispatch an **external verifier** — verification runs OUTSIDE the team because it needs pro-model deep reasoning:
+- Wait for \`<system-reminder>\` or member messages. Avoid tight polling; a single \`team_status\` check is acceptable if no notification arrives within roughly 10 seconds of expected completion.
+- On a worker completion report, immediately dispatch an **external verifier** — verification runs OUTSIDE the team because team-member category routing downcasts to the category worker:
   \`\`\`
-  subagent(
-    description="verify step <N>",
+  task(
+    category="deep-high",
+    load_skills=[],
     run_in_background=true,
-    persona="<fetch via mpd_role_persona(role=Architect)>",
-    agentOptions={model: "deepseek-v4-pro"},
+    description="verify step <N>",
     prompt=<files touched + verify-spec commands + instruction to return "PASS" or "FAIL:<failing test + specific error + suggested revert hunks>">
   )
   \`\`\`
-  If the \`oracle\` role is unavailable, fall back to \`mpd_role_spawn(role="Plan Reviewer", ...)\` (still pro model). Do not create a commit checkpoint until the verifier returns PASS.
+  If \`deep\` is unavailable, fall back to \`category="unspecified-high"\`. Do not create a commit checkpoint until the verifier returns PASS.
 - On a verifier PASS: make the commit checkpoint for that step (see original 5.3). Proceed.
 - On a verifier FAIL: Lead decides:
-  - **Retry with fix hint**: \`agent_teams_update_task(status=pending)\` on the original step + \`agent_teams_send_message(target=<original member>, content=<specific failure from verifier>)\`. Runtime reassigns.
+  - **Retry with fix hint**: \`team_task_update(status=pending)\` on the original step + \`team_send_message(teamRunId=<id>, to=<original member>, summary="retry", body=<specific failure from verifier>)\`. Runtime reassigns.
   - **Escalate**: after three FAIL cycles on the same step, STOP and consult the user with full evidence.
-- On a member UNCLEAR message: re-harvest context via a targeted \`subagent\` outside the team, broadcast an updated Intent Card fragment, then reassign.
+- On a member UNCLEAR message: re-harvest context via a targeted \`task()\` outside the team, broadcast an updated Intent Card fragment, then reassign.
 
 Proceed to Phase 6 only when every team task is \`completed\` AND every paired verifier task returned PASS.
 
@@ -716,10 +734,13 @@ Proceed to Phase 6 only when every team task is \`completed\` AND every paired v
 
 If Phase 5 used the team path, dismantle \`refactor-squad\` BEFORE producing the 6.6 summary. Every exit path — success, escalation, abort — must cleanup; orphan teams poison the next session's precondition check.
 
-1. \`agent_teams_status\` to confirm every task is terminal and every member is idle; interrupt any still-running member with \`interrupt_agent\`.
-2. End the team with \`agent_teams_delete\` — it archives the record under \`.mpd/team/archive\` while removing the active team; the next session's precondition check must find no active \`refactor-squad\`.
+1. \`team_shutdown_request\` for each member, then \`team_approve_shutdown\` if members do not self-approve within a reasonable window.
+2. \`team_delete(teamRunId=<id>)\`.
+3. \`team_list\` to confirm no residual \`refactor-squad\` run.
 
-Append to the 6.6 summary a "Dispatch path" line and, when team path was used, team metrics (team name, tasks created, verifier runs, team lifetime).
+The \`.mpd/teams/refactor-squad/config.json\` declaration stays on disk; next session reuses it.
+
+Append to the 6.6 summary a "Dispatch path" line and, when team path was used, team metrics (teamRunId, tasks created, verifier runs, team lifetime).
 
 ## MUST NOT (team mode)
 

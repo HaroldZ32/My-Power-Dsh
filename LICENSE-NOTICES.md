@@ -6,6 +6,86 @@
 - Third-party components keep their original licenses/notices in their source trees.
 - DSH packages (@deepseek-ai/*) are MIT licensed and referenced as dependencies only.
 
+## Skill corpus (MIT) — re-sourced from `code-yeongyu/lazycodex`
+
+**The served skill corpus is no longer vendored from oh-my-openagent under SUL-1.0.** The 16 skills
+ported from that corpus — `ast-grep`, `data-scientist`, `debugging`, `frontend`, `git-master`,
+`init-deep`, `lsp-setup`, `programming`, `refactor`, `remove-ai-slops`, `review-work`,
+`ultimate-browsing`, `ulw-execute`, `ulw-plan`, `ulw-research`, `visual-qa` — are sourced from the
+SAME AUTHOR's own MIT re-license of that corpus:
+
+- Repository: <https://github.com/code-yeongyu/lazycodex>
+- Pinned revision: `6f08c77347a68eaa87f4e7656147e8d793c9a069`
+- Source path: `plugins/omo/skills/<name>/`
+- Licence: **MIT** — `Copyright (c) 2026 Yeongyu Kim`
+- Re-license notice, quoted VERBATIM from `plugins/omo/components/rules/NOTICE` at the pinned
+  revision (sha256 `8068fb3509c240a37192caa9192fad768ecec91b64cb5ce0dbd82aa03c37069a`):
+
+  > Yeongyu Kim (https://github.com/code-yeongyu), author of omo, pi-rules, and this
+  > package, licenses the source distributed in this repository under the MIT License.
+  > If any source was ported from omo or pi-rules, that ported source is re-licensed
+  > here under MIT for distribution as a Codex plugin. See LICENSE for terms.
+
+  The copyright holder of the SUL-1.0 corpus and the licensor of this MIT grant are the same
+  person, so the grant is the rightsholder's own re-license of the source it covers.
+
+Every re-sourced skill carries its own `skills/<name>/ATTRIBUTION.md` recording the source path, the
+pin, the full MIT permission text, the notice above and the list of local adaptations that are NOT
+upstream. The three skills this repository wrote itself — `cordis-dev`, `dsh-qa` and `svn-master` —
+are outside this section (see the `cordis-dev` entry below).
+
+**Third-party material carried BY those skills is unchanged and remains in force**, each with its own
+notice in the skill's `ATTRIBUTION.md`:
+
+- `skills/frontend` — brand design-system references from **Open Design** (Apache-2.0, full text at
+  `skills/frontend/LICENSE-Apache-2.0.txt`), plus the taste-skill, ui-ux-db and designpowers
+  references documented in `skills/frontend/ATTRIBUTION.md`.
+- `skills/ast-grep` — the skill's own upstream carriers `SOURCE` and `LICENSE` (**MIT**,
+  `Copyright (c) 2026 Yeongyu Kim`, `code-yeongyu/ast-grep-skill` @ `3148c69`).
+- `skills/ultimate-browsing` — **CloakBrowser** (MIT wrapper; its binary ships under a separate
+  binary licence) and **agent-browser** (Apache-2.0), both runtime dependencies whose source is not
+  vendored.
+- `skills/ulw-research` — an adapted verification idea from **insane-research** by fivetaku (MIT,
+  `Copyright (c) 2026 fivetaku`).
+
+## insane-search engine (MIT) — `skills/ultimate-browsing/engine/**`
+
+`skills/ultimate-browsing/engine/**` (28 files) originates from
+<https://github.com/fivetaku/insane-search> and is **MIT licensed**:
+
+```
+MIT License
+
+Copyright (c) 2026 fivetaku
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Bound, stated rather than smoothed over:** this repository vendored its snapshot on 2026-06-21
+(commit `a4e4ed797`, pre-0.7.0), *before* upstream shipped a `LICENSE` file, so the vendored tree
+itself carries no licence text. Upstream reset its public history on **2026-08-06**, which means the
+vendored commit is no longer reachable there; the text above was read from upstream's public `HEAD`
+on 2026-10-08 (1065 bytes,
+sha256 `e343d30bc6631a1c8377b7aac26e7b1c5b38366913a98ef71fe6861fe812dcd4`). Nothing was re-vendored and
+no engine file was changed by this notice fix; full detail in
+`skills/ultimate-browsing/ATTRIBUTION.md` §1.
+
 ## oh-my-openagent MCP servers (SUL-1.0, with one MIT component) — sources snapshotted in-repo
 
 The sources of the three MCP servers this bundle ships (`mpd-mcp-astgrep`, `mpd-mcp-gitbash`,

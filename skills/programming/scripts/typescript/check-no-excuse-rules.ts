@@ -82,9 +82,6 @@ function loadTypescriptFromCaller(): TsModule {
     `error: cannot resolve the TypeScript 7 API from the caller project (${process.cwd()}). ` +
       `Tried: ${tried.join(", ")}. ` +
       "Install it in the project being checked (e.g. `bun add -d typescript` or `bun add -d @typescript/native-preview`) and re-run.",
-  )
-  process.exit(2)
-}
 
 /** The caller-resolved TypeScript modules, loaded once at module scope. */
 const typescript = loadTypescriptFromCaller()
@@ -300,12 +297,12 @@ function analyzeFile(filePath: string, sourceFile: tsTypes.SourceFile): Violatio
         if (parent && ts.isAsExpression(parent)) {
           // already handled
         } else if (parent && (
-          parent.kind === ts.SyntaxKind.Parameter ||
+          ts.isParameter(parent) ||
           ts.isVariableDeclaration(parent) ||
           ts.isPropertyDeclaration(parent) ||
-          parent.kind === ts.SyntaxKind.PropertySignature
+          ts.isPropertySignature(parent)
         )) {
-          /** Position of the any keyword. */
+        /** Position where the assertion is reported. */
           const p = pos(node)
           violations.push({ ruleId: "no-any-annotation", filePath, ...p, message: "`: any` annotation — use `unknown` and narrow" })
         } else if (parent && (

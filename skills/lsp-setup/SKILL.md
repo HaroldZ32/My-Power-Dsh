@@ -125,8 +125,11 @@ bun scripts/verify-lsp.ts <file> --timeout=90000
 
 `OK` = the server started and answered. `FAIL: language server not installed`
 = go back to step 2. Other `FAIL` text carries the server/startup error.
-`SKIP` = the engine source could not be located; run from inside the upstream
-repo/worktree, or call the `lsp` MCP `diagnostics` tool directly.
+`SKIP` = the engine source could not be located: the script walks up from its own
+directory and from the cwd for `packages/lsp-tools-mcp/src/**`, a layout this
+repository does not carry (its LSP engine snapshot is `vendor/mcp-src/lsp-core/**`,
+the build input for `packages/mpd-mcp-lsp/**`), so call the `lsp` MCP `diagnostics` tool
+directly.
 
 ---
 

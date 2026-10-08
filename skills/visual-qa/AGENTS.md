@@ -49,10 +49,10 @@ visual-qa/
 ## COMMANDS
 
 ```bash
-# from packages/shared-skills/skills/visual-qa/
+# from skills/visual-qa/
 node scripts/visual-qa.mjs image-diff <reference.png> <actual.png>
 node scripts/visual-qa.mjs tui-check <capture.txt> --cols 80
 bun test scripts/*.test.ts
 ```
 
-- Parent: [`packages/shared-skills/AGENTS.md`](../../AGENTS.md).
+- Parent: [this repository's root `AGENTS.md`](../../AGENTS.md).

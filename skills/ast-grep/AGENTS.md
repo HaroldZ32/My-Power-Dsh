@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-Vendored skill teaching agents ast-grep (`sg`) structural search/rewrite, plus a stdlib-Python helper CLI that wraps the `sg` binary. Vendoring pin in `SOURCE`: upstream `code-yeongyu/ast-grep-skill @ 3148c69` (ast-grep 0.45.0), "vendored as a sync; do not fork-drift". Earned this file: own executable surface (749-LOC helper + installers + smoke tests) and a no-fork-drift upstream contract that has no analogue elsewhere in `shared-skills`.
+Vendored skill teaching agents ast-grep (`sg`) structural search/rewrite, plus a stdlib-Python helper CLI that wraps the `sg` binary. Vendoring pin in `SOURCE`: upstream `code-yeongyu/ast-grep-skill @ 3148c69` (ast-grep 0.45.0), "vendored as a sync; do not fork-drift". Earned this file: own executable surface (749-LOC helper + installers + smoke tests) and a no-fork-drift upstream contract that has no analogue elsewhere in the skill corpus.
 
 ## STRUCTURE
 
@@ -20,7 +20,7 @@ ast-grep/
 
 ## HELPER CLI (`scripts/ast_grep_helper.py`)
 
-Subcommands: `search`, `replace` (dry-run; `--apply` to write), `scan`, `test`, `new`, `langs`, `doctor`, `install`, `validate`. Resolves the `sg`/`ast-grep` binary across PATH, Homebrew, npm, and MPD caches, validates patterns before executing, and shells out — it never links ast-grep as a library. Internal handlers `cmd_*`; utilities `validate_pattern`, `normalize_lang`, `resolve_binary`, `run_sg`. Nothing in-repo imports it; docs and skills invoke it by path. `omo-opencode/src/cli/install-ast-grep-sg.ts` locates this skill dir to install the binary.
+Subcommands: `search`, `replace` (dry-run; `--apply` to write), `scan`, `test`, `new`, `langs`, `doctor`, `install`, `validate`. Resolves the `sg`/`ast-grep` binary across PATH, Homebrew, npm, and MPD caches, validates patterns before executing, and shells out — it never links ast-grep as a library. Internal handlers `cmd_*`; utilities `validate_pattern`, `normalize_lang`, `resolve_binary`, `run_sg`. Nothing in-repo imports it; docs and skills invoke it by path. In this bundle the corpus is SERVED BY REFERENCE — the `mpd-bootstrap` row registers a skills provider over `<bundle>/skills` — so no copy of this directory is installed into a home, and the `sg` binary is resolved at runtime by the helper and the installers themselves through `MPD_AST_GREP_SG_PATH` (explicit binary) and `MPD_AST_GREP_BIN_DIR` (cached-binary directory).
 
 ## CONVENTIONS
 
@@ -40,7 +40,7 @@ Subcommands: `search`, `replace` (dry-run; `--apply` to write), `scan`, `test`, 
 ## COMMANDS
 
 ```bash
-# from packages/shared-skills/skills/ast-grep/
+# from skills/ast-grep/
 python3 scripts/ast_grep_helper.py search '<PATTERN>' --lang ts [path]
 python3 scripts/ast_grep_helper.py replace '<PATTERN>' '<REWRITE>' --lang ts   # dry-run; add --apply
 python3 scripts/ast_grep_helper.py doctor
@@ -48,4 +48,4 @@ bash tests/smoke.sh          # or: pwsh tests/smoke.ps1
 # direct:  sg run -p '<PATTERN>' --lang ts path
 ```
 
-- Parent: [`packages/shared-skills/AGENTS.md`](../../AGENTS.md).
+- Parent: [this repository's root `AGENTS.md`](../../AGENTS.md).

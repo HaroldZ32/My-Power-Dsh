@@ -20,7 +20,7 @@ Generate hierarchical AGENTS.md files. Root + complexity-scored subdirectories.
 
 1. **Discovery + Analysis** (concurrent)
    - Fire background explore agents immediately
-   - Main session: bash structure + LSP/codegraph code map + read existing AGENTS.md
+   - Main session: bash structure + LSP/ast-grep code map + read existing AGENTS.md
 2. **Score & Decide** - Determine AGENTS.md locations from merged findings
 3. **Generate** - Root first, then subdirs in parallel
 4. **Review** - Deduplicate, trim, validate
@@ -29,7 +29,7 @@ Generate hierarchical AGENTS.md files. Root + complexity-scored subdirectories.
 **TodoWrite ALL phases. Mark in_progress → completed in real-time.**
 ```
 TodoWrite([
-  { id: "discovery", content: "Fire explore agents + LSP/codegraph map + read existing", status: "pending", priority: "high" },
+  { id: "discovery", content: "Fire explore agents + LSP/ast-grep map + read existing", status: "pending", priority: "high" },
   { id: "scoring", content: "Score directories, determine locations", status: "pending", priority: "high" },
   { id: "generate", content: "Generate AGENTS.md files (root + subdirs)", status: "pending", priority: "high" },
   { id: "review", content: "Deduplicate, validate, trim", status: "pending", priority: "medium" }
@@ -116,7 +116,7 @@ For each existing file found:
 
 If `--create-new`: Read all existing first (preserve context) → then delete all → regenerate.
 
-#### 3. Code Map - drive LSP AND codegraph (do NOT skip)
+#### 3. Code Map - drive LSP AND ast-grep (do NOT skip)
 
 Highest-signal source for the CODE MAP and the Symbol/Export/Reference scoring rows. Complementary, not alternatives - run BOTH when present, alongside the explore agents.
 
@@ -213,7 +213,7 @@ NEVER use Write to overwrite an existing file. ALWAYS check existence first via 
 |------|----------|-------|
 
 ## CODE MAP
-{From LSP/codegraph - skip only if neither exists or project <10 files}
+{From LSP/ast-grep - skip only if neither exists or project <10 files}
 
 | Symbol | Type | Location | Refs | Role |
 |--------|------|----------|------|------|
@@ -296,7 +296,7 @@ Hierarchy:
 ## Anti-Patterns
 
 - **Static agent count**: MUST vary agents based on project size/depth
-- **Sequential execution**: MUST parallel (explore + LSP + codegraph concurrent)
+- **Sequential execution**: MUST parallel (explore + LSP + ast-grep concurrent)
 - **Ignoring existing**: ALWAYS read existing first, even with --create-new
 - **Over-documenting**: Not every dir needs AGENTS.md
 - **Redundancy**: Child never repeats parent

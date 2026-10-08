@@ -1,92 +1,54 @@
 ---
 name: review-work
-description: "Post-implementation review orchestrator. Launches 5 parallel background sub-agents: Oracle (goal/constraint verification), Oracle (code quality), Oracle (security), unspecified-high (hands-on QA execution), unspecified-high (context mining from GitHub/git/Slack/Notion). All must pass for review to pass. MUST USE before a PR handoff or when the user explicitly asks to review completed work. Triggers: 'review work', 'review my work', 'review changes', 'QA my work', 'verify implementation', 'check my work', 'validate changes', 'post-implementation review'."
+description: "Post-implementation gate review: run manual QA on the real surface yourself, then launch ONE gate reviewer (never a panel) to audit goal, constraints, code quality, security, missed context, and QA evidence. Use before a PR handoff or when the user explicitly asks to review completed work."
 ---
-## Codex Harness Tool Compatibility
+# Review Work - Gate Review Orchestrator
 
-This skill may include examples copied from the OpenCode harness. In Codex, do not call OpenCode-only tools such as `subagent(...)`, `task(...)`, `job_output(...)`, or `team_*(...)` literally. Translate those examples to Codex native tools:
+Review completed implementation work through exactly two lanes: your own hands-on manual QA on the real surface, and ONE gate reviewer sub-agent that audits the whole change set against the goal, the constraints, and your QA evidence. The review passes only when the QA matrix has no failing row AND the gate reviewer returns APPROVE.
 
-| OpenCode example | Codex tool to use |
-| --- | --- |
-| `subagent(sub...)` | `multi_agent_v1.spawn_agent({"message":"TASK: act as an explorer. ...","agent_type":"explorer","fork_context":false})` |
-| `subagent(sub...)` | `multi_agent_v1.spawn_agent({"message":"TASK: act as a librarian. ...","agent_type":"librarian","fork_context":false})` |
-| `subagent(description="plan", ...)` | `multi_agent_v1.spawn_agent({"message":"TASK: act as a planning agent. ...","agent_type":"plan","fork_context":false})` |
-| `subagent(description="oracle", ...)` for final verification | `multi_agent_v1.spawn_agent({"message":"TASK: act as a rigorous reviewer. ...","agent_type":"lazycodex-gate-reviewer","fork_context":false})` |
-| `task(category="...", ...)` for implementation or QA | `multi_agent_v1.spawn_agent({"message":"TASK: act as an implementation or QA worker. ...","fork_context":false})` |
-| `job_output(task_id="...")` | `multi_agent_v1.wait_agent(...)` for mailbox signals |
-| `team_*(...)` | Use Codex native subagents via `multi_agent_v1.spawn_agent` and `multi_agent_v1.wait_agent`; use `multi_agent_v1.send_input` and `multi_agent_v1.close_agent` only when exposed in the active tools list |
 
-DSH (DeepSeek Harness): same rule — do not call OpenCode/Codex-only tools literally; translate to DSH native tools:
+When `review-work` is used as a final implementation, PR, or `$ulw-execute`
+gate, the selected review is blocking. A timeout, missing deliverable, ack-only response,
+explicit `BLOCKED:`, or inconclusive lane is not a pass. Treat that lane as
+failed, investigate the underlying uncertainty with the `debugging` skill when
+runtime behavior may be wrong, fix with evidence, and rerun the affected lane
+before claiming completion, creating or handing off a PR, or merging.
 
-| OpenCode example | DSH tool to use |
-| --- | --- |
-| `subagent(sub...)` | `subagent` — self-contained `prompt` (TASK/DELIVERABLE/SCOPE/VERIFY), `run_in_background: true` for parallel lanes; `subagent_fork` when the full parent history is required |
-| `task(category="...", ...)` for implementation or QA | `mpd_role_spawn(role="Deep Worker"|"Junior Engineer", ...)` for implementers (or `subagent` + `agentOptions.model`: `deepseek-v4-pro` for deep reasoning, `deepseek-v4-flash` for fast lanes) |
-| `job_output(task_id="...")` | `job_output` (same name; completion notice arrives automatically); re-task one child with `send_message` |
-| `team_*(...)` | `agent_teams_*` (vendored dsh-agent-teams: captain = current session, members are continuable subagents, tasks with dependencies, `maxMembers` defaults to 8, web activity panel mirrors live state) |
+After each lane reaches PASS, immediately append a durable task-evidence record
+to the active ledger with the lane name, exact full commit SHA, PASS verdict,
+and report artifact/source. Before reusing coverage after continuation or
+compaction, re-read that record and require the exact lane/SHA pair. Memory,
+chat history, or an unstamped report is not coverage; a new commit requires
+fresh applicable lane records.
 
-The `persona` parameter takes a preset id (`mpd-*`), never free text; route provider/model per `mpd_modelchain_resolve`; check the skill catalog before EVERY delegation and name the skills the child must load.
+A rejecting lane must name its blockers inline in its final message — each
+blocker cites the violated goal criterion or requirement plus an evidence
+pointer. A bare REJECT/FAIL token without findings is not a verdict; treat it
+as an inconclusive lane (one bounded respawn, then record it inconclusive with
+that reason).
 
-Role-specific behavior must be described in a self-contained `message`. Use `fork_context: false` to start the child with only the initial prompt (no parent history); use `fork_context: true` only when full parent history is truly required. Include any required conversation context, files, diffs, constraints, and requested skill names directly in the spawned agent's `message`. OMO installs these selectable agent roles into `~/.codex/agents/`: `explorer`, `librarian`, `plan`, `momus`, `metis`, `lazycodex-code-reviewer`, `lazycodex-qa-executor`, and `lazycodex-gate-reviewer` — pass the matching name as `agent_type` so the child gets that role's model and instructions. If the spawn tool exposes no `agent_type` parameter, omit it and describe the role inside `message`. If a code block below conflicts with this section, this section wins.
+When reviewing a PR or branch, collect diff, file contents, and verification
+results from a dedicated review worktree attached to that branch. Never
+checkout, test, or edit the review branch in the main worktree.
 
-Codex exposes ONE of two subagent tool surfaces per session; check your own tool list and route accordingly. If `multi_agent_v1.*` tools exist, use the table above as written. If instead a flat `spawn_agent` with a required `task_name` exists (`multi_agent_v2`), rewrite every `multi_agent_v1.*` example: `multi_agent_v1.spawn_agent({...,"fork_context":false})` becomes `spawn_agent({"task_name":"<lowercase_digits_underscores>","message":...,"agent_type":...,"fork_turns":"none"})` (`"all"` only when full parent history is truly required); `send_input` becomes `send_message`; do not call `close_agent`/`resume_agent` (finished agents end on their own; `followup_task` re-tasks one, `interrupt_agent` stops one); `wait_agent` takes only `timeout_ms` and returns on any child mailbox activity. `agent_type` works the same on both surfaces. If a code block below conflicts with this section, this section wins.
+Review evidence must be safe to share. Redact or mask secrets and sensitive
+user data before including evidence in logs, PR bodies, or handoffs. Never
+include raw tokens, credentials, auth headers, cookies, API keys, env dumps,
+private logs, or PII; summarize with lengths, hashes, and short non-sensitive
+prefixes when identity is needed.
 
-For work likely to exceed one wait cycle, require the child to send `WORKING: <task> - <current phase>` before long passes and `BLOCKED: <reason>` only when progress stops. A `multi_agent_v1.wait_agent` timeout only means no new mailbox update arrived. Treat a running child as alive. Fallback only when the child is completed without the deliverable, ack-only after followup, explicitly `BLOCKED:`, or no longer running.
+One reviewer, not a panel. A single gate reviewer holding the full context (goal, diff, history, QA evidence) catches what a fan-out of narrow reviewers misses between their seams, and it costs one agent instead of five. Never add review lanes; widen the gate reviewer's checklist instead.
 
-## Codex Subagent Reliability
-
-Every `multi_agent_v1.spawn_agent` message must be self-contained. Start with
-`TASK: <imperative assignment>`, then name `DELIVERABLE`, `SCOPE`, and
-`VERIFY`. State that it is an executable assignment, not a context
-handoff. Role or specialty instructions belong inside `message`.
-Use `fork_context: false` unless full history is truly
-required; paste only the review context that worker needs.
-
-Review lanes are leaf agents: a lane does its own reading, running, and
-judging inline and never spawns sub-reviewers of its own. Reviewers are
-one-shot: a lane ends at its verdict; a re-review after fixes is a fresh
-spawn scoped to the delta plus current evidence, never a `followup_task`
-to a long-lived reviewer carrying stale context.
-
-Plan and reviewer agents may run for a long time; spawn them in the background and keep doing independent root work. Between `multi_agent_v1.wait_agent` calls, back off — double the timeout up to ~5 minutes — instead of spinning short cycles.
-
-Treat child status as a progress signal, not a timeout counter. For
-work likely to exceed one wait cycle, require the child to send
-`WORKING: <task> - <current phase>` before long reading, testing, or
-review passes, and `BLOCKED: <reason>` only when it cannot progress.
-While any child is active, keep the parent visibly alive with active
-subagent count, agent names, latest `WORKING:` phase, and whether the
-parent is waiting for mailbox updates. Track spawned agent names
-locally. Use `multi_agent_v1.wait_agent` for mailbox signals, not proof of completion.
-A timeout only means no new mailbox update arrived. Treat a running child as alive.
-Fallback only when the child is
-completed without the deliverable, ack-only after followup, explicitly
-`BLOCKED:`, or no longer running. Then mark that review lane
-`INCONCLUSIVE`, do not count it as PASS or approval, close if safe, and
-respawn a smaller `fork_context: false` reviewer with the missing
-deliverable. Preserve completed lane results immediately. If the retry
-budget is exhausted, keep the lane `INCONCLUSIVE` and still emit a final
-aggregate result.
-
-# Review Work - 5-Agent Parallel Review Orchestrator
-
-Launch 5 specialized sub-agents in parallel to review completed implementation work from every angle. All 5 must pass for the review to pass. If even ONE fails, the review fails.
-
-The 5 agents cover complementary concerns - together they form a comprehensive review that no single reviewer could match:
-
-| # | Agent | Type | Role | Focus Level |
-|---|-------|------|------|-------------|
-| 1 | Goal Verifier | Oracle | Did we build what was asked? | MAIN |
-| 2 | QA Executor | unspecified-high | Does it actually work? | MAIN |
-| 3 | Code Reviewer | Oracle | Is the code well-written? | MAIN |
-| 4 | Security Auditor | Oracle | Is it secure? | SUB |
-| 5 | Context Miner | unspecified-high | Did we miss any context? | MAIN |
+| Lane | Who runs it | Question it answers |
+|------|-------------|---------------------|
+| Manual QA | You, the orchestrator, on the real surface | Does it actually work? |
+| Gate review | One gate reviewer sub-agent (`oracle` on OpenCode; the surface's gate-reviewer agent elsewhere) | Did we build what was asked - correctly, safely, well, and without missing context? |
 
 ---
 
 ## Phase 0: Gather Review Context
 
-Before launching agents, collect these inputs. Extract from conversation history first - the user's original request, constraints discussed, and decisions made are usually already in the thread. Only ask if truly missing.
+Before running anything, collect these inputs. Extract from conversation history first - the user's original request, constraints discussed, and decisions made are usually already in the thread. Only ask if truly missing.
 
 <required_inputs>
 
@@ -95,11 +57,11 @@ Before launching agents, collect these inputs. Extract from conversation history
 - **BACKGROUND**: Why this work was needed. Business context, user stories, related systems, prior decisions that informed the approach.
 - **CHANGED_FILES**: Auto-collect via `git diff --name-only HEAD~1` or against the appropriate base (branch point, specific commit).
 - **DIFF**: Auto-collect via `git diff HEAD~1` or against the appropriate base.
-- **FILE_CONTENTS**: Read the full content of each changed file (not just the diff). Oracle agents cannot read files - they need full context in the prompt.
+- **FILE_CONTENTS**: The full content of each changed file plus the neighboring files that show the established patterns. Required verbatim when the reviewer cannot read files (`oracle`); when your surface's gate reviewer can read files and run commands, pass the paths and the diff instead of pasting everything.
 - **RUN_COMMAND**: How to start/run the application. Check `package.json` scripts, `Makefile`, `docker-compose.yml`, or ask the user.
+- **CONTEXT_MINING**: What the history and the trackers say about this area (collected below).
 
 </required_inputs>
-
 
 Review PRs and branches from a dedicated review worktree only: create or attach one with `git worktree add <path> <branch>` before collecting changed files, diff, file contents, or running checks, then immediately lock it with `git worktree lock <path> --reason "review:<pr-or-branch>"`. The main worktree is read-only context; never checkout, test, or edit the review branch there.
 
@@ -116,33 +78,61 @@ git diff HEAD~1  # or: git diff main...HEAD
 # Check package.json -> "scripts.dev" or "scripts.start"
 # Check Makefile -> default target
 # Check docker-compose.yml -> services
+
+# 4. Mine the context the implementation may have missed (keep the output short)
+git log --oneline -20 -- <each changed file>            # recent changes and their reasons
+git log --all --oneline --grep="<keywords from goal>"    # related commits, reverts
+gh issue list --search "<keywords>" --state all           # related issues (when gh is available)
+gh pr list --search "<keywords>" --state all              # related PRs and their review comments
+rg -n "TODO|FIXME|HACK" <changed files>                   # warnings left by previous authors
+# plus: files that import the changed modules, tests touching the same paths,
+# docs and config that reference the changed behavior
 ```
+
+Record CONTEXT_MINING as a short list: source -> finding -> why it matters for this change. Slack, Notion, and Discord searches belong here too when those tools exist.
 
 For GOAL, CONSTRAINTS, BACKGROUND - review the full conversation history. The user's original message almost always contains the goal. Constraints often emerge during discussion. If anything critical is ambiguous, ask ONE focused question - not a checklist.
 
 ---
 
-## Phase 1: Launch 5 Agents
+## Phase 1: Manual QA (you run it)
 
-Launch ALL 5 in a single turn. Every agent uses `run_in_background=true`. No sequential launches. No waiting between them.
+You are the QA lane. Do not delegate hands-on QA to a sub-agent: the orchestrator owns the real-surface proof, exactly as the ulw-loop final gate records `manualQa` under the main session.
 
-**Oracle agents receive everything in the prompt** (they cannot read files or run commands). Include DIFF + FILE_CONTENTS + all context directly in the prompt text.
+1. **Reuse first.** If this session already captured real-surface evidence for the FINAL tree (an ultrawork or ulw-loop evidence directory, a `visual-qa` verdict on this same build), consume it as QA rows instead of re-running. A fix committed after a capture stales that capture: re-run the rows it covered.
+2. **Pick the channel that faithfully exercises the surface** and capture the artifact:
+   - HTTP: `curl -i` (or an API request context) - status line, headers, body.
+   - CLI / TUI: a real pty - drive the command and keep the transcript; for color or layout evidence render through a browser-based terminal, never a `tmux capture-pane` dump.
+   - Web: the `agent-browser` CLI run from `bash` (see the `ultimate-browsing` skill's `references/chrome-stealth.md`) — the owned engine (a local `agent-browser --cdp <port>` session on a task-owned profile, or CloakBrowser for bot-scored targets) for unauthenticated pages, the attached engine (the user's signed-in browser, reached through `scripts/extract_cookies.py` cookie injection) when the page needs their login; never a clone of or a launch against the live profile. Capture action log plus screenshot.
+   - Desktop / GUI: OS-level automation against the running app - action log plus screenshot.
+   - Library / SDK: a script that imports and exercises the public API - transcript.
+   - Data-shaped work (migrations, configs, generated files): the resulting artifact itself, diffed or dumped.
+3. **Cover at least**: the happy path the goal names, the riskiest edge (empty, boundary, malformed, or concurrent input), and one regression on adjacent behavior the change could have broken. Add a row for every stated success criterion.
+4. **Build the QA matrix** - one row per scenario:
 
-**unspecified-high agents are autonomous** - they can read files, run commands, and use tools. Give them goals and pointers, not raw content dumps.
+| # | Scenario | Exact command / action | Expected | Observed | Verdict | Artifact |
+|---|----------|------------------------|----------|----------|---------|----------|
+
+A row without an artifact path is not PASS. If the application cannot even start, that is an immediate FAIL.
+
+Any FAIL ends the review here: report **REVIEW FAILED** with the failing rows and skip the gate reviewer - reviewing code that does not work wastes the reviewer. Fix first, then re-enter at Phase 0 with the delta.
 
 ---
 
-### Agent 1: Goal & Constraint Verification (Oracle) - MAIN
+## Phase 2: Launch the Gate Reviewer (one agent)
 
-This agent answers: "Did we build exactly what was asked, within the rules we were given?"
+Launch exactly one reviewer, in the background, then keep doing independent root work (teardown prep, report scaffolding) while it runs.
+
+`oracle` cannot read files or run commands: it receives everything inline (DIFF + FILE_CONTENTS + CONTEXT_MINING + the QA matrix). If your surface's gate reviewer has read and shell tools, still paste the diff and the QA matrix, and hand it file paths instead of full contents.
 
 ```
-subagent(description="oracle",
+task(
+  subagent_type="oracle",
   run_in_background=true,
-  ,
-  description="Verify implementation against original goal and constraints",
+  load_skills=[],
+  description="Gate-review the completed work against goal, constraints, and QA evidence",
   prompt="""
-<review_type>GOAL & CONSTRAINT VERIFICATION</review_type>
+<review_type>GATE REVIEW</review_type>
 
 <original_goal>
 {GOAL - paste the user's original request and any clarifications}
@@ -289,7 +279,7 @@ Work through the task list in priority order (P0 first). For each test:
 6. Mark the task complete
 
 **Execution guidance by app type:**
-- **Web app**: In Codex, use `browser:control-in-app-browser` first for browser work that does not need an authenticated user session. Fall back to playwright/dev-browser when the Browser plugin is unavailable, lacks the needed action, or the test specifically needs a persistent/authenticated browser profile. Navigate, click, fill forms, and verify visual output through the chosen browser surface.
+- **Web app**: Drive a real browser — Playwright, agent-browser, or dev-browser — for work that does not need an authenticated user session, and a persistent/authenticated browser profile when the test does. Navigate, click, fill forms, and verify visual output through the chosen browser surface.
 - **CLI tool**: Run commands with various arguments, pipe inputs, check exit codes and output.
 - **Library/SDK**: Write and execute a test script that imports and exercises the public API.
 - **Backend API**: Use curl/httpie to hit endpoints with various payloads, verify response codes and bodies.
@@ -546,7 +536,7 @@ After launching all 5 agents in one turn, wait for completions in bounded
 cycles. Do not treat a timeout, ack-only reply, or empty child result as
 a PASS.
 
-As each completes, collect via the Codex mapping above (`multi_agent_v1.wait_agent`,
+As each completes, collect via the Codex mapping above (`job_output`,
 then the child's substantive final result). Preserve completed lane
 results immediately; never lose a PASS/FAIL because another lane is
 still running. Store each verdict independently:
@@ -566,7 +556,7 @@ inconclusive and respawn a smaller reviewer/worker for that exact lane.
 If it still remains unfinished after that retry, close the still-running
 agent if safe, keep the lane INCONCLUSIVE, and emit the final aggregate
 review result with the incomplete lane named. Do not spin in repeated
-wait/followup cycles. Do not use `multi_agent_v1.send_input` as an interrupt; queued
+wait/followup cycles. Do not use `send_message` as an interrupt; queued
 followups are not cancellation.
 
 After ALL 5 lanes reach a terminal state and before delivering the verdict, tear down the review worktree: run `git worktree unlock <path>` followed by `git worktree remove <path>`. The lanes above run inside that worktree, so removing it earlier destroys their working directory; a crashed review leaves the locked tree as a recoverable marker for manual cleanup.
@@ -590,25 +580,22 @@ Compile the final report in this format:
 
 ## Overall Verdict: PASSED / FAILED / INCONCLUSIVE
 
-| # | Review Area | Agent Type | Verdict | Confidence |
-|---|------------|------------|---------|------------|
-| 1 | Goal & Constraint Verification | Oracle | PASS/FAIL/INCONCLUSIVE | HIGH/MED/LOW |
-| 2 | QA Execution | unspecified-high | PASS/FAIL/INCONCLUSIVE | HIGH/MED/LOW |
-| 3 | Code Quality | Oracle | PASS/FAIL/INCONCLUSIVE | HIGH/MED/LOW |
-| 4 | Security (supplementary) | Oracle | PASS/FAIL/INCONCLUSIVE | Severity |
-| 5 | Context Mining | unspecified-high | PASS/FAIL/INCONCLUSIVE | HIGH/MED/LOW |
+| Lane | Verdict | Confidence |
+|------|---------|------------|
+| Manual QA (N rows, M artifacts) | PASS/FAIL | - |
+| Gate review | APPROVE/REJECT/INCONCLUSIVE | HIGH/MED/LOW |
 
 ## Blocking Issues
-[Aggregated from all agents - deduplicated, prioritized]
+[Failing QA rows first, then the reviewer's blockers - deduplicated, in fix order, each with its pointer]
 
 ## Key Findings
-[Top 5-10 most important findings across all agents, grouped by theme]
+[Top findings across QA and review, grouped by theme]
 
 ## Recommendations
 [If FAILED: exactly what to fix, in priority order]
-[If PASSED: non-blocking suggestions worth considering]
+[If PASSED: non-blocking notes worth considering]
 ```
 
-If FAILED - be specific. The user should know exactly what to fix and in what order. No vague "consider improving X" - state the problem, the file, and the fix.
+If FAILED - be specific. The user should know exactly what to fix and in what order: the problem, the file or artifact, and the fix. No vague "consider improving X".
 
-If PASSED - keep it short. Highlight any non-blocking suggestions, but don't turn a passing review into a lecture.
+If PASSED - keep it short. Highlight the non-blocking notes worth considering, but don't turn a passing review into a lecture.

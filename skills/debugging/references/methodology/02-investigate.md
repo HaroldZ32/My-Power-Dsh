@@ -39,43 +39,85 @@ If two hypotheses have identical distinguishing evidence, they aren't actually d
 
 ## Phase 3 — Parallel Investigation
 
+### State freshness invariant
+
+**A debug session's state is a snapshot with a lifetime, not a fact you can carry forward indefinitely.**
+- Before any action that mutates the debuggee, re-observe the session's current state.
+- This includes continue, step, side-effecting evaluation, setting or removing breakpoints, and termination.
+- Record the current thread state and stop reason; those are the concrete tells for whether the old plan still applies.
+- An observation from an earlier turn may already be stale when the next action is issued.
+- Turns can be minutes apart while the debuggee runs at full speed, so this failure mode is normal, not exceptional.
+- If the thread state or stop reason has moved, re-observe the new state and do not replay the old plan.
+- Treat every mutation as conditional on the state you just observed, not on a remembered stop.
+
+### Failure-to-recovery taxonomy
+
+| Failure signature | Most likely cause | Next move |
+|---|---|---|
+| Adapter or debugger process failed to start | Wrong binary or missing installation | Verify the tool exists, then re-launch; do not retry blindly. |
+| Breakpoint accepted but never bound or verified | Source path mismatch, optimized-out code, or missing debug symbols | Check the binary was built with symbols and that the debugger-resolved path matches your file. |
+| Attach refused | Permissions, ptrace scope, SIP, or wrong PID | Fix the environment or target identity; a retry will not change it. |
+| No stop event within the expected window | Process is running, the breakpoint is unreachable, or the wait was too short | Pause and inspect threads rather than waiting longer. |
+| Session terminated unexpectedly | The debuggee crashed or exited | Capture the exit and crash evidence before restarting. |
+
 Branch depending on what's available.
 
 ### Path A: Team mode ENABLED
 
-When the `agent_teams_*` tools are present (vendored dsh-agent-teams; captain = current session, members are continuable subagents), create a **debug-squad** team and split investigation across members working on different evidence sources. This is the right default whenever you have ≥3 hypotheses and any of them would take >10 minutes to investigate single-threaded.
+When the `team_*` tools are present, create a **debug-squad** team and split investigation across members working on different evidence sources. This is the right default whenever you have ≥3 hypotheses and any of them would take >10 minutes to investigate single-threaded.
 
-**Team spec** — declare the team and add one member per evidence source (each member uses the `hephaestus` executor role persona — fetch via `mpd_role_persona(role="Deep Worker")` — with a self-contained role prompt; keep the host-model note that deep reasoning lanes run `deepseek-v4-pro`):
+**Team spec** — write to `.mpd/teams/debug-squad/config.json`:
 
+```json
+{
+  "name": "debug-squad",
+  "lead": { "kind": "subagent_type", "subagent_type": "Deep Worker" },
+  "members": [
+    {
+      "kind": "category",
+      "category": "deep-low",
+      "prompt": "You are the Runtime State Inspector. Your job: attach to the live process, hit breakpoints, read program state (variables, heap, goroutines, stack, registers depending on runtime), and report observed values verbatim. Never guess — if you don't see the value, say so. Report back via team_send_message with file:line / address references and captured values. Never edit source code. Never run git commands. If you need an instrumentation statement added (breakpoint(), debugger;, dbg!, etc.), ask the Lead first."
+    },
+    {
+      "kind": "category",
+      "category": "deep-low",
+      "prompt": "You are the Log Archaeologist. Your job: grep server logs, stderr streams, SDK-internal debug output (DEBUG env, RUST_LOG, GODEBUG, PYTHONASYNCIODEBUG), and correlate timestamps. Produce a timeline of events with latencies. Flag anything that looks like a silent catch, a swallowed rejection, a panic recovered-and-ignored, a success response that contains failure signals (HTTP 200 with empty body, stopReason=error, exit 0 with error-in-stdout). Never edit source code."
+    },
+    {
+      "kind": "category",
+      "category": "deep-low",
+      "prompt": "You are the Reproduction Engineer. Your job: build the smallest reliable repro — a curl command, a vitest/pytest/go test, a tmux script, a Playwright script for browser bugs, a pwntools script for binary targets. It must reproduce on first try and be copy-pasteable by the Lead. Document exact input, expected output, observed output. Save repro artifacts under /tmp/ and tell the Lead to journal them. If the bug is browser-based you MUST use Playwright CLI — do not simulate with curl."
+    },
+    {
+      "kind": "category",
+      "category": "deep-low",
+      "prompt": "You are the Trace Correlator. Your job: take findings from the other members and cross-link them. Build a causal chain from symptom to suspected cause. Identify missing evidence. Propose the next single most-decisive runtime query. Never edit source code; only reason across already-captured evidence. If hypotheses diverge sharply after correlation, tell the Lead immediately — that is the signal for the Oracle Triple."
+    }
+  ]
+}
 ```
-agent_teams_create(name="debug-squad")
-agent_teams_add_member(name="runtime-inspector", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="You are the Runtime State Inspector. Your job: attach to the live process, hit breakpoints, read program state (variables, heap, goroutines, stack, registers depending on runtime), and report observed values verbatim. Never guess — if you don't see the value, say so. Report back via agent_teams_send_message with file:line / address references and captured values. Never edit source code. Never run git commands. If you need an instrumentation statement added (breakpoint(), debugger;, dbg!, etc.), ask the Lead first.")
-agent_teams_add_member(name="log-archaeologist", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="You are the Log Archaeologist. Your job: grep server logs, stderr streams, SDK-internal debug output (DEBUG env, RUST_LOG, GODEBUG, PYTHONASYNCIODEBUG), and correlate timestamps. Produce a timeline of events with latencies. Flag anything that looks like a silent catch, a swallowed rejection, a panic recovered-and-ignored, a success response that contains failure signals (HTTP 200 with empty body, stopReason=error, exit 0 with error-in-stdout). Never edit source code.")
-agent_teams_add_member(name="reproduction-engineer", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="You are the Reproduction Engineer. Your job: build the smallest reliable repro — a curl command, a vitest/pytest/go test, a tmux script, a Playwright script for browser bugs, a pwntools script for binary targets. It must reproduce on first try and be copy-pasteable by the Lead. Document exact input, expected output, observed output. Save repro artifacts and tell the Lead to journal them. If the bug is browser-based you MUST use the Playwright CLI — do not simulate with curl. Never edit source code.")
-agent_teams_add_member(name="trace-correlator", persona="<fetch via mpd_role_persona(role=Deep Worker)>", prompt="You are the Trace Correlator. Your job: take findings from the other members and cross-link them. Build a causal chain from symptom to suspected cause. Identify missing evidence. Propose the next single most-decisive runtime query. Never edit source code; only reason across already-captured evidence. If hypotheses diverge sharply after correlation, tell the Lead immediately — that is the signal for the Oracle Triple.")
-```
 
-**Assignment rule**: one hypothesis → one `agent_teams_create_task` with `assignee` set to the member whose evidence source is most likely to confirm or refute it. Broadcast the full hypothesis list once via `agent_teams_send_message(target="*")` so members know what the others are testing.
+**Assignment rule**: one hypothesis → one `team_task_create`. Give each hypothesis to the member whose evidence source is most likely to confirm or refute it. Broadcast the full hypothesis list once via `team_send_message(to="*")` so members know what the others are testing.
 
 **Lead responsibilities**:
 - Maintain the journal (members do not write to it).
 - Approve any source-code edits (including `debugger;` / `breakpoint()` / `dbg!` statements).
 - Synthesize member reports into updated hypothesis statuses.
-- Decide when to disband: `agent_teams_delete` (archives the team — the record stays under `.mpd/team/archive`, but no active team remains, so the next session's precondition check is clean).
+- Decide when to disband: `team_shutdown_request` → `team_approve_shutdown` → `team_delete`.
 
-**Team does NOT include Oracle** — Oracle is a hard-reject read-only member type. Oracle is used separately in Phase 4 (see `04-oracle-triple.md`), as a one-shot `mpd_role_spawn(role="Architect", task=...)` call.
+**Team does NOT include Oracle** — Oracle is a hard-reject team member type. Oracle is used separately in Phase 4 (see `04-oracle-triple.md`).
 
 ### Path B: Team mode DISABLED
 
 Fan out async explore/deep subagents instead. Same rule: one hypothesis per subagent.
 
 ```
-subagent(description="explore", run_in_background=true,
+task(subagent_type="explore", load_skills=[], run_in_background=true,
      prompt="[CONTEXT: bug summary + which hypothesis you own + what state to look at]
      Runtime state investigation for hypothesis 1: ...")
-subagent(description="explore", run_in_background=true,
+task(subagent_type="explore", load_skills=[], run_in_background=true,
      prompt="Log/timing investigation for hypothesis 2: ...")
-subagent(description="reproduce hypothesis 3", run_in_background=true, persona="<fetch via mpd_role_persona(role=Architect)>", agentOptions={model: "deepseek-v4-pro"},
+task(category="deep-low", load_skills=[], run_in_background=true,
      prompt="Reproduction minimizer for hypothesis 3: ...")
 ```
 
