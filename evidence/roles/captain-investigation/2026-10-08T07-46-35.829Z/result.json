@@ -1,0 +1,128 @@
+{
+  "ok": false,
+  "slug": "captain-investigation",
+  "startedAt": "2026-10-08T07:46:35.829Z",
+  "rows": [
+    {
+      "name": "L1-pure-arms",
+      "ok": true,
+      "reason": "bun test packages/mpd-roles-plugin/test/captain-investigation.test.ts -> exit 0",
+      "raw": "(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > the guard reaches the seam and the reported mode follows the knob [0.18ms]\n(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > a composition without the guard seam reports the absence instead of installing nothing silently [0.03ms]\n 13 pass\n 0 fail\n 64 expect() calls\nRan 13 tests across 1 file. [81.00ms]"
+    },
+    {
+      "name": "L5-preset-no-self-verify",
+      "ok": true,
+      "reason": "no sentence tells the captain to verify subagent results itself",
+      "raw": "                restricted from writing - treat their output as advice. Workers (Senior Engineer/"
+    },
+    {
+      "name": "L5-preset-delegation-clause",
+      "ok": true,
+      "reason": "the delegation clause is present",
+      "raw": "                Reconnaissance is DELEGATED: your own `read`/`grep`/`glob` on a SOURCE path is"
+    },
+    {
+      "name": "L5-preset-mechanical-denial",
+      "ok": true,
+      "reason": "the preset states the mechanical denial and the open documentation band",
+      "raw": "                Reconnaissance is DELEGATED: your own `read`/`grep`/`glob` on a SOURCE path is"
+    },
+    {
+      "name": "L6-manual-budget",
+      "ok": true,
+      "reason": "AGENTS.md measures 64831 B (within the 65024 B target of the 65536 B cap)",
+      "raw": "wc -c AGENTS.md = 64831"
+    },
+    {
+      "name": "L6-move-first",
+      "ok": true,
+      "reason": "the pointer is in place and the moved long form is at its agent-references/ home",
+      "raw": "pointer:      and the `captain.investigation` knob: `agent-references/verification-flow.md`, \"§5 rule 2 — the\nmoved-section-present: true"
+    },
+    {
+      "name": "L2-mount-deny",
+      "ok": false,
+      "reason": "the read of a source path was NOT refused with the denial sentence",
+      "raw": "exit=0 readCalled=true readSucceeded=true bootLine=true markerSeen=false readReason=\"\" args=[\"{\\\"file_path\\\": \\\"packages/probe/src/probe.ts\\\"}\"] resultText=\"\""
+    },
+    {
+      "name": "L2-doc-band-open",
+      "ok": false,
+      "reason": "the read did not return the probe content",
+      "raw": "exit=0 readCalled=true readSucceeded=true bootLine=true markerSeen=false readReason=\"\" args=[\"{\\\"file_path\\\": \\\"docs/probe.md\\\"}\"] resultText=\"\""
+    },
+    {
+      "name": "L3-knob-allow",
+      "ok": false,
+      "reason": "the read did not return the probe content",
+      "raw": "exit=0 readCalled=true readSucceeded=true bootLine=true markerSeen=false readReason=\"\" args=[\"{\\\"file_path\\\": \\\"packages/probe/src/probe.ts\\\"}\"] resultText=\"\""
+    },
+    {
+      "name": "L2-isolation",
+      "ok": true,
+      "reason": "ok: 3 session-store key(s), all under the sandbox",
+      "raw": "sandbox=/tmp/mpd-captain-investigation-ZpWjTY"
+    },
+    {
+      "name": "L2-real-checkout-untouched",
+      "ok": true,
+      "reason": "the real checkout's .mpd/logs/mpd-roles.log is byte-identical across the runs",
+      "raw": "before=564686 after=564686"
+    },
+    {
+      "name": "L4-package-tests",
+      "ok": true,
+      "reason": "bun test packages/mpd-roles-plugin -> exit 0",
+      "raw": "(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > the guard reaches the seam and the reported mode follows the knob [0.12ms]\n(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > a composition without the guard seam reports the absence instead of installing nothing silently [0.03ms]\n 110 pass\n 0 fail\n 947 expect() calls\nRan 110 tests across 6 files. [228.00ms]"
+    },
+    {
+      "name": "L4-typecheck",
+      "ok": true,
+      "reason": "bun run typecheck -> exit 0",
+      "raw": "$ tsgo --noEmit"
+    },
+    {
+      "name": "L4-comments",
+      "ok": true,
+      "reason": "bun run verify:comments -> exit 0",
+      "raw": "# verify-comment-coverage\nscanned 366 TypeScript file(s) of 366 in the source set; inspected 32177 declaration(s); skipped 14466 inline callback(s) as out of family\nVERDICT: PASS — every declaration in the family carries a precise comment and a full signature.\n$ node scripts/verify-comment-coverage.ts"
+    },
+    {
+      "name": "L4-manifest",
+      "ok": true,
+      "reason": "bun run verify:manifest -> exit 0",
+      "raw": "ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable\nok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted\nok    evidence-excluded: the frozen evidence/ tree stays out of the published package\nok    packed-content: npm pack --dry-run lists 897 file(s); 0 required path(s) absent\nVERDICT: PASS — the install-time rules and the packaging contract hold.\n$ node scripts/verify-plugin-manifest.ts --pack"
+    },
+    {
+      "name": "L4-manual-paths",
+      "ok": true,
+      "reason": "/home/haroldzhao/.bun/bin/bun scripts/verify-manual-paths.ts -> exit 0",
+      "raw": "[verify-manual-paths] under-report:elided AGENTS.md:12 -> [中文](./<name>.zh-CN.md) [non-ASCII/elision characters]\n[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason=\"a directory spelled in words rather than as a token — nothing to stat\"\n[verify-manual-paths] census family=over-report direction=over-report total=78 buckets=6 (counted apart from under-report and from unresolved)\n[verify-manual-paths] census family=under-report direction=under-report total=90 buckets=7 (counted apart from over-report and from unresolved)\n[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)\n[verify-manual-paths] PASS resolved=153 over-report=78 under-report=90 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)"
+    },
+    {
+      "name": "L4-dist-fresh",
+      "ok": false,
+      "reason": "/home/haroldzhao/.bun/bin/bun scripts/verify-dist-fresh.ts -> exit 1",
+      "raw": "  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/\n  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact\n  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/\n  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact\n  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/\n[verify-dist-fresh] FAIL - 1 of 30 targets not fresh (STALE: 1) — 504ms"
+    },
+    {
+      "name": "L4-dist-fresh-roles-only",
+      "ok": true,
+      "reason": "/home/haroldzhao/.bun/bin/bun scripts/verify-dist-fresh.ts --only mpd-roles-plugin -> exit 0",
+      "raw": "  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/\n  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact\n  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/\n  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact\n  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/\n[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 25ms"
+    },
+    {
+      "name": "L4-rows",
+      "ok": true,
+      "reason": "bun run verify:rows -> exit 0",
+      "raw": "[verify-rows-parity] ok: 34 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)\n$ node scripts/verify-rows-parity.ts"
+    },
+    {
+      "name": "L4-preset-conformance",
+      "ok": true,
+      "reason": "/home/haroldzhao/.bun/bin/bun skills/dsh-qa/scripts/preset-conformance.ts --self-test -> exit 0",
+      "raw": "[preset-conformance self-test] PASS - (i) retired `text:` persona form -> problems name the persona row :: /tmp/mpd-preset-conformance-UIY0lT/persona-text.patch.yml :: persona (@deepseek-ai/dsh-persona): $.prefix missing required value | /tmp/mpd-preset-conformance-UIY0lT/persona-text.patch.yml :: the persona row has no `pref\n[preset-conformance self-test] PASS - (ii) renamed required row -> the unmutated copy is clean and the mutated one names tool-fs AND tool-fs-renamed :: control problems=0; mutated: the mpd preset does not mount active row(s) the installed standard preset mounts: tool-fs | the mpd preset declares row(s) the installed standard preset does not declare at all: tool-fs-renam\n[preset-conformance self-test] PASS - (iii) the renamed copy really changed the document it audits :: bytes differ\n[preset-conformance self-test] PASS - (iv) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged :: fixture root /tmp/mpd-preset-conformance-UIY0lT (temp); live mtime 1791445385800.925 -> 1791445385800.925\n[preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)"
+    }
+  ],
+  "notRun": []
+}

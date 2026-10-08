@@ -1,0 +1,9 @@
+A1-sidebar-open vs A4-sidebar-plus8s: changedLines=32
+        <   █   █  ████   ████   ████    ███   ████   ████   ███                                        ││subagents  0 total · 0 running · 0 comple│
+        <   █   █  █      █      █          █  █      █      █  █                                       ││⚪ No subagents in the current session   │
+        <   ████   █████  █████  █      ████   █████  █████  █   █                                      ││  Subagents appear here once the main age│
+        <                                                                                               ││team webui-tui-i18n  phase active  tasks │
+        <   █   █    ███    ████    █   █   █████    ████    ████                                       ││╭────────╮   ╭────────╮   ╭────────╮     │
+        >   █   █  ████   ████   ████    ███   ████   ████   ███                                        ││⚪ No subagents in the current sessionple│
+        A1-sidebar-open: modeLine="view boxes · 6 tasks · ranks derived     " summary=""
+        A4-sidebar-plus8s: modeLine="view boxes · 7 tasks · ranks derived     " summary=""

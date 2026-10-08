@@ -218,9 +218,9 @@ limit, not a configuration mistake.
 
 `packages/mpd-tui-plugin/` registers **TWO** right-sidebar pages through the `ctx.tuiPanels` seam —
 `src/panel.ts` (slug `team`, title `MPD`, one-cell icon `❖`, `order` 10) with the **rich merged** body
-(the host's own curated subagent snapshot rows ABOVE the MPD dependency DAG for the current workspace's
-team, inside the DAG page's own frame, header + progress, legend, key-hint footer and click-to-pin
-detail body) and `src/panel-workmate.ts` (slug `workmate`, title `MPD workmate`, icon `⬢`, `order` 12,
+(the host's own curated subagent snapshot rows ABOVE the MPD dependency DAG for the calling session's
+own team (§3.4), inside the DAG page's own frame, header + progress, legend, key-hint footer and
+click-to-pin detail body) and `src/panel-workmate.ts` (slug `workmate`, title `MPD workmate`, icon `⬢`, `order` 12,
 described in §3.4). **The third page this section used to describe — `src/panel-dag.ts`'s standalone
 `dag` page — was RETIRED by the 0.14.0 wave and merged INTO the MPD panel** (the user's clause
 「DAG页作为MPD面板」, recorded in §11.6): ONE descriptor, ONE slug and ONE ordered position collapsed out
@@ -344,17 +344,48 @@ are asserted by the unit suites and by the pinned real-PTY capture, never by the
 
 ### 3.4 The MPD panel — the rich DAG page — and the workmate page
 
-The MPD panel renders the current workspace's team dependency DAG with the host's curated subagent rows
-ABOVE the drawing, inside one rich frame the pre-merge merged page could not afford: a bordered frame, a
-header naming the team and its progress, the drawing, an explicit legend, a footer naming the keys it
-handles, a status badge and a pinned detail body. (Until the 0.14.0 wave this was the standalone `dag`
-page beside a plainer merged page; the two are ONE page now, §11.6.)
+The MPD panel renders the CALLING SESSION's own team dependency DAG — never the workspace's latest one
+(the session-scope bullet below) — with the host's curated subagent rows ABOVE the drawing, inside ONE
+rich frame the pre-merge merged page could not afford: a bordered frame, a header naming the team and
+its progress, the drawing, an explicit legend, a footer naming the keys it handles, a status badge and a
+pinned detail body. (Until the 0.14.0 wave this was the standalone `dag` page beside a plainer merged
+page; the two are ONE page now, §11.6.)
 
 **This panel's `⤢` opens the rich team scene, not a bare one.** The page's own control calls the
 `mpd-tui-team` scene — the same frame, legend, focused-task detail pane (the pin's full-screen form) and
 key hints the page draws with — which is the user's clause 「全屏出来的MPD也要有这种富外观」 made
 concrete. The host's own `⤢` is still unreachable for a plugin panel (§11.6's re-measured bound), so this
 control is MPD's and it is declared on the page itself.
+
+- **The drawing is THIS SESSION's team — the workspace's latest one is never substituted for it.** The
+  defect the user reported (「我new了一个session，老session的DAG图还摆在那儿」) was that a surface picked
+  the newest not-ended team of the WORKSPACE; it is fixed. Every surface that draws team state (this
+  page, the team scene, the merged scene, the plan scene) reads its OWN session id — the page off
+  `host.snapshot().sessionId`, the field it used to read and discard, the scenes off
+  `props.channel.sessionId` — and resolves through `mpdTeams.active(workspace, sessionId)`, with the
+  record's own `leadSessionId` as the degradation when the service exposes no `active`. The reader
+  reports WHICH of THREE states it answered with (`TeamWorkflow.source.scope`), and the renderer draws
+  that state rather than a guess: **`session`** — a session id was readable AND a team resolved for it,
+  so that team's DAG and nothing else; **`none`** — a session id was readable and this session has NO
+  team, drawn as the marker `no team in this session` plus how many teams the workspace holds, **never
+  another session's board**; and **`workspace`** — NO session id was readable (an older host, a
+  keypress-time read), which keeps the old workspace-principal rule but marks it `workspace-level`, so
+  a reader can tell it is not necessarily their own board. Both markers are constants in
+  `src/team-state.ts` (`NO_SESSION_TEAM_MARKER`, `WORKSPACE_SCOPE_MARKER`). The WEB tab was already
+  session-scoped (`?sessionId=`) and lists the workspace's teams when the session has none; only the
+  legacy `Ctrl+A` status view cannot be scoped — a status view receives no `host` and no `channel` — so
+  it keeps the marked workspace-level behaviour by construction.
+- **The surfaces update by PUSH, and the timers stay as the fallback.** Every surface that draws team
+  state subscribes to the workspace's team feed — `mpdTeams.subscribe(workspace, listener)`, the
+  substrate `mpd-team-core` also serves over the SSE route `/plugins/mpd-team/events` — and disposes it
+  on unmount. Measured on a real dsh-tui 0.14.0 PTY: a record rewrite under an OPEN, untouched sidebar
+  reached the terminal in **76–85 ms** across six trials
+  (`evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/`), against a fallback tick of
+  **1000 ms** (`DAG_PANEL_REFRESH_MS`) — six samples inside a 9 ms band at ~80 ms is not tick sampling.
+  The feed watches the teams directory, so a change made by this session's agent or by ANOTHER PROCESS
+  is seen; the 1000 ms sidebar tick and the 2000 ms scene tick stay, unchanged, as the fallback for a
+  composition without a feed. No `mpdTeams` row, no `subscribe`, or a throwing one costs the push and
+  never the page.
 
 - **Vertical and adaptive.** Rank is the VERTICAL axis (top→bottom) and every size is computed from the
   panel the host measured — there is no fixed pixel or cell constant deciding the layout, which was the
@@ -374,13 +405,20 @@ control is MPD's and it is declared on the page itself.
   (`id`, `kind`, `visual`, `verdict`, `failedBy`, `owner`, `attempt`, `round`, `blockedBy`,
   `dependents`), and `↑↓/jk`, `Enter`, `Esc` move, pin and unpin. **Hover is deliberately absent** — a
   terminal has no pointer-move and the user dropped it.
+  **There is ONE state key now, and it is this legend's own (user requirement
+  「删除TUI DAG界面的多余图例（目前有两行）」).** `panel-core.ts`'s `legendLinesFor` composes it from the
+  frozen six-state contract (`DAG_STATE_TONES` + `DAG_TONE_GLYPH`) and names all six states, so
+  `blocked` and `open` are told apart by the twin each entry carries; `graph.ts` carries no state key of
+  its own — its own five-state key (`LEGEND_STATES` / `LEGEND_SHORT` / `LEGEND_KEY`) was DELETED with
+  the redundant row, because it omitted `blocked` and printed under the contract's key it was the same
+  legend a second time.
   **The accumulating-legend defect (user report 「越点越多直到撑爆屏幕」) was a duplicate React KEY, and it
   is fixed and pinned (§11.6).** The legend's rows were keyed `legend-${line.slice(0, 24)}`, and the
-  drawing's own state-key line and the legend's first wrapped line both begin `✓ completed · ◐ running`
-  — so two children shared one key, and React rendered the collided row once more on EVERY re-render.
-  Measured on a mounted instance: **4 legend rows after mount, 7 after seven clicks**. The key is a
-  position now, and the arm that keeps it fixed asserts the legend ROW COUNT is stable across N clicks
-  rather than that a legend exists.
+  drawing's own state-key line — the one deleted with the redundant row — and the legend's first
+  wrapped line both started `✓ completed · ◐ running` — so two children shared one key, and React
+  rendered the collided row once more on EVERY re-render. Measured on a mounted instance: **4 legend
+  rows after mount, 7 after seven clicks**. The key is a position now, and the arm that keeps it fixed
+  asserts the legend ROW COUNT is stable across N clicks rather than that a legend exists.
 - **A node reads `<marker> <id>` and nothing else** (`✓ T3`, and `▶ T3` for the task in focus). The
   subject is NOT in the drawing; it is verbatim in the pinned detail body, where a Chinese sentence
   reads as a Chinese sentence instead of being squeezed into printable ASCII. Removing it is also what
@@ -1008,7 +1046,7 @@ control. The following supersedes them:
 | §3 seam inventory | fifteen `tui*` seams, the set dsh-tui has exposed since 0.13.0 | **still fifteen, and every one is byte-identical to 0.13.0** — the fifteen seam modules and their declarations under the host's `lib/types/dsh-adapter/` (`panels`, `scenes`, `status`, `renderers`, `settings-sections`, `shortcuts`, `dialogs`, `command-trees`, `plugin-host`, `toast`, `themes`, `plugin-storage`, `message-observer`, `effect-ledger`, `workspaces`, each `.js` + `.d.ts`) have not moved, there is no sixteenth seam, and the `peerDependencies` lists still end at `0.2.0-rc.2`. **No adapter code change was needed for the seam surface** |
 | §3.3 — the enable list's default, and the arm that pins it | the host's default CSV is `todo,jobs,agents` (three builtins) | **`todo,jobs,agents,info,trajectory,workspace,btw,companion` — eight builtins; `btw` is the new one** (`DEFAULT_SIDE_PANEL_IDS`, read from the installed host's `lib/types/tuiDisplayPrefs.js`). The bundle's own test now asserts the **INVARIANT** instead of a three-id literal — the literal is what reddened when the host grew, while the file's premise is that it re-judges itself when the **installed** host changes. All THREE sub-assertions the clause names execute and are green: the default names builtins only and contains nothing of ours, every id in it passes the host's own `SIDE_PANEL_ID_PATTERN`, and the normalizer is **idempotent** over it — the idempotence carrier is the arm *"the host REWRITES the CSV from configuration, which is how a registered panel disappears"* in `packages/mpd-tui-plugin/test/panel-visibility.test.ts`, whose `const once = prefs.normalizeSidePanelPanels(prefs.DEFAULT_SIDE_PANEL_IDS)` is followed by `expect(prefs.normalizeSidePanelPanels(once)).toBe(once)`. **That assertion RUNS and PASSES inside that arm** — it is part of the 469-pass / 0-fail suite reading above, confirmed by a direct read of the file rather than inferred from the arm's title |
 | §3.4 — the `⤢` control and the host's own one | each MPD page draws its own `⤢` because the host cannot draw one for a plugin panel | **re-measured on 0.14.0 and still true, as a bound rather than a wish**: `dsh-adapter/panels.js` still freezes a plugin definition to `{id, title, icon, order, minColumns, source, pluginId, mountPolicy, component, compact}` with **no `capabilities`**, while `components/sidePanel/SidePanelColumn.js`'s `canExpand` reads `activeEntry?.definition.capabilities?.fullscreen === true` — so the host's own `⤢` is unreachable for a plugin panel and `capabilities` stays undeclared (a dead button is not shipped). MPD's own control opens an MPD-registered full-screen surface with the page's SAME rich appearance (§3.4) |
-| §3.4 — the legend under the drawing | a per-drawing block of legend lines | **the accumulating-legend defect is FIXED, and its cause is measured**: the legend's rows were keyed `legend-${line.slice(0, 24)}` and the drawing's state-key line and the legend's first wrapped line both start `✓ completed · ◐ running`, so two React children shared ONE key and the collided row was rendered again on every re-render (measured on a mounted instance: 4 legend rows after mount, 7 after seven clicks). The key is the row's position now, and the arm that keeps it green asserts the legend ROW COUNT is STABLE across N clicks |
+| §3.4 — the legend under the drawing | a per-drawing block of legend lines | **the accumulating-legend defect is FIXED, and its cause is measured**: the legend's rows were keyed `legend-${line.slice(0, 24)}` and the drawing's state-key line and the legend's first wrapped line both started `✓ completed · ◐ running`, so two React children shared ONE key and the collided row was rendered again on every re-render (measured on a mounted instance: 4 legend rows after mount, 7 after seven clicks). The key is the row's position now, and the arm that keeps it green asserts the legend ROW COUNT is STABLE across N clicks |
 | §3.3 / §7 — the pin carriers | the global package, the `dsh-tui` profile, the distribution ref and the QA host spec all named `0.13.0` | **`0.14.0` in this wave's carriers**: `docker/**` (both `MPD_E2E_TUI_VERSION` defaults in `docker-compose.yml`, the same key in `docker/ui/docker-compose.yml`, `docker/entrypoint.sh`'s `TUI_VERSION`, `docker/ui/entrypoint.sh`'s two `MPD_UI_TUI_VERSION` defaults, `docker/tui-lane.sh`'s `TUI_VERSION` and its `PREF_WRITER` probe string), the distribution descriptor's `host-tui` ref (`dsh-distribution.json` now carries `pkg:npm/@deepseek-harness-tui/dsh-tui@0.14.0`) and the seven QA carriers under `skills/dsh-qa/scripts/**` (`tui-mount.ts`'s `TUI_HOST_SPEC` and PREREQ lines, the PREREQ/remedy strings in `tui-panels.ts`, `tui-deps-ctrla.ts`, `tui-team-surface.ts` and `tui-admission.ts`, `lib/tui-lane.ts`, `install-dependencies.ts`), plus `scripts/mpd-tui-panels.ts`'s header prose, which now
 names 0.14.0 as the release this bundle targets while the paragraph above it stays the 0.13.0
 measurement it was. **TWO deliberate non-moves:** `MPD_E2E_DSH_VERSION` keeps its `0.2.0-rc.2` default, because the harness peer range did not change (F2's reading); and `dsh-plugin.json`'s `compat.hosts` stays at `@deepseek-harness-tui/dsh-tui@0.10.1` because the field records the **0.10.1 admission measurement** this bundle was admitted against — not the TUI edition it targets — so moving it would falsify a measurement rather than record a target |

@@ -3788,11 +3788,573 @@ function field(payload, key, maxCells = 200) {
   return scalarText(payload[key], maxCells);
 }
 
-// packages/mpd-tui-plugin/src/state.ts
+// packages/mpd-tui-plugin/src/team-state.ts
 var MAX_TEAMS = 20;
-var MAX_WORKMATES = 200;
 var MAX_TASKS = 5000;
 var MAX_PROBLEMS = 5;
+var NO_SESSION_TEAM_MARKER = "no team in this session";
+var WORKSPACE_SCOPE_MARKER = "workspace-level";
+function asString(value) {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+function asText(value, maxCells) {
+  return scalarText(value, maxCells);
+}
+function optional(key, value) {
+  return value === undefined ? {} : { [key]: value };
+}
+function blockingDependencies(tasks, dependencies) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const blocking = [];
+  const failed = [];
+  for (const id of dependencies) {
+    const status = byId.get(id)?.status;
+    if (status === "completed" || status === "cancelled")
+      continue;
+    if (status === "failed")
+      failed.push(id);
+    else
+      blocking.push(id);
+  }
+  return { blocking, failed };
+}
+function taskVisualState(status, tasks, dependencies) {
+  if (status === "completed")
+    return "completed";
+  if (status === "failed")
+    return "failed";
+  if (status === "cancelled")
+    return "cancelled";
+  if (status === "in_progress")
+    return "running";
+  return blockingDependencies(tasks, dependencies).blocking.length > 0 ? "blocked" : "open";
+}
+function taskDepths(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const depths = new Map;
+  const visiting = new Set;
+  const depthOf = (taskId) => {
+    const cached = depths.get(taskId);
+    if (cached !== undefined)
+      return cached;
+    if (visiting.has(taskId))
+      return 0;
+    const task = byId.get(taskId);
+    if (task === undefined)
+      return 0;
+    visiting.add(taskId);
+    const dependencies = [...task.dependencies].filter((id) => byId.has(id)).sort();
+    const depth = dependencies.length === 0 ? 0 : 1 + Math.max(...dependencies.map(depthOf));
+    visiting.delete(taskId);
+    depths.set(taskId, depth);
+    return depth;
+  };
+  for (const task of tasks)
+    depthOf(task.id);
+  return depths;
+}
+function cycleIds(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const done = new Set;
+  const stack = [];
+  const inStack = new Set;
+  const cyclic = new Set;
+  const visit = (id) => {
+    if (done.has(id))
+      return;
+    if (inStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id)))
+        cyclic.add(entry);
+      return;
+    }
+    const task = byId.get(id);
+    if (task === undefined)
+      return;
+    inStack.add(id);
+    stack.push(id);
+    for (const dependency of task.dependencies)
+      if (byId.has(dependency))
+        visit(dependency);
+    stack.pop();
+    inStack.delete(id);
+    done.add(id);
+  };
+  for (const task of tasks)
+    visit(task.id);
+  return [...cyclic].sort();
+}
+function currentTaskOf(memberName, tasks) {
+  for (const task of tasks) {
+    if (task.status === "in_progress" && task.assignee === memberName)
+      return task.id;
+  }
+  return;
+}
+function emptyWorkflow(workspace, problems, holds, source) {
+  return {
+    workspace,
+    ...source === undefined ? {} : { source },
+    members: [],
+    tasks: [],
+    counts: { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 },
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems
+  };
+}
+function liveTeamViews(dsh, workspace) {
+  let views;
+  try {
+    views = dsh.teamLiveTeams() ?? [];
+  } catch {
+    return [];
+  }
+  let agents = [];
+  try {
+    agents = dsh.liveAgents() ?? [];
+  } catch {
+    agents = [];
+  }
+  if (agents.length === 0 || workspace === "")
+    return views.slice(0, MAX_TEAMS);
+  const cwdOf = new Map;
+  for (const entry of agents) {
+    const agent = entry;
+    const id = typeof agent?.id === "string" ? agent.id : "";
+    const cwd = agent?.session?.header?.cwd;
+    if (id !== "" && typeof cwd === "string")
+      cwdOf.set(id, cwd);
+  }
+  const own = views.filter((view) => cwdOf.get(String(view.leadSessionId ?? "")) === workspace);
+  return (own.length > 0 ? own : views).slice(0, MAX_TEAMS);
+}
+function memberStatus(view, index) {
+  const rows = Array.isArray(view.members) ? view.members : [];
+  const row = rows[index];
+  return typeof row?.status === "string" ? row.status : "unknown";
+}
+function teamActive(view) {
+  const rows = Array.isArray(view.members) ? view.members : [];
+  return rows.some((member) => member.role === "teammate" && (member.status === "running" || member.status === "provisioning"));
+}
+function principalView(views) {
+  let best;
+  for (const view of views) {
+    const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0;
+    if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0))
+      best = view;
+  }
+  return best;
+}
+function readTeamWorkflow(workspace, holds = [], views = [], source) {
+  const problems = [];
+  const view = principalView(views.slice(0, MAX_TEAMS));
+  if (view === undefined)
+    return emptyWorkflow(workspace, problems, holds, source);
+  const rawTasks = Array.isArray(view.tasks) ? view.tasks.slice(0, MAX_TASKS) : [];
+  const tasks = [];
+  for (const raw of rawTasks) {
+    if (raw === null || typeof raw !== "object")
+      continue;
+    const id = asText(raw.id, 40);
+    if (id === undefined)
+      continue;
+    const dependencies = (Array.isArray(raw.blockedBy) ? raw.blockedBy : []).map((entry) => asText(entry, 40)).filter((entry) => entry !== undefined);
+    tasks.push({
+      id,
+      subject: asText(raw.subject, 160) ?? "",
+      status: asText(raw.status, 40) ?? "pending",
+      visual: "open",
+      ...optional("assignee", asText(raw.ownerName, 80)),
+      dependencies,
+      failedDependencies: [],
+      depth: 0
+    });
+  }
+  const depths = taskDepths(tasks);
+  for (const task of tasks) {
+    task.depth = depths.get(task.id) ?? 0;
+    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed;
+    task.visual = taskVisualState(task.status, tasks, task.dependencies);
+  }
+  const creationIndex = new Map(tasks.map((task, index) => [task.id, index]));
+  tasks.sort((left, right) => left.depth - right.depth || (creationIndex.get(left.id) ?? 0) - (creationIndex.get(right.id) ?? 0));
+  const cycle = cycleIds(tasks);
+  if (cycle.length > 0)
+    problems.push(`cycle ${cycle.join(",")}`);
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
+  for (const task of tasks) {
+    counts.total += 1;
+    switch (task.status) {
+      case "completed":
+        counts.completed += 1;
+        break;
+      case "in_progress":
+        counts.inProgress += 1;
+        break;
+      case "pending":
+        counts.pending += 1;
+        break;
+      case "claimed":
+        counts.claimed += 1;
+        break;
+      case "failed":
+        counts.failed += 1;
+        break;
+      case "cancelled":
+        counts.cancelled += 1;
+        break;
+      default:
+        counts.other += 1;
+    }
+  }
+  const memberRows = Array.isArray(view.members) ? view.members : [];
+  const members = [];
+  memberRows.forEach((raw, index) => {
+    if (raw === null || typeof raw !== "object")
+      return;
+    if (raw.role === "lead")
+      return;
+    if (raw.status === "removed")
+      return;
+    const name = asText(raw.name, 80) ?? "?";
+    const status = memberStatus(view, index);
+    const provider = asString(raw.provider)?.trim() ?? "";
+    const model = asString(raw.model)?.trim() ?? "";
+    const route = provider !== "" && model !== "" ? `${provider}/${model}` : model !== "" ? model : undefined;
+    const owned = tasks.filter((task) => task.assignee === name);
+    const done = owned.filter((task) => task.status === "completed").length;
+    members.push({
+      name,
+      ...optional("role", asText(raw.description, 120)),
+      ...optional("route", route),
+      status,
+      done,
+      total: owned.length,
+      progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
+      ...optional("currentTask", currentTaskOf(name, tasks)),
+      unread: null
+    });
+  });
+  const phase = teamActive(view) ? "active" : "idle";
+  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
+  const runnable = members.length > 0 && tasks.length > 0;
+  return {
+    workspace,
+    ...source === undefined ? {} : { source },
+    team: {
+      id: asText(view.teamId, 60) ?? "?",
+      name: asText(view.leadName, 80) ?? "?",
+      phase,
+      ...optional("captainSessionId", asText(view.leadSessionId, 80)),
+      staged: false,
+      runnable,
+      links
+    },
+    members,
+    tasks,
+    counts,
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems: problems.slice(0, MAX_PROBLEMS)
+  };
+}
+function approvalPhrase(teamId) {
+  return `approve ${teamId}`;
+}
+function readPlanView(teams, workspace, sessionId) {
+  if (teams === undefined || typeof teams.planFor !== "function" || sessionId === undefined || sessionId === "")
+    return;
+  try {
+    return teams.planFor(workspace, sessionId)?.plan ?? undefined;
+  } catch {
+    return;
+  }
+}
+function principalRecord(records) {
+  return records.find((record) => record.endedAt === undefined) ?? records[0];
+}
+function mpdTeamRecords(teams, workspace) {
+  try {
+    const list = teams?.list;
+    if (typeof list !== "function" || workspace === "")
+      return [];
+    return list(workspace) ?? [];
+  } catch {
+    return [];
+  }
+}
+function sessionIdOf(carrier) {
+  if (carrier === null || carrier === undefined || typeof carrier !== "object")
+    return;
+  const id = carrier.sessionId;
+  return typeof id === "string" && id !== "" ? id : undefined;
+}
+function sessionRecord(teams, workspace, sessionId, records) {
+  const active = teams?.active;
+  if (typeof active === "function") {
+    try {
+      return active(workspace, sessionId) ?? undefined;
+    } catch {}
+  }
+  return records.find((record) => record.leadSessionId === sessionId);
+}
+function sessionViewsOf(views, sessionId) {
+  return views.filter((view) => scalarText(view.leadSessionId, 80) === sessionId);
+}
+function readScopedWorkflow(read) {
+  const sessionId = typeof read.sessionId === "string" && read.sessionId !== "" ? read.sessionId : undefined;
+  try {
+    if (sessionId === undefined) {
+      const principal = principalRecord(read.records);
+      if (principal !== undefined)
+        return readRecordWorkflow(read.workspace, read.holds, principal, { scope: "workspace" });
+      return readTeamWorkflow(read.workspace, read.holds, read.views, { scope: "workspace" });
+    }
+    const record = sessionRecord(read.teams, read.workspace, sessionId, read.records);
+    if (record !== undefined)
+      return readRecordWorkflow(read.workspace, read.holds, record, { scope: "session", sessionId });
+    const mine = sessionViewsOf(read.views, sessionId);
+    if (mine.length > 0)
+      return readTeamWorkflow(read.workspace, read.holds, mine, { scope: "session", sessionId });
+    return emptyWorkflow(read.workspace, [], read.holds, { scope: "none", sessionId, workspaceTeams: read.records.length });
+  } catch (error) {
+    const note = `the team read failed: ${String(error?.message ?? error)}`.slice(0, 200);
+    return emptyWorkflow(read.workspace, [note], read.holds, {
+      scope: sessionId === undefined ? "workspace" : "none",
+      ...sessionId === undefined ? {} : { sessionId }
+    });
+  }
+}
+function readRecordWorkflow(workspace, holds, record, source) {
+  const problems = [];
+  const board = record.tasks.slice(0, MAX_TASKS);
+  const tasks = board.map((task) => ({
+    id: scalarText(task.id, 40) ?? "",
+    subject: scalarText(task.subject, 160) ?? "",
+    description: scalarText(task.description, 400),
+    kind: scalarText(task.kind, 24),
+    status: scalarText(task.status, 40) ?? "pending",
+    visual: "open",
+    assignee: scalarText(task.owner, 80),
+    attempt: typeof task.attempt === "number" ? task.attempt : undefined,
+    round: typeof task.round === "number" ? task.round : undefined,
+    verdict: scalarText(task.verdict, 40),
+    dependencies: task.blockedBy.map((id) => scalarText(id, 40)).filter((id) => id !== undefined),
+    failedDependencies: [],
+    depth: 0
+  }));
+  const depths = taskDepths(tasks);
+  for (const task of tasks) {
+    task.depth = depths.get(task.id) ?? 0;
+    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed;
+    task.visual = taskVisualState(task.status, tasks, task.dependencies);
+  }
+  const order = new Map(tasks.map((task, index) => [task.id, index]));
+  tasks.sort((left, right) => left.depth - right.depth || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
+  const cycle = cycleIds(tasks);
+  if (cycle.length > 0)
+    problems.push(`cycle ${cycle.join(",")}`);
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
+  for (const task of tasks) {
+    counts.total += 1;
+    switch (task.status) {
+      case "completed":
+        counts.completed += 1;
+        break;
+      case "in_progress":
+        counts.inProgress += 1;
+        break;
+      case "pending":
+        counts.pending += 1;
+        break;
+      case "claimed":
+        counts.claimed += 1;
+        break;
+      case "failed":
+        counts.failed += 1;
+        break;
+      case "cancelled":
+        counts.cancelled += 1;
+        break;
+      default:
+        counts.other += 1;
+    }
+  }
+  const members = record.members.map((member) => {
+    const name = scalarText(member.name, 80) ?? "?";
+    const owned = tasks.filter((task) => task.assignee === name);
+    const done = owned.filter((task) => task.status === "completed").length;
+    const current = owned.find((task) => task.status === "in_progress" || task.status === "claimed");
+    return {
+      name,
+      role: scalarText(member.role ?? member.description, 120),
+      route: scalarText(member.route, 80),
+      status: scalarText(member.status, 40) ?? "unknown",
+      done,
+      total: owned.length,
+      progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
+      currentTask: current?.id,
+      unread: null
+    };
+  });
+  const active = record.members.some((member) => member.status === "running" || member.status === "provisioning") || record.tasks.some((task) => task.status === "in_progress" || task.status === "claimed");
+  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
+  return {
+    workspace,
+    ...source === undefined ? {} : { source },
+    team: {
+      id: scalarText(record.teamId, 60) ?? "?",
+      name: scalarText(record.name, 80) ?? "?",
+      phase: record.endedAt !== undefined ? "ended" : record.approvedAt === undefined ? "staged" : active ? "active" : "idle",
+      description: scalarText(record.description, 200),
+      captainSessionId: scalarText(record.leadSessionId, 80),
+      stagedAt: scalarText(record.approvedAt ?? record.createdAt, 40),
+      staged: record.approvedAt === undefined,
+      runnable: members.length > 0 && tasks.length > 0,
+      links
+    },
+    members,
+    tasks,
+    counts,
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems: problems.slice(0, MAX_PROBLEMS)
+  };
+}
+function teamWorkflowLines(workflow) {
+  const scope = workflow.source?.scope;
+  const held = workflow.source?.workspaceTeams;
+  if (workflow.team === undefined) {
+    const empty = [];
+    if (scope === "none") {
+      empty.push(`team       ${NO_SESSION_TEAM_MARKER}`);
+      if (typeof held === "number" && held > 0)
+        empty.push(`workspace  ${held} team(s) here, none bound to this session`);
+      return empty;
+    }
+    return [scope === "workspace" ? `team       ${WORKSPACE_SCOPE_MARKER} (none in this workspace)` : "team       (none in this workspace)"];
+  }
+  const team = workflow.team;
+  const lines = [];
+  if (scope === "workspace")
+    lines.push(`scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`);
+  lines.push(`team       ${team.name} (${team.id})`);
+  lines.push(`phase      ${team.phase}`);
+  if (team.staged && team.planReviewState !== undefined)
+    lines.push(`plan       ${team.planReviewState}`);
+  if (team.captainSessionId !== undefined)
+    lines.push(`captain    ${team.captainSessionId}`);
+  if (team.staged && team.stagedAt !== undefined)
+    lines.push(`staged     ${team.stagedAt}`);
+  if (workflow.holds.includes(team.id))
+    lines.push(`watchdog   HELD (${workflow.holds.join(", ")})`);
+  lines.push("");
+  lines.push("roster");
+  if (workflow.members.length === 0)
+    lines.push("  (no members)");
+  for (const member of workflow.members) {
+    const parts = [member.name];
+    if (member.role !== undefined)
+      parts.push(member.role);
+    if (member.route !== undefined)
+      parts.push(member.route);
+    parts.push(member.status);
+    let row = `  ${parts.join(" · ")}`;
+    row += ` · ${member.done}/${member.total}`;
+    if (member.currentTask !== undefined)
+      row += ` · ${member.currentTask}`;
+    if (member.unread !== null && member.unread > 0)
+      row += ` · ${member.unread} unread`;
+    lines.push(row);
+  }
+  lines.push("");
+  lines.push("tasks");
+  if (workflow.tasks.length === 0)
+    lines.push("  (no tasks)");
+  for (const task of workflow.tasks) {
+    const indent = "  ".repeat(Math.min(task.depth, 12));
+    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
+    if (task.assignee !== undefined)
+      row += ` @${task.assignee}`;
+    if (task.attempt !== undefined)
+      row += ` attempt ${task.attempt}`;
+    if (task.round !== undefined)
+      row += ` r${task.round}`;
+    if (task.verdict !== undefined)
+      row += ` verdict ${task.verdict}`;
+    if (task.dependencies.length > 0)
+      row += ` deps=${task.dependencies.join(",")}`;
+    for (const failed of task.failedDependencies)
+      row += ` failed-dep=${failed}`;
+    if (task.visual === "blocked")
+      row += " BLOCKED";
+    lines.push(row);
+  }
+  lines.push("");
+  const tasks = workflow.counts;
+  lines.push(`tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`);
+  lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`);
+  for (const message of workflow.mail.captainInbox)
+    lines.push(`  ${message.from}: ${message.content}`);
+  if (workflow.problems.length > 0) {
+    lines.push("");
+    for (const problem of workflow.problems)
+      lines.push(`note       ${problem}`);
+  }
+  return lines;
+}
+function planProjectionLines(workflow) {
+  const scope = workflow.source?.scope;
+  if (workflow.team === undefined) {
+    if (scope === "none")
+      return ["no staged plan for team (none)", `${NO_SESSION_TEAM_MARKER} — no DAG to draw here`];
+    return ["no staged plan for team (none)"];
+  }
+  const team = workflow.team;
+  const lines = [];
+  if (scope === "workspace")
+    lines.push(`scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`);
+  lines.push(`team       ${team.name} (${team.id}) · phase ${team.phase} · review ${team.planReviewState ?? "-"}`);
+  lines.push(`members    ${workflow.members.length} · tasks ${workflow.tasks.length} · links ${team.links}`);
+  lines.push(`runnable   ${team.runnable ? "yes" : "no"}`);
+  lines.push("edits      none (the TUI has no inline plan editors)");
+  lines.push("");
+  lines.push("roster");
+  if (workflow.members.length === 0)
+    lines.push("  (no members)");
+  for (const member of workflow.members) {
+    const parts = [member.name];
+    if (member.role !== undefined)
+      parts.push(member.role);
+    if (member.route !== undefined)
+      parts.push(member.route);
+    parts.push(member.status);
+    lines.push(`  ${parts.join(" · ")} · ${member.done}/${member.total}`);
+  }
+  lines.push("");
+  lines.push("tasks");
+  if (workflow.tasks.length === 0)
+    lines.push("  (no tasks)");
+  for (const task of workflow.tasks) {
+    const indent = "  ".repeat(Math.min(task.depth, 12));
+    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
+    if (task.assignee !== undefined)
+      row += ` @${task.assignee}`;
+    if (task.dependencies.length > 0)
+      row += ` deps=${task.dependencies.join(",")}`;
+    if (task.visual === "blocked")
+      row += " BLOCKED";
+    lines.push(row);
+  }
+  return lines;
+}
+
+// packages/mpd-tui-plugin/src/state.ts
+var MAX_TEAMS2 = 20;
+var MAX_WORKMATES = 200;
+var MAX_TASKS2 = 5000;
+var MAX_PROBLEMS2 = 5;
 function readJson(path) {
   return JSON.parse(readFileSync3(path, "utf8"));
 }
@@ -3801,7 +4363,7 @@ function asArray(value) {
 }
 function readTeam(views, problems) {
   let best;
-  for (const view of views.slice(0, MAX_TEAMS)) {
+  for (const view of views.slice(0, MAX_TEAMS2)) {
     const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0;
     if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0))
       best = view;
@@ -3812,7 +4374,7 @@ function readTeam(views, problems) {
   if (rows.length === 0 && (Array.isArray(best.tasks) ? best.tasks.length : 0) === 0)
     return;
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, failed: 0, claimed: 0, cancelled: 0, other: 0 };
-  for (const task of (Array.isArray(best.tasks) ? best.tasks : []).slice(0, MAX_TASKS)) {
+  for (const task of (Array.isArray(best.tasks) ? best.tasks : []).slice(0, MAX_TASKS2)) {
     if (!isRecord(task))
       continue;
     counts.total += 1;
@@ -3841,8 +4403,8 @@ function readTeam(views, problems) {
   }
   const teammates = rows.filter((member) => isRecord(member) && member.role !== "lead");
   const active = teammates.some((member) => member.status === "running" || member.status === "provisioning");
-  if (views.length > MAX_TEAMS)
-    problems.push(`team readout truncated to ${MAX_TEAMS} entries`);
+  if (views.length > MAX_TEAMS2)
+    problems.push(`team readout truncated to ${MAX_TEAMS2} entries`);
   return {
     id: scalarText(best.teamId, 60) ?? "?",
     name: scalarText(best.leadName, 80) ?? "?",
@@ -3853,7 +4415,7 @@ function readTeam(views, problems) {
 }
 function readRecordTeam(record) {
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, failed: 0, claimed: 0, cancelled: 0, other: 0 };
-  for (const task of record.tasks.slice(0, MAX_TASKS)) {
+  for (const task of record.tasks.slice(0, MAX_TASKS2)) {
     counts.total += 1;
     switch (task.status) {
       case "completed":
@@ -3968,8 +4530,8 @@ function readBoardState(workspace, home = homedir3(), views = [], records = []) 
   } catch {
     problems.push("boulder state unreadable");
   }
-  if (problems.length > MAX_PROBLEMS)
-    problems.length = MAX_PROBLEMS;
+  if (problems.length > MAX_PROBLEMS2)
+    problems.length = MAX_PROBLEMS2;
   return state;
 }
 var NO_LIVE_SESSION_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)";
@@ -3979,7 +4541,7 @@ function statusLine(state, notice) {
   if (state.team !== undefined) {
     const done = state.team.tasks.completed;
     const total = state.team.tasks.total;
-    parts.push(t("status.teamRow", { name: state.team.name, members: state.team.members, done: String(done), total: String(total) }));
+    parts.push(`${t("status.teamRow", { name: state.team.name, members: state.team.members, done: String(done), total: String(total) })} (${WORKSPACE_SCOPE_MARKER})`);
     if (state.team.tasks.failed > 0)
       parts.push(t("status.failed", { n: String(state.team.tasks.failed) }));
   } else {
@@ -4171,6 +4733,9 @@ function panelSnapshot(host) {
   } catch {
     return;
   }
+}
+function panelSessionId(host) {
+  return sessionIdOf(panelSnapshot(host));
 }
 function panelText(value, maxCells = PANEL_ROW_MAX_CELLS) {
   try {
@@ -4578,6 +5143,43 @@ function usePanelTick(kit, intervalMs, enabled = true) {
     }
   }, [enabled, intervalMs]);
 }
+function useTeamFeed(React, feed, onNotify) {
+  const tick = React.useState(0);
+  const set2 = tick[1];
+  const latest = typeof React.useRef === "function" ? React.useRef(onNotify) : undefined;
+  if (latest !== undefined && latest !== null)
+    latest.current = onNotify;
+  let subscribe;
+  try {
+    subscribe = feed === undefined ? undefined : feed();
+  } catch {
+    subscribe = undefined;
+  }
+  React.useEffect(() => {
+    if (typeof subscribe !== "function")
+      return;
+    try {
+      const dispose = subscribe(() => {
+        try {
+          set2((previous) => previous + 1);
+        } catch {}
+        try {
+          const notify = latest === undefined || latest === null ? onNotify : latest.current;
+          if (typeof notify === "function")
+            notify();
+        } catch {}
+      });
+      return () => {
+        try {
+          if (typeof dispose === "function")
+            dispose();
+        } catch {}
+      };
+    } catch {
+      return;
+    }
+  }, [subscribe]);
+}
 function panelKeysArmed(focused, visible, host) {
   if (focused !== true || visible !== true)
     return false;
@@ -4702,31 +5304,13 @@ var LEGEND_ENTRY = Object.freeze([
   `${ARROW_DOWN}/${ARROW_RIGHT} arrow · ${FOCUS_MARKER} focus`,
   `${ARROW_DOWN}/${ARROW_RIGHT} arrow`
 ]);
-var LEGEND_STATES = Object.freeze(["completed", "running", "open", "failed", "cancelled"]);
-var LEGEND_SHORT = Object.freeze({
-  completed: "done",
-  running: "run",
-  open: "open",
-  failed: "fail",
-  cancelled: "cancel"
-});
-var LEGEND_KEY = Object.freeze([
-  LEGEND_STATES.map((state) => `${GLYPH[state] ?? "?"} ${state}`).join(" · "),
-  LEGEND_STATES.map((state) => `${GLYPH[state] ?? "?"} ${LEGEND_SHORT[state] ?? state}`).join(" · ")
-]);
-var LEGEND_LINES = Object.freeze([LEGEND_ENTRY, LEGEND_KEY]);
 var MIN_LEGEND_COLS = 8;
 function legendLines(cols) {
   const width = Number.isFinite(cols) ? Math.floor(cols) : 0;
   if (width < MIN_LEGEND_COLS)
     return [];
-  const lines = [];
-  for (const variants of LEGEND_LINES) {
-    const wording = variants.find((variant) => cellWidth(variant) <= width);
-    if (wording !== undefined)
-      lines.push(clampCells(wording, width));
-  }
-  return lines;
+  const wording = LEGEND_ENTRY.find((variant) => cellWidth(variant) <= width);
+  return wording === undefined ? [] : [clampCells(wording, width)];
 }
 var NATURAL_RAIL_FALLBACK_COLS = 80;
 var NODE_GAP = 3;
@@ -4905,7 +5489,7 @@ function rankPlan(tasks) {
   const derived = deriveRanks(tasks, byId);
   return { ranks: bucketRanks(tasks, (task) => derived.get(task.id) ?? 0), rankOf: derived, derived: true, unresolved };
 }
-function cycleIds(tasks) {
+function cycleIds2(tasks) {
   const byId = new Map(tasks.map((task) => [task.id, task]));
   const done = new Set;
   const stack = [];
@@ -5090,7 +5674,7 @@ function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLab
   while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === ""))
     lines.pop();
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: form };
+  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds2(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: form };
   if (focus !== undefined)
     view.focus = focus;
   if (widestLabel !== undefined)
@@ -5151,7 +5735,7 @@ function layoutRail(tasks, cols, focus) {
     hits.push({ taskId: entry.task.id, row: index, rowEnd: index, col: 0, colEnd: Math.max(0, cols - 1) });
   });
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
+  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds2(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
   if (focus !== undefined)
     view.focus = focus;
   return view;
@@ -5176,7 +5760,7 @@ function layoutList(tasks, cols, focus) {
     }
   }
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width: cols, mode: "list", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
+  const view = { lines, hits, width: cols, mode: "list", cycles: cycleIds2(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
   if (focus !== undefined)
     view.focus = focus;
   return view;
@@ -5190,503 +5774,6 @@ function hitTest(view, row, col) {
       return hit.taskId;
   }
   return;
-}
-
-// packages/mpd-tui-plugin/src/team-state.ts
-var MAX_TEAMS2 = 20;
-var MAX_TASKS2 = 5000;
-var MAX_PROBLEMS2 = 5;
-function asString(value) {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-function asText(value, maxCells) {
-  return scalarText(value, maxCells);
-}
-function optional(key, value) {
-  return value === undefined ? {} : { [key]: value };
-}
-function blockingDependencies(tasks, dependencies) {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const blocking = [];
-  const failed = [];
-  for (const id of dependencies) {
-    const status = byId.get(id)?.status;
-    if (status === "completed" || status === "cancelled")
-      continue;
-    if (status === "failed")
-      failed.push(id);
-    else
-      blocking.push(id);
-  }
-  return { blocking, failed };
-}
-function taskVisualState(status, tasks, dependencies) {
-  if (status === "completed")
-    return "completed";
-  if (status === "failed")
-    return "failed";
-  if (status === "cancelled")
-    return "cancelled";
-  if (status === "in_progress")
-    return "running";
-  return blockingDependencies(tasks, dependencies).blocking.length > 0 ? "blocked" : "open";
-}
-function taskDepths(tasks) {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const depths = new Map;
-  const visiting = new Set;
-  const depthOf = (taskId) => {
-    const cached = depths.get(taskId);
-    if (cached !== undefined)
-      return cached;
-    if (visiting.has(taskId))
-      return 0;
-    const task = byId.get(taskId);
-    if (task === undefined)
-      return 0;
-    visiting.add(taskId);
-    const dependencies = [...task.dependencies].filter((id) => byId.has(id)).sort();
-    const depth = dependencies.length === 0 ? 0 : 1 + Math.max(...dependencies.map(depthOf));
-    visiting.delete(taskId);
-    depths.set(taskId, depth);
-    return depth;
-  };
-  for (const task of tasks)
-    depthOf(task.id);
-  return depths;
-}
-function cycleIds2(tasks) {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const done = new Set;
-  const stack = [];
-  const inStack = new Set;
-  const cyclic = new Set;
-  const visit = (id) => {
-    if (done.has(id))
-      return;
-    if (inStack.has(id)) {
-      for (const entry of stack.slice(stack.indexOf(id)))
-        cyclic.add(entry);
-      return;
-    }
-    const task = byId.get(id);
-    if (task === undefined)
-      return;
-    inStack.add(id);
-    stack.push(id);
-    for (const dependency of task.dependencies)
-      if (byId.has(dependency))
-        visit(dependency);
-    stack.pop();
-    inStack.delete(id);
-    done.add(id);
-  };
-  for (const task of tasks)
-    visit(task.id);
-  return [...cyclic].sort();
-}
-function currentTaskOf(memberName, tasks) {
-  for (const task of tasks) {
-    if (task.status === "in_progress" && task.assignee === memberName)
-      return task.id;
-  }
-  return;
-}
-function emptyWorkflow(workspace, problems, holds) {
-  return {
-    workspace,
-    members: [],
-    tasks: [],
-    counts: { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 },
-    mail: { unread: null, captainInbox: [] },
-    holds,
-    problems
-  };
-}
-function liveTeamViews(dsh, workspace) {
-  let views;
-  try {
-    views = dsh.teamLiveTeams() ?? [];
-  } catch {
-    return [];
-  }
-  let agents = [];
-  try {
-    agents = dsh.liveAgents() ?? [];
-  } catch {
-    agents = [];
-  }
-  if (agents.length === 0 || workspace === "")
-    return views.slice(0, MAX_TEAMS2);
-  const cwdOf = new Map;
-  for (const entry of agents) {
-    const agent = entry;
-    const id = typeof agent?.id === "string" ? agent.id : "";
-    const cwd = agent?.session?.header?.cwd;
-    if (id !== "" && typeof cwd === "string")
-      cwdOf.set(id, cwd);
-  }
-  const own = views.filter((view) => cwdOf.get(String(view.leadSessionId ?? "")) === workspace);
-  return (own.length > 0 ? own : views).slice(0, MAX_TEAMS2);
-}
-function memberStatus(view, index) {
-  const rows = Array.isArray(view.members) ? view.members : [];
-  const row = rows[index];
-  return typeof row?.status === "string" ? row.status : "unknown";
-}
-function teamActive(view) {
-  const rows = Array.isArray(view.members) ? view.members : [];
-  return rows.some((member) => member.role === "teammate" && (member.status === "running" || member.status === "provisioning"));
-}
-function principalView(views) {
-  let best;
-  for (const view of views) {
-    const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0;
-    if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0))
-      best = view;
-  }
-  return best;
-}
-function readTeamWorkflow(workspace, holds = [], views = []) {
-  const problems = [];
-  const view = principalView(views.slice(0, MAX_TEAMS2));
-  if (view === undefined)
-    return emptyWorkflow(workspace, problems, holds);
-  const rawTasks = Array.isArray(view.tasks) ? view.tasks.slice(0, MAX_TASKS2) : [];
-  const tasks = [];
-  for (const raw of rawTasks) {
-    if (raw === null || typeof raw !== "object")
-      continue;
-    const id = asText(raw.id, 40);
-    if (id === undefined)
-      continue;
-    const dependencies = (Array.isArray(raw.blockedBy) ? raw.blockedBy : []).map((entry) => asText(entry, 40)).filter((entry) => entry !== undefined);
-    tasks.push({
-      id,
-      subject: asText(raw.subject, 160) ?? "",
-      status: asText(raw.status, 40) ?? "pending",
-      visual: "open",
-      ...optional("assignee", asText(raw.ownerName, 80)),
-      dependencies,
-      failedDependencies: [],
-      depth: 0
-    });
-  }
-  const depths = taskDepths(tasks);
-  for (const task of tasks) {
-    task.depth = depths.get(task.id) ?? 0;
-    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed;
-    task.visual = taskVisualState(task.status, tasks, task.dependencies);
-  }
-  const creationIndex = new Map(tasks.map((task, index) => [task.id, index]));
-  tasks.sort((left, right) => left.depth - right.depth || (creationIndex.get(left.id) ?? 0) - (creationIndex.get(right.id) ?? 0));
-  const cycle = cycleIds2(tasks);
-  if (cycle.length > 0)
-    problems.push(`cycle ${cycle.join(",")}`);
-  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
-  for (const task of tasks) {
-    counts.total += 1;
-    switch (task.status) {
-      case "completed":
-        counts.completed += 1;
-        break;
-      case "in_progress":
-        counts.inProgress += 1;
-        break;
-      case "pending":
-        counts.pending += 1;
-        break;
-      case "claimed":
-        counts.claimed += 1;
-        break;
-      case "failed":
-        counts.failed += 1;
-        break;
-      case "cancelled":
-        counts.cancelled += 1;
-        break;
-      default:
-        counts.other += 1;
-    }
-  }
-  const memberRows = Array.isArray(view.members) ? view.members : [];
-  const members = [];
-  memberRows.forEach((raw, index) => {
-    if (raw === null || typeof raw !== "object")
-      return;
-    if (raw.role === "lead")
-      return;
-    if (raw.status === "removed")
-      return;
-    const name = asText(raw.name, 80) ?? "?";
-    const status = memberStatus(view, index);
-    const provider = asString(raw.provider)?.trim() ?? "";
-    const model = asString(raw.model)?.trim() ?? "";
-    const route = provider !== "" && model !== "" ? `${provider}/${model}` : model !== "" ? model : undefined;
-    const owned = tasks.filter((task) => task.assignee === name);
-    const done = owned.filter((task) => task.status === "completed").length;
-    members.push({
-      name,
-      ...optional("role", asText(raw.description, 120)),
-      ...optional("route", route),
-      status,
-      done,
-      total: owned.length,
-      progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
-      ...optional("currentTask", currentTaskOf(name, tasks)),
-      unread: null
-    });
-  });
-  const phase = teamActive(view) ? "active" : "idle";
-  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
-  const runnable = members.length > 0 && tasks.length > 0;
-  return {
-    workspace,
-    team: {
-      id: asText(view.teamId, 60) ?? "?",
-      name: asText(view.leadName, 80) ?? "?",
-      phase,
-      ...optional("captainSessionId", asText(view.leadSessionId, 80)),
-      staged: false,
-      runnable,
-      links
-    },
-    members,
-    tasks,
-    counts,
-    mail: { unread: null, captainInbox: [] },
-    holds,
-    problems: problems.slice(0, MAX_PROBLEMS2)
-  };
-}
-function approvalPhrase(teamId) {
-  return `approve ${teamId}`;
-}
-function readPlanView(teams, workspace, sessionId) {
-  if (teams === undefined || typeof teams.planFor !== "function" || sessionId === undefined || sessionId === "")
-    return;
-  try {
-    return teams.planFor(workspace, sessionId)?.plan ?? undefined;
-  } catch {
-    return;
-  }
-}
-function principalRecord(records) {
-  return records.find((record) => record.endedAt === undefined) ?? records[0];
-}
-function mpdTeamRecords(teams, workspace) {
-  try {
-    const list = teams?.list;
-    if (typeof list !== "function" || workspace === "")
-      return [];
-    return list(workspace) ?? [];
-  } catch {
-    return [];
-  }
-}
-function readRecordWorkflow(workspace, holds, record) {
-  const problems = [];
-  const board = record.tasks.slice(0, MAX_TASKS2);
-  const tasks = board.map((task) => ({
-    id: scalarText(task.id, 40) ?? "",
-    subject: scalarText(task.subject, 160) ?? "",
-    description: scalarText(task.description, 400),
-    kind: scalarText(task.kind, 24),
-    status: scalarText(task.status, 40) ?? "pending",
-    visual: "open",
-    assignee: scalarText(task.owner, 80),
-    attempt: typeof task.attempt === "number" ? task.attempt : undefined,
-    round: typeof task.round === "number" ? task.round : undefined,
-    verdict: scalarText(task.verdict, 40),
-    dependencies: task.blockedBy.map((id) => scalarText(id, 40)).filter((id) => id !== undefined),
-    failedDependencies: [],
-    depth: 0
-  }));
-  const depths = taskDepths(tasks);
-  for (const task of tasks) {
-    task.depth = depths.get(task.id) ?? 0;
-    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed;
-    task.visual = taskVisualState(task.status, tasks, task.dependencies);
-  }
-  const order = new Map(tasks.map((task, index) => [task.id, index]));
-  tasks.sort((left, right) => left.depth - right.depth || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
-  const cycle = cycleIds2(tasks);
-  if (cycle.length > 0)
-    problems.push(`cycle ${cycle.join(",")}`);
-  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
-  for (const task of tasks) {
-    counts.total += 1;
-    switch (task.status) {
-      case "completed":
-        counts.completed += 1;
-        break;
-      case "in_progress":
-        counts.inProgress += 1;
-        break;
-      case "pending":
-        counts.pending += 1;
-        break;
-      case "claimed":
-        counts.claimed += 1;
-        break;
-      case "failed":
-        counts.failed += 1;
-        break;
-      case "cancelled":
-        counts.cancelled += 1;
-        break;
-      default:
-        counts.other += 1;
-    }
-  }
-  const members = record.members.map((member) => {
-    const name = scalarText(member.name, 80) ?? "?";
-    const owned = tasks.filter((task) => task.assignee === name);
-    const done = owned.filter((task) => task.status === "completed").length;
-    const current = owned.find((task) => task.status === "in_progress" || task.status === "claimed");
-    return {
-      name,
-      role: scalarText(member.role ?? member.description, 120),
-      route: scalarText(member.route, 80),
-      status: scalarText(member.status, 40) ?? "unknown",
-      done,
-      total: owned.length,
-      progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
-      currentTask: current?.id,
-      unread: null
-    };
-  });
-  const active = record.members.some((member) => member.status === "running" || member.status === "provisioning") || record.tasks.some((task) => task.status === "in_progress" || task.status === "claimed");
-  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
-  return {
-    workspace,
-    team: {
-      id: scalarText(record.teamId, 60) ?? "?",
-      name: scalarText(record.name, 80) ?? "?",
-      phase: record.endedAt !== undefined ? "ended" : record.approvedAt === undefined ? "staged" : active ? "active" : "idle",
-      description: scalarText(record.description, 200),
-      captainSessionId: scalarText(record.leadSessionId, 80),
-      stagedAt: scalarText(record.approvedAt ?? record.createdAt, 40),
-      staged: record.approvedAt === undefined,
-      runnable: members.length > 0 && tasks.length > 0,
-      links
-    },
-    members,
-    tasks,
-    counts,
-    mail: { unread: null, captainInbox: [] },
-    holds,
-    problems: problems.slice(0, MAX_PROBLEMS2)
-  };
-}
-function teamWorkflowLines(workflow) {
-  if (workflow.team === undefined)
-    return ["team       (none in this workspace)"];
-  const team = workflow.team;
-  const lines = [];
-  lines.push(`team       ${team.name} (${team.id})`);
-  lines.push(`phase      ${team.phase}`);
-  if (team.staged && team.planReviewState !== undefined)
-    lines.push(`plan       ${team.planReviewState}`);
-  if (team.captainSessionId !== undefined)
-    lines.push(`captain    ${team.captainSessionId}`);
-  if (team.staged && team.stagedAt !== undefined)
-    lines.push(`staged     ${team.stagedAt}`);
-  if (workflow.holds.includes(team.id))
-    lines.push(`watchdog   HELD (${workflow.holds.join(", ")})`);
-  lines.push("");
-  lines.push("roster");
-  if (workflow.members.length === 0)
-    lines.push("  (no members)");
-  for (const member of workflow.members) {
-    const parts = [member.name];
-    if (member.role !== undefined)
-      parts.push(member.role);
-    if (member.route !== undefined)
-      parts.push(member.route);
-    parts.push(member.status);
-    let row = `  ${parts.join(" · ")}`;
-    row += ` · ${member.done}/${member.total}`;
-    if (member.currentTask !== undefined)
-      row += ` · ${member.currentTask}`;
-    if (member.unread !== null && member.unread > 0)
-      row += ` · ${member.unread} unread`;
-    lines.push(row);
-  }
-  lines.push("");
-  lines.push("tasks");
-  if (workflow.tasks.length === 0)
-    lines.push("  (no tasks)");
-  for (const task of workflow.tasks) {
-    const indent = "  ".repeat(Math.min(task.depth, 12));
-    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
-    if (task.assignee !== undefined)
-      row += ` @${task.assignee}`;
-    if (task.attempt !== undefined)
-      row += ` attempt ${task.attempt}`;
-    if (task.round !== undefined)
-      row += ` r${task.round}`;
-    if (task.verdict !== undefined)
-      row += ` verdict ${task.verdict}`;
-    if (task.dependencies.length > 0)
-      row += ` deps=${task.dependencies.join(",")}`;
-    for (const failed of task.failedDependencies)
-      row += ` failed-dep=${failed}`;
-    if (task.visual === "blocked")
-      row += " BLOCKED";
-    lines.push(row);
-  }
-  lines.push("");
-  const tasks = workflow.counts;
-  lines.push(`tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`);
-  lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`);
-  for (const message of workflow.mail.captainInbox)
-    lines.push(`  ${message.from}: ${message.content}`);
-  if (workflow.problems.length > 0) {
-    lines.push("");
-    for (const problem of workflow.problems)
-      lines.push(`note       ${problem}`);
-  }
-  return lines;
-}
-function planProjectionLines(workflow) {
-  if (workflow.team === undefined)
-    return ["no staged plan for team (none)"];
-  const team = workflow.team;
-  const lines = [];
-  lines.push(`team       ${team.name} (${team.id}) · phase ${team.phase} · review ${team.planReviewState ?? "-"}`);
-  lines.push(`members    ${workflow.members.length} · tasks ${workflow.tasks.length} · links ${team.links}`);
-  lines.push(`runnable   ${team.runnable ? "yes" : "no"}`);
-  lines.push("edits      none (the TUI has no inline plan editors)");
-  lines.push("");
-  lines.push("roster");
-  if (workflow.members.length === 0)
-    lines.push("  (no members)");
-  for (const member of workflow.members) {
-    const parts = [member.name];
-    if (member.role !== undefined)
-      parts.push(member.role);
-    if (member.route !== undefined)
-      parts.push(member.route);
-    parts.push(member.status);
-    lines.push(`  ${parts.join(" · ")} · ${member.done}/${member.total}`);
-  }
-  lines.push("");
-  lines.push("tasks");
-  if (workflow.tasks.length === 0)
-    lines.push("  (no tasks)");
-  for (const task of workflow.tasks) {
-    const indent = "  ".repeat(Math.min(task.depth, 12));
-    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
-    if (task.assignee !== undefined)
-      row += ` @${task.assignee}`;
-    if (task.dependencies.length > 0)
-      row += ` deps=${task.dependencies.join(",")}`;
-    if (task.visual === "blocked")
-      row += " BLOCKED";
-    lines.push(row);
-  }
-  return lines;
 }
 
 // packages/mpd-tui-plugin/src/subagent-scene.ts
@@ -6138,7 +6225,7 @@ function takeSubagentDetailRequest(nowMs = Date.now()) {
     return;
   return request.agentId;
 }
-function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail = takeSubagentDetailRequest) {
+function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail = takeSubagentDetailRequest, subscribeTeams) {
   return function MpdTuiSubagents(props) {
     const kit = hostKit(props?.React, props?.ui);
     if (kit === undefined) {
@@ -6175,12 +6262,13 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
     const refresh = () => {
       let next;
       try {
-        next = readWorkflow();
+        next = readWorkflow(sessionIdOf(channel));
       } catch {
         next = undefined;
       }
       setWorkflow(next);
     };
+    useTeamFeed(React, subscribeTeams, refresh);
     React.useEffect(() => {
       refresh();
       let timer;
@@ -7017,7 +7105,7 @@ function interceptDashboardKey(event, deps) {
   deps.log.debug(`Ctrl+A takeover: ${opened ? "opened" : "FAILED to open"} ${SUBAGENT_SCENE_ID} (${workflow.tasks.length} task(s))`);
   return true;
 }
-function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
+function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessionId) {
   try {
     let holdIds = [];
     try {
@@ -7031,16 +7119,26 @@ function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
     } catch {
       records = [];
     }
-    const principal = principalRecord(records);
-    if (principal !== undefined)
-      return readRecordWorkflow(workspaceRoot(), holdIds, principal);
     let views = [];
     try {
       views = teamViews?.() ?? [];
     } catch {
       views = [];
     }
-    return readTeamWorkflow(workspaceRoot(), holdIds, views);
+    let service;
+    try {
+      service = teams?.();
+    } catch {
+      service = undefined;
+    }
+    return readScopedWorkflow({
+      workspace: workspaceRoot(),
+      ...sessionId === undefined || sessionId === "" ? {} : { sessionId },
+      holds: holdIds,
+      ...service === undefined ? {} : { teams: service },
+      records,
+      views
+    });
   } catch {
     return;
   }
@@ -7201,7 +7299,7 @@ function pinnedDetailLines(task, tasks, cols) {
   ];
   return facts.map(([label, value]) => panelText(`${label} ${value}`, cols));
 }
-function dagPanelKeyAction(event, order, focus) {
+function dagPanelKeyAction(event, order, focus, pinned = undefined) {
   if (event === undefined)
     return { consumed: false };
   const flags = event.key ?? {};
@@ -7213,8 +7311,9 @@ function dagPanelKeyAction(event, order, focus) {
 `;
     if (enter || input === " ")
       return { consumed: true, ...focus === undefined ? {} : { pin: true } };
-    if (flags.escape === true || input === "\x1B")
-      return { consumed: true, pin: false };
+    if (flags.escape === true || input === "\x1B") {
+      return pinned === undefined ? { consumed: false } : { consumed: true, pin: false };
+    }
     return { consumed: false };
   }
   if (order.length === 0)
@@ -7340,13 +7439,20 @@ function createDagPanelComponent(readWorkflow, options) {
     }
     const measured = usePanelSize(kit.ui, panelFloorColumns("dag"));
     const contentCols = panelContentWidth(measured.cols);
+    const sessionId = panelSessionId(props?.host);
+    let workflow;
+    try {
+      workflow = readWorkflow(sessionId);
+    } catch {
+      workflow = undefined;
+    }
     let page;
     try {
-      page = dagPageOf(readWorkflow());
+      page = dagPageOf(workflow);
     } catch {
       page = undefined;
     }
-    panelSnapshot(props?.host);
+    useTeamFeed(kit.React, options?.subscribeTeams);
     const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
     const focused = kit.React.useState(undefined);
     const cursor = kit.React.useState(undefined);
@@ -7403,7 +7509,7 @@ function createDagPanelComponent(readWorkflow, options) {
           viewport.scrollColBy((gesture === "colPageUp" ? -1 : 1) * contentCols);
         return;
       }
-      const action = dagPanelKeyAction(bare, order, cursorNow());
+      const action = dagPanelKeyAction(bare, order, cursorNow(), pinnedNow());
       if (!action.consumed)
         return;
       if (bare?.preventDefault !== undefined)
@@ -7439,13 +7545,25 @@ function createDagPanelComponent(readWorkflow, options) {
     }
     const viewport = usePanelViewport(kit, () => sizes);
     const header = page === undefined ? undefined : headerFacts(page, contentCols);
-    if (header !== undefined) {
+    const scope = workflow?.source?.scope;
+    if (header === undefined && scope === "none") {
+      children.push(textRow(kit, `${NO_SESSION_TEAM_MARKER} — \`agent_teams_plan\` binds one here`, { key: "empty-session", dim: true, maxCells: contentCols }));
+      const held = workflow?.source?.workspaceTeams;
+      if (typeof held === "number" && held > 0) {
+        children.push(textRow(kit, `this workspace holds ${held} team(s), none bound to this session`, { key: "empty-session-count", dim: true, maxCells: contentCols }));
+      }
+    } else if (header !== undefined) {
       const spans = [];
       for (const fact of header.facts)
         spans.push({ text: `${fact.label} `, tone: "dim" }, { text: `${fact.value}  `, tone: fact.tone });
       if (header.bar !== "")
         spans.push({ text: header.bar, tone: "completed" });
       children.push(graphRow(kit, spans.map((span) => ({ text: panelText(span.text, contentCols), tone: span.tone })), { key: "header", cols: contentCols }));
+      if (scope === "workspace") {
+        children.push(textRow(kit, `${WORKSPACE_SCOPE_MARKER}: no session id on this surface, showing the workspace's newest team`, { key: "scope", dim: true, maxCells: contentCols }));
+      }
+    } else if (scope === "session") {
+      children.push(textRow(kit, "this session's team has no tasks yet — `agent_teams_plan` posts them", { key: "empty-session-board", dim: true, maxCells: contentCols }));
     } else {
       children.push(textRow(kit, "no team in this workspace — `agent_teams_plan` stages one", { key: "empty", dim: true, maxCells: contentCols }));
     }
@@ -7548,7 +7666,8 @@ function takeoverArmed(seamBound, savedKnob, floor) {
 function createPanelComponent(readWorkflow, options) {
   return createDagPanelComponent(readWorkflow, {
     ...options?.openFullscreen === undefined ? {} : { openFullscreen: options.openFullscreen },
-    ...options?.openAgentPage === undefined ? {} : { openAgentPage: options.openAgentPage }
+    ...options?.openAgentPage === undefined ? {} : { openAgentPage: options.openAgentPage },
+    ...options?.subscribeTeams === undefined ? {} : { subscribeTeams: options.subscribeTeams }
   });
 }
 function registerPanelSurface(tui, deps) {
@@ -7556,7 +7675,8 @@ function registerPanelSurface(tui, deps) {
     ...PANEL_DESCRIPTOR_FROZEN,
     component: createPanelComponent(deps.readWorkflow, {
       openFullscreen: deps.openFullscreenScene ?? (() => deps.openMergedScene()),
-      ...deps.openAgentPage === undefined ? {} : { openAgentPage: deps.openAgentPage }
+      ...deps.openAgentPage === undefined ? {} : { openAgentPage: deps.openAgentPage },
+      ...deps.subscribeTeams === undefined ? {} : { subscribeTeams: deps.subscribeTeams }
     })
   }) : undefined;
   return {
@@ -7875,7 +7995,20 @@ function usableKit(React, ui) {
 function surfaceKit(React, ui) {
   return { React, ui };
 }
-function readWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
+function channelSessionOf(props) {
+  return sessionIdOf(props?.channel);
+}
+function scopedRecordsFor(teamDeps, workspace, sessionId, records) {
+  let service;
+  try {
+    service = teamDeps?.teams?.();
+  } catch {
+    service = undefined;
+  }
+  const mine = sessionRecord(service, workspace, sessionId, records);
+  return mine === undefined ? [] : [mine];
+}
+function readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessionId) {
   try {
     let holdIds = [];
     try {
@@ -7895,10 +8028,20 @@ function readWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
     } catch {
       records = [];
     }
-    const principal = records.find((record) => record.endedAt === undefined) ?? records[0];
-    if (principal !== undefined)
-      return readRecordWorkflow(workspaceRoot(), holdIds, principal);
-    return readTeamWorkflow(workspaceRoot(), holdIds, views);
+    let service;
+    try {
+      service = teams?.();
+    } catch {
+      service = undefined;
+    }
+    return readScopedWorkflow({
+      workspace: workspaceRoot(),
+      ...sessionId === undefined || sessionId === "" ? {} : { sessionId },
+      holds: holdIds,
+      ...service === undefined ? {} : { teams: service },
+      records,
+      views
+    });
   } catch {
     return;
   }
@@ -7937,7 +8080,7 @@ function measureTerminal2(ui) {
     window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20
   };
 }
-function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) {
+function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) {
   return function MpdTuiBoard(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -7949,7 +8092,10 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     const surface = surfaceKit(React, ui);
     const read = () => {
       try {
-        const state2 = readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []);
+        const sessionId = channelSessionOf(props);
+        const scopedRecords = sessionId === undefined ? teamRecords?.() ?? [] : scopedRecordsFor(teamDeps, workspaceRoot(), sessionId, teamRecords?.() ?? []);
+        const scopedViews = teamViews?.() ?? [];
+        const state2 = readBoardState(workspaceRoot(), home(), sessionId === undefined ? scopedViews : sessionViewsOf(scopedViews, sessionId), scopedRecords);
         return { rows: boardLines(state2, holds()), state: state2 };
       } catch {
         return { rows: ["board state unreadable"] };
@@ -7959,6 +8105,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     const board = state[0];
     const rows = board.rows;
     const setBoard = state[1];
+    useTeamFeed(React, teamDeps?.subscribeTeams, () => setBoard(read()));
     React.useEffect(() => {
       setBoard(read());
       let timer;
@@ -8018,7 +8165,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref);
   };
 }
-function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) {
+function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) {
   return function MpdTuiTeam(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -8052,7 +8199,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const refresh = () => {
       let next;
       try {
-        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords);
+        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSessionOf(props));
       } catch {
         next = undefined;
       }
@@ -8061,6 +8208,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         latestRef.current = { staged: next?.team?.staged === true, ...next?.team?.id === undefined ? {} : { teamId: next.team.id } };
       }
     };
+    useTeamFeed(React, teamDeps?.subscribeTeams, refresh);
     React.useEffect(() => {
       refresh();
       let timer;
@@ -8163,10 +8311,23 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
       bold: true,
       tone
     }));
+    if (workflow?.source?.scope === "workspace") {
+      children.push(surfaceBodyRow(surface, "scope", `scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`));
+    }
     if (workflow === undefined) {
       children.push(surfaceText(surface, "unreadable", "team state unreadable", { tone: "failed" }));
     } else if (head === undefined) {
-      children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }));
+      if (workflow.source?.scope === "none") {
+        children.push(surfaceText(surface, "none-session", `${NO_SESSION_TEAM_MARKER} — stage one with agent_teams_plan, then approve it`, { dim: true }));
+        const held = workflow.source?.workspaceTeams;
+        if (typeof held === "number" && held > 0) {
+          children.push(surfaceText(surface, "none-session-count", `this workspace holds ${held} team(s), none bound to this session`, { dim: true }));
+        }
+      } else if (workflow.source?.scope === "workspace") {
+        children.push(surfaceText(surface, "none", `${WORKSPACE_SCOPE_MARKER} (no session id on this surface) — no team in this workspace; stage one with agent_teams_plan, then approve it`, { dim: true }));
+      } else {
+        children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }));
+      }
     } else {
       const counts = workflow.counts;
       children.push(surfaceText(surface, "phase", chromeTitle([
@@ -8272,7 +8433,7 @@ function planActionLines(workflow, echo, armed, message, servedPhrase = "") {
   rows.push("Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back");
   return rows;
 }
-function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, planFor, teamViews, teamRecords, onHostKit) {
+function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, planFor, teamViews, teamRecords, onHostKit, teamDeps) {
   return function MpdTuiPlan(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -8283,11 +8444,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     const surface = surfaceKit(React, ui);
     const clock = useSurfaceClock(ui);
     const phase = animPhase(clock.time);
-    const channelSession = () => {
-      const live = props?.channel;
-      const id = typeof live?.sessionId === "string" ? live.sessionId : undefined;
-      return id === undefined || id === "" ? undefined : id;
-    };
+    const channelSession = () => channelSessionOf(props);
     const targetState = React.useState(() => ({ teamId: nav.planTeamId, fromTeam: nav.planFromTeam }));
     const target = targetState[0];
     const viewState = React.useState(undefined);
@@ -8309,17 +8466,18 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     const scroll = scrollState[0];
     const setScroll = scrollState[1];
     const refresh = () => {
-      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
+      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
       setEcho("");
       setArmedAt(0);
       setScroll(0);
     };
+    useTeamFeed(React, teamDeps?.subscribeTeams, () => setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession())));
     React.useEffect(() => {
       refresh();
       let timer;
       try {
         timer = setInterval(() => {
-          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
+          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
         }, BOARD_REFRESH_MS);
       } catch {
         timer = undefined;
@@ -8399,7 +8557,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
         setMessage(`approve failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
       }
     };
     const runDiscard = async () => {
@@ -8428,7 +8586,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
         setMessage(`discard failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
       }
     };
     if (typeof ui.useInput === "function") {
@@ -8514,7 +8672,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref);
   };
 }
-function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords, onHostKit) {
+function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords, onHostKit, teamDeps) {
   const nav = { planFromTeam: false };
   const openScene = (id) => {
     if (!tui.openScene(id)) {
@@ -8530,13 +8688,13 @@ function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], pla
       return;
     }
     try {
-      tui.registerScene({ id: BOARD_SCENE_ID, title: t("scene.board"), component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx);
-      tui.registerScene({ id: TEAM_SCENE_ID, title: t("scene.team"), component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx);
-      tui.registerScene({ id: PLAN_SCENE_ID, title: t("scene.plan"), component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit) }, ctx);
+      tui.registerScene({ id: BOARD_SCENE_ID, title: t("scene.board"), component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) }, ctx);
+      tui.registerScene({ id: TEAM_SCENE_ID, title: t("scene.team"), component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) }, ctx);
+      tui.registerScene({ id: PLAN_SCENE_ID, title: t("scene.plan"), component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit, teamDeps) }, ctx);
       tui.registerScene({
         id: SUBAGENT_SCENE_ID,
         title: t("scene.subagents"),
-        component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords), onHostKit)
+        component: createSubagentSceneComponent((sessionId) => readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, sessionId), onHostKit, undefined, teamDeps?.subscribeTeams)
       }, ctx);
       handle.record({ state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID}, ${SUBAGENT_SCENE_ID} requested (no host read-back)` });
     } catch (error) {
@@ -9317,6 +9475,32 @@ function apply(ctx, config = {}) {
     teamsService = service;
   });
   const teamRecords = () => mpdTeamRecords(teamsService, workspaceRoot());
+  let feedClosure;
+  let feedClosureFor;
+  const teamFeed = () => {
+    const bound = teamsService !== undefined && typeof teamsService.subscribe === "function";
+    if (!bound) {
+      feedClosure = undefined;
+      feedClosureFor = undefined;
+      return;
+    }
+    if (feedClosure === undefined || feedClosureFor !== teamsService) {
+      const service = teamsService;
+      feedClosure = (listener) => {
+        try {
+          return service.subscribe(workspaceRoot(), listener) ?? (() => {});
+        } catch {
+          return () => {};
+        }
+      };
+      feedClosureFor = teamsService;
+    }
+    return feedClosure;
+  };
+  const sceneTeamDeps = {
+    teams: () => teamsService,
+    subscribeTeams: teamFeed
+  };
   const planReader = (sessionId) => readPlanView(teamsService, workspaceRoot(), sessionId);
   const sessionEventTypeKnown = resolved.sessionEvents ? registerLogOnlyEventType(BOARD_OPENED_EVENT, log) : false;
   const outcomes = [];
@@ -9353,7 +9537,7 @@ function apply(ctx, config = {}) {
   });
   const noticeRead = () => composeNotices(bridgeRead(), watchdogFrontDoor.notice());
   status = resolved.statusLine ? registerStatus(ctx, tui, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords) : { ...skipped("status", "disabled by config"), refresh: () => {} };
-  const scene = resolved.scene ? registerScene(ctx, tui, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords, (ui) => tui.rememberHostKit(ui)) : {
+  const scene = resolved.scene ? registerScene(ctx, tui, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords, (ui) => tui.rememberHostKit(ui), sceneTeamDeps) : {
     ...skipped("scenes", "disabled by config"),
     open: () => false,
     openScene: () => false,
@@ -9363,7 +9547,8 @@ function apply(ctx, config = {}) {
   };
   const panel = registerPanelSurface(tui, {
     enabled: resolved.panel,
-    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+    readWorkflow: (sessionId) => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService, sessionId),
+    subscribeTeams: teamFeed,
     openMergedScene: () => scene.openSubagents(),
     openFullscreenScene: () => scene.openTeam(),
     openAgentPage: (agentId) => openAgentPage(agentId),

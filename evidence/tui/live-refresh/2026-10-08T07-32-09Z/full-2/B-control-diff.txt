@@ -1,0 +1,9 @@
+B1-scene-open vs B6-scene-reopened: changedLines=60
+        <   █   █  ████   ████   ████    ███   ████   ████   ███                                        ││⚪ No subagents in the current sessionple│
+        <   █   █  █      █      █          █  █      █      █  █                                       ││  Subagents appear here once the main age│
+        <   ████   █████  █████  █      ████   █████  █████  █   █                                      ││team webui-tui-i18n  phase active  tasks │
+        <                                                                                               ││                                         │
+        <   █   █    ███    ████    █   █   █████    ████    ████                                       ││╭────────╮   ╭────────╮   ╭────────╮   ╭─│
+        <   █   █   █   █   █   █   ██  █   █       █       █                                           │││ ✓ T1   │   │ ◐ T2   │   │ ✓ T3   │   │ │
+        B1-scene-open: modeLine="view boxes · 7 tasks · ranks derived     " summary=""
+        B6-scene-reopened: modeLine="" summary=""

@@ -62,7 +62,7 @@ import { requestSubagentDetail, takeSubagentDetailRequest } from "./subagent-sce
 import { registerWorkmatePanel } from "./panel-workmate.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
 import { readPlanView, type MpdPlanView } from "./team-state.js"
-import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike } from "./team-state.js"
+import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike, type TeamFeedAccessor, type TeamFeedSubscribe, type TeamFeedSubscribeMember, type TeamSourceDeps } from "./team-state.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshLiveAgent, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerCommandTrees } from "./command-trees.js"
@@ -461,6 +461,54 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   })
   /** The mpd team records for the CURRENT workspace, resolved per call; `[]` when the row is absent. */
   const teamRecords = (): readonly TeamRecord[] => mpdTeamRecords(teamsService, workspaceRoot())
+  // ── THE PUBLISHED FEED, and the ONE subtlety that makes it work (PART P) ────
+  // A surface subscribes from an EFFECT, so the accessor it is handed must return a STABLE function
+  // while the service is bound: a closure rebuilt on every render would re-subscribe on every frame —
+  // tearing down and rebuilding the subscription the watcher counts its lifetime by. The service binds
+  // ASYNCHRONOUSLY (the deferred `onService` above), so the accessor is asked again on every render and
+  // must start answering `undefined` and then flip to the same function for the rest of the session.
+  /** The subscribe function this row published, kept for the whole binding. */
+  let feedClosure: TeamFeedSubscribe | undefined
+  /** The service object `feedClosure` was minted against, so a REBOUND service mints a new one. */
+  let feedClosureFor: MpdTeamsLike | undefined
+  /**
+   * Resolve the live team feed for the CALLING session's workspace, per call.
+   * @returns the stable subscribe function while `mpdTeams` is bound, else undefined.
+   */
+  const teamFeed: TeamFeedAccessor = (): TeamFeedSubscribe | undefined => {
+    /** Whether the team row is bound AND carries the feed member (the Lane S interface). */
+    const bound = teamsService !== undefined && typeof teamsService.subscribe === "function"
+    if (!bound) {
+      // A service that went away (or never arrived) releases the closure, so a later re-bind mints a
+      // fresh one instead of handing out a function that would subscribe to nothing.
+      feedClosure = undefined
+      feedClosureFor = undefined
+      return undefined
+    }
+    // THE IDENTITY IS PART OF THE KEY: a re-bound service object must not be handed a closure that
+    // still calls the OLD instance's `subscribe` — the workspace would be watched on a dead writer.
+    if (feedClosure === undefined || feedClosureFor !== teamsService) {
+      /** The bound service, narrowed once so the closure below cannot read a rebound variable. */
+      const service = teamsService as MpdTeamsLike & { subscribe: TeamFeedSubscribeMember }
+      feedClosure = (listener: () => void): (() => void) => {
+        try {
+          // THE WORKSPACE IS RESOLVED AT SUBSCRIBE TIME (inside this call), never at apply: one host
+          // serves many sessions with different workspaces, and §6 forbids caching the root.
+          return service.subscribe(workspaceRoot(), listener) ?? ((): void => {})
+        } catch {
+          // A feed that throws costs the push, never the surface: the caller gets a dead disposer.
+          return (): void => {}
+        }
+      }
+      feedClosureFor = teamsService
+    }
+    return feedClosure
+  }
+  /** The session-scoped team reads every scene needs, resolved per call. */
+  const sceneTeamDeps: TeamSourceDeps = {
+    teams: () => teamsService,
+    subscribeTeams: teamFeed,
+  }
   // THE SHARED PLAN READER. The service face is the SAME projection the Web panel's `/plan` route
   // serves, so the two surfaces cannot disagree about what is staged or what phrase the gate demands.
   // The workspace is resolved per CALL (§6) and the session id comes from the scene's own live channel.
@@ -556,6 +604,10 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         // reports the kit per render and the adapter prefers it — so the Ctrl+A take-over arms once
         // an MPD scene has rendered in the session and stays inert before that.
         (ui: unknown) => tui.rememberHostKit(ui),
+        // THE SESSION-SCOPED TEAM READS (PARTS D and P). Every scene resolves its OWN session id off
+        // its live channel and asks this row for the team of THAT session; the feed below re-reads it
+        // the instant the team state changes. The timers stay as the fallback.
+        sceneTeamDeps,
       )
     : {
         ...skipped("scenes", "disabled by config"),
@@ -586,8 +638,12 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     enabled: resolved.panel,
     // The panel reads the SAME projection the Ctrl+A contact reads (`readDashboardWorkflow`, the
     // scenes' own reader in its agentless form), so the sidebar and the full-screen scene cannot
-    // describe one team differently.
-    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+    // describe one team differently. IT TAKES A SESSION ID (PART D): the DAG page reads its own
+    // session off `host.snapshot().sessionId` and passes it here, which is what stops a NEW session
+    // from drawing the OLD session's board. A call with no id is the marked workspace-level fallback.
+    readWorkflow: (sessionId?: string) => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService, sessionId),
+    // THE PUSH (PART P): the page subscribes while mounted and re-reads the new record; the tick stays.
+    subscribeTeams: teamFeed,
     // THE FALLBACK IS THE EXISTING SURFACE, never a silent no-op: every refusal lands on the scene
     // this wave must not lose (frozen R4/R5).
     openMergedScene: () => scene.openSubagents(),

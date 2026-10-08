@@ -109,6 +109,23 @@ json_escape() {
   printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n\r\t' '   '
 }
 
+# live_prompt_select <fallback> <override> — the prompt the live headless turn runs.
+#
+# Writes the selected prompt to STDOUT and NOTHING else, so the caller can capture it verbatim; a
+# diagnostic on stdout would become part of the prompt. Parameter 1 is the lane's own default
+# (the team-plane task step 15 has always run); parameter 2 is the caller-supplied
+# `MPD_E2E_LIVE_PROMPT`. The override WINS ONLY WHEN NON-EMPTY: an unset or empty override must leave
+# the default byte-for-byte, which is what keeps every existing live arm's verdict unchanged.
+# There is no return value — the selection IS the stdout — and no exit path other than 0.
+live_prompt_select() {
+  local fallback="$1" override="$2"
+  if [ -n "$override" ]; then
+    printf '%s' "$override"
+  else
+    printf '%s' "$fallback"
+  fi
+}
+
 # record <name> <true|false|null> [reason] [raw] — the ONLY way an assertion enters the report.
 #
 # PURE BASH ON PURPOSE, and this is not a style choice: the first assertions are recorded BEFORE node
@@ -1405,7 +1422,24 @@ if [ "$LIVE" = "1" ]; then
   # STEP (1) IS NOT DECORATION. It is what makes `live.headless.mpdToolCalled` a statement about THIS
   # bundle's tool plane: `agent_teams_plan` is the retained team-workflow tool and does NOT carry the
   # `mpd_` prefix, so a team-only prompt would leave that arm measuring nothing at all.
-  LIVE_PROMPT="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action \"create\" (name it live-smoke, description \"docker live turn\"); (3) call agent_teams_plan with action \"add_member\" for a member named Reviewer; (4) call agent_teams_plan with action \"create_task\" with subject \"check the mount\"; (5) call agent_teams_plan with action \"approve\". Then reply with the single word DONE."
+  #
+  # MPD_E2E_LIVE_PROMPT (OPTIONAL) lets a caller ask this step for DIFFERENT work — this wave uses it
+  # to ask for a playable snake game. It is substituted ONLY when non-empty (`live_prompt_select`), so
+  # an unset or empty value runs the default below unchanged. It reaches the container through
+  # docker/docker-compose.yml's per-service `environment:` interpolation and the driver's
+  # `-e MPD_E2E_LIVE_PROMPT`, because compose forwards only what the compose file names.
+  LIVE_PROMPT_DEFAULT="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action \"create\" (name it live-smoke, description \"docker live turn\"); (3) call agent_teams_plan with action \"add_member\" for a member named Reviewer; (4) call agent_teams_plan with action \"create_task\" with subject \"check the mount\"; (5) call agent_teams_plan with action \"approve\". Then reply with the single word DONE."
+  LIVE_PROMPT_OVERRIDE="${MPD_E2E_LIVE_PROMPT:-}"
+  LIVE_PROMPT="$(live_prompt_select "$LIVE_PROMPT_DEFAULT" "$LIVE_PROMPT_OVERRIDE")"
+  if [ -n "$LIVE_PROMPT_OVERRIDE" ]; then LIVE_PROMPT_SOURCE="caller (MPD_E2E_LIVE_PROMPT)"; else LIVE_PROMPT_SOURCE="default"; fi
+  # WHICH PROMPT RAN IS ITSELF EVIDENCE, stated without dumping a long caller prompt into the log or
+  # the report: the source label, the BYTE LENGTH and the FIRST LINE identify it in one readable line,
+  # and the fact travels into output.log and result.json's facts map un-truncated.
+  LIVE_PROMPT_BYTES="$(printf '%s' "$LIVE_PROMPT" | wc -c | tr -d '[:space:]')"
+  LIVE_PROMPT_FIRST_LINE="$(printf '%s' "$LIVE_PROMPT" | sed -n '1p')"
+  LIVE_PROMPT_NOTE="promptSource=$LIVE_PROMPT_SOURCE bytes=$LIVE_PROMPT_BYTES firstLine=\"$LIVE_PROMPT_FIRST_LINE\""
+  fact livePrompt "$LIVE_PROMPT_NOTE"
+  log "[live-prompt] $LIVE_PROMPT_NOTE"
   LIVE_LOG="$STEPS_DIR/15-headless-live.log"
   LIVE_CODE=0
   # The instant this step's own evidence must postdate. Every artifact graded below is checked against
@@ -1427,7 +1461,9 @@ if [ "$LIVE" = "1" ]; then
   # transcript a human needs when its verdict reddens, and without this line it existed only inside the
   # container (measured 2026-10-03: a failing headless arm was undiagnosable from the evidence tree).
   cat "$LIVE_LOG" || true
-  append_step 15-headless-live "$LIVE_CODE" 0 "15-headless-live.log" "dsh --profile headless <team-plane live prompt>"
+  # The step row names WHICH prompt ran, so a red arm can be read against the task it was given
+  # without opening the container's transcript.
+  append_step 15-headless-live "$LIVE_CODE" 0 "15-headless-live.log" "dsh --profile headless <live prompt: $LIVE_PROMPT_NOTE>"
   # THE HEADLESS PRESET ROW, graded on its CAUSE rather than on the accident.
   #
   # Measured 2026-10-03: `dsh --profile headless` reports
@@ -1460,9 +1496,9 @@ if [ "$LIVE" = "1" ]; then
   node "$LIB_DIR/live-verdict.ts" --dsh-home "$DSH_HOME" --workspace "$WORK_DIR/ws" --label headless \
     --state "$STATE_FILE" --since "$LIVE_STARTED_MS" --wait "${MPD_E2E_LIVE_BUDGET_MS:-300000}" || true
   if grep -q '"name":"live.headless.turnCompleted","ok":true' "$STATE_FILE"; then
-    record boot.llmTurn true "a live headless turn ran to turn/end reason=completed (read from the harness's own session store)" "see live.headless.* rows"
+    record boot.llmTurn true "a live headless turn ran to turn/end reason=completed (read from the harness's own session store)" "see live.headless.* rows; $LIVE_PROMPT_NOTE"
   else
-    record boot.llmTurn false "the live headless turn did not reach turn/end reason=completed (exit $LIVE_CODE)" "see 15-headless-live.log and the live.headless.* rows"
+    record boot.llmTurn false "the live headless turn did not reach turn/end reason=completed (exit $LIVE_CODE)" "see 15-headless-live.log and the live.headless.* rows; $LIVE_PROMPT_NOTE"
   fi
 
   # ── (b) THE TEAM RECORD — and the SELECTION is the defect this rewrite fixes ─

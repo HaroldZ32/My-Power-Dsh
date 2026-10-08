@@ -1,0 +1,12 @@
+[PASS] snake.driverStarted: chromium launched and the page opened in a real engine :: browser=131.0.6778.33 page=file:///out/positive-control-canvas/index.html | note=known-good canvas snake (positive control)
+[PASS] snake.scoreVisible: a score-labelled number is visible on the page :: labelled=0 numbers=[0,0] chars=69 | note=known-good canvas snake (positive control)
+[sensor] the board was already finished when the driver arrived; restarting it once
+[sensor] steps=24 blind=1 sensor=canvas palette=bg=2148 snake=12113 food=-1 scoreGrew=true
+[PASS] snake.scoreIncreased: the visible score grew while the snake was driven with real key events (method=labelled) :: from=0 to=1 restarts=1 attempts=0 sensor=canvas sensorSteps=24 sensorBlind=1 palette=bg=2148 snake=12113 food=-1 | note=known-good canvas snake (positive control)
+[PASS] snake.visuallyMoved: the rendered viewport changed after a real key press (the snake is drawn where the game moved it) :: start=44752ecb7c9b7877/11437B after=0cc880b8f4a8c807/14251B | note=known-good canvas snake (positive control)
+[PASS] snake.gameOverOrRestart: driving into the wall produced a game-over announcement the resting page did not carry :: branch=game-over-text overSeen=true scoreStopped=true restartAffordance=true wallChars=79 beforeWall=11188B | note=known-good canvas snake (positive control)
+[PASS] snake.noPageError: no uncaught page error and no console error over the whole run :: pageErrors=0 consoleErrors=0 first= | note=known-good canvas snake (positive control)
+[PASS] snake.selfContained: the page requested nothing but local file/data URLs — no network fetch, no external file :: requests=1 external=0 first= | note=known-good canvas snake (positive control)
+[PASS] snake.screenshots: the three mandated moments were captured (start / after eating or after the first key / final state) :: /out/pc-canvas-01-start.png , /out/pc-canvas-03-after-eating.png , /out/pc-canvas-05-game-over.png | note=known-good canvas snake (positive control)
+[snake-driver] label=pc-canvas rows=8 failed=0
+driver-exit=0

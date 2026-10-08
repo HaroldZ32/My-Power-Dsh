@@ -46,6 +46,93 @@ const MAX_PROBLEMS = 5
 /** The mailbox key cap (mirrors the retired `MAX_KEY_LENGTH` the normalisation was written for). */
 const MAILBOX_KEY_MAX = 48
 
+/**
+ * THE SESSION-EMPTY MARKER — what a surface says when ITS OWN session has no team.
+ *
+ * It is a CONSTANT rather than a sentence composed at each call site because it is an acceptance
+ * subject: `test/session-scope.test.ts` asserts the rendered frame carries exactly this string, so a
+ * surface that silently fell back to another session's board would redden on the marker's absence.
+ * It is ASCII, because the drawing half of every surface is CJK-free by contract.
+ */
+export const NO_SESSION_TEAM_MARKER = "no team in this session"
+
+/**
+ * THE WORKSPACE-SCOPED MARKER — what marks a drawing that is NOT this session's board.
+ *
+ * A surface that cannot read a session id (an older host, a keypress-time read) still draws the
+ * workspace's principal team, exactly as it did before session scoping existed — but it must SAY SO,
+ * so a reader can tell "this is not my session's board" from "this is". The marker is drawn as a
+ * visible row beside the header on every such drawing, never only asserted in a test.
+ */
+export const WORKSPACE_SCOPE_MARKER = "workspace-level"
+
+/**
+ * Where one projection's team came from — the three-state honesty rule, as data.
+ *
+ * `session` is the normal case (the surface asked for a session id and a team resolved for it);
+ * `workspace` is the marked fallback (no session id was readable, so today's workspace-principal
+ * rule ran); `none` is the honest empty state (a session id WAS readable and this session has no
+ * team — the surface must draw nothing rather than another session's board).
+ */
+export type TeamScope = "session" | "workspace" | "none"
+
+/** The provenance of one projection, carried ON the projection so every renderer can report it. */
+export interface TeamSource {
+  /** Which of the three states this read landed in. */
+  scope: TeamScope
+  /** The session the surface asked for, present whenever the surface could read one. */
+  sessionId?: string
+  /**
+   * How many teams this workspace holds — informational, and only ever set on the `none` state.
+   *
+   * The contract allows the empty state to name this: it tells a reader whether the workspace is
+   * empty or whether the board simply belongs to somebody else. It is never used to select a team.
+   */
+  workspaceTeams?: number
+}
+
+/**
+ * One listener registration on the team feed; the returned disposer is idempotent.
+ *
+ * The signature is the one frozen in `.mpd/plans/lane-s-change-feed.md` §3.1, restated here as the
+ * consumer's own structural type so this package never imports the team plugin's runtime.
+ */
+export type TeamFeedSubscribe = (listener: () => void) => () => void
+
+/**
+ * The SERVICE's own feed member, in the two-argument form frozen by Lane S §3.1.
+ *
+ * It is a different type from {@link TeamFeedSubscribe} on purpose: a SURFACE subscribes to the
+ * workspace it belongs to, while the service is the thing that knows workspaces. Collapsing the two
+ * would make the workspace argument unspellable.
+ */
+export type TeamFeedSubscribeMember = (workspace: string, listener: () => void) => () => void
+
+/**
+ * Resolve the LIVE team feed for the CALLING session's workspace, per call.
+ *
+ * `undefined` means "this composition has no feed yet" (the `mpdTeams` row binds asynchronously, so
+ * the accessor is asked again on every render). The identity of the function it returns MUST be
+ * stable while the feed is bound: a surface uses it as an effect dependency, and a closure rebuilt
+ * per render would re-subscribe on every frame.
+ */
+export type TeamFeedAccessor = () => TeamFeedSubscribe | undefined
+
+/**
+ * The session-scoped team reads a SCENE needs, on top of the two source closures it already takes.
+ *
+ * One object rather than two more positional parameters: the four scene factories already carry seven
+ * arguments each, and the two fields here always travel together (a composition either has the team row
+ * and therefore its feed, or it has neither). Every field is resolved PER CALL — the workspace inside the
+ * accessor, the service by the caller — because one host serves many sessions.
+ */
+export interface TeamSourceDeps {
+  /** The `mpdTeams` face, resolved per call; undefined when this composition has no team row. */
+  teams?: () => MpdTeamsLike | undefined
+  /** The live team feed for the calling session's workspace, resolved per render. */
+  subscribeTeams?: TeamFeedAccessor
+}
+
 /** One task row of the workflow view. */
 export interface TeamTaskRow {
   /** The board's task id, sanitized; a row without one is dropped. */
@@ -133,6 +220,14 @@ export interface TeamHead {
 export interface TeamWorkflow {
   /** The workspace this projection was scoped to. */
   workspace: string
+  /**
+   * WHERE this team came from, in the three-state vocabulary.
+   *
+   * Optional only so a hand-built fixture stays valid; every reader in this package sets it, and a
+   * renderer treats an absent source as the workspace-scoped fallback — the state that predates
+   * session scoping, and therefore the only honest reading of an unlabelled projection.
+   */
+  source?: TeamSource
   /** The team head, absent when this workspace has no readable readout. */
   team?: TeamHead
   /** The roster rows; the lead and removed members are excluded. */
@@ -317,10 +412,19 @@ function currentTaskOf(memberName: string, tasks: readonly TeamTaskRow[]): strin
   return undefined
 }
 
-/** An empty workflow: what every failure path renders instead of a crash. */
-function emptyWorkflow(workspace: string, problems: string[], holds: readonly string[]): TeamWorkflow {
+/**
+ * An empty workflow: what every failure path renders instead of a crash.
+ * @param workspace - the workspace this read was scoped to.
+ * @param problems - the bounded notes about what could not be read.
+ * @param holds - the team ids the watchdog currently holds.
+ * @param source - the provenance this empty projection carries, so a renderer can tell "this session
+ *   has no team" from "nothing is readable here"; omitted leaves the projection unlabelled.
+ * @returns the empty projection.
+ */
+function emptyWorkflow(workspace: string, problems: string[], holds: readonly string[], source?: TeamSource): TeamWorkflow {
   return {
     workspace,
+    ...(source === undefined ? {} : { source }),
     members: [],
     tasks: [],
     counts: { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 },
@@ -415,15 +519,18 @@ function principalView(views: readonly DshTeamView[]): DshTeamView | undefined {
  * @param workspace - the calling session's workspace root (display + problem notes).
  * @param holds - the team ids the watchdog currently holds (read through its service).
  * @param views - the LIVE team views for that workspace, resolved by the caller through the
- *   adapter (`liveTeamViews(dsh, workspace)`); pass `[]` when the seam is absent.
+ *   adapter (`liveTeamViews(dsh, workspace)`); pass `[]` when the seam is absent. On the
+ *   SESSION-scoped path these are already filtered to this session's own views.
+ * @param source - the provenance the projection carries, so a reader knows whether it is looking at
+ *   its own session's board or at the marked workspace-level fallback.
  * @returns the projection; never throws.
  */
-export function readTeamWorkflow(workspace: string, holds: readonly string[] = [], views: readonly DshTeamView[] = []): TeamWorkflow {
+export function readTeamWorkflow(workspace: string, holds: readonly string[] = [], views: readonly DshTeamView[] = [], source?: TeamSource): TeamWorkflow {
   /** Notes about what could not be read; bounded before they are returned. */
   const problems: string[] = []
   /** The view this projection is built from. */
   const view = principalView(views.slice(0, MAX_TEAMS))
-  if (view === undefined) return emptyWorkflow(workspace, problems, holds)
+  if (view === undefined) return emptyWorkflow(workspace, problems, holds, source)
 
   /** The board's task rows, capped by `MAX_TASKS`. */
   const rawTasks = Array.isArray(view.tasks) ? view.tasks.slice(0, MAX_TASKS) : []
@@ -541,6 +648,7 @@ export function readTeamWorkflow(workspace: string, holds: readonly string[] = [
 
   return {
     workspace,
+    ...(source === undefined ? {} : { source }),
     team: {
       id: asText(view.teamId, 60) ?? "?",
       name: asText(view.leadName, 80) ?? "?",
@@ -570,8 +678,8 @@ export function approvalPhrase(teamId: string): string {
  * The structural face of the `mpdTeams` service this package reads.
  *
  * Declared STRUCTURALLY rather than imported: the service is another plugin's runtime object, and a
- * value import would bundle that plugin's whole module graph into this one. Only the two members
- * this package actually calls are named, so a wider service stays compatible.
+ * value import would bundle that plugin's whole module graph into this one. Only the members this
+ * package actually calls are named, so a wider service stays compatible.
  */
 export interface MpdTeamsLike {
   /** Every team in a workspace, newest first. */
@@ -589,6 +697,18 @@ export interface MpdTeamsLike {
    * @returns the payload, or undefined when this composition exposes no plan face.
    */
   planFor?: (workspace: string, sessionId: string) => MpdPlanView | undefined
+  /**
+   * Subscribe to change notifications for one workspace (the PUSH substrate, Lane S §3.1).
+   *
+   * It is the ONE member that makes a surface stop polling: a listener call means the team state of
+   * THAT workspace changed — by this process or by another — so a surface re-reads instead of waiting
+   * for its next tick. The timers STAY as the fallback, and a composition without this member (or a
+   * throwing call) loses only the push.
+   * @param workspace - the workspace to follow, resolved per call.
+   * @param listener - called asynchronously after a coalesced change; must not throw.
+   * @returns a disposer, idempotent, releasing this listener.
+   */
+  subscribe?: TeamFeedSubscribeMember
 }
 
 /** The staged-plan payload a TUI surface renders; the shared projection's own shape. */
@@ -638,13 +758,18 @@ export function readPlanView(teams: MpdTeamsLike | undefined, workspace: string,
 }
 
 /**
- * The team a TUI surface should show: the newest record that is not explicitly ended.
+ * The team a TUI surface should show WHEN IT HAS NO SESSION ID: the newest record that is not ended.
  *
- * "Newest" is the record's own `createdAt`, because the TUI has no session id of its own to ask
- * `active()` with — it is an agentless surface serving whichever workspace the live sessions name.
- * An ENDED team is skipped so a finished wave does not hide the running one behind it; a workspace
- * whose every team has ended still shows the newest, because a reader asking "what happened" must
- * get the last answer rather than a blank.
+ * THIS IS THE MARKED FALLBACK, NOT THE RULE. It used to be the only way a TUI surface picked a team,
+ * and that is exactly the defect the user reported: a NEW session still drew the OLD session's DAG,
+ * because "newest not-ended team of the workspace" is session-blind. Every surface that CAN read a
+ * session id now goes through {@link readScopedWorkflow} instead and reaches this function only with
+ * no id to ask `active()` with — where the drawing is marked workspace-level so a reader can tell.
+ *
+ * "Newest" is the record's own `createdAt` (the order `list` returns). An ENDED team is skipped so a
+ * finished wave does not hide the running one behind it; a workspace whose every team has ended still
+ * shows the newest, because a reader asking "what happened" must get the last answer rather than a
+ * blank.
  * @param records - the records to choose from, newest first as `list` returns them.
  * @returns the principal record, or undefined when the workspace holds none.
  */
@@ -673,6 +798,145 @@ export function mpdTeamRecords(teams: MpdTeamsLike | undefined, workspace: strin
 }
 
 /**
+ * Read ONE surface's session id off the object that carries it.
+ *
+ * EVERY TUI surface has a session id within reach and none of them used it for team selection; the
+ * carrier differs (`props.channel.sessionId` on a scene, the `snapshot().sessionId` a panel's host API
+ * returns) but the FIELD is the same string on both, so one reader serves all three surfaces. An empty
+ * string is "unavailable", never a session called "".
+ * @param carrier - the live channel object or a panel host snapshot, as the surface received it.
+ * @returns the session id, or undefined when this carrier does not carry a usable one.
+ */
+export function sessionIdOf(carrier: unknown): string | undefined {
+  if (carrier === null || carrier === undefined || typeof carrier !== "object") return undefined
+  /** The `sessionId` field, before it is trusted to be a non-empty string. */
+  const id = (carrier as { sessionId?: unknown }).sessionId
+  return typeof id === "string" && id !== "" ? id : undefined
+}
+
+/**
+ * Resolve ONE session's OWN team record — the fix for the cross-session defect.
+ *
+ * THE SERVICE ANSWERS FIRST (`mpdTeams.active`), because it is the only reader that also resolves the
+ * two cases a plain field match cannot: the workspace's bound-session index, and a team this session
+ * is the SINGLE member of. Its answer is authoritative — a service that returns nothing is a service
+ * saying "this session has no team", and inventing a second guess behind it would be the very leak
+ * this function exists to close.
+ *
+ * THE DURABLE SCAN IS THE DEGRADATION, and it is still strictly session-scoped: it matches the
+ * record's own `leadSessionId` against this session and NEVER falls back to "the newest record", so a
+ * composition whose `mpdTeams` face carries no `active` member still cannot draw another session's
+ * board. (It cannot resolve the single-member case, which needs the roster write path the service
+ * owns — that is the declared bound of this half.)
+ * @param teams - the `mpdTeams` face, or undefined when this composition has no team row.
+ * @param workspace - the workspace resolved for THIS read.
+ * @param sessionId - the session whose own team is wanted; must be a non-empty id.
+ * @param records - this workspace's records as `list` returned them, newest first.
+ * @returns the record that belongs to this session, or undefined when it has none.
+ */
+export function sessionRecord(
+  teams: MpdTeamsLike | undefined,
+  workspace: string,
+  sessionId: string,
+  records: readonly TeamRecord[],
+): TeamRecord | undefined {
+  /** The service's own session resolver, when this face carries one. */
+  const active = teams?.active
+  if (typeof active === "function") {
+    try {
+      return active(workspace, sessionId) ?? undefined
+    } catch {
+      // A THROWING SERVICE IS NOT AN ANSWER: the durable scan below is session-scoped too, so falling
+      // through can only narrow the result, never widen it.
+    }
+  }
+  return records.find((record) => record.leadSessionId === sessionId)
+}
+
+/**
+ * The OFFICIAL readout's views that belong to ONE session.
+ *
+ * The official plane carries the Lead session id on every view, which is exactly enough to answer the
+ * one question session scoping needs and not enough to answer more: a view is this session's when its
+ * `leadSessionId` IS this session. Views that name another session (or none) are dropped rather than
+ * drawn, so the preserved official fallback cannot leak a board across sessions either.
+ * @param views - the live views for this workspace.
+ * @param sessionId - the session whose views are wanted.
+ * @returns the views this session owns; `[]` when it owns none.
+ */
+export function sessionViewsOf(views: readonly DshTeamView[], sessionId: string): DshTeamView[] {
+  return views.filter((view) => scalarText(view.leadSessionId, 80) === sessionId)
+}
+
+/** Everything ONE session-scoped team read needs, injected per call so the read is testable. */
+export interface ScopedTeamRead {
+  /** The workspace resolved for THIS read; never cached across calls. */
+  workspace: string
+  /** The calling session's id, or undefined when this surface cannot read one (an older host). */
+  sessionId?: string
+  /** The team ids the watchdog currently holds for this workspace. */
+  holds: readonly string[]
+  /** The `mpdTeams` face, or undefined when this composition has no team row. */
+  teams?: MpdTeamsLike
+  /** The mpd records for this workspace, resolved per call; `[]` when there is no service. */
+  records: readonly TeamRecord[]
+  /** The official readout for this workspace, resolved per call; `[]` when the seam is absent. */
+  views: readonly DshTeamView[]
+}
+
+/**
+ * THE ONE TEAM READER every TUI surface uses — session-scoped, with the three-state honesty rule.
+ *
+ * The defect this replaces was a SELECTION rule, not a renderer bug: every surface asked for "the
+ * newest not-ended team of the WORKSPACE", so a session that had just been created drew the previous
+ * session's DAG as if it were its own. The rule is now:
+ *
+ *   · a session id IS readable → the record `mpdTeams.active(workspace, sessionId)` resolves for THAT
+ *     session, else the official readout's views whose Lead IS that session. Another session's board is
+ *     never consulted, in either half;
+ *   · a session id IS readable and nothing resolves → the honest EMPTY projection, marked `none` and
+ *     carrying how many teams the workspace holds. The renderer says "no team in this session" and
+ *     draws no DAG: a fallback to the workspace principal here would be precisely the reported defect;
+ *   · NO session id is readable (an older host, a keypress-time read) → today's workspace-principal
+ *     behaviour survives, marked `workspace`, so the surface draws it WITH the visible marker that says
+ *     this is not necessarily your session's board.
+ *
+ * The read never throws: an unreadable projection is an empty one carrying the same source, so a
+ * renderer can still tell the reader what happened.
+ * @param read - the workspace, the session id, the holds and the two sources, all resolved per call.
+ * @returns the projection; never undefined, and never another session's team.
+ */
+export function readScopedWorkflow(read: ScopedTeamRead): TeamWorkflow {
+  /** The session id this read is scoped to; an empty string is "unavailable", never a session. */
+  const sessionId = typeof read.sessionId === "string" && read.sessionId !== "" ? read.sessionId : undefined
+  try {
+    if (sessionId === undefined) {
+      // THE MARKED FALLBACK. This is the ONLY arm where the workspace principal may be drawn — and it
+      // is marked, so a reader can see that the board is not necessarily theirs.
+      /** The workspace's principal record, under the pre-existing rule. */
+      const principal = principalRecord(read.records)
+      if (principal !== undefined) return readRecordWorkflow(read.workspace, read.holds, principal, { scope: "workspace" })
+      return readTeamWorkflow(read.workspace, read.holds, read.views, { scope: "workspace" })
+    }
+    /** The record THIS session owns, through the service's own resolver. */
+    const record = sessionRecord(read.teams, read.workspace, sessionId, read.records)
+    if (record !== undefined) return readRecordWorkflow(read.workspace, read.holds, record, { scope: "session", sessionId })
+    /** The official views THIS session owns; another session's view is never drawn from here. */
+    const mine = sessionViewsOf(read.views, sessionId)
+    if (mine.length > 0) return readTeamWorkflow(read.workspace, read.holds, mine, { scope: "session", sessionId })
+    // THE HONEST EMPTY STATE. The count is informational only — it is never used to choose a team.
+    return emptyWorkflow(read.workspace, [], read.holds, { scope: "none", sessionId, workspaceTeams: read.records.length })
+  } catch (error) {
+    /** The one line a crashed read leaves behind; bounded, and never a thrown render. */
+    const note = `the team read failed: ${String((error as Error)?.message ?? error)}`.slice(0, 200)
+    return emptyWorkflow(read.workspace, [note], read.holds, {
+      scope: sessionId === undefined ? "workspace" : "none",
+      ...(sessionId === undefined ? {} : { sessionId }),
+    })
+  }
+}
+
+/**
  * Project ONE mpd team record into the workflow shape every TUI renderer already consumes.
  *
  * This is the PRIMARY path. `kind`, `attempt`, `round` and `verdict` are real here (the whole
@@ -681,9 +945,11 @@ export function mpdTeamRecords(teams: MpdTeamsLike | undefined, workspace: strin
  * @param workspace - the calling session's workspace root (display only).
  * @param holds - the team ids the watchdog currently holds.
  * @param record - the record to project.
+ * @param source - the provenance the projection carries; a record reached through the SESSION resolver
+ *   is marked `session`, one reached by the workspace-principal rule is marked `workspace`.
  * @returns the projection; never throws.
  */
-export function readRecordWorkflow(workspace: string, holds: readonly string[], record: TeamRecord): TeamWorkflow {
+export function readRecordWorkflow(workspace: string, holds: readonly string[], record: TeamRecord, source?: TeamSource): TeamWorkflow {
   /** Notes about what could not be read; bounded before they are returned. */
   const problems: string[] = []
   /** The board, capped so one pathological record cannot stall a render. */
@@ -766,6 +1032,7 @@ export function readRecordWorkflow(workspace: string, holds: readonly string[], 
 
   return {
     workspace,
+    ...(source === undefined ? {} : { source }),
     team: {
       id: scalarText(record.teamId, 60) ?? "?",
       name: scalarText(record.name, 80) ?? "?",
@@ -789,13 +1056,45 @@ export function readRecordWorkflow(workspace: string, holds: readonly string[], 
   }
 }
 
-/** The team-scene body: header, watchdog, roster, task DAG, counts, mailbox, problems. */
+/**
+ * The team-scene body: header, watchdog, roster, task DAG, counts, mailbox, problems.
+ *
+ * IT OWNS THE THREE-STATE HONESTY RULE for the full-screen surfaces, exactly as the DAG page owns it
+ * for the sidebar: both the team scene and the merged subagent scene render THIS function, so the two
+ * cannot describe one session's team differently. A session-scoped read that resolved nothing renders
+ * {@link NO_SESSION_TEAM_MARKER} and no DAG; a read with no session id renders today's board with the
+ * visible {@link WORKSPACE_SCOPE_MARKER} line above it.
+ *
+ * AN UNLABELLED PROJECTION KEEPS TODAY'S BYTES. `source` is set by {@link readScopedWorkflow} and by
+ * every reader in this package; a fixture that hand-builds a workflow carries none, and marking that as
+ * workspace-level would rewrite the expected output of arms that have nothing to do with scoping. The
+ * absent case is therefore rendered exactly as it was — the marker means "this READ was session-less",
+ * never "this object is old".
+ * @param workflow - the projection, with its own provenance in `source`.
+ * @returns the body lines, in scene order.
+ */
 export function teamWorkflowLines(workflow: TeamWorkflow): string[] {
-  if (workflow.team === undefined) return ["team       (none in this workspace)"]
+  /** The provenance this projection carries; ABSENT is neither of the two new states. */
+  const scope = workflow.source?.scope
+  /** How many teams the workspace holds, when the reader could count them. */
+  const held = workflow.source?.workspaceTeams
+  if (workflow.team === undefined) {
+    /** The lines that follow the team row when this session has no team of its own. */
+    const empty: string[] = []
+    if (scope === "none") {
+      empty.push(`team       ${NO_SESSION_TEAM_MARKER}`)
+      if (typeof held === "number" && held > 0) empty.push(`workspace  ${held} team(s) here, none bound to this session`)
+      return empty
+    }
+    return [scope === "workspace" ? `team       ${WORKSPACE_SCOPE_MARKER} (none in this workspace)` : "team       (none in this workspace)"]
+  }
   /** The head this body renders; the caller already ruled out its absence. */
   const team = workflow.team
   /** The body lines, in scene order. */
   const lines: string[] = []
+  // THE MARKER ROW GOES FIRST, above the board it labels: a reader must know before reading the DAG
+  // that this drawing is the workspace's, not necessarily this session's.
+  if (scope === "workspace") lines.push(`scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`)
   lines.push(`team       ${team.name} (${team.id})`)
   lines.push(`phase      ${team.phase}`)
   if (team.staged && team.planReviewState !== undefined) lines.push(`plan       ${team.planReviewState}`)
@@ -852,13 +1151,28 @@ export function teamWorkflowLines(workflow: TeamWorkflow): string[] {
   return lines
 }
 
-/** The plan-scene projection lines (read-only; the action block is appended by the scene). */
+/**
+ * The plan-scene projection lines (read-only; the action block is appended by the scene).
+ *
+ * IT CARRIES THE SAME THREE-STATE HONESTY RULE as {@link teamWorkflowLines}, for the same reason: this
+ * body draws the roster and the task DAG, so a session-less read here would show another session's
+ * board beside this session's plan. The plan's own SESSION-SCOPED half (the staged plan itself) is
+ * unaffected — it is read through `planFor(workspace, sessionId)`.
+ * @param workflow - the projection, with its own provenance in `source`.
+ * @returns the projection lines; an unlabelled projection renders exactly as it did before.
+ */
 export function planProjectionLines(workflow: TeamWorkflow): string[] {
-  if (workflow.team === undefined) return ["no staged plan for team (none)"]
+  /** The provenance this projection carries; ABSENT is neither of the two new states. */
+  const scope = workflow.source?.scope
+  if (workflow.team === undefined) {
+    if (scope === "none") return ["no staged plan for team (none)", `${NO_SESSION_TEAM_MARKER} — no DAG to draw here`]
+    return ["no staged plan for team (none)"]
+  }
   /** The head this projection renders. */
   const team = workflow.team
   /** The projection lines, in scene order. */
   const lines: string[] = []
+  if (scope === "workspace") lines.push(`scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`)
   lines.push(`team       ${team.name} (${team.id}) · phase ${team.phase} · review ${team.planReviewState ?? "-"}`)
   lines.push(`members    ${workflow.members.length} · tasks ${workflow.tasks.length} · links ${team.links}`)
   // The Web's own runnable gate (`client.js:1459`), restated for the terminal.

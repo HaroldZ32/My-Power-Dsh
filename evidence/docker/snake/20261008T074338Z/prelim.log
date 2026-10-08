@@ -1,0 +1,16 @@
+[PASS] snake.driverStarted: chromium launched and the page opened in a real engine :: browser=131.0.6778.33 page=file:///out/artifact/snake/index.html | note=preliminary drive of the live artifact sha256=578a7993 (turn still running)
+[PASS] snake.scoreVisible: a score-labelled number is visible on the page :: labelled=0 numbers=[0,0] chars=172 | note=preliminary drive of the live artifact sha256=578a7993 (turn still running)
+[pixel] steps=86 blind=41 sensor=canvas palette=bg=1092 snake=16341 food=-1 scoreGrew=false
+[drive] attempt=1 pattern=0 legMs=496 restarts=3 legs=1 at=11794ms
+[drive] attempt=2 pattern=1 legMs=397 restarts=4 legs=10 at=19243ms
+[drive] attempt=3 pattern=2 legMs=397 restarts=4 legs=0 at=38377ms
+[drive] attempt=4 pattern=0 legMs=320 restarts=5 legs=9 at=44269ms
+[drive] attempt=5 pattern=1 legMs=320 restarts=5 legs=2 at=45008ms
+[FAIL] snake.scoreIncreased: the score never grew in 45000ms of driving — the snake never reached its own food :: from=0 to=0 restarts=5 attempts=5 pixelSteps=86 pixelBlind=41 sensor=canvas palette=bg=1092 snake=16341 food=-1 | note=preliminary drive of the live artifact sha256=578a7993 (turn still running)
+[PASS] snake.visuallyMoved: the rendered viewport changed after a real key press (the snake is drawn where the game moved it) :: start=1a9b127d4b730c14/97483B after=d180c90aaefbc0d2/86527B | note=preliminary drive of the live artifact sha256=578a7993 (turn still running)
+[PASS] snake.gameOverOrRestart: driving into the wall produced a game-over announcement the resting page did not carry :: branch=game-over-text overSeen=true scoreStopped=true restartAffordance=true wallChars=157 beforeWall=86564B | note=preliminary drive of the live artifact sha256=578a7993 (turn still running)
+[PASS] snake.noPageError: no uncaught page error and no console error over the whole run :: pageErrors=0 consoleErrors=0 first= | note=preliminary drive of the live artifact sha256=578a7993 (turn still running)
+[PASS] snake.selfContained: the page requested nothing but local file/data URLs — no network fetch, no external file :: requests=1 external=0 first= | note=preliminary drive of the live artifact sha256=578a7993 (turn still running)
+[PASS] snake.screenshots: the three mandated moments were captured (start / after eating or after the first key / final state) :: /out/prelim-01-start.png , /out/prelim-02-after-first-key.png , /out/prelim-05-game-over.png | note=preliminary drive of the live artifact sha256=578a7993 (turn still running)
+[snake-driver] label=prelim rows=8 failed=1
+driver-exit=1

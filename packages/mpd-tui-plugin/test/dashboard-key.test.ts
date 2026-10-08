@@ -20,6 +20,7 @@ import type { DashboardKeyDeps, HostInputEmitter } from "../src/dashboard-key.js
 import type { Log } from "../src/log.js"
 import type { SeamOutcome, TuiAdapter } from "../src/types.js"
 import type { TeamTaskRow, TeamWorkflow } from "../src/team-state.js"
+import { teamWorkflowLines, WORKSPACE_SCOPE_MARKER } from "../src/team-state.js"
 
 /** A log double: every line it received, by level. */
 interface LogDouble extends Log {
@@ -554,5 +555,16 @@ describe("the team reader", () => {
       throw new Error("record read exploded")
     })
     expect(broken === undefined || broken.tasks.length === 0).toBe(true)
+    // S-c: THE CONTACT CANNOT BE SCOPED, SO IT IS MARKED (frozen PART S, option b). `readDashboardWorkflow`
+    // is called with NO session id here — exactly as the composition calls it for Ctrl+A — and the proof
+    // that no id is reachable on that seam is the host's own type: a rich status view receives
+    // `TuiStatusProps { React, ui }` and NOTHING else, so there is no `host` and no `channel` to read.
+    // The read therefore lands in the marked fallback, and the scene it opens DRAWS the marker.
+    expect(fromRecord?.source?.scope).toBe("workspace")
+    expect(teamWorkflowLines(fromRecord as TeamWorkflow).join("\n")).toContain(WORKSPACE_SCOPE_MARKER)
+    // AND THE COMPLEMENT, so the assertion above is falsifiable: a read WITH a session id is scoped, and
+    // its body carries no marker at all. `readDashboardWorkflow` cannot do that itself (no id to read),
+    // which is the whole reason the contact is the marked one.
+    expect(broken?.source?.scope).toBe("workspace")
   })
 })

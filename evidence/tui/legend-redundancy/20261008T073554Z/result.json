@@ -1,0 +1,67 @@
+[
+  {
+    "name": "A1",
+    "ok": true,
+    "reason": "The MOUNTED frame (installed host's own React/ink, see frame-capture.ts) at a 156-column terminal carries EXACTLY ONE row whose content starts with the contract's first state entry. The pre-fix frame, rendered from the same harness with only the pre-fix src/graph.ts in the scratch tree, carries TWO. New test arm 'A1 · the composed legend prints the state key exactly once (mounted instance, 156 columns)' pins the count in the suite.",
+    "raw": "frame-after.txt:  columns=156 rows=120 contentCols=154 frameRows=20 | stateKeyRows[1] 17|✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open · ⊘ cancelled | composedLegendRows[2] 16|▼/▸ blocker above → dependent below · ▶ focus lights its chain ; 17|✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open · ⊘ cancelled  ||  frame-before.txt: frameRows=21 | stateKeyRows[2] 17|✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled ; 18|✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open · ⊘ cancelled | composedLegendRows[3] (arrow + the five-state key + the six-state key)  ||  tests.log: (pass) A1 · the composed legend prints the state key exactly once (mounted instance, 156 columns) > exactly ONE frame row starts with the contract's first state entry"
+  },
+  {
+    "name": "A2",
+    "ok": true,
+    "reason": "At panelContentWidth(100)=98 and panelContentWidth(80)=78 the composed legend has exactly one arrow row and exactly one state-key GROUP; the group wraps at the narrow width (2 rows, one contiguous group), which the contract permits, and no state entry is printed twice. A width sweep (cols=1..400 x 6 state entries, plus the arrow cap) finds 0 duplicates.",
+    "raw": "a2.txt: terminal=100 cols=98 composedRows=2 arrowRows=1 stateKeyRows=1 keyRowsCarryingAnEntry=1 ; terminal=80 cols=78 composedRows=3 arrowRows=1 stateKeyRows=2 keyRowsCarryingAnEntry=2 ; duplicate sweep: cols=1..400 -> entries printed TWICE (must be 0): 0 ; arrow lines beyond the first (must be 0): 0 ; entries absent at a degenerate width (informational, pre-existing drop/clamp below the composer floor, untouched by this lane): 48 (cols=1..8). The same invariant is pinned in the suite by 'the state key is composed ONCE at every width — no state entry is printed twice'."
+  },
+  {
+    "name": "A3",
+    "ok": true,
+    "reason": "legendLines returns exactly one line at 200/100/20 (and at 12/40/60/70), the sentence still names BOTH drawn markers (▼ and ▸) and the focus marker (▶), and the floor arms still return [] at 0/4/7 (and 8). Pinned by the rewritten 'the legend' arms in test/graph.test.ts.",
+    "raw": "bun test arms: 'names both directional marks and the focus marker in ONE line, and prints no state key of its own' -> expect(lines.length).toBe(1); expect(lines[0]).toBe('▼/▸ blocker above → dependent below · ▶ focus lights its chain'); 'shortens rather than cutting a sentence, naming BOTH marks on every rung, and never exceeds one line' -> for cols of [12,20,40,60,70,100,200]: lines.length in 1..1, lines[0] contains ▼ and ▸, cellWidth(line) <= cols; legendLines(20)[0] = '▼/▸ arrow · ▶ focus'; legendLines(9)[0] = '▼/▸ arrow'; legendLines(8|7|4|0|NaN) = []"
+  },
+  {
+    "name": "A4",
+    "ok": true,
+    "reason": "bun test packages/mpd-tui-plugin is green. Every arm that pinned the removed line was UPDATED to the new contract (the two graph.test.ts legend arms, the scene-visuals.ts composition arm title/claim, the panel-legend-mount.ts header/control comments and row-count title), and one arm was ADDED per contract clause (A1 frame arm, A2 width sweep). No arm was deleted and none was weakened to a tautology: the removed 'lines.length === 2' expectation was replaced by 'exactly 1 line AND no state entry/glyph of the key'.",
+    "raw": "tests.log tail: '427 pass', '0 fail', '12603 expect() calls', 'Ran 427 tests across 19 files. [5.58s]' ; bun test exit=0"
+  },
+  {
+    "name": "A5",
+    "ok": true,
+    "reason": "bun run typecheck (tsgo --noEmit) at the repo root exits 0 with no diagnostics.",
+    "raw": "typecheck.log: '$ tsgo --noEmit' and nothing else ; exit=0"
+  },
+  {
+    "name": "A6",
+    "ok": true,
+    "reason": "packages/mpd-tui-plugin/dist/index.js was rebuilt from the REPO ROOT with the PINNED toolchain (.toolchain/node_modules/.bin/bun, 1.4.0), and the gate reports the target FRESH in both the full run and a scoped run. The dist diff is exactly this change (LEGEND_STATES/LEGEND_SHORT/LEGEND_KEY/LEGEND_LINES and the two-line loop removed; the single-rung body added).",
+    "raw": "build: '.toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js' -> exit 0, 'index.js 0.38 MB (entry point)' (build.log) ; dist-fresh.log line 27: 'FRESH   packages/mpd-tui-plugin/dist/index.js  sha b009ed3db1c3… 23ms  <- packages/mpd-tui-plugin/src/index.ts' ; scoped run: '[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 38ms' exit=0 ; sha256(dist/index.js) recorded in this evidence dir as dist-index.sha256"
+  },
+  {
+    "name": "A6-bound (the literal 30/30 could not be observed in this shared checkout)",
+    "ok": false,
+    "reason": "The full-run gate reports 28/30 fresh: packages/mpd-roles-plugin/dist/index.js and packages/mpd-team-core-plugin/dist/index.js are STALE because BOTH packages have uncommitted, concurrently-edited sources from other lanes in this shared working tree (git status shows ' M packages/mpd-roles-plugin/src/index.ts' and modified/untracked mpd-team-core-plugin sources). Those two dist targets are OUTSIDE this lane's write scope (contract §4: nothing outside mpd-tui-plugin + the evidence dir may be touched), so this lane cannot rebuild them. The stale pair is NOT caused by this change: the touched target is fresh against its own source, and no file this lane edited is imported by either stale package.",
+    "raw": "dist-fresh.log: 'STALE   packages/mpd-roles-plugin/dist/index.js  <- packages/mpd-roles-plugin/src/index.ts' ; 'STALE   packages/mpd-team-core-plugin/dist/index.js  <- packages/mpd-team-core-plugin/src/index.ts' ; '[verify-dist-fresh] FAIL - 2 of 30 targets not fresh (STALE: 2) — 599ms' exit=1"
+  },
+  {
+    "name": "A7",
+    "ok": true,
+    "reason": "The declaration-comment gate is green for the touched sources (scoped run) AND for the whole repository (full run, after the other lane's file was fixed while this lane was working). Every declaration added or changed carries a precise comment, and the changed named function (legendLines) writes down its parameter and return types.",
+    "raw": "comments-scoped.log: 'node scripts/verify-comment-coverage.ts --only packages/mpd-tui-plugin' -> 'scanned 46 TypeScript file(s) of 46 ... inspected 4376 declaration(s) ... VERDICT: PASS' exit=0 ; comments.log: full run -> 'scanned 364 TypeScript file(s) of 364 ... inspected 31959 declaration(s) ... VERDICT: PASS' exit=0. (An intermediate full run at 07:45Z was red on 1 violation in packages/mpd-team-core-plugin/src/change-feed.ts — a brand-new file from another lane, zero mpd-tui-plugin mentions; it was fixed by that lane before this final run.)"
+  },
+  {
+    "name": "C-2.7 (ownership rules untouched)",
+    "ok": true,
+    "reason": "No new ctx.tui* access, no React/ink import, and no change to the keying discipline. The change only deletes constants and rewrites one function body plus comments; the legend's dim, width clamp, MIN_LEGEND_COLS floor, drop-don't-cut ladder and the position keys (`legend-<i>` / `state-key-<i>` / `pin-<i>`) are untouched.",
+    "raw": "git diff --stat for the lane: see git-status.txt (files: src/graph.ts, src/panel-core.ts, src/panel-dag.ts, src/scenes.ts, src/subagent-scene.ts, test/graph.test.ts, test/panel-dag.test.ts, test/panel-legend-mount.test.ts, test/scene-visuals.test.ts, dist/index.js, README.md, README.zh-CN.md) ; README pair edited in the same change (bilingual rule): both twins lose the 'five state glyphs' claim about legendLines and state the one-key ownership"
+  },
+  {
+    "name": "arms NOT run",
+    "ok": null,
+    "reason": "A real-PTY capture was NOT run: contract A1 offers 'the installed-host mount arm ... or a real PTY capture', and this lane used the mount arm (the installed host's own React + ink root over a fake TTY stdout), which is the artifact the contract accepts. No arm required by A1..A7 was skipped; the only unobservable reading is the literal 30/30 of A6, recorded above as its own bound row."
+  },
+  {
+    "name": "meta: how to reproduce the frame evidence",
+    "ok": true,
+    "reason": "frame-capture.ts is the harness; it imports the page from a SCRATCH COPY of the package source so both sides render through the same mount. prefix-graph.ts is the pre-fix src/graph.ts (from 'git show HEAD:packages/mpd-tui-plugin/src/graph.ts'). The .scratch/src copy used for the runs was removed after capture to keep the evidence lean.",
+    "raw": "mkdir -p /tmp/lane-a/src && cp -a packages/mpd-tui-plugin/src/. /tmp/lane-a/src/ && bun run frame-capture.ts /tmp/lane-a/src frame-after.txt 156 ; then cp prefix-graph.ts /tmp/lane-a/src/graph.ts && bun run frame-capture.ts /tmp/lane-a/src frame-before.txt 156"
+  }
+]

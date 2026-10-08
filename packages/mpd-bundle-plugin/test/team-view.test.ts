@@ -376,7 +376,9 @@ describe("team-view factory shape", () => {
   })
 
   test("takes an OPTIONAL translator and a task route, and exposes the pure layout and its builders", () => {
-    expect(SOURCE).toContain("planPath?: string; taskPath?: string; pollMs?: number; t?: Translator")
+    // THE EVENTS ROUTE TRAVELS ON THE SIGNATURE TOO (lane W), and OPTIONALLY: a composition with no
+    // change stream keeps the poll as its whole story, and the engine that consumes it is `start`.
+    expect(SOURCE).toContain("planPath?: string; taskPath?: string; eventsPath?: string; pollMs?: number; t?: Translator")
     // THE W6 CONTROL TRAVELS ON THE SIGNATURE: `radius` is optional, so every existing caller keeps the
     // shipped 6px while a test can drive the same pure layout with `0` and get the orthogonal path back.
     expect(SOURCE).toContain("layout: (tasks: TeamTask[], radius?: number) => GraphGeometry")

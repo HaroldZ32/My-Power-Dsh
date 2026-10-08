@@ -189,3 +189,56 @@ doc pairs, preset conformance) — one command for a patch/preset edit and for t
 expects a CLEAN tree: a dirty `skills/**` corpus legitimately reddens the vendor gate until the wave's
 single re-pin lands (§9/§11).
 
+## §5 rule 2 — the captain's reserved set
+
+The manual's §5 rule 2 is the binding statement; this section is its LONG FORM, moved out on 2026-10-08 by
+the instruction-budget rule (§3, MOVE-FIRST) when rule 2 gained the reconnaissance clause. The manual
+keeps the short definition plus the pointer that sent you here.
+
+**What the captain reserves.** §5 names the work the workspace's TOP-LEVEL session executes itself because
+no other agent may: the SINGLE GIT WRITER of the checkout (§5's one-writer rule; the user's own shell
+otherwise), CONTRACT AMENDMENTS, PLAN/ROSTER SHAPING, releasing a watchdog hold, and the FINAL
+INTEGRATION. It does that without framing it as "working solo" — sizing decides WHICH executor, never
+whether to delegate.
+
+**What is NOT reserved — RECONNAISSANCE.** The user's requirement (2026-10-08): the user-facing main agent
+must keep its context small enough to drive very large projects, and reconnaissance — finding files,
+reading source, grepping for symbols — is what inflates it. So it is DELEGATED: an `Explorer` (find files
+and code) or a `Researcher` (evidence-based search) through `mpd_role_spawn`, or a team member; the captain
+consumes the REPORT. This is MECHANICAL, not a reminder: `mpd-roles-plugin`'s captain investigation guard
+denies `read`, `grep` and `glob` on a SOURCE path for the top-level session, decided by the pure function
+`captainInvestigationDecision` (`packages/mpd-roles-plugin/src/captain-investigation.ts`) and installed
+through the adapter's `guardTool` seam beside the captain's write rule. Keyed on `sessionIsTopLevel` — §5's
+ONE captain predicate, never a preset name (T-92) — so members, one-shot specialists, workmate spawns and
+bound verifier seats keep their reconnaissance: the verifier's own envelope scopes ITS reads separately and
+must not be double-restricted.
+
+**The band that stays readable** (integration is impossible without it): `.mpd/**`, `docs/**`,
+`evidence/**`, `agent-references/**`, and at the workspace ROOT `AGENTS.md`, `AGENT.md`, `CLAUDE.md`,
+`README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md`. Everything else — any source path under
+`packages/**`, `scripts/**`, `skills/**`, `presets/**`, `docker/**`, `extensions/**`, `templates/**`,
+`tests/**`, `vendor/**`, `node_modules/**` — is REFUSED, and a call with NO usable path argument is refused
+(fail-closed: a bare `grep`/`glob` searches the whole workspace, and a pattern's own directory prefix is
+not a path). A `..` segment is refused rather than resolved, so `docs/../packages/x/src/y.ts` cannot start
+inside a band and end outside it.
+
+**The knob.** `captain.investigation` in `mpd.jsonc`: `"deny"` (the DEFAULT) | `"allow"`; anything else
+reads as `deny` (fail-closed). It is read PER CALL through the existing config layer, so an edit is picked
+up live (T-18), and the row's boot line reports the mode it installed (`captainInvestigation=deny|allow` in
+`<workspace>/.mpd/logs/mpd-roles.log`). The refusal names the route out and the band that stays open.
+
+**Honest bounds, stated rather than implied.** (1) The guard reads a TOOL CALL's arguments: reaching a
+source path through `bash` (`cat`, `rg`) is NOT blocked — `bash` stays available to the captain for gates
+and git, exactly as §5 rule 5's command matcher has the same reading bound. (2) A path is judged by its
+SPELLING; a symlink is never resolved. (3) A composition with no `tools.guard` seam installs nothing and
+SAYS so (the boot line carries `captainInvestigation=absent reason=…`). Mount evidence:
+`evidence/roles/captain-investigation/`.
+
+**The tool surface, and the two sentences rule 4 REPLACES** (moved here verbatim with the same MOVE-FIRST
+split). The verification law's tool surface is ONE row, `mpd-verify-plugin`: `mpd_verify_open` /
+`_escape` / `_seat` / `_evidence` / `_record`, and the verifier's envelope denies a bound seat the shell,
+the source-returning tools and every board mutation. **Two sentences this rule REPLACES**: "execute
+directly when it does not [help to delegate]" is no longer an option for code, and "verify everything a
+subagent claims yourself" is no longer how the main agent closes work — a claim is closed by a DIFFERENT
+agent's recorded verdict, and the main agent's own reading of a result is INTEGRATION, which is not
+verification.

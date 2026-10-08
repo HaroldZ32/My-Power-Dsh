@@ -1,0 +1,56 @@
+# lane-a-legend-redundancy · read-only git snapshot
+## git status --porcelain (whole tree; foreign lanes visible)
+ M AGENTS.md
+ M agent-references/verification-flow.md
+ M docker/README.md
+ M docker/README.zh-CN.md
+ M docker/docker-compose.yml
+ M docker/entrypoint.sh
+ M packages/mpd-bundle-plugin/src/team-view.ts
+ M packages/mpd-bundle-plugin/src/web-client.ts
+ M packages/mpd-roles-plugin/src/index.ts
+ M packages/mpd-team-core-plugin/src/index.ts
+ M packages/mpd-team-core-plugin/src/team-store.ts
+ M packages/mpd-team-core-plugin/src/team-web.ts
+ M packages/mpd-tui-plugin/README.md
+ M packages/mpd-tui-plugin/README.zh-CN.md
+ M packages/mpd-tui-plugin/dist/index.js
+ M packages/mpd-tui-plugin/src/graph.ts
+ M packages/mpd-tui-plugin/src/panel-core.ts
+ M packages/mpd-tui-plugin/src/panel-dag.ts
+ M packages/mpd-tui-plugin/src/scenes.ts
+ M packages/mpd-tui-plugin/src/subagent-scene.ts
+ M packages/mpd-tui-plugin/test/graph.test.ts
+ M packages/mpd-tui-plugin/test/panel-dag.test.ts
+ M packages/mpd-tui-plugin/test/panel-legend-mount.test.ts
+ M packages/mpd-tui-plugin/test/scene-visuals.test.ts
+ M presets/mpd.patch.yml
+ M scripts/docker-e2e.ts
+?? evidence/docker/live-prompt-knob/
+?? evidence/tui/legend-redundancy/
+?? evidence/tui/live-refresh/
+?? packages/mpd-roles-plugin/src/captain-investigation.ts
+?? packages/mpd-roles-plugin/test/captain-investigation-evidence.ts
+?? packages/mpd-roles-plugin/test/captain-investigation.test.ts
+?? packages/mpd-team-core-plugin/src/change-feed.ts
+
+## git diff --stat (this lane's tracked paths)
+ packages/mpd-tui-plugin/README.md                  |  7 +-
+ packages/mpd-tui-plugin/README.zh-CN.md            |  7 +-
+ packages/mpd-tui-plugin/dist/index.js              | 22 +------
+ packages/mpd-tui-plugin/src/graph.ts               | 53 +++++----------
+ packages/mpd-tui-plugin/src/panel-core.ts          | 17 ++---
+ packages/mpd-tui-plugin/src/panel-dag.ts           | 22 ++++---
+ packages/mpd-tui-plugin/src/scenes.ts              | 11 ++--
+ packages/mpd-tui-plugin/src/subagent-scene.ts      | 11 ++--
+ packages/mpd-tui-plugin/test/graph.test.ts         | 24 +++++--
+ packages/mpd-tui-plugin/test/panel-dag.test.ts     | 26 +++++++-
+ .../mpd-tui-plugin/test/panel-legend-mount.test.ts | 77 ++++++++++++++++++----
+ packages/mpd-tui-plugin/test/scene-visuals.test.ts |  8 ++-
+ 12 files changed, 175 insertions(+), 110 deletions(-)
+
+## HEAD
+3e144c15 Merge pull request #19 from HaroldZ32/feature/tui-014-adaptation
+
+## snapshot UTC
+2026-10-08T07:45:15Z

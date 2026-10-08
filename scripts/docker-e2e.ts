@@ -285,6 +285,24 @@ export function summarize(result: ResultBody | null | undefined): string {
 }
 
 /**
+ * Whether `docker compose run` is handed `-e MPD_E2E_LIVE_PROMPT`.
+ *
+ * PURE, so `--self-test` covers every case without Docker. The override is forwarded ONLY when the
+ * caller asked for a live run AND supplied a non-empty prompt: an unset or empty value must reach the
+ * container as compose's own empty interpolation, which the entrypoint maps back to its default
+ * prompt. Forwarding it unconditionally would be a no-op at best, and passing the prompt by VALUE
+ * would print a caller's whole task into the argv this driver echoes (the same reason the credential
+ * travels by NAME).
+ *
+ * @param live - Whether the caller requested the live arms (`--live` or `--require-live`).
+ * @param prompt - The caller's `MPD_E2E_LIVE_PROMPT` as read from this process's environment.
+ * @returns True when the `-e MPD_E2E_LIVE_PROMPT` flag belongs in the compose argv.
+ */
+export function livePromptOverride(live: boolean, prompt: string | undefined): boolean {
+  return live && (prompt ?? "") !== ""
+}
+
+/**
  * The environment every docker child gets: BUILDX_CONFIG pointed at a writable directory, because
  * the sandbox denies writes to the default ~/.docker/buildx and a build then fails before it
  * starts. The caller's own BUILDX_CONFIG wins.
@@ -538,6 +556,21 @@ function selfTest(): void {
   check("compose declares exactly the source and oneclick services", composeServices.length === 2 && composeServices.some((line: string) => line.trim() === `${SERVICE}:`) && composeServices.some((line: string) => line.trim() === `${ONECLICK_SERVICE}:`), JSON.stringify(composeServices))
   check("the oneclick service selects the oneclick install mode", /MPD_E2E_INSTALL_MODE:\s*oneclick/.test(compose))
   check("the oneclick service names a git spec or the env override", /MPD_E2E_INSTALL_SPEC:/.test(compose) && /MPD_ONECLICK_SPEC/.test(compose))
+  // The live-turn prompt knob must reach the container the same way the pins do: ONE interpolated
+  // entry PER SERVICE. The INTERPOLATION FORM is what is asserted, never the bare name — a plain
+  // `MPD_E2E_LIVE_PROMPT:` with no `${…:-}` would leave the variable unset for the container and
+  // make the knob look installed while forwarding nothing, which is the failure this arm exists to
+  // catch. Two matching entries pin the shape to exactly the two declared services.
+  /** Every effective-config line declaring the live-prompt knob, for the assertion's raw output. */
+  const livePromptLines = compose.match(/^\s*MPD_E2E_LIVE_PROMPT:.*$/gm) ?? []
+  /** The `${MPD_E2E_LIVE_PROMPT:-}` interpolations, one per service. */
+  const livePromptInterpolations = compose.match(/\$\{MPD_E2E_LIVE_PROMPT:-\}/g) ?? []
+  check("both services interpolate the optional live prompt knob", livePromptInterpolations.length === 2 && livePromptLines.length === 2, JSON.stringify(livePromptLines))
+  // The DRIVER half of the same knob: whether the compose argv gets `-e MPD_E2E_LIVE_PROMPT`. The four
+  // cases are the ones a run can actually be in — an unset AND an empty prompt must both leave the
+  // flag out (the container then keeps the entrypoint's own default), and a run that never asked for
+  // the live arms must not leak the flag either.
+  check("the live prompt is forwarded only for a live run with a non-empty value", livePromptOverride(true, "write a snake game") && !livePromptOverride(true, "") && !livePromptOverride(true, undefined) && !livePromptOverride(false, "write a snake game"))
 
   // 6. Dockerfile base image + context copy. The RUNTIME image is the LAST stage, never the FIRST
   //    `FROM` line: node arrives from the official `node:24-bookworm` image through a multi-stage COPY,
@@ -586,6 +619,9 @@ function selfTest(): void {
   check("entrypoint asserts the preset mount through /api/session/create", entrypoint.includes("/api/session/create"))
   check("entrypoint asserts the session-gate LISTENER registration", /record boot\.sessionGateListener/.test(entrypoint) && entrypoint.includes("session gate listener registered for agent"))
   check("entrypoint records the un-provable LLM assertion as null", /record boot\.llmTurn null/.test(entrypoint))
+  // The knob is only reachable when the entrypoint reads it: this is the third layer of the path
+  // (compose interpolates it, this driver forwards it, the entrypoint substitutes it).
+  check("entrypoint reads the optional live prompt knob", entrypoint.includes("MPD_E2E_LIVE_PROMPT"))
 
   // 9. BUILDX_CONFIG: the sandbox cannot write ~/.docker/buildx, so every docker child must run
   //    with a writable buildx state dir and the caller's own value must win.
@@ -795,6 +831,12 @@ async function main(): Promise<void> {
     // never enters the argv the driver echoes below — which is the whole reason the live turn can be
     // run at all without violating AGENTS.md §10 ("never committed, logged, or echoed").
     ...(liveRequested ? ["-e", "DEEPSEEK_API_KEY", "-e", "MPD_E2E_LIVE=1"] : []),
+    // THE LIVE PROMPT ALSO TRAVELS BY NAME, for the same reason the key does: passing it by VALUE
+    // would print a caller's whole task into the argv this driver echoes below. `-e
+    // MPD_E2E_LIVE_PROMPT` makes compose read it from THIS process's environment, and it is added
+    // only when a live run was asked for AND the value is non-empty — forwarding an empty string
+    // would be a no-op the compose file already maps to the entrypoint's own default prompt.
+    ...(livePromptOverride(liveRequested, process.env.MPD_E2E_LIVE_PROMPT) ? ["-e", "MPD_E2E_LIVE_PROMPT"] : []),
     ...(browserEnabled ? ["-e", "MPD_E2E_BROWSER=1"] : []),
   ]
 

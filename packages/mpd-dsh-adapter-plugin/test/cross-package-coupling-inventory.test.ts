@@ -262,6 +262,13 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   // reading of the knob, so the boulder row imports the gate's `resolveBoulderDir` instead of keeping a
   // second copy that could drift back apart. Same shape as the ULW entry above, same file, same reason.
   "packages/mpd-boulder-plugin/src/index.ts :: import { resolveBoulderDir } from \"../../mpd-roles-plugin/src/complexity-gate.ts\"",
+  // mpd-roles -> mpd-verify (the CAPTAIN INVESTIGATION guard, lane L, 2026-10-08): the top-level
+  // session no longer does reconnaissance, and the new rule reuses `readTargetPath` from the SAME law
+  // module the captain's write rule already reads rather than forking the argument-key list
+  // (`file_path`/`path`/`filePath`/`target`), which would let the two rules disagree about which
+  // spelling names a path. Same edge direction and same reasoning as the LANE D entries above; frozen
+  // here by lane L, whose own scope does not hold this file, on the captain's instruction.
+  "packages/mpd-roles-plugin/src/captain-investigation.ts :: import { readTargetPath } from \"../../mpd-verify-plugin/src/law.ts\"",
 ]
 
 /** Blank out comments while preserving BOTH the character count and every newline, so a

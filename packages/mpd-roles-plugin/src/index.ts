@@ -20,6 +20,7 @@ import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
 import { installVerifyGuard, type VerifyLawAccess } from "./verify-guard.ts"
+import { INVESTIGATION_CONFIG_KEY, installCaptainInvestigationGuard } from "./captain-investigation.ts"
 import { VERIFY_SERVICE } from "../../mpd-verify-plugin/src/service.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
@@ -34,12 +35,13 @@ export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 /** The slice of a cordis context this row uses: the two seams, the `mpdRoles` provision and a logger. */
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string, strict?: boolean) => any; [k: string]: any }
 /**
- * The row config: the persona directory plus the two team-plane keys this row reads itself.
+ * The row config: the persona directory plus the three keys this row reads itself.
  *
- * `team.gate` (mechanical | advisory | off) and `boulder.dir` mirror their `.mpd/mpd.jsonc`
- * spellings, so a composition without the config row mounted can still pin them in the patch.
+ * `team.gate` (mechanical | advisory | off), `boulder.dir` and `captain.investigation`
+ * (deny | allow) mirror their `.mpd/mpd.jsonc` spellings, so a composition without the config
+ * row mounted can still pin them in the patch.
  */
-type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown } }
+type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown } }
 
 // Every entry must be a tool this profile actually registers: the harness
 // validates the WHOLE deny list at spawn time and rejects the child when any
@@ -627,6 +629,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (value !== undefined) return value
     if (key === GATE_CONFIG_KEY) return config.team?.gate
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
+    if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
     return undefined
   }
   // The TEAM PLANE's boot signature: ONE line naming the three restored contracts and their
@@ -670,6 +673,25 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } catch (error) {
     guardOutcome.push("verifyGate=absent reason=threw")
     warnOnce("verify-guard:threw", "the verification law's write guard could not be installed (" + errText(error) + ")")
+  }
+  // THE CAPTAIN INVESTIGATION GUARD, installed at this same site: the workspace's TOP-LEVEL session
+  // DELEGATES reconnaissance (finding files, reading source, grepping for symbols) instead of spending
+  // its own context on it. It is its OWN registration, so `captain.investigation` is the only switch and
+  // a `verify.mode` change cannot silently alter it. Read-only specialists, members, one-shot spawns and
+  // verifier seats are untouched: the rule is keyed on §5's `sessionIsTopLevel` predicate.
+  try {
+    /** The guard's install outcome, whose MODE the team-plane boot signature reports below. */
+    const investigation = installCaptainInvestigationGuard(dsh, {
+      workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
+      configValue,
+      warn: (line) => warnOnce("captain-investigation:" + line, line),
+    })
+    guardOutcome.push(investigation.installed
+      ? "captainInvestigation=" + investigation.mode
+      : "captainInvestigation=absent reason=" + String(investigation.reason))
+  } catch (error) {
+    guardOutcome.push("captainInvestigation=absent reason=threw")
+    warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")")
   }
   try {
     installRosterSection(dsh, {

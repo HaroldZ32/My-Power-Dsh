@@ -1,0 +1,124 @@
+{
+  "lane": "E2 — the real-machine acceptance run: a snake game, produced and independently driven",
+  "contract": ".mpd/plans/lane-e2-snake-verification.md",
+  "evidenceDir": "evidence/docker/snake/20261008T074338Z",
+  "recordedUtc": "2026-10-08T08:52:00Z",
+  "invocation": {
+    "shape": "DEEPSEEK_API_KEY=\"<staged>\" MPD_E2E_LIVE_PROMPT='<the contract §2 prompt>' MPD_E2E_LIVE=1 node scripts/docker-e2e.ts --mode source --live --require-docker",
+    "which": "PREFERRED (contract §4) — no fallback invocation was needed; the E1 knob was present in the working tree",
+    "keyHandling": "read inline from ~/.dsh/.credentials.yaml refs.DEEPSEEK_API_KEY into the child's environment only; never echoed, never written to a file, never printenv'd; only its LENGTH (35) was printed",
+    "promptBytes": 377,
+    "promptSourceObservedInContainer": "caller (MPD_E2E_LIVE_PROMPT)",
+    "recordedIn": ["live-prompt-invocation.txt", "e1-d-live-prompt-observation.md"]
+  },
+  "artifact": {
+    "path": "evidence/docker/snake/20261008T074338Z/artifact/snake/index.html",
+    "producedAt": "/work/ws/snake/index.html inside the container (cwd of the step-15 headless turn)",
+    "sha256": "578a79931967b851e400882abf4aedebdc31d496d620c62e69e1861791b61a5d",
+    "bytes": 11241,
+    "rescuedBy": "driver/copy-artifact-out.sh — the lane runs `docker compose run --rm`, so the agent's WORKSPACE (unlike its verdict) is deleted with the container; a watcher copied it out and kept re-copying until the container disappeared, and the last copy is the final bytes",
+    "hashCrossCheck": "the live turn's own final answer quotes sha256 578a7993…b1a61a5d for an 11,241-byte file, independently matching this measurement"
+  },
+  "driver": {
+    "path": "evidence/docker/snake/20261008T074338Z/driver/snake-driver.v3-blob.mts",
+    "sha256": "cbbe604b87758dd2d023f17dbef17a38784e541e021a9da4ec8771b7fe94b71f",
+    "engine": "Chromium 131.0.6778.33 (playwright 1.49.1), the SAME browser toolchain the repository's own UI lane installs, taken from the project's `ui_ui-data` named volume",
+    "ranWith": "docker run --rm --network none — the whole run has NO network, which is the strongest form of the self-containment claim",
+    "history": "driver/snake-driver.v1-sweep-only.mts is the first revision (blind sweep only), kept for provenance"
+  },
+  "assertions": [
+    {
+      "name": "snake.driverStarted",
+      "ok": true,
+      "raw": "browser=131.0.6778.33 page=file:///out/artifact/snake/index.html"
+    },
+    {
+      "name": "snake.scoreVisible",
+      "ok": true,
+      "raw": "labelled=0 numbers=[0,0] chars=172 — a score IS visible, as the contract requires"
+    },
+    {
+      "name": "snake.scoreIncreased",
+      "ok": true,
+      "reason": "the visible score grew while the snake was driven with real key events",
+      "raw": "from=0 to=10 restarts=2 attempts=0 sensor=canvas sensorSteps=102 sensorBlind=3"
+    },
+    {
+      "name": "snake.visuallyMoved",
+      "ok": true,
+      "raw": "start=a027b469120e39b6/97482B after=40bcb1829cbf9096/86593B — the rendered viewport changed after a real key press"
+    },
+    {
+      "name": "snake.gameOverOrRestart",
+      "ok": true,
+      "raw": "branch=game-over-text overSeen=true scoreStopped=true restartAffordance=true wallChars=160"
+    },
+    {
+      "name": "snake.noPageError",
+      "ok": true,
+      "raw": "pageErrors=0 consoleErrors=0 — assertion (a) of contract §3.3"
+    },
+    {
+      "name": "snake.selfContained",
+      "ok": true,
+      "raw": "requests=1 external=0 — the only request is the file:// document itself"
+    },
+    {
+      "name": "snake.screenshots",
+      "ok": true,
+      "raw": "snake-live-01-start.png (97482 B), snake-live-03-after-eating.png (87252 B), snake-live-05-game-over.png (96459 B)"
+    }
+  ],
+  "driverExitCode": 0,
+  "negativeControl": {
+    "page": "negative-control/index.html — a deliberately INERT snake: one static canvas frame, a visible 'Score: 0', no key handling, no timers, no game-over text, no restart affordance",
+    "verdict": "RED — exit 1, 3 of 8 rows false",
+    "rows": {
+      "snake.scoreIncreased": "false — from=0 to=0 over 25 s",
+      "snake.visuallyMoved": "false — start and after-first-key screenshots are BYTE-IDENTICAL (b1947cdf945426b8/10267B both)",
+      "snake.gameOverOrRestart": "false — branch=none"
+    },
+    "whyItMatters": "the same revision that is green on the artifact is red on a page that cannot play, so the green verdict is falsifiable"
+  },
+  "positiveControls": {
+    "whyTheyExist": "a harness that reddens on a broken page proves it CAN fail; it does not prove it can PASS. Two known-good snakes, written by this lane and never seen by the driver, pin the other direction.",
+    "canvas": { "page": "positive-control-canvas/index.html", "verdict": "GREEN — exit 0, 8/8 rows", "raw": "sensor=canvas, ate within ~30 frames" },
+    "dom": { "page": "positive-control-dom/index.html", "verdict": "GREEN — exit 0, 8/8 rows", "raw": "sensor=dom, ate within ~30 frames; proves the no-canvas path is not a dead arm" }
+  },
+  "containerVerdict": {
+    "invocationExitCode": 3,
+    "containerExit": 1,
+    "verdict": "ok=false complete=false passed=88 failed=3 null=3",
+    "failed": ["build.bunInstall", "boot.mcpTools", "live.teamRecord"],
+    "null": ["tui.mergedPanelOpens", "tui.mergedPanelOrder", "live.nativeExecutor"],
+    "unmeasuredRequired": ["live.nativeExecutor"],
+    "liveHeadlessRows": "all true: turnStarted, turnCompleted, noErrorTurns, noMalformedToolJson, toolCallsParsed (18/18), mpdToolCalled, assistantReplied, headlessPresetRow",
+    "honestBound": "live.teamRecord and live.nativeExecutor are red BY CONSTRUCTION on a caller-supplied prompt: the contract's §2 prompt asks for a snake game, not for team work, so the team-plane arms cannot be satisfied. build.bunInstall and boot.mcpTools are independent of this lane's subject and are reported, not explained away.",
+    "capturedIn": "lane-verdict-summary.md, lane/lane-result.json, lane/lane-driver.json"
+  },
+  "e2aModelTurn": {
+    "toolCalls": "18 headless tool calls, all parsed (live.headless.toolCallsParsed=true)",
+    "transcript": "live-turn-transcript.log (51,283 B), extracted from the lane's echoed step-15 log",
+    "decisiveLines": [
+      "[live-prompt] promptSource=caller (MPD_E2E_LIVE_PROMPT) bytes=377 firstLine=\"Write a playable classic Snake game as ONE self-contained file at `snake/index.html` …\"",
+      "The task is straightforward: write a single self-contained HTML file with a classic Snake game.",
+      "Now write the game. Let me write a high-quality single file.",
+      "**`/work/ws/snake/index.html`** — 11,241 bytes, one file, sha256 `578a7993…b1a61a5d`."
+    ]
+  },
+  "e2eSecretScan": {
+    "command": "node evidence/docker/snake/20261008T074338Z/driver/secret-scan.mts <evidenceDir>",
+    "patterns": ["sk-[A-Za-z0-9]{8,}", "the staged key's first 8 characters"],
+    "result": "files=56 patterns=2 hits=0 — CLEAN",
+    "note": "a bare `grep -rI 'sk-'` matches 2 files; both are FALSE POSITIVES — the substring inside `tool-ask-user` and inside `@deepseek-ai/...`. The strict key shape matches nothing."
+  },
+  "isolation": {
+    "claim": "the run never touched the operator's real ~/.dsh or ~",
+    "evidence": [
+      "isolation-probe-before.txt — the real home, read only, with its session/project counts recorded",
+      "docker/docker-compose.yml binds exactly ONE host path (${MPD_DOCKER_OUT}); the repository enters as a COPY",
+      "the lane's own log: HOME=/root/sandbox-home, DSH_HOME=/root/sandbox-dsh",
+      "this lane's driver container mounts only `ui_ui-data:ro` and the evidence directory, and runs with --network none — it writes nowhere else"
+    ]
+  }
+}

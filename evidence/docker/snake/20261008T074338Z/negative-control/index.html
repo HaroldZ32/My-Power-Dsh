@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Snake</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #10131a; color: #e6e9ef; font: 16px/1.4 system-ui, sans-serif;
+         display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px; }
+  header { display: flex; gap: 24px; align-items: baseline; }
+  h1 { font-size: 18px; margin: 0; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+  #score { font-variant-numeric: tabular-nums; }
+  canvas { background: #161b24; border: 2px solid #2a3140; border-radius: 6px; display: block; }
+  p { margin: 0; opacity: .6; font-size: 13px; }
+</style>
+</head>
+<body>
+  <!-- NEGATIVE CONTROL (lane E2, contract §3.4). It is DELIBERATELY inert: it draws one frame of a
+       plausible snake and then never moves, never scores and never ends. A playability harness that
+       cannot redden on THIS page proves nothing about the page it is pointed at, so the same driver
+       that grades the live artifact is run here first and MUST report failures. It intentionally has
+       no game-over wording and no restart affordance, so all three behavioural arms are expected red. -->
+  <header><h1>Snake</h1><div id="score">Score: 0</div></header>
+  <canvas id="board" width="480" height="480"></canvas>
+  <p>Arrow keys or WASD to steer</p>
+  <script>
+    // One static frame: no update loop, no key handling, no timers, no randomness that changes the
+    // picture over time. `Math.random` is called exactly once at load so the food sits somewhere
+    // plausible, and the result is then frozen for the life of the page.
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const CELL = 24;
+    const COLS = canvas.width / CELL;
+    const ROWS = canvas.height / CELL;
+    function cell(x, y, fill) {
+      ctx.fillStyle = fill;
+      ctx.fillRect(x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2);
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let y = 0; y < ROWS; y += 1) for (let x = 0; x < COLS; x += 1) cell(x, y, "#1b212c");
+    const snake = [[10, 10], [9, 10], [8, 10]];
+    const food = [Math.floor(Math.random() * COLS), Math.floor(Math.random() * ROWS)];
+    cell(food[0], food[1], "#e0563f");
+    for (const [x, y] of snake) cell(x, y, "#5fd08a");
+  </script>
+</body>
+</html>

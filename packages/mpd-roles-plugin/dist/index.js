@@ -825,6 +825,89 @@ function installVerifyGuard(dsh, options) {
   }
 }
 
+// packages/mpd-roles-plugin/src/captain-investigation.ts
+var INVESTIGATION_CONFIG_KEY = "captain.investigation";
+var INVESTIGATION_TOOLS = ["read", "glob", "grep"];
+var CAPTAIN_READABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
+var CAPTAIN_READABLE_ROOT_FILES = [
+  "AGENTS.md",
+  "AGENT.md",
+  "CLAUDE.md",
+  "README.md",
+  "README.zh-CN.md",
+  "CHANGELOG.md"
+];
+var ROOT_LICENSE_PATTERN = /^LICENSE.*\.md$/i;
+function resolveInvestigationMode(raw) {
+  return raw === "allow" ? "allow" : "deny";
+}
+function captainReadablePath(workspaceRoot, raw) {
+  const posix = String(raw ?? "").replace(/\\/g, "/");
+  if (posix === "")
+    return false;
+  const root = workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "");
+  const absolute = posix.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(posix);
+  let rel;
+  if (!absolute)
+    rel = posix.startsWith("./") ? posix.slice(2) : posix;
+  else if (root !== "" && posix.startsWith(root + "/"))
+    rel = posix.slice(root.length + 1);
+  if (rel === undefined || rel === "")
+    return false;
+  if (rel.split("/").includes(".."))
+    return false;
+  const inBand = CAPTAIN_READABLE_PREFIXES.some((prefix) => rel.startsWith(prefix) || rel === prefix.replace(/\/$/, ""));
+  if (inBand)
+    return true;
+  if (CAPTAIN_READABLE_ROOT_FILES.includes(rel))
+    return true;
+  return rel.indexOf("/") === -1 && ROOT_LICENSE_PATTERN.test(rel);
+}
+function captainInvestigationDecision(input) {
+  if (input.mode !== "deny")
+    return;
+  if (!input.topLevel)
+    return;
+  const toolName = String(input.toolName ?? "");
+  if (!INVESTIGATION_TOOLS.includes(toolName))
+    return;
+  const raw = readTargetPath(toolName, input.args);
+  if (raw === undefined)
+    return investigationRefusal(toolName, "(no path argument — a bare call searches the whole workspace)");
+  if (captainReadablePath(input.workspaceRoot, raw))
+    return;
+  return investigationRefusal(toolName, JSON.stringify(raw));
+}
+function investigationRefusal(toolName, target) {
+  return "captain investigation rule: `" + toolName + "` on " + target + " is refused — the workspace's" + " TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large" + " projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the" + " `Researcher` role (evidence-based search), or hand the search to a team member, and consume the" + " REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`," + " `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and" + ' `captain.investigation: "allow"` in mpd.jsonc restores full access.';
+}
+function installCaptainInvestigationGuard(dsh, options) {
+  const mode2 = resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY));
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the captain investigation guard is NOT installed " + "(the top-level session keeps read/grep/glob on source paths; the rule lives in the instruction text only)");
+      return { installed: false, mode: mode2, reason: "no-guard-seam" };
+    }
+    const dispose = dsh.guardTool((exec) => captainInvestigationDecision({
+      toolName: String(exec?.name ?? ""),
+      args: exec?.arguments,
+      workspaceRoot: (() => {
+        try {
+          return options.workspaceRootOf(exec);
+        } catch {
+          return "";
+        }
+      })(),
+      topLevel: sessionIsTopLevel(exec?.agent),
+      mode: resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY))
+    }));
+    return { installed: true, mode: mode2, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the captain investigation guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, mode: mode2, reason: "install-failed" };
+  }
+}
+
 // packages/mpd-verify-plugin/src/service.ts
 var VERIFY_SERVICE = "mpdVerify";
 
@@ -3066,6 +3149,8 @@ Work with the tools your role requires (read-only roles must never modify anythi
       return config.team?.gate;
     if (key === BOULDER_DIR_CONFIG_KEY)
       return config.boulder?.dir;
+    if (key === INVESTIGATION_CONFIG_KEY)
+      return config.captain?.investigation;
     return;
   };
   const guardOutcome = [];
@@ -3098,6 +3183,17 @@ Work with the tools your role requires (read-only roles must never modify anythi
   } catch (error) {
     guardOutcome.push("verifyGate=absent reason=threw");
     warnOnce("verify-guard:threw", "the verification law's write guard could not be installed (" + errText(error) + ")");
+  }
+  try {
+    const investigation = installCaptainInvestigationGuard(dsh, {
+      workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
+      configValue,
+      warn: (line) => warnOnce("captain-investigation:" + line, line)
+    });
+    guardOutcome.push(investigation.installed ? "captainInvestigation=" + investigation.mode : "captainInvestigation=absent reason=" + String(investigation.reason));
+  } catch (error) {
+    guardOutcome.push("captainInvestigation=absent reason=threw");
+    warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")");
   }
   try {
     installRosterSection(dsh, {

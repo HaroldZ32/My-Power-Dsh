@@ -1,0 +1,1 @@
+board=T1:completed T2:in_progress T3:completed T4:failed(<-T1,T3) T5:pending(<-T4) T6:pending(<-T5)

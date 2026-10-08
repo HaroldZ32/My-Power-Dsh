@@ -1,0 +1,8 @@
+[record] live.headlessPresetRow=true — preset-mpd pends because the HEADLESS composition declares no agent-presets registry (a harness-plane fact: only dsh-web-app declares @deepseek-ai/dsh-agent-preset-registry); the mpd HOST rows still mount, which the live turn proves
+[record] live.headless.turnStarted=true — the headless plane started a real turn
+[record] live.headless.turnCompleted=true — the headless turn reached turn/end reason=completed
+[record] live.headless.noErrorTurns=true — no headless turn ended in an error
+[record] live.headless.noMalformedToolJson=true — every headless tool-call payload the model emitted parsed as JSON
+[record] live.headless.toolCallsParsed=true — all 18 headless tool call(s) parsed (18/18)
+[record] live.headless.mpdToolCalled=true — an MPD tool ran under a live headless turn
+[record] live.headless.assistantReplied=true — the headless assistant produced visible text

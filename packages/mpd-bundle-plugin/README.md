@@ -42,6 +42,20 @@ The `@mpd-dsh/mpd` bundle's own main plugin and web-client surface. Two jobs:
      `agent-teams-activity`, `conversation.chat.node`, `shell.overlay` or
      `sidebar.footer.action`.
 
+**The team tab refreshes on a PUSH, and still polls.** The shared team view
+(`src/team-view.ts`, the one body both sidebar hosts render) reads
+`/plugins/mpd-team/{state,plan,task}` on its own `pollMs` interval (2000 ms) **and** subscribes to
+`/plugins/mpd-team/events` — the Server-Sent-Events route `mpd-team-core-plugin` serves — through an
+`EventSource` opened per MOUNT, for the session the panel is showing (the same `?sessionId=` the state
+read carries). Every `data:` frame runs the SAME `tick` the interval runs, so a pushed and a polled
+frame can never disagree. The interval stays as the **fallback**: a host without `EventSource`
+(neither `node` nor `bun` defines the global, so the offline harness takes this path), a proxy that
+cuts the stream, or a composition whose `eventsPath` is absent behaves exactly as it did before. The
+stream is closed when the panel unmounts or the seat's session changes, and reconnecting after a
+transport error is `EventSource`'s own retry (the route sends `retry: 1000`) — there is no reconnect
+loop of ours. Because both hosts render this one component and the effect is per mount, two mounted
+panels hold two streams.
+
 **TUI counterpart.** The settings card this client registers is the browser half of the same
 `mpd` settings namespace the TUI edition renders as its `/settings` section
 (`packages/mpd-tui-plugin/src/settings.ts`): labels, hints and zh descriptions are mirrored
@@ -84,6 +98,9 @@ node scripts/pack-mpd.ts           # restage the bundle
 
 - `src/index.ts` — the no-op main plugin.
 - `src/web-client.ts` — the mpd client factory body (plain JS, React.createElement).
+- `src/team-view.ts` — the shared TEAM view factory body both sidebar hosts render (the member cards,
+  the dependency DAG and the poll-plus-push refresh described above). Spliced into the client as
+  `MPD_TEAM_VIEW`; it takes the routes, the interval and the translator as dependencies.
 - `src/team-page.ts` — the team-WATCHDOG sidebar page factory body (module id
   `@mpd-dsh/team-page`), built into `client.js` the same way. It requires no adopted client:
   it polls this bundle's own watchdog routes.

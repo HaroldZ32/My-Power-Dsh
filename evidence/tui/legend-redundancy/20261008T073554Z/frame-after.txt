@@ -1,0 +1,32 @@
+columns=156 rows=120 contentCols=154 frameRows=20
+composedLegend[2]:
+  0|▼/▸ blocker above → dependent below · ▶ focus lights its chain
+  1|✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open · ⊘ cancelled
+drawingLegend[1]:
+  0|▼/▸ blocker above → dependent below · ▶ focus lights its chain
+=== frame, one row per line
+  0|┌MPD───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  1|MPD                                                                                                                                                      ⤢
+  2|subagents  0 total · 0 running · 0 completed · 0 failed
+  3|⚪ No subagents in the current session
+  4|  Subagents appear here once the main agent starts Task delegations
+  5|team legend-frame  phase active  tasks 1/2  members 0
+  6|╭────────╮
+  7|│ ✓ T1   │
+  8|╰───┬────╯
+  9|    │
+  10|    │
+  11|    ▼
+  12|╭───┴────╮
+  13|│ ○ T2   │
+  14|╰────────╯
+  15|view boxes · 2 tasks · ranks derived
+  16|▼/▸ blocker above → dependent below · ▶ focus lights its chain
+  17|✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open · ⊘ cancelled
+  18|⤢ fullscreen · ↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll
+  19|└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+stateKeyRows[1] (rows whose content starts with "✓ completed")
+  17|✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open · ⊘ cancelled
+composedLegendRows[2]
+  16|▼/▸ blocker above → dependent below · ▶ focus lights its chain
+  17|✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open · ⊘ cancelled

@@ -1,0 +1,80 @@
+{
+  "lane": "lane-doc",
+  "loopId": "loop-20261008T083221-fbf787",
+  "contract": ".mpd/plans/lane-doc-human-docs.md",
+  "utc": "2026-10-08T08:37:46Z",
+  "writer": "Junior Engineer (one agent)",
+  "dependsOn": ".mpd/plans/lane-td-session-scope-and-push.md (landed code + evidence)",
+  "filesChanged": [
+    "docs/tui.md",
+    "docs/tui.zh-CN.md",
+    "docs/tui-parity.md",
+    "docs/tui-parity.zh-CN.md"
+  ],
+  "filesCheckedNotChanged": {
+    "docs/user-guide.md": "no present-tense claim of a team-selection rule, a drawing-owned state key or a refresh mechanism; §8's refresh sentence is about the official WEB client plugin (a different surface)",
+    "docs/user-guide.zh-CN.md": "same as its English twin",
+    "packages/mpd-tui-plugin/README.md": "consistency source only (already states the three states, 76-85 ms, the fallback ticks); out of this lane's write scope",
+    "packages/mpd-tui-plugin/README.zh-CN.md": "same as its English twin",
+    "docs/tui.md §6.1/§7/§11.3/§11.5": "their workspace-level sentences describe the LEGACY Ctrl+A contact on a pre-0.13.0 host, which by construction has no session id — that IS the marked workspace-level state; §11.3/§11.5 are historical records"
+  },
+  "acceptance": [
+    {
+      "id": "DOC-a",
+      "claim": "A reader can find, in both languages, the three behaviours of the contract §2, stated as the shipped behaviour.",
+      "selfCheck": "pass",
+      "where": {
+        "sessionScope": "docs/tui.md §3.4, the first bullet ('The drawing is THIS SESSION's team') — zh twin's matching bullet ('画的是「本会话」自己的团队')",
+        "oneStateKey": "docs/tui.md §3.4, the legend bullet ('There is ONE state key now') — zh twin's matching legend bullet ('现在只有一张状态键')",
+        "push": "docs/tui.md §3.4, the second bullet ('The surfaces update by PUSH') — zh twin's matching bullet ('界面靠 PUSH 更新')"
+      }
+    },
+    {
+      "id": "DOC-b",
+      "claim": "No sentence in the touched files still presents as live: a workspace-principal team selection, a drawing-owned state key, or a poll-only refresh.",
+      "selfCheck": "pass",
+      "where": {
+        "selection": "docs/tui.md §3.3 + §3.4 lead reworded to the CALLING SESSION's team; docs/tui-parity.md row 16 + §3 reworded off 'one newest record per workspace' (and its zh twin)",
+        "stateKey": "docs/tui.md §3.4 legend bullet: the drawing's own state-key line is marked DELETED and the ONE key is attributed to panel-core.ts's legendLinesFor; §11.6's 'both start' -> 'both started' (historical record kept)",
+        "refresh": "docs/tui.md §3.4 bullet 2 states PUSH with the timers as the fallback; no poll-only sentence remains in the touched files"
+      }
+    },
+    {
+      "id": "DOC-c",
+      "claim": "bun run verify:docs green (quoted), pairs count unchanged or higher.",
+      "selfCheck": "pass",
+      "observed": "bun run verify:docs -> [verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=22 derived=3 links=424 dead=0 — PASS (exit 0); raw log evidence/docs/live-session-wave/2026-10-08T08-37-46Z/verify-docs.log; 47 pairs = the same count the lane's pre-doc gate sweep read"
+    },
+    {
+      "id": "DOC-d",
+      "claim": "The report names every file checked, every file changed, and the evidence path each number came from.",
+      "selfCheck": "pass",
+      "observed": "evidence/docs/live-session-wave/2026-10-08T08-37-46Z/report.md §2/§3/§6"
+    }
+  ],
+  "numbersAndTheirArtifacts": {
+    "latency_76_85_ms_six_trials": "evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/latency.jsonl (latency_ms 85, 76, 79, 77, 78, 82) + run.log + result.json T-P3.latencies_ms",
+    "baseline_1000_ms": "evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/tick-baseline.txt (DAG_PANEL_REFRESH_MS=1000 ms)",
+    "scene_tick_2000_ms": "packages/mpd-tui-plugin/src/scenes.ts BOARD_REFRESH_MS; subagent-scene.ts REFRESH_MS; panel-workmate.ts WORKMATE_PANEL_REFRESH_MS",
+    "three_states_and_markers": "packages/mpd-tui-plugin/src/team-state.ts readScopedWorkflow / NO_SESSION_TEAM_MARKER / WORKSPACE_SCOPE_MARKER / teamWorkflowLines; PTY frames pty/P1-sidebar-other-session.txt and pty/S1-scene-other-session.txt",
+    "web_tab_already_session_scoped": "evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/web-probe.log + mpd-bundle-plugin/client.js carrying ?sessionId=",
+    "one_state_key_deleted_drawing_key": "packages/mpd-tui-plugin/src/panel-core.ts legendLinesFor; packages/mpd-tui-plugin/src/graph.ts legendLines; grep for LEGEND_STATES/LEGEND_SHORT/LEGEND_KEY finds only the deletion comment",
+    "feed_substrate": "packages/mpd-team-core-plugin/src/index.ts subscribe; src/change-feed.ts fs.watch + debounce; src/team-web.ts TEAM_EVENTS_PATH=/plugins/mpd-team/events"
+  },
+  "gate": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "result": "PASS pairs=47 failed=0 violations=0 exempt=22 derived=3 links=424 dead=0",
+    "log": "evidence/docs/live-session-wave/2026-10-08T08-37-46Z/verify-docs.log"
+  },
+  "docArtifacts": {
+    "diff": "evidence/docs/live-session-wave/2026-10-08T08-37-46Z/doc-diff.patch",
+    "sha256": "evidence/docs/live-session-wave/2026-10-08T08-37-46Z/doc-sha256.txt"
+  },
+  "honestBounds": [
+    "The lane's FIRST PTY latency run (517 ms and a negative value) is VOID (uutils coreutils 0.10.0 %3N is not offset by the fractional second) and is quoted NOWHERE in the docs.",
+    "No heading was added: §11 keeps §11.1-§11.6 because the contract forbids restructuring; the new material lives in §3.4 where a reader looks for the panel's behaviour.",
+    "State 2 ('none') is described by its own marker `no team in this session` only; it is NOT described as `workspace-level`-prefixed (that token belongs to the no-session-id state alone).",
+    "The pair moves together: every English edit has its zh-CN counterpart with the same headings and the same claims."
+  ]
+}

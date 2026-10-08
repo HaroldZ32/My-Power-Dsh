@@ -1,0 +1,13 @@
+=== FINAL re-run after every write ===
+=== bun test packages/mpd-bundle-plugin ===
+ 166 pass
+ 0 fail
+ 3110 expect() calls
+Ran 166 tests across 8 files. [2.98s]
+PKG_TEST_EXIT=0
+
+=== node scripts/verify-pack-closure.ts ===
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tui-plugin/README.md: source mtime 2026-10-08T07:41:20.894Z is AFTER the artifact stamp 2026-10-07T14:33:55.782Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tui-plugin/README.zh-CN.md: source mtime 2026-10-08T07:41:21.585Z is AFTER the artifact stamp 2026-10-07T14:33:55.782Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - packages/mpd-tui-plugin/dist/index.js: source mtime 2026-10-08T07:44:25.083Z is AFTER the artifact stamp 2026-10-07T14:33:55.782Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+PACK_EXIT=0

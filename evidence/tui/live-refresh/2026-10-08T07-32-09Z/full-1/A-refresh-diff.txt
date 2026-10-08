@@ -1,0 +1,9 @@
+A1-sidebar-open vs A4-sidebar-plus8s: changedLines=82
+        <                                             █   █  ████   ████   ████    ███   ████   ████   ███                                                    ││subagents  0 total · 0 running · 0 completed · 0 failed            │
+        <                         ▄▀▄       ▄         █   █  █      █      █          █  █      █      █  █                                                   ││⚪ No subagents in the current session                             │
+        <                         ▀▀▀▀▄  ▄▄▀▀▀        ████   █████  █████  █      ████   █████  █████  █   █                                                  ││  Subagents appear here once the main agent starts Task delegations│
+        <         ▄▄▄▄▄▄▄▄▄       ▀▀▀▀▀▀▀▀▀▀▀▀                                                                                                                ││team webui-tui-i18n  phase active  tasks 3/7  members 5  ███████░░░│
+        <       ▄▀▀▀▀▀▀▀▀▀▀▀▀▄▄     ▀▀▀▀▀▀▀▀▀         █   █    ███    ████    █   █   █████    ████    ████                                                   ││╭────────╮   ╭────────╮   ╭────────╮                               │
+        <     ▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄  ▄▀▀▀▀▀            █   █   █   █   █   █   ██  █   █       █       █                                                       │││ ✓ T1   │   │ ✓ T2   │   │ ✓ T3   │                               │
+        A1-sidebar-open: modeLine="view boxes · 7 tasks · ranks derived                               " summary="tasks 3/7  members 5  ███████░░░"
+        A4-sidebar-plus8s: modeLine="view boxes · 8 tasks · ranks derived                              █" summary="tasks 4/8  members 5           █"

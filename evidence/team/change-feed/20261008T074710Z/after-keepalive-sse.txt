@@ -1,0 +1,3 @@
+[+5ms] "retry: 1000\n\n"
+[+5ms] "event: hello\ndata: {\"rev\":0}\n\n"
+[+15006ms] ": ping\n\n"

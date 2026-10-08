@@ -1,0 +1,16 @@
+=== T-D4 · the web plane's session scoping, driven through the route's own projection ===
+session WITH a record   : sessionId=sess-A team=team-a tasks=1
+session WITHOUT a record: sessionId=sess-B team=null tasks=0 workspaceTeams=1
+NO session id at all    : sessionId="" team=null workspaceTeams=1
+
+=== the shipped artifacts ===
+packages/mpd-bundle-plugin/dist/index.js  sha256=f8d222874b75b45c4de3e4b91220675e862516571e9abdc84d88271c1786ed62  bytes=75582
+    carries "?sessionId=": false   carries "team: null": false
+packages/mpd-bundle-plugin/client.js  sha256=1d59f4c9d802848780a88635390736aeabb0d8d0da44b6fb78434e1fd2be3f8f  bytes=670950
+    carries "?sessionId=": true   carries "team: null": false
+packages/mpd-team-core-plugin/dist/index.js  sha256=f1e744d10de641a9b2f171ca2d10bc02c6d02bdb2b38fd504ad00976105d3e7a  bytes=153106
+    carries "?sessionId=": false   carries "team: null": true
+
+VERDICT: the web plane resolves the TEAM from the session id it was asked about; a session with
+no record gets team=null plus the workspace listing; and with no session id it does NOT fall back
+to a principal team. No change to `mpd-bundle-plugin` is required by PART D.2 row 5.

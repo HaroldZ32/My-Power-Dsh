@@ -1,0 +1,4 @@
+CENSUS A1-sidebar-open.txt {"roundedTL":7,"roundedTR":7,"roundedBL":7,"roundedBR":8,"squareTL":1,"squareBL":1,"railGlyphs":148,"tee":3,"arrowR":7,"hasDenseTag":false,"hasRailTag":false,"hasBoxesTag":true,"hasListTag":false,"hasRailViewTag":false}
+CENSUS B1-scene-open.txt {"roundedTL":7,"roundedTR":7,"roundedBL":7,"roundedBR":8,"squareTL":1,"squareBL":1,"railGlyphs":148,"tee":3,"arrowR":7,"hasDenseTag":false,"hasRailTag":false,"hasBoxesTag":true,"hasListTag":false,"hasRailViewTag":false}
+CENSUS fixture-board.txt {"roundedTL":0,"roundedTR":0,"roundedBL":0,"roundedBR":0,"squareTL":0,"squareBL":0,"railGlyphs":0,"tee":0,"arrowR":0,"hasDenseTag":false,"hasRailTag":false,"hasBoxesTag":false,"hasListTag":false,"hasRailViewTag":false}
+CENSUS grid.txt {"roundedTL":0,"roundedTR":0,"roundedBL":0,"roundedBR":0,"squareTL":0,"squareBL":0,"railGlyphs":0,"tee":0,"arrowR":0,"hasDenseTag":false,"hasRailTag":false,"hasBoxesTag":false,"hasListTag":false,"hasRailViewTag":false}

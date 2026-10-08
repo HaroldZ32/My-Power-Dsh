@@ -32,6 +32,7 @@
 // already do, and `useTheme()` returns `[name, setter]`, a palette NAME rather than the keys. Calling
 // it would spend a hook slot (and a throw surface) for a value no surface here reads.
 import { cellWidth, clampCells, collapse, stripControl } from "./sanitize.js"
+import { sessionIdOf, type TeamFeedAccessor, type TeamFeedSubscribe } from "./team-state.js"
 import {
   DAG_ANIM,
   DAG_CHROME,
@@ -232,6 +233,22 @@ export function panelSnapshot(host: unknown): unknown {
   } catch {
     return undefined
   }
+}
+
+/**
+ * Read the CALLING session's id off the host snapshot a sidebar panel receives.
+ *
+ * THE PANEL'S OWN SESSION ID, and the reason the DAG page used to be session-blind: `panelSnapshot`
+ * was already called on every render and its value thrown away, so the page could not tell its own
+ * session's team from another's. The read goes through the SAME contained snapshot reader (a host
+ * without one, or one that throws, is "no session id"), and the field itself through `sessionIdOf`, so
+ * the panel and the scenes agree on what a usable session id is. An unavailable id is NOT an error: it
+ * selects the marked workspace-level fallback, which is the honest answer on an older host.
+ * @param host - the panel props' `host` field.
+ * @returns the session id, or undefined when this host does not carry one.
+ */
+export function panelSessionId(host: unknown): string | undefined {
+  return sessionIdOf(panelSnapshot(host))
 }
 
 /**
@@ -1353,6 +1370,111 @@ export function usePanelTick(kit: PanelKit, intervalMs: number, enabled: boolean
 }
 
 /**
+ * The React members the team-feed hook calls.
+ *
+ * Narrower than {@link PanelKit} ON PURPOSE: the hook has to be callable from a full-screen SCENE as
+ * well, whose kit is the scene's own structural type, and a hook that demanded the panel kit's `useRef`
+ * would be uncallable there. Both kits carry these two, so both surfaces share ONE subscription.
+ */
+export interface TeamFeedReactLike {
+  /** One state cell (the host React's own `useState`); the UPDATE is the whole re-render mechanism. */
+  useState(initial: unknown): [unknown, (next: unknown) => void]
+  /** One effect (the host React's own `useEffect`); its cleanup must dispose the subscription. */
+  useEffect(effect: () => unknown, deps?: readonly unknown[]): void
+  /**
+   * The host React's own `useRef`, when this build exposes it.
+   *
+   * OPTIONAL, and load-bearing when present: it is what keeps the LATEST `onNotify` callback reachable
+   * from a listener installed on the mount render, without re-subscribing on every render. Every host
+   * kit this package draws with carries one; the guard exists because a scene's kit type does not
+   * declare it (it is read off the same real React instance through a narrower interface), and a
+   * surface must degrade rather than throw when a field is absent.
+   */
+  useRef?(initial: unknown): { current: unknown }
+}
+
+/**
+ * Re-render this surface on every team-state PUSH, and dispose the subscription when it unmounts.
+ *
+ * WHY THIS EXISTS AT ALL. A sidebar panel and a scene are PASSIVE surfaces: nothing re-renders them
+ * unless the host has a reason to, so a page that re-reads its source per render only ever shows what
+ * was true when its tick last fired — measured at 1000 ms for the sidebar and 2000 ms for the scenes.
+ * The 1-2 s timers STAY (they are the fallback and they carry a composition with no `mpdTeams` row at
+ * all); this hook is the ADDITION that makes a change visible as soon as it happens.
+ *
+ * A NOTIFICATION RE-READS THE NEW RECORD, which takes one of two shapes depending on the surface: the
+ * sidebar page reads its source PER RENDER, so the state bump IS the re-read; a full-screen scene keeps
+ * its projection in a state cell, so it passes {@link onNotify} and re-reads there. Both happen on
+ * every notification.
+ *
+ * THE THREE DEGRADATIONS, each of which costs the push and never the page:
+ *   · no feed at all (no service, an older composition) → the effect returns immediately;
+ *   · an accessor that THROWS → the page still renders, and re-arms on its next render;
+ *   · a subscription call that throws → contained here, so the host's reconciler never sees it.
+ *
+ * THE SUBSCRIPTION IS DISPOSED ON UNMOUNT through the effect's own cleanup, and it is re-armed exactly
+ * once when the feed first appears: the accessor's returned function has a STABLE identity while the
+ * service is bound (it is built once in the composition root), so the effect's dependency does not
+ * change per render — a per-render identity would tear the subscription down and rebuild it on every
+ * frame, which is how a "push" becomes a 60 Hz re-subscribe loop.
+ * @param React - the host React instance (the panel kit's or the scene kit's).
+ * @param feed - resolves the live feed for the calling session's workspace, per render; undefined when
+ *   this composition has no feed to offer.
+ * @param onNotify - called after each notification, for a surface whose source read is not per-render;
+ *   omitted by a per-render reader, where the state bump below already carries the re-read.
+ */
+export function useTeamFeed(React: TeamFeedReactLike, feed: TeamFeedAccessor | undefined, onNotify?: () => void): void {
+  /** The state cell whose UPDATE is the whole mechanism: nothing reads its value. */
+  const tick = React.useState(0)
+  /** The cell's setter, proved callable before the effect is built. */
+  const set = tick[1] as (next: number | ((previous: number) => number)) => void
+  // THE NOTIFY CALLBACK TRAVELS IN A REF, exactly as `usePanelKeys` keeps its handler: the effect below
+  // depends on the SUBSCRIPTION alone, so a per-render callback identity must not re-register anything.
+  /** The ref holding the newest `onNotify`, or undefined on a host kit that exposes no `useRef`. */
+  const latest = typeof React.useRef === "function" ? React.useRef(onNotify) : undefined
+  if (latest !== undefined && latest !== null) latest.current = onNotify
+  /** The live subscription function for this render; undefined before the row binds or after a throw. */
+  let subscribe: TeamFeedSubscribe | undefined
+  try {
+    subscribe = feed === undefined ? undefined : feed()
+  } catch {
+    subscribe = undefined
+  }
+  React.useEffect(() => {
+    if (typeof subscribe !== "function") return undefined
+    try {
+      // THE LISTENER'S ONLY JOB IS A RE-READ: the state update re-renders a per-render reader, and the
+      // callback re-reads a state-cached one — this hook keeps no copy of the data either way.
+      /** The feed's own disposer, returned by the subscribe call. */
+      const dispose = subscribe(() => {
+        try {
+          set((previous: number) => previous + 1)
+        } catch {
+          // A setter that refuses (an unmounting surface) costs this one notification.
+        }
+        try {
+          /** The callback the newest render supplied, or the mount render's when there is no ref. */
+          const notify = latest === undefined || latest === null ? onNotify : (latest.current as (() => void) | undefined)
+          if (typeof notify === "function") notify()
+        } catch {
+          // A surface whose re-read throws keeps the re-render the bump above already asked for.
+        }
+      })
+      return () => {
+        try {
+          if (typeof dispose === "function") dispose()
+        } catch {
+          // The disposer is idempotent by contract; a second call must not escape into the reconciler.
+        }
+      }
+    } catch {
+      // A FEED THAT THROWS IS NOT A BROKEN PAGE: the tick still refreshes this surface.
+      return undefined
+    }
+  }, [subscribe])
+}
+
+/**
  * Whether a key event should reach a page's own handler at all.
  *
  * Pure, so the arming rule is assertable without a host: the page must hold the focus AND be on
@@ -1442,14 +1564,15 @@ export function visualTone(visual: string): DagTone {
 /**
  * The LEGEND: what this page's marks mean (frozen clause R6).
  *
- * TWO SOURCES, DELIBERATELY. The arrow/focus sentence is `graph.ts`'s `legendLines` — the drawing
- * module owns what its own arrows mean, and the full-screen scene renders the same lines, so the two
- * surfaces cannot describe an edge differently. The STATE KEY is built here from
- * `dag-theme.ts` `DAG_STATE_TONES` + `DAG_TONE_GLYPH`, and it is the whole reason this legend exists:
- * `blocked` and `open` share the `○` glyph, and the drawing module's own key lists five states and
- * omits `blocked`, so a legend that merely forwarded it would leave the reader unable to tell the two
- * apart. NO GLYPH IS SPELLED HERE — every mark is interpolated from the contract, so the legend
- * cannot drift from the drawing.
+ * THE STATE KEY IS OWNED HERE, AND IT IS THE ONLY ONE. The arrow/focus sentence is `graph.ts`'s
+ * `legendLines` — the drawing module owns what its own arrows mean, and the full-screen scene renders
+ * the same line, so the two surfaces cannot describe an edge differently. The STATE KEY is built here
+ * from `dag-theme.ts` `DAG_STATE_TONES` + `DAG_TONE_GLYPH`, and it names all SIX states, so `blocked`
+ * and `open` — which share the `○` glyph by design — are told apart by the twin each entry carries.
+ * The drawing module's own FIVE-state key was DELETED (user requirement: the DAG legend printed the
+ * state key twice): it omitted `blocked`, so it could not tell `○ blocked` from `○ open`, and printed
+ * under this key it was the same legend a second time. NO GLYPH IS SPELLED HERE — every mark is
+ * interpolated from the contract, so the legend cannot drift from the drawing.
  * @param cols - the cells available on the page's rows.
  * @param arrowLines - the drawing module's own arrow/focus lines, already sanitized by its owner.
  * @returns the legend lines, each inside `cols`, in print order.

@@ -1,0 +1,20 @@
+A2 - the composed legend: row counts at the two reported widths, plus the duplicate sweep
+source: packages/mpd-tui-plugin/src/{graph,panel-core,dag-theme}.ts (post-fix)
+computed (UTC): 2026-10-08T07:43:15.414Z
+
+terminal=100 cols=98 composedRows=2 arrowRows=1 stateKeyRows=1
+  0|▼/▸ blocker above → dependent below · ▶ focus lights its chain
+  1|✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open · ⊘ cancelled
+  stateEntries=6 entriesPresent=6 keyRowsCarryingAnEntry=1
+
+terminal=80 cols=78 composedRows=3 arrowRows=1 stateKeyRows=2
+  0|▼/▸ blocker above → dependent below · ▶ focus lights its chain
+  1|✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open
+  2|⊘ cancelled
+  stateEntries=6 entriesPresent=6 keyRowsCarryingAnEntry=2
+
+duplicate sweep (the contract invariant): cols=1..400 x 6 state entries + the arrow cap
+  widths swept: 400
+  entries printed TWICE (must be 0): 0
+  arrow lines beyond the first (must be 0): 0
+  entries absent at a degenerate width (informational, pre-existing drop/clamp below the composer floor): 48 e.g. cols=1

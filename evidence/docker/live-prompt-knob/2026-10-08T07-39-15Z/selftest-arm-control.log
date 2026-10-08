@@ -1,0 +1,4 @@
+[arm-control] ok   shipped compose (compose/docker-compose.yml) -> passes=true expected=true
+[arm-control] ok   interpolation form removed (${MPD_E2E_LIVE_PROMPT}) -> passes=false expected=false
+[arm-control] ok   named on ONE service only -> passes=false expected=false
+[arm-control] the arm is falsifiable: both mutations turn it red

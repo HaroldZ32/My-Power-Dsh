@@ -64,6 +64,7 @@ import {
   type StagedTask,
 } from "./plan-store"
 import { planForSession, registerTeamRoutes, TEAM_ROUTES, type TeamWebPlan } from "./team-web"
+import { ChangeFeed } from "./change-feed"
 import {
   activeTeamId,
   addTeamMember,
@@ -79,6 +80,7 @@ import {
   listTeams,
   losslessSummary,
   memberProgress,
+  onTeamStateWritten,
   readTeam,
   recordNamesMember,
   summariseTeam,
@@ -141,6 +143,10 @@ export interface MpdTeamsService {
    * @returns the payload, with `plan: null` when that session has nothing staged.
    */
   planFor: (workspace: string, sessionId: string) => TeamWebPlan
+  /** Subscribe to change notifications for one workspace; the returned disposer is idempotent. */
+  subscribe: (workspace: string, listener: () => void) => () => void
+  /** A monotonically increasing revision of one workspace's team state; 0 before any change is seen. */
+  revision: (workspace: string) => number
 }
 
 /** A tool result narrow enough for the adapter's renderer. */
@@ -289,6 +295,21 @@ export function apply(ctx: any): void {
   const disposers: Array<() => void> = []
   /** The clock seam: one place to substitute in a test, and the reason every store takes a `Date`. */
   const now = (): Date => new Date()
+
+  /**
+   * THE CHANGE FEED: the push substrate every other mpd surface subscribes to.
+   *
+   * It is built FIRST, before the service that publishes it, for the same reason the service is
+   * published before the tools: a consumer that resolves `mpdTeams` during this row's own activation
+   * must find a live feed rather than a member that throws when called. Constructing it also registers
+   * its hook on the store's writers (`onTeamStateWritten`), which is what makes this process's OWN
+   * mutations — a tool call, an approval, a dispatch pass — notify without polling anything.
+   *
+   * DISPOSED WITH THE ROW: the hook, the debounce timers and every `fs.watch` handle go together, so a
+   * reload cannot leave a dead feed observing writes or a stale watcher holding the teams directory.
+   */
+  const feed = new ChangeFeed({ warn: (line: string): void => { rowLogLine("mpd-team-core", line) } })
+  disposers.push((): void => { feed.dispose() })
 
   /**
    * THE TEAM EXECUTOR: the ONE seam a member is raised through and a message delivered to.
@@ -464,6 +485,19 @@ export function apply(ctx: any): void {
             rowLogLine("mpd-team-core", `[mpd-team-core] reading the staged plan failed: ${String((error as Error)?.message ?? error)}`)
             return { ok: true, workspace, sessionId, plan: null }
           }
+        },
+        // THE PUSH SUBSTRATE, and the two members that make a surface stop polling. `subscribe` is
+        // the in-process half of the feed — the same one the `/events` route serves over the wire —
+        // so a TUI page and a browser tab are watching the same observation, not two of them.
+        //
+        // BOTH ARE CONTAINED LIKE EVERY OTHER MEMBER HERE: they are resolved during activation and
+        // called from a render path, so a broken feed must answer (a dead disposer, a zero revision)
+        // rather than throw into a surface that cannot catch.
+        subscribe: (workspace: string, listener: () => void) => {
+          try { return feed.subscribe(workspace, listener) } catch { return (): void => {} }
+        },
+        revision: (workspace: string) => {
+          try { return feed.revision(workspace) } catch { return 0 }
         },
       } satisfies MpdTeamsService)
     } catch (error) {
@@ -1358,6 +1392,11 @@ export function apply(ctx: any): void {
         },
         effect: (fn: () => unknown, label: string) => { try { return ctx?.effect?.(fn, label) } catch { return undefined } },
         warn: (line: string) => rowLogLine("mpd-team-core", `[mpd-team-core] ${line}`),
+        // The SAME feed the service publishes, handed to the stream route as its two doors. A route
+        // that had its own feed would be a second observer of the same writes and a second watcher on
+        // the same directory — the exact duplication the ONE substrate exists to prevent.
+        subscribe: (workspace: string, listener: () => void) => feed.subscribe(workspace, listener),
+        revision: (workspace: string) => feed.revision(workspace),
       })
       // Mounted ONCE here and retried on the binding below; the route is idempotent by path on the
       // host's own registry, and a second registration attempt against the SAME server is harmless

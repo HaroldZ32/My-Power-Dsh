@@ -1,0 +1,15 @@
+A1-sidebar-open.txt {"roundedCorners":33,"boxGlyphsT":5,"square":2,"verticals":152,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A2-sidebar-plus2s.txt {"roundedCorners":29,"boxGlyphsT":4,"square":2,"verticals":154,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A3-sidebar-plus4s.txt {"roundedCorners":29,"boxGlyphsT":4,"square":2,"verticals":154,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A4-sidebar-plus8s.txt {"roundedCorners":29,"boxGlyphsT":4,"square":2,"verticals":154,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A5-sidebar-reopened.txt {"roundedCorners":29,"boxGlyphsT":4,"square":2,"verticals":154,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A-control-diff.txt {"roundedCorners":0,"boxGlyphsT":0,"square":0,"verticals":0,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A-refresh-diff.txt {"roundedCorners":6,"boxGlyphsT":0,"square":0,"verticals":24,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+B1-scene-open.txt {"roundedCorners":25,"boxGlyphsT":4,"square":2,"verticals":110,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B2-scene-plus2s.txt {"roundedCorners":29,"boxGlyphsT":5,"square":2,"verticals":114,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B3-scene-plus4s.txt {"roundedCorners":29,"boxGlyphsT":5,"square":2,"verticals":114,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B4-scene-plus8s.txt {"roundedCorners":29,"boxGlyphsT":5,"square":2,"verticals":114,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B5-after-escape.txt {"roundedCorners":4,"boxGlyphsT":0,"square":0,"verticals":46,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B6-scene-reopened.txt {"roundedCorners":29,"boxGlyphsT":5,"square":2,"verticals":114,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B-control-diff.txt {"roundedCorners":0,"boxGlyphsT":0,"square":2,"verticals":8,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B-refresh-diff.txt {"roundedCorners":0,"boxGlyphsT":0,"square":2,"verticals":8,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}

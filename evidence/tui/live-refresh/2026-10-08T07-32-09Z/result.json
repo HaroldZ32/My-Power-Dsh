@@ -1,0 +1,122 @@
+{
+  "probe": "MPD TUI live-refresh + DAG rendering, real PTY capture",
+  "evidenceRoot": "evidence/tui/live-refresh/2026-10-08T07-32-09Z",
+  "question": "Do the MPD TUI sidebar panel and the MPD full-screen scene actually refresh live (no key press) when the MPD team record changes on disk, and which DAG rendering (rounded boxes / dense list / rail) does each draw?",
+  "method": {
+    "host": "dsh-tui 0.14.0 (launcher: /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh-tui), linked into a SANDBOX copy of the real profile ~/.dsh/profiles/dsh-tui (node_modules copied; the @mpd-dsh/mpd symlink re-pointed at this checkout)",
+    "isolation": "per-run mktemp sandbox: DSH_HOME=<sb>/dshhome, HOME=<sb>/home, workspace=<sb>/ws, XDG/npm caches inside <sb>; the real ~/.dsh was READ ONLY (profile copy + credentials copied in), never written",
+    "pty": "tmux 3.6, private socket, `tmux -f /dev/null -S <sb>/tui.sock new-session -d -x <COLS> -y <ROWS> -c <sb>/ws`, then `send-keys \"env -i PATH=… DSH_HOME=… HOME=… TERM=xterm-256color DSH_TUI_LANG=en DSH_TUI_NO_LAUNCHPAD=1 DSH_TUI_WORKSPACE_TARGET=… dsh-tui\" Enter`",
+    "capture": "tmux capture-pane -e -p -J (raw ANSI) and tmux capture-pane -p -J (plain), never a re-typed transcript",
+    "fixtures": "docker/ui/team-fixture.mts (the repo's own 6-task board with a failed prerequisite) for the small board; evidence/tui/live-refresh/2026-10-08T07-32-09Z/make-big-board.mjs for the 26-task / 16-rank big board",
+    "no-keypress": "after the surface was opened, ZERO send-keys calls until the last refresh capture; the mutation is a node script rewriting <ws>/.mpd/team/teams/<id>.json in place",
+    "runner": "evidence/tui/live-refresh/2026-10-08T07-32-09Z/run.sh (probe), run-v2.sh (full small-board), run-v3.sh (140x40 + narrow fallback), run-v4.sh (big board)"
+  },
+  "grid": "220x50 (probe-1, full-1, big-2); 140x40 (full-2)",
+  "utc": {
+    "dirStamp": "2026-10-08T07:32:09Z",
+    "firstBoot": "2026-10-08T07:33:01Z",
+    "lastCapture": "2026-10-08T07:45:17Z"
+  },
+  "sandboxes": {
+    "probe-1": "/tmp/mpd-lr-Zfi9jn",
+    "full-1": "/tmp/mpd-lr-j1x7lc",
+    "full-2": "/tmp/mpd-lr-lP1EpU",
+    "big-1": "/tmp/mpd-lr-iQBvHs (fixture generator threw; no board — run discarded)",
+    "big-2": "/tmp/mpd-lr-gFfPOS"
+  },
+  "rows": [
+    {
+      "name": "probe-1/sidebar-smoke",
+      "ok": true,
+      "reason": "`/mpd panel` from the composer opened the MPD page in the HOST SIDEBAR (panel bar shows `◀ ○ ○ MPD ○ ○ ▶`, box title `┌MPD─…`). Entry point: /mpd panel. Mode marker quoted: `view boxes · 6 tasks · ranks derived`. Drawing: rounded-corner natural box layout.",
+      "raw": "│ ◀      ○             ○        MPD        ○             ○        ▶ || │┌MPD────────────────────────────────────────────────────────────────┐ || ││╭────────╮   ╭────────╮   ╭────────╮   │ │││ ✓ T1   │   │ ◐ T2   │   │ ✓ T3   │ ││╰───┬────╯   ╰────────╯   ╰───┬────╯ ││    ├─────────────────────────╯ ││    ▼ ││╭───┴────╮ │││ ✗ T4   │ || ││view boxes · 6 tasks · ranks derived",
+      "dir": "evidence/tui/live-refresh/2026-10-08T07-32-09Z/probe-1"
+    },
+    {
+      "name": "probe-1/scene-entrypoint",
+      "ok": false,
+      "reason": "`/mpd team` typed AFTER `/mpd panel` did NOT open the scene within 60s: the sidebar keeps the input focus and Escape did not hand it back (the frame after Escape was byte-identical to the panel frame). FINDING (entry-point ordering): the full-screen scene must be opened from the composer BEFORE any `/mpd panel`, which is what full-1/big-2 do.",
+      "raw": "B1-scene-open.txt byte-identical to A1-sidebar-open.txt (13241 bytes each); no 'task dependency graph' row",
+      "dir": "evidence/tui/live-refresh/2026-10-08T07-32-09Z/probe-1"
+    },
+    {
+      "name": "full-1/scene-refresh (small board, 6 -> 7 tasks)",
+      "ok": true,
+      "reason": "LIVE REFRESH YES. `/mpd team` (full-screen scene, opened from the composer). Mode marker quoted: `task dependency graph` (NO ` (rail)` suffix => boxes mode; drawing is the rounded natural layout). Mutation on disk at 07:35:22Z (T2 in_progress->completed, T4 failed->pending, task T7 appended). NO key press was sent between the mutation and the last capture. The scene redrew by +2022ms: header bar `6 task(s) · 2 done · 1 running · 2 pending · 1 failed · 4 link(s)` -> `7 task(s) · 3 done · 0 running · 4 pending · 0 failed · 5 link(s)`, box label `│ ◐ T2   │` -> `│ ✓ T2   │`, and a new box `○ T7` appears. Control: Escape + re-open (B6, 07:35:37Z) is byte-identical to the post-refresh frame (changedLines=0).",
+      "raw": "B1 @2026-10-08T07:35:22.856Z `│ █████░░░░░░░░░░░ 2/6 · active · 6 task(s) · 2 done · 1 running · 2 pending · 1 failed · 4 link(s)` | B4 @2026-10-08T07:35:30.969Z `│ ███████░░░░░░░░░ 3/7 · active · 7 task(s) · 3 done · 0 running · 4 pending · 0 failed · 5 link(s)` | changedLines(B1,B4)=24 | new box in B4: `○ T7`",
+      "census": "B1 roundedCorners=25 boxT=4 ; B2/B3/B4 roundedCorners=29 boxT=5",
+      "dir": "evidence/tui/live-refresh/2026-10-08T07-32-09Z/full-1"
+    },
+    {
+      "name": "full-1/sidebar-refresh (small board, 7 -> 8 tasks)",
+      "ok": true,
+      "reason": "LIVE REFRESH YES. `/mpd panel` (sidebar). Mode marker quoted: `view boxes · 7 tasks · ranks derived` -> `view boxes · 8 tasks · ranks derived`; panel summary `tasks 3/7` -> `tasks 4/8`. Mutation on disk at 07:35:44Z (T4->completed, T6->in_progress, task T8 appended). NO key press between the mutation and the +2s/+4s/+8s captures. Control: re-open (A5, 07:35:56Z) is byte-identical to the +2s frame (changedLines=0).",
+      "raw": "A1 @2026-10-08T07:35:44.124Z `view boxes · 7 tasks · ranks derived` + `team webui-tui-i18n  phase active  tasks 3/7  members 5  ███████░░░` | A2 @2026-10-08T07:35:46.184Z `view boxes · 8 tasks · ranks derived` + `tasks 4/8` | A3 @07:35:48.210Z / A4 @07:35:52.237Z same 8/8 | A5 @07:35:56.292Z identical to A2",
+      "census": "A1/A2/A3/A4/A5 roundedCorners=29, boxT=4, boxesTag=true",
+      "dir": "evidence/tui/live-refresh/2026-10-08T07-32-09Z/full-1"
+    },
+    {
+      "name": "big-2/scene-rendering + refresh (BIG board, 26 -> 27 tasks, 16 ranks)",
+      "ok": true,
+      "reason": "RAIL (the old-looking drawing) and LIVE REFRESH YES. `/mpd team`. Mode marker quoted: `task dependency graph (rail)` — the scene's own rail suffix, i.e. the box layout REFUSED this board (16 ranks > graph.ts MAX_BOX_RANKS=12) and the scene fell back to the vertical forest. Drawing: one node per line with `├─▸`/`└─▸` tree connectors. Mutation on disk at 07:43:52Z (B07 failed->completed, B08->in_progress, F03->completed, F11 appended). NO key press afterwards. Redraw by +2022ms: `✗ B07` -> `✓ B07`, `○ F03` -> `✓ F03`, new row `○ F11`. Control: re-open (B5, 07:44:02Z) identical to the +2s frame (changedLines=0).",
+      "raw": "BIG-B1 @2026-10-08T07:43:52.613Z `│ task dependency graph (rail)` | `│ ✓ B01  ui-worker` `│ ├─▸ ✓ B02  qa-reviewer` `│ │  ├─▸ ✓ B03` … | BIG-B2 @07:43:54.666Z `✓ B07` + `○ F11` + `✓ F03` | changedLines(BIG-B1,BIG-B3)=38",
+      "dir": "evidence/tui/live-refresh/2026-10-08T07-32-09Z/big-2"
+    },
+    {
+      "name": "big-2/sidebar-rendering + refresh (BIG board, 27 -> 28 tasks)",
+      "ok": true,
+      "reason": "DENSE LIST and LIVE REFRESH YES. `/mpd panel`. Mode marker: the `view <mode>` row is NOT painted in list mode (the captured frame carries no `view …` line at all) — the layout is read from what was painted instead: rank-grouped rows `rank 0 ─────`, `✓ B01  completed  @ui-worker`, blocker refs `⇠B01`, and the list footer `⤢ fullscreen · ↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll`; that is `layoutList`, the LIST_ROWS=24 fallback the page takes for a board with more than 24 tasks. Mutation on disk at 07:45:09Z (B09->in_progress, F04->in_progress, F12 appended). NO key press afterwards. Redraw by +2020ms: `tasks 8/27` -> `tasks 8/28`, new list row `○ F12  open ⇠B04`, `◐·· B09  running @ui-worker`. Control: re-open (A4, 07:45:17Z) reads the same 8/28.",
+      "raw": "BIG-A1 @2026-10-08T07:45:09.286Z `team big-board  phase active  tasks 8/27  members 5` | `rank 0 ───────` `  ✓ B01   completed  @ui-worker` | BIG-A2 @07:45:11.341Z `tasks 8/28` + `○ F12  open ⇠B04` | BIG-A3 @07:45:13.364Z `◐·· B09  running  @ui-worker`",
+      "dir": "evidence/tui/live-refresh/2026-10-08T07-32-09Z/big-2"
+    },
+    {
+      "name": "full-2/sidebar-refresh at 140x40",
+      "ok": true,
+      "reason": "Second, independent confirmation at a different geometry and with the surfaces opened in the REVERSE order: `view boxes · 6 tasks` -> `view boxes · 7 tasks` after an on-disk mutation with no key press. Control frame identical to the +2s frame apart from the host's rotating chat tip.",
+      "raw": "A1 @07:36:55Z-era `view boxes · 6 tasks · ranks derived` | A2/A3/A4 `view boxes · 7 tasks · ranks derived` | A5 re-opened `view boxes · 7 tasks · ranks derived`",
+      "dir": "evidence/tui/live-refresh/2026-10-08T07-32-09Z/full-2"
+    },
+    {
+      "name": "full-2/scene-entrypoint (after the sidebar)",
+      "ok": false,
+      "reason": "Same focus trap as probe-1: once `/mpd panel` has the input focus, `/mpd team` does not reach the command registry (marker absent for 90s, the frame stays the sidebar frame). The scene arm of full-2 is therefore INVALID as a scene measurement (it measured the sidebar); the scene verdict rests on full-1 and big-2, both of which opened it first from the composer.",
+      "raw": "B1-scene-open.txt still carries `view boxes · 7 tasks · ranks derived`; no `task dependency graph`",
+      "dir": "evidence/tui/live-refresh/2026-10-08T07-32-09Z/full-2"
+    },
+    {
+      "name": "full-2/narrow-geometry (bonus, 92x40 and 64x32)",
+      "ok": false,
+      "reason": "At 64x32 the HOST SIDEBAR IS NOT DRAWN AT ALL (no panel border, no MPD page in the pane) — the sidebar has a width floor the host enforces, so a narrow terminal silently has no MPD sidebar. The full-screen scene still opened at 64x32 and still drew ROUNDED BOXES (`task dependency graph`, no `(rail)`) with horizontal panning.",
+      "raw": "N2-narrow64-sidebar.txt: no `┌MPD` / no `view …` row; N3-narrow64-scene.txt: `│ task dependency graph` + `│ │ ✓ T1   │   │ ✓ T2   │   │ ✓ T3   │`",
+      "dir": "evidence/tui/live-refresh/2026-10-08T07-32-09Z/full-2"
+    }
+  ],
+  "verdicts": {
+    "sidebarLiveRefresh": "YES — 3 independent runs (full-1 220x50, full-2 140x40, big-2 220x50); first new frame observed at +2.0s after the on-disk write, with no key press; re-open control frames agree with the live frames",
+    "sceneLiveRefresh": "YES — 2 independent runs (full-1 small board, big-2 big board); first new frame at +2.0s; re-open control frames agree",
+    "sidebarRendering": "rounded-box natural layout (`view boxes`, `ranks derived`) for the 6-8 task boards; DENSE LIST (rank-grouped rows + progress bars, no `view …` row) for the 26-28 task board — the frozen LIST_ROWS=24 fallback",
+    "sceneRendering": "rounded-box natural layout (`task dependency graph`, no ` (rail)`) for the 6-8 task boards; RAIL (`task dependency graph (rail)`, `├─▸`/`└─▸` tree) for the 26-task / 16-rank board — the MAX_BOX_RANKS=12 fallback",
+    "userClaimFalsified": "On THIS machine with THIS checkout the reported claim 'the sidebar and full-screen pages lack live refresh' is FALSIFIED for both surfaces; the reported 'DAG drawings are still the old version' is FALSIFIED for ordinary boards (both surfaces draw the new rounded-box natural layout) and EXPLAINED for big boards, where the frozen fallback ladder legitimately degrades the drawing to the dense list (sidebar) / rail (scene) — which is what an old-looking big board will look like."
+  },
+  "bounds": [
+    "The capture proves the PANE the host painted, not which internal tick caused it: the redraw is consistent with the plugin's own intervals (DAG_PANEL_REFRESH_MS=1000, BOARD_REFRESH_MS=2000) but the frame timestamps alone cannot separate a timer tick from a host re-render for another reason.",
+    "The mutation is a whole-file rewrite of <workspace>/.mpd/team/teams/<id>.json, i.e. the same path a real `mpdTeams` write takes; it does not exercise the team-record WRITER, only the readers.",
+    "Only the MPD DAG page of the sidebar (`/mpd panel`, `/mpd dag`) and the full-screen team scene (`/mpd team`) were measured. `/mpd workmate`, `alt+a` (merged panel), `alt+t`, the Ctrl+A contact and the Web plane were NOT measured here.",
+    "One sandbox used a copied 0.14.0 profile with the @mpd-dsh/mpd link re-pointed at this checkout; the TUI host is the real installed 0.14.0, the bundle is this working tree at capture time (no git state was mutated).",
+    "Interactive focus: `/mpd panel` takes the input focus and Escape does not return it to the composer on this host; entry-point ORDER (scene first, then panel) was required, and the full-2 scene arm failed for that reason.",
+    "The big board is a hand-written fixture (16-rank chain + 10 fan tasks), not a live team; it is realistic in shape, not in provenance.",
+    "The working tree was DIRTY and being edited by other lanes during the capture window (src rewrites at 07:37:23-35Z, a dist rebuild at 07:44:25Z); each run therefore certifies the plugin bytes loaded at ITS OWN boot, which cannot be re-hashed afterwards without the module bytes (a `git checkout` was forbidden and would have destroyed the other lanes work)."
+  ],
+  "treeAtCapture": {
+    "head": "3e144c15d213e197f78265601f57be47d966f065  (2026-10-08T14:28:20+08:00)",
+    "note": "The TUI rows resolve packages/<pkg>/dist/index.js (link: install reads this checkout directly), so each run executed the DIST bytes on disk at ITS boot instant. The checkout is DIRTY (other lanes mid-wave) and moved DURING the capture window: packages/mpd-tui-plugin/src/{graph.ts,panel-dag.ts,scenes.ts} were rewritten at 2026-10-08T07:37:23-35Z and packages/mpd-tui-plugin/dist/index.js was REBUILT at 2026-10-08T07:44:25Z — i.e. AFTER big-2 booted (07:43:31Z), so the running process kept the bytes it had loaded (no module hot reload) and every frame inside a run is internally consistent. The verdicts are about the code image loaded at each boot, NOT about a frozen commit: a hash read now is NOT the bytes that were painted.",
+    "measuredNow": {
+      "packages/mpd-tui-plugin/dist/index.js": "2026-10-08 15:44:25  sha256:b009ed3db1c335d1",
+      "packages/mpd-tui-plugin/src/panel-dag.ts": "2026-10-08 15:37:28  sha256:f0d1cd4bb8bcfc54",
+      "packages/mpd-tui-plugin/src/scenes.ts": "2026-10-08 15:37:35  sha256:24f648199fb8fabd",
+      "packages/mpd-tui-plugin/src/graph.ts": "2026-10-08 15:37:23  sha256:c381d7df9768bf92",
+      "packages/mpd-team-core-plugin/dist/index.js": "2026-10-08 07:00:32  sha256:70eed8dcb23426f5"
+    },
+    "readAt": "2026-10-08T07:47:03.296Z"
+  }
+}
