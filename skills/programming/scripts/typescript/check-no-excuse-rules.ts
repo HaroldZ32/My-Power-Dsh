@@ -82,6 +82,9 @@ function loadTypescriptFromCaller(): TsModule {
     `error: cannot resolve the TypeScript 7 API from the caller project (${process.cwd()}). ` +
       `Tried: ${tried.join(", ")}. ` +
       "Install it in the project being checked (e.g. `bun add -d typescript` or `bun add -d @typescript/native-preview`) and re-run.",
+  )
+  process.exit(2)
+}
 
 /** The caller-resolved TypeScript modules, loaded once at module scope. */
 const typescript = loadTypescriptFromCaller()
@@ -297,10 +300,10 @@ function analyzeFile(filePath: string, sourceFile: tsTypes.SourceFile): Violatio
         if (parent && ts.isAsExpression(parent)) {
           // already handled
         } else if (parent && (
-          ts.isParameter(parent) ||
+          parent.kind === ts.SyntaxKind.Parameter ||
           ts.isVariableDeclaration(parent) ||
           ts.isPropertyDeclaration(parent) ||
-          ts.isPropertySignature(parent)
+          parent.kind === ts.SyntaxKind.PropertySignature
         )) {
         /** Position where the assertion is reported. */
           const p = pos(node)

@@ -1,0 +1,140 @@
+# typecheck fix — evidence log
+# repo   : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+# branch : feature/de-omo-wave-a-skills
+# revision at repro: 15468dae006a967d314c06da286f1e0c26c5c957
+# subject: skills/programming/scripts/typescript/check-no-excuse-rules.ts
+# route  : 1 — the code was fixed; NO assertion was weakened, stubbed or deleted; no tsconfig exclusion.
+
+## [1] REPRO — bun run typecheck, BEFORE the fix (verbatim)
+### CMD: bun run typecheck
+$ tsgo --noEmit
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(87,1): error TS1135: Argument expression expected.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(431,1): error TS1005: '}' expected.
+error: script "typecheck" exited with code 1
+### EXIT: 1
+
+## [2] INTERMEDIATE — after restoring the truncated tail of loadTypescriptFromCaller
+# The parse repair unmasked the real defects the syntax errors had hidden: the same re-source commit
+# had swapped two SyntaxKind comparisons for TS7 predicate names the installed surface does not export.
+### CMD: bun run typecheck
+$ tsgo --noEmit
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(303,14): error TS2339: Property 'isParameter' does not exist on type 'typeof import("typescript/unstable/ast")'.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(306,14): error TS2551: Property 'isPropertySignature' does not exist on type 'typeof import("typescript/unstable/ast")'. Did you mean 'isPropertyName'?
+error: script "typecheck" exited with code 1
+### EXIT: 1
+# Runtime probe of the caller surface actually installed here (@typescript/native-preview/unstable/ast):
+#   isParameter undefined | isPropertySignature undefined | isVariableDeclaration function | isPropertyDeclaration function
+#   SyntaxKind.Parameter 170 | SyntaxKind.PropertySignature 172
+# => the two predicates do not exist on that surface (it names isParameterDeclaration / isPropertySignatureDeclaration),
+#    while the SyntaxKind comparison the pre-re-source revision shipped is valid both at type level and at runtime.
+### FIX APPLIED ###
+  restore `)` + `process.exit(2)` + `}` closing loadTypescriptFromCaller (exit-2 contract its JSDoc declares)
+  restore `parent.kind === ts.SyntaxKind.Parameter` and `parent.kind === ts.SyntaxKind.PropertySignature`
+
+## [3] FINAL GATES (post-fix), in the mandated order
+### CMD: bun run typecheck
+$ tsgo --noEmit
+### EXIT: 0
+### CMD: bun run verify:comments
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 367 TypeScript file(s) of 367 in the source set; inspected 32439 declaration(s); skipped 14642 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+### EXIT: 0
+### CMD: node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+### EXIT: 1
+### CMD: bun test packages/mpd-bootstrap-plugin/test/
+bun test v1.4.2 (744846f84)
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+(pass) bundle skill corpus provider > serves every shipped skill as a bundled-rank candidate [4.76ms]
+(pass) bundle skill corpus provider > get() loads the skill body and keeps the resource base [1.32ms]
+(pass) bundle skill corpus provider > frontmatter subset: quoted, folded, nested metadata and invocation policy [0.94ms]
+(pass) bundle skill corpus provider > registers an fs/observed invalidator scoped to the corpus [0.21ms]
+(pass) legacy home-copy migration > removes only stamped bundle copies and leaves user content alone [0.61ms]
+(pass) legacy home-copy migration > never touches an unstamped home (legacy installer copies survive) [0.19ms]
+
+ 6 pass
+ 0 fail
+ 183 expect() calls
+Ran 6 tests across 1 file. [100.00ms]
+### EXIT: 0
+
+## [4] RE-PIN — exactly one --write, then --check
+### CMD: node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (4011 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=282ef01885bdbb3e84340435462f12e0a333d494de09fe70ed308d8cb5f22a7f fileCount=371
+[repin-vendor]   computed (LF) : treeSha=34fe50c4a7892f803df6ee5db3180011523721b312bf8018c351c87a3cf8f773 fileCount=371 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 28c8508c5eaa7d9a3bb5f306126af84a773d14e24092bc5230ecc5694c143510   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha 282ef01885bdbb3e84340435462f12e0a333d494de09fe70ed308d8cb5f22a7f -> 34fe50c4a7892f803df6ee5db3180011523721b312bf8018c351c87a3cf8f773
+
+[repin-vendor] asset          : vendor/mcp-src
+[repin-vendor]   locked       : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459
+[repin-vendor]   computed (LF) : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] WRITE     : applied 1 field change(s) to /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json
+[repin-vendor]   skills.treeSha: 282ef01885bdbb3e84340435462f12e0a333d494de09fe70ed308d8cb5f22a7f -> 34fe50c4a7892f803df6ee5db3180011523721b312bf8018c351c87a3cf8f773
+[repin-vendor]   - (line 8)       "treeSha": "282ef01885bdbb3e84340435462f12e0a333d494de09fe70ed308d8cb5f22a7f"
+[repin-vendor]   + (line 8)       "treeSha": "34fe50c4a7892f803df6ee5db3180011523721b312bf8018c351c87a3cf8f773"
+[repin-vendor] WRITE     : linesChanged=1 bytes 4011 -> 4011 (differingBytes=59)
+### EXIT: 0
+### CMD: node scripts/repin-vendor.ts --check
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (4011 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.ts
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=34fe50c4a7892f803df6ee5db3180011523721b312bf8018c351c87a3cf8f773 fileCount=371
+[repin-vendor]   computed (LF) : treeSha=34fe50c4a7892f803df6ee5db3180011523721b312bf8018c351c87a3cf8f773 fileCount=371 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 28c8508c5eaa7d9a3bb5f306126af84a773d14e24092bc5230ecc5694c143510   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : vendor/mcp-src
+[repin-vendor]   locked       : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459
+[repin-vendor]   computed (LF) : treeSha=af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c fileCount=459 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)
+### EXIT: 0
+
+## [5] FINAL TREE
+ M VENDOR_LOCK.json
+ M skills/programming/scripts/typescript/check-no-excuse-rules.ts
+?? evidence/de-omo/skills-resource/2026-10-08T15-43-06Z-typecheck-fix/
+?? evidence/workmate/roles-readonly/2026-10-08T15-38-41.801Z/
+ VENDOR_LOCK.json                                               | 2 +-
+ skills/programming/scripts/typescript/check-no-excuse-rules.ts | 7 +++++--
+ 2 files changed, 6 insertions(+), 3 deletions(-)
+cf77053f7d840411045aabf20df4c8384ba15f5aee6dc3c03634cf5ec1ccc1e2  skills/programming/scripts/typescript/check-no-excuse-rules.ts

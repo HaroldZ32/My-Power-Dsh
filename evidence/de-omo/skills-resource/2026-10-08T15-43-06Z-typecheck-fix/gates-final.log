@@ -1,0 +1,36 @@
+### CMD: bun run typecheck
+$ tsgo --noEmit
+### EXIT: 0
+### CMD: bun run verify:comments
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 367 TypeScript file(s) of 367 in the source set; inspected 32439 declaration(s); skipped 14642 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+### EXIT: 0
+### CMD: node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+### EXIT: 1
+### CMD: bun test packages/mpd-bootstrap-plugin/test/
+bun test v1.4.2 (744846f84)
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+(pass) bundle skill corpus provider > serves every shipped skill as a bundled-rank candidate [4.76ms]
+(pass) bundle skill corpus provider > get() loads the skill body and keeps the resource base [1.32ms]
+(pass) bundle skill corpus provider > frontmatter subset: quoted, folded, nested metadata and invocation policy [0.94ms]
+(pass) bundle skill corpus provider > registers an fs/observed invalidator scoped to the corpus [0.21ms]
+(pass) legacy home-copy migration > removes only stamped bundle copies and leaves user content alone [0.61ms]
+(pass) legacy home-copy migration > never touches an unstamped home (legacy installer copies survive) [0.19ms]
+
+ 6 pass
+ 0 fail
+ 183 expect() calls
+Ran 6 tests across 1 file. [100.00ms]
+### EXIT: 0
