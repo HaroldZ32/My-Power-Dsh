@@ -1,7 +1,9 @@
 // C3 mpd-hashline-plugin: hash-anchored edit discipline on the DSH tool seam.
-// Vendored core: the upstream project packages/hashline-core (base 8c57e46;
-// SUL-1.0, inherited from upstream; see LICENSE.md). Adaptation: diff-utils.ts bundles a
-// minimal unified-diff generator instead of the npm "diff" dependency.
+// Core: `vendor/**` is our own TypeScript, ported from the DESIGN of `crates/pi-edit` in the MIT
+// project can1357/oh-my-pi; each vendor file carries that MIT notice and its copyright line, and
+// `LICENSE-NOTICES.md` repeats it. It keeps this row's contract: the four `mpd_hashline_*` tool names,
+// the `LINE#HASH|content` anchor shape and its 16-character alphabet, the stale-anchor report, and the
+// BOM / line-ending canonicalize-then-restore pair.
 // Model: files stay PLAIN on disk; the hashline layer is a ref view + anchored
 // edit discipline. Tools:
 //   1) mpd_hashline_read   - show the file as LINE#HASH|content (anchors for edits);

@@ -111,6 +111,69 @@ it. What replaced each capability, under which licence, is recorded in
 (wave B1), and thin launchers over the DECLARED npm dependencies `cclsp` (MIT), `@cyanheads/git-mcp-server`
 (Apache-2.0) and `mcp-server-commands` (MIT licence file, no `license` field).
 
+## Vendored plugin cores — REPLACED / WRITTEN, no SUL source (wave de-omo C)
+
+The three `src/vendor/**` cores that the first audit missed were dealt with in one wave. **No SUL-1.0
+bytes remain in any `src/vendor/**` tree**, and each surviving core is now fingerprinted by
+`VENDOR_LOCK.json`.
+
+- **`packages/mpd-hashline-plugin/src/vendor/**` — REPLACED, and MIT-derived.** The former core
+  (`packages/hashline-core` at oh-my-openagent `8c57e46`, SUL-1.0) is gone. The tree is now our own
+  TypeScript, ported from the **DESIGN** of `crates/pi-edit` in:
+
+  - Repository: <https://github.com/can1357/oh-my-pi>
+  - Pinned revision read: `602b6c812fa9ef774f359f1e399a09d30ee2eaca`
+  - Source path: `crates/pi-edit/` (notably `src/text.rs`, `src/modes/hashline/{format,mismatch}.rs`,
+    `src/diff_string.rs`)
+  - Licence: **MIT** — the workspace manifest declares `[workspace.package] license = "MIT"`, and the
+    crate inherits it via `license.workspace = true`
+  - Copyright lines, quoted from the upstream `LICENSE`:
+
+    > Copyright (c) 2025 Mario Zechner
+    > Copyright (c) 2025-2026 Can Bölük
+    > Copyright (c) 2026 Stencil Labs, Inc.
+
+  The full MIT permission text is reproduced verbatim at the top of EVERY file under that
+  `src/vendor/**` tree, together with the copyright lines above. `bun run verify-vendor` fingerprints
+  the tree, and the port is a DELIBERATE REDUCTION: the fuzzy "autocorrect" heuristics of the replaced
+  core are not reproduced (declared in `vendor/edits.ts`'s header).
+
+  MIT License
+
+  Copyright (c) 2025 Mario Zechner
+  Copyright (c) 2025-2026 Can Bölük
+  Copyright (c) 2026 Stencil Labs, Inc.
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+- **`packages/mpd-boulder-plugin/src/vendor/**` — WRITTEN HERE, mpd-owned.** The former core
+  (`packages/boulder-state` at oh-my-openagent `8c57e46`, SUL-1.0) is gone; the tree is a durable,
+  workspace-scoped JSON ledger plus per-task timers written in this repository against the contract the
+  `mpd_boulder_*` tools already documented. It carries **no third-party source and no third-party
+  licence obligation**, and the `.mpd` state-root convention and the legacy `codex:`/`opencode:`/`senpi:`
+  session-id tolerance are preserved so older records still resume.
+
+- **`packages/mpd-comment-checker-plugin/src/vendor/**` — DELETED as dead code.** Its two files
+  (`apply-patch-edits.ts`, `types.ts`) had no importer anywhere in the repository, in source or in the
+  built `dist/`; the plugin's actual dependency is the opt-in `@code-yeongyu/comment-checker` binary
+  (MIT), which is not redistributed here.
+
 ## Agent Teams (MIT) — official plugin set, mounted by this bundle
 
 From 2026-09-27 the bundle's team capability is the DeepSeek Harness OFFICIAL plugin set, mounted by

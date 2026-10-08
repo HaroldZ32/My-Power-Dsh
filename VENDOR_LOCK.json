@@ -11,6 +11,31 @@
       "fileCount": 1,
       "source": "vendored prebuilt from the upstream codegraph dist (MIT, see packages/mpd-mcp-codegraph/LICENSE/NOTICE)",
       "sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"
+    },
+    "packages/mpd-hashline-plugin/src/vendor": {
+      "fileCount": 8,
+      "treeSha": "7c38d4f18e056e2f79eac37908cc6250dd8d917185609b3e7a5b3c13f2be0495",
+      "source": "hashline core, mpd-owned TypeScript ported from the DESIGN of crates/pi-edit in the MIT project can1357/oh-my-pi (@602b6c81); MIT notice + copyright line in every file header and in LICENSE-NOTICES.md"
+    },
+    "packages/mpd-boulder-plugin/src/vendor": {
+      "fileCount": 13,
+      "treeSha": "fa19e7243941dc9fa229eb0a2c7bafd42267c4db094aec23ce1626f283115f81",
+      "source": "boulder ledger core, WRITTEN HERE (no third-party source): durable .mpd/boulder.json ledger + per-task timers, keeping the 13 exports the row imports"
+    },
+    "packages/mpd-schemastery": {
+      "fileCount": 19,
+      "treeSha": "1d086f00dad5c204a3d7d4cec92efb205f847f5914c7ee90c02554fa0b9ea4ed",
+      "source": "schemastery validator relocated out of the deleted adopted agent-teams body (MIT; see packages/mpd-schemastery/LICENSE and LICENSE-NOTICES.md)"
+    },
+    "packages/mpd-bundle-plugin/adopted": {
+      "fileCount": 2,
+      "treeSha": "a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f",
+      "source": "adopted agent-teams browser client, relocated out of the deleted tree (MIT; see LICENSE-NOTICES.md)"
+    },
+    "packages/mpd-bundle-plugin/client.js": {
+      "fileCount": 1,
+      "sha256": "1d59f4c9d802848780a88635390736aeabb0d8d0da44b6fb78434e1fd2be3f8f",
+      "source": "combined web client DERIVED from packages/mpd-bundle-plugin/adopted/** by scripts/build-mpd-client.ts; rebuild it, never rewrite this fingerprint"
     }
   },
   "verification": "node scripts/verify-vendor.ts: asset count and fingerprint mismatches are blockers; a zero-subject run is refused; NO upstream identity is checked, and a flag that would require one is refused by name",

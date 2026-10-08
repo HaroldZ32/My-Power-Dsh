@@ -437,14 +437,15 @@ function getWorkResumeOptions(directory) {
 // packages/mpd-boulder-plugin/src/vendor/storage/write-state.ts
 import { existsSync as existsSync4, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join as join3 } from "node:path";
+var STATE_DIR_GITIGNORE = ["*", "!/rules/", "!/rules/**", ""].join(`
+`);
 function writeBoulderState(directory, state) {
   const filePath = getBoulderFilePath(directory);
   try {
     const dir = dirname(filePath);
     if (!existsSync4(dir)) {
       mkdirSync(dir, { recursive: true });
-      writeFileSync(join3(dir, ".gitignore"), ["*", "!/rules/", "!/rules/**", ""].join(`
-`), "utf-8");
+      writeFileSync(join3(dir, ".gitignore"), STATE_DIR_GITIGNORE, "utf-8");
     }
     const stateToWrite = { ...state };
     if (stateToWrite.works && stateToWrite.active_work_id) {
@@ -484,11 +485,12 @@ function generateWorkId(planName) {
 function createBoulderState(planPath, sessionId, agent, worktreePath) {
   const startedAt = nowIsoString();
   const normalizedSessionId = normalizeSessionId(sessionId);
-  const workId = generateWorkId(getPlanName(planPath));
+  const planName = getPlanName(planPath);
+  const workId = generateWorkId(planName);
   const work = {
     work_id: workId,
     active_plan: planPath,
-    plan_name: getPlanName(planPath),
+    plan_name: planName,
     status: "active",
     started_at: startedAt,
     updated_at: startedAt,
@@ -508,7 +510,7 @@ function createBoulderState(planPath, sessionId, agent, worktreePath) {
     updated_at: startedAt,
     session_ids: [normalizedSessionId],
     session_origins: { [normalizedSessionId]: "direct" },
-    plan_name: getPlanName(planPath),
+    plan_name: planName,
     task_sessions: {},
     ...agent !== undefined ? { agent } : {},
     ...worktreePath !== undefined ? { worktree_path: worktreePath } : {}
@@ -519,13 +521,14 @@ function addBoulderWork(directory, input) {
   if (!state) {
     return null;
   }
-  const workId = generateWorkId(getPlanName(input.planPath));
+  const planName = getPlanName(input.planPath);
+  const workId = generateWorkId(planName);
   const startedAt = input.startedAt ?? nowIsoString();
   const normalizedSessionId = normalizeSessionId(input.sessionId);
   const nextWork = {
     work_id: workId,
     active_plan: input.planPath,
-    plan_name: getPlanName(input.planPath),
+    plan_name: planName,
     status: "active",
     started_at: startedAt,
     updated_at: startedAt,

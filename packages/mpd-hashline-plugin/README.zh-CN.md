@@ -3,7 +3,16 @@
 
 Plan C / C3 — 在 DeepSeek Harness tool seam 上的 hash-anchored（哈希锚定）编辑纪律。
 
-Vendored core：上游项目 `packages/hashline-core`（base commit 8c57e46；依 SUL-1.0 授权）。改编：`src/vendor/diff-utils.ts` 打包了一个极简 unified-diff 生成器，替代 npm `diff` 依赖。
+这棵树是我们自己的 TypeScript，**按设计**移植自 `can1357/oh-my-pi` 的 `crates/pi-edit` crate @ `602b6c812fa9ef774f359f1e399a09d30ee2eaca`（MIT）。此处不再继承任何 SUL-1.0 源码，且该移植是一次**有意的削减**：被替换的核心中模糊的「autocorrect」启发式规则没有被复现。该移植承担了那个 crate 的设计所附带的 MIT 义务——上游 MIT 许可全文与版权行逐字复制在每个 `src/vendor/**` 文件的顶部，来源记录在 `LICENSE-NOTICES.md`。八个文件及其各自承担的责任：
+
+- `src/vendor/index.ts` —— `mpd-hashline` row 导入的公开接口面。
+- `src/vendor/constants.ts` —— 固定的 `LINE#HASH|content` 词汇表：字母表、摘要宽度与格式模式。
+- `src/vendor/hash.ts` —— 逐行摘要：xxHash32 折叠为短的字母表编码锚点。
+- `src/vendor/text.ts` —— BOM 与行尾封装（`canonicalizeFileText` / `restoreFileText`）。
+- `src/vendor/types.ts` —— 工具接口面接受的编辑词汇表。
+- `src/vendor/anchors.ts` —— 解析并校验调用方给出的 `LINE#HASH` 锚点，以及 stale-anchor 报告。
+- `src/vendor/edits.ts` —— 规范化并应用一批锚定编辑。
+- `src/vendor/diff.ts` —— 读取侧的锚点视图与编辑返回的 unified diff：我们自己的生成器，因此不依赖 npm `diff`。
 
 ## 工具
 

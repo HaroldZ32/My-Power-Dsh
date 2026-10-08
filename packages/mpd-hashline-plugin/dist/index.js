@@ -10,14 +10,14 @@ var HASHLINE_DICT = Array.from({ length: 256 }, (_, i) => {
   return `${NIBBLE_STR[high]}${NIBBLE_STR[low]}`;
 });
 var HASHLINE_REF_PATTERN = /^([0-9]+)#([ZPMQVRWSNKTXJBYH]{2})$/;
-// packages/mpd-hashline-plugin/src/vendor/xxhash32.ts
-var runtime = globalThis;
-var encoder = new TextEncoder;
+// packages/mpd-hashline-plugin/src/vendor/hash.ts
 var PRIME32_1 = 2654435761;
 var PRIME32_2 = 2246822519;
 var PRIME32_3 = 3266489917;
 var PRIME32_4 = 668265263;
 var PRIME32_5 = 374761393;
+var encoder = new TextEncoder;
+var RE_SIGNIFICANT = /[\p{L}\p{N}]/u;
 function rotateLeft32(value, bits) {
   return (value << bits | value >>> 32 - bits) >>> 0;
 }
@@ -28,78 +28,59 @@ function round32(accumulator, value) {
   const added = accumulator + Math.imul(value, PRIME32_2) >>> 0;
   return Math.imul(rotateLeft32(added, 13), PRIME32_1) >>> 0;
 }
-function xxHash32Js(input, seed) {
-  let offset = 0;
+function xxh32(text, seed) {
+  const input = encoder.encode(text);
   const length = input.length;
+  let offset = 0;
   let hash;
   if (length >= 16) {
-    const limit = length - 16;
-    let value1 = seed + PRIME32_1 + PRIME32_2 >>> 0;
-    let value2 = seed + PRIME32_2 >>> 0;
-    let value3 = seed >>> 0;
-    let value4 = seed - PRIME32_1 >>> 0;
-    while (offset <= limit) {
-      value1 = round32(value1, readUint32LittleEndian(input, offset));
+    let lane1 = seed + PRIME32_1 + PRIME32_2 >>> 0;
+    let lane2 = seed + PRIME32_2 >>> 0;
+    let lane3 = seed >>> 0;
+    let lane4 = seed - PRIME32_1 >>> 0;
+    const stripeLimit = length - 16;
+    while (offset <= stripeLimit) {
+      lane1 = round32(lane1, readUint32LittleEndian(input, offset));
       offset += 4;
-      value2 = round32(value2, readUint32LittleEndian(input, offset));
+      lane2 = round32(lane2, readUint32LittleEndian(input, offset));
       offset += 4;
-      value3 = round32(value3, readUint32LittleEndian(input, offset));
+      lane3 = round32(lane3, readUint32LittleEndian(input, offset));
       offset += 4;
-      value4 = round32(value4, readUint32LittleEndian(input, offset));
+      lane4 = round32(lane4, readUint32LittleEndian(input, offset));
       offset += 4;
     }
-    hash = rotateLeft32(value1, 1) + rotateLeft32(value2, 7) >>> 0;
-    hash = hash + rotateLeft32(value3, 12) >>> 0;
-    hash = hash + rotateLeft32(value4, 18) >>> 0;
+    hash = rotateLeft32(lane1, 1) + rotateLeft32(lane2, 7) + rotateLeft32(lane3, 12) + rotateLeft32(lane4, 18) >>> 0;
   } else {
     hash = seed + PRIME32_5 >>> 0;
   }
   hash = hash + length >>> 0;
   while (offset + 4 <= length) {
-    hash = hash + Math.imul(readUint32LittleEndian(input, offset), PRIME32_3) >>> 0;
-    hash = Math.imul(rotateLeft32(hash, 17), PRIME32_4) >>> 0;
+    hash = Math.imul(rotateLeft32(hash + Math.imul(readUint32LittleEndian(input, offset), PRIME32_3) >>> 0, 17), PRIME32_4) >>> 0;
     offset += 4;
   }
   while (offset < length) {
-    hash = hash + Math.imul(input[offset] ?? 0, PRIME32_5) >>> 0;
-    hash = Math.imul(rotateLeft32(hash, 11), PRIME32_1) >>> 0;
+    hash = Math.imul(rotateLeft32(hash + Math.imul(input[offset] ?? 0, PRIME32_5) >>> 0, 11), PRIME32_1) >>> 0;
     offset += 1;
   }
-  hash = (hash ^ hash >>> 15) >>> 0;
+  hash ^= hash >>> 15;
   hash = Math.imul(hash, PRIME32_2) >>> 0;
-  hash = (hash ^ hash >>> 13) >>> 0;
+  hash ^= hash >>> 13;
   hash = Math.imul(hash, PRIME32_3) >>> 0;
-  return (hash ^ hash >>> 16) >>> 0;
+  hash ^= hash >>> 16;
+  return hash >>> 0;
 }
-function hashXxh32(input, seed) {
-  const bun = runtime.Bun;
-  if (bun !== undefined) {
-    return bun.hash.xxHash32(input, seed);
-  }
-  return xxHash32Js(encoder.encode(input), seed >>> 0);
-}
-
-// packages/mpd-hashline-plugin/src/vendor/hash-computation.ts
-var RE_SIGNIFICANT = /[\p{L}\p{N}]/u;
-function computeNormalizedLineHash(lineNumber, normalizedContent) {
-  const stripped = normalizedContent;
-  const seed = RE_SIGNIFICANT.test(stripped) ? 0 : lineNumber;
-  const hash = hashXxh32(stripped, seed);
-  const index = hash % 256;
-  return HASHLINE_DICT[index];
+function digestLine(lineNumber, normalizedContent) {
+  const seed = RE_SIGNIFICANT.test(normalizedContent) ? 0 : lineNumber;
+  const index = xxh32(normalizedContent, seed) % 256;
+  return HASHLINE_DICT[index] ?? "";
 }
 function computeLineHash(lineNumber, content) {
-  return computeNormalizedLineHash(lineNumber, content.replace(/\r/g, "").trimEnd());
+  return digestLine(lineNumber, content.replace(/\r/g, "").trimEnd());
 }
-function computeLegacyLineHash(lineNumber, content) {
-  return computeNormalizedLineHash(lineNumber, content.replace(/\r/g, "").replace(/\s+/g, ""));
-}
-// packages/mpd-hashline-plugin/src/vendor/validation.ts
+
+// packages/mpd-hashline-plugin/src/vendor/anchors.ts
 var MISMATCH_CONTEXT = 2;
 var LINE_REF_EXTRACT_PATTERN = /([0-9]+#[ZPMQVRWSNKTXJBYH]{2})/;
-function isCompatibleLineHash(line, content, hash) {
-  return computeLineHash(line, content) === hash || computeLegacyLineHash(line, content) === hash;
-}
 function normalizeLineRef(ref) {
   const originalTrimmed = ref.trim();
   let trimmed = originalTrimmed;
@@ -112,7 +93,7 @@ function normalizeLineRef(ref) {
   }
   const extracted = trimmed.match(LINE_REF_EXTRACT_PATTERN);
   if (extracted) {
-    return extracted[1];
+    return extracted[1] ?? originalTrimmed;
   }
   return originalTrimmed;
 }
@@ -121,39 +102,48 @@ function parseLineRef(ref) {
   const match = normalized.match(HASHLINE_REF_PATTERN);
   if (match) {
     return {
-      line: Number.parseInt(match[1], 10),
-      hash: match[2]
+      line: Number.parseInt(match[1] ?? "", 10),
+      hash: match[2] ?? ""
     };
   }
-  const hashIdx = normalized.indexOf("#");
-  if (hashIdx > 0) {
-    const prefix = normalized.slice(0, hashIdx);
-    const suffix = normalized.slice(hashIdx + 1);
+  const hashIndex = normalized.indexOf("#");
+  if (hashIndex > 0) {
+    const prefix = normalized.slice(0, hashIndex);
+    const suffix = normalized.slice(hashIndex + 1);
     if (!/^\d+$/.test(prefix) && /^[ZPMQVRWSNKTXJBYH]{2}$/.test(suffix)) {
-      throw new Error(`Invalid line reference: "${ref}". "${prefix}" is not a line number. ` + `Use the actual line number from the read output.`);
+      throw new Error(`Invalid line reference: "${ref}". "${prefix}" is not a line number. ` + "Use the actual line number from the read output.");
     }
   }
   throw new Error(`Invalid line reference format: "${ref}". Expected format: "{line_number}#{hash_id}"`);
 }
-function validateLineRef(lines, ref) {
-  const { line, hash } = parseLineRefWithHint(ref, lines);
-  if (line < 1 || line > lines.length) {
-    throw new Error(`Line number ${line} out of bounds. File has ${lines.length} lines.`);
+function suggestLineForHash(ref, lines) {
+  const hashMatch = ref.trim().match(/#([ZPMQVRWSNKTXJBYH]{2})$/);
+  if (!hashMatch)
+    return null;
+  const hash = hashMatch[1];
+  for (let i = 0;i < lines.length; i++) {
+    if (computeLineHash(i + 1, lines[i] ?? "") === hash) {
+      return `Did you mean "${i + 1}#${computeLineHash(i + 1, lines[i] ?? "")}"?`;
+    }
   }
-  const content = lines[line - 1];
-  if (!isCompatibleLineHash(line, content, hash)) {
-    throw new HashlineMismatchError([{ line, expected: hash }], lines);
+  return null;
+}
+function parseLineRefWithHint(ref, lines) {
+  try {
+    return parseLineRef(ref);
+  } catch (parseError) {
+    const hint = suggestLineForHash(ref, lines);
+    if (hint && parseError instanceof Error) {
+      throw new Error(`${parseError.message} ${hint}`);
+    }
+    throw parseError;
   }
 }
 
 class HashlineMismatchError extends Error {
-  mismatches;
-  fileLines;
   remaps;
   constructor(mismatches, fileLines) {
     super(HashlineMismatchError.formatMessage(mismatches, fileLines));
-    this.mismatches = mismatches;
-    this.fileLines = fileLines;
     this.name = "HashlineMismatchError";
     const remaps = new Map;
     for (const mismatch of mismatches) {
@@ -176,6 +166,7 @@ class HashlineMismatchError extends Error {
     const sortedLines = [...displayLines].sort((a, b) => a - b);
     const output = [];
     output.push(`${mismatches.length} line${mismatches.length > 1 ? "s have" : " has"} changed since last read. ` + "Use updated {line_number}#{hash_id} references below (>>> marks changed lines).");
+    output.push("The file changed between the read that issued these anchors and this edit. Re-read it with " + "mpd_hashline_read to refresh every anchor, and never reuse an anchor from an earlier session.");
     output.push("");
     let previousLine = -1;
     for (const line of sortedLines) {
@@ -196,29 +187,6 @@ class HashlineMismatchError extends Error {
 `);
   }
 }
-function suggestLineForHash(ref, lines) {
-  const hashMatch = ref.trim().match(/#([ZPMQVRWSNKTXJBYH]{2})$/);
-  if (!hashMatch)
-    return null;
-  const hash = hashMatch[1];
-  for (let i = 0;i < lines.length; i++) {
-    if (isCompatibleLineHash(i + 1, lines[i], hash)) {
-      return `Did you mean "${i + 1}#${computeLineHash(i + 1, lines[i])}"?`;
-    }
-  }
-  return null;
-}
-function parseLineRefWithHint(ref, lines) {
-  try {
-    return parseLineRef(ref);
-  } catch (parseError) {
-    const hint = suggestLineForHash(ref, lines);
-    if (hint && parseError instanceof Error) {
-      throw new Error(`${parseError.message} ${hint}`);
-    }
-    throw parseError;
-  }
-}
 function validateLineRefs(lines, refs) {
   const mismatches = [];
   for (const ref of refs) {
@@ -226,8 +194,7 @@ function validateLineRefs(lines, refs) {
     if (line < 1 || line > lines.length) {
       throw new Error(`Line number ${line} out of bounds (file has ${lines.length} lines)`);
     }
-    const content = lines[line - 1];
-    if (!isCompatibleLineHash(line, content, hash)) {
+    if (computeLineHash(line, lines[line - 1] ?? "") !== hash) {
       mismatches.push({ line, expected: hash });
     }
   }
@@ -235,7 +202,55 @@ function validateLineRefs(lines, refs) {
     throw new HashlineMismatchError(mismatches, lines);
   }
 }
-// packages/mpd-hashline-plugin/src/vendor/edit-text-normalization.ts
+// packages/mpd-hashline-plugin/src/vendor/text.ts
+function detectLineEnding(content) {
+  const lfIndex = content.indexOf(`
+`);
+  if (lfIndex === -1)
+    return `
+`;
+  const crlfIndex = content.indexOf(`\r
+`);
+  if (crlfIndex === -1)
+    return `
+`;
+  return crlfIndex < lfIndex ? `\r
+` : `
+`;
+}
+function stripBom(content) {
+  if (!content.startsWith("\uFEFF")) {
+    return { content, hadBom: false };
+  }
+  return { content: content.slice(1), hadBom: true };
+}
+function normalizeToLf(content) {
+  return content.replace(/\r\n/g, `
+`).replace(/\r/g, `
+`);
+}
+function restoreLineEndings(content, lineEnding) {
+  if (lineEnding === `
+`)
+    return content;
+  return content.replace(/\n/g, `\r
+`);
+}
+function canonicalizeFileText(content) {
+  const stripped = stripBom(content);
+  return {
+    content: normalizeToLf(stripped.content),
+    hadBom: stripped.hadBom,
+    lineEnding: detectLineEnding(stripped.content)
+  };
+}
+function restoreFileText(content, envelope) {
+  const withLineEnding = restoreLineEndings(content, envelope.lineEnding);
+  if (!envelope.hadBom)
+    return withLineEnding;
+  return `\uFEFF${withLineEnding}`;
+}
+// packages/mpd-hashline-plugin/src/vendor/edits.ts
 var HASHLINE_PREFIX_RE = /^\s*(?:>>>|>>)?\s*\d+\s*#\s*[ZPMQVRWSNKTXJBYH]{2}\|/;
 var DIFF_PLUS_RE = /^[+](?![+])/;
 function equalsIgnoringWhitespace(a, b) {
@@ -248,6 +263,15 @@ function leadingWhitespace(text) {
     return "";
   const match = text.match(/^\s*/);
   return match ? match[0] : "";
+}
+function arraysEqual(a, b) {
+  if (a.length !== b.length)
+    return false;
+  for (let i = 0;i < a.length; i++) {
+    if (a[i] !== b[i])
+      return false;
+  }
+  return true;
 }
 function stripLinePrefixes(lines) {
   let hashPrefixCount = 0;
@@ -300,7 +324,7 @@ function restoreLeadingIndent(templateLine, line) {
 function stripInsertAnchorEcho(anchorLine, newLines) {
   if (newLines.length === 0)
     return newLines;
-  if (equalsIgnoringWhitespace(newLines[0], anchorLine)) {
+  if (equalsIgnoringWhitespace(newLines[0] ?? "", anchorLine)) {
     return newLines.slice(1);
   }
   return newLines;
@@ -308,7 +332,7 @@ function stripInsertAnchorEcho(anchorLine, newLines) {
 function stripInsertBeforeEcho(anchorLine, newLines) {
   if (newLines.length <= 1)
     return newLines;
-  if (equalsIgnoringWhitespace(newLines[newLines.length - 1], anchorLine)) {
+  if (equalsIgnoringWhitespace(newLines[newLines.length - 1] ?? "", anchorLine)) {
     return newLines.slice(0, -1);
   }
   return newLines;
@@ -319,18 +343,85 @@ function stripRangeBoundaryEcho(lines, startLine, endLine, newLines) {
     return newLines;
   }
   let out = newLines;
-  const beforeIdx = startLine - 2;
-  if (beforeIdx >= 0 && out[0] === lines[beforeIdx]) {
+  const beforeIndex = startLine - 2;
+  if (beforeIndex >= 0 && out[0] === lines[beforeIndex]) {
     out = out.slice(1);
   }
-  const afterIdx = endLine;
-  if (afterIdx < lines.length && out.length > 0 && out[out.length - 1] === lines[afterIdx]) {
+  const afterIndex = endLine;
+  if (afterIndex < lines.length && out.length > 0 && out[out.length - 1] === lines[afterIndex]) {
     out = out.slice(0, -1);
   }
   return out;
 }
-
-// packages/mpd-hashline-plugin/src/vendor/edit-deduplication.ts
+function applySetLine(lines, anchor, newText) {
+  const { line } = parseLineRef(anchor);
+  const result = [...lines];
+  const originalLine = lines[line - 1] ?? "";
+  const replacement = toNewLines(newText).map((entry, index) => {
+    if (index !== 0)
+      return entry;
+    return restoreLeadingIndent(originalLine, entry);
+  });
+  result.splice(line - 1, 1, ...replacement);
+  return result;
+}
+function applyReplaceLines(lines, startAnchor, endAnchor, newText) {
+  const { line: startLine } = parseLineRef(startAnchor);
+  const { line: endLine } = parseLineRef(endAnchor);
+  if (startLine > endLine) {
+    throw new Error(`Invalid range: start line ${startLine} cannot be greater than end line ${endLine}`);
+  }
+  const result = [...lines];
+  const stripped = stripRangeBoundaryEcho(lines, startLine, endLine, toNewLines(newText));
+  const restored = stripped.map((entry, index) => {
+    if (index !== 0)
+      return entry;
+    return restoreLeadingIndent(lines[startLine - 1] ?? "", entry);
+  });
+  result.splice(startLine - 1, endLine - startLine + 1, ...restored);
+  return result;
+}
+function applyInsertAfter(lines, anchor, text) {
+  const { line } = parseLineRef(anchor);
+  const result = [...lines];
+  const newLines = stripInsertAnchorEcho(lines[line - 1] ?? "", toNewLines(text));
+  if (newLines.length === 0) {
+    throw new Error(`append (anchored) requires non-empty text for ${anchor}`);
+  }
+  result.splice(line, 0, ...newLines);
+  return result;
+}
+function applyInsertBefore(lines, anchor, text) {
+  const { line } = parseLineRef(anchor);
+  const result = [...lines];
+  const newLines = stripInsertBeforeEcho(lines[line - 1] ?? "", toNewLines(text));
+  if (newLines.length === 0) {
+    throw new Error(`prepend (anchored) requires non-empty text for ${anchor}`);
+  }
+  result.splice(line - 1, 0, ...newLines);
+  return result;
+}
+function applyAppend(lines, text) {
+  const normalized = toNewLines(text);
+  if (normalized.length === 0) {
+    throw new Error("append requires non-empty text");
+  }
+  if (lines.length === 1 && lines[0] === "") {
+    return [...normalized];
+  }
+  const base = lines.length > 1 && lines[lines.length - 1] === "" ? lines.slice(0, -1) : lines;
+  return [...base, ...normalized];
+}
+function applyPrepend(lines, text) {
+  const normalized = toNewLines(text);
+  if (normalized.length === 0) {
+    throw new Error("prepend requires non-empty text");
+  }
+  if (lines.length === 1 && lines[0] === "") {
+    return [...normalized];
+  }
+  return [...normalized, ...lines];
+}
 function normalizeEditPayload(payload) {
   return toNewLines(payload).join(`
 `);
@@ -367,8 +458,6 @@ function dedupeEdits(edits) {
   }
   return { edits: deduped, deduplicatedEdits };
 }
-
-// packages/mpd-hashline-plugin/src/vendor/edit-ordering.ts
 function getEditLineNumber(edit) {
   switch (edit.op) {
     case "replace":
@@ -398,7 +487,7 @@ function detectOverlappingRanges(edits) {
   const ranges = [];
   for (let i = 0;i < edits.length; i++) {
     const edit = edits[i];
-    if (edit.op !== "replace" || !edit.end)
+    if (!edit || edit.op !== "replace" || !edit.end)
       continue;
     const start = parseLineRef(edit.pos).line;
     const end = parseLineRef(edit.end).line;
@@ -410,381 +499,12 @@ function detectOverlappingRanges(edits) {
   for (let i = 1;i < ranges.length; i++) {
     const prev = ranges[i - 1];
     const curr = ranges[i];
-    if (curr.start <= prev.end) {
-      return `Overlapping range edits detected: ` + `edit ${prev.idx + 1} (lines ${prev.start}-${prev.end}) overlaps with ` + `edit ${curr.idx + 1} (lines ${curr.start}-${curr.end}). ` + `Use pos-only replace for single-line edits.`;
+    if (prev && curr && curr.start <= prev.end) {
+      return "Overlapping range edits detected: " + `edit ${prev.idx + 1} (lines ${prev.start}-${prev.end}) overlaps with ` + `edit ${curr.idx + 1} (lines ${curr.start}-${curr.end}). ` + "Use pos-only replace for single-line edits.";
     }
   }
   return null;
 }
-
-// packages/mpd-hashline-plugin/src/vendor/autocorrect-replacement-lines.ts
-function normalizeTokens(text) {
-  return text.replace(/\s+/g, "");
-}
-function stripAllWhitespace(text) {
-  return normalizeTokens(text);
-}
-function stripTrailingContinuationTokens(text) {
-  return text.replace(/(?:&&|\|\||\?\?|\?|:|=|,|\+|-|\*|\/|\.|\()\s*$/u, "");
-}
-function stripMergeOperatorChars(text) {
-  return text.replace(/[|&?]/g, "");
-}
-function leadingWhitespace2(text) {
-  if (!text)
-    return "";
-  const match = text.match(/^\s*/);
-  return match ? match[0] : "";
-}
-function restoreOldWrappedLines(originalLines, replacementLines) {
-  if (originalLines.length === 0 || replacementLines.length < 2)
-    return replacementLines;
-  const canonicalToOriginal = new Map;
-  for (const line of originalLines) {
-    const canonical = stripAllWhitespace(line);
-    const existing = canonicalToOriginal.get(canonical);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      canonicalToOriginal.set(canonical, { line, count: 1 });
-    }
-  }
-  const candidates = [];
-  for (let start = 0;start < replacementLines.length; start += 1) {
-    for (let len = 2;len <= 10 && start + len <= replacementLines.length; len += 1) {
-      const span = replacementLines.slice(start, start + len);
-      if (span.some((line) => line.trim().length === 0))
-        continue;
-      const canonicalSpan = stripAllWhitespace(span.join(""));
-      const original = canonicalToOriginal.get(canonicalSpan);
-      if (original && original.count === 1 && canonicalSpan.length >= 6) {
-        candidates.push({ start, len, replacement: original.line, canonical: canonicalSpan });
-      }
-    }
-  }
-  if (candidates.length === 0)
-    return replacementLines;
-  const canonicalCounts = new Map;
-  for (const candidate of candidates) {
-    canonicalCounts.set(candidate.canonical, (canonicalCounts.get(candidate.canonical) ?? 0) + 1);
-  }
-  const uniqueCandidates = candidates.filter((candidate) => (canonicalCounts.get(candidate.canonical) ?? 0) === 1);
-  if (uniqueCandidates.length === 0)
-    return replacementLines;
-  uniqueCandidates.sort((a, b) => b.start - a.start);
-  const correctedLines = [...replacementLines];
-  for (const candidate of uniqueCandidates) {
-    correctedLines.splice(candidate.start, candidate.len, candidate.replacement);
-  }
-  return correctedLines;
-}
-function maybeExpandSingleLineMerge(originalLines, replacementLines) {
-  if (replacementLines.length !== 1 || originalLines.length <= 1) {
-    return replacementLines;
-  }
-  const merged = replacementLines[0];
-  const parts = originalLines.map((line) => line.trim()).filter((line) => line.length > 0);
-  if (parts.length !== originalLines.length)
-    return replacementLines;
-  const indices = [];
-  let offset = 0;
-  let orderedMatch = true;
-  for (const part of parts) {
-    let idx = merged.indexOf(part, offset);
-    let matchedLen = part.length;
-    if (idx === -1) {
-      const stripped = stripTrailingContinuationTokens(part);
-      if (stripped !== part) {
-        idx = merged.indexOf(stripped, offset);
-        if (idx !== -1)
-          matchedLen = stripped.length;
-      }
-    }
-    if (idx === -1) {
-      const segment = merged.slice(offset);
-      const segmentStripped = stripMergeOperatorChars(segment);
-      const partStripped = stripMergeOperatorChars(part);
-      const fuzzyIdx = segmentStripped.indexOf(partStripped);
-      if (fuzzyIdx !== -1) {
-        let strippedPos = 0;
-        let originalPos = 0;
-        while (strippedPos < fuzzyIdx && originalPos < segment.length) {
-          if (!/[|&?]/.test(segment[originalPos]))
-            strippedPos += 1;
-          originalPos += 1;
-        }
-        idx = offset + originalPos;
-        matchedLen = part.length;
-      }
-    }
-    if (idx === -1) {
-      orderedMatch = false;
-      break;
-    }
-    indices.push(idx);
-    offset = idx + matchedLen;
-  }
-  const expanded = [];
-  if (orderedMatch) {
-    for (let i = 0;i < indices.length; i += 1) {
-      const start = indices[i];
-      const end = i + 1 < indices.length ? indices[i + 1] : merged.length;
-      const candidate = merged.slice(start, end).trim();
-      if (candidate.length === 0) {
-        orderedMatch = false;
-        break;
-      }
-      expanded.push(candidate);
-    }
-  }
-  if (orderedMatch && expanded.length === originalLines.length) {
-    return expanded;
-  }
-  const semicolonSplit = merged.split(/;\s+/).map((line, idx, arr) => {
-    if (idx < arr.length - 1 && !line.endsWith(";")) {
-      return `${line};`;
-    }
-    return line;
-  }).map((line) => line.trim()).filter((line) => line.length > 0);
-  if (semicolonSplit.length === originalLines.length) {
-    return semicolonSplit;
-  }
-  return replacementLines;
-}
-function restoreIndentForPairedReplacement(originalLines, replacementLines) {
-  if (originalLines.length !== replacementLines.length) {
-    return replacementLines;
-  }
-  return replacementLines.map((line, idx) => {
-    if (line.length === 0)
-      return line;
-    if (leadingWhitespace2(line).length > 0)
-      return line;
-    const indent = leadingWhitespace2(originalLines[idx]);
-    if (indent.length === 0)
-      return line;
-    if (originalLines[idx].trim() === line.trim())
-      return line;
-    return `${indent}${line}`;
-  });
-}
-function autocorrectReplacementLines(originalLines, replacementLines) {
-  let next = replacementLines;
-  next = maybeExpandSingleLineMerge(originalLines, next);
-  next = restoreOldWrappedLines(originalLines, next);
-  next = restoreIndentForPairedReplacement(originalLines, next);
-  return next;
-}
-
-// packages/mpd-hashline-plugin/src/vendor/edit-operation-primitives.ts
-function shouldValidate(options) {
-  return options?.skipValidation !== true;
-}
-function applySetLine(lines, anchor, newText, options) {
-  if (shouldValidate(options))
-    validateLineRef(lines, anchor);
-  const { line } = parseLineRef(anchor);
-  const result = [...lines];
-  const originalLine = lines[line - 1] ?? "";
-  const corrected = autocorrectReplacementLines([originalLine], toNewLines(newText));
-  const replacement = corrected.map((entry, idx) => {
-    if (idx !== 0)
-      return entry;
-    return restoreLeadingIndent(originalLine, entry);
-  });
-  result.splice(line - 1, 1, ...replacement);
-  return result;
-}
-function applyReplaceLines(lines, startAnchor, endAnchor, newText, options) {
-  if (shouldValidate(options)) {
-    validateLineRef(lines, startAnchor);
-    validateLineRef(lines, endAnchor);
-  }
-  const { line: startLine } = parseLineRef(startAnchor);
-  const { line: endLine } = parseLineRef(endAnchor);
-  if (startLine > endLine) {
-    throw new Error(`Invalid range: start line ${startLine} cannot be greater than end line ${endLine}`);
-  }
-  const result = [...lines];
-  const originalRange = lines.slice(startLine - 1, endLine);
-  const stripped = stripRangeBoundaryEcho(lines, startLine, endLine, toNewLines(newText));
-  const corrected = autocorrectReplacementLines(originalRange, stripped);
-  const restored = corrected.map((entry, idx) => {
-    if (idx !== 0)
-      return entry;
-    return restoreLeadingIndent(lines[startLine - 1] ?? "", entry);
-  });
-  result.splice(startLine - 1, endLine - startLine + 1, ...restored);
-  return result;
-}
-function applyInsertAfter(lines, anchor, text, options) {
-  if (shouldValidate(options))
-    validateLineRef(lines, anchor);
-  const { line } = parseLineRef(anchor);
-  const result = [...lines];
-  const newLines = stripInsertAnchorEcho(lines[line - 1], toNewLines(text));
-  if (newLines.length === 0) {
-    throw new Error(`append (anchored) requires non-empty text for ${anchor}`);
-  }
-  result.splice(line, 0, ...newLines);
-  return result;
-}
-function applyInsertBefore(lines, anchor, text, options) {
-  if (shouldValidate(options))
-    validateLineRef(lines, anchor);
-  const { line } = parseLineRef(anchor);
-  const result = [...lines];
-  const newLines = stripInsertBeforeEcho(lines[line - 1], toNewLines(text));
-  if (newLines.length === 0) {
-    throw new Error(`prepend (anchored) requires non-empty text for ${anchor}`);
-  }
-  result.splice(line - 1, 0, ...newLines);
-  return result;
-}
-function applyAppend(lines, text) {
-  const normalized = toNewLines(text);
-  if (normalized.length === 0) {
-    throw new Error("append requires non-empty text");
-  }
-  if (lines.length === 1 && lines[0] === "") {
-    return [...normalized];
-  }
-  const base = lines.length > 1 && lines[lines.length - 1] === "" ? lines.slice(0, -1) : lines;
-  return [...base, ...normalized];
-}
-function applyPrepend(lines, text) {
-  const normalized = toNewLines(text);
-  if (normalized.length === 0) {
-    throw new Error("prepend requires non-empty text");
-  }
-  if (lines.length === 1 && lines[0] === "") {
-    return [...normalized];
-  }
-  return [...normalized, ...lines];
-}
-
-// packages/mpd-hashline-plugin/src/vendor/edit-operations.ts
-function arraysEqual(a, b) {
-  if (a.length !== b.length)
-    return false;
-  for (let i = 0;i < a.length; i++) {
-    if (a[i] !== b[i])
-      return false;
-  }
-  return true;
-}
-function applyHashlineEditsWithReport(content, edits) {
-  if (edits.length === 0) {
-    return {
-      content,
-      noopEdits: 0,
-      deduplicatedEdits: 0
-    };
-  }
-  const dedupeResult = dedupeEdits(edits);
-  const EDIT_PRECEDENCE = { replace: 0, append: 1, prepend: 2 };
-  const sortedEdits = [...dedupeResult.edits].sort((a, b) => {
-    const lineA = getEditLineNumber(a);
-    const lineB = getEditLineNumber(b);
-    if (lineB !== lineA)
-      return lineB - lineA;
-    return (EDIT_PRECEDENCE[a.op] ?? 3) - (EDIT_PRECEDENCE[b.op] ?? 3);
-  });
-  let noopEdits = 0;
-  let lines = content.length === 0 ? [] : content.split(`
-`);
-  const refs = collectLineRefs(sortedEdits);
-  validateLineRefs(lines, refs);
-  const overlapError = detectOverlappingRanges(sortedEdits);
-  if (overlapError)
-    throw new Error(overlapError);
-  for (const edit of sortedEdits) {
-    switch (edit.op) {
-      case "replace": {
-        const next = edit.end ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines, { skipValidation: true }) : applySetLine(lines, edit.pos, edit.lines, { skipValidation: true });
-        if (arraysEqual(next, lines)) {
-          noopEdits += 1;
-          break;
-        }
-        lines = next;
-        break;
-      }
-      case "append": {
-        const next = edit.pos ? applyInsertAfter(lines, edit.pos, edit.lines, { skipValidation: true }) : applyAppend(lines, edit.lines);
-        if (arraysEqual(next, lines)) {
-          noopEdits += 1;
-          break;
-        }
-        lines = next;
-        break;
-      }
-      case "prepend": {
-        const next = edit.pos ? applyInsertBefore(lines, edit.pos, edit.lines, { skipValidation: true }) : applyPrepend(lines, edit.lines);
-        if (arraysEqual(next, lines)) {
-          noopEdits += 1;
-          break;
-        }
-        lines = next;
-        break;
-      }
-    }
-  }
-  return {
-    content: lines.join(`
-`),
-    noopEdits,
-    deduplicatedEdits: dedupeResult.deduplicatedEdits
-  };
-}
-// packages/mpd-hashline-plugin/src/vendor/file-text-canonicalization.ts
-function detectLineEnding(content) {
-  const crlfIndex = content.indexOf(`\r
-`);
-  const lfIndex = content.indexOf(`
-`);
-  if (lfIndex === -1)
-    return `
-`;
-  if (crlfIndex === -1)
-    return `
-`;
-  return crlfIndex < lfIndex ? `\r
-` : `
-`;
-}
-function stripBom(content) {
-  if (!content.startsWith("\uFEFF")) {
-    return { content, hadBom: false };
-  }
-  return { content: content.slice(1), hadBom: true };
-}
-function normalizeToLf(content) {
-  return content.replace(/\r\n/g, `
-`).replace(/\r/g, `
-`);
-}
-function restoreLineEndings(content, lineEnding) {
-  if (lineEnding === `
-`)
-    return content;
-  return content.replace(/\n/g, `\r
-`);
-}
-function canonicalizeFileText(content) {
-  const stripped = stripBom(content);
-  return {
-    content: normalizeToLf(stripped.content),
-    hadBom: stripped.hadBom,
-    lineEnding: detectLineEnding(stripped.content)
-  };
-}
-function restoreFileText(content, envelope) {
-  const withLineEnding = restoreLineEndings(content, envelope.lineEnding);
-  if (!envelope.hadBom)
-    return withLineEnding;
-  return `\uFEFF${withLineEnding}`;
-}
-// packages/mpd-hashline-plugin/src/vendor/normalize-edits.ts
 function normalizeAnchor(value) {
   if (typeof value !== "string")
     return;
@@ -811,11 +531,7 @@ function normalizeReplaceEdit(edit, index) {
   const end = normalizeAnchor(edit.end);
   const anchor = requireLine(pos ?? end, index, "replace");
   const lines = requireLines(edit, index);
-  const normalized = {
-    op: "replace",
-    pos: anchor,
-    lines
-  };
+  const normalized = { op: "replace", pos: anchor, lines };
   if (end)
     normalized.end = end;
   return normalized;
@@ -825,10 +541,7 @@ function normalizeAppendEdit(edit, index) {
   const end = normalizeAnchor(edit.end);
   const anchor = pos ?? end;
   const lines = requireLines(edit, index);
-  const normalized = {
-    op: "append",
-    lines
-  };
+  const normalized = { op: "append", lines };
   if (anchor)
     normalized.pos = anchor;
   return normalized;
@@ -838,10 +551,7 @@ function normalizePrependEdit(edit, index) {
   const end = normalizeAnchor(edit.end);
   const anchor = pos ?? end;
   const lines = requireLines(edit, index);
-  const normalized = {
-    op: "prepend",
-    lines
-  };
+  const normalized = { op: "prepend", lines };
   if (anchor)
     normalized.pos = anchor;
   return normalized;
@@ -861,7 +571,67 @@ function normalizeHashlineEdits(rawEdits) {
     }
   });
 }
-// packages/mpd-hashline-plugin/src/vendor/diff-utils.ts
+function applyHashlineEditsWithReport(content, edits) {
+  if (edits.length === 0) {
+    return { content, noopEdits: 0, deduplicatedEdits: 0 };
+  }
+  const dedupeResult = dedupeEdits(edits);
+  const EDIT_PRECEDENCE = { replace: 0, append: 1, prepend: 2 };
+  const sortedEdits = [...dedupeResult.edits].sort((a, b) => {
+    const lineA = getEditLineNumber(a);
+    const lineB = getEditLineNumber(b);
+    if (lineB !== lineA)
+      return lineB - lineA;
+    return (EDIT_PRECEDENCE[a.op] ?? 3) - (EDIT_PRECEDENCE[b.op] ?? 3);
+  });
+  let noopEdits = 0;
+  let lines = content.length === 0 ? [] : content.split(`
+`);
+  const refs = collectLineRefs(sortedEdits);
+  validateLineRefs(lines, refs);
+  const overlapError = detectOverlappingRanges(sortedEdits);
+  if (overlapError)
+    throw new Error(overlapError);
+  for (const edit of sortedEdits) {
+    switch (edit.op) {
+      case "replace": {
+        const next = edit.end ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines) : applySetLine(lines, edit.pos, edit.lines);
+        if (arraysEqual(next, lines)) {
+          noopEdits += 1;
+          break;
+        }
+        lines = next;
+        break;
+      }
+      case "append": {
+        const next = edit.pos ? applyInsertAfter(lines, edit.pos, edit.lines) : applyAppend(lines, edit.lines);
+        if (arraysEqual(next, lines)) {
+          noopEdits += 1;
+          break;
+        }
+        lines = next;
+        break;
+      }
+      case "prepend": {
+        const next = edit.pos ? applyInsertBefore(lines, edit.pos, edit.lines) : applyPrepend(lines, edit.lines);
+        if (arraysEqual(next, lines)) {
+          noopEdits += 1;
+          break;
+        }
+        lines = next;
+        break;
+      }
+    }
+  }
+  return {
+    content: lines.join(`
+`),
+    noopEdits,
+    deduplicatedEdits: dedupeResult.deduplicatedEdits
+  };
+}
+// packages/mpd-hashline-plugin/src/vendor/diff.ts
+var DIFF_CONTEXT = 3;
 function toHashlineContent(content) {
   if (!content)
     return content;
@@ -870,10 +640,10 @@ function toHashlineContent(content) {
   const lastLine = lines[lines.length - 1];
   const hasTrailingNewline = lastLine === "";
   const contentLines = hasTrailingNewline ? lines.slice(0, -1) : lines;
-  const hashlined = contentLines.map((line, i) => {
-    const lineNum = i + 1;
-    const hash = computeLineHash(lineNum, line);
-    return `${lineNum}#${hash}|${line}`;
+  const hashlined = contentLines.map((line, index) => {
+    const lineNumber = index + 1;
+    const hash = computeLineHash(lineNumber, line);
+    return `${lineNumber}#${hash}|${line}`;
   });
   return hasTrailingNewline ? hashlined.join(`
 `) + `
@@ -886,7 +656,7 @@ function lcsOp(oldLines, newLines) {
   const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
   for (let i2 = n - 1;i2 >= 0; i2--) {
     for (let j2 = m - 1;j2 >= 0; j2--) {
-      dp[i2][j2] = oldLines[i2] === newLines[j2] ? dp[i2 + 1][j2 + 1] + 1 : Math.max(dp[i2 + 1][j2], dp[i2][j2 + 1]);
+      dp[i2][j2] = oldLines[i2] === newLines[j2] ? (dp[i2 + 1][j2 + 1] ?? 0) + 1 : Math.max(dp[i2 + 1][j2] ?? 0, dp[i2][j2 + 1] ?? 0);
     }
   }
   const ops = [];
@@ -894,26 +664,49 @@ function lcsOp(oldLines, newLines) {
   let j = 0;
   while (i < n && j < m) {
     if (oldLines[i] === newLines[j]) {
-      ops.push({ t: "eq", a: i, b: j, lines: [oldLines[i]] });
+      ops.push({ t: "eq", a: i, b: j, lines: [oldLines[i] ?? ""] });
       i++;
       j++;
-    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-      ops.push({ t: "del", a: i, b: j, lines: [oldLines[i]] });
+    } else if ((dp[i + 1][j] ?? 0) >= (dp[i][j + 1] ?? 0)) {
+      ops.push({ t: "del", a: i, b: j, lines: [oldLines[i] ?? ""] });
       i++;
     } else {
-      ops.push({ t: "ins", a: i, b: j, lines: [newLines[j]] });
+      ops.push({ t: "ins", a: i, b: j, lines: [newLines[j] ?? ""] });
       j++;
     }
   }
   while (i < n) {
-    ops.push({ t: "del", a: i, b: j, lines: [oldLines[i]] });
+    ops.push({ t: "del", a: i, b: j, lines: [oldLines[i] ?? ""] });
     i++;
   }
   while (j < m) {
-    ops.push({ t: "ins", a: i, b: j, lines: [newLines[j]] });
+    ops.push({ t: "ins", a: i, b: j, lines: [newLines[j] ?? ""] });
     j++;
   }
   return ops;
+}
+function groupHunks(ops, context) {
+  const changes = [];
+  for (let index = 0;index < ops.length; index++) {
+    if (ops[index]?.t !== "eq")
+      changes.push(index);
+  }
+  if (changes.length === 0)
+    return [];
+  const hunks = [];
+  let first = changes[0] ?? 0;
+  let last = first;
+  for (const index of changes.slice(1)) {
+    if (index - last <= context * 2 + 1) {
+      last = index;
+      continue;
+    }
+    hunks.push({ start: Math.max(0, first - context), end: Math.min(ops.length, last + context + 1) });
+    first = index;
+    last = index;
+  }
+  hunks.push({ start: Math.max(0, first - context), end: Math.min(ops.length, last + context + 1) });
+  return hunks;
 }
 function generateUnifiedDiff(oldContent, newContent, filePath) {
   const oldLines = oldContent.split(`
@@ -921,47 +714,36 @@ function generateUnifiedDiff(oldContent, newContent, filePath) {
   const newLines = newContent.split(`
 `);
   const ops = lcsOp(oldLines, newLines);
-  const context = 3;
   const out = [];
   out.push("--- " + filePath);
   out.push("+++ " + filePath);
-  let idx = 0;
-  while (idx < ops.length) {
-    if (ops[idx].t === "eq") {
-      idx++;
-      continue;
-    }
-    const start = Math.max(0, idx - context);
-    let end = idx + context;
-    while (end < ops.length && ops[end].t === "eq")
-      end++;
-    end = Math.min(ops.length, end + context);
-    let aStart = -1, aCount = 0, bStart = -1, bCount = 0;
+  for (const hunk of groupHunks(ops, DIFF_CONTEXT)) {
+    let aStart = -1;
+    let aCount = 0;
+    let bStart = -1;
+    let bCount = 0;
     const body = [];
-    for (const op of ops.slice(start, end)) {
+    for (const op of ops.slice(hunk.start, hunk.end)) {
+      if (aStart === -1)
+        aStart = op.a;
+      if (bStart === -1)
+        bStart = op.b;
       if (op.t === "eq") {
-        aStart === -1 && (aStart = op.a);
-        bStart === -1 && (bStart = op.b);
         aCount++;
         bCount++;
-        body.push(" " + op.lines[0]);
+        body.push(" " + (op.lines[0] ?? ""));
       } else if (op.t === "del") {
-        aStart === -1 && (aStart = op.a);
-        bStart === -1 && (bStart = op.b);
         aCount++;
-        body.push("-" + op.lines[0]);
+        body.push("-" + (op.lines[0] ?? ""));
       } else {
-        aStart === -1 && (aStart = op.a);
-        bStart === -1 && (bStart = op.b);
         bCount++;
-        body.push("+" + op.lines[0]);
+        body.push("+" + (op.lines[0] ?? ""));
       }
     }
     const aPos = aCount ? aStart + 1 : 0;
     const bPos = bCount ? bStart + 1 : 0;
     out.push("@@ -" + aPos + "," + aCount + " +" + bPos + "," + bCount + " @@");
     out.push(...body);
-    idx = end;
   }
   return out.join(`
 `) + `
