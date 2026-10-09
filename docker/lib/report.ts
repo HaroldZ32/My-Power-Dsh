@@ -175,6 +175,30 @@ const EXPECTED: readonly string[] = [
   "install.exit",
   "install.profileDep",
   "install.installedTree",
+  // ── the §7 ACCEPTANCE ARMS (restore-three-capabilities §7: "a SKIP IS NOT A PASS") ────────────
+  // Declared HERE so a run that never reached one reports it as `null` "not reached" instead of
+  // dropping it: the whole point of the gate is that an owed measurement is visible as owed.
+  //   · the install closure (AGENTS §8): no unapproved dependency build script.
+  "install.buildScripts",
+  //   · the packed artifact: carried, licence-coherent, self-coherent, and FRESH (freshness is the
+  //     claim `verify-pack-closure.ts` explicitly refuses to certify from its exit code).
+  "pack.present",
+  "pack.licenceCoherence",
+  "pack.declarationCoherence",
+  "pack.staticCoherence",
+  "pack.distFreshRebuild",
+  //   · the MCP surface: the naming convention, the exact enabled server set, and a live call.
+  "boot.mcpToolNaming",
+  "boot.mcpLiveSearch",
+  //   · the three RESTORED capabilities.
+  "restore.reviewPanelSelfTest",
+  "restore.reviewPanelCase",
+  "restore.lspBootstrap",
+  "restore.hashlineRepair",
+  //   · the two live QA cases that are red on the developer host for PRE-EXISTING reasons: their REAL
+  //     in-container outcome is what these rows carry, and a refusal to run is `null`, never `true`.
+  "qa.mcpCall",
+  "qa.readonlyDeny",
   "compose.dumpExit",
   "compose.mpdRows",
   "compose.presetRow",

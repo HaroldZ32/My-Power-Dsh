@@ -590,9 +590,19 @@ function selfTest(): void {
   /** Non-empty, comment-free ignore patterns of the build-context filter. */
   const ignore = stripComments(readFileSync(DOCKERIGNORE, "utf8")).split("\n").map((l: string) => l.trim()).filter((l: string) => l !== "")
   // Each pattern is host state or a build product that must not enter the image.
-  for (const pattern of [".git", "node_modules", "**/node_modules", "dist", "evidence", ".toolchain", "pnpm-workspace.yaml", "pnpm-lock.yaml", ".npmrc", ".pnpmfile.cjs"]) {
+  for (const pattern of [".git", "node_modules", "**/node_modules", "dist/*", "evidence", ".toolchain", "pnpm-workspace.yaml", "pnpm-lock.yaml", ".npmrc", ".pnpmfile.cjs"]) {
     check(`Dockerfile.dockerignore excludes ${pattern}`, ignore.includes(pattern))
   }
+  // THE ONE DELIBERATE EXCEPTION. The §7 pack arms grade the artifact that TRAVELLED IN, so the ignore
+  // file must re-admit exactly `dist/mpd-package` after excluding `dist/*` — and the entrypoint must
+  // assert that same shape at run time, because a file can be added to the context later. Two halves of
+  // one clause: this arm reddens if either half is dropped.
+  check(
+    "Dockerfile.dockerignore re-admits dist/mpd-package (the §7 pack arms' subject)",
+    ignore.includes("!dist/mpd-package") && ignore.indexOf("!dist/mpd-package") > ignore.indexOf("dist/*"),
+    JSON.stringify(ignore.filter((p: string) => p.includes("dist"))),
+  )
+  check("the bare `dist` pattern is gone (it would exclude the subject too)", !ignore.includes("dist"))
   // The install-affecting class must ALSO be asserted at RUN time (a file can be added to the context
   // after the filter was written), so the entrypoint's marker list is checked here, offline.
   /** The entrypoint's context-leak markers, read for the assertion below. */
@@ -622,6 +632,50 @@ function selfTest(): void {
   // The knob is only reachable when the entrypoint reads it: this is the third layer of the path
   // (compose interpolates it, this driver forwards it, the entrypoint substitutes it).
   check("entrypoint reads the optional live prompt knob", entrypoint.includes("MPD_E2E_LIVE_PROMPT"))
+
+  // 8b. THE §7 ACCEPTANCE ARMS. Each of these is a WIRE the gate needs to exist at all: the apparatus
+  //     module must be invoked, with the paths it grades, or the assertion row can only ever be
+  //     "not reached". The runtime verdict of each arm lives in the container; what is checkable
+  //     offline is that the lane actually asks the question.
+  /** The apparatus invocations the §7 arms rest on, with the flag that makes each one meaningful. */
+  const owedWiring: readonly (readonly [module: string, flag: string])[] = [
+    ["owed-install.ts", "--install-log"],
+    ["owed-pack.ts", "--artifact"],
+    ["owed-mcp.ts", "--boot-log"],
+    ["owed-cases.ts", "--kind"],
+  ]
+  for (const [moduleName, flag] of owedWiring) {
+    check(
+      `entrypoint invokes docker/lib/${moduleName} with ${flag}`,
+      entrypoint.includes("/" + moduleName) && entrypoint.includes(flag),
+    )
+  }
+  check("entrypoint stages the ast-grep engine (the live search cannot run without it)", entrypoint.includes("scripts/install-mcp.ts"))
+  check("entrypoint points the live search at real source", /export MPD_E2E_PROBE_SEARCH_DIR=/.test(entrypoint))
+  check("probe.ts grades the mcp__ naming surface, not just three known names", readFileSync(join(DOCKER_DIR, "probe.ts"), "utf8").includes("MCP_SERVER_COUNTS"))
+  check("probe.ts drives a REAL ast-grep search with its negative control", /MCP_LIVE_SEARCH_CONTROL/.test(readFileSync(join(DOCKER_DIR, "probe.ts"), "utf8")))
+  // Every owed assertion must be DECLARED in the reporter, or a run that never reached it would drop it
+  // silently instead of reporting it as owed — the exact gap the 2026-10-03 defect hid behind.
+  /** The reporter's canonical assertion list. */
+  const reported = readFileSync(join(DOCKER_DIR, "lib", "report.ts"), "utf8")
+  for (const name of [
+    "install.buildScripts",
+    "pack.licenceCoherence",
+    "pack.declarationCoherence",
+    "pack.staticCoherence",
+    "pack.distFreshRebuild",
+    "boot.mcpToolNaming",
+    "boot.mcpLiveSearch",
+    "restore.reviewPanelSelfTest",
+    "restore.reviewPanelCase",
+    "restore.lspBootstrap",
+    "restore.hashlineRepair",
+    "qa.mcpCall",
+    "qa.readonlyDeny",
+  ]) {
+    check(`report.ts declares the §7 assertion ${name}`, reported.includes(`"${name}"`))
+  }
+  check("pack.present is declared too (a missing artifact is a FAIL, never a skip)", reported.includes('"pack.present"'))
 
   // 9. BUILDX_CONFIG: the sandbox cannot write ~/.docker/buildx, so every docker child must run
   //    with a writable buildx state dir and the caller's own value must win.

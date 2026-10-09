@@ -1,0 +1,30 @@
+=== docker-e2e --self-test ===
+[self-test] ok   a clean report exits 0
+[self-test] all arms passed (offline: no docker, no network)
+exit=0
+=== verify:comments ===
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+=== typecheck ===
+$ tsgo --noEmit
+exit=0
+=== bash -n entrypoint ===
+exit=0
+=== bun test packages ===
+ 1748 pass
+ 3 skip
+ 0 fail
+EXIT=0
+=== verify:docs ===
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=434 dead=0 — PASS
+=== rehearsal artifacts ===
+evidence/restore/docker/rehearsal/bad.ndjson
+evidence/restore/docker/rehearsal/cases.ndjson
+evidence/restore/docker/rehearsal/good.ndjson
+evidence/restore/docker/rehearsal/hash.ndjson
+evidence/restore/docker/rehearsal/inst-clean.ndjson
+evidence/restore/docker/rehearsal/inst-dirty.ndjson
+evidence/restore/docker/rehearsal/lsp.ndjson
+evidence/restore/docker/rehearsal/neg.ndjson
+evidence/restore/docker/rehearsal/pack-now.ndjson

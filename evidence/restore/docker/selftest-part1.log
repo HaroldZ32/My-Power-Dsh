@@ -1,0 +1,119 @@
+[self-test] ok   utcStamp is a filesystem-safe UTC second stamp
+[self-test] ok   utcStamp has no colons
+[self-test] ok   evidenceDir lands under evidence/docker/client-install
+[self-test] ok   redact removes a boot URL token
+[self-test] ok   redact removes an api-key-shaped value
+[self-test] ok   redact leaves ordinary text alone
+[self-test] ok   decideExit(ok) === 0
+[self-test] ok   decideExit(failed) === 1
+[self-test] ok   decideExit(null) === 2
+[self-test] ok   summarize names the failed assertion
+[self-test] ok   a null live row is unmeasured when --live was asked for
+[self-test] ok   a null ui row is unmeasured when the browser lane is on
+[self-test] ok   an unrelated null is NOT a required-arm gap
+[self-test] ok   a passed row is never an unmeasured one
+[self-test] ok   no required arms means no gap
+[self-test] ok   a missing body has no required-arm gap
+[self-test] ok   --live selects the live arms
+[self-test] ok   --require-live is the same switch
+[self-test] ok   neither flag leaves the live arms off
+[self-test] ok   the browser lane is on with no flag at all
+[self-test] ok   --require-browser selects it explicitly
+[self-test] ok   --no-browser is the only opt-out
+[self-test] ok   docker/src does not exist
+[self-test] ok   docker/repo does not exist
+[self-test] ok   docker/checkout does not exist
+[self-test] ok   docker/context does not exist
+[self-test] ok   compose does not reference $HOME
+[self-test] ok   compose does not reference ~/.dsh
+[self-test] ok   compose does not reference ~/.mpd
+[self-test] ok   compose does not reference $DSH_HOME
+[self-test] ok   compose does not reference /root/.dsh
+[self-test] ok   compose does not reference /root/.mpd
+[self-test] ok   compose does not reference .agents
+[self-test] ok   compose declares a bind mount per service
+[self-test] ok   every bind mount is the evidence /out mount
+[self-test] ok   compose builds from the REPOSITORY ROOT context
+[self-test] ok   compose points at docker/Dockerfile
+[self-test] ok   compose names the image
+[self-test] ok   compose declares exactly the source and oneclick services
+[self-test] ok   the oneclick service selects the oneclick install mode
+[self-test] ok   the oneclick service names a git spec or the env override
+[self-test] ok   both services interpolate the optional live prompt knob
+[self-test] ok   the live prompt is forwarded only for a live run with a non-empty value
+[self-test] ok   Dockerfile's runtime stage is FROM ubuntu:24.04
+[self-test] ok   Dockerfile declares exactly the node-runtime + ubuntu stages, node first
+[self-test] ok   Dockerfile hands node over with COPY --from (never a bind mount)
+[self-test] ok   Dockerfile copies the context (never a bind mount)
+[self-test] ok   Dockerfile.dockerignore excludes .git
+[self-test] ok   Dockerfile.dockerignore excludes node_modules
+[self-test] ok   Dockerfile.dockerignore excludes **/node_modules
+[self-test] ok   Dockerfile.dockerignore excludes dist/*
+[self-test] ok   Dockerfile.dockerignore excludes evidence
+[self-test] ok   Dockerfile.dockerignore excludes .toolchain
+[self-test] ok   Dockerfile.dockerignore excludes pnpm-workspace.yaml
+[self-test] ok   Dockerfile.dockerignore excludes pnpm-lock.yaml
+[self-test] ok   Dockerfile.dockerignore excludes .npmrc
+[self-test] ok   Dockerfile.dockerignore excludes .pnpmfile.cjs
+[self-test] ok   Dockerfile.dockerignore re-admits dist/mpd-package (the §7 pack arms' subject)
+[self-test] ok   the bare `dist` pattern is gone (it would exclude the subject too)
+[self-test] ok   entrypoint asserts the context carries no pnpm-workspace.yaml
+[self-test] ok   entrypoint asserts the context carries no pnpm-lock.yaml
+[self-test] ok   entrypoint asserts the context carries no .npmrc
+[self-test] ok   entrypoint asserts the context carries no .pnpmfile.cjs
+[self-test] ok   Dockerfile.dockerignore does not exclude packages/
+[self-test] ok   entrypoint accepts the github: shorthand as a git dependency shape
+[self-test] ok   entrypoint is strict bash
+[self-test] ok   entrypoint performs the real client install
+[self-test] ok   entrypoint installs the harness at a pin
+[self-test] ok   entrypoint isolates HOME and DSH_HOME
+[self-test] ok   entrypoint never copies a credential file
+[self-test] ok   entrypoint never reads the real harness home
+[self-test] ok   entrypoint asserts the build context was filtered
+[self-test] ok   entrypoint asserts the preset mount through /api/session/create
+[self-test] ok   entrypoint asserts the session-gate LISTENER registration
+[self-test] ok   entrypoint records the un-provable LLM assertion as null
+[self-test] ok   entrypoint reads the optional live prompt knob
+[self-test] ok   entrypoint invokes docker/lib/owed-install.ts with --install-log
+[self-test] ok   entrypoint invokes docker/lib/owed-pack.ts with --artifact
+[self-test] ok   entrypoint invokes docker/lib/owed-mcp.ts with --boot-log
+[self-test] ok   entrypoint invokes docker/lib/owed-cases.ts with --kind
+[self-test] ok   entrypoint stages the ast-grep engine (the live search cannot run without it)
+[self-test] ok   entrypoint points the live search at real source
+[self-test] ok   probe.ts grades the mcp__ naming surface, not just three known names
+[self-test] ok   probe.ts drives a REAL ast-grep search with its negative control
+[self-test] ok   report.ts declares the §7 assertion install.buildScripts
+[self-test] ok   report.ts declares the §7 assertion pack.licenceCoherence
+[self-test] ok   report.ts declares the §7 assertion pack.declarationCoherence
+[self-test] ok   report.ts declares the §7 assertion pack.staticCoherence
+[self-test] ok   report.ts declares the §7 assertion pack.distFreshRebuild
+[self-test] ok   report.ts declares the §7 assertion boot.mcpToolNaming
+[self-test] ok   report.ts declares the §7 assertion boot.mcpLiveSearch
+[self-test] ok   report.ts declares the §7 assertion restore.reviewPanelSelfTest
+[self-test] ok   report.ts declares the §7 assertion restore.reviewPanelCase
+[self-test] ok   report.ts declares the §7 assertion restore.lspBootstrap
+[self-test] ok   report.ts declares the §7 assertion restore.hashlineRepair
+[self-test] ok   report.ts declares the §7 assertion qa.mcpCall
+[self-test] ok   report.ts declares the §7 assertion qa.readonlyDeny
+[self-test] ok   pack.present is declared too (a missing artifact is a FAIL, never a skip)
+[self-test] ok   buildxEnv injects a writable BUILDX_CONFIG
+[self-test] ok   buildxEnv keeps the caller's BUILDX_CONFIG
+[self-test] ok   result.json round-trips byte-identically
+[self-test] ok   output.log is written redacted
+[self-test] ok   resolveDocker reports a missing docker precisely
+[self-test] ok   a ROOTLESS daemon runs the lane
+[self-test] ok   a ROOTFUL daemon is SKIPPED with a notice, not failed
+[self-test] ok   an unusable daemon is SKIPPED, never thrown
+[self-test] ok   --allow-rootful-docker opts a rootful daemon in
+[self-test] ok   --require-docker turns the skip into a failure
+[self-test] ok   --allow-rootful-docker does NOT rescue an unusable daemon
+[self-test] ok   the skip notice names the cause and the overrides
+[self-test] ok   the rootless run line reports the measured mode
+[self-test] ok   the probe reads `name=rootless` out of SecurityOptions
+[self-test] ok   the scrub guard fails a planted leak (exit 1)
+[self-test] ok   the scrub guard marks the verdict red
+[self-test] ok   the guard names itself in failedNames
+[self-test] ok   no planted shape survives into the artifacts
+[self-test] ok   a clean report carries evidenceScrubbed: true
+[self-test] ok   a clean report exits 0
+[self-test] all arms passed (offline: no docker, no network)
