@@ -1,0 +1,532 @@
+
+===== $ git status --short -- SECURITY.md SECURITY.zh-CN.md
+ D SECURITY.md
+ D SECURITY.zh-CN.md
+[exit 0]
+
+===== $ git diff -- CONTRIBUTING.md docs/index.md docs/index.zh-CN.md package.json scripts/pack-mpd.ts
+diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
+index 3ee689a8..bb569e3d 100644
+--- a/CONTRIBUTING.md
++++ b/CONTRIBUTING.md
+@@ -204,8 +204,7 @@ Evidence logs must never contain credentials, tokens or private data.
+   expected result, your DSH profile and the bundle version.
+ - **Security reports** — do **not** open a public issue. Use GitHub's private vulnerability reporting
+   from the repository's **Security** tab; if it is unavailable, open a short issue stating that you
+-  have a security report and ask for a private channel, without disclosing the details. The full
+-  policy, including which code is in scope, is [`SECURITY.md`](./SECURITY.md).
++  have a security report and ask for a private channel, without disclosing the details.
+ - **Questions** — read [`README.md`](./README.md) and the [`docs/`](./docs/index.md) hub first; the
+   README's FAQ covers the common install and configuration problems.
+ 
+diff --git a/docs/index.md b/docs/index.md
+index be713902..53ece6f1 100644
+--- a/docs/index.md
++++ b/docs/index.md
+@@ -38,7 +38,6 @@ here for the full set.
+    anything under `packages/`.
+ 4. [`../AGENTS.md`](../AGENTS.md) — the binding repository manual (English-only).
+ 5. [`../CHANGELOG.md`](../CHANGELOG.md) — what changed in each release.
+-6. [`../SECURITY.md`](../SECURITY.md) — how to report a vulnerability privately.
+ 
+ ### For agents
+ 
+@@ -67,7 +66,6 @@ bilingual band this hub documents.
+ | [`design.md`](design.md) | engineers, curious users | How the bundle is assembled and mounts: patch layers, boot chain, plugin inventory, interaction flows, state layout, web-client wiring, TUI edition wiring. |
+ | [`development.md`](development.md) | developers | Repo layout, build/test commands, the QA case catalog, gates, packing/installing, vendoring, git model, common pitfalls. |
+ | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | contributors | How to contribute: development setup, gates, the git model, documentation rules, evidence, pull requests. |
+-| [`../SECURITY.md`](../SECURITY.md) | reporters | The security policy: supported versions, the private reporting path, and which code is in scope. |
+ | [`../CHANGELOG.md`](../CHANGELOG.md) | everyone | Release notes, newest first, one section per released version. |
+ | [`../AGENTS.md`](../AGENTS.md) | agents + maintainers | The binding repository manual: conventions, gates, git model, troubleshooting. |
+ | [`../extensions/README.md`](../extensions/README.md) | extension authors | The bundle-shipped discovery root: the three roots, their lifecycles and the shipped reference extension. |
+diff --git a/docs/index.zh-CN.md b/docs/index.zh-CN.md
+index 1839ee76..3090a62b 100644
+--- a/docs/index.zh-CN.md
++++ b/docs/index.zh-CN.md
+@@ -37,7 +37,6 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如
+    先读它。
+ 4. [`../AGENTS.md`](../AGENTS.md) —— 有约束力的仓库手册（仅英文）。
+ 5. [`../CHANGELOG.md`](../CHANGELOG.md) —— 每个版本改了什么。
+-6. [`../SECURITY.zh-CN.md`](../SECURITY.zh-CN.md) —— 如何私密地报告漏洞。
+ 
+ ### 智能体
+ 
+@@ -65,7 +64,6 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如
+ | [`design.zh-CN.md`](design.zh-CN.md) | 工程师、好奇的使用者 | bundle 如何组装与挂载：补丁层、启动链、插件清单、交互流程、状态布局、web 客户端接线、TUI 版本接线。 |
+ | [`development.zh-CN.md`](development.zh-CN.md) | 开发者 | 仓库布局、构建/测试命令、QA 用例目录、关卡、打包/安装、vendor、git 模型、常见坑。 |
+ | [`../CONTRIBUTING.zh-CN.md`](../CONTRIBUTING.zh-CN.md) | 贡献者 | 如何贡献：开发环境、关卡、git 模型、文档规则、证据、pull request。 |
+-| [`../SECURITY.zh-CN.md`](../SECURITY.zh-CN.md) | 报告者 | 安全政策：支持的版本、私密报告路径，以及哪些代码在范围内。 |
+ | [`../CHANGELOG.md`](../CHANGELOG.md) | 所有人 | 发布说明，最新的在最前，每个已发布版本一节。 |
+ | [`../AGENTS.md`](../AGENTS.md) | 智能体 + 维护者 | 有约束力的仓库手册：约定、关卡、git 模型、故障排查。 |
+ | [`../extensions/README.zh-CN.md`](../extensions/README.zh-CN.md) | 扩展作者 | bundle 自带的发现根目录：三个根、各自的生命周期，以及随包提供的参考扩展。 |
+diff --git a/package.json b/package.json
+index 40b82fe3..cea6ae97 100644
+--- a/package.json
++++ b/package.json
+@@ -33,8 +33,6 @@
+     "PLAN.md",
+     "README.md",
+     "README.zh-CN.md",
+-    "SECURITY.md",
+-    "SECURITY.zh-CN.md",
+     "VENDOR_LOCK.json",
+     "agent-references/**",
+     "cordis.patch.yml",
+diff --git a/scripts/pack-mpd.ts b/scripts/pack-mpd.ts
+index 47297299..34168a4c 100644
+--- a/scripts/pack-mpd.ts
++++ b/scripts/pack-mpd.ts
+@@ -353,8 +353,6 @@ const ROOT_FILES: readonly string[] = [
+   "CONTRIBUTING.md",
+   "CONTRIBUTING.zh-CN.md",
+   "CHANGELOG.md",
+-  "SECURITY.md",
+-  "SECURITY.zh-CN.md",
+   "EXTENSIONS-FOR-AGENTS.md",
+ ]
+ 
+[exit 0]
+
+===== $ ls -la dist/mpd-package/SECURITY.md dist/mpd-package/SECURITY.zh-CN.md
+-rw-r--r-- 1 haroldzhao haroldzhao 1791 Oct  9 08:07 dist/mpd-package/SECURITY.md
+-rw-r--r-- 1 haroldzhao haroldzhao 1695 Oct  9 08:07 dist/mpd-package/SECURITY.zh-CN.md
+[exit 0]
+
+===== $ grep -n -A3 "Security reports" CONTRIBUTING.md
+205:- **Security reports** — do **not** open a public issue. Use GitHub's private vulnerability reporting
+206-  from the repository's **Security** tab; if it is unavailable, open a short issue stating that you
+207-  have a security report and ask for a private channel, without disclosing the details.
+208-- **Questions** — read [`README.md`](./README.md) and the [`docs/`](./docs/index.md) hub first; the
+[exit 0]
+
+===== $ cat .github/ISSUE_TEMPLATE/config.yml
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/HaroldZ32/My-Power-Dsh/blob/master/docs/index.md
+    about: Installation, configuration, the FAQ and the full documentation index — please check here first.
+  - name: Security report
+    url: https://github.com/HaroldZ32/My-Power-Dsh/security/advisories/new
+    about: Report a vulnerability privately. Never disclose one in a public issue.
+[exit 0]
+
+===== $ sed -n "9,14p" .github/ISSUE_TEMPLATE/bug_report.yml
+      value: |
+        Thanks for the report. Please include the exact command, what happened, and what you expected.
+        Reports may be written in English or 简体中文.
+        For a security problem, do **not** open a public issue — use the Security tab instead.
+  - type: input
+    id: version
+[exit 0]
+
+===== $ bun run verify:docs
+$ node scripts/verify-docs-parity.ts
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/independence.md
+ok   docs/index.md
+ok   docs/preset-default.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-better-sidebar-host/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-goal-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-roster-provider-plugin/README.md
+ok   packages/mpd-schemastery/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-core-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-adapter-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-verify-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-live-session-wave.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-webui-tui-i18n.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/verification/2026-10-08T1203Z/verdict.md — EXEMPT: verification record (process record, AGENTS.md §3)
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=430 checked=400 resolved=400 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=24 ignoredAnchorOnly=6 files=115
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=430 dead=0 — PASS
+[exit 0]
+
+===== $ bun run verify:manifest
+$ node scripts/verify-plugin-manifest.ts --pack
+# verify-plugin-manifest — repository manifest
+
+ok    cordis-dependency: 8 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+ok    cordis-devDependency-note: devDependencies declare no cordis package
+ok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare
+ok    version:dsh-plugin.json: version = 0.12.0
+ok    version:dsh-distribution.json: distribution.version = 0.12.0
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 25 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 945 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+[exit 0]
+
+===== $ node scripts/verify-pack-closure.ts --self-test
+[verify-pack-closure] self-test PASS - positive-control (real tree, exit 0) (exit 0) :: [verify-pack-closure] ok: 23 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 24 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (464 asset files); agent references 2/2; root files 1/1; declared packages 28/28 present in the artifact; content bytes: 595 file(s) compared, 592 identical, 0 drift, 3 expected-after-pack; completeness: 496 declared source file(s) compared, 495 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-09T00:07:56.515Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+[verify-pack-closure] self-test PASS - negative-control (F-T7-1 omission, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/index.md: source mtime 2026-10-09T12:00:51.114Z is AFTER the artifact stamp 2026-10-09T00:07:56.515Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (inverse drift, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/index.md: source mtime 2026-10-09T12:00:51.114Z is AFTER the artifact stamp 2026-10-09T00:07:56.515Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (two offenders, both named) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/index.md: source mtime 2026-10-09T12:00:51.114Z is AFTER the artifact stamp 2026-10-09T00:07:56.515Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (zero-subject degraded run, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/index.md: source mtime 2026-10-09T12:00:51.114Z is AFTER the artifact stamp 2026-10-09T00:07:56.515Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (ROOT_ASSET_DIRS drops templates, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/index.md: source mtime 2026-10-09T12:00:51.114Z is AFTER the artifact stamp 2026-10-09T00:07:56.515Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (shim list drifts from the CLI, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/index.md: source mtime 2026-10-09T12:00:51.114Z is AFTER the artifact stamp 2026-10-09T00:07:56.515Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - positive-control (fixture packed tree, exit 0) (exit 0) :: [verify-pack-closure] ok: 23 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 24 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/mpd-pack-closure-PcVI7E/fixture-packed (12 asset files); agent references 2/2; root files 1/1; declared packages 28/28 present in the artifact; content bytes: 41 file(s) compared, 41 identical, 0 drift, 0 expected-after-pack; completeness: 40 declared source file(s) compared, 40 present, 0 declared exemption(s), 0 absent; pack stamp 2026-10-09T12:01:14.219Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time))
+[verify-pack-closure] self-test PASS - negative-control (half doc pair, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (packed scaffold template manifest gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 3 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (files pattern listed but absent, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (file present but unlisted, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (packed validator entry gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (ROOT_ASSET_DIRS drops agent-references, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/index.md: source mtime 2026-10-09T12:00:51.114Z is AFTER the artifact stamp 2026-10-09T00:07:56.515Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (packed reference file gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 3 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (reference file absent from the source tree, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (--require-packed with no tree, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (packed root file gone, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (packed root file differs from its source, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (root file absent from the source tree, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (packer ROOT_FILES drops the file, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/index.md: source mtime 2026-10-09T12:00:51.114Z is AFTER the artifact stamp 2026-10-09T00:07:56.515Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS - negative-control (declared package dir absent from the artifact, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - positive-control (real scratch pack staged with --out, exit 0) (exit 0) :: [verify-pack-closure] ok: 23 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 24 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/mpd-pack-closure-PcVI7E/scratch-pack (464 asset files); agent references 2/2; root files 1/1; declared packages 28/28 present in the artifact; content bytes: 595 file(s) compared, 595 identical, 0 drift, 0 expected-after-pack; completeness: 496 declared source file(s) compared, 495 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-09T12:01:15.736Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+[verify-pack-closure] self-test PASS - negative-control (one byte changed in a real scratch pack, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - control (the canonical artifact did not move across the pack) (exit null) :: files 609 -> 609, newest mtime 2026-10-09T00:07:56.515Z -> 2026-10-09T00:07:56.515Z
+[verify-pack-closure] self-test PASS - negative-control (artifact byte drift at unchanged presence, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (post-pack source writer -> reported, exit 0) (exit 0) :: [verify-pack-closure] ok: 23 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 24 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/mpd-pack-closure-PcVI7E/fixture-packed (12 asset files); agent references 2/2; root files 1/1; declared packages 28/28 present in the artifact; content bytes: 41 file(s) compared, 40 identical, 0 drift, 1 expected-after-pack; completeness: 40 declared source file(s) compared, 40 present, 0 declared exemption(s), 0 absent; pack stamp 2026-10-09T11:01:16.100Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time))
+[verify-pack-closure] self-test PASS - negative-control (same drift, stamp pinned ahead of the writer, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (post-pack writer of a ROOT FILE -> expected, exit 0) (exit 0) :: [verify-pack-closure] ok: 23 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 24 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/mpd-pack-closure-PcVI7E/fixture-packed (12 asset files); agent references 2/2; root files 1/1; declared packages 28/28 present in the artifact; content bytes: 41 file(s) compared, 40 identical, 0 drift, 1 expected-after-pack; completeness: 40 declared source file(s) compared, 40 present, 0 declared exemption(s), 0 absent; pack stamp 2026-10-09T11:01:16.100Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time))
+[verify-pack-closure] self-test PASS - negative-control (source dist with no artifact counterpart, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (the one declared exemption is exercised, not a silent skip) (exit 0) :: [verify-pack-closure] ok: 23 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 24 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/mpd-pack-closure-PcVI7E/fixture-packed (12 asset files); agent references 2/2; root files 1/1; declared packages 28/28 present in the artifact; content bytes: 41 file(s) compared, 41 identical, 0 drift, 0 expected-after-pack; completeness: 41 declared source file(s) compared, 40 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-09T12:01:16.098Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+[verify-pack-closure] self-test PASS - positive-control (byte-copy of the real artifact, exit 0) (exit 0) :: [verify-pack-closure] ok: 23 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 24 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/mpd-pack-closure-PcVI7E/real-artifact-copy (464 asset files); agent references 2/2; root files 1/1; declared packages 28/28 present in the artifact; content bytes: 595 file(s) compared, 592 identical, 0 drift, 3 expected-after-pack; completeness: 496 declared source file(s) compared, 495 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-09T00:07:56.515Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+[verify-pack-closure] self-test PASS - negative-control (real artifact copy, one byte changed -> reported, not silent) (exit 0) :: [verify-pack-closure] ok: 23 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 24 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/mpd-pack-closure-PcVI7E/real-artifact-copy (464 asset files); agent references 2/2; root files 1/1; declared packages 28/28 present in the artifact; content bytes: 595 file(s) compared, 592 identical, 0 drift, 3 expected-after-pack; completeness: 496 declared source file(s) compared, 495 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-09T00:07:56.515Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+[verify-pack-closure] self-test PASS - negative-control (same mutation, stamp pinned -> hard CONTENT-DRIFT, exit 1) (exit 1) :: [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/index.md: source mtime 2026-10-09T12:00:51.114Z is AFTER the artifact stamp 2026-10-09T11:59:21.682Z (anchor: command line (--pack-stamp)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] self-test PASS: 34/34 arms
+[exit 0]
+
+[FALSIFIER-1] planting a dead link to the deleted ../SECURITY.md back into docs/index.md
+
+===== $ bun run verify:docs   # FALSIFIER 1: dead link to the deleted file planted
+$ node scripts/verify-docs-parity.ts
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/independence.md
+ok   docs/index.md
+ok   docs/preset-default.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-better-sidebar-host/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-goal-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-roster-provider-plugin/README.md
+ok   packages/mpd-schemastery/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-core-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-adapter-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-verify-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+FAIL link-missing:docs/index.md:../SECURITY.md — docs/index.md:153 links "../SECURITY.md" but neither a file nor a directory exists at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/SECURITY.md — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-live-session-wave.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-webui-tui-i18n.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/verification/2026-10-08T1203Z/verdict.md — EXEMPT: verification record (process record, AGENTS.md §3)
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=431 checked=401 resolved=400 dead=1 exemptProvenance=0 absentSite=0 ignoredExternal=24 ignoredAnchorOnly=6 files=115
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=1 violations=1 exempt=24 derived=3 links=431 dead=1 — FAIL
+error: script "verify:docs" exited with code 1
+[exit 1]
+
+[FALSIFIER-1] restored docs/index.md from the pre-plant copy; git diff --stat follows
+
+===== $ git diff --stat -- docs/index.md
+ docs/index.md | 2 --
+ 1 file changed, 2 deletions(-)
+[exit 0]
+
+[FALSIFIER-2] planted "SECURITY.md" back into package.json files[] (a listed-but-missing file)
+
+===== $ bun run verify:manifest   # FALSIFIER 2: files[] names a file that does not exist
+$ node scripts/verify-plugin-manifest.ts --pack
+# verify-plugin-manifest — repository manifest
+
+ok    cordis-dependency: 8 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+ok    cordis-devDependency-note: devDependencies declare no cordis package
+ok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare
+ok    version:dsh-plugin.json: version = 0.12.0
+ok    version:dsh-distribution.json: distribution.version = 0.12.0
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 26 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 946 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+[exit 0]
+
+[FALSIFIER-2] restored package.json from the pre-plant copy; git diff --stat follows
+
+===== $ git diff --stat -- package.json
+ package.json | 2 --
+ 1 file changed, 2 deletions(-)
+[exit 0]
+
+########## START PIN — read at 2026-10-09T12:02:07Z (UTC)
+
+===== $ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-09T12:02:07Z
+[exit 0]
+
+===== $ git rev-parse HEAD
+477baa5bebe6499b0c586fe2b3135020748f7d77
+[exit 0]
+
+===== $ git rev-parse --abbrev-ref HEAD
+fix/restore-wave-acceptance
+[exit 0]
+
+===== $ sha256sum package.json scripts/pack-mpd.ts CONTRIBUTING.md docs/index.md docs/index.zh-CN.md agent-references/troubleshooting.md
+fee35b7f6fd99c93775922dd98d348efd60a4cca8da679aa1adbfdf8adf5bd98  package.json
+f69c177837cb9a1aaea3f2fcb8a50b332ef93f66b141a216557f5fcb5aa90c0e  scripts/pack-mpd.ts
+a7492e1a027621addc3b1ae6d5cd3bfb7b337b745178d0571fccc5975b66a71a  CONTRIBUTING.md
+90b8912d0e63b90bab02292fd539102cd40e4ed03deb9126cab344b2bfe24840  docs/index.md
+0247a4a40d9823a20d0a7109d31eb37b77a846db0aab8ef7f7057e8a1c20f41c  docs/index.zh-CN.md
+5a1c619298e85f8bcc8965fac0a40d94697cfd1ca1fdda9cc9185b0f7901fb08  agent-references/troubleshooting.md
+[exit 0]
+
+===== $ sha256sum SECURITY.md SECURITY.zh-CN.md
+sha256sum: SECURITY.md: No such file or directory
+sha256sum: SECURITY.zh-CN.md: No such file or directory
+[exit 1]
+
+===== $ git status --short
+ M CONTRIBUTING.md
+ D SECURITY.md
+ D SECURITY.zh-CN.md
+ M agent-references/troubleshooting.md
+ M docker/entrypoint.sh
+ M docker/lib/owed-mcp.ts
+ M docker/lib/owed-pack.ts
+ M docker/lib/rebuild.ts
+ M docker/probe.ts
+ M docs/index.md
+ M docs/index.zh-CN.md
+ M package.json
+ M scripts/pack-mpd.ts
+?? .bun/
+?? evidence/restore/acceptance/
+?? skills/dsh-qa/scripts/lib/messages-sse.ts
+[exit 0]
+
+===== $ git grep -n -i -e 'SECURITY\.md' -e 'SECURITY\.zh-CN\.md' -- .
+CHANGELOG.md:560:  gates, the git model) and `SECURITY.md` (how to report privately) join the root set, each with its
+evidence/de-omo/personas/20261008T163931Z/seeds/VeryGoodOpenSource__vgv-wingspan/tree.json:226:      "path": "SECURITY.md",
+evidence/de-omo/personas/20261008T163931Z/seeds/anthropics__claude-plugins-official/tree.json:1367:      "path": "plugins/claude-security/SECURITY.md",
+evidence/de-omo/personas/20261008T163931Z/seeds/anthropics__claude-plugins-official/tree.json:1382:      "path": "plugins/claude-security/agents/claude-security.md",
+evidence/de-omo/personas/20261008T163931Z/seeds/anthropics__claude-plugins-official/tree.json:4302:      "path": "plugins/mcp-server-dev/skills/build-mcpb/references/local-security.md",
+evidence/de-omo/personas/20261008T163931Z/seeds/davepoon__buildwithclaude/tree.json:21827:      "path": "plugins/production-fast-api-template/skills/production-fast-api-template/AGENT_SECURITY.md",
+evidence/de-omo/personas/20261008T163931Z/seeds/davepoon__buildwithclaude/tree.json:21851:      "path": "plugins/production-fast-api-template/skills/production-fast-api-template/API_SECURITY.md",
+evidence/de-omo/personas/20261008T163931Z/seeds/gsd-build__gsd-2/tree.json:9871:      "path": "src/resources/agents/security.md",
+evidence/de-omo/personas/20261008T163931Z/seeds/gsd-build__gsd-2/tree.json:24178:      "path": "src/resources/skills/create-skill/references/api-security.md",
+evidence/de-omo/personas/20261008T163931Z/seeds/jayminwest__overstory/tree.json:736:      "path": "SECURITY.md",
+evidence/de-omo/personas/20261008T163931Z/seeds/wesammustafa__opencode-primer/tree.json:308:      "path": "SECURITY.md",
+evidence/docs/github-doc-overhaul/20260927T201117Z/result.json:22:    "SECURITY.md": {
+evidence/docs/github-doc-overhaul/20260927T201117Z/result.json:26:    "SECURITY.zh-CN.md": {
+evidence/docs/github-doc-overhaul/20260927T201117Z/result.json:192:    "change": "ROOT_FILES now names CONTRIBUTING.md, CONTRIBUTING.zh-CN.md, CHANGELOG.md, SECURITY.md and SECURITY.zh-CN.md, so the shipped README/docs-hub relative links resolve inside the packed artifact",
+evidence/docs/github-doc-overhaul/20260927T201117Z/result.json:199:    "CONTRIBUTING.md/SECURITY.md/CHANGELOG.md live at the repository root, which the bilingual discovery band does not police; they still ship English + zh-CN twins per the AGENTS.md language policy.",
+evidence/docs/readme-0.12.0/pull-request.md:50:| Stale current-version claims | `SECURITY.md` + twin, `.github/ISSUE_TEMPLATE/bug_report.yml` | Carried `0.11.1` |
+evidence/dsh-qa/session-start-team/2026-09-17T14-47-32.307Z/output.log:976:Let me look at the structure: docs/, adapters/? The patch refers to `adapters/dsh-tui-v0.15.md`. But `ls -la` earlier showed no `adapters/` dir in dsh-ecosystem-spec — it showed: CODE_OF_CONDUCT.md, CONTRIBUTING.md, decisions, docs, .git, .gitattributes, .github, .gitignore, .gitmodules, governance, LICENSE, profiles, README.md, registry, scripts, SECURITY.md, vendor.
+[exit 0]
+
+===== $ git grep -c -i -e 'SECURITY' -- package.json scripts/pack-mpd.ts docs/index.md docs/index.zh-CN.md CONTRIBUTING.md
+CONTRIBUTING.md:3
+[exit 0]
+
+===== $ grep -rn -i 'security' package.json scripts/pack-mpd.ts docs/index.md docs/index.zh-CN.md CONTRIBUTING.md .github/ | cut -c1-160
+CONTRIBUTING.md:205:- **Security reports** — do **not** open a public issue. Use GitHub's private vulnerability reporting
+CONTRIBUTING.md:206:  from the repository's **Security** tab; if it is unavailable, open a short issue stating that you
+CONTRIBUTING.md:207:  have a security report and ask for a private channel, without disclosing the details.
+.github/ISSUE_TEMPLATE/config.yml:6:  - name: Security report
+.github/ISSUE_TEMPLATE/config.yml:7:    url: https://github.com/HaroldZ32/My-Power-Dsh/security/advisories/new
+.github/ISSUE_TEMPLATE/bug_report.yml:12:        For a security problem, do **not** open a public issue — use the Security tab instead.
+[exit 0]
+
+===== $ sed -n '36,42p' docs/index.md; sed -n '60,70p' docs/index.md
+   packing, vendoring, release flow.
+3. [`design.md`](design.md) — how the bundle is assembled and mounts; read it before changing
+   anything under `packages/`.
+4. [`../AGENTS.md`](../AGENTS.md) — the binding repository manual (English-only).
+5. [`../CHANGELOG.md`](../CHANGELOG.md) — what changed in each release.
+
+### For agents
+| [`extensions.md`](extensions.md) | extension authors | The extension interface — the frozen descriptor contract, the four contribution kinds (skills, flows, MCP servers, roles), the discovery roots and the developer CLI. |
+| [`extension-authoring-guide.md`](extension-authoring-guide.md) | extension authors, newcomers | The task-oriented authoring guide — when an extension is the right instrument, the one plane-selection rule, the isolation posture and its accepted residuals, the lifecycle/restart matrix, the template walkthrough, distribution and troubleshooting. |
+| [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) | agents writing an extension | The machine contract, English-only — kind-by-kind requirements, a manifest skeleton that is validated on every docs-check run, plane legality, error signatures, the refusal list and the v1 hard limits. |
+| [`extension-adaptation-report.md`](extension-adaptation-report.md) | technical decision-makers | The current-state report on external-plugin adaptation — the two planes and who should use which, the extension-interface inventory, the runtime and isolation posture, what was live-verified on this tree, risks/gaps, and prioritized P0/P1/P2 recommendations. |
+| [`tui.md`](tui.md) | users of a TUI session | The DSH-TUI edition — the install command, the TUI-native surfaces, the admission and distribution artifacts, the per-package compatibility ledger and the explicit NOT-CLAIMED list. |
+| [`tui-parity.md`](tui-parity.md) | users choosing between the two surfaces | The surface-parity ledger: one row per Web surface, its TUI counterpart, the evidence level behind the claim, and the deviations that are still open. |
+| [`design.md`](design.md) | engineers, curious users | How the bundle is assembled and mounts: patch layers, boot chain, plugin inventory, interaction flows, state layout, web-client wiring, TUI edition wiring. |
+| [`development.md`](development.md) | developers | Repo layout, build/test commands, the QA case catalog, gates, packing/installing, vendoring, git model, common pitfalls. |
+| [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | contributors | How to contribute: development setup, gates, the git model, documentation rules, evidence, pull requests. |
+| [`../CHANGELOG.md`](../CHANGELOG.md) | everyone | Release notes, newest first, one section per released version. |
+| [`../AGENTS.md`](../AGENTS.md) | agents + maintainers | The binding repository manual: conventions, gates, git model, troubleshooting. |
+[exit 0]
+
+===== $ sed -n '35,41p' docs/index.zh-CN.md; sed -n '58,68p' docs/index.zh-CN.md
+   vendor、发布流程。
+3. [`design.zh-CN.md`](design.zh-CN.md) —— bundle 如何组装与挂载；改动 `packages/` 下任何东西之前
+   先读它。
+4. [`../AGENTS.md`](../AGENTS.md) —— 有约束力的仓库手册（仅英文）。
+5. [`../CHANGELOG.md`](../CHANGELOG.md) —— 每个版本改了什么。
+
+### 智能体
+| [`extensions.zh-CN.md`](extensions.zh-CN.md) | 扩展作者 | 扩展接口 —— 冻结的描述符契约、四种贡献种类（skills、flows、MCP 服务器、roles）、发现根与开发者 CLI。 |
+| [`extension-authoring-guide.zh-CN.md`](extension-authoring-guide.zh-CN.md) | 扩展作者、初次接触者 | 面向任务的编写指南 —— 什么时候扩展才是对的工具、唯一的一条平面选择规则、隔离姿态及其已接受的残余风险、生命周期/重启矩阵、模板实操、分发与故障排查。 |
+| [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) | 编写扩展的智能体 | 机器契约（仅有英文）—— 逐类型要求、每次文档检查都会校验的清单骨架、平面合法性、错误特征、拒绝清单与 v1 硬性边界。 |
+| [`extension-adaptation-report.zh-CN.md`](extension-adaptation-report.zh-CN.md) | 技术决策者 | 外部插件适配的现状报告 —— 两条路径及各自适合谁、扩展接口清单、运行时与隔离姿态、本棵代码树上真实验证过的内容、风险与缺口，以及按 P0/P1/P2 排序的建议。 |
+| [`tui.zh-CN.md`](tui.zh-CN.md) | TUI 会话使用者 | DSH-TUI 版本 —— 安装命令、TUI 原生界面、准入与分发产物、逐包兼容性台账，以及明确的 NOT-CLAIMED 清单。 |
+| [`tui-parity.zh-CN.md`](tui-parity.zh-CN.md) | 在两个端之间做选择的用户 | 界面对齐台账：每个 Web 界面一行，列出它的 TUI 对应物、支撑该结论的证据等级，以及仍然开放的偏差。 |
+| [`design.zh-CN.md`](design.zh-CN.md) | 工程师、好奇的使用者 | bundle 如何组装与挂载：补丁层、启动链、插件清单、交互流程、状态布局、web 客户端接线、TUI 版本接线。 |
+| [`development.zh-CN.md`](development.zh-CN.md) | 开发者 | 仓库布局、构建/测试命令、QA 用例目录、关卡、打包/安装、vendor、git 模型、常见坑。 |
+| [`../CONTRIBUTING.zh-CN.md`](../CONTRIBUTING.zh-CN.md) | 贡献者 | 如何贡献：开发环境、关卡、git 模型、文档规则、证据、pull request。 |
+| [`../CHANGELOG.md`](../CHANGELOG.md) | 所有人 | 发布说明，最新的在最前，每个已发布版本一节。 |
+| [`../AGENTS.md`](../AGENTS.md) | 智能体 + 维护者 | 有约束力的仓库手册：约定、关卡、git 模型、故障排查。 |
+[exit 0]
+
+########## END PIN — read at 2026-10-09T12:03:05Z (UTC)
+
+===== $ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-09T12:03:05Z
+[exit 0]
+
+===== $ git rev-parse HEAD
+477baa5bebe6499b0c586fe2b3135020748f7d77
+[exit 0]
+
+===== $ sha256sum package.json scripts/pack-mpd.ts CONTRIBUTING.md docs/index.md docs/index.zh-CN.md agent-references/troubleshooting.md
+fee35b7f6fd99c93775922dd98d348efd60a4cca8da679aa1adbfdf8adf5bd98  package.json
+f69c177837cb9a1aaea3f2fcb8a50b332ef93f66b141a216557f5fcb5aa90c0e  scripts/pack-mpd.ts
+a7492e1a027621addc3b1ae6d5cd3bfb7b337b745178d0571fccc5975b66a71a  CONTRIBUTING.md
+90b8912d0e63b90bab02292fd539102cd40e4ed03deb9126cab344b2bfe24840  docs/index.md
+0247a4a40d9823a20d0a7109d31eb37b77a846db0aab8ef7f7057e8a1c20f41c  docs/index.zh-CN.md
+5a1c619298e85f8bcc8965fac0a40d94697cfd1ca1fdda9cc9185b0f7901fb08  agent-references/troubleshooting.md
+[exit 0]
+
+===== $ git status --short -- SECURITY.md SECURITY.zh-CN.md docs/index.md docs/index.zh-CN.md package.json scripts/pack-mpd.ts CONTRIBUTING.md
+ M CONTRIBUTING.md
+ D SECURITY.md
+ D SECURITY.zh-CN.md
+ M docs/index.md
+ M docs/index.zh-CN.md
+ M package.json
+ M scripts/pack-mpd.ts
+[exit 0]
+
+===== $ git check-ignore -v .mpd/plans/restore-acceptance-fix.md evidence/restore/acceptance/sD/output.log dist/mpd-package/SECURITY.md
+.gitignore:21:.mpd/	.mpd/plans/restore-acceptance-fix.md
+.gitignore:12:dist/mpd-package/	dist/mpd-package/SECURITY.md
+[exit 0]

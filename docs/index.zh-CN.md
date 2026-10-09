@@ -37,7 +37,6 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
    先读它。
 4. [`../AGENTS.md`](../AGENTS.md) —— 有约束力的仓库手册（仅英文）。
 5. [`../CHANGELOG.md`](../CHANGELOG.md) —— 每个版本改了什么。
-6. [`../SECURITY.zh-CN.md`](../SECURITY.zh-CN.md) —— 如何私密地报告漏洞。
 
 ### 智能体
 
@@ -65,7 +64,6 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 | [`design.zh-CN.md`](design.zh-CN.md) | 工程师、好奇的使用者 | bundle 如何组装与挂载：补丁层、启动链、插件清单、交互流程、状态布局、web 客户端接线、TUI 版本接线。 |
 | [`development.zh-CN.md`](development.zh-CN.md) | 开发者 | 仓库布局、构建/测试命令、QA 用例目录、关卡、打包/安装、vendor、git 模型、常见坑。 |
 | [`../CONTRIBUTING.zh-CN.md`](../CONTRIBUTING.zh-CN.md) | 贡献者 | 如何贡献：开发环境、关卡、git 模型、文档规则、证据、pull request。 |
-| [`../SECURITY.zh-CN.md`](../SECURITY.zh-CN.md) | 报告者 | 安全政策：支持的版本、私密报告路径，以及哪些代码在范围内。 |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | 所有人 | 发布说明，最新的在最前，每个已发布版本一节。 |
 | [`../AGENTS.md`](../AGENTS.md) | 智能体 + 维护者 | 有约束力的仓库手册：约定、关卡、git 模型、故障排查。 |
 | [`../extensions/README.zh-CN.md`](../extensions/README.zh-CN.md) | 扩展作者 | bundle 自带的发现根目录：三个根、各自的生命周期，以及随包提供的参考扩展。 |

@@ -204,8 +204,7 @@ Evidence logs must never contain credentials, tokens or private data.
   expected result, your DSH profile and the bundle version.
 - **Security reports** — do **not** open a public issue. Use GitHub's private vulnerability reporting
   from the repository's **Security** tab; if it is unavailable, open a short issue stating that you
-  have a security report and ask for a private channel, without disclosing the details. The full
-  policy, including which code is in scope, is [`SECURITY.md`](./SECURITY.md).
+  have a security report and ask for a private channel, without disclosing the details.
 - **Questions** — read [`README.md`](./README.md) and the [`docs/`](./docs/index.md) hub first; the
   README's FAQ covers the common install and configuration problems.
 
