@@ -1,0 +1,31 @@
+diff --git a/skills/dsh-qa/SKILL.md b/skills/dsh-qa/SKILL.md
+index 43e45310..666c9489 100644
+--- a/skills/dsh-qa/SKILL.md
++++ b/skills/dsh-qa/SKILL.md
+@@ -93,6 +93,7 @@ corpus and its golden fixtures have been extracted out of this repository.
+ | vision-smoke | multimodal | deterministic PNG fixture + real DeepSeek vision API call, image-grounded answer asserted; route id vs official catalog | Plan C/C8 |
+ | tool-output-validation | plugin tools | mpd_config_get / mpd_boulder_status return host-validated lossless JSON (no "not lossless JSON" / "must be an object" errors); evidence per defect under evidence/fix/<slug>/ | C5/C7 |
+ | skill-catalog-probe | plan-d install | staged install -> the corpus is served from <bundle>/skills (NO $DSH_HOME/skills copy) -> real headless skill load of svn-master works; prerequisite: the staged pack (`dist/mpd-package/package.json`, reason `absent-staged-pack`) — absent ⇒ SKIP with the canonical marker, never a failure | Plan D |
++| review-panel | review-work skill (S1 restore) | asserts the PANEL DECLARATION as DATA, not by eye: the opening prose lane count, the panel lane table and the ONE merge table all agree; every roster role a lane names is a member of `ROLES` imported from `packages/mpd-roles-plugin/src/roles.data.ts` (Architect / Reviewer / Explorer today) - asserted against the data module, never grepped; exactly three lanes declare `read-only findings`, and each of those roles is roster-read-only or findings-only by its roster description (the per-lane property is reported, so the one lane the mechanical write guard does not cover is visible rather than implied); the degrade matrix names `mpd_role_spawn`, an unresolvable slot as `INCONCLUSIVE` and the `panel=advisory` label; and no retired spelling or hard-coded "ALL <N> lanes" verdict block survives under `skills/review-work/**` (the document AND the whole tree). `--self-test` is fully offline: a positive control over a synthetic skill document, then ONE mutant per assertion - each required to redden for its OWN check id, so a green run cannot be vacuous - plus temp-directory arms proving the tree scanner discriminates in both directions. No skippable prerequisite | S1/restore |
+ | relocate-smoke | plan-d relocate | staged bundle installs with ZERO fixed checkout paths; dump-config no dev-path leak; real headless boot serves preset root + corpus from the RELOCATED package with no home copy; prerequisite: the staged pack (`dist/mpd-package/package.json`, reason `absent-staged-pack`) — absent ⇒ SKIP with the canonical marker, never a failure | Plan D/P5 |
+ | workmate-library | plan-f workmate | legacy install mounts mpd-roles/workmate/bootstrap; real headless boot runs init->list->spawn->reflect->match against a SANDBOX HOME; asserts ~/.mpd/workmate files in the sandbox and that the real home is untouched; the self-test also pins the SIDEBAR surface (host `roster`/`get` routes, the client's `betterSidebar.registerTab` contribution, and that NO floater/footer-toggle fallback ships) AND the rename/delete surface: the POST-only `rename`/`delete` host routes with their `allow: POST` refusal, the §D reason matrix (`invalid-name`, `unknown`, `collision`, `in-use` + `blocking`, `confirm-required`), archive-first delete (`.archive/` root, purge returns `archived: null, purged: true`) and the service's `rename`/`delete` properties — so a route or reason rename cannot silently invalidate the docs | Plan F/workmate; workmate rename/delete |
+ | web-client-adapt | plan-f web client | manual-copy web boot proves the @mpd-dsh/mpd client entry appears in the boot graph (mpd-web-compat self-row), /plugins/@mpd-dsh/mpd/client.js serves and registers the matching id, /plugins/mpd-workmate/list + /init answer and create under a SANDBOX HOME; the self-test also pins that the client's rename/delete URLs match the host's rename/delete route literals and that it branches on every §D refusal reason; real home untouched. The boot-graph deadline is 150 s (env-overridable `MPD_DSH_QA_WEB_BOOT_DEADLINE_MS`) and `bootEntry` records `elapsedMs`/`deadlineMs`/`timedOut`, because the old hard 60 s deadline went red at ~69 s under concurrent load and passed solo — a slow-but-healthy boot must stay visibly BOUNDED and never read as "the client entry is missing" | Plan F/workmate |
+diff --git a/skills/dsh-qa/cases.json b/skills/dsh-qa/cases.json
+index f467b43b..5bd25e03 100644
+--- a/skills/dsh-qa/cases.json
++++ b/skills/dsh-qa/cases.json
+@@ -183,6 +183,14 @@
+         "absent-staged-pack"
+       ]
+     },
++    {
++      "case": "review-panel",
++      "script": "skills/dsh-qa/scripts/review-panel.ts",
++      "suites": [
++        "all"
++      ],
++      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
++    },
+     {
+       "case": "session-start-team",
+       "script": "skills/dsh-qa/scripts/session-start-team.ts",

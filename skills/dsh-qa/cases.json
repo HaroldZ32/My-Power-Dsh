@@ -184,6 +184,14 @@
       ]
     },
     {
+      "case": "review-panel",
+      "script": "skills/dsh-qa/scripts/review-panel.ts",
+      "suites": [
+        "all"
+      ],
+      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
+    },
+    {
       "case": "session-start-team",
       "script": "skills/dsh-qa/scripts/session-start-team.ts",
       "suites": [

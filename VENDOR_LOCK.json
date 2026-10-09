@@ -3,9 +3,9 @@
   "assets": {
     "_note": "directory assets: fileCount + treeSha (sorted relpath + LF-normalized per-file sha256 aggregation) double gate; single-file assets: fileCount + sha256 gate - both verified by scripts/verify-vendor.ts, which refuses a zero-subject run",
     "skills": {
-      "fileCount": 371,
+      "fileCount": 372,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, extension-template, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe + the five TUI lanes and their shared harness: scripts/tui-mount.mjs, tui-panels.mjs, tui-admission.mjs, tui-distribution.mjs, tui-spec-conformance.mjs, lib/tui-lane.mjs + the settings-bridge lanes and their shared engine: scripts/tui-settings-bridge.mjs, web-settings-bridge.mjs, lib/settings-bridge-lane.mjs + the six team-watchdog lanes and their shared harness: scripts/team-watchdog-{heartbeat,fault,scene,config,notify,boot}.mjs, lib/watchdog-lane.mjs + the real-dsh boot lane); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "1169952b376923e25ac078a8dfc530279525c4a4b2aebc960a8c49f832a2c084"
+      "treeSha": "cd15617139d73c35e9758d84cca6b58410e3b2bf3339edd19362a19d7860ceca"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
@@ -14,7 +14,7 @@
     },
     "packages/mpd-hashline-plugin/src/vendor": {
       "fileCount": 8,
-      "treeSha": "7c38d4f18e056e2f79eac37908cc6250dd8d917185609b3e7a5b3c13f2be0495",
+      "treeSha": "7e6a28e2b1c6dc9c3942bb17da5cef86ae8398af6ed63bfe3cd128a08701c34a",
       "source": "hashline core, mpd-owned TypeScript ported from the DESIGN of crates/pi-edit in the MIT project can1357/oh-my-pi (@602b6c81); MIT notice + copyright line in every file header and in LICENSE-NOTICES.md"
     },
     "packages/mpd-boulder-plugin/src/vendor": {

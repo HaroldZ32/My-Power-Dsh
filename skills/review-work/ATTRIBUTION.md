@@ -1,10 +1,13 @@
 # ATTRIBUTION / NOTICE — `review-work`
 
-> **Honest provenance statement.** The body of this skill is **upstream content re-sourced under its
-> own author's MIT grant**. It was **not** written in this repository. Until wave A of the de-omo
-> decoupling (`.mpd/plans/de-omo-decoupling.md`) the corpus was ported from
-> `code-yeongyu/oh-my-openagent` (SUL-1.0); it is now sourced from the same author's MIT re-license of
-> that corpus. Where a file below is listed as ours, that file is this repository's own work.
+> **Honest provenance statement.** This skill is a MIXED file, and the split is stated here rather than
+> guessed at. The panel — the panel lanes, the degrade matrix, the merge table and the panel phases — is
+> **this repository's own work, MIT, Copyright (c) 2026 HaroldZ32**. The surrounding orchestration
+> scaffolding (review context gathering, the manual-QA channel discipline, worktree isolation, the
+> evidence-redaction rules and the report skeleton) is **upstream content re-sourced under its own
+> author's MIT grant**. Until wave A of the de-omo decoupling (`.mpd/plans/de-omo-decoupling.md`) the
+> corpus was ported from `code-yeongyu/oh-my-openagent` (SUL-1.0); it is now sourced from the same
+> author's MIT re-license of that corpus.
 
 ## Source
 
@@ -17,9 +20,24 @@
   (`## Codex Harness Tool Compatibility` / `## Codex Subagent Reliability` blocks,
   `multi_agent_v1.*` calls, `lazycodex-*` agent types, `~/.codex/...` agent paths).
 
-### Local adaptations in this repository (NOT upstream)
+### Local work in this repository (NOT upstream)
 
-**Capability delta, stated plainly:** the re-sourced upstream body is the ONE-reviewer *gate review* orchestrator. The five-agent review panel this bundle previously carried was an older upstream revision and is NOT part of the pinned MIT snapshot, so it is gone. The frontmatter `description` was adopted from upstream in the same edit so that it describes the body that actually ships. Upstream's Codex-only override paragraph was stripped.
+**The panel is ours.** `SKILL.md` now orchestrates a FOUR-lane panel — the orchestrator's own hands-on QA
+lane plus three read-only reviewer lanes (roster roles Architect, Reviewer, Explorer) — with ONE merge
+table, the verdict tokens `PASS` / `FAIL` / `INCONCLUSIVE`, and a written degrade matrix. That content was
+authored from this repository's own contract (`.mpd/plans/restore-three-capabilities.md`, stream S1) and
+from the bundle's real surfaces (the specialist roster, the roster provider's routing rule and the
+verification law). It is MIT, Copyright (c) 2026 HaroldZ32, and it is NOT derived from any earlier
+upstream revision of this skill.
+
+**Retired residue removed.** The tree previously still carried the retired multi-agent panel's lane
+sections — an older upstream revision that was never part of the pinned MIT snapshot — sitting below a
+one-reviewer introduction. Those sections, their per-lane collection table and the matching stale verdict
+block were DELETED in the same change: the file no longer mixes two incompatible lane models, and no
+retired spelling from that era survives anywhere under this directory.
+
+**Capability delta, stated plainly:** the re-sourced upstream body alone was the ONE-reviewer *gate
+review* orchestrator. The frontmatter `description` now describes the panel that actually ships. Upstream's Codex-only override paragraph stays stripped.
 
 ### MIT License (verbatim from the source repository's LICENSE)
 

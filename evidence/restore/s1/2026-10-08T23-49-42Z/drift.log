@@ -1,0 +1,9 @@
+$ node scripts/run-qa-lanes.ts --check-drift
+[run-qa-lanes] discovery: 43 lane script(s) discovered (43 listed, 0 unlisted, 17 outside every suite); .ts entries 43, underscore-excluded 0
+[run-qa-lanes] immutability required=8: team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=35
+[run-qa-lanes] manifest and disk agree (49 entries, 43 lane script(s) discovered) and the immutability guard is declared
+exit=0
+
+$ node scripts/run-qa-lanes.ts --list | grep review-panel
+review-panel	lane	all	skills/dsh-qa/scripts/review-panel.ts
+exit=0

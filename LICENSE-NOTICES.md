@@ -45,6 +45,20 @@ pin, the full MIT permission text, the notice above and the list of local adapta
 upstream. The three skills this repository wrote itself — `cordis-dev`, `dsh-qa` and `svn-master` —
 are outside this section (see the `cordis-dev` entry below).
 
+### `skills/review-work` — the review PANEL is this repository's own work (MIT)
+
+The `review-work` skill is a MIXED file: its orchestration scaffolding is the re-sourced MIT content
+described above, while its **review panel** — the four declared lanes (the orchestrator's own hands-on QA
+lane plus three read-only reviewer lanes named after the specialist roster: Architect, Reviewer,
+Explorer), the ONE merge table carrying the verdict tokens `PASS` / `FAIL` / `INCONCLUSIVE`, and the
+degrade matrix — is **this repository's own work, MIT, `Copyright (c) 2026 HaroldZ32`**. It was authored
+from this repository's own contract (`.mpd/plans/restore-three-capabilities.md`, stream S1) and from the
+bundle's real surfaces (the specialist roster in `packages/mpd-roles-plugin/src/roles.data.ts`, the
+roster provider's description-head routing rule, and the verification law). It is **not** derived from any
+earlier upstream revision of the skill; the retired multi-agent lane sections the tree still carried were
+deleted in the same change. The per-file split is recorded in `skills/review-work/ATTRIBUTION.md`, and the
+conformance case `skills/dsh-qa/scripts/review-panel.ts` asserts the panel declaration as data.
+
 **Third-party material carried BY those skills is unchanged and remains in force**, each with its own
 notice in the skill's `ATTRIBUTION.md`:
 
@@ -123,6 +137,8 @@ it. What replaced each capability, under which licence, is recorded in
 (wave B1), and thin launchers over the DECLARED npm dependencies `cclsp` (MIT), `@cyanheads/git-mcp-server`
 (Apache-2.0) and `mcp-server-commands` (MIT licence file, no `license` field).
 
+S2 adds NO new third-party component and NO vendored bytes: the language→server catalog, the config assembler and the HDL reference pages are our own MIT code. The only server this repository is wired to remains `typescript-language-server` (Apache-2.0), which arrives as a dependency of the already-declared `cclsp` (MIT); nothing is redistributed, because the bundle only SPAWNS a user-installed server. The catalog records the licence of every server it names, of which EIGHT are not permissive — Eclipse JDT LS EPL-2.0 · terraform-ls MPL-2.0 · Intelephense's server proprietary · C# Dev Kit language server proprietary · lemminx EPL-2.0 · nixd LGPL-3.0 · vhdl_ls MPL-2.0 · texlab GPL-3.0 — plus the Roslyn nuance (compiler and the standalone NuGet package MIT; the shipped C# Dev Kit server proprietary) and the `protols` dispute.
+
 ## Vendored plugin cores — REPLACED / WRITTEN, no SUL source (wave de-omo C)
 
 The three `src/vendor/**` cores that the first audit missed were dealt with in one wave. **No SUL-1.0
@@ -149,6 +165,8 @@ bytes remain in any `src/vendor/**` tree**, and each surviving core is now finge
   `src/vendor/**` tree, together with the copyright lines above. `bun run verify-vendor` fingerprints
   the tree, and the port is a DELIBERATE REDUCTION: the fuzzy "autocorrect" heuristics of the replaced
   core are not reproduced (declared in `vendor/edits.ts`'s header).
+
+  The hashline core in packages/mpd-hashline-plugin/src/vendor/** is our own TypeScript, designed from the `crates/pi-edit` crate of can1357/oh-my-pi at commit 602b6c812fa9ef774f359f1e399a09d30ee2eaca, whose workspace manifest declares MIT and whose LICENSE carries the text reproduced in every file header. One part of that tree is not a design port and has no upstream counterpart: the conservative repair pass (`repairReplacementBlock` in src/vendor/edits.ts, with its helpers findWrapSites, scanDelimiters, scanBlockStates, opensSomething, closesSomething, isFlushLeftBlock and pairIndent) is an ORIGINAL mpd implementation written for this repository, restoring by design a capability the replaced core had. No upstream source was read or copied for it.
 
   MIT License
 
