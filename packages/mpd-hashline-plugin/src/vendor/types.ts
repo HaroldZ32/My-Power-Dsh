@@ -75,7 +75,23 @@ export interface FileTextEnvelope {
   lineEnding: "\n" | "\r\n"
 }
 
-/** What one applied batch reports back: the new content plus the two counters the tool prints. */
+/** One mangling the conservative repair pass undid on a replacement block, and where it sat. */
+export interface HashlineRepairReport {
+  /**
+   * Which mangling was undone: `wrapped-line` for one logical line the caller's block split across two
+   * entries, `paired-indent` for a block that lost its block-level indentation and was re-indented
+   * from the range it replaces.
+   */
+  kind: "wrapped-line" | "paired-indent"
+  /** Zero-based index, within the edit's replacement block, of the first line the repair touched. */
+  at: number
+  /** 1-based file line the edit's replacement block starts at, so the report names a place in the file. */
+  line: number
+  /** Block entries the repair combined or re-indented: 2 for a rejoin, the whole block for a re-indent. */
+  span: number
+}
+
+/** What one applied batch reports back: the new content plus the counters and repairs the tool prints. */
 export interface HashlineApplyReport {
   /** File content after every edit of the batch has been applied. */
   content: string
@@ -83,6 +99,8 @@ export interface HashlineApplyReport {
   noopEdits: number
   /** Duplicate edits dropped before any edit ran. */
   deduplicatedEdits: number
+  /** Repairs the conservative pass applied, in application order; empty when no block was mangled. */
+  repairs: HashlineRepairReport[]
 }
 
 /** A parsed anchor: the 1-based line it points at plus the digest the caller quoted for that line. */

@@ -34,14 +34,28 @@
 // of it runs, edits are applied bottom-up so an earlier splice cannot shift a later anchor, and a
 // replacement that merely restates the lines around it is recognized rather than duplicated.
 //
-// DELIBERATE REDUCTION: the replaced core also carried a fuzzy "autocorrect" layer that tried to
-// re-join replacement lines a model had wrapped and to repair indentation across paired lines. That
-// layer was heuristic, undocumented in the tool contract, and is NOT reproduced here. What IS
-// reproduced is the deterministic part every anchored edit depends on: pasted-prefix stripping,
-// indent restoration, boundary-echo stripping and the no-op/dedupe accounting.
+// DELIBERATE REDUCTION, PARTLY RESTORED: the replaced core also carried a fuzzy "autocorrect" layer
+// that tried to re-join replacement lines a model had wrapped and to repair indentation across paired
+// lines. That layer was heuristic and undocumented in the tool contract, so it was dropped. What runs
+// here instead is OUR OWN, narrower implementation (`repairReplacementBlock`): it absorbs exactly two
+// manglings — a replacement line the caller's block split across two entries, and a replacement block
+// that lost its block-level indentation — and it refuses everything it cannot decide from the file's
+// own bytes: it never runs on a block that already equals the range it replaces, never runs on an
+// append or a prepend, and applies ONLY when the block names exactly one place to repair, because two
+// candidate sites are an ambiguous request and the caller's block is then left exactly as written.
+// Every repair it does apply is named in `HashlineApplyReport.repairs`, so the tool result can report
+// it. What was reproduced unchanged is the deterministic part every anchored edit depends on:
+// pasted-prefix stripping, indent restoration, boundary-echo stripping and the no-op/dedupe accounting.
 
 import { normalizeLineRef, parseLineRef, validateLineRefs } from "./anchors"
-import type { AppendEdit, HashlineApplyReport, HashlineEdit, PrependEdit, ReplaceEdit } from "./types"
+import type {
+  AppendEdit,
+  HashlineApplyReport,
+  HashlineEdit,
+  HashlineRepairReport,
+  PrependEdit,
+  ReplaceEdit,
+} from "./types"
 
 /** Operation names the tool surface accepts; the pre-anchor legacy format is not one of them. */
 type HashlineToolOp = "replace" | "append" | "prepend"
@@ -222,28 +236,269 @@ function stripRangeBoundaryEcho(lines: string[], startLine: number, endLine: num
   return out
 }
 
+// ── The conservative repair pass ─────────────────────────────────────────────────────────────────
+// A replacement block arrives as plain text from a caller, so it can come back MANGLED in two ways
+// the file's own bytes can prove: one logical line split across two entries, or a whole block that
+// lost its block-level indentation. This pass undoes exactly those two, and only when unambiguous.
+
+/** Characters that need a right operand, so a wrap after one is rejoined with a space, not butted on. */
+const WRAP_JOIN_SPACE_RE = /[,+\-*/%=<>&|?!:]$/
+
+/** Running delimiter state of a line-by-line scan: the net bracket depth plus any quote left open. */
+interface BalanceState {
+  /** Net `(`/`[`/`{` depth; a closing bracket decrements it and never takes it below zero. */
+  depth: number
+  /** The quote character the scan ended inside, or null when every quote it saw was closed. */
+  openQuote: string | null
+}
+
+/** The delimiter state of text that opened nothing and quoted nothing. */
+const BALANCED: BalanceState = { depth: 0, openQuote: null }
+
+/** One place a replacement line was split across two entries, with the text its two halves rejoin through. */
+interface WrapSite {
+  /** Zero-based index, within the block, of the entry the wrapped fragment landed in. */
+  index: number
+  /** Text joining the two entries: one space after a token needing a right operand, otherwise nothing. */
+  separator: string
+}
+
+/** One repair attempt's conclusion about a replacement block. */
+interface RepairOutcome {
+  /** The block to splice: the repaired lines, or the caller's block when no repair applied. */
+  lines: string[]
+  /** The repair that produced `lines`, or null when the block was left exactly as the caller wrote it. */
+  repair: HashlineRepairReport | null
+}
+
+/**
+ * Advance a delimiter scan by one line of text.
+ *
+ * The scanner is language-agnostic on purpose: it tracks `()[]{}` depth plus the double-quote and
+ * backtick quotes with backslash escapes, which is the subset every language this row edits agrees
+ * on. A single quote is deliberately NOT tracked, because it delimits strings in some languages and
+ * abbreviates prose in others; leaving it out can only make a line look LESS open, and an open line
+ * is only ever a repair CANDIDATE whose application the uniqueness gate still has to allow.
+ *
+ * @param state - the state at the end of the previous line.
+ * @param text - the line to scan.
+ * @returns the state at the end of `text`; a fresh object, so `state` itself is never mutated.
+ */
+function scanDelimiters(state: BalanceState, text: string): BalanceState {
+  /** Bracket depth after `text`; only a bracket outside every quote moves it. */
+  let depth = state.depth
+  /** The quote the scan ended inside, carried in from the previous line. */
+  let openQuote = state.openQuote
+  /** Whether a backslash inside a quote escaped the character that followed it. */
+  let escaped = false
+
+  for (const char of text) {
+    if (openQuote !== null) {
+      if (escaped) escaped = false
+      else if (char === "\\") escaped = true
+      else if (char === openQuote) openQuote = null
+      continue
+    }
+    if (char === '"' || char === "`") {
+      openQuote = char
+      continue
+    }
+    if (char === "(" || char === "[" || char === "{") depth += 1
+    else if (char === ")" || char === "]" || char === "}") depth = Math.max(0, depth - 1)
+  }
+
+  return { depth, openQuote }
+}
+
+/**
+ * Delimiter state entering and leaving every line of a block, so a pair is judged from the state its
+ * own wrapper line started from rather than from a fresh one.
+ *
+ * @param lines - the block to scan, in block order.
+ * @returns `before[i]` is the state entering line `i` and `after[i]` the state leaving it; both carry
+ *   one entry per line, so `after` is `before` displaced by exactly one line.
+ */
+function scanBlockStates(lines: string[]): { before: BalanceState[]; after: BalanceState[] } {
+  /** State entering each line, in block order. */
+  const before: BalanceState[] = []
+  /** State leaving each line, in block order. */
+  const after: BalanceState[] = []
+  /** Running state, advanced once per line; never mutated, so the pushed states stay distinct. */
+  let state = BALANCED
+  for (const line of lines) {
+    before.push(state)
+    state = scanDelimiters(state, line)
+    after.push(state)
+  }
+  return { before, after }
+}
+
+/**
+ * Whether a line left something open that the state it entered with did not already hold.
+ *
+ * @param entry - the state entering the line.
+ * @param exit - the state leaving it.
+ * @returns true when the line opened a bracket or started a quote.
+ */
+function opensSomething(entry: BalanceState, exit: BalanceState): boolean {
+  if (exit.depth > entry.depth) return true
+  return entry.openQuote === null && exit.openQuote !== null
+}
+
+/**
+ * Whether a line gave back something the state entering it held open.
+ *
+ * @param entry - the state entering the line.
+ * @param exit - the state leaving it.
+ * @returns true when the line closed a bracket or terminated a quote.
+ */
+function closesSomething(entry: BalanceState, exit: BalanceState): boolean {
+  if (exit.depth < entry.depth) return true
+  return entry.openQuote !== null && exit.openQuote === null
+}
+
+/**
+ * Find every place a replacement block splits one logical line across two entries: entry `i` opens a
+ * bracket or a quote, entry `i+1` closes exactly that and is itself a net closer, and entry `i+1`
+ * carries NO indentation of its own — a fragment that lost the indentation its line had.
+ *
+ * The net-closer clause is what keeps a legitimately unindented line inside an open block out of the
+ * candidate list: an entry that merely sits between an opening and a closing line closes nothing.
+ *
+ * @param lines - the replacement block, after prefix and boundary-echo stripping.
+ * @returns every eligible split, in block order; empty when the block is not split this way.
+ */
+function findWrapSites(lines: string[]): WrapSite[] {
+  /** State entering and leaving every entry, so each pair is judged from its own entry state. */
+  const { before, after } = scanBlockStates(lines)
+  /** Every pair that reads as one logical line split across two entries. */
+  const sites: WrapSite[] = []
+
+  for (let i = 0; i + 1 < lines.length; i++) {
+    /** The entry that leaves a bracket or a quote open. */
+    const wrapper = lines[i] ?? ""
+    /** The entry that must close exactly that. */
+    const fragment = lines[i + 1] ?? ""
+    /** State entering the wrapper. */
+    const entry = before[i] ?? BALANCED
+    /** State leaving the wrapper, i.e. entering the fragment. */
+    const middle = after[i] ?? BALANCED
+    /** State leaving the fragment. */
+    const exit = after[i + 1] ?? BALANCED
+
+    if (wrapper.trim().length === 0 || fragment.trim().length === 0) continue
+    if (leadingWhitespace(fragment).length > 0) continue
+    if (!opensSomething(entry, middle)) continue
+    if (!closesSomething(middle, exit)) continue
+    if (exit.depth !== entry.depth || exit.openQuote !== entry.openQuote) continue
+
+    sites.push({ index: i, separator: WRAP_JOIN_SPACE_RE.test(wrapper.replace(/\s+$/, "")) ? " " : "" })
+  }
+
+  return sites
+}
+
+/**
+ * Whether a block is written flush left while the lines it replaces are indented — the signature of a
+ * replacement whose block-level indentation was lost, rather than one the caller indented on purpose.
+ *
+ * @param block - the replacement block, after prefix and boundary-echo stripping.
+ * @param range - the lines the block replaces, in file order.
+ * @returns true when every entry is flush left, the block spans at least two entries, and the range
+ *   carries at least one indent the block could be re-indented from.
+ */
+function isFlushLeftBlock(block: string[], range: string[]): boolean {
+  if (block.length < 2) return false
+  if (!block.some((line) => line.trim().length > 0)) return false
+  if (!block.every((line) => leadingWhitespace(line).length === 0)) return false
+  return range.some((line) => leadingWhitespace(line).length > 0)
+}
+
+/**
+ * Give every block entry the indent of the replaced line it stands in for, so the k-th replacement
+ * line is indented like the k-th replaced line. A block that grew past the range keeps the range's
+ * LAST indent for its extra entries.
+ *
+ * @param block - the flush-left replacement block.
+ * @param range - the lines the block replaces, in file order.
+ * @returns the re-indented block; an empty entry stays empty rather than becoming whitespace.
+ */
+function pairIndent(block: string[], range: string[]): string[] {
+  return block.map((line, index) => {
+    if (line.length === 0) return line
+    /** The replaced line this entry stands in for; the range's last line covers a block that grew. */
+    const template = range[Math.min(index, range.length - 1)] ?? ""
+    return `${leadingWhitespace(template)}${line}`
+  })
+}
+
+/**
+ * The conservative repair pass: undo the two manglings a replacement block can come back with, and
+ * only when the block names exactly one place to repair.
+ *
+ * The refusals are the whole point. A block that already EQUALS the range it replaces is a successful
+ * exact edit and is never touched, not even when it happens to carry a wrap-shaped pair. A block
+ * naming two candidate splits is ambiguous — the pass cannot tell which one the caller meant, so it
+ * repairs NEITHER and leaves the block exactly as written. Append and prepend never reach this
+ * function, because neither has a replaced range to prove a mangling against.
+ *
+ * @param block - the replacement block, after prefix and boundary-echo stripping.
+ * @param range - the lines the block replaces, in file order.
+ * @param startLine - 1-based file line the block lands on, recorded in the report.
+ * @returns the block to splice plus the repair that produced it, or the caller's block and null.
+ */
+function repairReplacementBlock(block: string[], range: string[], startLine: number): RepairOutcome {
+  if (arraysEqual(block, range)) return { lines: block, repair: null }
+
+  /** Every place the block splits one logical line across two entries. */
+  const wrapSites = findWrapSites(block)
+  if (wrapSites.length > 1) return { lines: block, repair: null }
+
+  /** The single split, present only when the block names exactly one place to repair. */
+  const site = wrapSites[0]
+  if (site) {
+    /** The one line the two entries spell once rejoined. */
+    const joined = `${block[site.index] ?? ""}${site.separator}${block[site.index + 1] ?? ""}`
+    return {
+      lines: [...block.slice(0, site.index), joined, ...block.slice(site.index + 2)],
+      repair: { kind: "wrapped-line", at: site.index, line: startLine, span: 2 },
+    }
+  }
+
+  if (isFlushLeftBlock(block, range)) {
+    return {
+      lines: pairIndent(block, range),
+      repair: { kind: "paired-indent", at: 0, line: startLine, span: block.length },
+    }
+  }
+
+  return { lines: block, repair: null }
+}
+
 /**
  * Replace the single line at `anchor`, re-applying the replaced line's indent to the first new line.
  *
  * @param lines - the current file lines.
  * @param anchor - `LINE#HASH` anchor of the line to replace.
  * @param newText - the replacement, one line or a block.
- * @returns a NEW line array; the caller's array is never mutated.
+ * @returns a NEW line array plus any repair the block needed; the caller's array is never mutated.
  */
-function applySetLine(lines: string[], anchor: string, newText: string | string[]): string[] {
+function applySetLine(lines: string[], anchor: string, newText: string | string[]): RepairOutcome {
   /** Zero-based index parsed out of the anchor. */
   const { line } = parseLineRef(anchor)
   /** Copy of the caller's lines. */
   const result = [...lines]
   /** The replaced line, used as the indent template; "" when the parsed line is out of range. */
   const originalLine = lines[line - 1] ?? ""
+  /** The replacement block, with a mangled wrap or a lost block indent undone when it names one. */
+  const repaired = repairReplacementBlock(toNewLines(newText), [originalLine], line)
   /** Replacement lines; only index 0 still lacks the original indent. */
-  const replacement = toNewLines(newText).map((entry, index) => {
+  const replacement = repaired.lines.map((entry, index) => {
     if (index !== 0) return entry
     return restoreLeadingIndent(originalLine, entry)
   })
   result.splice(line - 1, 1, ...replacement)
-  return result
+  return { lines: result, repair: repaired.repair }
 }
 
 /**
@@ -253,10 +508,10 @@ function applySetLine(lines: string[], anchor: string, newText: string | string[
  * @param startAnchor - `LINE#HASH` anchor of the first line of the range.
  * @param endAnchor - `LINE#HASH` anchor of the last line of the range.
  * @param newText - the replacement, one line or a block.
- * @returns a NEW line array.
+ * @returns a NEW line array plus any repair the block needed.
  * @throws Error when the start line is after the end line.
  */
-function applyReplaceLines(lines: string[], startAnchor: string, endAnchor: string, newText: string | string[]): string[] {
+function applyReplaceLines(lines: string[], startAnchor: string, endAnchor: string, newText: string | string[]): RepairOutcome {
   /** 1-based first line of the range, parsed out of the start anchor. */
   const { line: startLine } = parseLineRef(startAnchor)
   /** 1-based last line of the range, parsed out of the end anchor. */
@@ -270,13 +525,17 @@ function applyReplaceLines(lines: string[], startAnchor: string, endAnchor: stri
   const result = [...lines]
   /** Replacement lines with any echoed range boundaries removed, before the indent is restored. */
   const stripped = stripRangeBoundaryEcho(lines, startLine, endLine, toNewLines(newText))
+  /** The replaced lines themselves, which are the repair pass's only ground truth. */
+  const range = lines.slice(startLine - 1, endLine)
+  /** The stripped block, with a mangled wrap or a lost block indent undone when it names one. */
+  const repaired = repairReplacementBlock(stripped, range, startLine)
   /** Final replacement lines; only the first inherits the range's leading indent. */
-  const restored = stripped.map((entry, index) => {
+  const restored = repaired.lines.map((entry, index) => {
     if (index !== 0) return entry
     return restoreLeadingIndent(lines[startLine - 1] ?? "", entry)
   })
   result.splice(startLine - 1, endLine - startLine + 1, ...restored)
-  return result
+  return { lines: result, repair: repaired.repair }
 }
 
 /**
@@ -677,7 +936,7 @@ export function normalizeHashlineEdits(rawEdits: RawHashlineEdit[]): HashlineEdi
  */
 export function applyHashlineEditsWithReport(content: string, edits: HashlineEdit[]): HashlineApplyReport {
   if (edits.length === 0) {
-    return { content, noopEdits: 0, deduplicatedEdits: 0 }
+    return { content, noopEdits: 0, deduplicatedEdits: 0, repairs: [] }
   }
 
   /** Deduplicated edit list, plus the number of duplicates it dropped. */
@@ -697,6 +956,9 @@ export function applyHashlineEditsWithReport(content: string, edits: HashlineEdi
   /** Count of edits that left the line array unchanged. */
   let noopEdits = 0
 
+  /** Repairs the conservative pass applied, in application order, for the tool result to report. */
+  const repairs: HashlineRepairReport[] = []
+
   /** Working line buffer; an empty file is zero lines, so a lone "" is not invented for it. */
   let lines = content.length === 0 ? [] : content.split("\n")
 
@@ -711,15 +973,16 @@ export function applyHashlineEditsWithReport(content: string, edits: HashlineEdi
   for (const edit of sortedEdits) {
     switch (edit.op) {
       case "replace": {
-        /** Lines after this replace, or an unchanged copy when the replacement changed nothing. */
-        const next = edit.end
+        /** Lines after this replace, plus any repair the replacement block needed to produce them. */
+        const outcome = edit.end
           ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines)
           : applySetLine(lines, edit.pos, edit.lines)
-        if (arraysEqual(next, lines)) {
+        if (arraysEqual(outcome.lines, lines)) {
           noopEdits += 1
           break
         }
-        lines = next
+        lines = outcome.lines
+        if (outcome.repair) repairs.push(outcome.repair)
         break
       }
       case "append": {
@@ -749,5 +1012,6 @@ export function applyHashlineEditsWithReport(content: string, edits: HashlineEdi
     content: lines.join("\n"),
     noopEdits,
     deduplicatedEdits: dedupeResult.deduplicatedEdits,
+    repairs,
   }
 }

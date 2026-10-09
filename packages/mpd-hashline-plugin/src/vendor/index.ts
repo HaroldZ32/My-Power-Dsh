@@ -51,6 +51,6 @@ export { applyHashlineEditsWithReport, normalizeHashlineEdits } from "./edits"
 /** The read-side anchor view and the unified diff an edit reports. */
 export { generateUnifiedDiff, toHashlineContent } from "./diff"
 /** The edit vocabulary and the report shapes. */
-export type { AppendEdit, FileTextEnvelope, HashlineApplyReport, HashlineEdit, LineRef, PrependEdit, ReplaceEdit } from "./types"
+export type { AppendEdit, FileTextEnvelope, HashlineApplyReport, HashlineEdit, HashlineRepairReport, LineRef, PrependEdit, ReplaceEdit } from "./types"
 /** One edit exactly as a tool call carried it, before normalization. */
 export type { RawHashlineEdit } from "./edits"

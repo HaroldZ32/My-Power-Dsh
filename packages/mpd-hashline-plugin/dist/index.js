@@ -353,17 +353,128 @@ function stripRangeBoundaryEcho(lines, startLine, endLine, newLines) {
   }
   return out;
 }
+var WRAP_JOIN_SPACE_RE = /[,+\-*/%=<>&|?!:]$/;
+var BALANCED = { depth: 0, openQuote: null };
+function scanDelimiters(state, text) {
+  let depth = state.depth;
+  let openQuote = state.openQuote;
+  let escaped = false;
+  for (const char of text) {
+    if (openQuote !== null) {
+      if (escaped)
+        escaped = false;
+      else if (char === "\\")
+        escaped = true;
+      else if (char === openQuote)
+        openQuote = null;
+      continue;
+    }
+    if (char === '"' || char === "`") {
+      openQuote = char;
+      continue;
+    }
+    if (char === "(" || char === "[" || char === "{")
+      depth += 1;
+    else if (char === ")" || char === "]" || char === "}")
+      depth = Math.max(0, depth - 1);
+  }
+  return { depth, openQuote };
+}
+function scanBlockStates(lines) {
+  const before = [];
+  const after = [];
+  let state = BALANCED;
+  for (const line of lines) {
+    before.push(state);
+    state = scanDelimiters(state, line);
+    after.push(state);
+  }
+  return { before, after };
+}
+function opensSomething(entry, exit) {
+  if (exit.depth > entry.depth)
+    return true;
+  return entry.openQuote === null && exit.openQuote !== null;
+}
+function closesSomething(entry, exit) {
+  if (exit.depth < entry.depth)
+    return true;
+  return entry.openQuote !== null && exit.openQuote === null;
+}
+function findWrapSites(lines) {
+  const { before, after } = scanBlockStates(lines);
+  const sites = [];
+  for (let i = 0;i + 1 < lines.length; i++) {
+    const wrapper = lines[i] ?? "";
+    const fragment = lines[i + 1] ?? "";
+    const entry = before[i] ?? BALANCED;
+    const middle = after[i] ?? BALANCED;
+    const exit = after[i + 1] ?? BALANCED;
+    if (wrapper.trim().length === 0 || fragment.trim().length === 0)
+      continue;
+    if (leadingWhitespace(fragment).length > 0)
+      continue;
+    if (!opensSomething(entry, middle))
+      continue;
+    if (!closesSomething(middle, exit))
+      continue;
+    if (exit.depth !== entry.depth || exit.openQuote !== entry.openQuote)
+      continue;
+    sites.push({ index: i, separator: WRAP_JOIN_SPACE_RE.test(wrapper.replace(/\s+$/, "")) ? " " : "" });
+  }
+  return sites;
+}
+function isFlushLeftBlock(block, range) {
+  if (block.length < 2)
+    return false;
+  if (!block.some((line) => line.trim().length > 0))
+    return false;
+  if (!block.every((line) => leadingWhitespace(line).length === 0))
+    return false;
+  return range.some((line) => leadingWhitespace(line).length > 0);
+}
+function pairIndent(block, range) {
+  return block.map((line, index) => {
+    if (line.length === 0)
+      return line;
+    const template = range[Math.min(index, range.length - 1)] ?? "";
+    return `${leadingWhitespace(template)}${line}`;
+  });
+}
+function repairReplacementBlock(block, range, startLine) {
+  if (arraysEqual(block, range))
+    return { lines: block, repair: null };
+  const wrapSites = findWrapSites(block);
+  if (wrapSites.length > 1)
+    return { lines: block, repair: null };
+  const site = wrapSites[0];
+  if (site) {
+    const joined = `${block[site.index] ?? ""}${site.separator}${block[site.index + 1] ?? ""}`;
+    return {
+      lines: [...block.slice(0, site.index), joined, ...block.slice(site.index + 2)],
+      repair: { kind: "wrapped-line", at: site.index, line: startLine, span: 2 }
+    };
+  }
+  if (isFlushLeftBlock(block, range)) {
+    return {
+      lines: pairIndent(block, range),
+      repair: { kind: "paired-indent", at: 0, line: startLine, span: block.length }
+    };
+  }
+  return { lines: block, repair: null };
+}
 function applySetLine(lines, anchor, newText) {
   const { line } = parseLineRef(anchor);
   const result = [...lines];
   const originalLine = lines[line - 1] ?? "";
-  const replacement = toNewLines(newText).map((entry, index) => {
+  const repaired = repairReplacementBlock(toNewLines(newText), [originalLine], line);
+  const replacement = repaired.lines.map((entry, index) => {
     if (index !== 0)
       return entry;
     return restoreLeadingIndent(originalLine, entry);
   });
   result.splice(line - 1, 1, ...replacement);
-  return result;
+  return { lines: result, repair: repaired.repair };
 }
 function applyReplaceLines(lines, startAnchor, endAnchor, newText) {
   const { line: startLine } = parseLineRef(startAnchor);
@@ -373,13 +484,15 @@ function applyReplaceLines(lines, startAnchor, endAnchor, newText) {
   }
   const result = [...lines];
   const stripped = stripRangeBoundaryEcho(lines, startLine, endLine, toNewLines(newText));
-  const restored = stripped.map((entry, index) => {
+  const range = lines.slice(startLine - 1, endLine);
+  const repaired = repairReplacementBlock(stripped, range, startLine);
+  const restored = repaired.lines.map((entry, index) => {
     if (index !== 0)
       return entry;
     return restoreLeadingIndent(lines[startLine - 1] ?? "", entry);
   });
   result.splice(startLine - 1, endLine - startLine + 1, ...restored);
-  return result;
+  return { lines: result, repair: repaired.repair };
 }
 function applyInsertAfter(lines, anchor, text) {
   const { line } = parseLineRef(anchor);
@@ -573,7 +686,7 @@ function normalizeHashlineEdits(rawEdits) {
 }
 function applyHashlineEditsWithReport(content, edits) {
   if (edits.length === 0) {
-    return { content, noopEdits: 0, deduplicatedEdits: 0 };
+    return { content, noopEdits: 0, deduplicatedEdits: 0, repairs: [] };
   }
   const dedupeResult = dedupeEdits(edits);
   const EDIT_PRECEDENCE = { replace: 0, append: 1, prepend: 2 };
@@ -585,6 +698,7 @@ function applyHashlineEditsWithReport(content, edits) {
     return (EDIT_PRECEDENCE[a.op] ?? 3) - (EDIT_PRECEDENCE[b.op] ?? 3);
   });
   let noopEdits = 0;
+  const repairs = [];
   let lines = content.length === 0 ? [] : content.split(`
 `);
   const refs = collectLineRefs(sortedEdits);
@@ -595,12 +709,14 @@ function applyHashlineEditsWithReport(content, edits) {
   for (const edit of sortedEdits) {
     switch (edit.op) {
       case "replace": {
-        const next = edit.end ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines) : applySetLine(lines, edit.pos, edit.lines);
-        if (arraysEqual(next, lines)) {
+        const outcome = edit.end ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines) : applySetLine(lines, edit.pos, edit.lines);
+        if (arraysEqual(outcome.lines, lines)) {
           noopEdits += 1;
           break;
         }
-        lines = next;
+        lines = outcome.lines;
+        if (outcome.repair)
+          repairs.push(outcome.repair);
         break;
       }
       case "append": {
@@ -627,7 +743,8 @@ function applyHashlineEditsWithReport(content, edits) {
     content: lines.join(`
 `),
     noopEdits,
-    deduplicatedEdits: dedupeResult.deduplicatedEdits
+    deduplicatedEdits: dedupeResult.deduplicatedEdits,
+    repairs
   };
 }
 // packages/mpd-hashline-plugin/src/vendor/diff.ts
@@ -2344,12 +2461,26 @@ function sourceLineCount(text) {
 function readEnvelope(fp) {
   return canonicalizeFileText(readFileSync(fp, "utf8"));
 }
+function describeRepair(repair) {
+  if (repair.kind === "wrapped-line") {
+    return `rejoined a replacement line the block had wrapped across 2 entries (block line ${repair.at + 1}, file line ${repair.line})`;
+  }
+  return `restored the indentation of ${repair.span} replacement lines from the range they replace (block line ${repair.at + 1}, file line ${repair.line})`;
+}
+function repairNotice(repairs) {
+  if (repairs.length === 0)
+    return "";
+  return repairs.map((repair) => `[mpd-hashline repair] ${describeRepair(repair)}`).join(`
+`) + `
+`;
+}
 function editFile(fp, edits, maxDiffChars) {
   const envelope = readEnvelope(fp);
   const before = envelope.content;
   const report = applyHashlineEditsWithReport(before, edits);
   writeFileSync(fp, restoreFileText(report.content, envelope));
-  const diff = report.content === before ? "" : generateUnifiedDiff(before, report.content, fp).slice(0, maxDiffChars);
+  const body = report.content === before ? "" : generateUnifiedDiff(before, report.content, fp).slice(0, maxDiffChars);
+  const diff = repairNotice(report.repairs) + body;
   return {
     path: fp,
     lines: sourceLineCount(report.content),

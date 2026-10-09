@@ -24,6 +24,7 @@ import {
   restoreFileText,
   type FileTextEnvelope,
   type HashlineEdit,
+  type HashlineRepairReport,
 } from "./vendor/index.ts"
 import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
@@ -122,19 +123,51 @@ function readEnvelope(fp: string): FileTextEnvelope {
   return canonicalizeFileText(readFileSync(fp, "utf8"))
 }
 
+/**
+ * The human sentence for one repair the conservative pass applied: the mangling it undid, the block
+ * entry it touched and the file line the block landed on — so a caller sees WHY the file changed
+ * rather than only what it now says.
+ *
+ * @param repair - one entry of the applier's repair report.
+ * @returns one line, rendered into the tool result above the diff.
+ */
+function describeRepair(repair: HashlineRepairReport): string {
+  if (repair.kind === "wrapped-line") {
+    return `rejoined a replacement line the block had wrapped across 2 entries (block line ${repair.at + 1}, file line ${repair.line})`
+  }
+  return `restored the indentation of ${repair.span} replacement lines from the range they replace (block line ${repair.at + 1}, file line ${repair.line})`
+}
+
+/**
+ * The report the edit tool result carries when the conservative pass repaired something. It rides in
+ * the `diff` field on purpose: the tool's output SCHEMA is frozen by the wave's contract, so a repair
+ * cannot become a new field, and the diff is already the field that says what an edit did.
+ *
+ * @param repairs - the applier's repair report; an empty list means nothing was mangled.
+ * @returns one `[mpd-hashline repair]` line per repair with a trailing newline, or "" when there is none.
+ */
+function repairNotice(repairs: HashlineRepairReport[]): string {
+  if (repairs.length === 0) return ""
+  return repairs.map((repair) => `[mpd-hashline repair] ${describeRepair(repair)}`).join("\n") + "\n"
+}
+
 /** Apply validated edits, write the plain result back, and report counts plus a capped diff. */
 function editFile(fp: string, edits: HashlineEdit[], maxDiffChars: number): any {
   // The file's canonical text plus the envelope its write-back must restore.
   const envelope = readEnvelope(fp)
   // Content before the edit: the diff's left side and the no-change test.
   const before = envelope.content
-  // Vendored applier's outcome: plain content plus the noop and deduplicated edit counts.
+  // Vendored applier's outcome: plain content plus the noop/deduped counters and any repair it applied.
   const report = applyHashlineEditsWithReport(before, edits)
   // Written back in the file's OWN shape — its line ending first, then its BOM — so an anchored edit
   // never strips a CRLF or BOM envelope the file carried (restoreFileText, not a plain write).
   writeFileSync(fp, restoreFileText(report.content, envelope))
   // Empty when nothing changed, otherwise the unified diff truncated to the configured cap.
-  const diff = report.content === before ? "" : generateUnifiedDiff(before, report.content, fp).slice(0, maxDiffChars)
+  const body = report.content === before ? "" : generateUnifiedDiff(before, report.content, fp).slice(0, maxDiffChars)
+  // What the caller reads: the repair notice ABOVE the capped diff. The notice is added after the
+  // slice, so a diff long enough to be truncated can never truncate away the statement that the
+  // applier changed more than the caller asked for.
+  const diff = repairNotice(report.repairs) + body
   return {
     path: fp,
     lines: sourceLineCount(report.content),
