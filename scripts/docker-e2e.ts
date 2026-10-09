@@ -861,6 +861,31 @@ function selfTest(): void {
   check("entrypoint records the one-click-only rows in source mode, with the mode as the reason", /record oneclick\.scratchRepo null/.test(entrypoint) && /record oneclick\.distByteIdentical null/.test(entrypoint) && entrypoint.includes("mode=$INSTALL_MODE"))
   check("entrypoint stages the engine into the tree the mcp-call launcher reads, AFTER the re-pack", entrypoint.includes("16b2-case-engine") && entrypoint.includes('--toolchain "$CASE_ENGINE_TREE/.toolchain"'))
   check("entrypoint records whether that engine is really there", entrypoint.includes("record qa.mcpCallEngine"))
+  // 8c.5 THE HANG GUARD AND THE NPM TRANSPORT (measured 2026-10-09: a stalled `npm i -g` sat 23 minutes
+  //      at 0.3% CPU until the run had to be killed, and the official registry's SCOPED endpoint —
+  //      the one the harness pin resolves through — failed one probe and answered the next).
+  check("run_step bounds every step in time", entrypoint.includes('timeout --kill-after=15 "$STEP_TIMEOUT"'))
+  check("a timeout kill is recorded as such, never as a verdict", /KILLED BY THE \$\{STEP_TIMEOUT\}s STEP TIMEOUT/.test(entrypoint))
+  check("npm's own per-request timeouts are bounded", entrypoint.includes("NPM_CONFIG_FETCH_TIMEOUT") && entrypoint.includes("NPM_CONFIG_FETCH_RETRIES"))
+  check("the lane probes the SCOPED registry endpoint the harness pin resolves through", entrypoint.includes("@deepseek-ai%2fdsh"))
+  check("the probe falls back to a mirror ONLY when the official registry does not answer, and says which was used", entrypoint.includes("mirror-fallback") && entrypoint.includes("fact obs.npmRegistry"))
+  check("the registry actually used is exported to npm", entrypoint.includes('export NPM_CONFIG_REGISTRY='))
+  // The selection is READ FROM A FILE, not parsed out of the step log: measured 2026-10-09, the log of
+  // this very step carried a NUL frame, and a plain grep answers `binary file matches` for such a file
+  // INSTEAD of the line — so the parse came back empty, the shell kept the OFFICIAL registry, and the
+  // run went on stalling against the endpoint the step exists to avoid.
+  check("the registry selection is read from its own file, not grepped out of a binary log", /sed -n '1p' "\$NPM_SELECTION_FILE"/.test(entrypoint) && entrypoint.includes('NPM_SELECTION_FILE="$WORK_DIR/npm-registry.txt"'))
+  check("every grep over the container's step logs tolerates a NUL frame", !/grep -m1[^\n]*01b-npm-registry\.log/.test(entrypoint) && entrypoint.includes("grep -a -m1"))
+  check("the TUI lane step is bounded in time too (it was the one unbounded command)", entrypoint.includes('timeout --kill-after=15 "$TUI_TIMEOUT" bash /opt/mpd-e2e/tui-lane.sh'))
+  check("the TUI lane's elapsed seconds are measured, not written as 0", entrypoint.includes('append_step 14-tui "$TUI_STEP" "$TUI_SECONDS"'))
+  // pnpm resolves its registry through the LOWERCASE env form (`dsh plugin` forwards to it), so the
+  // uppercase export alone leaves every plugin install on the default registry — measured 2026-10-09,
+  // when the lane's own `npm i -g` used the mirror while `dsh plugin add` kept retrying the flaky one.
+  check("the selected registry is exported in BOTH cases (pnpm reads the lowercase form)", entrypoint.includes('export NPM_CONFIG_REGISTRY="$NPM_REGISTRY"') && entrypoint.includes('export npm_config_registry="$NPM_REGISTRY"'))
+  // The case-engine probe must try `ast-grep` (the resolver's first candidate) and read BOTH streams:
+  // the deprecated `sg` shim prints a warning to stderr and nothing to stdout.
+  check("the case-engine probe uses the resolver's own candidate order and both streams", /CASE_ENGINE_BIN=""/.test(entrypoint) && entrypoint.includes('"$candidate" --version 2>&1'))
+  check("compose interpolates the npm transport knobs (a knob only the entrypoint reads is unreachable)", /MPD_E2E_NPM_REGISTRY: \$\{MPD_E2E_NPM_REGISTRY:-\}/.test(compose) && /MPD_E2E_NPM_MIRROR: \$\{MPD_E2E_NPM_MIRROR:-\}/.test(compose) && /MPD_E2E_STEP_TIMEOUT: \$\{MPD_E2E_STEP_TIMEOUT:-\}/.test(compose))
   /** The names the union of BOTH modes' recorded rows demands (the four one-click-only names plus the
    *  thirteen the lanes recorded outside the old spine), quoted so a missing one reddens here. */
   const unionRequired: readonly string[] = [

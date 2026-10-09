@@ -93,6 +93,9 @@ STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 STARTED_EPOCH="$(date +%s)"
 STEP_CODE=0
 STEP_SECONDS=0
+# The budget for ONE `run_step` (see the guard in `run_step`): a stalled network command must die and
+# record its non-zero exit instead of taking the whole acceptance run with it.
+STEP_TIMEOUT="${MPD_E2E_STEP_TIMEOUT:-900}"
 BOOT_PID=""
 
 mkdir -p "$STEPS_DIR" "$OUT_DIR" "$APP_DIR" "$TOOLCHAIN_DIR" "$SANDBOX_HOME" "$SANDBOX_DSH"
@@ -102,6 +105,12 @@ export HOME="$SANDBOX_HOME"
 export DSH_HOME="$SANDBOX_DSH"
 export NPM_CONFIG_CACHE="$TOOLCHAIN_DIR/npm-cache"
 export NPM_CONFIG_PREFIX=/usr/local
+# A HUNG FETCH MUST NOT OUTLIVE ITS STEP (measured 2026-10-09: 23 minutes at 0.3% CPU inside one
+# `npm i -g`). npm's own knobs bound each REQUEST; `run_step`'s timeout bounds the whole step.
+export NPM_CONFIG_FETCH_TIMEOUT=120000
+export NPM_CONFIG_FETCH_RETRIES=3
+export NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=10000
+export NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=60000
 export BUN_INSTALL="$TOOLCHAIN_DIR/bun"
 export PATH="$BUN_INSTALL/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export CI=1
@@ -191,21 +200,29 @@ append_step() { # id exit seconds logfile cmd
 }
 
 # run_step <id> <cmd...> — run, tee to the step log, never abort (the verdict is the report's).
+#
+# EVERY STEP IS BOUNDED IN TIME, and that is a MEASURED repair rather than defensiveness (2026-10-09):
+# a run sat 23 minutes inside `npm i -g @deepseek-ai/dsh@0.2.0-rc.2` at 0.3% CPU with an idle container —
+# a stalled fetch, not progress — and it had to be killed by hand, taking the whole acceptance run with
+# it. A network stall is an ENVIRONMENT event, but an UNBOUNDED step turns it into a lost run: with the
+# guard below the step dies, records its non-zero exit, and the lane continues to the rows that do not
+# depend on it. `MPD_E2E_STEP_TIMEOUT` (default 900 s) is the budget for ONE step, and the timeout's own
+# exit code (124) is recorded like any other failure — never mistaken for a pass.
 run_step() {
   local id="$1"; shift
   local logfile="$STEPS_DIR/$id.log"
   local started ended
   started="$(date +%s)"
   log "===== STEP $id ====="
-  log "\$ $*"
+  log "\$ $* (timeout ${STEP_TIMEOUT}s)"
   set +e
-  "$@" >"$logfile" 2>&1
+  timeout --kill-after=15 "$STEP_TIMEOUT" "$@" >"$logfile" 2>&1
   STEP_CODE=$?
   set -e
   ended="$(date +%s)"
   STEP_SECONDS=$((ended - started))
   cat "$logfile"
-  log "[step $id] exit=$STEP_CODE seconds=$STEP_SECONDS"
+  log "[step $id] exit=$STEP_CODE seconds=$STEP_SECONDS$([ "$STEP_CODE" -eq 124 ] && echo " — KILLED BY THE ${STEP_TIMEOUT}s STEP TIMEOUT (a stalled command, not a verdict)")"
   append_step "$id" "$STEP_CODE" "$STEP_SECONDS" "$id.log" "$(printf '%s ' "$@" | tr '\n\t' '  ')"
 }
 
@@ -304,6 +321,83 @@ else
   record ubuntu.version false "the base image is not ubuntu 24.04" "$UBUNTU_ID $UBUNTU_VERSION"
   bail "wrong base image"
 fi
+
+# ── 01b. THE NPM TRANSPORT, measured before anything depends on it ────────────
+# WHY THIS EXISTS, and it is a MEASUREMENT rather than a precaution (2026-10-09). From this environment
+# the official registry serves UNSCOPED metadata fine (`/pnpm` → 200 in 2.7 s) while the SCOPED metadata
+# endpoint the harness pin needs (`/@deepseek-ai%2fdsh`) FAILS — and npm, handed an unreachable scoped
+# endpoint, retried silently for 23 minutes at 0.3% CPU until the run had to be killed. The step below
+# probes THAT endpoint first: if it answers, the lane keeps the official registry and proves the install
+# against it; if it does not, the lane falls back to a mirror (the transport is not what this lane
+# grades — the INSTALL is) and the fact below names the registry that was actually used, so no reader
+# can mistake a mirror-served install for a registry.npmjs.org one.
+NPM_MIRROR="${MPD_E2E_NPM_MIRROR:-https://registry.npmmirror.com}"
+NPM_REGISTRY="${MPD_E2E_NPM_REGISTRY:-https://registry.npmjs.org}"
+# The scoped endpoint the harness pin resolves through: the one that was measured unreachable here.
+NPM_PROBE_URL="${NPM_REGISTRY}/@deepseek-ai%2fdsh"
+# `operator-set` when the caller named a registry, otherwise the official one is on trial.
+NPM_REGISTRY_LABEL="official-registry"
+[ -n "${MPD_E2E_NPM_REGISTRY:-}" ] && NPM_REGISTRY_LABEL="operator-set"
+# THE SELECTION IS WRITTEN TO ITS OWN FILE, not parsed out of the step log, and that is a MEASURED
+# repair of this step's first version (2026-10-09): the log file is a stream that can carry a NUL frame
+# (progress-bar output, a padded redirect), and GNU grep answers `binary file matches` for such a file
+# INSTEAD of printing the matching line — so the parse came back empty, the shell silently kept the
+# DEFAULT registry, and the run went on stalling against the very endpoint this step exists to avoid.
+# A two-line text file has no such failure mode: line 1 is the registry, line 2 the route.
+NPM_SELECTION_FILE="$WORK_DIR/npm-registry.txt"
+rm -f "$NPM_SELECTION_FILE" 2>/dev/null || true
+run_step 01b-npm-registry node -e '
+  const registry = process.argv[1]
+  const probeUrl = process.argv[2]
+  const mirror = process.argv[3]
+  const label = process.argv[4]
+  const out = process.argv[5]
+  const fs = await import("node:fs")
+  const probe = async (target) => {
+    const started = Date.now()
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 20000)
+    try {
+      const response = await fetch(target, { signal: controller.signal })
+      await response.text()
+      clearTimeout(timer)
+      return { ok: response.status === 200, ms: Date.now() - started, status: "http=" + response.status }
+    } catch (error) {
+      clearTimeout(timer)
+      return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }
+    }
+  }
+  const first = await probe(probeUrl)
+  const settle = (chosen, route, detail) => {
+    fs.writeFileSync(out, chosen + "\n" + route + "\n")
+    console.log("REGISTRY=" + chosen + " ROUTE=" + route + " " + detail)
+  }
+  if (first.ok) { settle(registry, label + "-ok", "probeMs=" + first.ms); process.exit(0) }
+  const second = await probe(mirror + "/@deepseek-ai%2fdsh")
+  if (second.ok) {
+    settle(mirror, "mirror-fallback", "officialProbe=" + first.status + " officialProbeMs=" + first.ms + " mirrorMs=" + second.ms)
+    process.exit(0)
+  }
+  settle(registry, "both-unreachable", "officialProbe=" + first.status + " mirrorProbe=" + second.status)
+' "$NPM_REGISTRY" "$NPM_PROBE_URL" "$NPM_MIRROR" "$NPM_REGISTRY_LABEL" "$NPM_SELECTION_FILE" || true
+if [ -s "$NPM_SELECTION_FILE" ]; then
+  NPM_REGISTRY="$(sed -n '1p' "$NPM_SELECTION_FILE" | tr -d '\r')"
+  NPM_REGISTRY_ROUTE="$(sed -n '2p' "$NPM_SELECTION_FILE" | tr -d '\r')"
+fi
+NPM_REGISTRY_ROUTE="${NPM_REGISTRY_ROUTE:-probe-unreadable}"
+NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org}"
+# The log carries the same line for a reader; the FACT carries the decision. `grep -a` everywhere below
+# because this file may hold a NUL frame and a plain grep would then report nothing at all.
+export NPM_CONFIG_REGISTRY="$NPM_REGISTRY"
+# BOTH CASES, and that is a MEASURED correction (2026-10-09): pnpm — which `dsh plugin` forwards to —
+# resolves its registry through the LOWERCASE `npm_config_*` environment form, so exporting only the
+# uppercase name left every `dsh plugin … add` on the DEFAULT registry while the lane's own `npm i -g`
+# installs used the selected one. The TUI lane died on exactly that split (its host `npm i -g` succeeded,
+# its `dsh plugin add` retried and failed), and the two install paths of one lane disagreeing about the
+# registry is not a state any reader could have inferred from the report.
+export npm_config_registry="$NPM_REGISTRY"
+fact obs.npmRegistry "$NPM_REGISTRY (route=$NPM_REGISTRY_ROUTE; the scoped-metadata endpoint was probed because npm hangs silently on an unreachable one)"
+grep -a -m1 '^REGISTRY=' "$STEPS_DIR/01b-npm-registry.log" 2>/dev/null || cat "$STEPS_DIR/01b-npm-registry.log"
 
 # ── 02. apt: the distribution's own prerequisites ─────────────────────────────
 log ""
@@ -1626,6 +1720,13 @@ log "===== STEP 14-tui ====="
 # fail would abort the whole run (measured 2026-09-27: the TUI step returned non-zero and
 # the trap turned it into "unexpected shell failure", hiding the step's own log).
 TUI_STEP=0
+# THE LANE IS A STEP, SO IT IS BOUNDED LIKE ONE (measured 2026-10-09): this invocation used to be the
+# ONE unbounded command in the run — it is not a `run_step`, so a stalled `npm i -g dsh-tui@…` inside it
+# hung the container for 10 minutes at 0.0% CPU with nothing on the console, because the lane's own log
+# only reaches the evidence after it exits. `MPD_E2E_TUI_TIMEOUT` (default 1800 s) bounds it, and the
+# elapsed seconds are now recorded instead of the hard 0 this line used to write.
+TUI_TIMEOUT="${MPD_E2E_TUI_TIMEOUT:-1800}"
+TUI_STARTED="$(date +%s)"
 # The lane is a SEPARATE process: every path it needs is passed explicitly, because a
 # shell variable is not inherited by a child unless it is exported (measured 2026-09-27:
 # "STATE_FILE: parameter null or not set" at the lane's first line).
@@ -1634,9 +1735,11 @@ STATE_FILE="$STATE_FILE" FACTS_FILE="$FACTS_FILE" APP_DIR="$APP_DIR" WORK_DIR="$
   OUT_DIR="$OUT_DIR" \
   LIB_DIR="$LIB_DIR" LIVE="$LIVE" MPD_E2E_LIVE_BUDGET_MS="${MPD_E2E_LIVE_BUDGET_MS:-300000}" \
   npm_config_cache="${npm_config_cache:-$HOME/.npm}" \
-  bash /opt/mpd-e2e/tui-lane.sh >"$STEPS_DIR/14-tui.log" 2>&1 || TUI_STEP=$?
+  timeout --kill-after=15 "$TUI_TIMEOUT" bash /opt/mpd-e2e/tui-lane.sh >"$STEPS_DIR/14-tui.log" 2>&1 || TUI_STEP=$?
+TUI_SECONDS=$(( $(date +%s) - TUI_STARTED ))
 cat "$STEPS_DIR/14-tui.log" || true
-append_step 14-tui "$TUI_STEP" 0 "14-tui.log" "bash docker/tui-lane.sh"
+[ "$TUI_STEP" -eq 124 ] && log "[step 14-tui] KILLED BY THE ${TUI_TIMEOUT}s TUI TIMEOUT (a stalled install inside the lane, not a verdict from it)"
+append_step 14-tui "$TUI_STEP" "$TUI_SECONDS" "14-tui.log" "bash docker/tui-lane.sh"
 
 # ── 15. a LIVE LLM turn on the HEADLESS plane (opt-in) ────────────────────────
 # THE CREDENTIAL IS NEVER LOGGED OR ECHOED (AGENTS.md §10). It was staged ONCE before the boot
@@ -1843,11 +1946,23 @@ run_step 16b-pack-refresh node "$APP_DIR/scripts/pack-mpd.ts"
 CASE_ENGINE_TREE="$APP_DIR/dist/mpd-package"
 fact obs.caseEngineTree "$CASE_ENGINE_TREE (the bundle root the mcp-call launcher resolves bundle-relatively: the case installs that packed tree with npm `file:` into its sandbox profile)"
 run_step 16b2-case-engine node "$ENGINE_SCRIPT" --toolchain "$CASE_ENGINE_TREE/.toolchain"
-CASE_ENGINE_SG="$CASE_ENGINE_TREE/.toolchain/node_modules/.bin/sg"
-if [ -x "$CASE_ENGINE_SG" ] && "$CASE_ENGINE_SG" --version 2>/dev/null | grep -qi ast-grep; then
-  record qa.mcpCallEngine true "the ast-grep engine the call arm's launcher resolves (bundle-relative, inside the packed tree the case installs) is staged and its own --version probe reports ast-grep, so qa.mcpCall below measures the CASE rather than a missing binary" "bin=$CASE_ENGINE_SG probe=$("$CASE_ENGINE_SG" --version 2>/dev/null | head -n 1)"
+# THE PROBE IS THE RESOLVER'S OWN, and getting it wrong cost a false red once (measured 2026-10-09):
+# the engine is staged as BOTH `ast-grep` and `sg`, but the `sg` shim prints a deprecation WARNING to
+# stderr and NOTHING to stdout — so a stdout-only `grep ast-grep` on `sg` reported a correctly staged
+# engine as absent. The candidates are tried in the resolver's own order, the probe reads BOTH streams,
+# and the row names the binary that answered.
+CASE_ENGINE_BIN=""
+CASE_ENGINE_PROBE=""
+for candidate in "$CASE_ENGINE_TREE/.toolchain/node_modules/.bin/ast-grep" "$CASE_ENGINE_TREE/.toolchain/node_modules/.bin/sg"; do
+  if [ -x "$candidate" ]; then
+    CASE_ENGINE_PROBE="$("$candidate" --version 2>&1 | head -n 1)"
+    case "$CASE_ENGINE_PROBE" in *ast-grep*) CASE_ENGINE_BIN="$candidate"; break ;; esac
+  fi
+done
+if [ -n "$CASE_ENGINE_BIN" ]; then
+  record qa.mcpCallEngine true "the ast-grep engine the call arm's launcher resolves (bundle-relative, inside the packed tree the case installs) is staged and its own --version probe reports ast-grep, so qa.mcpCall below measures the CASE rather than a missing binary" "bin=$CASE_ENGINE_BIN probe=$CASE_ENGINE_PROBE"
 else
-  record qa.mcpCallEngine false "the ast-grep engine is NOT staged where the mcp-call launcher resolves it (bundle-relative inside the packed tree), so the call arm can only answer BINARY_NOT_FOUND — a red in qa.mcpCall below is this staging, not the bundle" "bin=$CASE_ENGINE_SG probe=$("$CASE_ENGINE_SG" --version 2>/dev/null | head -n 1 || echo '<no binary>')"
+  record qa.mcpCallEngine false "the ast-grep engine is NOT staged where the mcp-call launcher resolves it (bundle-relative inside the packed tree), so the call arm can only answer BINARY_NOT_FOUND — a red in qa.mcpCall below is this staging, not the bundle" "tree=$CASE_ENGINE_TREE probe=${CASE_ENGINE_PROBE:-<no binary answered>}"
 fi
 # THE CREDENTIAL THE TWO LIVE CASES READ was mirrored into `$QA_HOME` back at step 9b, at the same
 # instant the primary was staged — because the primary is DELETED in step 15, before this section runs.

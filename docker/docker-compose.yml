@@ -70,6 +70,17 @@ services:
       # load-bearing: without it compose would warn about an unset variable and hand the container
       # NOTHING, which would look identical to the default while proving nothing.
       MPD_E2E_LIVE_PROMPT: ${MPD_E2E_LIVE_PROMPT:-}
+      # THE NPM TRANSPORT (2026-10-09, measured: the official registry's scoped-metadata endpoint
+      # answered in 1.5 s once and FAILED on the next probe, and npm retried a failure like that for 23
+      # minutes at 0.3% CPU until the run had to be killed). `MPD_E2E_NPM_REGISTRY` names a registry to
+      # use INSTEAD of the official one; left empty, the entrypoint probes the official registry's
+      # scoped endpoint and falls back to `MPD_E2E_NPM_MIRROR` only when it does not answer, recording
+      # the registry it actually used as `obs.npmRegistry`. Both must be interpolated HERE: compose
+      # forwards only what this file names, and a knob the entrypoint alone reads is unreachable.
+      MPD_E2E_NPM_REGISTRY: ${MPD_E2E_NPM_REGISTRY:-}
+      MPD_E2E_NPM_MIRROR: ${MPD_E2E_NPM_MIRROR:-}
+      # The budget for ONE `run_step`, so a stalled network command fails fast instead of costing the run.
+      MPD_E2E_STEP_TIMEOUT: ${MPD_E2E_STEP_TIMEOUT:-}
     volumes:
       # The driver points this at evidence/docker/client-install/<stamp>/; the default keeps
       # `docker compose run` usable by hand and writes ./docker/out.
@@ -99,5 +110,16 @@ services:
       # SAME entrypoint and therefore share step 15, so a knob named on only one of them would make
       # the prompt depend on which service the operator drove.
       MPD_E2E_LIVE_PROMPT: ${MPD_E2E_LIVE_PROMPT:-}
+      # THE NPM TRANSPORT (2026-10-09, measured: the official registry's scoped-metadata endpoint
+      # answered in 1.5 s once and FAILED on the next probe, and npm retried a failure like that for 23
+      # minutes at 0.3% CPU until the run had to be killed). `MPD_E2E_NPM_REGISTRY` names a registry to
+      # use INSTEAD of the official one; left empty, the entrypoint probes the official registry's
+      # scoped endpoint and falls back to `MPD_E2E_NPM_MIRROR` only when it does not answer, recording
+      # the registry it actually used as `obs.npmRegistry`. Both must be interpolated HERE: compose
+      # forwards only what this file names, and a knob the entrypoint alone reads is unreachable.
+      MPD_E2E_NPM_REGISTRY: ${MPD_E2E_NPM_REGISTRY:-}
+      MPD_E2E_NPM_MIRROR: ${MPD_E2E_NPM_MIRROR:-}
+      # The budget for ONE `run_step`, so a stalled network command fails fast instead of costing the run.
+      MPD_E2E_STEP_TIMEOUT: ${MPD_E2E_STEP_TIMEOUT:-}
     volumes:
       - ${MPD_DOCKER_OUT:-./out}:/out
