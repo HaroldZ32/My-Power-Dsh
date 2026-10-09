@@ -23,27 +23,27 @@
 //      profile's `node_modules` (shared resolver), never from a path baked into the patch.
 //   3. Configuration. cclsp refuses to start without a config file (`configPath is required when
 //      CCLSP_CONFIG_PATH environment variable is not set`). A caller-set `CCLSP_CONFIG_PATH` always
-//      wins; otherwise a `cclsp.json` in the workspace root is used, and only when neither exists is a
-//      default config written to `<root>/.mpd/lsp/cclsp.json`.
+//      wins; otherwise a `cclsp.json` in the workspace root is used — the user's file is AUTHORITATIVE
+//      and is never rewritten — and only when neither exists is a config generated at
+//      `<root>/.mpd/lsp/cclsp.json`, naming the TS/JS family plus every language of the
+//      `./server-catalog.ts` table whose language server is actually installed.
 //
 // CAPABILITY DELTAS against the retired server are stated in `packages/mpd-mcp-lsp/README.md`; the
 // three that have no cclsp counterpart are `status`, `prepare_rename` and `install_decision`.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { resolveDependencyEntry } from "../../mpd-mcp-shared/dependency-entry.ts"
 import { installTerminalSilence, resolveLogRoots } from "../../mpd-mcp-shared/log-sink.ts"
 import type { LogSink } from "../../mpd-mcp-shared/log-sink.ts"
 import { serveUnavailable } from "../../mpd-mcp-shared/unavailable-server.ts"
+import { buildConfigDocument, ensureConfigPath } from "./cclsp-config.ts"
+import type { CclspConfigDocument, ConfigOutcome } from "./cclsp-config.ts"
 
 /** The npm package this launcher starts; the version is pinned in the bundle's `optionalDependencies`. */
 const DEPENDENCY: string = "cclsp"
 /** The dependency's `bin` key, which is the MCP server entry (not `main`). */
 const DEPENDENCY_BIN: string = "cclsp"
-/** The language server package cclsp depends on, which the generated default config points at. */
+/** The language server package cclsp depends on, which the generated config points at. */
 const TS_LANGUAGE_SERVER: string = "typescript-language-server"
-/** File extensions the generated default config claims: the TS/JS family the retired overlay covered. */
-const DEFAULT_EXTENSIONS: readonly string[] = ["ts", "tsx", "js", "jsx", "mjs", "cjs", "mts", "cts"]
 
 // FIRST statement of the module body: this file's own imports are node builtins and chatter-free, and
 // the dependency below is imported DYNAMICALLY on the last line — a static import would be hoisted
@@ -55,71 +55,70 @@ const sink: LogSink = installTerminalSilence("mpd-mcp-lsp")
 const dependency = resolveDependencyEntry(import.meta.url, DEPENDENCY, DEPENDENCY_BIN)
 
 /**
- * Build the default cclsp config: TS/JS through the language server cclsp depends on.
+ * Build the config the launcher writes when the user has none.
+ *
+ * The TS/JS row is the one this bundle can always supply: it points at the language server inside the
+ * DECLARED `cclsp` dependency, through `process.execPath` so the server runs on the same node as this
+ * launcher — never through `npx`, which would download a package at request time. Every other row
+ * comes from the language→server catalog and is included only when its executable actually resolves
+ * (see `buildConfigDocument`), so the generated config never names a binary that is not installed.
  *
  * @param configRoot the absolute workspace root the config is written under and `rootDir` anchors at.
  * @param packageJson the dependency's manifest, from which its own dependency tree is resolved.
- * @returns the config document, ready to serialize; its `servers` list is empty when the language
- *   server cannot be located, which cclsp accepts (it then reports the missing server per request).
+ * @returns the config document, ready to serialize; its `servers` list is empty when nothing at all
+ *   resolves, which cclsp accepts (it then reports the missing server per request).
  */
-function defaultConfig(configRoot: string, packageJson: string): Record<string, unknown> {
-  /** The language server command, or null when the bundled server cannot be located. */
+function generatedConfig(configRoot: string, packageJson: string): CclspConfigDocument {
+  /** The language server the declared dependency carries, or null when it cannot be located. */
   const languageServer = resolveDependencyEntry(pathToFileURL(packageJson).href, TS_LANGUAGE_SERVER, TS_LANGUAGE_SERVER)
-  /** The command cclsp spawns per extension group; `process.execPath` keeps it on the running node. */
-  const command = languageServer === null ? null : [process.execPath, languageServer.entry, "--stdio"]
-  return {
-    servers: command === null ? [] : [{ extensions: [...DEFAULT_EXTENSIONS], command, rootDir: configRoot }]
-  }
+  /** The argv cclsp spawns for the TS/JS family; `process.execPath` keeps it on the running node. */
+  const command: readonly string[] | null = languageServer === null ? null : [process.execPath, languageServer.entry, "--stdio"]
+  return buildConfigDocument({ root: configRoot, typescriptCommand: command })
 }
 
 /**
- * Point cclsp at a config file, generating the default one only when nothing else supplies it.
+ * Decide which config cclsp is pointed at, writing the generated one only when nothing else supplies it.
  *
- * Resolution order, and the FIRST hit wins: the caller's `CCLSP_CONFIG_PATH`, then a `cclsp.json` in
- * the workspace root, then the generated `<root>/.mpd/lsp/cclsp.json` (rewritten only when its bytes
- * would change, so a session does not churn the file on every boot).
+ * The decision itself lives in `./cclsp-config.ts`, because that is the part a test must be able to
+ * drive without spawning anything; this wrapper hands it the real environment and the real document,
+ * and narrates the outcome into the log sink. Resolution order, FIRST hit wins: the caller's
+ * `CCLSP_CONFIG_PATH`, then `<root>/cclsp.json` — which is AUTHORITATIVE and never rewritten — then
+ * the generated `<root>/.mpd/lsp/cclsp.json` (rewritten only when its bytes would change, so a session
+ * does not churn the file on every boot).
  *
  * @param root the workspace root to look in and to write under.
  * @param packageJson the dependency's manifest, the anchor of the language-server lookup.
  * @returns the config path now in `CCLSP_CONFIG_PATH`, or null when no config could be supplied (a
  *   read-only workspace); cclsp then reports its own actionable error instead of the row dying.
  */
-function ensureConfigPath(root: string, packageJson: string): string | null {
-  /** The caller's own config, which is never second-guessed. */
-  const configured = (process.env.CCLSP_CONFIG_PATH ?? "").trim()
-  if (configured.length > 0) return configured
-  /** The workspace-root config a user maintains by hand. */
-  const projectConfig = join(root, "cclsp.json")
-  if (existsSync(projectConfig)) {
-    process.env.CCLSP_CONFIG_PATH = projectConfig
-    sink.write("[mpd-mcp-lsp] cclsp config: " + projectConfig + " (workspace root)")
-    return projectConfig
-  }
-  /** The generated config's path, under workspace-scoped state and never in the user's home. */
-  const generated = join(root, ".mpd", "lsp", "cclsp.json")
-  try {
-    /** The config document, serialized once so the change check and the write agree. */
-    const body = JSON.stringify(defaultConfig(root, packageJson), null, 2) + "\n"
-    /** The existing bytes, or null when the file is absent or unreadable. */
-    let existing: string | null
-    try {
-      existing = readFileSync(generated, "utf8")
-    } catch {
-      existing = null
-    }
-    if (existing !== body) {
-      mkdirSync(join(root, ".mpd", "lsp"), { recursive: true })
-      writeFileSync(generated, body)
-    }
-    process.env.CCLSP_CONFIG_PATH = generated
-    sink.write("[mpd-mcp-lsp] cclsp config: " + generated + " (generated default: TypeScript/JavaScript)")
-    return generated
-  } catch (error) {
-    // A read-only workspace is not fatal here: cclsp's own error names the missing config, and a row
-    // that dies would take the boot down instead.
-    sink.write("[mpd-mcp-lsp] could not write " + generated + ": " + String(error))
+function publishConfigPath(root: string, packageJson: string): string | null {
+  /** What the resolution decided and did; the side effect on `process.env` happens inside it. */
+  const outcome: ConfigOutcome = ensureConfigPath({
+    root,
+    env: process.env,
+    build: (): CclspConfigDocument => generatedConfig(root, packageJson)
+  })
+  if (outcome.path === null) {
+    sink.write("[mpd-mcp-lsp] could not supply a cclsp config under " + root + " (read-only workspace?)")
     return null
   }
+  sink.write("[mpd-mcp-lsp] cclsp config: " + outcome.path + " (" + describeSource(outcome) + ")")
+  return outcome.path
+}
+
+/**
+ * One phrase describing how a config path was decided, for the log line.
+ *
+ * @param outcome what the resolution decided.
+ * @returns the phrase appended to the log line.
+ */
+function describeSource(outcome: ConfigOutcome): string {
+  if (outcome.source === "env") return "from CCLSP_CONFIG_PATH"
+  if (outcome.source === "workspace") return "workspace root, left untouched"
+  if (outcome.source === "generated") {
+    return "generated, " + outcome.serverCount + " language server(s)" + (outcome.wrote ? "" : ", unchanged")
+  }
+  return "unavailable"
 }
 
 if (dependency === null) {
@@ -135,7 +134,7 @@ if (dependency === null) {
   sink.write("[mpd-mcp-lsp] starting " + DEPENDENCY + "@" + dependency.version + " from " + dependency.entry)
   /** The workspace root the config is anchored at: the highest-precedence log root is the session's own. */
   const root = resolveLogRoots()[0] ?? process.cwd()
-  ensureConfigPath(root, dependency.packageJson)
+  publishConfigPath(root, dependency.packageJson)
   // The specifier is a RUNTIME VALUE on purpose: a literal one would make `bun build` inline the whole
   // third-party server into this launcher (measured on the ast-grep twin).
   /** The dependency's MCP server entry, resolved from the installed profile. */

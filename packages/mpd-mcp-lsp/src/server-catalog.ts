@@ -1,421 +1,271 @@
-#!/usr/bin/env node
+// The language → server catalog: our own data module for the LSP bootstrap.
+//
+// WHY THIS FILE EXISTS. Until the de-omo wave the LSP package carried an overlay that knew many
+// languages. Its replacement (wave B2) knows exactly one — the TypeScript/JavaScript family, served by
+// the `typescript-language-server` that the declared `cclsp` dependency happens to carry — so every
+// other language regressed to "install a server and write the config yourself". This module restores
+// the mapping as our own code, so the launcher can WRITE a config that names a server per language.
+//
+// FIELD DISCIPLINE, and why the five required fields exist:
+//   * `server`         — the server's own name, as its project spells it.
+//   * `licence`        — the SERVER's licence, never the language's and never a guess. Several servers
+//                        in this table are NOT permissive (Eclipse JDT LS EPL-2.0, `terraform-ls`
+//                        MPL-2.0, VHDL-LS MPL-2.0, texlab GPL-3.0, Intelephense's server proprietary)
+//                        and no row may call them MIT; `NON_PERMISSIVE_SERVERS` is the standing guard.
+//   * `installCommand` — the exact command a human runs. The catalog never installs anything, and
+//                        nothing here may pull a package at request time (a `npx`-based argv would).
+//   * `npmInstallable` — whether npm is a DOCUMENTED route for this server; a false sends the reader
+//                        to the server's own instructions instead.
+//   * `caveat`         — the one sentence a user must read before relying on the row.
+// `extensions` are BARE (no leading dot) because that is what cclsp matches, and `command[0]` is the
+// executable the launcher probes for on PATH (or in the workspace's `node_modules/.bin`).
+//
+// PROVENANCE DISCIPLINE. Every `licence` and every `installCommand` traces to a document that was
+// FETCHED and can be re-opened — the package registry's own metadata, the repository's licence file,
+// or the repository's README/install page (the sweep is `evidence/restore/s2/20261008T234820Z/research/`,
+// its per-row result `sources.json`). A row where a fact could NOT be pinned to such a document is
+// marked `verification: "unverified"`, and its caveat says `UNVERIFIED` out loud so the guide and the
+// generated config cannot present a weak row as a checked one.
 
-// packages/mpd-mcp-lsp/src/launch.ts
-import { pathToFileURL } from "node:url";
-
-// packages/mpd-mcp-shared/dependency-entry.ts
-import { createRequire } from "node:module";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-function readManifest(path) {
-  try {
-    return JSON.parse(readFileSync(path, "utf8"));
-  } catch {
-    return null;
-  }
-}
-function manifestFor(path, packageName) {
-  const manifest = readManifest(path);
-  return manifest !== null && manifest.name === packageName ? manifest : null;
-}
-function ownerManifest(from, packageName) {
-  let dir = dirname(resolve(from));
-  for (;; ) {
-    const candidate = join(dir, "package.json");
-    if (existsSync(candidate) && manifestFor(candidate, packageName) !== null)
-      return candidate;
-    const parent = dirname(dir);
-    if (parent === dir)
-      return null;
-    dir = parent;
-  }
-}
-function walkNodeModules(startDir, packageName) {
-  let dir = resolve(startDir);
-  for (;; ) {
-    const candidate = join(dir, "node_modules", packageName, "package.json");
-    if (existsSync(candidate) && manifestFor(candidate, packageName) !== null)
-      return candidate;
-    const parent = dirname(dir);
-    if (parent === dir)
-      return null;
-    dir = parent;
-  }
-}
-function startDirOf(from) {
-  try {
-    return dirname(fileURLToPath(from));
-  } catch {
-    return process.cwd();
-  }
-}
-function declaredEntry(manifest, packageDir, binName) {
-  if (binName !== undefined && typeof manifest.bin === "object" && manifest.bin !== null) {
-    const binMap = manifest.bin;
-    if (typeof binMap[binName] === "string")
-      return resolve(packageDir, binMap[binName]);
-  }
-  if (typeof manifest.bin === "string")
-    return resolve(packageDir, manifest.bin);
-  if (typeof manifest.main === "string")
-    return resolve(packageDir, manifest.main);
-  return null;
-}
-function resolveDependencyEntry(from, packageName, binName) {
-  const req = createRequire(from);
-  const candidates = [];
-  const consider = (path) => {
-    if (path !== null && !candidates.includes(path))
-      candidates.push(path);
-  };
-  try {
-    const direct = req.resolve(packageName + "/package.json");
-    consider(existsSync(direct) && manifestFor(direct, packageName) !== null ? direct : null);
-  } catch {}
-  try {
-    consider(ownerManifest(req.resolve(packageName), packageName));
-  } catch {}
-  consider(walkNodeModules(startDirOf(from), packageName));
-  for (const manifestPath of candidates) {
-    const manifest = manifestFor(manifestPath, packageName);
-    if (manifest === null)
-      continue;
-    const entry = declaredEntry(manifest, dirname(manifestPath), binName);
-    if (entry === null || !existsSync(entry))
-      continue;
-    return {
-      packageJson: manifestPath,
-      entry,
-      version: typeof manifest.version === "string" ? manifest.version : "unknown"
-    };
-  }
-  return null;
+/** One language server the bootstrap can wire into a `cclsp.json`, with the facts a reader needs. */
+export interface LanguageServerEntry {
+  /** Stable language id, unique in the catalog and used in reports (`typescript`, `c-cpp`). */
+  readonly language: string
+  /** Human-readable name of the family this row covers. */
+  readonly displayName: string
+  /** The server's own name, as its project or package calls itself. */
+  readonly server: string
+  /** The server's licence, spelled as its own project spells it; never empty. */
+  readonly licence: string
+  /** Where the licence above is stated, so a reader can re-check it. */
+  readonly licenceUrl: string
+  /** The exact command a human runs to install the server; the catalog installs nothing itself. */
+  readonly installCommand: string
+  /** Whether npm is a documented install route for this server (`false` sends the reader elsewhere). */
+  readonly npmInstallable: boolean
+  /** The one sentence a user must read before relying on this server. */
+  readonly caveat: string
+  /** File extensions this row claims, BARE (no leading dot), as cclsp matches them. */
+  readonly extensions: readonly string[]
+  /** The argv cclsp spawns; `command[0]` is the executable the launcher probes for. */
+  readonly command: readonly string[]
+  /** The sources the licence and install facts were read from. */
+  readonly citations: readonly string[]
+  /** `primary` when every fact above traces to a fetched document; `unverified` when one does not. */
+  readonly verification: "primary" | "unverified"
 }
 
-// packages/mpd-mcp-shared/log-sink.ts
-import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join as join2, resolve as resolve2 } from "node:path";
-import { format } from "node:util";
-var LOG_SUBDIR = join2(".mpd", "logs");
-var DEFAULT_MAX_BYTES = 1024 * 1024;
-var DEFAULT_MAX_LINE_BYTES = 8192;
-var DEFAULT_RING_LINES = 64;
-function truncationMarker(droppedBytes) {
-  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+/** One way a catalog row can be wrong; the validator reports these instead of throwing. */
+export interface CatalogViolation {
+  /** The offending row's language id, or `#<index>` when the id itself is missing. */
+  readonly language: string
+  /** The field at fault (`licence`, `extensions`, `command`, …). */
+  readonly field: string
+  /** What is wrong with it, phrased for a report. */
+  readonly detail: string
 }
-function resolveLogRoots(env = process.env, cwd) {
-  let working = cwd;
-  if (working === undefined) {
-    try {
-      working = process.cwd();
-    } catch {
-      working = undefined;
-    }
-  }
-  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
-  const roots = [];
-  const seen = new Set;
-  for (const candidate of raw) {
-    if (typeof candidate !== "string" || candidate.trim().length === 0)
-      continue;
-    let absolute;
-    try {
-      absolute = resolve2(candidate);
-    } catch {
-      continue;
-    }
-    if (seen.has(absolute))
-      continue;
-    seen.add(absolute);
-    roots.push(absolute);
-  }
-  return roots;
+
+/** The five fields the S2 acceptance contract requires every row to carry; named once so the
+ *  validator, the test and the README cannot drift apart. */
+export const REQUIRED_ENTRY_FIELDS: readonly string[] = [
+  "server",
+  "licence",
+  "installCommand",
+  "npmInstallable",
+  "caveat",
+] as const
+
+/** The string-valued fields that must be non-empty, checked in this order for a stable report. */
+const REQUIRED_STRINGS: readonly (keyof LanguageServerEntry)[] = [
+  "language",
+  "displayName",
+  "server",
+  "licence",
+  "licenceUrl",
+  "installCommand",
+  "caveat",
+] as const
+
+/** The shape a bare extension must have: lower-case, alphanumeric with `+`/`-`/`_`, and NO dot. */
+const BARE_EXTENSION: RegExp = /^[a-z0-9][a-z0-9+_-]*$/
+
+/** The marking an `unverified` row must carry at the START of its caveat, so the guide says so too. */
+export const UNVERIFIED_MARKER: string = "UNVERIFIED"
+
+/** A server whose licence is NOT permissive, matched against the catalog by a name keyword.
+ *  The guard exists so the catalog (and the guide) can never describe one of these as MIT. */
+export interface NonPermissiveServer {
+  /** Lower-case keyword that identifies the server inside a catalog row's `server` name. */
+  readonly match: string
+  /** The licence substring the row must carry, as the server's own project states it. */
+  readonly licence: string
 }
-function tryOpenRoot(root, name) {
-  try {
-    const dir = join2(root, LOG_SUBDIR);
-    mkdirSync(dir, { recursive: true });
-    const file = join2(dir, `${name}.log`);
-    return { fd: openSync(file, "a"), file };
-  } catch {
-    return null;
-  }
+
+/** The servers whose licence is NOT permissive; the catalog must never call one of them MIT.
+ *  The first four are the ones the contract names; the rest were found while researching and are
+ *  guarded with the same discipline — a row matching one of these must carry the real licence. */
+export const NON_PERMISSIVE_SERVERS: readonly NonPermissiveServer[] = [
+  { match: "jdt", licence: "EPL-2.0" },
+  { match: "terraform-ls", licence: "MPL-2.0" },
+  { match: "intelephense", licence: "proprietary" },
+  { match: "c# dev kit", licence: "proprietary" },
+  { match: "lemminx", licence: "EPL-2.0" },
+  { match: "nixd", licence: "LGPL-3.0" },
+  { match: "vhdl", licence: "MPL-2.0" },
+  { match: "texlab", licence: "GPL-3.0" }
+] as const
+
+/** A row where the CONTRACT and the primary source disagree, recorded rather than reconciled.
+ *  The guard for these is the opposite of the one above: the licence may be permissive, and what must
+ *  hold is that the row SAYS SO and names the proprietary product beside it. */
+export interface LicenceDispute {
+  /** Lower-case keyword that identifies the disputed row inside a catalog row's `server` name. */
+  readonly match: string
+  /** What the contract claims about this server. */
+  readonly contractClaim: string
+  /** What the primary source says instead, with the source named. */
+  readonly sourceSays: string
+  /** The phrase the row's caveat must contain, so the disagreement is visible to a reader. */
+  readonly caveatMustMention: string
 }
-function rebindStderr(file) {
-  if (process.platform === "win32")
-    return "unsupported";
-  try {
-    closeSync(2);
-  } catch {
-    return "failed";
+
+/** The licence DISPUTES this catalog carries, each recorded rather than silently resolved. */
+export const LICENCE_DISPUTES: readonly LicenceDispute[] = [
+  {
+    match: "c# dev kit",
+    contractClaim: "the contract §3 S2 lists Roslyn/C# Dev Kit among the four NOT permissive servers",
+    sourceSays: "the C# Dev Kit PRODUCT ships Microsoft's Roslyn-based language server with no licence file at all, while the standalone NuGet package `roslyn-language-server` declares MIT and the Roslyn COMPILER is MIT — the contract's claim is about the product and is upheld here",
+    caveatMustMention: "C# Dev Kit"
+  },
+  {
+    match: "protols",
+    contractClaim: "the matrix reports that upstream protols has NO licence file, so it is all-rights-reserved by default",
+    sourceSays: "the upstream repository is coder3101/protols, whose LICENSE file was fetched and read as MIT (c) 2024 Ashar; the URL the matrix checked (c4pt0r/protols) returns 404 and is not this project",
+    caveatMustMention: "coder3101"
   }
-  let fd;
-  try {
-    fd = openSync(file, "a");
-  } catch {
-    return "failed";
-  }
-  if (fd === 2)
-    return "rebound";
-  try {
-    closeSync(fd);
-  } catch {}
-  return "not-lowest";
+] as const
+
+/** One npm package name that LOOKS like a language server and must never be wired: the real server is
+ *  a toolchain install, and the npm package under that name is a placeholder or another project. */
+export interface NpmTrap {
+  /** The npm package name that is the trap. */
+  readonly package: string
+  /** What the package actually is, and where the real server comes from. */
+  readonly reason: string
 }
-function owningRoot(roots, file) {
-  for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
-      return root;
-  }
-  return null;
-}
-var captured = null;
-function openLogSink(name, options = {}) {
-  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
-  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
-  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
-  const timestamps = options.timestamps ?? true;
-  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
-  let open = null;
-  for (const root of roots) {
-    const attempt = tryOpenRoot(root, name);
-    if (attempt !== null) {
-      open = attempt;
-      break;
+
+/** The npm TRAPS found while researching: no generated install command may point at one of these. */
+export const NPM_TRAPS: readonly NpmTrap[] = [
+  { package: "gopls", reason: "a 0.0.1-security placeholder with no bin; the real gopls is a Go toolchain install" },
+  { package: "rust-analyzer", reason: "a 0.0.1-security placeholder with no bin; the real rust-analyzer came from rustup" },
+  { package: "clangd", reason: "an empty 0.0.0 package with no bin; the real clangd ships with LLVM" },
+  { package: "zls", reason: "a third-party wrapper unrelated to zigtools/zls; the real zls ships as a release binary" },
+  { package: "marksman", reason: "an UNRELATED project (fussydesigns/marksman); the real marksman is artempyanykh/marksman" }
+] as const
+
+/**
+ * Check a catalog for the contract's field discipline.
+ *
+ * The rules are deliberately structural, so the test can feed a mutated copy and watch the SAME
+ * function redden — the negative control the acceptance contract asks for.
+ *
+ * @param entries the catalog rows to check; an entry that is not an object is reported as `#<index>`.
+ * @returns one violation per defect, in row order; an empty array means the catalog is well-formed.
+ */
+export function validateServerCatalog(entries: readonly LanguageServerEntry[]): readonly CatalogViolation[] {
+  /** Violations accumulated in row order. */
+  const violations: CatalogViolation[] = []
+  /** Language ids already seen, so a duplicate id is reported instead of silently shadowing. */
+  const seenLanguages: Map<string, number> = new Map()
+  /** Extension → language id that claimed it first, so an ambiguous routing is reported. */
+  const seenExtensions: Map<string, string> = new Map()
+
+  entries.forEach((entry: LanguageServerEntry, index: number): void => {
+    /** The row as an unknown value: a catalog a test mutates is not guaranteed to be shaped like the
+     *  type, and the validator's whole job is to SAY so rather than crash on a missing field. */
+    const candidate: unknown = entry
+    if (candidate === null || typeof candidate !== "object") {
+      violations.push({ language: `#${index}`, field: "entry", detail: "row is not an object" })
+      return
     }
-  }
-  let size = 0;
-  if (open !== null) {
-    try {
-      size = statSync(open.file).size;
-    } catch {
-      size = 0;
-    }
-  }
-  let accepted = 0;
-  let droppedCount = 0;
-  let rotations = 0;
-  const ring = [];
-  let undoCapture = null;
-  let rebindOutcome = "skipped";
-  let rebind = null;
-  const remember = (record) => {
-    if (ring.length >= ringLines) {
-      ring.shift();
-      droppedCount += 1;
-    }
-    ring.push(record);
-  };
-  const rotate = () => {
-    if (open === null)
-      return;
-    try {
-      closeSync(open.fd);
-      rmSync(`${open.file}.1`, { force: true });
-      renameSync(open.file, `${open.file}.1`);
-      open = { fd: openSync(open.file, "a"), file: open.file };
-      size = 0;
-      rotations += 1;
-      sink.rebindNow();
-    } catch {
-      try {
-        open = { fd: openSync(open.file, "a"), file: open.file };
-      } catch {
-        open = null;
+    /** The row, safe to read field by field because every field below is validated before it is used
+     *  — the cast only restores the static type the caller claimed. */
+    const row: LanguageServerEntry = candidate as LanguageServerEntry
+    /** This row's label in a report: its id when present, its index otherwise. */
+    const label: string = typeof row.language === "string" && row.language.trim().length > 0 ? row.language : `#${index}`
+    for (const field of REQUIRED_STRINGS) {
+      /** The raw value of the required string field under test. */
+      const value: unknown = row[field]
+      if (typeof value !== "string" || value.trim().length === 0) {
+        violations.push({ language: label, field, detail: typeof value === "string" ? "is an empty string" : "is missing" })
       }
     }
-  };
-  const append = (record) => {
-    if (open === null) {
-      remember(record);
-      return;
+    if (typeof row.npmInstallable !== "boolean") {
+      violations.push({ language: label, field: "npmInstallable", detail: "must be a boolean" })
     }
-    const bytes = Buffer.byteLength(record, "utf8");
-    if (size > 0 && size + bytes > maxBytes)
-      rotate();
-    if (open === null) {
-      remember(record);
-      return;
+    if (row.verification !== "primary" && row.verification !== "unverified") {
+      violations.push({ language: label, field: "verification", detail: "must be `primary` or `unverified`" })
     }
-    try {
-      writeSync(open.fd, record);
-      size += bytes;
-    } catch {
-      remember(record);
+    if (row.verification === "unverified" && typeof row.caveat === "string" && !row.caveat.startsWith(UNVERIFIED_MARKER)) {
+      violations.push({ language: label, field: "caveat", detail: `an unverified row must open its caveat with ${UNVERIFIED_MARKER}` })
     }
-  };
-  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
-  const sink = {
-    name,
-    file: open?.file ?? null,
-    root: acceptedRoot,
-    write(line) {
-      try {
-        const body = line.endsWith(`
-`) ? line.slice(0, -1) : line;
-        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
-        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
-`;
-        accepted += 1;
-        append(record);
-      } catch {}
-    },
-    fd() {
-      return open?.fd ?? null;
-    },
-    written() {
-      return accepted;
-    },
-    dropped() {
-      return droppedCount;
-    },
-    rotations() {
-      return rotations;
-    },
-    ring() {
-      return [...ring];
-    },
-    stderrRebind() {
-      return rebindOutcome;
-    },
-    restore() {
-      if (undoCapture === null)
-        return;
-      undoCapture();
-      undoCapture = null;
-      if (captured === sink)
-        captured = null;
+    if (!Array.isArray(row.extensions) || row.extensions.length === 0) {
+      violations.push({ language: label, field: "extensions", detail: "must be a non-empty array" })
+    } else {
+      row.extensions.forEach((extension: string): void => {
+        if (typeof extension !== "string" || !BARE_EXTENSION.test(extension)) {
+          violations.push({ language: label, field: "extensions", detail: `${JSON.stringify(extension)} is not a bare extension (no dot, lower-case)` })
+          return
+        }
+        /** The language id that claimed this extension before, if any. */
+        const owner: string | undefined = seenExtensions.get(extension)
+        if (owner !== undefined) {
+          violations.push({ language: label, field: "extensions", detail: `${extension} is already claimed by ${owner}` })
+          return
+        }
+        seenExtensions.set(extension, label)
+      })
     }
-  };
-  sink.attachCapture = (undo, onRebind) => {
-    undoCapture = undo;
-    rebind = onRebind;
-  };
-  sink.rebindNow = () => {
-    if (rebind === null)
-      return;
-    rebindOutcome = rebind();
-  };
-  sink.setRebindOutcome = (outcome) => {
-    rebindOutcome = outcome;
-  };
-  return sink;
-}
-function capLine(body, maxLineBytes) {
-  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
-  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
-}
-var CAPTURED_CONSOLE_METHODS = ["error", "warn", "log", "info", "debug"];
-function installTerminalSilence(name, options = {}) {
-  const sink = openLogSink(name, options);
-  if (captured !== null)
-    return sink;
-  captured = sink;
-  const stderr = process.stderr;
-  const hadOwnWrite = Object.prototype.hasOwnProperty.call(stderr, "write");
-  const previousOwnWrite = hadOwnWrite ? stderr.write : undefined;
-  const consoleTarget = console;
-  const previousConsole = new Map;
-  let restored = false;
-  const stderrWrite = (chunk, encodingOrCallback, callback) => {
-    try {
-      const text = typeof chunk === "string" ? chunk : chunk instanceof Uint8Array ? Buffer.from(chunk).toString("utf8") : String(chunk);
-      sink.write(text.endsWith(`
-`) ? text.slice(0, -1) : text);
-    } catch {}
-    const done = typeof encodingOrCallback === "function" ? encodingOrCallback : callback;
-    if (typeof done === "function") {
-      try {
-        done(null);
-      } catch {}
+    if (!Array.isArray(row.command) || row.command.length === 0 || row.command.some((part: string): boolean => typeof part !== "string" || part.trim().length === 0)) {
+      violations.push({ language: label, field: "command", detail: "must be a non-empty argv of non-empty strings" })
     }
-    return true;
-  };
-  stderr.write = stderrWrite;
-  for (const method of CAPTURED_CONSOLE_METHODS) {
-    previousConsole.set(method, consoleTarget[method]);
-    consoleTarget[method] = (...args) => {
-      sink.write(format(...args));
-    };
-  }
-  sink.attachCapture(() => {
-    if (restored)
-      return;
-    restored = true;
-    if (hadOwnWrite && previousOwnWrite !== undefined)
-      stderr.write = previousOwnWrite;
-    else
-      delete stderr.write;
-    for (const [method, previous] of previousConsole)
-      consoleTarget[method] = previous;
-  }, () => sink.file === null ? "skipped" : rebindStderr(sink.file));
-  const envBag = options.env ?? process.env;
-  if (options.rebindStderr ?? envBag.MPD_MCP_STDERR_REBIND !== "0") {
-    sink.rebindNow();
-  } else {
-    sink.setRebindOutcome("disabled");
-  }
-  return sink;
+    if (!Array.isArray(row.citations) || row.citations.length === 0 || row.citations.some((part: string): boolean => typeof part !== "string" || part.trim().length === 0)) {
+      violations.push({ language: label, field: "citations", detail: "must name at least one source" })
+    }
+    /** The index a previous row used for this language id, if the id was already seen. */
+    const previous: number | undefined = seenLanguages.get(label)
+    if (previous !== undefined) {
+      violations.push({ language: label, field: "language", detail: `duplicate language id (also at index ${previous})` })
+    } else {
+      seenLanguages.set(label, index)
+    }
+  })
+
+  return violations
 }
 
-// packages/mpd-mcp-shared/unavailable-server.ts
-var FALLBACK_PROTOCOL_VERSION = "2024-11-05";
-async function serveUnavailable(sink, options) {
-  const prefix = "[" + options.name + "] unavailable fallback: ";
-  sink.write(prefix + options.reason);
-  sink.write(prefix + "this row exposes NO tools until the dependency loads; fix the cause and restart the session" + (options.hint === undefined ? "" : " — " + options.hint));
-  process.stdin.setEncoding("utf8");
-  let buffer = "";
-  const send = (message) => {
-    process.stdout.write(JSON.stringify(message) + `
-`);
-  };
-  for await (const chunk of process.stdin) {
-    buffer += chunk;
-    let index;
-    while ((index = buffer.indexOf(`
-`)) !== -1) {
-      const line = buffer.slice(0, index);
-      buffer = buffer.slice(index + 1);
-      if (line.trim() === "")
-        continue;
-      let request;
-      try {
-        request = JSON.parse(line);
-      } catch {
-        continue;
-      }
-      if (request.method === "initialize") {
-        send({
-          jsonrpc: "2.0",
-          id: request.id,
-          result: {
-            protocolVersion: typeof request.params?.protocolVersion === "string" ? request.params.protocolVersion : FALLBACK_PROTOCOL_VERSION,
-            capabilities: { tools: {} },
-            serverInfo: { name: options.name, version: "unavailable" }
-          }
-        });
-      } else if (request.method === "tools/list") {
-        send({ jsonrpc: "2.0", id: request.id, result: { tools: [] } });
-      } else if (request.id !== undefined) {
-        send({ jsonrpc: "2.0", id: request.id, error: { code: -32601, message: options.name + " is unavailable on this host" } });
-      }
-    }
-  }
-}
+/** The registry page a row's npm facts were read from. */
+const npmPage = (name: string): string => `https://www.npmjs.com/package/${name}`
+/** The npm registry document itself, which is where the `license` and `bin` fields were read. */
+const npmDoc = (name: string): string => `https://registry.npmjs.org/${name.replace("/", "%2f")}/latest`
+/** A repository document (licence file, README, install page) as fetched from its default branch. */
+const repoDoc = (repo: string, path: string): string => `https://raw.githubusercontent.com/${repo}/HEAD/${path}`
+/** A repository's README. */
+const readme = (repo: string): string => repoDoc(repo, "README.md")
 
-// packages/mpd-mcp-lsp/src/cclsp-config.ts
-import { existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, statSync as statSync2, writeFileSync } from "node:fs";
-import { delimiter, isAbsolute, join as join3 } from "node:path";
-
-// packages/mpd-mcp-lsp/src/server-catalog.ts
-var npmPage = (name) => `https://www.npmjs.com/package/${name}`;
-var npmDoc = (name) => `https://registry.npmjs.org/${name.replace("/", "%2f")}/latest`;
-var repoDoc = (repo, path) => `https://raw.githubusercontent.com/${repo}/HEAD/${path}`;
-var readme = (repo) => repoDoc(repo, "README.md");
-var LANGUAGE_SERVERS = [
+/**
+ * The shipped catalog: one row per language family the bootstrap can wire.
+ *
+ * SIZE IS THE ACCEPTANCE CONTRACT, not a preference: the S2 goal is the FULL ~40-language set, and
+ * `packages/mpd-mcp-lsp/test/language-coverage.test.ts` reddens below it. Every row here was
+ * researched from a primary source (see PROVENANCE DISCIPLINE at the top of this file; the sweep and
+ * its per-row result live under `evidence/restore/s2/20261008T234820Z/research/`). A row whose
+ * install command or argv could not be pinned to a fetched document is marked `unverified` and says
+ * so in its caveat. The language matrix that arrives later is RECONCILED into this table: a better
+ * citation wins, the union is kept, and a disagreement is recorded in `LICENCE_DISPUTES` rather than
+ * silently resolved.
+ */
+export const LANGUAGE_SERVERS: readonly LanguageServerEntry[] = [
   {
     language: "typescript",
     displayName: "TypeScript / JavaScript",
@@ -786,7 +636,7 @@ var LANGUAGE_SERVERS = [
     server: "LanguageServer.jl",
     licence: "MIT",
     licenceUrl: repoDoc("julia-vscode/LanguageServer.jl", "LICENSE.md"),
-    installCommand: `julia -e 'using Pkg; Pkg.add("LanguageServer")'`,
+    installCommand: "julia -e 'using Pkg; Pkg.add(\"LanguageServer\")'",
     npmInstallable: false,
     caveat: "UNVERIFIED for the argv: the package README documents installing LanguageServer.jl, while the `runserver()` invocation below is the client convention rather than a quoted line. The project must be in the julia process's load path for cross-file facts.",
     extensions: ["jl"],
@@ -954,7 +804,7 @@ var LANGUAGE_SERVERS = [
     server: "languageserver",
     licence: "MIT",
     licenceUrl: repoDoc("REditorSupport/languageserver", "DESCRIPTION"),
-    installCommand: `R -e 'install.packages("languageserver")'`,
+    installCommand: "R -e 'install.packages(\"languageserver\")'",
     npmInstallable: false,
     caveat: "UNVERIFIED for the argv: the package DESCRIPTION declares `License: MIT + file LICENSE` and the README documents the CRAN install, while the `languageserver::run()` invocation is the client convention. The probe therefore looks for `R`, which must be on PATH.",
     extensions: ["r", "rmd"],
@@ -1242,155 +1092,14 @@ var LANGUAGE_SERVERS = [
     citations: [repoDoc("tweag/nickel", "LICENSE")],
     verification: "unverified"
   }
-];
+] as const
 
-// packages/mpd-mcp-lsp/src/cclsp-config.ts
-var GENERATED_CONFIG_RELATIVE_PATH = ".mpd/lsp/cclsp.json";
-var FALLBACK_TYPESCRIPT_EXTENSIONS = ["ts", "tsx", "js", "jsx", "mjs", "cjs", "mts", "cts"];
-function isExecutableFile(path) {
-  try {
-    const stats = statSync2(path);
-    if (!stats.isFile())
-      return false;
-    if (process.platform === "win32")
-      return true;
-    return (stats.mode & 73) !== 0;
-  } catch {
-    return false;
-  }
-}
-function probeExecutable(name, root) {
-  const trimmed = name.trim();
-  if (trimmed.length === 0)
-    return null;
-  if (isAbsolute(trimmed) || trimmed.includes("/")) {
-    return isExecutableFile(trimmed) ? trimmed : null;
-  }
-  const local = join3(root, "node_modules", ".bin", trimmed);
-  if (isExecutableFile(local))
-    return local;
-  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
-    if (dir.trim().length === 0)
-      continue;
-    const candidate = join3(dir, trimmed);
-    if (isExecutableFile(candidate))
-      return candidate;
-  }
-  return null;
-}
-function buildConfigDocument(options) {
-  const catalog = options.catalog ?? LANGUAGE_SERVERS;
-  const probe = options.probe ?? ((name) => probeExecutable(name, options.root));
-  const servers = [];
-  const typescriptRow = catalog.find((entry) => entry.language === "typescript");
-  if (options.typescriptCommand !== undefined && options.typescriptCommand !== null) {
-    servers.push({
-      extensions: typescriptRow?.extensions ?? FALLBACK_TYPESCRIPT_EXTENSIONS,
-      command: options.typescriptCommand,
-      rootDir: options.root
-    });
-  }
-  const byCommand = new Map;
-  for (const entry of catalog) {
-    if (entry.language === "typescript")
-      continue;
-    const resolved = probe(entry.command[0]);
-    if (resolved === null)
-      continue;
-    const command = [resolved, ...entry.command.slice(1)];
-    const key = JSON.stringify(command);
-    const existing = byCommand.get(key);
-    if (existing === undefined) {
-      const row = { extensions: [...entry.extensions], command, rootDir: options.root };
-      byCommand.set(key, row);
-      servers.push(row);
-      continue;
-    }
-    for (const extension of entry.extensions) {
-      if (!existing.extensions.includes(extension))
-        existing.extensions.push(extension);
-    }
-  }
-  return { servers };
-}
-function ensureConfigPath(options) {
-  const configured = (options.env.CCLSP_CONFIG_PATH ?? "").trim();
-  if (configured.length > 0) {
-    return { path: configured, source: "env", serverCount: 0, wrote: false };
-  }
-  const projectConfig = join3(options.root, "cclsp.json");
-  if (existsSync2(projectConfig)) {
-    options.env.CCLSP_CONFIG_PATH = projectConfig;
-    return { path: projectConfig, source: "workspace", serverCount: 0, wrote: false };
-  }
-  const generated = join3(options.root, GENERATED_CONFIG_RELATIVE_PATH);
-  try {
-    const document = options.build();
-    const body = JSON.stringify(document, null, 2) + `
-`;
-    let existing;
-    try {
-      existing = readFileSync2(generated, "utf8");
-    } catch {
-      existing = null;
-    }
-    const stale = existing !== body;
-    if (stale) {
-      mkdirSync2(join3(options.root, ".mpd", "lsp"), { recursive: true });
-      writeFileSync(generated, body);
-    }
-    options.env.CCLSP_CONFIG_PATH = generated;
-    return { path: generated, source: "generated", serverCount: document.servers.length, wrote: stale };
-  } catch {
-    return { path: null, source: "unavailable", serverCount: 0, wrote: false };
-  }
-}
-
-// packages/mpd-mcp-lsp/src/launch.ts
-var DEPENDENCY = "cclsp";
-var DEPENDENCY_BIN = "cclsp";
-var TS_LANGUAGE_SERVER = "typescript-language-server";
-var sink = installTerminalSilence("mpd-mcp-lsp");
-var dependency = resolveDependencyEntry(import.meta.url, DEPENDENCY, DEPENDENCY_BIN);
-function generatedConfig(configRoot, packageJson) {
-  const languageServer = resolveDependencyEntry(pathToFileURL(packageJson).href, TS_LANGUAGE_SERVER, TS_LANGUAGE_SERVER);
-  const command = languageServer === null ? null : [process.execPath, languageServer.entry, "--stdio"];
-  return buildConfigDocument({ root: configRoot, typescriptCommand: command });
-}
-function publishConfigPath(root, packageJson) {
-  const outcome = ensureConfigPath({
-    root,
-    env: process.env,
-    build: () => generatedConfig(root, packageJson)
-  });
-  if (outcome.path === null) {
-    sink.write("[mpd-mcp-lsp] could not supply a cclsp config under " + root + " (read-only workspace?)");
-    return null;
-  }
-  sink.write("[mpd-mcp-lsp] cclsp config: " + outcome.path + " (" + describeSource(outcome) + ")");
-  return outcome.path;
-}
-function describeSource(outcome) {
-  if (outcome.source === "env")
-    return "from CCLSP_CONFIG_PATH";
-  if (outcome.source === "workspace")
-    return "workspace root, left untouched";
-  if (outcome.source === "generated") {
-    return "generated, " + outcome.serverCount + " language server(s)" + (outcome.wrote ? "" : ", unchanged");
-  }
-  return "unavailable";
-}
-if (dependency === null) {
-  await serveUnavailable(sink, {
-    name: "mpd-mcp-lsp",
-    reason: "the declared dependency " + DEPENDENCY + " is not installed in this profile",
-    hint: "install the bundle's dependency closure (npm/pnpm install) and restart the session"
-  });
-  process.exitCode = 0;
-} else {
-  sink.write("[mpd-mcp-lsp] starting " + DEPENDENCY + "@" + dependency.version + " from " + dependency.entry);
-  const root = resolveLogRoots()[0] ?? process.cwd();
-  publishConfigPath(root, dependency.packageJson);
-  const entry = dependency.entry;
-  await import(entry);
+/**
+ * Find the row for one language id.
+ *
+ * @param language the language id to look up (`typescript`, `go`, …).
+ * @returns the matching row, or null when the catalog does not have it.
+ */
+export function findLanguageServer(language: string): LanguageServerEntry | null {
+  return LANGUAGE_SERVERS.find((entry: LanguageServerEntry): boolean => entry.language === language) ?? null
 }

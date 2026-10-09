@@ -1,0 +1,42 @@
+{
+  "c-cpp": {
+    "repo": "llvm/llvm-project",
+    "url": "https://raw.githubusercontent.com/llvm/llvm-project/HEAD/LICENSE.TXT",
+    "head": "============================================================================== The LLVM Project is under the Apache License v2.0 with LLVM Exceptions: ============================================================================== Apache License Version 2.0, January 2004 http://www.apache.org/licenses/"
+  },
+  "objective-c": {
+    "repo": "llvm/llvm-project",
+    "url": "https://raw.githubusercontent.com/llvm/llvm-project/HEAD/LICENSE.TXT",
+    "head": "============================================================================== The LLVM Project is under the Apache License v2.0 with LLVM Exceptions: ============================================================================== Apache License Version 2.0, January 2004 http://www.apache.org/licenses/"
+  },
+  "razor": {
+    "repo": "dotnet/roslyn",
+    "url": "https://raw.githubusercontent.com/dotnet/roslyn/HEAD/License.txt",
+    "head": "The MIT License (MIT) Copyright (c) .NET Foundation and Contributors All rights reserved. Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal"
+  },
+  "dockerfile": {
+    "repo": "rcjsuen/dockerfile-language-server",
+    "url": "https://raw.githubusercontent.com/rcjsuen/dockerfile-language-server/HEAD/License.txt",
+    "head": "Copyright (c) 2017 Remy Suen MIT License Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish,"
+  },
+  "graphql": {
+    "repo": "graphql/graphql-language-service",
+    "url": null,
+    "head": null
+  },
+  "tailwind": {
+    "repo": "tailwindlabs/tailwindcss-intellisense",
+    "url": null,
+    "head": null
+  },
+  "r": {
+    "repo": "REditorSupport/languageserver",
+    "url": "https://raw.githubusercontent.com/REditorSupport/languageserver/HEAD/LICENSE",
+    "head": "YEAR: 2018 COPYRIGHT HOLDER: Randy Lai"
+  },
+  "vhdl": {
+    "repo": "VHDL-LS/rust_hdl",
+    "url": "https://raw.githubusercontent.com/VHDL-LS/rust_hdl/HEAD/LICENSE.txt",
+    "head": "This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/. Copyright (c) 2018, Olof Kraigher olof.kraigher@gmail.com"
+  }
+}
