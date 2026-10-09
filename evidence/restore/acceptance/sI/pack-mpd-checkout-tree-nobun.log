@@ -1,0 +1,12 @@
+# CHECKOUT-CONDITION RUN: a tree of TRACKED files only (git ls-files), i.e. what actions/checkout
+# stages — no dist/mpd-package (gitignored) and no ignored skills/frontend/references/design/*.md
+# (skills/frontend/.gitignore line 7). bun is SCRUBBED from PATH to prove the packer needs none.
+tracked files extracted: 23997
+dist/mpd-package in that tree: ABSENT
+bun on PATH: NOT-FOUND
+$ node scripts/pack-mpd.ts --out /tmp/sI-ck-out
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] modes normalized: 606 files (644: 590, 755: 16)
+[pack-mpd] staged package -> /tmp/sI-ck-out  (out-dir source: command line (--out /tmp/sI-ck-out))
+CHECKOUT_TREE_NOBUN_PACK_EXIT=0

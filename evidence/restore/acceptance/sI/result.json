@@ -1,0 +1,45 @@
+{
+  "wave": "restore/sI",
+  "subject": "the missing packer step in .github/workflows/docker-e2e.yml — the seven pack.* rows had no artifact to grade on a clean checkout",
+  "measuredAt": "2026-10-09T16:02:11Z",
+  "baseRevision": "ae12d8077654f75d2f3c40f30d3774be4447a93d (fix/restore-wave-acceptance)",
+  "defect": "`dist/mpd-package` is the artifact the seven `pack.*` rows grade (docker/lib/owed-pack.ts --artifact), and `.gitignore` line 12 excludes it, so `actions/checkout` stages a tree without it. The FIRST real execution of this lane (run 37955257566, job 113904031165) reported `rows: total=118 passed=70 failed=7 null=41`, and all seven failures name that ONE cause. The host side of the job never ran the step the repository's landing checklist performs by hand.",
+  "edit": {
+    "file": ".github/workflows/docker-e2e.yml",
+    "sha256": "de53a77761978fd57c59c021b05e96bfd49f204f0d1f760d6147343184bd86e7",
+    "diffStat": "1 file changed, 26 insertions(+)",
+    "addedStep": {
+      "name": "Stage the packed bundle the acceptance rows grade",
+      "run": "node scripts/pack-mpd.ts",
+      "index": 3,
+      "position": "immediately before the lane step (`node scripts/docker-e2e.ts --mode source ...`, index 4)"
+    },
+    "untouched": "no trigger, no job flag, no timeout, no permission, no artifact-upload change; docker/**, scripts/** and skills/** unmodified"
+  },
+  "bunQuestion": {
+    "answer": "NO — the packer needs nothing on PATH that the job does not already have. `actions/setup-node` with node 24 IS the whole toolchain, so NO setup-bun step was added.",
+    "why": "scripts/pack-mpd.ts spawns exactly ONE child process, `spawnSync(process.execPath, ...)` (verifyValidatorEntry), i.e. the node already running it. The `[pack-mpd] validator:` line is a GENERATED sidecar: writeValidatorEntry() reads the committed `packages/mpd-ext-plugin/dist/index.js` and appends the VALIDATOR_SHIM_EXPORTS re-export block as text — never a `bun build`. The `.toolchain` -> `<baseUrl>/node_modules/.bin/*` rewrites were REMOVED in wave 2 (B8), so no `.toolchain` binary is consulted either. A `dist/validator.js` built by the package itself would win, and that file is NOT committed (generated at pack time), which is why the local and CI routes both generate.",
+    "evidence": "measured twice with bun scrubbed from PATH: on the working tree (exit 0, 608 files) and on a TRACKED-FILES-ONLY tree with no dist/mpd-package (exit 0, 606 files) — see pack-mpd-workspace.log and pack-mpd-checkout-tree-nobun.log."
+  },
+  "stagedFileCount": {
+    "workingTree": 608,
+    "checkoutCondition": 606,
+    "delta": "2 files, both IGNORED by skills/frontend/.gitignore line 7 (`references/design/*.md`): skills/frontend/references/design/ambience-skill.md and component-catalogs.md. They exist only in a developer tree, so a checkout stages 606 — the same condition wave sH fixed for the vendor corpus (373 local vs 371 clean)."
+  },
+  "commands": [
+    { "cmd": "node scripts/pack-mpd.ts --out /tmp/sI-e1   # working tree", "log": "pack-mpd-workspace.log", "exit": 0, "observed": "[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle / [pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml / [pack-mpd] modes normalized: 608 files (644: 592, 755: 16) / [pack-mpd] staged package -> /tmp/sI-e1 (out-dir source: command line (--out /tmp/sI-e1))" },
+    { "cmd": "tracked-files-only tree (git ls-files | tar), dist/mpd-package ABSENT, bun NOT on PATH -> node scripts/pack-mpd.ts --out /tmp/sI-ck-out", "log": "pack-mpd-checkout-tree-nobun.log", "exit": 0, "observed": "bun on PATH: NOT-FOUND / validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle / modes normalized: 606 files (644: 590, 755: 16)" },
+    { "cmd": "node scripts/verify-workflows.ts", "log": "verify-workflows.log", "exit": 0, "observed": "[verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape" },
+    { "cmd": "bun run verify:gates", "log": "verify-gates.log", "exit": 0, "observed": "PASS - 8/8 member gate(s) green (vendor 0, dist-fresh 0, rows-parity 0, docs-parity 0, preset-conformance 0, plugin-manifest 0, comment-coverage 0, workflows 0)" },
+    { "cmd": "YAML parse of HEAD vs working tree (python3 + pyyaml), ordered job step names", "log": "steps-before-after.log", "exit": 0, "observed": "before 5 steps / after 6; added step index=3 run='node scripts/pack-mpd.ts'; lane step index=4; new immediately precedes the lane: True" },
+    { "cmd": "git diff HEAD -- .github/workflows/docker-e2e.yml", "log": "docker-e2e.diff", "exit": 0, "observed": "1 file changed, 26 insertions(+) — the added comment block + the step; nothing else in the file moved" }
+  ],
+  "bounds": [
+    "GITHUB ACTIONS CANNOT BE RUN HERE. The claim that the step fixes the seven rows is NOT verified — the proof is the NEXT CI run on the PR, which the captain pushes. What IS verified is that the packer exits 0 and stages the artifact in the checkout condition (tracked files only, no bun, no dist/mpd-package).",
+    "The checkout condition was reproduced as a tracked-files-only extraction (`git ls-files -z | tar`), not by a real `actions/checkout` on a runner.",
+    "The packer was NOT run without `--out` in this session (that mutates the canonical `dist/mpd-package`); both runs staged elsewhere, so the canonical artifact is untouched.",
+    "Not run here: bun test / typecheck / test:qa / verify-pack-closure / the Docker lane — a workflow-YAML edit reaches none of them, and verify:gates covers the static set including workflows.",
+    "The 118/70/7/41 numbers are the CI job's own summary, quoted from the task's run 37955257566 / job 113904031165; they were not re-measured here."
+  ],
+  "scopeCheck": "git status shows exactly: ` M .github/workflows/docker-e2e.yml` and `?? evidence/restore/acceptance/sI/` from this session. (Pre-existing and untouched: ?? .bun/ and four untracked evidence/docker|dsh-qa|extensions stamp dirs.)"
+}
