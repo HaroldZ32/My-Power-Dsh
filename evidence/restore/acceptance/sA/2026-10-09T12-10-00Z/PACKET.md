@@ -383,7 +383,7 @@ and the wire-shape claim are all backed by an experiment, not by inspection.
 
 | Command | Observed | Log |
 |---|---|---|
-| `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` | `skills` `treeSha cd156171… → cb6df509…`, `fileCount 372 → 373`; applied to `VENDOR_LOCK.json` (2 lines changed, `git diff --stat`) | `repin-vendor.txt` |
+| `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` | `skills` `treeSha cd156171… → cb6df509…`, `fileCount 372 → 373`; applied to `VENDOR_LOCK.json` (2 lines changed, `git diff --stat`). **SUPERSEDED by the captain's amendment — read §6 before quoting this row** | `repin-vendor.txt` |
 | `node scripts/repin-vendor.ts --check` | `CHECK : GREEN - lock matches the working tree (drift=0, problems=0)` — **EXIT=0** | `repin-vendor.txt` |
 | `bun run verify:vendor` | `PASS - 7 shipped asset(s) fingerprinted` — **EXIT=0** | `repin-vendor.txt` |
 | `bun run test:qa` (every QA `--self-test`) | **EXIT=0** | `test-qa.log` |
@@ -464,3 +464,52 @@ in `git status` next to the five `skills/**` files and the one new file, §1).
    redirects to a bare `0`, and the string appears nowhere in the repo or the harness install — so it is
    reported rather than deleted: guessing at authorship and removing somebody else's artifact is exactly
    the absorption this lane is told not to do. It is named here so it is not silently committed.
+   **CLOSED (2026-10-09, captain):** the file was the captain's own — an `awk` quoting bug in a credential
+   probe (`print … > 0`). The captain verified the resolved path, read its bytes and removed it. Left in
+   this packet as the record of a finding that was correctly routed rather than absorbed.
+
+## 6. ERRATUM — appended 2026-10-09T12:25Z, after T1 was completed
+
+Two facts were measured after this packet was frozen. Neither changes any S-A code claim; both change how
+ONE row of §3.8 must be read, so they are recorded rather than left for a verifier to discover.
+
+**(a) The `skills` fingerprint rule was wrong, and the wave's re-pin has been superseded.** The re-pin in
+§3.8 was computed over the WORKING TREE, which contains two files the repository deliberately ignores.
+Measured here, read-only:
+
+    $ git ls-files skills/ | wc -l          -> 371      # what a clean checkout has
+    $ find skills -type f | wc -l           -> 373      # what the working-tree rule counted
+    $ git check-ignore -v skills/frontend/references/design/ambience-skill.md
+    skills/frontend/.gitignore:7:references/design/*.md   skills/frontend/references/design/ambience-skill.md
+    $ git check-ignore -v skills/frontend/references/design/component-catalogs.md
+    skills/frontend/.gitignore:7:references/design/*.md   skills/frontend/references/design/component-catalogs.md
+
+So my `373 / cb6df509…` passed `verify:vendor` LOCALLY and could never pass in CI — the gate and the
+re-pin shared the same working-tree assumption. **The captain owns the fix** (one rule, tracked files,
+shared by the gate and the re-pin) and re-pinned once as a deliberate amendment; the lock now reads:
+
+    skills: fileCount=371  treeSha=7b697057ec9dda6897d479bfb2a9a90a388bcd64e9e7f5fea329c11fe3ef7195
+    lockedAt=2026-10-07T10:30:31Z
+    $ bun run verify:vendor   -> PASS - 7 shipped asset(s) fingerprinted   EXIT=0
+
+Read §3.8's re-pin row as "the S-A-triggered re-pin, superseded by the captain's amendment", and criterion
+10's `verify:vendor` claim as holding against the AMENDED lock (re-measured EXIT=0 above), not against the
+373-entry one.
+
+**(b) `skills/**` is nonetheless byte-identical to the §0 anchor.** Re-measured per file at the same
+moment, so the S-A evidence still describes the exact bytes it was produced from:
+
+    MATCH b2d1f9c7c25137a3  skills/dsh-qa/SKILL.md
+    MATCH db70dec12ed4543f  skills/dsh-qa/scripts/extension-isolation.ts
+    MATCH e5c4e83ce78f189b  skills/dsh-qa/scripts/lib/messages-sse.ts
+    MATCH 8ed4e2d22ea06dd4  skills/dsh-qa/scripts/lib/session-evidence.ts
+    MATCH 71a907fdb7ac2ef5  skills/dsh-qa/scripts/readonly-deny.ts
+    MATCH f340027a321223ac  skills/dsh-qa/scripts/software-smoke.ts
+
+The composite `lane-sha256` in §0 therefore no longer reproduces, **because its `VENDOR_LOCK.json`
+component moved** (the captain's amendment), not because any `skills/**` byte changed. A reviewer checking
+the anchor should compare the six file hashes above; §0's composite digest is bound to the pre-amendment
+lock and is kept verbatim as the historical measurement it was.
+
+No file under `skills/**` was read-modified or written by this stream after the re-pin, and no re-pin was
+run again here.
