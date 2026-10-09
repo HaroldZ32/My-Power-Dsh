@@ -1,0 +1,20 @@
+dsh: reasoning:
+I need to list all tools from the MCP servers: ast_grep, codegraph, grep_app, context7, and lsp. Looking at what's available, I can see mcp__ast_grep__rewrite, mcp__ast_grep__scan, and mcp__ast_grep__search from ast_grep, plus mcp__codegraph__codegraph_explore from codegraph. I notice grep_app and context7 don't have any tools exposed in the current schema.
+
+I also see the full set of LSP tools: mcp__lsp__find_definition, find_implementation, find_references, find_workspace_symbols, get_diagnostics, get_hover, get_incoming_calls, get_outgoing_calls, prepare_call_hierarchy, rename_symbol, rename_symbol_strict, and restart_server. So that's 3 + 1 + 12 = 16 total MCP tools. The user asked me not to call any tools, so I'll just list them out.
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__lsp__find_definition
+mcp__lsp__find_implementation
+mcp__lsp__find_references
+mcp__lsp__find_workspace_symbols
+mcp__lsp__get_diagnostics
+mcp__lsp__get_hover
+mcp__lsp__get_incoming_calls
+mcp__lsp__get_outgoing_calls
+mcp__lsp__prepare_call_hierarchy
+mcp__lsp__rename_symbol
+mcp__lsp__rename_symbol_strict
+mcp__lsp__restart_server

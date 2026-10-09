@@ -1,0 +1,33 @@
+{
+  "startedAt": "2026-10-09T00:37:00.068Z",
+  "finishedAt": "2026-10-09T00:43:08.511Z",
+  "docker": "Docker version 29.8.2, build 7fc2dff",
+  "compose": "Docker Compose version v5.6.0",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 438,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-BLgSTY",
+  "liveRequested": true,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "live.",
+    "boot.llmTurn",
+    "ui."
+  ],
+  "unmeasured": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick -e MPD_E2E_INSTALL_SPEC=github:HaroldZ32/My-Power-Dsh#feature/restore-three-capabilities -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 -e MPD_E2E_BROWSER=1 mpd-oneclick",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=107 failed=2 null=5 FAILED=[qa.mcpCall,qa.readonlyDeny] NULL=[build.bunInstall,build.dists,pack.distFreshRebuild,tui.mergedPanelOpens,tui.mergedPanelOrder]",
+  "exitCode": 1
+}

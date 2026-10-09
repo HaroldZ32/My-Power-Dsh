@@ -1,0 +1,3303 @@
+[driver] Docker version 29.8.2, build 7fc2dff / Docker Compose version v5.6.0
+[driver] docker mode: ROOTLESS (["name=seccomp,profile=builtin","name=rootless","name=cgroupns"])
+[driver] BUILDX_CONFIG=/tmp/mpd-docker-e2e-buildx-4E0RGF (private, writable: the sandbox denies ~/.docker/buildx)
+[driver] $ docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build
+ Image mpd-docker-e2e:local Building 
+ Image mpd-docker-e2e:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.05kB done
+#1 DONE 0.0s
+
+#2 [mpd-oneclick internal] load build definition from Dockerfile
+#2 transferring dockerfile: 6.95kB done
+#2 DONE 0.0s
+
+#3 [mpd-oneclick internal] load metadata for docker.io/library/ubuntu:24.04
+#3 DONE 0.0s
+
+#4 [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm
+#4 DONE 0.0s
+
+#5 [mpd-client node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
+#5 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
+#5 DONE 0.0s
+
+#6 [mpd-oneclick stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
+#6 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
+#6 DONE 0.0s
+
+#7 [mpd-oneclick internal] load build context
+#7 transferring context: 27.15MB 0.1s
+#7 transferring context: 42.10MB 0.2s done
+#7 DONE 0.2s
+
+#8 [mpd-client stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
+#8 CACHED
+
+#9 [mpd-oneclick stage-1  3/12] COPY . /src/
+#9 DONE 0.2s
+
+#10 [mpd-oneclick stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
+#10 DONE 0.1s
+
+#11 [mpd-client stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
+#11 DONE 0.0s
+
+#12 [mpd-oneclick stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
+#12 DONE 0.1s
+
+#13 [mpd-client stage-1  7/12] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
+#13 DONE 0.0s
+
+#14 [mpd-client stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+#14 DONE 0.1s
+
+#15 [mpd-client stage-1  9/12] COPY docker/ui/capture.mts /opt/mpd-e2e/capture.mts
+#15 DONE 0.1s
+
+#16 [mpd-client stage-1 10/12] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
+#16 DONE 0.1s
+
+#17 [mpd-oneclick stage-1 11/12] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mts /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src
+#17 DONE 0.2s
+
+#18 [mpd-client stage-1 12/12] WORKDIR /work
+#18 DONE 0.1s
+
+#19 [mpd-client] exporting to image
+#19 exporting layers
+#19 exporting layers 1.4s done
+#19 exporting manifest sha256:372e2120560c38923ec08c94797d5d9b816a4d7106341252deee9483bb8cd37e 0.0s done
+#19 exporting config sha256:39e084615f1b6953cfdb83e94235f674c60276408f6a249e06e5810ae55cb88a 0.0s done
+#19 exporting attestation manifest sha256:d6ac6456f79345f85f85891c13530833afeaaf442362fa4db65f5402e79f8884 0.0s done
+#19 exporting manifest list sha256:d15157281ef52f1419cbc00e0cdc080798991674a8cb84426b5f011ee58ce2d8
+#19 exporting manifest list sha256:d15157281ef52f1419cbc00e0cdc080798991674a8cb84426b5f011ee58ce2d8 0.0s done
+#19 naming to docker.io/library/mpd-docker-e2e:local done
+#19 unpacking to docker.io/library/mpd-docker-e2e:local
+#19 unpacking to docker.io/library/mpd-docker-e2e:local 0.7s done
+#19 DONE 2.2s
+
+#20 [mpd-oneclick] exporting to image
+#20 exporting layers 1.4s done
+#20 exporting manifest sha256:ec99463f26c845301b186168aa9805dff9e632965ee9698b9d69c433ccf118d5 0.0s done
+#20 exporting config sha256:96fe1f96515877c101e94fe3312e4283a66e58d498a9a8eddf086ee561eff1f0 0.0s done
+#20 exporting attestation manifest sha256:0da82289a8233c25f1beb24c2706960c381ba10751dcc2f56aaa07af463e20dc 0.0s done
+#20 exporting manifest list sha256:6a4ed790728010f9ed1365333798948bd349ec4de4af5d7b8c6fe02cea2aecb9 0.0s done
+#20 naming to docker.io/library/mpd-docker-e2e:local done
+#20 unpacking to docker.io/library/mpd-docker-e2e:local 0.7s done
+#20 DONE 2.2s
+
+#21 [mpd-client] resolving provenance for metadata file
+#21 DONE 0.0s
+
+#22 [mpd-oneclick] resolving provenance for metadata file
+#22 DONE 0.0s
+ Image mpd-docker-e2e:local Built 
+ Image mpd-docker-e2e:local Built 
+[driver] image mpd-docker-e2e:local = 438 MiB
+[driver] $ docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick -e MPD_E2E_INSTALL_SPEC=github:HaroldZ32/My-Power-Dsh#feature/restore-three-capabilities -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 -e MPD_E2E_BROWSER=1 mpd-oneclick
+[driver] evidence -> evidence/docker/client-install-oneclick/2026-10-09T00-14-36Z
+ Container docker-mpd-oneclick-run-2e8961d99406 Creating 
+ Container docker-mpd-oneclick-run-2e8961d99406 Created 
+===== Docker client-install E2E — 2026-10-09T00:14:40Z =====
+ubuntu image : ubuntu 24.04
+app dir      : /opt/mpd   (copy of /src)
+HOME         : /root/sandbox-home
+DSH_HOME     : /root/sandbox-dsh
+pins         : nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0
+[record] ubuntu.version=true — the base image is ubuntu:24.04
+
+----- apt: curl git ca-certificates unzip xz-utils -----
+===== STEP 01-apt-update =====
+$ apt-get update
+Get:1 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]
+Get:3 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [2021 kB]
+Get:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:5 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1546 kB]
+Get:6 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [50.0 kB]
+Get:7 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1375 kB]
+Get:8 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:9 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]
+Get:10 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]
+Get:11 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]
+Get:12 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]
+Get:13 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2166 kB]
+Get:14 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2177 kB]
+Get:15 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [67.4 kB]
+Get:16 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1702 kB]
+Get:17 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]
+Get:18 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]
+Get:19 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]
+Fetched 33.4 MB in 7s (5025 kB/s)
+Reading package lists...
+[step 01-apt-update] exit=0 seconds=7
+===== STEP 01-apt-install =====
+$ env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  git-man libbrotli1 libcurl3t64-gnutls libcurl4t64 liberror-perl
+  libevent-core-2.1-7t64 libexpat1 libgdbm-compat4t64 libgdbm6t64
+  libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0
+  libldap2 libnghttp2-14 libperl5.38t64 libpsl5t64 librtmp1 libsasl2-2
+  libsasl2-modules-db libssh-4 libssl3t64 libutempter0 openssl perl
+  perl-modules-5.38
+Suggested packages:
+  gettext-base git-daemon-run | git-daemon-sysvinit git-doc git-email git-gui
+  gitk gitweb git-cvs git-mediawiki git-svn gdbm-l10n krb5-doc krb5-user
+  perl-doc libterm-readline-gnu-perl | libterm-readline-perl-perl make
+  libtap-harness-archive-perl zip
+Recommended packages:
+  patch less ssh-client krb5-locales libldap-common publicsuffix
+  libsasl2-modules netbase
+The following NEW packages will be installed:
+  ca-certificates curl git git-man libbrotli1 libcurl3t64-gnutls libcurl4t64
+  liberror-perl libevent-core-2.1-7t64 libexpat1 libgdbm-compat4t64
+  libgdbm6t64 libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3
+  libkrb5support0 libldap2 libnghttp2-14 libperl5.38t64 libpsl5t64 librtmp1
+  libsasl2-2 libsasl2-modules-db libssh-4 libutempter0 openssl perl
+  perl-modules-5.38 tmux unzip xz-utils
+The following packages will be upgraded:
+  libssl3t64
+1 upgraded, 32 newly installed, 0 to remove and 2 not upgraded.
+Need to get 19.8 MB of archives.
+After this operation, 87.3 MB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 perl-modules-5.38 all 5.38.2-3.2ubuntu0.6 [3110 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble/main amd64 libgdbm6t64 amd64 1.23-5.1build1 [34.4 kB]
+Get:3 http://archive.ubuntu.com/ubuntu noble/main amd64 libgdbm-compat4t64 amd64 1.23-5.1build1 [6710 B]
+Get:4 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libperl5.38t64 amd64 5.38.2-3.2ubuntu0.6 [4864 kB]
+Get:5 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 perl amd64 5.38.2-3.2ubuntu0.6 [231 kB]
+Get:6 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libssl3t64 amd64 3.0.13-0ubuntu3.16 [1945 kB]
+Get:7 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 openssl amd64 3.0.13-0ubuntu3.16 [1004 kB]
+Get:8 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 ca-certificates all 20260601~24.04.1 [139 kB]
+Get:9 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libexpat1 amd64 2.6.1-2ubuntu0.6 [98.9 kB]
+Get:10 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libkrb5support0 amd64 1.20.1-6ubuntu2.10 [34.9 kB]
+Get:11 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libk5crypto3 amd64 1.20.1-6ubuntu2.10 [81.9 kB]
+Get:12 http://archive.ubuntu.com/ubuntu noble/main amd64 libkeyutils1 amd64 1.6.3-3build1 [9490 B]
+Get:13 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libkrb5-3 amd64 1.20.1-6ubuntu2.10 [348 kB]
+Get:14 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libgssapi-krb5-2 amd64 1.20.1-6ubuntu2.10 [143 kB]
+Get:15 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libnghttp2-14 amd64 1.59.0-1ubuntu0.4 [74.6 kB]
+Get:16 http://archive.ubuntu.com/ubuntu noble/main amd64 libpsl5t64 amd64 0.21.2-1.1build1 [57.1 kB]
+Get:17 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 xz-utils amd64 5.6.1+really5.4.5-1ubuntu0.3 [267 kB]
+Get:18 http://archive.ubuntu.com/ubuntu noble/main amd64 libbrotli1 amd64 1.1.0-2build2 [331 kB]
+Get:19 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg1-5ubuntu3.1 [20.4 kB]
+Get:20 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libsasl2-2 amd64 2.1.28+dfsg1-5ubuntu3.1 [53.2 kB]
+Get:21 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libldap2 amd64 2.6.10+dfsg-0ubuntu0.24.04.1 [198 kB]
+Get:22 http://archive.ubuntu.com/ubuntu noble/main amd64 librtmp1 amd64 2.4+20151223.gitfa8646d.1-2build7 [56.3 kB]
+Get:23 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libssh-4 amd64 0.10.6-2ubuntu0.5 [191 kB]
+Get:24 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libcurl4t64 amd64 8.5.0-2ubuntu10.15 [343 kB]
+Get:25 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 curl amd64 8.5.0-2ubuntu10.15 [227 kB]
+Get:26 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libcurl3t64-gnutls amd64 8.5.0-2ubuntu10.15 [336 kB]
+Get:27 http://archive.ubuntu.com/ubuntu noble/main amd64 liberror-perl all 0.17029-2 [25.6 kB]
+Get:28 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 git-man all 1:2.43.0-1ubuntu7.3 [1100 kB]
+Get:29 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 git amd64 1:2.43.0-1ubuntu7.3 [3680 kB]
+Get:30 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libevent-core-2.1-7t64 amd64 2.1.12-stable-9ubuntu2.2 [91.9 kB]
+Get:31 http://archive.ubuntu.com/ubuntu noble/main amd64 libutempter0 amd64 1.2.1-3build1 [9606 B]
+Get:32 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 tmux amd64 3.4-1ubuntu0.1 [480 kB]
+Get:33 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 unzip amd64 6.0-28ubuntu4.1 [174 kB]
+debconf: delaying package configuration, since apt-utils is not installed
+Fetched 19.8 MB in 5s (4252 kB/s)
+Selecting previously unselected package perl-modules-5.38.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 4381 files and directories currently installed.)
+Preparing to unpack .../0-perl-modules-5.38_5.38.2-3.2ubuntu0.6_all.deb ...
+Unpacking perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...
+Selecting previously unselected package libgdbm6t64:amd64.
+Preparing to unpack .../1-libgdbm6t64_1.23-5.1build1_amd64.deb ...
+Unpacking libgdbm6t64:amd64 (1.23-5.1build1) ...
+Selecting previously unselected package libgdbm-compat4t64:amd64.
+Preparing to unpack .../2-libgdbm-compat4t64_1.23-5.1build1_amd64.deb ...
+Unpacking libgdbm-compat4t64:amd64 (1.23-5.1build1) ...
+Selecting previously unselected package libperl5.38t64:amd64.
+Preparing to unpack .../3-libperl5.38t64_5.38.2-3.2ubuntu0.6_amd64.deb ...
+Unpacking libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...
+Selecting previously unselected package perl.
+Preparing to unpack .../4-perl_5.38.2-3.2ubuntu0.6_amd64.deb ...
+Unpacking perl (5.38.2-3.2ubuntu0.6) ...
+Preparing to unpack .../5-libssl3t64_3.0.13-0ubuntu3.16_amd64.deb ...
+Unpacking libssl3t64:amd64 (3.0.13-0ubuntu3.16) over (3.0.13-0ubuntu3.15) ...
+Setting up libssl3t64:amd64 (3.0.13-0ubuntu3.16) ...
+Selecting previously unselected package openssl.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6393 files and directories currently installed.)
+Preparing to unpack .../00-openssl_3.0.13-0ubuntu3.16_amd64.deb ...
+Unpacking openssl (3.0.13-0ubuntu3.16) ...
+Selecting previously unselected package ca-certificates.
+Preparing to unpack .../01-ca-certificates_20260601~24.04.1_all.deb ...
+Unpacking ca-certificates (20260601~24.04.1) ...
+Selecting previously unselected package libexpat1:amd64.
+Preparing to unpack .../02-libexpat1_2.6.1-2ubuntu0.6_amd64.deb ...
+Unpacking libexpat1:amd64 (2.6.1-2ubuntu0.6) ...
+Selecting previously unselected package libkrb5support0:amd64.
+Preparing to unpack .../03-libkrb5support0_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libkrb5support0:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libk5crypto3:amd64.
+Preparing to unpack .../04-libk5crypto3_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libkeyutils1:amd64.
+Preparing to unpack .../05-libkeyutils1_1.6.3-3build1_amd64.deb ...
+Unpacking libkeyutils1:amd64 (1.6.3-3build1) ...
+Selecting previously unselected package libkrb5-3:amd64.
+Preparing to unpack .../06-libkrb5-3_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libgssapi-krb5-2:amd64.
+Preparing to unpack .../07-libgssapi-krb5-2_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libnghttp2-14:amd64.
+Preparing to unpack .../08-libnghttp2-14_1.59.0-1ubuntu0.4_amd64.deb ...
+Unpacking libnghttp2-14:amd64 (1.59.0-1ubuntu0.4) ...
+Selecting previously unselected package libpsl5t64:amd64.
+Preparing to unpack .../09-libpsl5t64_0.21.2-1.1build1_amd64.deb ...
+Unpacking libpsl5t64:amd64 (0.21.2-1.1build1) ...
+Selecting previously unselected package xz-utils.
+Preparing to unpack .../10-xz-utils_5.6.1+really5.4.5-1ubuntu0.3_amd64.deb ...
+Unpacking xz-utils (5.6.1+really5.4.5-1ubuntu0.3) ...
+Selecting previously unselected package libbrotli1:amd64.
+Preparing to unpack .../11-libbrotli1_1.1.0-2build2_amd64.deb ...
+Unpacking libbrotli1:amd64 (1.1.0-2build2) ...
+Selecting previously unselected package libsasl2-modules-db:amd64.
+Preparing to unpack .../12-libsasl2-modules-db_2.1.28+dfsg1-5ubuntu3.1_amd64.deb ...
+Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Selecting previously unselected package libsasl2-2:amd64.
+Preparing to unpack .../13-libsasl2-2_2.1.28+dfsg1-5ubuntu3.1_amd64.deb ...
+Unpacking libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Selecting previously unselected package libldap2:amd64.
+Preparing to unpack .../14-libldap2_2.6.10+dfsg-0ubuntu0.24.04.1_amd64.deb ...
+Unpacking libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...
+Selecting previously unselected package librtmp1:amd64.
+Preparing to unpack .../15-librtmp1_2.4+20151223.gitfa8646d.1-2build7_amd64.deb ...
+Unpacking librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2build7) ...
+Selecting previously unselected package libssh-4:amd64.
+Preparing to unpack .../16-libssh-4_0.10.6-2ubuntu0.5_amd64.deb ...
+Unpacking libssh-4:amd64 (0.10.6-2ubuntu0.5) ...
+Selecting previously unselected package libcurl4t64:amd64.
+Preparing to unpack .../17-libcurl4t64_8.5.0-2ubuntu10.15_amd64.deb ...
+Unpacking libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...
+Selecting previously unselected package curl.
+Preparing to unpack .../18-curl_8.5.0-2ubuntu10.15_amd64.deb ...
+Unpacking curl (8.5.0-2ubuntu10.15) ...
+Selecting previously unselected package libcurl3t64-gnutls:amd64.
+Preparing to unpack .../19-libcurl3t64-gnutls_8.5.0-2ubuntu10.15_amd64.deb ...
+Unpacking libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...
+Selecting previously unselected package liberror-perl.
+Preparing to unpack .../20-liberror-perl_0.17029-2_all.deb ...
+Unpacking liberror-perl (0.17029-2) ...
+Selecting previously unselected package git-man.
+Preparing to unpack .../21-git-man_1%3a2.43.0-1ubuntu7.3_all.deb ...
+Unpacking git-man (1:2.43.0-1ubuntu7.3) ...
+Selecting previously unselected package git.
+Preparing to unpack .../22-git_1%3a2.43.0-1ubuntu7.3_amd64.deb ...
+Unpacking git (1:2.43.0-1ubuntu7.3) ...
+Selecting previously unselected package libevent-core-2.1-7t64:amd64.
+Preparing to unpack .../23-libevent-core-2.1-7t64_2.1.12-stable-9ubuntu2.2_amd64.deb ...
+Unpacking libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...
+Selecting previously unselected package libutempter0:amd64.
+Preparing to unpack .../24-libutempter0_1.2.1-3build1_amd64.deb ...
+Unpacking libutempter0:amd64 (1.2.1-3build1) ...
+Selecting previously unselected package tmux.
+Preparing to unpack .../25-tmux_3.4-1ubuntu0.1_amd64.deb ...
+Unpacking tmux (3.4-1ubuntu0.1) ...
+Selecting previously unselected package unzip.
+Preparing to unpack .../26-unzip_6.0-28ubuntu4.1_amd64.deb ...
+Unpacking unzip (6.0-28ubuntu4.1) ...
+Setting up libexpat1:amd64 (2.6.1-2ubuntu0.6) ...
+Setting up libkeyutils1:amd64 (1.6.3-3build1) ...
+Setting up libgdbm6t64:amd64 (1.23-5.1build1) ...
+Setting up libgdbm-compat4t64:amd64 (1.23-5.1build1) ...
+Setting up unzip (6.0-28ubuntu4.1) ...
+Setting up libbrotli1:amd64 (1.1.0-2build2) ...
+Setting up libpsl5t64:amd64 (0.21.2-1.1build1) ...
+Setting up libnghttp2-14:amd64 (1.59.0-1ubuntu0.4) ...
+Setting up libkrb5support0:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Setting up librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2build7) ...
+Setting up xz-utils (5.6.1+really5.4.5-1ubuntu0.3) ...
+update-alternatives: using /usr/bin/xz to provide /usr/bin/lzma (lzma) in auto mode
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzma.1.gz because associated file /usr/share/man/man1/xz.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/unlzma.1.gz because associated file /usr/share/man/man1/unxz.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzcat.1.gz because associated file /usr/share/man/man1/xzcat.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzmore.1.gz because associated file /usr/share/man/man1/xzmore.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzless.1.gz because associated file /usr/share/man/man1/xzless.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzdiff.1.gz because associated file /usr/share/man/man1/xzdiff.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzcmp.1.gz because associated file /usr/share/man/man1/xzcmp.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzgrep.1.gz because associated file /usr/share/man/man1/xzgrep.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzegrep.1.gz because associated file /usr/share/man/man1/xzegrep.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzfgrep.1.gz because associated file /usr/share/man/man1/xzfgrep.1.gz (of link group lzma) doesn't exist
+Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...
+Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Setting up libutempter0:amd64 (1.2.1-3build1) ...
+Setting up git-man (1:2.43.0-1ubuntu7.3) ...
+Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...
+Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...
+Setting up openssl (3.0.13-0ubuntu3.16) ...
+Setting up tmux (3.4-1ubuntu0.1) ...
+Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...
+Setting up ca-certificates (20260601~24.04.1) ...
+Updating certificates in /etc/ssl/certs...
+121 added, 0 removed; done.
+Setting up perl (5.38.2-3.2ubuntu0.6) ...
+Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...
+Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...
+Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...
+Setting up liberror-perl (0.17029-2) ...
+Setting up git (1:2.43.0-1ubuntu7.3) ...
+Setting up curl (8.5.0-2ubuntu10.15) ...
+Processing triggers for debianutils (5.17build1) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+Processing triggers for ca-certificates (20260601~24.04.1) ...
+Updating certificates in /etc/ssl/certs...
+0 added, 0 removed; done.
+Running hooks in /etc/ca-certificates/update.d...
+done.
+[step 01-apt-install] exit=0 seconds=10
+[record] toolchain.apt=true — apt-get update + install curl git ca-certificates unzip xz-utils tmux
+curl: curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10
+
+----- Node.js 24.19.0 -----
+[record] toolchain.node=true — node v24.21.0 and npm 11.19.0 come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org
+
+----- bun (official install script) -----
+===== STEP 03-bun =====
+$ bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash
+#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                    -=#=#   #   #                                                                  -=O#-#   #   #                                                                 -=O=#  #   #   #                                                               -=O=-#  #    #   #                                                             -=O=- #   #   #    #                                                           -=O=-   #   #   #     #                                                        -=O=-    #   #    #     #                                                      -=O=-      #   #     #    #                                                                                                                               0.0%                                                                           0.2%                                                                           0.5%                                                                           1.3%##                                                                         3.3%#####                                                                      7.2%##########                                                                14.2%###############                                                           22.0%#####################                                                     30.5%############################                                              39.9%###################################                                       48.8%#########################################                                 58.0%###############################################                           66.0%#####################################################                     73.9%##########################################################                80.8%################################################################          90.3%#######################################################################   98.7%######################################################################## 100.0%
+bun was installed successfully to /opt/toolchain/bun/bin/bun 
+Run 'bun --help' to get started
+[step 03-bun] exit=0 seconds=6
+[record] toolchain.bun=true — bun 1.4.2 on PATH, installed via official-script
+
+----- pnpm 11.23.0 (required by 'dsh plugin') -----
+===== STEP 04-pnpm =====
+$ npm i -g pnpm@11.23.0
+
+added 1 package in 3s
+
+1 package is looking for funding
+  run `npm fund` for details
+[step 04-pnpm] exit=0 seconds=3
+[record] toolchain.pnpm=true — required by 'dsh plugin' (it forwards to pnpm), available on PATH
+
+----- @deepseek-ai/dsh@0.2.0-rc.2 -----
+===== STEP 05-dsh =====
+$ npm i -g @deepseek-ai/dsh@0.2.0-rc.2
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 538 packages in 60s
+
+63 packages are looking for funding
+  run `npm fund` for details
+npm warn install-scripts 5 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @deepseek-ai/dsh-subprocess-local@0.2.0-rc.2 (postinstall: node scripts/ensure-spawn-helper.mjs)
+npm warn install-scripts   koffi@3.1.1 (install: node ./cnoke.cjs -P . -D src/koffi --prebuild --release)
+npm warn install-scripts   node-pty@1.2.0-beta.15 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)
+npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.
+[step 05-dsh] exit=0 seconds=60
+[record] harness.version=true — npm i -g then 'dsh --version' printed the pin exactly
+
+----- build-context filter (did the image carry host state?) -----
+[record] copy.contextFiltered=true — the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed; the ONLY packed output it carries is dist/mpd-package, which is the subject of the pack assertions
+
+----- copy the checkout to /opt/mpd -----
+===== STEP 06-copy =====
+$ cp -a /src/. /opt/mpd/
+[step 06-copy] exit=0 seconds=0
+[record] copy.repo=true — package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present
+
+----- one-click mode: build the scratch git repository the spec will pull -----
+===== STEP 06b-oneclick-repo =====
+$ bash -c rm -rf '/opt/oneclick-src' '/opt/oneclick.git'     && mkdir -p '/opt/oneclick-src'     && cp -a '/src/.' '/opt/oneclick-src/'     && cd '/opt/oneclick-src'     && git init -q .     && git add -A     && git -c user.email=e2e@local -c user.name='mpd e2e' commit -qm 'one-click fixture: the build context as committed'     && git clone -q --bare . '/opt/oneclick.git'
+[step 06b-oneclick-repo] exit=0 seconds=1
+[record] oneclick.scratchRepo=true — the scratch remote (a git repository of the build context) exists, so the spec resolves through the real git path
+
+----- bun install -----
+[record] build.bunInstall=null — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
+
+----- rebuild every packages/*/dist from source (canonical repo-root bun build) -----
+[record] build.dists=null — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
+
+----- dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh#feature/restore-three-capabilities (the whole install, mode=oneclick) -----
+===== STEP 09-install =====
+$ bash -c cd '/opt/mpd' && dsh plugin --profile web add 'github:HaroldZ32/My-Power-Dsh#feature/restore-three-capabilities'
+dsh: initialized profile web at /root/sandbox-dsh/profiles/web
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /root/sandbox-home/.local/share/pnpm/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 0, reused 0, downloaded 1, added 0
+Progress: resolved 1, reused 0, downloaded 1, added 0
+Progress: resolved 8, reused 0, downloaded 1, added 0
+Progress: resolved 38, reused 0, downloaded 1, added 0
+Progress: resolved 81, reused 0, downloaded 1, added 0
+Progress: resolved 176, reused 0, downloaded 1, added 0
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @mpd-dsh/mpd github:HaroldZ32/My-Power-Dsh#feature/restore-three-capabilities
+
+Packages: +181
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 183, reused 0, downloaded 150, added 149
+Progress: resolved 183, reused 0, downloaded 177, added 180
+Progress: resolved 183, reused 0, downloaded 178, added 180
+Progress: resolved 183, reused 0, downloaded 178, added 181, done
+Done in 29.3s using pnpm v11.23.0
+[step 09-install] exit=0 seconds=30
+===== STEP 09a-install-closure =====
+$ node /opt/mpd-e2e/lib/owed-install.ts --install-log /work/steps/09-install.log --exit 0 --roots /root/sandbox-dsh/profiles/web,/opt/mpd --state /work/assertions.ndjson
+[owed-install] install.buildScripts=true — the client install completed with NO unapproved build script: exit 0, no ERR_PNPM_IGNORED_BUILDS anywhere in the install output, no ignored-build-scripts warning, and the 2 installed closure root(s) were walked for manifests declaring preinstall/install/postinstall/prepare (11 found)
+[step 09a-install-closure] exit=0 seconds=0
+[record] install.exit=true — one command installed the bundle into the profile
+[record] install.profileDep=true — the profile records the GIT spec pnpm resolved — the published-package path, not a checkout link — and keeps the box bundles
+[record] install.installedTree=true — the installed bundle resolves inside the profile
+
+----- one-click packaging: what the published package carried -----
+[record] oneclick.requiredPaths=true — every path the rows and the display metadata name is present in the installed package
+[record] oneclick.filesAllowlist=true — the files allowlist was honoured: no frozen evidence tree, no git history, no lane scratch in the installed package
+[record] oneclick.distByteIdentical=true — 32 committed dist entry/entries landed byte-identical, so the install ran no build and shipped what the source tree builds
+===== STEP 08c-pack =====
+$ node /opt/mpd-e2e/lib/owed-pack.ts --artifact /src/dist/mpd-package --source /src --rebuild /opt/mpd --state /work/assertions.ndjson
+[owed-pack] pack.present=true — the packed artifact travelled into the container and is graded below
+[owed-pack] artifact files=609 bytes=13887860
+[owed-pack] pack.licenceCoherence=true — the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does
+[owed-pack] pack.declarationCoherence=true — every declaration the artifact makes about itself holds: 20 files entries resolve, its 2 bundle-patch layers exist, all 27 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along
+[owed-pack] pack.staticCoherence=true — the artifact agrees with the tree it was cut from: 607 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing
+[owed-pack] pack.distFreshRebuild=true — every one of the 31 built entries in the artifact is byte-identical to the container's own from-source rebuild — the packed dist is FRESH, not merely present
+[step 08c-pack] exit=0 seconds=0
+
+----- COMPOSITION ONLY: dsh --profile web --dump-config -----
+===== STEP 10-dump =====
+$ node /opt/mpd/scripts/dump-config.ts --profile web
+[dump-config] COMPOSITION ONLY — rows composed, no plugin code executed.
+[dump-config] The flag COMPOSES rows (base / bundle / patch / preset layers) and NEVER executes plugin code,
+[dump-config] so it CANNOT witness a plugin load, an apply abort or a schema rejection.
+[dump-config] Measured (AGENTS.md §4): `dsh --profile mpd --dump-config` exited 0 with the mpd-workmate row
+[dump-config] present while the real boot of the same profile could not load the tree.
+[dump-config] profile: web
+[dump-config] command: dsh --profile web --dump-config
+[dump-config] For a LOAD proof run a mounting boot instead: `bun skills/dsh-qa/scripts/bundle-lifecycle.ts`,
+[dump-config] `node skills/dsh-qa/scripts/preset-conformance.ts`, or a boot with registration instrumentation.
+[dump-config] ---- the composed rows below are the child's own output ----
+# == @deepseek-ai/dsh-base
+- id: tool-plugin-manager
+  name: '@deepseek-ai/dsh-plugin-manager/tools'
+  disabled: true
+- id: plugin-manager
+  name: '@deepseek-ai/dsh-plugin-manager'
+  disabled: !!js '!ctx.get(''profileContext'')'
+- id: timer
+  name: '@deepseek-ai/cordis-plugin-timer'
+- id: hmr
+  name: '@deepseek-ai/dsh-hmr'
+  disabled: !!js '!ctx.get(''profileContext'')'
+  config:
+    root: []
+- id: llm
+  name: '@deepseek-ai/dsh-llm'
+- id: deepseek-llm-api-extensions
+  name: '@deepseek-ai/dsh-deepseek-llm-api-extensions'
+- id: session
+  name: '@deepseek-ai/dsh-session'
+- id: session-log-deepseek
+  name: '@deepseek-ai/dsh-session-log-deepseek'
+- id: typert
+  name: '@deepseek-ai/dsh-typert-registry'
+- id: typert-loader
+  name: '@deepseek-ai/dsh-typert-loader'
+- id: typert-gateway
+  name: '@deepseek-ai/dsh-api-gateway'
+- id: session-title
+  name: '@deepseek-ai/dsh-session-title'
+  config:
+    fallbackMaxWords: 5
+    fallbackMaxBytes: 40
+    maxTitleBytes: 80
+- id: session-title-llm
+  name: '@deepseek-ai/dsh-session-title-first-prompt-llm'
+  config:
+    targetWords: 5
+    targetCjkCharacters: 10
+    maxInputBytes: 4096
+    maxOutputTokens: 64
+    timeoutMs: 60000
+- id: user-questions
+  name: '@deepseek-ai/dsh-user-questions'
+- id: agent
+  name: '@deepseek-ai/dsh-agent'
+- id: plugin-package-inventory-deepseek
+  name: '@deepseek-ai/dsh-plugin-package-inventory-deepseek'
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-flash
+- id: jobs
+  name: '@deepseek-ai/dsh-jobs-local'
+- id: llm-retry
+  name: '@deepseek-ai/dsh-llm-retry'
+- id: config-editor
+  name: '@deepseek-ai/dsh-config-editor'
+  disabled: !!js '!ctx.get(''profileContext'')'
+- id: settings
+  name: '@deepseek-ai/dsh-settings'
+  disabled: !!js '!ctx.get(''profileContext'')'
+- id: authorization
+  name: '@deepseek-ai/dsh-authorization'
+- id: deepseek-account
+  name: '@deepseek-ai/dsh-deepseek-account-platform'
+  config:
+    desktopPlatform: !!js >-
+      ctx.get('profileContext')?.name === 'desktop' && ['darwin',
+      'win32'].includes(process.platform) ? process.platform : null
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+- id: attachment-local
+  name: '@deepseek-ai/dsh-attachment-local'
+- id: session-query-sqlite
+  name: '@deepseek-ai/dsh-session-query-sqlite'
+  config:
+    path: ':memory:'
+    openAt: never
+- id: session-projection
+  name: '@deepseek-ai/dsh-session-projection'
+- id: storage
+  name: '@deepseek-ai/dsh-storage'
+- id: storage-json
+  name: '@deepseek-ai/dsh-storage-json'
+  config:
+    root: !!js dshHomePath('storages')
+- id: storage-domain
+  name: '@deepseek-ai/dsh-storage-domain'
+  config:
+    backend: json
+- id: session-projection-cache
+  name: '@deepseek-ai/dsh-session-projection-cache'
+  config:
+    writeEveryEvents: 200
+    writeIntervalMs: 5000
+- id: otel
+  name: '@deepseek-ai/dsh-otel'
+- id: session-telemetry-otel
+  name: '@deepseek-ai/dsh-session-telemetry-otel'
+  config:
+    mode: !!js process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'
+    shutdownTimeoutMillis: 3000
+    maxRequestBytes: 4000000
+    exporter:
+      url: !!js >-
+        process.env.DSH_TELEMETRY_OTLP_URL ??
+        'https://dsh-otel-collector.deepseeksvc.com/v1/logs'
+      compression: gzip
+      timeoutMillis: 1000
+    processor:
+      scheduledDelayMillis: 10000
+      maxQueueSize: 2048
+      maxExportBatchSize: 2048
+      exportTimeoutMillis: 1500
+- id: subprocess
+  name: '@deepseek-ai/dsh-subprocess-local'
+- id: sandbox
+  name: '@deepseek-ai/dsh-sandbox-local'
+- id: sandbox-policy
+  name: '@deepseek-ai/dsh-sandbox-policy'
+  config:
+    mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'
+    workspaceRoot: !!js process.cwd()
+- id: bash-sandbox
+  name: '@deepseek-ai/dsh-bash-sandbox'
+  disabled: !!js process.platform === 'win32'
+  config:
+    timeoutMs: 60000
+- id: pwsh-sandbox
+  name: '@deepseek-ai/dsh-pwsh-sandbox'
+  disabled: !!js process.platform !== 'win32'
+- id: approval
+  name: '@deepseek-ai/dsh-user-approval'
+  config:
+    policy: !!js >-
+      (process.env.DSH_PERMISSION_MODE ?? 'workspace-write') ===
+      'danger-full-access' ? 'never' : 'ask'
+- id: permission
+  name: '@deepseek-ai/dsh-permission-presets'
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+- id: shell-env
+  name: '@deepseek-ai/dsh-shell-env'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: true
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: true
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: fs-observation-policy
+  name: '@deepseek-ai/dsh-fs-observation-policy'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+  disabled: true
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+  disabled: true
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: skill
+  name: '@deepseek-ai/dsh-skill'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: skill-badge
+  name: '@deepseek-ai/dsh-skill-badge'
+  disabled: true
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: commands
+  name: '@deepseek-ai/dsh-commands'
+- id: command-feedback
+  name: '@deepseek-ai/dsh-command-feedback'
+- id: goal
+  name: '@deepseek-ai/dsh-goal'
+- id: goal-round-driver
+  name: '@deepseek-ai/dsh-goal-round-driver'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: command-goal
+  name: '@deepseek-ai/dsh-command-goal'
+  disabled: true
+- id: plan-mode
+  name: '@deepseek-ai/dsh-plan-mode'
+  config:
+    section: >
+      You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or
+      the user switches the session mode. Imperative language to implement
+      changes means plan the implementation, not execute it. A user's
+      conversational agreement — including an answer confirming something you
+      asked — approves nothing and does not end plan mode; fold the confirmed
+      decision into the plan and submit it through exit_plan_mode.
+
+
+      Explore first. Use non-mutating reads, searches, static analysis, and
+      checks to ground the plan in the actual repository. Do not edit or write
+      files, change configuration, run formatters or code generation that
+      rewrites tracked files, commit, or otherwise carry out the plan. Prefer
+      existing functions and patterns over new machinery.
+
+
+      The tool catalog stays the same across modes for request-cache stability.
+      These plan-mode rules override any later tool description or guidance that
+      suggests using mutation tools; those tools remain listed only to keep the
+      request shape stable. Do not use todo_write to track this planning phase:
+      it tracks implementation after an approved plan, while the plan itself
+      belongs in exit_plan_mode.
+
+
+      Resolve discoverable facts by inspection. Use ask_user_question only for
+      user-owned choices or material ambiguity that inspection cannot answer. Do
+      not ask the user where code lives or how current behavior works when you
+      can find out.
+
+
+      Make the plan decision-complete: state the goal and success criteria;
+      group implementation changes by subsystem; identify public API, schema,
+      and data-flow changes; cover edge cases, failure modes, tests, acceptance
+      criteria, and explicit assumptions. Keep it concise enough to review but
+      detailed enough that another engineer can implement it without making
+      design decisions.
+
+
+      When ready, call exit_plan_mode with the complete plan markdown, starting
+      with a # title. Make exit_plan_mode the only and final tool call in that
+      assistant response: it presents the plan for approval, and implementation
+      begins only in a later step after approval. Do not paste the final plan as
+      a plain reply or ask "should I proceed?" through prose or
+      ask_user_question. If review rejects it, incorporate the feedback and
+      present again. If the review channel is unavailable or aborted, stay in
+      plan mode and ask the user to switch modes manually; do not proceed with
+      implementation.
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: token-meter
+  name: '@deepseek-ai/dsh-token-meter'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: compaction-basic
+  name: '@deepseek-ai/dsh-compaction-basic'
+  disabled: true
+- id: command-compact
+  name: '@deepseek-ai/dsh-command-compact'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: subagent
+  name: '@deepseek-ai/dsh-subagent'
+- id: subagent-spawn-in-process
+  name: '@deepseek-ai/dsh-subagent-spawn-in-process'
+  config:
+    providerName: spawn
+- id: subagent-fork-in-process
+  name: '@deepseek-ai/dsh-subagent-fork-in-process'
+  config:
+    providerName: fork
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-subagent-control
+  name: '@deepseek-ai/dsh-tool-subagent-control'
+  disabled: true
+- id: tool-subagent-list-agents
+  name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+  disabled: true
+- id: tool-subagent
+  name: '@deepseek-ai/dsh-tool-subagent'
+  config:
+    provider: spawn
+    toolName: subagent
+    backgroundMode: continuable
+  disabled: true
+- id: tool-subagent-fork
+  name: '@deepseek-ai/dsh-tool-subagent'
+  config:
+    provider: fork
+    toolName: subagent_fork
+    backgroundMode: one-shot
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: ptc-runtime
+  name: '@deepseek-ai/dsh-ptc-runtime-node'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: workflow-ptc
+  name: '@deepseek-ai/dsh-workflow-ptc'
+  config:
+    provider: spawn
+  disabled: true
+- id: tool-workflow
+  name: '@deepseek-ai/dsh-tool-workflow'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: timeout-policy
+  name: '@deepseek-ai/dsh-tool-call-timeout-policy'
+- id: spill-local
+  name: '@deepseek-ai/dsh-spill-local'
+- id: spill-policy
+  name: '@deepseek-ai/dsh-spill-policy'
+  config:
+    maxInlineTokens: 12500
+- id: session-checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-result-pruner
+  name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+  config:
+    thresholdChars: 8192
+    headChars: 4096
+    tailChars: 1024
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: image-offload
+  name: '@deepseek-ai/dsh-compaction-image-offload'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true
+  disabled: true
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: tool-ralph
+  name: '@deepseek-ai/dsh-tool-ralph'
+  disabled: true
+  config:
+    subagentProvider: spawn
+    maxRounds: 64
+- id: repeat-tool-reminder
+  name: '@deepseek-ai/dsh-repeat-tool-reminder'
+  config:
+    thresholds:
+      - 3
+      - 5
+      - 8
+    argumentsPreviewChars: 500
+- id: web
+  name: '@deepseek-ai/dsh-web'
+  config:
+    searchProvider: deepseek-official
+    fetchProvider: http
+- id: web-search-deepseek
+  name: '@deepseek-ai/dsh-web-search-deepseek'
+  config:
+    apiKeyEnv: DEEPSEEK_API_KEY
+- id: web-fetch-http
+  name: '@deepseek-ai/dsh-web-fetch-http'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: true
+    searchTimeoutMs: 60000
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: mcp-resources
+  name: '@deepseek-ai/dsh-mcp-resources'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tools
+  name: '@deepseek-ai/dsh-tools'
+  config:
+    mode: !!js process.env.DSH_TOOLS_MODE
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+  config:
+    personaSuffix: Your working directory is {{cwd}}.
+    personaPrefix: You are a coding agent powered by the {{model}} model.
+# == @deepseek-ai/dsh-base
+- id: agent-loop
+  name: '@deepseek-ai/dsh-agent-loop'
+  config:
+    agents: []
+- id: fs-sandbox
+  name: '@deepseek-ai/dsh-fs-sandbox'
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+- id: llm-deepseek-account
+  name: '@deepseek-ai/dsh-llm-deepseek-account'
+# == @deepseek-ai/dsh-web-app
+- id: desktop-product-telemetry
+  name: '@deepseek-ai/dsh-host-product-telemetry-otel'
+  disabled: !!js ctx.get('profileContext')?.name !== 'desktop'
+  config:
+    scheduledDelayMillis: 30000
+    timeoutMillis: 15000
+    exportTimeoutMillis: 20000
+    shutdownTimeoutMillis: 2000
+    serviceName: deepseek-harness-desktop
+    serviceVersion: !!js process.env.DSH_CLIENT_VERSION
+    endpoint: !!js process.env.DSH_PRODUCT_ANALYTICS_OTLP_URL
+- id: product-analytics
+  name: '@deepseek-ai/dsh-client-product-analytics'
+  disabled: !!js ctx.get('profileContext')?.name !== 'desktop'
+  config:
+    enabled: true
+    appVersion: !!js process.env.DSH_CLIENT_VERSION
+- id: subagent-model-selection-settings
+  name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
+- id: message-feedback
+  name: '@deepseek-ai/dsh-message-feedback'
+  config:
+    maxNoteBytes: 8192
+- id: session-log-download
+  name: '@deepseek-ai/dsh-session-log-export'
+- id: open-in-app
+  name: '@deepseek-ai/dsh-host-open-in-app'
+  config:
+    probeTimeoutMs: 10000
+    iconTimeoutMs: 10000
+    launchWatchMs: 1000
+- id: ui-open-in-app
+  name: '@deepseek-ai/dsh-client-ui-open-in-app'
+- id: workspace
+  name: '@deepseek-ai/dsh-workspace'
+- id: session-reference
+  name: '@deepseek-ai/dsh-session-reference'
+- id: file-reference-local
+  name: '@deepseek-ai/dsh-file-reference-local'
+- id: session-stats
+  name: '@deepseek-ai/dsh-session-stats'
+- id: session-turn-outline
+  name: '@deepseek-ai/dsh-session-turn-outline'
+- id: directory-picker
+  name: '@deepseek-ai/dsh-host-directory-picker-auto'
+- id: plugin-inventory
+  name: '@deepseek-ai/dsh-host-plugin-inventory'
+- id: session-controller
+  name: '@deepseek-ai/dsh-api-session-controller'
+- id: job-controller
+  name: '@deepseek-ai/dsh-api-job-controller'
+- id: terminal-controller
+  name: '@deepseek-ai/dsh-api-terminal-controller'
+- id: workspace-files
+  name: '@deepseek-ai/dsh-api-workspace-files'
+- id: ui-settings-account
+  name: '@deepseek-ai/dsh-client-ui-settings-account'
+- id: account-controller
+  name: '@deepseek-ai/dsh-api-account-controller'
+- id: settings-controller
+  name: '@deepseek-ai/dsh-api-settings-controller'
+- id: workspace-controller
+  name: '@deepseek-ai/dsh-api-workspace-controller'
+- id: cordis-host-runner
+  name: '@deepseek-ai/dsh-cordis-host-runner'
+- id: cordis-inspect-providers
+  name: '@deepseek-ai/dsh-tool-cordis/host'
+- id: web-startup
+  name: '@deepseek-ai/dsh-web-app/startup'
+- id: webserver
+  name: '@deepseek-ai/dsh-host-webserver'
+  inject:
+    - webStartup
+  config:
+    host: !!js ctx.webStartup.host ?? '127.0.0.1'
+    port: !!js ctx.webStartup.port ?? 3080
+    compression: gzip
+    compressionLevel: 1
+    compressionThresholdBytes: 1024
+- id: web-runtime
+  name: '@deepseek-ai/dsh-web-app'
+  inject:
+    - webStartup
+  config:
+    openBrowser: !!js ctx.webStartup.openBrowser
+    printUrl: true
+    surfaceContext: true
+    trustedHosts: !!js ctx.webStartup.trustedHosts
+- id: client-hmr
+  name: '@deepseek-ai/dsh-client-hmr'
+- id: modules
+  name: '@deepseek-ai/dsh-client-modules'
+- id: connection
+  name: '@deepseek-ai/dsh-client-connection'
+  inject:
+    - webRuntime
+  config:
+    trustedHosts: !!js ctx.webRuntime.trustedHosts
+- id: file-upload
+  name: '@deepseek-ai/dsh-client-file-upload'
+- id: api-remotes
+  name: '@deepseek-ai/dsh-api-remotes'
+- id: cordis-client-runner
+  name: '@deepseek-ai/dsh-cordis-client-runner'
+- id: ui-theme
+  name: '@deepseek-ai/dsh-client-ui-theme'
+- id: locale
+  name: '@deepseek-ai/dsh-client-locale'
+- id: shortcuts
+  name: '@deepseek-ai/dsh-client-shortcuts'
+- id: ui-shortcuts
+  name: '@deepseek-ai/dsh-client-ui-shortcuts'
+- id: ui-layout
+  name: '@deepseek-ai/dsh-client-ui-layout'
+- id: ui-renderer
+  name: '@deepseek-ai/dsh-client-ui-renderer'
+- id: ui-session
+  name: '@deepseek-ai/dsh-client-ui-session'
+- id: resources
+  name: '@deepseek-ai/dsh-client-resources'
+- id: ui-sidebar
+  name: '@deepseek-ai/dsh-client-ui-sidebar'
+- id: ui-sidebar-right
+  name: '@deepseek-ai/dsh-client-ui-sidebar-right'
+- id: office-to-pdf
+  name: '@deepseek-ai/dsh-office-to-pdf'
+- id: ui-sidebar-documentpreview
+  name: '@deepseek-ai/dsh-client-ui-sidebar-documentpreview'
+- id: ui-sidebar-browser
+  name: '@deepseek-ai/dsh-client-ui-sidebar-browser'
+  disabled: !!js ctx.get('profileContext')?.name !== 'desktop'
+- id: ui-sidebar-terminal
+  name: '@deepseek-ai/dsh-client-ui-sidebar-terminal'
+- id: ui-sidebar-files
+  name: '@deepseek-ai/dsh-client-ui-sidebar-files'
+- id: ui-settings
+  name: '@deepseek-ai/dsh-client-ui-settings'
+- id: ui-settings-general
+  name: '@deepseek-ai/dsh-client-ui-settings-general'
+- id: ui-settings-models
+  name: '@deepseek-ai/dsh-client-ui-settings-models'
+- id: ui-plugin-manager
+  name: '@deepseek-ai/dsh-client-ui-plugin-manager'
+- id: ui-settings-plugin-inventory
+  name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'
+- id: ui-conversation
+  name: '@deepseek-ai/dsh-client-ui-conversation'
+- id: ui-approval
+  name: '@deepseek-ai/dsh-client-ui-approval'
+- id: ui-chat
+  name: '@deepseek-ai/dsh-client-ui-chat'
+- id: ui-brand-official
+  name: '@deepseek-ai/dsh-client-ui-brand-official'
+- id: ui-attachment
+  name: '@deepseek-ai/dsh-client-ui-attachment'
+- id: ui-tool
+  name: '@deepseek-ai/dsh-client-ui-tool'
+- id: ui-cordis
+  name: '@deepseek-ai/dsh-client-ui-cordis'
+- id: ui-deliverables
+  name: '@deepseek-ai/dsh-client-ui-deliverables'
+- id: workspace-changes
+  name: '@deepseek-ai/dsh-workspace-changes'
+- id: ui-workspace
+  name: '@deepseek-ai/dsh-client-ui-workspace'
+- id: ui-workflow-run
+  name: '@deepseek-ai/dsh-client-ui-workflow-run'
+- id: ui-input-trigger
+  name: '@deepseek-ai/dsh-client-ui-input-trigger'
+- id: ui-commands
+  name: '@deepseek-ai/dsh-client-ui-commands'
+- id: ui-skill
+  name: '@deepseek-ai/dsh-client-ui-skill'
+- id: ui-subagent
+  name: '@deepseek-ai/dsh-client-ui-subagent'
+- id: ui-reference
+  name: '@deepseek-ai/dsh-client-ui-reference'
+- id: ui-jobs
+  name: '@deepseek-ai/dsh-client-ui-jobs'
+- id: ui-goal
+  name: '@deepseek-ai/dsh-client-ui-goal'
+- id: ui-message-feedback
+  name: '@deepseek-ai/dsh-client-ui-message-feedback'
+- id: ui-model-selection
+  name: '@deepseek-ai/dsh-client-ui-model-selection'
+- id: ui-permission
+  name: '@deepseek-ai/dsh-client-ui-permission-presets'
+- id: ui-agent-preset
+  name: '@deepseek-ai/dsh-client-ui-agent-preset'
+- id: ui-settings-session-log
+  name: '@deepseek-ai/dsh-client-ui-settings-session-log'
+- id: ui-settings-plugins
+  name: '@deepseek-ai/dsh-client-ui-settings-plugins'
+- id: ui-settings-shell
+  name: '@deepseek-ai/dsh-client-ui-settings-shell'
+- id: ui-settings-agent-loop
+  name: '@deepseek-ai/dsh-client-ui-settings-agent-loop'
+- id: ui-settings-subagent
+  name: '@deepseek-ai/dsh-client-ui-settings-subagent'
+- id: ui-settings-web-search
+  name: '@deepseek-ai/dsh-client-ui-settings-web-search'
+- id: ui-plan
+  name: '@deepseek-ai/dsh-client-ui-plan'
+- id: ui-user-questions
+  name: '@deepseek-ai/dsh-client-ui-user-questions'
+- id: ui-trajectory
+  name: '@deepseek-ai/dsh-client-ui-trajectory'
+- id: agent-preset-registry
+  name: '@deepseek-ai/dsh-agent-preset-registry'
+  config:
+    default: standard
+- id: preset-standard
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: standard
+    order: 1
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          suffix: Your working directory is {{cwd}}.
+          prefix: You are a coding agent powered by the {{model}} model.
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+      - id: tool-jobs
+        name: '@deepseek-ai/dsh-tool-jobs'
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+      - id: command-goal
+        name: '@deepseek-ai/dsh-command-goal'
+      - id: tool-goal
+        name: '@deepseek-ai/dsh-tool-goal'
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: >
+                You are in plan mode. Stay in plan mode until exit_plan_mode
+                succeeds or the user switches the session mode. Imperative
+                language to implement changes means plan the implementation, not
+                execute it. A user's conversational agreement — including an
+                answer confirming something you asked — approves nothing and
+                does not end plan mode; fold the confirmed decision into the
+                plan and submit it through exit_plan_mode.
+
+
+                Explore first. Use non-mutating reads, searches, static
+                analysis, and checks to ground the plan in the actual
+                repository. Do not edit or write files, change configuration,
+                run formatters or code generation that rewrites tracked files,
+                commit, or otherwise carry out the plan. Prefer existing
+                functions and patterns over new machinery.
+
+
+                The tool catalog stays the same across modes for request-cache
+                stability. These plan-mode rules override any later tool
+                description or guidance that suggests using mutation tools;
+                those tools remain listed to keep the tool catalog unchanged. Do
+                not use todo_write to track this planning phase: it tracks
+                implementation after an approved plan, while the plan itself
+                belongs in exit_plan_mode.
+
+
+                Resolve discoverable facts by inspection. Use ask_user_question
+                only for user-owned choices or material ambiguity that
+                inspection cannot answer. Do not ask the user where code lives
+                or how current behavior works when you can find out.
+
+
+                Make the plan decision-complete: state the goal and success
+                criteria; group implementation changes by subsystem; identify
+                public API, schema, and data-flow changes; cover edge cases,
+                failure modes, tests, acceptance criteria, and explicit
+                assumptions. Keep it concise enough to review but detailed
+                enough that another engineer can implement it without making
+                design decisions.
+
+
+                When ready, call exit_plan_mode with the complete plan markdown,
+                starting with a # title. Make exit_plan_mode the only and final
+                tool call in that assistant response: it presents the plan for
+                approval, and implementation begins only in a later step after
+                approval. Do not paste the final plan as a plain reply or ask
+                "should I proceed?" through prose or ask_user_question. If
+                review rejects it, incorporate the feedback and present again.
+                If the review channel is unavailable or aborted, stay in plan
+                mode and ask the user to switch modes manually; do not proceed
+                with implementation.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 8192
+              headChars: 4096
+              tailChars: 1024
+      - id: delegation
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+              modelSelectionSettings: true
+              backgroundMode: continuable
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+              backgroundMode: continuable
+          - id: tool-subagent-codex
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: codex
+              toolName: subagent_codex
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: tool-subagent-claude-code
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: claude-code
+              toolName: subagent_claude_code
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            config:
+              provider: spawn
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ralph
+            name: '@deepseek-ai/dsh-tool-ralph'
+            disabled: true
+            config:
+              subagentProvider: spawn
+              maxRounds: 64
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: true
+          searchTimeoutMs: 60000
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+      - id: tool-plugin-manager
+        name: '@deepseek-ai/dsh-plugin-manager/tools'
+        disabled: true
+- id: preset-ptc
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: ptc
+    order: 2
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          suffix: Your working directory is {{cwd}}.
+          prefix: You are a coding agent powered by the {{model}} model.
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+      - id: tool-jobs
+        name: '@deepseek-ai/dsh-tool-jobs'
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+      - id: command-goal
+        name: '@deepseek-ai/dsh-command-goal'
+      - id: tool-goal
+        name: '@deepseek-ai/dsh-tool-goal'
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: >
+                You are in plan mode. Stay in plan mode until exit_plan_mode
+                succeeds or the user switches the session mode. Imperative
+                language to implement changes means plan the implementation, not
+                execute it. A user's conversational agreement — including an
+                answer confirming something you asked — approves nothing and
+                does not end plan mode; fold the confirmed decision into the
+                plan and submit it through exit_plan_mode.
+
+
+                Explore first. Use non-mutating reads, searches, static
+                analysis, and checks to ground the plan in the actual
+                repository. Do not edit or write files, change configuration,
+                run formatters or code generation that rewrites tracked files,
+                commit, or otherwise carry out the plan. Prefer existing
+                functions and patterns over new machinery.
+
+
+                The tool catalog stays the same across modes for request-cache
+                stability. These plan-mode rules override any later tool
+                description or guidance that suggests using mutation tools;
+                those tools remain listed to keep the tool catalog unchanged. Do
+                not use todo_write to track this planning phase: it tracks
+                implementation after an approved plan, while the plan itself
+                belongs in exit_plan_mode.
+
+
+                Resolve discoverable facts by inspection. Use ask_user_question
+                only for user-owned choices or material ambiguity that
+                inspection cannot answer. Do not ask the user where code lives
+                or how current behavior works when you can find out.
+
+
+                Make the plan decision-complete: state the goal and success
+                criteria; group implementation changes by subsystem; identify
+                public API, schema, and data-flow changes; cover edge cases,
+                failure modes, tests, acceptance criteria, and explicit
+                assumptions. Keep it concise enough to review but detailed
+                enough that another engineer can implement it without making
+                design decisions.
+
+
+                When ready, call exit_plan_mode with the complete plan markdown,
+                starting with a # title. Make exit_plan_mode the only and final
+                tool call in that assistant response: it presents the plan for
+                approval, and implementation begins only in a later step after
+                approval. Do not paste the final plan as a plain reply or ask
+                "should I proceed?" through prose or ask_user_question. If
+                review rejects it, incorporate the feedback and present again.
+                If the review channel is unavailable or aborted, stay in plan
+                mode and ask the user to switch modes manually; do not proceed
+                with implementation.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 8192
+              headChars: 4096
+              tailChars: 1024
+      - id: delegation
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+              modelSelectionSettings: true
+              backgroundMode: continuable
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+              backgroundMode: continuable
+          - id: tool-subagent-codex
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: codex
+              toolName: subagent_codex
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: tool-subagent-claude-code
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: claude-code
+              toolName: subagent_claude_code
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            disabled: true
+            config:
+              provider: spawn
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+            disabled: true
+          - id: tool-ralph
+            name: '@deepseek-ai/dsh-tool-ralph'
+            disabled: true
+            config:
+              subagentProvider: spawn
+              maxRounds: 64
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: true
+          searchTimeoutMs: 60000
+      - id: tool-presentation
+        name: '@deepseek-ai/dsh-agent-tool-presentation'
+        config:
+          mode: ptc
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+      - id: tool-plugin-manager
+        name: '@deepseek-ai/dsh-plugin-manager/tools'
+        disabled: true
+- id: preset-minimal
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: minimal
+    order: 3
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          prefix: You are a helpful software engineer assistant.
+          complete: true
+          includeRuntimeContext: false
+      - id: persistent-shell
+        name: cordis:group
+        group: true
+        isolate:
+          terminals: true
+        config:
+          - id: pty
+            name: '@deepseek-ai/dsh-terminal'
+          - id: terminal-bash
+            name: '@deepseek-ai/dsh-terminal-bash'
+            disabled: !!js process.platform === 'win32'
+            config:
+              timeoutMs: 300000
+          - id: persistent-bash
+            name: '@deepseek-ai/dsh-tool-bash-persistent'
+            disabled: !!js process.platform === 'win32'
+            config:
+              timeoutMs: 300000
+              description: >-
+                Run commands in a bash shell
+
+                * When invoking this tool, the contents of the "command"
+                parameter does NOT need to be XML-escaped.
+
+                * Network access depends on the task environment. Prefer
+                configured mirrors/proxies when they are available.
+
+                * State is persistent across command calls and discussions with
+                the user.
+
+                * To inspect a particular line range of a file, e.g. lines
+                10-25, try 'sed -n 10,25p /path/to/the/file'.
+
+                * Please avoid commands that may produce a very large amount of
+                output.
+
+                * Please run long lived commands in the background, e.g. 'sleep
+                10 &' or start a server in the background.
+          - id: terminal-pwsh
+            name: '@deepseek-ai/dsh-terminal-bash'
+            disabled: !!js process.platform !== 'win32'
+            config:
+              shellDialect: pwsh
+              timeoutMs: 300000
+          - id: persistent-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh-persistent'
+            disabled: !!js process.platform !== 'win32'
+            config:
+              timeoutMs: 300000
+              description: >-
+                Run commands in a PowerShell shell
+
+                * When invoking this tool, the contents of the "command"
+                parameter does NOT need to be XML-escaped.
+
+                * You don't have access to the internet via this tool.
+
+                * State is persistent across command calls and discussions with
+                the user.
+
+                * Use native Windows paths (C:\...) and $env:NAME variables;
+                this is PowerShell, not bash.
+
+                * Please avoid commands that may produce a very large amount of
+                output.
+
+                * Please run long lived commands in the background, e.g.
+                'Start-Job' or start a server with Start-Process.
+- id: preset-cordis
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: cordis
+    order: 4
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          suffix: Your working directory is {{cwd}}.
+          prefix: You are a coding agent powered by the {{model}} model.
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+      - id: tool-jobs
+        name: '@deepseek-ai/dsh-tool-jobs'
+      - id: command-goal
+        name: '@deepseek-ai/dsh-command-goal'
+      - id: tool-goal
+        name: '@deepseek-ai/dsh-tool-goal'
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: >
+                You are in plan mode. Stay in plan mode until exit_plan_mode
+                succeeds or the user switches the session mode. Imperative
+                language to implement changes means plan the implementation, not
+                execute it. A user's conversational agreement — including an
+                answer confirming something you asked — approves nothing and
+                does not end plan mode; fold the confirmed decision into the
+                plan and submit it through exit_plan_mode.
+
+
+                Explore first. Use non-mutating reads, searches, static
+                analysis, and checks to ground the plan in the actual
+                repository. Do not edit or write files, change configuration,
+                run formatters or code generation that rewrites tracked files,
+                commit, or otherwise carry out the plan. Prefer existing
+                functions and patterns over new machinery.
+
+
+                The tool catalog stays the same across modes for request-cache
+                stability. These plan-mode rules override any later tool
+                description or guidance that suggests using mutation tools;
+                those tools remain listed to keep the tool catalog unchanged. Do
+                not use todo_write to track this planning phase: it tracks
+                implementation after an approved plan, while the plan itself
+                belongs in exit_plan_mode.
+
+
+                Resolve discoverable facts by inspection. Use ask_user_question
+                only for user-owned choices or material ambiguity that
+                inspection cannot answer. Do not ask the user where code lives
+                or how current behavior works when you can find out.
+
+
+                Make the plan decision-complete: state the goal and success
+                criteria; group implementation changes by subsystem; identify
+                public API, schema, and data-flow changes; cover edge cases,
+                failure modes, tests, acceptance criteria, and explicit
+                assumptions. Keep it concise enough to review but detailed
+                enough that another engineer can implement it without making
+                design decisions.
+
+
+                When ready, call exit_plan_mode with the complete plan markdown,
+                starting with a # title. Make exit_plan_mode the only and final
+                tool call in that assistant response: it presents the plan for
+                approval, and implementation begins only in a later step after
+                approval. Do not paste the final plan as a plain reply or ask
+                "should I proceed?" through prose or ask_user_question. If
+                review rejects it, incorporate the feedback and present again.
+                If the review channel is unavailable or aborted, stay in plan
+                mode and ask the user to switch modes manually; do not proceed
+                with implementation.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 8192
+              headChars: 4096
+              tailChars: 1024
+      - id: delegation
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+              modelSelectionSettings: true
+              backgroundMode: continuable
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+              backgroundMode: continuable
+          - id: tool-subagent-codex
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: codex
+              toolName: subagent_codex
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: tool-subagent-claude-code
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: claude-code
+              toolName: subagent_claude_code
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            config:
+              provider: spawn
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ralph
+            name: '@deepseek-ai/dsh-tool-ralph'
+            disabled: true
+            config:
+              subagentProvider: spawn
+              maxRounds: 64
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: true
+          searchTimeoutMs: 60000
+      - id: tool-cordis
+        name: '@deepseek-ai/dsh-tool-cordis'
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+        config:
+          customSkillDirs:
+            - !!js >-
+              process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@deepseek-ai/dsh-agent-preset/package.json')),
+              'skills')
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+      - id: tool-plugin-manager
+        name: '@deepseek-ai/dsh-plugin-manager/tools'
+        disabled: !!js '!ctx.get(''profileContext'')'
+# == @mpd-dsh/mpd
+- id: mpd-better-sidebar
+  name: '@mpd-dsh/mpd/packages/mpd-better-sidebar-host/dist/index.js'
+  disabled: !!js >-
+    (() => { const logGuard = (text) => { try { const gfs =
+    process.getBuiltinModule('node:fs'); const gpath =
+    process.getBuiltinModule('node:path'); const gos =
+    process.getBuiltinModule('node:os'); let cwd = ''; try { cwd = process.cwd()
+    } catch (e) {} const roots = [process.env.MPD_MCP_LOG_DIR,
+    process.env.DSH_WORKSPACE_ROOT, cwd, gos.tmpdir()]; for (const root of
+    roots) { if (typeof root !== 'string' || root.trim() === '') { continue }
+    try { const dir = gpath.join(root, '.mpd', 'logs'); gfs.mkdirSync(dir, {
+    recursive: true }); gfs.appendFileSync(gpath.join(dir,
+    'mpd-patch-guards.log'), text + String.fromCharCode(10)); return } catch (e)
+    {} } } catch (e) {} }; const say = (decision, reason) => { try { const seen
+    = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen =
+    {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1;
+    logGuard('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) }
+    } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs');
+    const path = process.getBuiltinModule('node:path'); const profileDir =
+    path.normalize(process.getBuiltinModule('node:url').fileURLToPath(baseUrl));
+    const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p,
+    'utf8')) } catch (e) { return null } }; const readText = (p) => { try {
+    return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ =
+    String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH =
+    String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB =
+    String.fromCharCode(9); const stripComments = (text) => { const out = [];
+    for (const line of String(text).split(LF)) { let kept = ''; let quote = '';
+    for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if
+    (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote =
+    '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote =
+    (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0)
+    === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) {
+    return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0;
+    while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) ===
+    TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if
+    (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const
+    trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null }
+    return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar
+    = (text) => { const stripped = stripComments(text); if
+    (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows =
+    []; let current = null; for (const line of stripped.split(LF)) { if
+    (line.trim() === '') { continue } const indent = indentOf(line); const body
+    = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length
+    === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines:
+    [] }; rows.push(current) } if (current !== null && (isItem || indent >
+    current.indent)) { current.lines.push({ indent, body }) } } let named =
+    false; let mounting = false; for (const row of rows) { let nameValue = null;
+    let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for
+    (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv
+    !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent =
+    entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if
+    (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) {
+    disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null
+    || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true;
+    const literallyDisabled = disabledValue !== null && disabledIndent <=
+    nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if
+    (!literallyDisabled) { mounting = true } } if (mounting) { return true } if
+    (!named) { return true } return false }; const ownModules =
+    path.join(profileDir, 'node_modules'); const hostDirs =
+    [path.join(ownModules, 'dsh-better-sidebar'), path.join(ownModules,
+    '@mpd-dsh', 'mpd', 'node_modules', 'dsh-better-sidebar')]; if
+    (!hostDirs.some((dir) => fs.existsSync(dir))) { say('DISABLED',
+    'dsh-better-sidebar is resolvable from neither the profile node_modules nor
+    the bundle'); return true } const manifest = readJson(path.join(profileDir,
+    'package.json')); const bundles = manifest && manifest.dsh &&
+    manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ?
+    manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar')
+    >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle
+    layer'); return true } for (const bundle of bundles) { const name =
+    String(bundle); for (const dir of [path.join(ownModules, name),
+    path.join(profileDir, '..', 'node_modules', name)]) { const other =
+    readJson(path.join(dir, 'package.json')); if (!other) continue; if
+    (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh &&
+    other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !==
+    'string') continue; const text = readText(path.join(dir, rel)); if (text !==
+    null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' +
+    name + ' already mounts it in its own patch'); return true } } } const argv
+    = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for
+    (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string'
+    ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') {
+    overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) {
+    overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir,
+    'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')];
+    if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '')
+    { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for
+    (const overlay of overlays) { layers.push(path.resolve(overlay)) } for
+    (const layer of layers) { const text = readText(layer); if (text !== null &&
+    foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + '
+    already mounts it'); return true } } const entries =
+    [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options
+    && e.options.name === '@deepseek-ai/dsh-host-webserver' &&
+    (e.options.disabled === undefined || e.options.disabled === false)); if
+    (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver
+    entry in this composition'); return true } say('ENABLED', 'web plane present
+    and no other layer mounts dsh-better-sidebar'); return false } catch (e) {
+    try { logGuard('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' +
+    String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()
+- id: mcp-astgrep
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: ast_grep
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ?
+        decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/,
+        "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/launch.js")
+    toolCallTimeoutMs: 60000
+- id: mcp-git
+  name: '@deepseek-ai/dsh-mcp-client'
+  disabled: true
+  config:
+    serverName: git
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_GIT_CLI || ((typeof baseUrl === "string" ?
+        decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/,
+        "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/launch.js")
+      - git
+    toolCallTimeoutMs: 60000
+- id: mcp-shell
+  name: '@deepseek-ai/dsh-mcp-client'
+  disabled: true
+  config:
+    serverName: shell
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_SHELL_CLI || ((typeof baseUrl === "string" ?
+        decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/,
+        "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/launch.js")
+      - shell
+    toolCallTimeoutMs: 60000
+- id: mcp-lsp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: lsp
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ?
+        decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/,
+        "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/launch.js")
+    toolCallTimeoutMs: 60000
+- id: mcp-codegraph
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: codegraph
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ?
+        decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/,
+        "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/dist/launch.js")
+    toolCallTimeoutMs: 60000
+- id: mpd-web-compat
+  name: '@mpd-dsh/mpd'
+- id: mpd-dsh-adapter
+  name: '@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js'
+- id: mpd-config
+  name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+  config: {}
+- id: mpd-goal
+  name: '@mpd-dsh/mpd/packages/mpd-goal-plugin/dist/index.js'
+  config:
+    enabled: true
+    autoAnchor: true
+    autoRounds: 32
+- id: mpd-team-watchdog
+  name: '@mpd-dsh/mpd/packages/mpd-team-watchdog-plugin/dist/index.js'
+  config:
+    stateDir: .mpd/team
+    warnSilenceMs: 600000
+    tickIntervalMs: 15000
+    warnStreakToEscalate: 6
+    actionOnEscalate: warn-only
+    toolInFlightMaxMs: 900000
+    holdTtlMs: 900000
+- id: mpd-tools
+  name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
+  config:
+    writeGuard: true
+    truncateMaxBytes: 8192
+- id: mpd-modelchain
+  name: '@mpd-dsh/mpd/packages/mpd-modelchain-plugin/dist/index.js'
+- id: mpd-ext
+  name: '@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js'
+  config:
+    quiet: false
+- id: mpd-roles
+  name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
+- id: mpd-verify
+  name: '@mpd-dsh/mpd/packages/mpd-verify-plugin/dist/index.js'
+  config:
+    mode: hard
+    escapeUses: 1
+- id: mpd-ulw
+  name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
+  config:
+    maxRounds: 3
+- id: mpd-hashline
+  name: '@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js'
+  config:
+    guardEditTools: true
+- id: mpd-boulder
+  name: '@mpd-dsh/mpd/packages/mpd-boulder-plugin/dist/index.js'
+- id: mpd-comment-checker
+  name: '@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js'
+  config:
+    autoCheck: false
+- id: mpd-codegraph
+  name: '@mpd-dsh/mpd/packages/mpd-codegraph-plugin/dist/index.js'
+  config:
+    autoInit: true
+    initTimeoutMs: 60000
+- id: mpd-memory
+  name: '@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js'
+  config:
+    vcs: git
+- id: mpd-workmate
+  name: '@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js'
+- id: mpd-team-core
+  name: '@mpd-dsh/mpd/packages/mpd-team-core-plugin/dist/index.js'
+- id: mpd-team-compact
+  name: '@mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js'
+- id: mpd-bootstrap
+  name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
+- id: mpd-tui-adapter
+  name: '@mpd-dsh/mpd/packages/mpd-tui-adapter-plugin/dist/index.js'
+  config: {}
+- id: mpd-tui
+  name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+- id: mpd-agent-team
+  name: '@deepseek-ai/dsh-experimental-agent-team'
+  disabled: !!js >-
+    (() => { const logGuard = (text) => { try { const gfs =
+    process.getBuiltinModule('node:fs'); const gpath =
+    process.getBuiltinModule('node:path'); const gos =
+    process.getBuiltinModule('node:os'); let cwd = ''; try { cwd = process.cwd()
+    } catch (e) {} const roots = [process.env.MPD_MCP_LOG_DIR,
+    process.env.DSH_WORKSPACE_ROOT, cwd, gos.tmpdir()]; for (const root of
+    roots) { if (typeof root !== 'string' || root.trim() === '') { continue }
+    try { const dir = gpath.join(root, '.mpd', 'logs'); gfs.mkdirSync(dir, {
+    recursive: true }); gfs.appendFileSync(gpath.join(dir,
+    'mpd-patch-guards.log'), text + String.fromCharCode(10)); return } catch (e)
+    {} } } catch (e) {} }; try { const hit = [...ctx.loader.entries()].some((e)
+    => { const o = e && e.options; if (!o) return false; const n = typeof o.name
+    === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : '';
+    return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 ||
+    i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen =
+    globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if
+    (seen.said !== true) { seen.said = true; logGuard('[mpd-agent-team] DISABLED
+    in a dsh-tui composition: the official team plugin registers its session
+    projection through a ROOT-bound sessionProjections proxy, and the dsh-tui
+    host refuses root.effect from a plugin activation - mpd-agent-team and
+    mpd-tool-agent-team stay unmounted. THE MPD TEAM IS UNAFFECTED: since the
+    team-plane split (W2) it runs on the NATIVE executor over ctx.subagents,
+    which needs nothing from this row (see cordis.patch.yml TUI PLANE / W5)') }
+    } catch (e) {} return true } catch (e) { try { logGuard('[mpd-agent-team]
+    TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the
+    row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {}
+    return false } })()
+  config:
+    maxMembers: 16
+    maxTasks: 256
+    maxPendingMessagesPerMember: 64
+    maxMessageBytes: 32768
+    disposalTimeoutMs: 5000
+- id: mpd-roster-provider
+  name: '@mpd-dsh/mpd/packages/mpd-roster-provider-plugin/dist/index.js'
+  config:
+    baseProvider: spawn
+- id: mpd-tool-agent-team
+  name: '@deepseek-ai/dsh-experimental-tool-agent-team'
+  disabled: !!js >-
+    (() => { const logGuard = (text) => { try { const gfs =
+    process.getBuiltinModule('node:fs'); const gpath =
+    process.getBuiltinModule('node:path'); const gos =
+    process.getBuiltinModule('node:os'); let cwd = ''; try { cwd = process.cwd()
+    } catch (e) {} const roots = [process.env.MPD_MCP_LOG_DIR,
+    process.env.DSH_WORKSPACE_ROOT, cwd, gos.tmpdir()]; for (const root of
+    roots) { if (typeof root !== 'string' || root.trim() === '') { continue }
+    try { const dir = gpath.join(root, '.mpd', 'logs'); gfs.mkdirSync(dir, {
+    recursive: true }); gfs.appendFileSync(gpath.join(dir,
+    'mpd-patch-guards.log'), text + String.fromCharCode(10)); return } catch (e)
+    {} } } catch (e) {} }; try { const hit = [...ctx.loader.entries()].some((e)
+    => { const o = e && e.options; if (!o) return false; const n = typeof o.name
+    === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : '';
+    return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 ||
+    i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen =
+    globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if
+    (seen.said !== true) { seen.said = true; logGuard('[mpd-agent-team] DISABLED
+    in a dsh-tui composition: the official team plugin registers its session
+    projection through a ROOT-bound sessionProjections proxy, and the dsh-tui
+    host refuses root.effect from a plugin activation - mpd-agent-team and
+    mpd-tool-agent-team stay unmounted (see cordis.patch.yml TUI PLANE)') } }
+    catch (e) {} return true } catch (e) { try { logGuard('[mpd-agent-team]
+    TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the
+    row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {}
+    return false } })()
+  config:
+    freshProvider: mpd-roster
+    forkProvider: fork
+- id: mpd-ui-agent-team
+  name: '@deepseek-ai/dsh-experimental-client-ui-agent-team'
+- id: mcp-context7
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: context7
+    transport: streamable-http
+    url: https://mcp.context7.com/mcp
+    toolCallTimeoutMs: 60000
+- id: mcp-grepapp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: grep_app
+    transport: streamable-http
+    url: https://mcp.grep.app
+    toolCallTimeoutMs: 60000
+- id: preset-mpd
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: mpd
+    order: 1
+    name: MPD (Main Working Agent)
+    description: >-
+      The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every
+      project, works natively, one-shot-consults the specialists
+      (Architect/Researcher/Planner/Deep Worker/Senior
+      Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior
+      Engineer) via mpd_role_spawn, and runs teams through the official
+      @deepseek-ai/dsh-experimental-agent-team plugin.
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          prefix: >-
+            You are MPD, the main working agent of the my-power-dsh DeepSeek
+            Harness bundle, powered by the {{model}} model. Your working
+            directory is {{cwd}}.
+
+            CONVENTION - EVERY PROJECT INSTRUCTION FILE: at the start of every
+            session in a project workspace you MUST attempt to read AGENT.md
+            (fall back to AGENTS.md, then CLAUDE.md) from the project root down
+            to the current directory, and follow it. Do not skip this step even
+            on workspaces you have seen before; instructions may have changed.
+
+            SPECIALISTS: the specialists are SUBAGENTS and teammate templates,
+            not presets. One-shot consult them with mpd_role_spawn (names from
+            mpd_roles_list), each named for what it does: Architect
+            (architecture review, deep debugging, self-review), Researcher
+            (evidence-based code / open-source search), Planner (produces
+            .mpd/plans plans, never implements), Deep Worker (executes goals
+            end-to-end with tools), Senior Engineer (primary implementation and
+            verification), Lead (orchestration, delegation, integration),
+            Explorer (read-only codebase search and location), Reviewer
+            (correctness/risk findings, no fixes), Plan Reviewer (plan
+            executability and reference review), Vision Analyst
+            (image/screenshot/PDF analysis), Junior Engineer (fast, well-scoped
+            execution). Read-only specialists (Architect/
+            Researcher/Planner/Explorer/Plan Reviewer/Vision Analyst) are
+            mechanically restricted from writing - treat their output as advice.
+            Workers (Senior Engineer/ Junior Engineer/Deep Worker/Lead/Reviewer)
+            can edit - their claimed results are closed by a DIFFERENT agent's
+            recorded verdict, never by your own reading of them.
+
+            Reconnaissance is DELEGATED: your own `read`/`grep`/`glob` on a
+            SOURCE path is REFUSED (the captain investigation guard;
+            `captain.investigation` in mpd.jsonc is "deny" by default and
+            "allow" restores access). The documentation band stays open -
+            .mpd/**, docs/**, evidence/**, agent-references/** and the root
+            AGENTS.md/README*.md/ CHANGELOG.md/LICENSE*.md - because integrating
+            a report needs the contract and the records, not the sources.
+            Delegate the search instead: mpd_role_spawn with the Explorer (find
+            files and code) or Researcher (evidence-based search) role, or a
+            team member, and consume the REPORT.
+
+            TEAM WORK uses the OFFICIAL Agent Teams plugin
+            (@deepseek-ai/dsh-experimental-agent-team), NOT bare mpd_role_spawn
+            loops. STAGING is OURS: the `agent_teams_plan` tool is the one write
+            path that records a plan before anybody exists — create ->
+            add_member / create_task -> approve, and approval is what EXECUTES
+            it (nothing is spawned before that). The OFFICIAL tools stay correct
+            for the members themselves, the shared board and delivery:
+            spawn_teammate (one call per teammate; name + description + complete
+            prompt + context fresh|fork), team_task_create / team_task_list /
+            team_task_get / team_task_update (the shared task DAG and its
+            compare-and-set lifecycle), send_message (durable peer message;
+            target "lead" reaches you), list_agents, wait_agent,
+            interrupt_agent. You are the captain: design the DAG, dispatch by
+            workload size, keep requirement / task / review as separate tasks,
+            and integrate results yourself. Every team edit a member makes is
+            immediately visible to everyone — split write work into disjoint
+            scopes and record the expected write scope on the task.
+
+            THE ROSTER IS YOUR TEMPLATE SET. The 11 specialists (Architect,
+            Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer,
+            Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) are
+            teammate INSTANTIATION TEMPLATES, not tools: fetch a member's
+            persona/role text with mpd_role_persona and paste it into the
+            spawn_teammate prompt. The read-only specialists (Architect,
+            Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) are
+            MECHANICALLY denied write/edit/bash/mpd_hashline_edit by the
+            bundle's guard, so treat their output as advice; workers (Senior
+            Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) can edit —
+            and their claimed results are closed by a DIFFERENT agent's recorded
+            verdict (the verification law below), never by your own reading of
+            them.
+
+            MODEL ROUTES: a teammate created by spawn_teammate runs on YOUR
+            route (the official TeamService forwards only the prompt and the
+            parent to the subagent registry, so no per-teammate model can be
+            injected). The mpd team-model slots still apply to the ONE-SHOT
+            consult path (mpd_role_spawn), where the route is explicit. If a
+            teammate needs a different model, state that in its prompt so it can
+            raise it with you.
+
+            SESSION STARTUP RULE (binding; MECHANICAL by default, evaluated by
+            the mpd session gate): a session starts with NO team — a team is NOT
+            a precondition of a session. At the session's first pre-step the
+            complexity gate is evaluated and behaves accordingly, and
+            `team.gate` in mpd.jsonc selects the mode: mechanical (default) |
+            advisory | off. Every notice it injects carries the marker
+            `[AgentTeams] Session-start team rule`.
+              - gate NOT triggered -> run the session solo; do NOT create a team, and do not invent
+                one. Ordinary questions, one-line edits and lookups belong here.
+              - gate TRIGGERED -> the gate STAGES an APPROVABLE PLAN SHELL (0 members, 0 tasks)
+                through the `agent_teams_plan` tool, then injects ONE notice naming the returned plan
+                id; NOTHING is spawned — the plan is INERT until you approve it with `agent_teams_plan
+                {action:"approve"}`; extend it with `add_member`/`create_task` first, and approval is
+                what spawns the members and posts the tasks. Never tell the user a team was created
+                while that shell is unapproved.
+              - an explicit `team:` / `!team` request ALSO stages the shell (signal A) and the marker is
+                CONSUMED from the goal text — you are the captain from that moment. Tell the user the
+                roster and DAG you are about to run, extend the staged shell, then approve it. If the
+                team does not fit, discard the plan and continue solo with the user — that is an
+                accepted outcome.
+              - without `agent_teams_plan` mounted, or with `team.gate: "advisory"`, the notice is
+                ADVISORY and says `NO team was staged`: you stage the team yourself at the moment the
+                work warrants one. If the work does not warrant a team (a short or single-threaded
+                task), continue solo and say so in one line.
+            The gate is frozen: trigger = explicit flag OR (matchedSignals >=
+            1), where the explicit flag is a `team:` prefix or `!team`, and the
+            soft signals are (B) >=4 distinct deliverable verbs, (C) >=3
+            enumerated steps/action verbs/clauses, (D) an ACTIVE boulder work
+            exists for this workspace (`status: "active"` in .mpd/boulder.json)
+            — a plan FILE alone is NOT a signal. This rule is enforced on the
+            PRE-STEP, BEFORE the sizing doctrine below — the sizing discipline
+            can only add team-shape advice once a team exists or the user asks
+            for one; it can never force a team into existence.
+
+            AGENT TEAM ROUTING — when you do build a team (the user asked for
+            one, or the gate triggered), FIRST size the task: estimate scope,
+            risk and parallelizable surface, then state your size judgment
+            (small / large + one line of rationale). After sizing pick exactly
+            one of the two modes:
+              a) SMALL task -> the internal roster of 11 normal-named specialists, staged as members
+                 through agent_teams_plan (add_member per member: its prompt is the persona text from
+                 mpd_role_persona) and then approved. No separate user
+                 confirmation for the mode itself; tell the user the roster and DAG you are running.
+              b) LARGE task (when you judge it necessary) -> a NON-built-in team group: on-the-spot
+                 formation (custom members staged the same way, with personas from mpd_role_persona,
+                 including specialists pulled from the roster or workmates) or any other team shape.
+                 BECAUSE this goes beyond the internal roster, you MUST ask the user first (one
+                 concise confirmation naming the proposed roster, extras and rationale); approve only
+                 after the user agrees. Both team forms always exist: the internal roster AND
+                 on-the-spot formation — pick per size, never both at once.
+
+            REQUIREMENTS CONFERENCE (both modes, non-optional) — before the team
+            writes any task DAG, hold a joint requirements session with the user
+            AND the AGENTS present (requirements/planning specialists such as
+            Architect/Planner/Plan Reviewer; include analysis members of the
+            planned roster). Use SOCRATIC questioning to squeeze the user's
+            requirements clean: challenge assumptions, surface edge cases, probe
+            for the real goal behind the goal, and agree definitions of done.
+            EVERY agent taking part may ask the user questions — route them
+            through the captain: collect member questions via send_message, then
+            put them to the user in one consolidated batch with
+            ask_user_question. Never silently assume an answer. Deliverable: a
+            crisp requirements summary + acceptance criteria agreed with the
+            user, which becomes the input to the staged plan.
+
+            WORKMATE LIBRARY (~/.mpd/workmate): the roster specialists are BASE
+            templates only. When creating a team or pulling up a specialist you
+            will reuse across sessions, you may INSTANTIATE it as a durable,
+            evolving workmate: call mpd_workmate_init (base + independent name)
+            to copy the base into ~/.mpd/workmate/<name>/. After each work
+            session the workmate self-summarizes via mpd_workmate_reflect
+            (evolving its own persona + independent memory, size-capped) and
+            keeps a short note in the library. Before delegating a role task,
+            consult mpd_workmate_list / mpd_workmate_match(task): if a workmate
+            note matches well, delegate to it — for one-shot use
+            mpd_workmate_spawn. Inside a TEAM, reuse is YOUR explicit act, not
+            an automatic injection: add a member whose name equals the workmate
+            name, hand it the task, and when it reports back call
+            mpd_workmate_reflect so the instance evolves. (MEASURED: the
+            automatic persona/memory injection lived in the vendored
+            dsh-agent-teams body, which no loader row has mounted since its
+            2026-09-27 retirement and which the de-vendor wave removed — so the
+            capability is NOT active. Re-establishing it belongs to the OFFICIAL
+            team path, mpd-roster-provider-plugin, which already routes a
+            teammate whose description names a roster member.) If no note
+            matches well enough (matched=false), initialize a NEW workmate with
+            mpd_workmate_init instead of forcing a weak match. Keep the library
+            tidy with mpd_workmate_rename and mpd_workmate_delete: delete is
+            ARCHIVE-FIRST (the instance moves to ~/.mpd/workmate/.archive/ and
+            only an explicit purge with confirm=<name> destroys it), both are
+            REFUSED while the workmate is in use by a member or a running spawn,
+            and names are ASCII-only [a-z0-9_-].
+
+            SELF-ITERATION — drive the memory/reflection cycle yourself: after
+            every meaningful milestone (a task completed, a decision made, a
+            lesson learned) persist a concise entry with mpd_memory_write
+            (title/description/content/kind/tags); it commits to the VCS-backed
+            memory store and advances the reflection counter. When
+            mpd_memory_reflect reports REFLECTION DUE (crossed
+            memory.reflectionEvery, default 10 writes), complete the loop with
+            mpd_memory_reflect_complete — a short reflection of what changed and
+            what you learned — so the agent evolves across sessions. Check
+            mpd_memory_status occasionally; the cadence is tunable per workspace
+            via .mpd/mpd.jsonc (memory.reflectionEvery, applied at boot).
+
+            THE VERIFICATION LAW — BINDING, in every mode (solo, one-shot, team,
+            ULW, ralph, workflow, headless). Code written by A is verified by a
+            DIFFERENT agent B; A and B are independent; B works from the frozen
+            contract and the DOCUMENTATION and never from the implementation; a
+            problem BOUNCES BACK to a writer for repair.
+
+              * You do NOT write code yourself. A `write`/`edit` on a code path is REFUSED for you
+                (the workspace's top-level agent) while no delegation+verification loop is armed —
+                the guard is mechanical, not a reminder. Delegate the scope to a write-capable
+                member instead: a team work task, or mpd_role_spawn / a subagent.
+              * If you genuinely must write it yourself, arm the loop first:
+                mpd_verify_open {writer:"self", self_write_reason:"…", verifier:"<another agent>"}
+                names a verifier that is NOT you and counts the write. The other route is the
+                COUNTED escape: mpd_verify_escape {reason:"…"} logs a row and allows one write.
+              * You do NOT verify your own work, and you do not "check the code yourself" in place
+                of verification. Verification is a DIFFERENT agent's recorded verdict:
+                mpd_verify_seat binds it to the loop, mpd_verify_evidence produces black-box
+                evidence (a whitelisted gate, or a content-free artifact probe), and
+                mpd_verify_record writes the verdict. A record with verifierId === writerId, with
+                no cited documents, or a PASS with no gate evidence is REFUSED.
+              * The verifier records its verdict BEFORE reading any implementation. Only a
+                recorded FAIL unlocks implementation reading, for diagnosis, counted — and a FAIL
+                opens a repair task for a WRITER; it never becomes a silent fix.
+              * Docs, README, `*.md`, `LICENSE*` and `.mpd/**` / `docs/**` / `evidence/**` /
+                `agent-references/**` are never gated: the manual, the PR body and the records
+                must stay writable.
+              * HONEST BOUND, stated rather than implied: a composition with no `tools.guard` seam
+                degrades to bookkeeping and its boot line says `verifyGate=absent`; and a gate's
+                output (tail) may print source frames, so it is controlled black-box evidence, not
+                a proof of reading nothing — blindness is proven by the plugin's own observation
+                log.
+
+            You are responsible for the final result, and the way you are now
+            responsible for it is by DELEGATING the write and ACCEPTING a
+            different agent's recorded verdict — never by writing the code and
+            re-reading it yourself. Your own reading of a result is INTEGRATION,
+            which is not verification.
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+          instructionFileCandidates:
+            - AGENT.md
+            - AGENTS.md
+            - CLAUDE.md
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+      - id: tool-jobs
+        name: '@deepseek-ai/dsh-tool-jobs'
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+      - id: command-goal
+        name: '@deepseek-ai/dsh-command-goal'
+      - id: tool-goal
+        name: '@deepseek-ai/dsh-tool-goal'
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: >
+                You are in plan mode. Stay in plan mode until exit_plan_mode
+                succeeds or the user switches the session mode. Imperative
+                language to implement changes means plan the implementation, not
+                execute it. A user's conversational agreement — including an
+                answer confirming something you asked — approves nothing and
+                does not end plan mode; fold the confirmed decision into the
+                plan and submit it through exit_plan_mode.
+
+
+                Explore first. Use non-mutating reads, searches, static
+                analysis, and checks to ground the plan in the actual
+                repository. Do not edit or write files, change configuration,
+                run formatters or code generation that rewrites tracked files,
+                commit, or otherwise carry out the plan. Prefer existing
+                functions and patterns over new machinery.
+
+
+                The tool catalog stays the same across modes for request-cache
+                stability. These plan-mode rules override any later tool
+                description or guidance that suggests using mutation tools;
+                those tools remain listed to keep the tool catalog unchanged. Do
+                not use todo_write to track this planning phase: it tracks
+                implementation after an approved plan, while the plan itself
+                belongs in exit_plan_mode.
+
+
+                Resolve discoverable facts by inspection. Use ask_user_question
+                only for user-owned choices or material ambiguity that
+                inspection cannot answer. Do not ask the user where code lives
+                or how current behavior works when you can find out.
+
+
+                Make the plan decision-complete: state the goal and success
+                criteria; group implementation changes by subsystem; identify
+                public API, schema, and data-flow changes; cover edge cases,
+                failure modes, tests, acceptance criteria, and explicit
+                assumptions. Keep it concise enough to review but detailed
+                enough that another engineer can implement it without making
+                design decisions.
+
+
+                When ready, call exit_plan_mode with the complete plan markdown,
+                starting with a # title. Make exit_plan_mode the only and final
+                tool call in that assistant response: it presents the plan for
+                approval, and implementation begins only in a later step after
+                approval. Do not paste the final plan as a plain reply or ask
+                "should I proceed?" through prose or ask_user_question. If
+                review rejects it, incorporate the feedback and present again.
+                If the review channel is unavailable or aborted, stay in plan
+                mode and ask the user to switch modes manually; do not proceed
+                with implementation.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 8192
+              headChars: 4096
+              tailChars: 1024
+      - id: delegation
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+              backgroundMode: continuable
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+              backgroundMode: continuable
+          - id: tool-subagent-codex
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: codex
+              toolName: subagent_codex
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: tool-subagent-claude-code
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: claude-code
+              toolName: subagent_claude_code
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            config:
+              provider: spawn
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ralph
+            name: '@deepseek-ai/dsh-tool-ralph'
+            config:
+              subagentProvider: spawn
+              maxRounds: 64
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: false
+          searchTimeoutMs: 60000
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).
+[step 10-dump] exit=0 seconds=0
+[label] the block above is COMPOSITION ONLY — rows composed, no plugin code executed
+[record] compose.dumpExit=true — the sanctioned composer exited 0
+----- scripts/verify-no-host-override.ts (subject: a byte-identical copy of the installed patch) -----
+[verify-no-host-override] subject: 2 declared patch layer(s)
+[verify-no-host-override]   patch: /work/no-host-override-subject/cordis.patch.yml
+[verify-no-host-override]   patch: /work/no-host-override-subject/presets/mpd.patch.yml
+[verify-no-host-override] bundle id-targets (overrides): 0 (none: this bundle is purely additive)
+[verify-no-host-override] bundle inserted rows (additive): 35
+[verify-no-host-override] unclassified top-level entries: 0
+[verify-no-host-override] host layers found on disk: 3
+[verify-no-host-override]   host: dsh-base -> /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base [1 patch file(s)]
+[verify-no-host-override]   host: dsh-web-app -> /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app [5 patch file(s)]
+[verify-no-host-override]   host: dsh-headless -> /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless [1 patch file(s)]
+[verify-no-host-override] host-declared row ids: 185
+[verify-no-host-override] declared exemptions (0): none
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 185 host-declared row ids)
+[record] compose.mpdRows=true — the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's
+[record] compose.presetRow=true — the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)
+[record] compose.agentTeamRows=true — the official agent-team rows compose under the mpd-owned ids (§4 D3)
+[record] live.credentialStaged=true — the provider credential was staged ONCE into the SANDBOX home (mode 0600) so every plane can run a real turn; the value is never recorded
+[record] live.credentialScoped=true — the staged credential sits under the SANDBOX dsh home, is mode 0600, and carries the version:1/refs shape the harness reader demands
+[record] boot.workspaceRegistered=true — the scratch workspace was registered in the harness's own store BEFORE the boot, so the Web GUI renders a usable composer instead of the disabled landing state
+===== STEP 09d-astgrep-engine =====
+$ node /opt/mpd/scripts/install-mcp.ts --toolchain /opt/mpd/.toolchain
+[install-mcp] installing npm toolchain: @ast-grep/cli + @colbymchenry/codegraph@1.5.0
+
+added 5 packages in 6s
+npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn install-scripts   @ast-grep/cli@0.45.3 (postinstall: node postinstall.js)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+[install-mcp] cannot write /root/sandbox-home/.mpd/mcp.env (ENOENT); content printed below — write it yourself or pass --env-out to a writable path
+
+# my-power-dsh MCP activation (generated by scripts/install-mcp.ts; source before dsh)
+export MPD_AST_GREP_SG_PATH="/opt/mpd/.toolchain/node_modules/.bin/sg"
+export MPD_CODEGRAPH_BIN="/opt/mpd/.toolchain/node_modules/.bin/codegraph"
+export PATH="/opt/mpd/.toolchain/bin:$PATH"   # toolchain bin dir (optional user binaries)
+
+[install-mcp] next: source /root/sandbox-home/.mpd/mcp.env in the shell that launches dsh, then restart dsh.
+[step 09d-astgrep-engine] exit=0 seconds=6
+
+----- MOUNTING BOOT (registration instrumentation) -----
+$ cd /work && dsh --profile web --patch /work/probe.yml --port 3197 --no-open
+[record] boot.probeApplied=true — the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition
+[record] boot.adapterService=true — the mpd-dsh-adapter row applied and provided the mpdDsh service — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-dsh-adapter.log (R5: MPD diagnostics never touch the terminal)
+[record] boot.adapterToolCall=true — an internal tool call through the adapter answered ok
+[record] boot.mpdTools=true — every core mpd tool answered from the live registry
+[record] boot.mcpTools=true — every MCP server this bundle mounts exposed its tool from the live registry
+===== STEP 11b-mcp-surface =====
+$ node /opt/mpd-e2e/lib/owed-mcp.ts --boot-log /work/steps/11-boot.log --state /work/assertions.ndjson --search-dir /opt/mpd/packages/mpd-mcp-astgrep/src
+[owed-mcp] boot.mcpToolNaming=true — every registered MCP tool is named mcp__<server>__<tool>, the server set is EXACTLY the three rows that ship enabled (ast_grep,codegraph,lsp), no disabled row registered anything, and the ast-grep row published its whole declared surface (search,rewrite,scan)
+[owed-mcp] boot.mcpLiveSearch=false — the live ast-grep search did not settle: graded=fail:unreadable-result control=fail:unreadable-result (the control MUST be 0 matches, and the graded call at least 1)
+[step 11b-mcp-surface] exit=0 seconds=0
+[record] boot.agentTeamService=true — the official TeamService is mounted in the booted process (its class name is the witness)
+[record] boot.servesHttp=true — the booted Web app answered 200
+[record] boot.presetMount=true — the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)
+[record] boot.agentTeamTools=true — every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)
+[record] boot.sessionGateListener=true — the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)
+[record] boot.noFatalSignatures=true — no fatal apply/module signature in the boot log
+[record] team.route.state=true — the mpd team route answered a JSON payload from a REAL mounted row
+[record] team.route.plan=true — the mpd team route answered a JSON payload from a REAL mounted row
+[record] team.route.task=true — the mpd team route answered a JSON payload from a REAL mounted row
+[record] team.route.mail=true — the mpd team route answered a JSON payload from a REAL mounted row
+[record] team.routesAll=true — all four /plugins/mpd-team routes are registered by the mounted row and answer ok:true
+[record] team.planLookup=true — the plan route answered a plan SHAPE for the live session (null when nothing is staged, which is the honest pre-approval answer)
+
+----- LIVE TURN ON THE WEB PLANE (gateway) -----
+[web-live] session=session-6d383a9e-ddd1-41b1-9aa6-36f54942e18e http=200 prompt=Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE
+session=session-6d383a9e-ddd1-41b1-9aa6-36f54942e18e http=200
+prompt=Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE
+{"type":"server-response","rpcId":"req-1-1791505014-20098","result":{"ok":true,"value":{"accepted":true}}}
+[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/session-6d383a9e-ddd1-41b1-9aa6-36f54942e18e/session.v4.jsonl.zstd
+[record] live.web.turnStarted=true — the web plane started a real turn
+[record] live.web.turnCompleted=true — the web turn reached turn/end reason=completed
+[record] live.web.noErrorTurns=true — no web turn ended in an error
+[record] live.web.noMalformedToolJson=true — every web tool-call payload the model emitted parsed as JSON
+[record] live.web.toolCallsParsed=true — all 1 web tool call(s) parsed (1/1)
+[record] live.web.mpdToolCalled=true — an MPD tool ran under a live web turn
+[record] live.web.assistantReplied=true — the web assistant produced visible text
+
+----- BROWSER LANE (real Web GUI) -----
+
+added 2 packages, and audited 3 packages in 3s
+
+1 high severity vulnerability
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+Installing dependencies...
+Hit:1 http://archive.ubuntu.com/ubuntu noble InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu noble-updates InRelease
+Hit:3 http://archive.ubuntu.com/ubuntu noble-backports InRelease
+Hit:4 http://security.ubuntu.com/ubuntu noble-security InRelease
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  at-spi2-common fontconfig fontconfig-config libasound2-data libavahi-client3
+  libavahi-common-data libavahi-common3 libbsd0 libdatrie1 libdrm-amdgpu1
+  libdrm-common libdrm-intel1 libedit2 libelf1t64 libfontenc1 libfribidi0
+  libgl1 libgl1-mesa-dri libglvnd0 libglx-mesa0 libglx0 libgraphite2-3
+  libharfbuzz0b libice6 libicu74 libllvm20 libpciaccess0 libpixman-1-0
+  libpng16-16t64 libsensors-config libsensors5 libsm6 libsqlite3-0
+  libthai-data libthai0 libunwind8 libvulkan1 libx11-data libx11-xcb1 libxau6
+  libxaw7 libxcb-dri3-0 libxcb-glx0 libxcb-present0 libxcb-randr0
+  libxcb-render0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxdmcp6 libxfont2
+  libxi6 libxkbfile1 libxml2 libxmu6 libxmuu1 libxpm4 libxrender1
+  libxshmfence1 libxt6t64 libxxf86vm1 mesa-libgallium x11-common x11-xkb-utils
+  xauth xfonts-encodings xfonts-utils xkb-data xserver-common
+Suggested packages:
+  alsa-utils libasound2-plugins cups-common low-memory-monitor pciutils
+  lm-sensors
+Recommended packages:
+  fonts-ipafont-mincho fonts-liberation-sans-narrow fonts-tlwg-loma
+  alsa-ucm-conf alsa-topology-conf at-spi2-core dbus libglib2.0-data
+  shared-mime-info xdg-user-dirs mesa-vulkan-drivers | vulkan-icd xfonts-base
+The following NEW packages will be installed:
+  at-spi2-common fontconfig fontconfig-config fonts-freefont-ttf
+  fonts-ipafont-gothic fonts-liberation fonts-noto-color-emoji
+  fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei libasound2-data
+  libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 libatspi2.0-0t64
+  libavahi-client3 libavahi-common-data libavahi-common3 libbsd0 libcairo2
+  libcups2t64 libdatrie1 libdbus-1-3 libdrm-amdgpu1 libdrm-common
+  libdrm-intel1 libdrm2 libedit2 libelf1t64 libfontconfig1 libfontenc1
+  libfreetype6 libfribidi0 libgbm1 libgl1 libgl1-mesa-dri libglib2.0-0t64
+  libglvnd0 libglx-mesa0 libglx0 libgraphite2-3 libharfbuzz0b libice6 libicu74
+  libllvm20 libnspr4 libnss3 libpango-1.0-0 libpciaccess0 libpixman-1-0
+  libpng16-16t64 libsensors-config libsensors5 libsm6 libsqlite3-0
+  libthai-data libthai0 libunwind8 libvulkan1 libx11-6 libx11-data libx11-xcb1
+  libxau6 libxaw7 libxcb-dri3-0 libxcb-glx0 libxcb-present0 libxcb-randr0
+  libxcb-render0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb1
+  libxcomposite1 libxdamage1 libxdmcp6 libxext6 libxfixes3 libxfont2 libxi6
+  libxkbcommon0 libxkbfile1 libxml2 libxmu6 libxmuu1 libxpm4 libxrandr2
+  libxrender1 libxshmfence1 libxt6t64 libxxf86vm1 mesa-libgallium x11-common
+  x11-xkb-utils xauth xfonts-cyrillic xfonts-encodings xfonts-scalable
+  xfonts-utils xkb-data xserver-common xvfb
+0 upgraded, 102 newly installed, 0 to remove and 2 not upgraded.
+Need to get 97.6 MB of archives.
+After this operation, 360 MB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu noble/universe amd64 fonts-ipafont-gothic all 00303-21ubuntu1 [3513 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libbsd0 amd64 0.12.1-1build1.1 [41.2 kB]
+Get:3 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libdbus-1-3 amd64 1.14.10-4ubuntu4.1 [210 kB]
+Get:4 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libelf1t64 amd64 0.190-1.1ubuntu0.1 [57.8 kB]
+Get:5 http://archive.ubuntu.com/ubuntu noble/main amd64 libfribidi0 amd64 1.0.13-3build1 [26.1 kB]
+Get:6 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libglib2.0-0t64 amd64 2.80.0-6ubuntu3.9 [1547 kB]
+Get:7 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libicu74 amd64 74.2-1ubuntu3.1 [10.9 MB]
+Get:8 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libsqlite3-0 amd64 3.45.1-1ubuntu2.8 [702 kB]
+Get:9 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libxml2 amd64 2.9.14+dfsg-1.3ubuntu3.10 [764 kB]
+Get:10 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 xkb-data all 2.41-2ubuntu1.1 [397 kB]
+Get:11 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libdrm-common all 2.4.125-1ubuntu0.1~24.04.2 [9250 B]
+Get:12 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libdrm2 amd64 2.4.125-1ubuntu0.1~24.04.2 [41.4 kB]
+Get:13 http://archive.ubuntu.com/ubuntu noble/main amd64 libedit2 amd64 3.1-20230828-1build1 [97.6 kB]
+Get:14 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libpng16-16t64 amd64 1.6.43-5ubuntu0.7 [189 kB]
+Get:15 http://archive.ubuntu.com/ubuntu noble/main amd64 libsensors-config all 1:3.6.0-9build1 [5546 B]
+Get:16 http://archive.ubuntu.com/ubuntu noble/main amd64 libsensors5 amd64 1:3.6.0-9build1 [26.6 kB]
+Get:17 http://archive.ubuntu.com/ubuntu noble/main amd64 libxau6 amd64 1:1.0.9-1build6 [7160 B]
+Get:18 http://archive.ubuntu.com/ubuntu noble/main amd64 libxdmcp6 amd64 1:1.1.3-0ubuntu6 [10.3 kB]
+Get:19 http://archive.ubuntu.com/ubuntu noble/main amd64 libxcb1 amd64 1.15-1ubuntu2 [47.7 kB]
+Get:20 http://archive.ubuntu.com/ubuntu noble/main amd64 libx11-data all 2:1.8.7-1build1 [115 kB]
+Get:21 http://archive.ubuntu.com/ubuntu noble/main amd64 libx11-6 amd64 2:1.8.7-1build1 [650 kB]
+Get:22 http://archive.ubuntu.com/ubuntu noble/main amd64 libxext6 amd64 2:1.3.4-1build2 [30.4 kB]
+Get:23 http://archive.ubuntu.com/ubuntu noble/main amd64 libxkbcommon0 amd64 1.6.0-1build1 [122 kB]
+Get:24 http://archive.ubuntu.com/ubuntu noble/main amd64 libxmuu1 amd64 2:1.1.3-3build2 [8958 B]
+Get:25 http://archive.ubuntu.com/ubuntu noble/main amd64 xauth amd64 1:1.1.2-1build1 [25.6 kB]
+Get:26 http://archive.ubuntu.com/ubuntu noble/main amd64 at-spi2-common all 2.52.0-1build1 [8674 B]
+Get:27 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libfreetype6 amd64 2.13.2+dfsg-1ubuntu0.2 [403 kB]
+Get:28 http://archive.ubuntu.com/ubuntu noble/main amd64 fonts-liberation all 1:2.1.5-3 [1603 kB]
+Get:29 http://archive.ubuntu.com/ubuntu noble/main amd64 fonts-freefont-ttf all 20211204+svn4273-2 [5641 kB]
+Get:30 http://archive.ubuntu.com/ubuntu noble/main amd64 fontconfig-config amd64 2.15.0-1.1ubuntu2 [37.3 kB]
+Get:31 http://archive.ubuntu.com/ubuntu noble/main amd64 libfontconfig1 amd64 2.15.0-1.1ubuntu2 [139 kB]
+Get:32 http://archive.ubuntu.com/ubuntu noble/main amd64 fontconfig amd64 2.15.0-1.1ubuntu2 [180 kB]
+Get:33 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 fonts-noto-color-emoji all 2.047-0ubuntu0.24.04.1 [9764 kB]
+Get:34 http://archive.ubuntu.com/ubuntu noble/universe amd64 fonts-tlwg-loma-otf all 1:0.7.3-1 [107 kB]
+Get:35 http://archive.ubuntu.com/ubuntu noble/universe amd64 fonts-unifont all 1:15.1.01-1build1 [2993 kB]
+Get:36 http://archive.ubuntu.com/ubuntu noble/universe amd64 fonts-wqy-zenhei all 0.9.45-8 [7472 kB]
+Get:37 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libasound2-data all 1.2.11-1ubuntu0.3 [21.4 kB]
+Get:38 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libasound2t64 amd64 1.2.11-1ubuntu0.3 [398 kB]
+Get:39 http://archive.ubuntu.com/ubuntu noble/main amd64 libatk1.0-0t64 amd64 2.52.0-1build1 [55.3 kB]
+Get:40 http://archive.ubuntu.com/ubuntu noble/main amd64 libxi6 amd64 2:1.8.1-1build1 [32.4 kB]
+Get:41 http://archive.ubuntu.com/ubuntu noble/main amd64 libatspi2.0-0t64 amd64 2.52.0-1build1 [80.5 kB]
+Get:42 http://archive.ubuntu.com/ubuntu noble/main amd64 libatk-bridge2.0-0t64 amd64 2.52.0-1build1 [66.0 kB]
+Get:43 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libavahi-common-data amd64 0.8-13ubuntu6.2 [30.1 kB]
+Get:44 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libavahi-common3 amd64 0.8-13ubuntu6.2 [23.4 kB]
+Get:45 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libavahi-client3 amd64 0.8-13ubuntu6.2 [26.8 kB]
+Get:46 http://archive.ubuntu.com/ubuntu noble/main amd64 libpixman-1-0 amd64 0.42.2-1build1 [279 kB]
+Get:47 http://archive.ubuntu.com/ubuntu noble/main amd64 libxcb-render0 amd64 1.15-1ubuntu2 [16.2 kB]
+Get:48 http://archive.ubuntu.com/ubuntu noble/main amd64 libxcb-shm0 amd64 1.15-1ubuntu2 [5756 B]
+Get:49 http://archive.ubuntu.com/ubuntu noble/main amd64 libxrender1 amd64 1:0.9.10-1.1build1 [19.0 kB]
+Get:50 http://archive.ubuntu.com/ubuntu noble/main amd64 libcairo2 amd64 1.18.0-3build1 [566 kB]
+Get:51 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libcups2t64 amd64 2.4.7-1.2ubuntu7.14 [274 kB]
+Get:52 http://archive.ubuntu.com/ubuntu noble/main amd64 libdatrie1 amd64 0.2.13-3build1 [19.0 kB]
+Get:53 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libdrm-amdgpu1 amd64 2.4.125-1ubuntu0.1~24.04.2 [21.4 kB]
+Get:54 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libpciaccess0 amd64 0.17-3ubuntu0.24.04.3 [19.2 kB]
+Get:55 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libdrm-intel1 amd64 2.4.125-1ubuntu0.1~24.04.2 [63.9 kB]
+Get:56 http://archive.ubuntu.com/ubuntu noble/main amd64 libfontenc1 amd64 1:1.1.8-1build1 [14.0 kB]
+Get:57 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libllvm20 amd64 1:20.1.2-0ubuntu1~24.04.3 [30.6 MB]
+Get:58 http://archive.ubuntu.com/ubuntu noble/main amd64 libx11-xcb1 amd64 2:1.8.7-1build1 [7800 B]
+Get:59 http://archive.ubuntu.com/ubuntu noble/main amd64 libxcb-dri3-0 amd64 1.15-1ubuntu2 [7142 B]
+Get:60 http://archive.ubuntu.com/ubuntu noble/main amd64 libxcb-present0 amd64 1.15-1ubuntu2 [5676 B]
+Get:61 http://archive.ubuntu.com/ubuntu noble/main amd64 libxcb-randr0 amd64 1.15-1ubuntu2 [17.9 kB]
+Get:62 http://archive.ubuntu.com/ubuntu noble/main amd64 libxcb-sync1 amd64 1.15-1ubuntu2 [9312 B]
+Get:63 http://archive.ubuntu.com/ubuntu noble/main amd64 libxcb-xfixes0 amd64 1.15-1ubuntu2 [10.2 kB]
+Get:64 http://archive.ubuntu.com/ubuntu noble/main amd64 libxshmfence1 amd64 1.3-1build5 [4764 B]
+Get:65 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 mesa-libgallium amd64 25.2.8-0ubuntu0.24.04.4 [10.8 MB]
+Get:66 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libgbm1 amd64 25.2.8-0ubuntu0.24.04.4 [34.2 kB]
+Get:67 http://archive.ubuntu.com/ubuntu noble/main amd64 libvulkan1 amd64 1.3.275.0-1build1 [142 kB]
+Get:68 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libgl1-mesa-dri amd64 25.2.8-0ubuntu0.24.04.4 [38.0 kB]
+Get:69 http://archive.ubuntu.com/ubuntu noble/main amd64 libxcb-glx0 amd64 1.15-1ubuntu2 [24.8 kB]
+Get:70 http://archive.ubuntu.com/ubuntu noble/main amd64 libxxf86vm1 amd64 1:1.1.4-1build4 [9282 B]
+Get:71 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libglx-mesa0 amd64 25.2.8-0ubuntu0.24.04.4 [110 kB]
+Get:72 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libgraphite2-3 amd64 1.3.14-2ubuntu0.24.04.1 [73.4 kB]
+Get:73 http://archive.ubuntu.com/ubuntu noble/main amd64 libharfbuzz0b amd64 8.3.0-2build2 [469 kB]
+Get:74 http://archive.ubuntu.com/ubuntu noble/main amd64 x11-common all 1:7.7+23ubuntu3 [21.7 kB]
+Get:75 http://archive.ubuntu.com/ubuntu noble/main amd64 libice6 amd64 2:1.0.10-1build3 [41.4 kB]
+Get:76 http://archive.ubuntu.com/ubuntu noble/main amd64 libnspr4 amd64 2:4.35-1.1build1 [117 kB]
+Get:77 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libnss3 amd64 2:3.98-1ubuntu0.2 [1445 kB]
+Get:78 http://archive.ubuntu.com/ubuntu noble/main amd64 libthai-data all 0.1.29-2build1 [158 kB]
+Get:79 http://archive.ubuntu.com/ubuntu noble/main amd64 libthai0 amd64 0.1.29-2build1 [18.9 kB]
+Get:80 http://archive.ubuntu.com/ubuntu noble/main amd64 libpango-1.0-0 amd64 1.52.1+ds-1build1 [231 kB]
+Get:81 http://archive.ubuntu.com/ubuntu noble/main amd64 libsm6 amd64 2:1.2.3-1build3 [15.7 kB]
+Get:82 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libunwind8 amd64 1.6.2-3build1.1 [55.3 kB]
+Get:83 http://archive.ubuntu.com/ubuntu noble/main amd64 libxt6t64 amd64 1:1.2.1-1.2build1 [171 kB]
+Get:84 http://archive.ubuntu.com/ubuntu noble/main amd64 libxmu6 amd64 2:1.1.3-3build2 [47.6 kB]
+Get:85 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libxpm4 amd64 1:3.5.17-1ubuntu0.24.04.2 [36.7 kB]
+Get:86 http://archive.ubuntu.com/ubuntu noble/main amd64 libxaw7 amd64 2:1.0.14-1build2 [187 kB]
+Get:87 http://archive.ubuntu.com/ubuntu noble/main amd64 libxcomposite1 amd64 1:0.4.5-1build3 [6320 B]
+Get:88 http://archive.ubuntu.com/ubuntu noble/main amd64 libxdamage1 amd64 1:1.1.6-1build1 [6150 B]
+Get:89 http://archive.ubuntu.com/ubuntu noble/main amd64 libxfixes3 amd64 1:6.0.0-2build1 [10.8 kB]
+Get:90 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libxfont2 amd64 1:2.0.6-1+deb13u1build0.24.04.2 [94.0 kB]
+Get:91 http://archive.ubuntu.com/ubuntu noble/main amd64 libxkbfile1 amd64 1:1.1.0-1build4 [70.0 kB]
+Get:92 http://archive.ubuntu.com/ubuntu noble/main amd64 libxrandr2 amd64 2:1.5.2-2build1 [19.7 kB]
+Get:93 http://archive.ubuntu.com/ubuntu noble/main amd64 x11-xkb-utils amd64 7.7+8build2 [170 kB]
+Get:94 http://archive.ubuntu.com/ubuntu noble/main amd64 xfonts-encodings all 1:1.0.5-0ubuntu2 [578 kB]
+Get:95 http://archive.ubuntu.com/ubuntu noble/main amd64 xfonts-utils amd64 1:7.7+6build3 [94.4 kB]
+Get:96 http://archive.ubuntu.com/ubuntu noble/universe amd64 xfonts-cyrillic all 1:1.0.5+nmu1 [384 kB]
+Get:97 http://archive.ubuntu.com/ubuntu noble/main amd64 xfonts-scalable all 1:1.0.3-1.3 [304 kB]
+Get:98 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 xserver-common all 2:21.1.12-1ubuntu1.8 [34.8 kB]
+Get:99 http://archive.ubuntu.com/ubuntu noble/main amd64 libglvnd0 amd64 1.7.0-1build1 [69.6 kB]
+Get:100 http://archive.ubuntu.com/ubuntu noble/main amd64 libglx0 amd64 1.7.0-1build1 [38.6 kB]
+Get:101 http://archive.ubuntu.com/ubuntu noble/main amd64 libgl1 amd64 1.7.0-1build1 [102 kB]
+Get:102 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 xvfb amd64 2:21.1.12-1ubuntu1.8 [877 kB]
+debconf: delaying package configuration, since apt-utils is not installed
+Fetched 97.6 MB in 42s (2336 kB/s)
+Selecting previously unselected package fonts-ipafont-gothic.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 8245 files and directories currently installed.)
+Preparing to unpack .../000-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
+Unpacking fonts-ipafont-gothic (00303-21ubuntu1) ...
+Selecting previously unselected package libbsd0:amd64.
+Preparing to unpack .../001-libbsd0_0.12.1-1build1.1_amd64.deb ...
+Unpacking libbsd0:amd64 (0.12.1-1build1.1) ...
+Selecting previously unselected package libdbus-1-3:amd64.
+Preparing to unpack .../002-libdbus-1-3_1.14.10-4ubuntu4.1_amd64.deb ...
+Unpacking libdbus-1-3:amd64 (1.14.10-4ubuntu4.1) ...
+Selecting previously unselected package libelf1t64:amd64.
+Preparing to unpack .../003-libelf1t64_0.190-1.1ubuntu0.1_amd64.deb ...
+Unpacking libelf1t64:amd64 (0.190-1.1ubuntu0.1) ...
+Selecting previously unselected package libfribidi0:amd64.
+Preparing to unpack .../004-libfribidi0_1.0.13-3build1_amd64.deb ...
+Unpacking libfribidi0:amd64 (1.0.13-3build1) ...
+Selecting previously unselected package libglib2.0-0t64:amd64.
+Preparing to unpack .../005-libglib2.0-0t64_2.80.0-6ubuntu3.9_amd64.deb ...
+Unpacking libglib2.0-0t64:amd64 (2.80.0-6ubuntu3.9) ...
+Selecting previously unselected package libicu74:amd64.
+Preparing to unpack .../006-libicu74_74.2-1ubuntu3.1_amd64.deb ...
+Unpacking libicu74:amd64 (74.2-1ubuntu3.1) ...
+Selecting previously unselected package libsqlite3-0:amd64.
+Preparing to unpack .../007-libsqlite3-0_3.45.1-1ubuntu2.8_amd64.deb ...
+Unpacking libsqlite3-0:amd64 (3.45.1-1ubuntu2.8) ...
+Selecting previously unselected package libxml2:amd64.
+Preparing to unpack .../008-libxml2_2.9.14+dfsg-1.3ubuntu3.10_amd64.deb ...
+Unpacking libxml2:amd64 (2.9.14+dfsg-1.3ubuntu3.10) ...
+Selecting previously unselected package xkb-data.
+Preparing to unpack .../009-xkb-data_2.41-2ubuntu1.1_all.deb ...
+Unpacking xkb-data (2.41-2ubuntu1.1) ...
+Selecting previously unselected package libdrm-common.
+Preparing to unpack .../010-libdrm-common_2.4.125-1ubuntu0.1~24.04.2_all.deb ...
+Unpacking libdrm-common (2.4.125-1ubuntu0.1~24.04.2) ...
+Selecting previously unselected package libdrm2:amd64.
+Preparing to unpack .../011-libdrm2_2.4.125-1ubuntu0.1~24.04.2_amd64.deb ...
+Unpacking libdrm2:amd64 (2.4.125-1ubuntu0.1~24.04.2) ...
+Selecting previously unselected package libedit2:amd64.
+Preparing to unpack .../012-libedit2_3.1-20230828-1build1_amd64.deb ...
+Unpacking libedit2:amd64 (3.1-20230828-1build1) ...
+Selecting previously unselected package libpng16-16t64:amd64.
+Preparing to unpack .../013-libpng16-16t64_1.6.43-5ubuntu0.7_amd64.deb ...
+Unpacking libpng16-16t64:amd64 (1.6.43-5ubuntu0.7) ...
+Selecting previously unselected package libsensors-config.
+Preparing to unpack .../014-libsensors-config_1%3a3.6.0-9build1_all.deb ...
+Unpacking libsensors-config (1:3.6.0-9build1) ...
+Selecting previously unselected package libsensors5:amd64.
+Preparing to unpack .../015-libsensors5_1%3a3.6.0-9build1_amd64.deb ...
+Unpacking libsensors5:amd64 (1:3.6.0-9build1) ...
+Selecting previously unselected package libxau6:amd64.
+Preparing to unpack .../016-libxau6_1%3a1.0.9-1build6_amd64.deb ...
+Unpacking libxau6:amd64 (1:1.0.9-1build6) ...
+Selecting previously unselected package libxdmcp6:amd64.
+Preparing to unpack .../017-libxdmcp6_1%3a1.1.3-0ubuntu6_amd64.deb ...
+Unpacking libxdmcp6:amd64 (1:1.1.3-0ubuntu6) ...
+Selecting previously unselected package libxcb1:amd64.
+Preparing to unpack .../018-libxcb1_1.15-1ubuntu2_amd64.deb ...
+Unpacking libxcb1:amd64 (1.15-1ubuntu2) ...
+Selecting previously unselected package libx11-data.
+Preparing to unpack .../019-libx11-data_2%3a1.8.7-1build1_all.deb ...
+Unpacking libx11-data (2:1.8.7-1build1) ...
+Selecting previously unselected package libx11-6:amd64.
+Preparing to unpack .../020-libx11-6_2%3a1.8.7-1build1_amd64.deb ...
+Unpacking libx11-6:amd64 (2:1.8.7-1build1) ...
+Selecting previously unselected package libxext6:amd64.
+Preparing to unpack .../021-libxext6_2%3a1.3.4-1build2_amd64.deb ...
+Unpacking libxext6:amd64 (2:1.3.4-1build2) ...
+Selecting previously unselected package libxkbcommon0:amd64.
+Preparing to unpack .../022-libxkbcommon0_1.6.0-1build1_amd64.deb ...
+Unpacking libxkbcommon0:amd64 (1.6.0-1build1) ...
+Selecting previously unselected package libxmuu1:amd64.
+Preparing to unpack .../023-libxmuu1_2%3a1.1.3-3build2_amd64.deb ...
+Unpacking libxmuu1:amd64 (2:1.1.3-3build2) ...
+Selecting previously unselected package xauth.
+Preparing to unpack .../024-xauth_1%3a1.1.2-1build1_amd64.deb ...
+Unpacking xauth (1:1.1.2-1build1) ...
+Selecting previously unselected package at-spi2-common.
+Preparing to unpack .../025-at-spi2-common_2.52.0-1build1_all.deb ...
+Unpacking at-spi2-common (2.52.0-1build1) ...
+Selecting previously unselected package libfreetype6:amd64.
+Preparing to unpack .../026-libfreetype6_2.13.2+dfsg-1ubuntu0.2_amd64.deb ...
+Unpacking libfreetype6:amd64 (2.13.2+dfsg-1ubuntu0.2) ...
+Selecting previously unselected package fonts-liberation.
+Preparing to unpack .../027-fonts-liberation_1%3a2.1.5-3_all.deb ...
+Unpacking fonts-liberation (1:2.1.5-3) ...
+Selecting previously unselected package fonts-freefont-ttf.
+Preparing to unpack .../028-fonts-freefont-ttf_20211204+svn4273-2_all.deb ...
+Unpacking fonts-freefont-ttf (20211204+svn4273-2) ...
+Selecting previously unselected package fontconfig-config.
+Preparing to unpack .../029-fontconfig-config_2.15.0-1.1ubuntu2_amd64.deb ...
+Unpacking fontconfig-config (2.15.0-1.1ubuntu2) ...
+Selecting previously unselected package libfontconfig1:amd64.
+Preparing to unpack .../030-libfontconfig1_2.15.0-1.1ubuntu2_amd64.deb ...
+Unpacking libfontconfig1:amd64 (2.15.0-1.1ubuntu2) ...
+Selecting previously unselected package fontconfig.
+Preparing to unpack .../031-fontconfig_2.15.0-1.1ubuntu2_amd64.deb ...
+Unpacking fontconfig (2.15.0-1.1ubuntu2) ...
+Selecting previously unselected package fonts-noto-color-emoji.
+Preparing to unpack .../032-fonts-noto-color-emoji_2.047-0ubuntu0.24.04.1_all.deb ...
+Unpacking fonts-noto-color-emoji (2.047-0ubuntu0.24.04.1) ...
+Selecting previously unselected package fonts-tlwg-loma-otf.
+Preparing to unpack .../033-fonts-tlwg-loma-otf_1%3a0.7.3-1_all.deb ...
+Unpacking fonts-tlwg-loma-otf (1:0.7.3-1) ...
+Selecting previously unselected package fonts-unifont.
+Preparing to unpack .../034-fonts-unifont_1%3a15.1.01-1build1_all.deb ...
+Unpacking fonts-unifont (1:15.1.01-1build1) ...
+Selecting previously unselected package fonts-wqy-zenhei.
+Preparing to unpack .../035-fonts-wqy-zenhei_0.9.45-8_all.deb ...
+Unpacking fonts-wqy-zenhei (0.9.45-8) ...
+Selecting previously unselected package libasound2-data.
+Preparing to unpack .../036-libasound2-data_1.2.11-1ubuntu0.3_all.deb ...
+Unpacking libasound2-data (1.2.11-1ubuntu0.3) ...
+Selecting previously unselected package libasound2t64:amd64.
+Preparing to unpack .../037-libasound2t64_1.2.11-1ubuntu0.3_amd64.deb ...
+Unpacking libasound2t64:amd64 (1.2.11-1ubuntu0.3) ...
+Selecting previously unselected package libatk1.0-0t64:amd64.
+Preparing to unpack .../038-libatk1.0-0t64_2.52.0-1build1_amd64.deb ...
+Unpacking libatk1.0-0t64:amd64 (2.52.0-1build1) ...
+Selecting previously unselected package libxi6:amd64.
+Preparing to unpack .../039-libxi6_2%3a1.8.1-1build1_amd64.deb ...
+Unpacking libxi6:amd64 (2:1.8.1-1build1) ...
+Selecting previously unselected package libatspi2.0-0t64:amd64.
+Preparing to unpack .../040-libatspi2.0-0t64_2.52.0-1build1_amd64.deb ...
+Unpacking libatspi2.0-0t64:amd64 (2.52.0-1build1) ...
+Selecting previously unselected package libatk-bridge2.0-0t64:amd64.
+Preparing to unpack .../041-libatk-bridge2.0-0t64_2.52.0-1build1_amd64.deb ...
+Unpacking libatk-bridge2.0-0t64:amd64 (2.52.0-1build1) ...
+Selecting previously unselected package libavahi-common-data:amd64.
+Preparing to unpack .../042-libavahi-common-data_0.8-13ubuntu6.2_amd64.deb ...
+Unpacking libavahi-common-data:amd64 (0.8-13ubuntu6.2) ...
+Selecting previously unselected package libavahi-common3:amd64.
+Preparing to unpack .../043-libavahi-common3_0.8-13ubuntu6.2_amd64.deb ...
+Unpacking libavahi-common3:amd64 (0.8-13ubuntu6.2) ...
+Selecting previously unselected package libavahi-client3:amd64.
+Preparing to unpack .../044-libavahi-client3_0.8-13ubuntu6.2_amd64.deb ...
+Unpacking libavahi-client3:amd64 (0.8-13ubuntu6.2) ...
+Selecting previously unselected package libpixman-1-0:amd64.
+Preparing to unpack .../045-libpixman-1-0_0.42.2-1build1_amd64.deb ...
+Unpacking libpixman-1-0:amd64 (0.42.2-1build1) ...
+Selecting previously unselected package libxcb-render0:amd64.
+Preparing to unpack .../046-libxcb-render0_1.15-1ubuntu2_amd64.deb ...
+Unpacking libxcb-render0:amd64 (1.15-1ubuntu2) ...
+Selecting previously unselected package libxcb-shm0:amd64.
+Preparing to unpack .../047-libxcb-shm0_1.15-1ubuntu2_amd64.deb ...
+Unpacking libxcb-shm0:amd64 (1.15-1ubuntu2) ...
+Selecting previously unselected package libxrender1:amd64.
+Preparing to unpack .../048-libxrender1_1%3a0.9.10-1.1build1_amd64.deb ...
+Unpacking libxrender1:amd64 (1:0.9.10-1.1build1) ...
+Selecting previously unselected package libcairo2:amd64.
+Preparing to unpack .../049-libcairo2_1.18.0-3build1_amd64.deb ...
+Unpacking libcairo2:amd64 (1.18.0-3build1) ...
+Selecting previously unselected package libcups2t64:amd64.
+Preparing to unpack .../050-libcups2t64_2.4.7-1.2ubuntu7.14_amd64.deb ...
+Unpacking libcups2t64:amd64 (2.4.7-1.2ubuntu7.14) ...
+Selecting previously unselected package libdatrie1:amd64.
+Preparing to unpack .../051-libdatrie1_0.2.13-3build1_amd64.deb ...
+Unpacking libdatrie1:amd64 (0.2.13-3build1) ...
+Selecting previously unselected package libdrm-amdgpu1:amd64.
+Preparing to unpack .../052-libdrm-amdgpu1_2.4.125-1ubuntu0.1~24.04.2_amd64.deb ...
+Unpacking libdrm-amdgpu1:amd64 (2.4.125-1ubuntu0.1~24.04.2) ...
+Selecting previously unselected package libpciaccess0:amd64.
+Preparing to unpack .../053-libpciaccess0_0.17-3ubuntu0.24.04.3_amd64.deb ...
+Unpacking libpciaccess0:amd64 (0.17-3ubuntu0.24.04.3) ...
+Selecting previously unselected package libdrm-intel1:amd64.
+Preparing to unpack .../054-libdrm-intel1_2.4.125-1ubuntu0.1~24.04.2_amd64.deb ...
+Unpacking libdrm-intel1:amd64 (2.4.125-1ubuntu0.1~24.04.2) ...
+Selecting previously unselected package libfontenc1:amd64.
+Preparing to unpack .../055-libfontenc1_1%3a1.1.8-1build1_amd64.deb ...
+Unpacking libfontenc1:amd64 (1:1.1.8-1build1) ...
+Selecting previously unselected package libllvm20:amd64.
+Preparing to unpack .../056-libllvm20_1%3a20.1.2-0ubuntu1~24.04.3_amd64.deb ...
+Unpacking libllvm20:amd64 (1:20.1.2-0ubuntu1~24.04.3) ...
+Selecting previously unselected package libx11-xcb1:amd64.
+Preparing to unpack .../057-libx11-xcb1_2%3a1.8.7-1build1_amd64.deb ...
+Unpacking libx11-xcb1:amd64 (2:1.8.7-1build1) ...
+Selecting previously unselected package libxcb-dri3-0:amd64.
+Preparing to unpack .../058-libxcb-dri3-0_1.15-1ubuntu2_amd64.deb ...
+Unpacking libxcb-dri3-0:amd64 (1.15-1ubuntu2) ...
+Selecting previously unselected package libxcb-present0:amd64.
+Preparing to unpack .../059-libxcb-present0_1.15-1ubuntu2_amd64.deb ...
+Unpacking libxcb-present0:amd64 (1.15-1ubuntu2) ...
+Selecting previously unselected package libxcb-randr0:amd64.
+Preparing to unpack .../060-libxcb-randr0_1.15-1ubuntu2_amd64.deb ...
+Unpacking libxcb-randr0:amd64 (1.15-1ubuntu2) ...
+Selecting previously unselected package libxcb-sync1:amd64.
+Preparing to unpack .../061-libxcb-sync1_1.15-1ubuntu2_amd64.deb ...
+Unpacking libxcb-sync1:amd64 (1.15-1ubuntu2) ...
+Selecting previously unselected package libxcb-xfixes0:amd64.
+Preparing to unpack .../062-libxcb-xfixes0_1.15-1ubuntu2_amd64.deb ...
+Unpacking libxcb-xfixes0:amd64 (1.15-1ubuntu2) ...
+Selecting previously unselected package libxshmfence1:amd64.
+Preparing to unpack .../063-libxshmfence1_1.3-1build5_amd64.deb ...
+Unpacking libxshmfence1:amd64 (1.3-1build5) ...
+Selecting previously unselected package mesa-libgallium:amd64.
+Preparing to unpack .../064-mesa-libgallium_25.2.8-0ubuntu0.24.04.4_amd64.deb ...
+Unpacking mesa-libgallium:amd64 (25.2.8-0ubuntu0.24.04.4) ...
+Selecting previously unselected package libgbm1:amd64.
+Preparing to unpack .../065-libgbm1_25.2.8-0ubuntu0.24.04.4_amd64.deb ...
+Unpacking libgbm1:amd64 (25.2.8-0ubuntu0.24.04.4) ...
+Selecting previously unselected package libvulkan1:amd64.
+Preparing to unpack .../066-libvulkan1_1.3.275.0-1build1_amd64.deb ...
+Unpacking libvulkan1:amd64 (1.3.275.0-1build1) ...
+Selecting previously unselected package libgl1-mesa-dri:amd64.
+Preparing to unpack .../067-libgl1-mesa-dri_25.2.8-0ubuntu0.24.04.4_amd64.deb ...
+Unpacking libgl1-mesa-dri:amd64 (25.2.8-0ubuntu0.24.04.4) ...
+Selecting previously unselected package libxcb-glx0:amd64.
+Preparing to unpack .../068-libxcb-glx0_1.15-1ubuntu2_amd64.deb ...
+Unpacking libxcb-glx0:amd64 (1.15-1ubuntu2) ...
+Selecting previously unselected package libxxf86vm1:amd64.
+Preparing to unpack .../069-libxxf86vm1_1%3a1.1.4-1build4_amd64.deb ...
+Unpacking libxxf86vm1:amd64 (1:1.1.4-1build4) ...
+Selecting previously unselected package libglx-mesa0:amd64.
+Preparing to unpack .../070-libglx-mesa0_25.2.8-0ubuntu0.24.04.4_amd64.deb ...
+Unpacking libglx-mesa0:amd64 (25.2.8-0ubuntu0.24.04.4) ...
+Selecting previously unselected package libgraphite2-3:amd64.
+Preparing to unpack .../071-libgraphite2-3_1.3.14-2ubuntu0.24.04.1_amd64.deb ...
+Unpacking libgraphite2-3:amd64 (1.3.14-2ubuntu0.24.04.1) ...
+Selecting previously unselected package libharfbuzz0b:amd64.
+Preparing to unpack .../072-libharfbuzz0b_8.3.0-2build2_amd64.deb ...
+Unpacking libharfbuzz0b:amd64 (8.3.0-2build2) ...
+Selecting previously unselected package x11-common.
+Preparing to unpack .../073-x11-common_1%3a7.7+23ubuntu3_all.deb ...
+Unpacking x11-common (1:7.7+23ubuntu3) ...
+Selecting previously unselected package libice6:amd64.
+Preparing to unpack .../074-libice6_2%3a1.0.10-1build3_amd64.deb ...
+Unpacking libice6:amd64 (2:1.0.10-1build3) ...
+Selecting previously unselected package libnspr4:amd64.
+Preparing to unpack .../075-libnspr4_2%3a4.35-1.1build1_amd64.deb ...
+Unpacking libnspr4:amd64 (2:4.35-1.1build1) ...
+Selecting previously unselected package libnss3:amd64.
+Preparing to unpack .../076-libnss3_2%3a3.98-1ubuntu0.2_amd64.deb ...
+Unpacking libnss3:amd64 (2:3.98-1ubuntu0.2) ...
+Selecting previously unselected package libthai-data.
+Preparing to unpack .../077-libthai-data_0.1.29-2build1_all.deb ...
+Unpacking libthai-data (0.1.29-2build1) ...
+Selecting previously unselected package libthai0:amd64.
+Preparing to unpack .../078-libthai0_0.1.29-2build1_amd64.deb ...
+Unpacking libthai0:amd64 (0.1.29-2build1) ...
+Selecting previously unselected package libpango-1.0-0:amd64.
+Preparing to unpack .../079-libpango-1.0-0_1.52.1+ds-1build1_amd64.deb ...
+Unpacking libpango-1.0-0:amd64 (1.52.1+ds-1build1) ...
+Selecting previously unselected package libsm6:amd64.
+Preparing to unpack .../080-libsm6_2%3a1.2.3-1build3_amd64.deb ...
+Unpacking libsm6:amd64 (2:1.2.3-1build3) ...
+Selecting previously unselected package libunwind8:amd64.
+Preparing to unpack .../081-libunwind8_1.6.2-3build1.1_amd64.deb ...
+Unpacking libunwind8:amd64 (1.6.2-3build1.1) ...
+Selecting previously unselected package libxt6t64:amd64.
+Preparing to unpack .../082-libxt6t64_1%3a1.2.1-1.2build1_amd64.deb ...
+Unpacking libxt6t64:amd64 (1:1.2.1-1.2build1) ...
+Selecting previously unselected package libxmu6:amd64.
+Preparing to unpack .../083-libxmu6_2%3a1.1.3-3build2_amd64.deb ...
+Unpacking libxmu6:amd64 (2:1.1.3-3build2) ...
+Selecting previously unselected package libxpm4:amd64.
+Preparing to unpack .../084-libxpm4_1%3a3.5.17-1ubuntu0.24.04.2_amd64.deb ...
+Unpacking libxpm4:amd64 (1:3.5.17-1ubuntu0.24.04.2) ...
+Selecting previously unselected package libxaw7:amd64.
+Preparing to unpack .../085-libxaw7_2%3a1.0.14-1build2_amd64.deb ...
+Unpacking libxaw7:amd64 (2:1.0.14-1build2) ...
+Selecting previously unselected package libxcomposite1:amd64.
+Preparing to unpack .../086-libxcomposite1_1%3a0.4.5-1build3_amd64.deb ...
+Unpacking libxcomposite1:amd64 (1:0.4.5-1build3) ...
+Selecting previously unselected package libxdamage1:amd64.
+Preparing to unpack .../087-libxdamage1_1%3a1.1.6-1build1_amd64.deb ...
+Unpacking libxdamage1:amd64 (1:1.1.6-1build1) ...
+Selecting previously unselected package libxfixes3:amd64.
+Preparing to unpack .../088-libxfixes3_1%3a6.0.0-2build1_amd64.deb ...
+Unpacking libxfixes3:amd64 (1:6.0.0-2build1) ...
+Selecting previously unselected package libxfont2:amd64.
+Preparing to unpack .../089-libxfont2_1%3a2.0.6-1+deb13u1build0.24.04.2_amd64.deb ...
+Unpacking libxfont2:amd64 (1:2.0.6-1+deb13u1build0.24.04.2) ...
+Selecting previously unselected package libxkbfile1:amd64.
+Preparing to unpack .../090-libxkbfile1_1%3a1.1.0-1build4_amd64.deb ...
+Unpacking libxkbfile1:amd64 (1:1.1.0-1build4) ...
+Selecting previously unselected package libxrandr2:amd64.
+Preparing to unpack .../091-libxrandr2_2%3a1.5.2-2build1_amd64.deb ...
+Unpacking libxrandr2:amd64 (2:1.5.2-2build1) ...
+Selecting previously unselected package x11-xkb-utils.
+Preparing to unpack .../092-x11-xkb-utils_7.7+8build2_amd64.deb ...
+Unpacking x11-xkb-utils (7.7+8build2) ...
+Selecting previously unselected package xfonts-encodings.
+Preparing to unpack .../093-xfonts-encodings_1%3a1.0.5-0ubuntu2_all.deb ...
+Unpacking xfonts-encodings (1:1.0.5-0ubuntu2) ...
+Selecting previously unselected package xfonts-utils.
+Preparing to unpack .../094-xfonts-utils_1%3a7.7+6build3_amd64.deb ...
+Unpacking xfonts-utils (1:7.7+6build3) ...
+Selecting previously unselected package xfonts-cyrillic.
+Preparing to unpack .../095-xfonts-cyrillic_1%3a1.0.5+nmu1_all.deb ...
+Unpacking xfonts-cyrillic (1:1.0.5+nmu1) ...
+Selecting previously unselected package xfonts-scalable.
+Preparing to unpack .../096-xfonts-scalable_1%3a1.0.3-1.3_all.deb ...
+Unpacking xfonts-scalable (1:1.0.3-1.3) ...
+Selecting previously unselected package xserver-common.
+Preparing to unpack .../097-xserver-common_2%3a21.1.12-1ubuntu1.8_all.deb ...
+Unpacking xserver-common (2:21.1.12-1ubuntu1.8) ...
+Selecting previously unselected package libglvnd0:amd64.
+Preparing to unpack .../098-libglvnd0_1.7.0-1build1_amd64.deb ...
+Unpacking libglvnd0:amd64 (1.7.0-1build1) ...
+Selecting previously unselected package libglx0:amd64.
+Preparing to unpack .../099-libglx0_1.7.0-1build1_amd64.deb ...
+Unpacking libglx0:amd64 (1.7.0-1build1) ...
+Selecting previously unselected package libgl1:amd64.
+Preparing to unpack .../100-libgl1_1.7.0-1build1_amd64.deb ...
+Unpacking libgl1:amd64 (1.7.0-1build1) ...
+Selecting previously unselected package xvfb.
+Preparing to unpack .../101-xvfb_2%3a21.1.12-1ubuntu1.8_amd64.deb ...
+Unpacking xvfb (2:21.1.12-1ubuntu1.8) ...
+Setting up libgraphite2-3:amd64 (1.3.14-2ubuntu0.24.04.1) ...
+Setting up libpixman-1-0:amd64 (0.42.2-1build1) ...
+Setting up libpciaccess0:amd64 (0.17-3ubuntu0.24.04.3) ...
+Setting up libxau6:amd64 (1:1.0.9-1build6) ...
+Setting up libdatrie1:amd64 (0.2.13-3build1) ...
+Setting up fonts-noto-color-emoji (2.047-0ubuntu0.24.04.1) ...
+Setting up libglvnd0:amd64 (1.7.0-1build1) ...
+Setting up libsqlite3-0:amd64 (3.45.1-1ubuntu2.8) ...
+Setting up x11-common (1:7.7+23ubuntu3) ...
+invoke-rc.d: could not determine current runlevel
+invoke-rc.d: policy-rc.d denied execution of start.
+Setting up libsensors-config (1:3.6.0-9build1) ...
+Setting up fonts-freefont-ttf (20211204+svn4273-2) ...
+Setting up xkb-data (2.41-2ubuntu1.1) ...
+Setting up libunwind8:amd64 (1.6.2-3build1.1) ...
+Setting up libelf1t64:amd64 (0.190-1.1ubuntu0.1) ...
+Setting up libasound2-data (1.2.11-1ubuntu0.3) ...
+Setting up libfontenc1:amd64 (1:1.1.8-1build1) ...
+Setting up libglib2.0-0t64:amd64 (2.80.0-6ubuntu3.9) ...
+No schema files found: doing nothing.
+Setting up libasound2t64:amd64 (1.2.11-1ubuntu0.3) ...
+Setting up fonts-tlwg-loma-otf (1:0.7.3-1) ...
+Setting up libx11-data (2:1.8.7-1build1) ...
+Setting up libnspr4:amd64 (2:4.35-1.1build1) ...
+Setting up libavahi-common-data:amd64 (0.8-13ubuntu6.2) ...
+Setting up libdbus-1-3:amd64 (1.14.10-4ubuntu4.1) ...
+Setting up xfonts-encodings (1:1.0.5-0ubuntu2) ...
+Setting up libfribidi0:amd64 (1.0.13-3build1) ...
+Setting up libpng16-16t64:amd64 (1.6.43-5ubuntu0.7) ...
+Setting up libsensors5:amd64 (1:3.6.0-9build1) ...
+Setting up libvulkan1:amd64 (1.3.275.0-1build1) ...
+Setting up libicu74:amd64 (74.2-1ubuntu3.1) ...
+Setting up fonts-ipafont-gothic (00303-21ubuntu1) ...
+update-alternatives: using /usr/share/fonts/opentype/ipafont-gothic/ipag.ttf to provide /usr/share/fonts/truetype/fonts-japanese-gothic.ttf (fonts-japanese-gothic.ttf) in auto mode
+Setting up libxshmfence1:amd64 (1.3-1build5) ...
+Setting up at-spi2-common (2.52.0-1build1) ...
+Setting up fonts-liberation (1:2.1.5-3) ...
+Setting up libthai-data (0.1.29-2build1) ...
+Setting up libbsd0:amd64 (0.12.1-1build1.1) ...
+Setting up libdrm-common (2.4.125-1ubuntu0.1~24.04.2) ...
+Setting up libxml2:amd64 (2.9.14+dfsg-1.3ubuntu3.10) ...
+Setting up fonts-unifont (1:15.1.01-1build1) ...
+Setting up libxkbcommon0:amd64 (1.6.0-1build1) ...
+Setting up libice6:amd64 (2:1.0.10-1build3) ...
+Setting up libxdmcp6:amd64 (1:1.1.3-0ubuntu6) ...
+Setting up libxcb1:amd64 (1.15-1ubuntu2) ...
+Setting up libxcb-xfixes0:amd64 (1.15-1ubuntu2) ...
+Setting up libatk1.0-0t64:amd64 (2.52.0-1build1) ...
+Setting up libxcb-render0:amd64 (1.15-1ubuntu2) ...
+Setting up fontconfig-config (2.15.0-1.1ubuntu2) ...
+Setting up libxcb-glx0:amd64 (1.15-1ubuntu2) ...
+Setting up libedit2:amd64 (3.1-20230828-1build1) ...
+Setting up libavahi-common3:amd64 (0.8-13ubuntu6.2) ...
+Setting up libnss3:amd64 (2:3.98-1ubuntu0.2) ...
+Setting up libxcb-shm0:amd64 (1.15-1ubuntu2) ...
+Setting up libxcb-present0:amd64 (1.15-1ubuntu2) ...
+Setting up libthai0:amd64 (0.1.29-2build1) ...
+Setting up libfreetype6:amd64 (2.13.2+dfsg-1ubuntu0.2) ...
+Setting up libxcb-sync1:amd64 (1.15-1ubuntu2) ...
+Setting up libllvm20:amd64 (1:20.1.2-0ubuntu1~24.04.3) ...
+Setting up libdrm2:amd64 (2.4.125-1ubuntu0.1~24.04.2) ...
+Setting up libxcb-randr0:amd64 (1.15-1ubuntu2) ...
+Setting up libx11-6:amd64 (2:1.8.7-1build1) ...
+Setting up libharfbuzz0b:amd64 (8.3.0-2build2) ...
+Setting up libfontconfig1:amd64 (2.15.0-1.1ubuntu2) ...
+Setting up libxkbfile1:amd64 (1:1.1.0-1build4) ...
+Setting up libxcomposite1:amd64 (1:0.4.5-1build3) ...
+Setting up libsm6:amd64 (2:1.2.3-1build3) ...
+Setting up libxfont2:amd64 (1:2.0.6-1+deb13u1build0.24.04.2) ...
+Setting up libavahi-client3:amd64 (0.8-13ubuntu6.2) ...
+Setting up libxmuu1:amd64 (2:1.1.3-3build2) ...
+Setting up libdrm-amdgpu1:amd64 (2.4.125-1ubuntu0.1~24.04.2) ...
+Setting up libxcb-dri3-0:amd64 (1.15-1ubuntu2) ...
+Setting up libx11-xcb1:amd64 (2:1.8.7-1build1) ...
+Setting up fontconfig (2.15.0-1.1ubuntu2) ...
+Regenerating fonts cache... done.
+Setting up libxdamage1:amd64 (1:1.1.6-1build1) ...
+Setting up libxpm4:amd64 (1:3.5.17-1ubuntu0.24.04.2) ...
+Setting up libxrender1:amd64 (1:0.9.10-1.1build1) ...
+Setting up libpango-1.0-0:amd64 (1.52.1+ds-1build1) ...
+Setting up libdrm-intel1:amd64 (2.4.125-1ubuntu0.1~24.04.2) ...
+Setting up fonts-wqy-zenhei (0.9.45-8) ...
+Setting up libxext6:amd64 (2:1.3.4-1build2) ...
+Setting up xfonts-utils (1:7.7+6build3) ...
+Setting up libcairo2:amd64 (1.18.0-3build1) ...
+Setting up libxxf86vm1:amd64 (1:1.1.4-1build4) ...
+Setting up libxfixes3:amd64 (1:6.0.0-2build1) ...
+Setting up libxt6t64:amd64 (1:1.2.1-1.2build1) ...
+Setting up libxrandr2:amd64 (2:1.5.2-2build1) ...
+Setting up xauth (1:1.1.2-1build1) ...
+Setting up xfonts-cyrillic (1:1.0.5+nmu1) ...
+Setting up libcups2t64:amd64 (2.4.7-1.2ubuntu7.14) ...
+Setting up xfonts-scalable (1:1.0.3-1.3) ...
+Setting up mesa-libgallium:amd64 (25.2.8-0ubuntu0.24.04.4) ...
+Setting up libxmu6:amd64 (2:1.1.3-3build2) ...
+Setting up libxi6:amd64 (2:1.8.1-1build1) ...
+Setting up libgbm1:amd64 (25.2.8-0ubuntu0.24.04.4) ...
+Setting up libgl1-mesa-dri:amd64 (25.2.8-0ubuntu0.24.04.4) ...
+Setting up libxaw7:amd64 (2:1.0.14-1build2) ...
+Setting up libatspi2.0-0t64:amd64 (2.52.0-1build1) ...
+Setting up libatk-bridge2.0-0t64:amd64 (2.52.0-1build1) ...
+Setting up libglx-mesa0:amd64 (25.2.8-0ubuntu0.24.04.4) ...
+Setting up libglx0:amd64 (1.7.0-1build1) ...
+Setting up x11-xkb-utils (7.7+8build2) ...
+Setting up libgl1:amd64 (1.7.0-1build1) ...
+Setting up xserver-common (2:21.1.12-1ubuntu1.8) ...
+Setting up xvfb (2:21.1.12-1ubuntu1.8) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+Downloading Chromium 131.0.6778.33 (playwright build v1148) from https://playwright.azureedge.net/builds/chromium/1148/chromium-linux.zip
+|                                                                                |   0% of 161.3 MiB
+|■■■■■■■■                                                                        |  10% of 161.3 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 161.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 161.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 161.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 161.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 161.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 161.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 161.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 161.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 161.3 MiB
+Chromium 131.0.6778.33 (playwright build v1148) downloaded to /work/pw-browsers/chromium-1148
+Downloading FFMPEG playwright build v1010 from https://playwright.azureedge.net/builds/ffmpeg/1010/ffmpeg-linux.zip
+|                                                                                |   0% of 2.3 MiB
+|■■■■■■■■                                                                        |  10% of 2.3 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 2.3 MiB
+FFMPEG playwright build v1010 downloaded to /work/pw-browsers/ffmpeg-1010
+Downloading Chromium Headless Shell 131.0.6778.33 (playwright build v1148) from https://playwright.azureedge.net/builds/chromium/1148/chromium-headless-shell-linux.zip
+|                                                                                |   0% of 100.9 MiB
+|■■■■■■■■                                                                        |  10% of 100.9 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 100.9 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 100.9 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 100.9 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 100.9 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 100.9 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 100.9 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 100.9 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 100.9 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 100.9 MiB
+Chromium Headless Shell 131.0.6778.33 (playwright build v1148) downloaded to /work/pw-browsers/chromium_headless_shell-1148
+[record] ui.loads=true — the Web GUI loaded and rendered visible text in a real browser
+[record] ui.workspaceSelected=true — a workspace is selected in the GUI, so the session composer is live
+[record] ui.composerPresent=true — the prompt composer exists and is editable — the entry point of every turn
+[record] ui.promptSent=true — a prompt was typed into the composer and sent through the real UI
+[record] ui.replyRendered=true — the transcript changed after the send and shows the turn's own output
+[record] ui.teamPanel=true — the right sidebar opens on the Agent Teams panel with its roster and board
+[record] ui.mpdSettingsSection=true — the MPD settings section registers and renders its card in Settings
+[record] ui.noConsoleErrors=true — the browser reported no console errors and no uncaught page errors
+[browser-lane] rows=8 failed=0 shots=/out/ui-shots
+
+----- isolation -----
+[record] isolation.home=true — HOME and DSH_HOME stay on the sandbox paths for every harness command
+[record] isolation.realHome=true — no harness/toolchain marker under the real home (/root)
+[record] isolation.noCredentials=true — the ONLY credential-bearing file is the one this run staged into the SANDBOX home for the live arm (scoped by live.credentialScoped, deleted before the report); no other file carries secret-shaped content and nothing was staged into the real home
+===== STEP 14-tui =====
+[record] tui.hostInstall=true — the TUI host installs globally and lands on PATH
+[record] tui.pluginAddHost=true — the TUI host bundle installs into the dsh-tui profile
+[record] tui.pluginAddBundle=true — THIS bundle installs into the dsh-tui profile as the third patch layer
+[record] tui.compose=true — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)
+[record] tui.presetPreference=true — the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.14.0 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd
+[record] tui.presetRow=true — the mpd preset row is composed in the TUI plane
+[record] tui.mpdTuiRow=true — the bundle's mpd-tui row is composed in the TUI plane
+[record] tui.agentTeamRows=true — all three official Agent Teams rows are composed in the TUI plane
+[record] tui.teamSceneOtherSessionInvisible=true — a session with NO bound board drew the product's OWN empty-state marker, and the board a SIBLING session owns was NOT drawn in it: the marker is the exported constant NO_SESSION_TEAM_MARKER read out of its source declaration and matched as a SUBSTRING of the captured pane, and none of the 3 task id(s) the sibling's record carries appeared in that same pane as a node label
+[record] tui.teamFixtureBound=true — the seeded board is bound to the LIVE session this TUI runs as — the id discovered from the harness's OWN store (a pre-boot snapshot differenced against the store as it is now, so the id that APPEARED during this boot is the TUI's) and keyed through the PRODUCT's own rule, imported from packages/mpd-team-core-plugin/src/team-store.ts :: sessionKey. Both spellings the product's own createTeam writes are on disk: teams.json's active[<sessionKey>] = "tui-scene" AND the record's leadSessionId = <sessionKey>, because the product has two readers (the mpdTeams service answers from the index; its session-scoped degradation matches the record's leadSessionId). WITHOUT this binding the scene correctly draws its empty state and every team arm below reddens — which is exactly the F1 defect of evidence/docker/client-install/2026-10-08T08-52-23Z
+[record] tui.teamSceneOpened=true — the /mpd team scene opened on a real terminal
+[record] tui.teamGraphDrawn=true — the LAYERED BOXES were drawn: the ROUNDED corner census equals the record's own task count, one box per task, which a dropped box reddens (the square corners the old arm matched belong to the scene FRAME; the subjects are NOT claimed here, because clause AC1 moved them to the pinned detail body that tui.teamGraphContent asserts)
+[record] tui.teamGraphEdges=true — the dependency EDGES were drawn with box-drawing junctions
+[record] tui.teamGraphContent=true — every task id the lane's OWN record carries is drawn as a node label AND the record's own subject is reachable one keystroke away in the pinned detail body, where clause AC1 moved it (a literal id would keep passing after a dropped task)
+[record] tui.mergedPanelOpens=null — the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above
+[record] tui.mergedPanelOrder=null — the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry
+[record] tui.hostDashboardKeyIntact=true — Ctrl+A stayed the HOST's key on this host, as frozen R4 requires wherever the panel seam is present: with the seeded team present it did NOT open MPD's merged panel, and after the team record was removed it still did not. The panel is reached through MPD's own entry points instead (tui.mergedPanelOpens above proves /mpd panel)
+[record] tui.noDirectTuiSeam=true — the D6 gate (no file outside mpd-tui-adapter-plugin names a ctx.tui* seam) passed on a byte-identical copy of the INSTALLED tree, executed where node can strip types
+[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/c99f0b95-cacd-46b9-8f8c-b0346af40b4e/session.v4.jsonl.zstd
+[record] live.tui.turnStarted=true — the tui plane started a real turn
+[record] live.tui.turnCompleted=true — the tui turn reached turn/end reason=completed
+[record] live.tui.noErrorTurns=true — no tui turn ended in an error
+[record] live.tui.noMalformedToolJson=true — every tui tool-call payload the model emitted parsed as JSON
+[record] live.tui.toolCallsParsed=true — all 1 tui tool call(s) parsed (1/1)
+[record] live.tui.mpdToolCalled=true — an MPD tool ran under a live tui turn
+[record] live.tui.assistantReplied=true — the tui assistant produced visible text
+[record] tui.boot=true — the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)
+[record] tui.noFatalSignatures=true — no fatal apply/module/preset signature in the TUI pane or log
+[record] tui.sessionPreset=true — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)
+[record] tui.laneExit=true — the TUI lane ran to completion with every assertion green
+[live-prompt] promptSource=default bytes=424 firstLine="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action "create" (name it live-smoke, description "docker live turn"); (3) call agent_teams_plan with action "add_member" for a member named Reviewer; (4) call agent_teams_plan with action "create_task" with subject "check the mount"; (5) call agent_teams_plan with action "approve". Then reply with the single word DONE."
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user wants a specific sequence of tool calls. Let me do them in order.
+
+Step 1: mpd_config_get with no arguments.
+Step 2-5: agent_teams_plan calls. These are dependent on each other (create must come before add_member), so sequential. Let me start with step 1.
+
+Actually I can call step 1 alone first since step 2 depends on... well, they're independent technically, but the order is specified. Let me do step 1 first, then step 2, etc. Actually I should be careful: create_task may need member? No. Let's follow order.
+
+Let me make step 1 call first.
+dsh: reasoning:
+Now step 2: create the plan.
+dsh: reasoning:
+Step 3: add_member named Reviewer. The member needs a name and prompt. Let me get persona? The instruction just says add_member for a member named Reviewer. I'll include a prompt. Let me use mpd_role_persona to get the Reviewer persona text... but the instruction says just call add_member. I'll include a reasonable prompt. Actually the spec says member: {name, prompt, description?, role?}. Let me fetch the persona to be safe? That's an extra call not in the ordered list. The user said do these steps in order — extra calls might be tolerated but better to keep it simple. I'll just provide a prompt inline.
+
+Actually, use role "Reviewer" and prompt. Let me include a self-contained prompt.
+DONE
+[record] live.headlessPresetRow=true — preset-mpd pends because the HEADLESS composition declares no agent-presets registry (a harness-plane fact: only dsh-web-app declares @deepseek-ai/dsh-agent-preset-registry); the mpd HOST rows still mount, which the live turn proves
+[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/session-24670b03-a03a-4b28-ad7b-e90fbfe6f7a3/session.v4.jsonl.zstd
+[record] live.headless.turnStarted=true — the headless plane started a real turn
+[record] live.headless.turnCompleted=true — the headless turn reached turn/end reason=completed
+[record] live.headless.noErrorTurns=true — no headless turn ended in an error
+[record] live.headless.noMalformedToolJson=true — every headless tool-call payload the model emitted parsed as JSON
+[record] live.headless.toolCallsParsed=true — all 5 headless tool call(s) parsed (5/5)
+[record] live.headless.mpdToolCalled=true — an MPD tool ran under a live headless turn
+[record] live.headless.assistantReplied=true — the headless assistant produced visible text
+[record] boot.llmTurn=true — a live headless turn ran to turn/end reason=completed (read from the harness's own session store)
+[record] live.teamRecord=true — the team record THIS step produced exists (written at/after the step started) after a REAL approval
+[record] live.nativeExecutor=true — a member carries an executorRef, i.e. the NATIVE executor raised it through ctx.subagents
+[record] live.credentialRemoved=true — the staged credential was deleted before the report was written
+
+----- the cases §7 owes (restored capabilities + the two live QA cases) -----
+===== STEP 16-owed-lsp =====
+$ node /opt/mpd-e2e/lib/owed-cases.ts --kind lsp --repo /root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd --work /out/owed --state /work/assertions.ndjson
+[owed-cases] restore.lspBootstrap=true — the launcher generated a valid .mpd/lsp/cclsp.json with 1 well-formed language server(s), 1 of them serving the TypeScript family, and left a pre-existing user cclsp.json byte-identical (the negative control)
+[step 16-owed-lsp] exit=0 seconds=0
+===== STEP 16b-pack-refresh =====
+$ node /opt/mpd/scripts/pack-mpd.ts
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] modes normalized: 609 files (644: 593, 755: 16)
+[pack-mpd] staged package -> /opt/mpd/dist/mpd-package  (out-dir source: default (<repo>/dist/mpd-package))
+[step 16b-pack-refresh] exit=0 seconds=1
+===== STEP 16c-owed-cases =====
+$ node /opt/mpd-e2e/lib/owed-cases.ts --kind cases --repo /opt/mpd --work /out/owed --qa-home /work/qa-home --state /work/assertions.ndjson
+[owed-cases] restore.reviewPanelSelfTest=true — the restored review panel's offline self-test (with its negative control) ran to a clean exit in this run — the case's own assertions are what passed
+[owed-cases] restore.reviewPanelCase=true — the restored review panel's real case ran to a clean exit in this run — the case's own assertions are what passed
+[owed-cases] restore.hashlineRepair=true — the restored hashline fuzzy-repair cases (wrapped line, paired indent, the ambiguous negative control, the CRLF round-trip) ran to a clean exit in this run — the case's own assertions are what passed
+[owed-cases] qa.mcpCall=false — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did NOT pass in this run (exit=1); this is the case's real outcome, not the host's excuse
+[owed-cases] qa.readonlyDeny=false — the live readonly-deny case (a read-only spawn whose child must really be restricted) did NOT pass in this run (exit=1); this is the case's real outcome, not the host's excuse
+[step 16c-owed-cases] exit=0 seconds=27
+[report] ok=false complete=false passed=107 failed=3 null=4 scrubbed=true -> /out/result.json
+[report] FAIL boot.mcpLiveSearch — the live ast-grep search did not settle: graded=fail:unreadable-result control=fail:unreadable-result (the control MUST be 0 matches, and the graded call at least 1) | raw: dir=/opt/mpd/packages/mpd-mcp-astgrep/src MCP_LIVE_SEARCH=fail:unreadable-result MCP_LIVE_SEARCH_CONTROL=fail:unreadable-result
+[report] FAIL qa.mcpCall — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did NOT pass in this run (exit=1); this is the case's real outcome, not the host's excuse | raw: cmd=node skills/dsh-qa/scripts/mcp-call.ts exit=1 log=/out/owed/owed-logs/qa.mcpCall.log tail=[mcp-call] ok=false (enum recorded tools=95, ast_grep call recorded) -> /opt/mpd/evidence/dsh-qa/mcp-call/2026-10-09T00-20-39.787Z
+[report] FAIL qa.readonlyDeny — the live readonly-deny case (a read-only spawn whose child must really be restricted) did NOT pass in this run (exit=1); this is the case's real outcome, not the host's excuse | raw: cmd=node skills/dsh-qa/scripts/readonly-deny.ts exit=1 log=/out/owed/owed-logs/qa.readonlyDeny.log tail=  enforcement: {"ok":false,"childRequests":0,"parentRequests":1,"childToolCounts":[],"parentToolCount":95,"childLeaksWriteCapable":[],"childHasStructuredOutput":false,"parentHasAllSeven":false,"note":"read-only authority is ENFORCED: the child's own requests cannot see any of the eight write-capable tools, while t |   positiveOk: {"ok":false,"note":"the eight-name list reached tools.restrict(), the child was created and answered, and the child's visible toolset excludes all eight write-capable names"} |   reinjectionDiagnostic: {"exit":1,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":2,"stubTrace":[{"call":1,"hasTools":true,"bytes":213859,"toolCount":95,"writeCapableVisible":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan"],"_toolNames":["agent_teams_ |   reinjectionControl: {"ok":false,"mutationLoaded":false,"injectedNamesSeenByAdapter":[],"childRequestsUnderRestriction":0,"parentToolCount":95,"parentSeesWriteCapable":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan"],"refusalSeen":false,"note":"control: the mutation provably loa |   reinjectionNote: "with the unregiste
+[report] NULL build.bunInstall — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
+[report] NULL build.dists — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
+[report] NULL tui.mergedPanelOpens — the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above
+[report] NULL tui.mergedPanelOrder — the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry
+
+
+[driver] ok=false complete=false passed=107 failed=3 null=4 FAILED=[boot.mcpLiveSearch,qa.mcpCall,qa.readonlyDeny] NULL=[build.bunInstall,build.dists,tui.mergedPanelOpens,tui.mergedPanelOrder]
+[driver] FAIL boot.mcpLiveSearch — the live ast-grep search did not settle: graded=fail:unreadable-result control=fail:unreadable-result (the control MUST be 0 matches, and the graded call at least 1) | raw: dir=/opt/mpd/packages/mpd-mcp-astgrep/src MCP_LIVE_SEARCH=fail:unreadable-result MCP_LIVE_SEARCH_CONTROL=fail:unreadable-result
+[driver] FAIL qa.mcpCall — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did NOT pass in this run (exit=1); this is the case's real outcome, not the host's excuse | raw: cmd=node skills/dsh-qa/scripts/mcp-call.ts exit=1 log=/out/owed/owed-logs/qa.mcpCall.log tail=[mcp-call] ok=false (enum recorded tools=95, ast_grep call recorded) -> /opt/mpd/evidence/dsh-qa/mcp-call/2026-10-09T00-20-39.787Z
+[driver] FAIL qa.readonlyDeny — the live readonly-deny case (a read-only spawn whose child must really be restricted) did NOT pass in this run (exit=1); this is the case's real outcome, not the host's excuse | raw: cmd=node skills/dsh-qa/scripts/readonly-deny.ts exit=1 log=/out/owed/owed-logs/qa.readonlyDeny.log tail=  enforcement: {"ok":false,"childRequests":0,"parentRequests":1,"childToolCounts":[],"parentToolCount":95,"childLeaksWriteCapable":[],"childHasStructuredOutput":false,"parentHasAllSeven":false,"note":"read-only authority is ENFORCED: the child's own requests cannot see any of the eight write-capable tools, while t |   positiveOk: {"ok":false,"note":"the eight-name list reached tools.restrict(), the child was created and answered, and the child's visible toolset excludes all eight write-capable names"} |   reinjectionDiagnostic: {"exit":1,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":2,"stubTrace":[{"call":1,"hasTools":true,"bytes":213859,"toolCount":95,"writeCapableVisible":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan"],"_toolNames":["agent_teams_ |   reinjectionControl: {"ok":false,"mutationLoaded":false,"injectedNamesSeenByAdapter":[],"childRequestsUnderRestriction":0,"parentToolCount":95,"parentSeesWriteCapable":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan"],"refusalSeen":false,"note":"control: the mutation provably loa |   reinjectionNote: "with the unregiste
+[driver] NULL build.bunInstall — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
+[driver] NULL build.dists — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
+[driver] NULL tui.mergedPanelOpens — the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above
+[driver] NULL tui.mergedPanelOrder — the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry
+[driver] evidence -> evidence/docker/client-install-oneclick/2026-10-09T00-14-36Z
+ONECLICK_RUN_EXIT=1

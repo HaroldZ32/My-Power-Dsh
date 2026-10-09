@@ -1,0 +1,13 @@
+=== POST-PART2 GATE SWEEP ===
+--- bash -n ---
+exit=0
+--- docker-e2e --self-test ---
+[self-test] all arms passed (offline: no docker, no network)
+--- verify:comments ---
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+--- typecheck ---
+$ tsgo --noEmit
+typecode=0
+--- owed-mcp synthetic ---
+[owed-mcp] boot.mcpLiveSearch=true — a REAL mcp__ast_grep__search call through the mounted adapter matched 1 site(s) in /x, and the negative control matched 0 — the search engine ran, so the registered name is backed by a working server on this machine
