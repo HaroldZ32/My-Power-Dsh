@@ -1,7 +1,9 @@
 // C5 mpd-boulder-plugin: durable work-state machine (boulder) on the DSH tool seam.
-// Vendored core: the upstream project packages/boulder-state (base 8c57e46;
-// SUL-1.0, inherited from upstream; see LICENSE.md). Adaptations: state root -> .mpd convention and
-// session platform default -> "dsh" (legacy host prefixes still readable; see vendor/constants.ts, storage/shared.ts).
+// The core under `vendor/**` is OUR OWN code (wave de-omo C), written against the contract this row
+// already documented: a `.mpd`-rooted JSON ledger plus per-task timers. It carries no third-party
+// source and no third-party licence obligation. The state root uses the `.mpd` convention and the
+// session platform defaults to "dsh", while the legacy host prefixes (codex:/opencode:/senpi:) stay
+// READABLE so records written before the retarget keep resuming (vendor/constants.ts, vendor/storage/shared.ts).
 import {
   readBoulderState,
   createBoulderState,

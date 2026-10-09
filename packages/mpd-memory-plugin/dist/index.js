@@ -1682,6 +1682,20 @@ function safeMemoryPath(memoryDir, name2) {
     throw new Error("mpd-memory: path escapes memory dir: " + name2);
   return target;
 }
+function initialState() {
+  return { steps: 0, reflectionsCompleted: 0, stepsSinceReflection: 0, pendingReflection: null, triggered: false };
+}
+function adoptLegacyState(raw) {
+  const s = raw && typeof raw === "object" ? raw : {};
+  const legacyClaim = s.reservation;
+  return {
+    steps: s.steps ?? 0,
+    reflectionsCompleted: s.reflectionsCompleted ?? s.reflected_completed_steps ?? 0,
+    stepsSinceReflection: s.stepsSinceReflection ?? s.steps_since_last_successful_reflection ?? 0,
+    pendingReflection: s.pendingReflection !== undefined ? s.pendingReflection ?? null : legacyClaim == null || typeof legacyClaim !== "object" ? null : { due: legacyClaim.status === "pending", at: String(legacyClaim.at ?? "") },
+    triggered: s.triggered ?? false
+  };
+}
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   const cfg = mergedConfig(ctx, config);
@@ -1697,9 +1711,9 @@ function apply(ctx, config = {}) {
   }
   function readReflection(d) {
     try {
-      return JSON.parse(readFileSync(statePath(d), "utf8"));
+      return adoptLegacyState(JSON.parse(readFileSync(statePath(d), "utf8")));
     } catch {
-      return { steps: 0, reflected_completed_steps: 0, steps_since_last_successful_reflection: 0, reservation: null, triggered: false };
+      return initialState();
     }
   }
   function writeReflection(d, s) {
@@ -1732,10 +1746,10 @@ function apply(ctx, config = {}) {
       const errs = commitAll(cfg, d, "memory: " + name2 + " (" + meta.kind + ")");
       const ref = readReflection(d);
       ref.steps = (ref.steps ?? 0) + 1;
-      ref.steps_since_last_successful_reflection = (ref.steps_since_last_successful_reflection ?? 0) + 1;
-      if ((ref.steps_since_last_successful_reflection ?? 0) >= reflectionEvery) {
+      ref.stepsSinceReflection = (ref.stepsSinceReflection ?? 0) + 1;
+      if ((ref.stepsSinceReflection ?? 0) >= reflectionEvery) {
         ref.triggered = true;
-        ref.reservation = { status: "pending", at: new Date().toISOString() };
+        ref.pendingReflection = { due: true, at: new Date().toISOString() };
       }
       writeReflection(d, ref);
       appendJournal(d, "write", { file: basename(file), kind: meta.kind, vcs: cfg.vcs ?? "git" });
@@ -1774,26 +1788,26 @@ function apply(ctx, config = {}) {
   });
   dsh.registerTool({
     name: "mpd_memory_reflect",
-    description: "Inspect the reflection state machine: trigger status, reservation, step counters; returns the due hint when a reflection is pending. Crossing the step-count threshold marks a pending reflection; completeTransition equivalent is mpd_memory_reflect_complete.",
+    description: "Inspect the reflection state machine: trigger status, the pending claim and the step counters; returns the due hint when a reflection is owed. Crossing the step-count threshold raises the claim; `mpd_memory_reflect_complete` settles it.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { state: { type: "object" }, due: { type: "boolean" } }, required: ["state", "due"] }, render: (_a, v) => textBlock("reflection state: " + JSON.stringify(v.state, null, 1) + (v.due ? `
 REFLECTION DUE` : "")) },
     execute: async (_args, exec) => {
       const d = ensureDirs(cfg, dsh, exec);
       const s = readReflection(d);
-      return { state: s, due: s.triggered === true || s.reservation?.status === "pending" };
+      return { state: s, due: s.triggered === true || s.pendingReflection?.due === true };
     }
   });
   dsh.registerTool({
     name: "mpd_memory_reflect_complete",
-    description: "Complete a pending reflection transition: writes the reflection content as a memory entry (kind=reflection), advances reflected_completed_steps / resets steps_since_last_successful_reflection, clears the reservation and commits.",
+    description: "Complete the reflection this agent owes: writes the reflection content as a memory entry (kind=reflection), advances reflectionsCompleted, resets stepsSinceReflection, settles the pending claim and commits.",
     parameters: { type: "object", properties: { content: { type: "string" }, title: { type: "string" } }, required: ["content"], additionalProperties: false },
     output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a, v) => textBlock("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
     execute: async (args, exec) => {
       const d = ensureDirs(cfg, dsh, exec);
       const s = readReflection(d);
-      if (s.triggered !== true && s.reservation?.status !== "pending") {
-        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered === true) + ", reservation=" + String(s.reservation?.status ?? "none") + ", steps_since_last_successful_reflection=" + String(s.steps_since_last_successful_reflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.");
+      if (s.triggered !== true && s.pendingReflection?.due !== true) {
+        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered) + ", pendingReflection=" + (s.pendingReflection?.due === false ? "settled" : "none") + ", stepsSinceReflection=" + String(s.stepsSinceReflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.");
       }
       ensureVcs(cfg, d);
       const name2 = "reflection-" + Date.now().toString(36);
@@ -1805,10 +1819,10 @@ REFLECTION DUE` : "")) },
 ` + String(args?.content) + `
 `);
       commitAll(cfg, d, "memory: reflection " + name2);
-      s.reflected_completed_steps = (s.reflected_completed_steps ?? 0) + 1;
-      s.steps_since_last_successful_reflection = 0;
+      s.reflectionsCompleted = (s.reflectionsCompleted ?? 0) + 1;
+      s.stepsSinceReflection = 0;
       s.triggered = false;
-      s.reservation = { status: "completed", at: new Date().toISOString() };
+      s.pendingReflection = { due: false, at: new Date().toISOString() };
       writeReflection(d, s);
       appendJournal(d, "reflection", { file: basename(file) });
       return { completed: true, file };

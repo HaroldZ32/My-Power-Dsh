@@ -1,0 +1,55 @@
+SEED MANIFEST — fetched verbatim from raw.githubusercontent.com at the pinned HEAD sha
+
+## wesammustafa/opencode-primer  @ fe71432a721ea423939193e667d510725477b79a
+license file: 9dbe94aa43bd83408d3a600abae6d8db739efbe097e314591b35e32ce5cc8532  (sha256)
+  3:Copyright (c) 2026 OpenCode Everything You Need to Know
+  432dc69dc484afa937f4955eb96dfd5c7454a23d386ef06a86f7140e9409a11f  wesammustafa__opencode-primer/specialized-agents/system-prompts/backend-engineer-prompt.md
+  1d9468083c845fdbc064b2aa2d1a10e87acbe1510ed845ebef1170f7b22743bd  wesammustafa__opencode-primer/specialized-agents/system-prompts/tech-lead-prompt.md
+
+## anthropics/claude-plugins-official  @ f713a7c59b729741282f9c2d9a04e28e2abbd20c
+license file: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  (sha256)
+  67:   2. Grant of Copyright License. Subject to the terms and conditions of
+  190:   Copyright [yyyy] [name of copyright owner]
+  a1de2a6a3d5a208a5722dd3902dcb2488ff9a879a5494f34a170518126495065  anthropics__claude-plugins-official/plugins/code-modernization/agents/architecture-critic.md
+
+## VoltAgent/awesome-claude-code-subagents  @ 721e9734670bfaf7283194e234ebb88e94c82dcd
+license file: 8ed27772f4430d6e3815599b849c1b6e59088671133ef67e9b1be4acef2b75da  (sha256)
+  3:Copyright (c) 2025 VoltAgent
+  cd1f0df98b1ccc0e78540d777505736a5f0af619609476c19115abd65b3463f8  voltagent__awesome-claude-code-subagents/categories/01-core-development/fullstack-developer.md
+  7c7e8301852b2a0b44404955272ac1d6156dedab9a0aad519a9f25d49d8616d4  voltagent__awesome-claude-code-subagents/categories/04-quality-security/architect-reviewer.md
+  ed068a6d5200978a4f96f211b94ab7fd16908706296746a06e07409c09bbb532  voltagent__awesome-claude-code-subagents/categories/09-meta-orchestration/multi-agent-coordinator.md
+  027369ebe4e23962c514ffc5d284d482f0b346cc2965315a9075e513ad4562a5  voltagent__awesome-claude-code-subagents/categories/10-research-analysis/research-analyst.md
+  4ea373635ba9045d03b02b900b3afc97ce9cefaf6dc8b07c11054643da01506d  voltagent__awesome-claude-code-subagents/categories/10-research-analysis/search-specialist.md
+
+## davepoon/buildwithclaude  @ 10bfc43d4d53c9589f28a3a41bc240dc1585f044
+license file: 8efd864bb5e08dc3065eb70e507a9337ec640dc7637195ab558777838fb8ba43  (sha256)
+  3:Copyright (c) 2025 davepoon
+  0b4d110b85369ea7092cc8de050f0157982999851986d0c5f7cfd8ca9a7bc245  davepoon__buildwithclaude/plugins/agents-quality-security/agents/code-reviewer.md
+
+## VeryGoodOpenSource/vgv-wingspan  @ 19e0695accb8b9db0be0235ecdfb7fcb23106820
+license file: d1cce0f06abadeed3e44eb682b89f6f0f7fa245e73173c4fefaf549f1164b794  (sha256)
+  3:Copyright (c) 2026 Very Good Ventures
+  20a62760206261bb4a53b8f7f72c7b431ef12fdc9148841a14dacdb842d563ec  VeryGoodOpenSource__vgv-wingspan/skills/plan-technical-review/references/plan-review.md
+  110907160f7c41a821f0260efe3b62b9bcdd2d73a39f40915a4c40d42e358f4e  VeryGoodOpenSource__vgv-wingspan/skills/plan-technical-review/SKILL.md
+  bc0544fdc631f997cb65fbe7ea9f7247ba130e9c09ba2a86bb5322fe77577aa0  VeryGoodOpenSource__vgv-wingspan/skills/shared/references/plan-review.md
+
+## gsd-build/gsd-2  @ 33c00aaffa56e5d394bccce1c8df59fb842e84c5
+license file: ae7573921c444c8b6f7552060e7920a5b4c5d072fe584c1055dc1fbbf99f24db  (sha256)
+  3:Copyright (c) 2026 Lex Christopherson
+  f62603ba09c07c5c961ad19be4893cfc86c0840e48be03a2a73ac98ef5a3629a  gsd-build__gsd-2/src/resources/agents/planner.md
+  96008326954d22425d028e023f80bcd4c45b05bbd2f1fb3c76b8aea7ec40e9a6  gsd-build__gsd-2/src/resources/agents/researcher.md
+  eacf826702b250cb1f6509a3330d28e1c20b0b3cad6f8ab735598f4a60ecf846  gsd-build__gsd-2/src/resources/agents/reviewer.md
+  80da2ca36d32633a30a92fbf72d832e86009ab41aeb971723949881a73872469  gsd-build__gsd-2/src/resources/agents/scout.md
+  200ca79b08dd2f4c4e7363bfccbf3f09ec4371c5d6d8c08adc9c16dde31889f6  gsd-build__gsd-2/src/resources/agents/typescript-pro.md
+  5f397378b86a9c4a63b119da8e374d506a7974883b788dd6303b07bf8d9567dd  gsd-build__gsd-2/src/resources/agents/worker.md
+
+## jayminwest/overstory  @ ff38f3f76f084abcc34f519bcaa69580f6e53cf1
+license file: 22db80d3d76f49c2c2973d1fc358c911c7966b8e520a722e47358e7e66aac491  (sha256)
+  3:Copyright (c) 2026 Jaymin West
+  0df8a881a7ba87e74cc5768658fafd89476ba2259cda936d616840c27c25b96d  jayminwest__overstory/agents/scout.md
+
+## obra/superpowers  @ 8ca22dba9a94f28898bbce59f2537ff4d87c747d
+license file: a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400  (sha256)
+  3:Copyright (c) 2025 Jesse Vincent
+  82e370be6b3447523816286195571e4216ba56ba1ad6ad0e87862294c4c78dcb  obra__superpowers/skills/requesting-code-review/code-reviewer.md
+

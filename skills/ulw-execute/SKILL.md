@@ -3,10 +3,6 @@ name: ulw-execute
 description: "Execute a Prometheus work plan with Boulder state, evidence ledger updates, worktree discipline, parallel subagents, and Boulder-ledger resumption across turns (`.mpd/boulder.json` says this `dsh:<session_id>` still has unchecked plan work, so execute plan / resume plan re-enters it). Use after planning when the user says ulw-execute, execute plan, continue plan, resume plan, or asks to run a .mpd/plans plan."
 ---
 
-## ABSOLUTE RULE: YOU ARE AN ORCHESTRATOR — NEVER THE IMPLEMENTER
-
-**YOU DO NOT WRITE CODE. YOU DO NOT EDIT PRODUCT FILES. YOU DO NOT RUN QA YOURSELF. EVERY unit of implementation, test, QA, and review work MUST be delegated to a spawned subagent. NO EXCEPTIONS.** Your hands touch only plan selection, `.mpd/` state (Boulder, ledger, plan checkboxes), decomposition, dispatch, verdicts, and evidence records. About to edit a product file or run an implementation command yourself? **STOP. SPAWN A WORKER INSTEAD.** Orchestrate at **MAXIMUM PARALLELISM**: every independent unit runs concurrently; only named dependencies serialize.
-
 ## DSH Harness Tool Compatibility
 
 Translate any OpenCode/Codex-only tool name in an inherited example to its DeepSeek Harness equivalent:
@@ -29,9 +25,13 @@ Exploration/implementation lanes use the fast flash model; plan and reviewer lan
 
 Every subagent prompt is a self-contained executable assignment. Spawn long-running children in the background and keep doing independent root work; between `job_output` polls, back off (double the timeout up to ~5 minutes) instead of spinning. A timeout only means no new output; treat a running child as alive. Require `WORKING: <task> - <current phase>` before long passes. Fallback only when a child completed without the deliverable or reported `BLOCKED:` — record inconclusive (never a pass) and respawn a smaller task with the missing deliverable.
 
+## ABSOLUTE RULE: YOU ARE AN ORCHESTRATOR — NEVER THE IMPLEMENTER
+
+**YOU DO NOT WRITE CODE. YOU DO NOT EDIT PRODUCT FILES. YOU DO NOT RUN QA YOURSELF. EVERY unit of implementation, test, QA, and review work MUST be delegated to a spawned subagent. NO EXCEPTIONS.** Your hands touch only plan selection, `.mpd/` state (Boulder, ledger, plan checkboxes), decomposition, dispatch, verdicts, and evidence records. About to edit a product file or run an implementation command yourself? **STOP. SPAWN A WORKER INSTEAD.** Orchestrate at **MAXIMUM PARALLELISM**: every independent unit runs concurrently; only named dependencies serialize.
+
 # ulw-execute
 
-Execute a Prometheus work plan until every top-level checkbox is complete. This skill pairs with the mpd-boulder ledger: saying execute plan / resume plan re-enters while `.mpd/boulder.json` says this `dsh:<session_id>` still has unchecked plan work.
+Execute a work plan until every top-level checkbox is complete. This skill pairs with the harness's ulw-execute continuation hook, which re-injects the next turn while `.mpd/boulder.json` says this `codex:<session_id>` still has unchecked plan work.
 
 ## Usage
 
@@ -93,14 +93,14 @@ Write `.mpd/boulder.json` before implementation starts. Prefix session ids with 
 }
 ```
 
-For PR/branch work, a task-owned worktree is mandatory before implementation starts: pass `--worktree`, or use `--make-pr`/`--ship`, which auto-create one. Verify the path with `git worktree list --porcelain` or create it with `git worktree add <path> <branch-or-HEAD>`, then store the absolute path as `worktree_path`. All edits, commands, tests, and evidence capture must run inside that worktree.
+Every phase (plan wave) runs in its own task-owned worktree with its own goal: before the wave's first dispatch, record the wave's goal — its checkboxes and their acceptance criteria — as a ledger entry, then `git worktree add <repo>-wt/<plan>-<wave> <branch off the integration base>` (or verify a `--worktree` path with `git worktree list --porcelain`), store the absolute path as `worktree_path`, run every edit, command, test, and evidence capture inside it; the wave lands on the integration base once its checkboxes are verified (direct merge, or the PR under `--make-pr`/`--ship`), and the next wave branches from that landed base.
 
 ## Parallel delivery lanes (teams and worktrees)
 
 Solo orchestration with parallel background workers is the default topology. Decide once, when the wave's lanes are known, and record the verdict in the ledger:
 
 - **Independent lanes -> parallel workers.** Separate files, no shared contract: one parallel spawn burst; no team.
-- **Dependency-ordered lanes -> a dag run.** Sub-tasks with real ordering between them (C needs A and B finished first) and a harness with a native `dag` tool: dispatch the wave as ONE dag run — one producer node per lane plus a verification node — instead of a spawn burst, and watch the run's lifecycle instead of arming per-lane watchers. Read the `mass-ulw` skill's `SKILL.md` and `references/planning.md` IN FULL before defining any graph.
+- **Dependency-ordered lanes -> one `workflow` run per wave.** Sub-tasks with real ordering between them (C needs A and B finished first) and a harness with a native `workflow` tool: dispatch the wave as ONE run (one producer node per lane plus a verification node); recover inside it with `retry`/`amend`/`send`; let node completions wake you instead of arming per-lane watchers; the next wave is a NEW run (or `amend` when only the definition changed) — never one graph for the whole plan. Read the `mass-ulw` skill's `SKILL.md` and `references/planning.md` IN FULL before defining any graph.
 - **Overlapping lanes -> a team.** The lanes touch the same module or contract AND running them concurrently actually finishes sooner: stand up a team (where the harness has one) so one lane's discoveries relay through you mid-flight.
 - **PR-mode independent lanes -> a worktree per lane.** Under `--make-pr`/`--ship`, when a wave holds independent checkboxes, give each lane its own branch and task-owned worktree, delivered as its own PR.
 
@@ -131,7 +131,7 @@ A spawned worker is not fire-and-forget. For EACH subagent in the burst, name th
 
 ### Delegation router — recommended task executor category
 
-When the plan annotates a todo with `Recommended task executor category:`, follow that annotation; deviate only for a reason recorded in the ledger entry. Otherwise route by shape, in the upstream category vocabulary (category-capable harnesses pass it directly on the worker-spawn tool, e.g. `task(category="quick", ...)`; others map the parenthesized difficulty):
+When the plan annotates a todo with `Recommended task executor category:`, follow that annotation; deviate only for a reason recorded in the ledger entry. Otherwise route by shape, in the omo category vocabulary (category-capable harnesses pass it directly on the worker-spawn tool, e.g. `task(category="quick", ...)`; others map the parenthesized difficulty):
 
 | Category | Route here |
 | --- | --- |
@@ -141,26 +141,27 @@ When the plan annotates a todo with `Recommended task executor category:`, follo
 | `visual-engineering` (medium) | frontend, UI/UX, styling, animation |
 | `writing` (low) | documentation and prose |
 | `git` (low) | git operations |
-| `deep` (high) | hairy debugging, research-heavy or subtle cross-module work |
+| `deep-low` (medium) | hairy debugging, research-heavy or subtle cross-module work the worker can settle from what it reads |
+| `deep-high` (high) | the same, when the central decision cannot be settled from evidence: a trade-off, a cross-package contract, or correctness argued from invariants |
 | `ultrabrain` (high) | ONE genuinely hard, logic-heavy problem — hand it the goal, not step-by-step instructions |
 
 Sizing is a two-branch decision made per checkbox, before dispatch:
 
 - **Splittable work splits.** When the checkbox decomposes into independent pieces, dispatch them as a swarm of `quick`/`unspecified-low` workers in ONE parallel burst — many small cheap workers in parallel beat one large delegation.
-- **Cohesive hard work stays whole.** When splitting would sever shared reasoning (one algorithm, one migration, one subtle bug), send the WHOLE problem to `deep` or `ultrabrain` as ONE delegation. Never force-split work whose parts share one insight.
+- **Cohesive hard work stays whole.** When splitting would sever shared reasoning (one algorithm, one migration, one subtle bug), send the WHOLE problem to `deep-low`, `deep-high` or `ultrabrain` as ONE delegation. Never force-split work whose parts share one insight.
 
 Each sub-task message must include:
 
 1. Goal and exact files or directories in scope.
-2. When the task touches existing behavior: a baseline characterization test, written first, that pins current observable behavior and passes on the unchanged code (exact inputs, exact observable, exact assertion). Then the failing-first proof for the new behavior before production changes — a unit test where a seam exists, otherwise the sub-task's Manual-QA scenario captured failing. A test that mirrors its implementation (mock-call assertions, pinned constants) is not evidence.
+2. The tests already covering the touched behavior, READ before any edit as the behavior of record (intent, coverage, pass); a bug's reproduction captured before the fix. A new test ONLY where the repository keeps tests for this behavior AND a regression would otherwise pass unnoticed by the sub-task's Manual-QA scenario — never one that mirrors its implementation (mock-call assertions, pinned constants) or restates the change.
 3. Implementation constraints from the plan and project rules.
 4. Automated verification commands to run.
-5. One Manual-QA channel, named with the exact tool and exact invocation (the literal `curl`, `send-keys`, `browser:control-in-app-browser` action, `page.click`, payload, selectors, and the binary observable that decides PASS/FAIL), not "verify it works". A LIGHT checkbox needs one real-surface proof of its deliverable, and auxiliary surfaces (CLI stdout, DB state diff, parsed config dump) are first-class when the surface is CLI- or data-shaped:
+5. One Manual-QA channel, named with the exact tool and exact invocation (the literal `curl`, `send-keys`, `page.click` / `session.click`, payload, selectors, and the binary observable that decides PASS/FAIL), not "verify it works". A LIGHT checkbox needs one real-surface proof of its deliverable, and auxiliary surfaces (CLI stdout, DB state diff, parsed config dump) are first-class when the surface is CLI- or data-shaped:
    - HTTP call: `curl -i` against the live endpoint.
    - Terminal / TUI: drive a real pty; `tmux send-keys` is fine for a boot/behavior smoke, but color/layout/CJK evidence goes through the xterm.js web terminal below, NEVER `tmux capture-pane`.
-   - Browser use: prefer the harness's in-app browser control when available and the scenario does not need an authenticated or persistent user browser profile; otherwise drive the real page with Chrome, or agent-browser (https://github.com/vercel-labs/agent-browser) when Chrome is unavailable.
+   - Browser use: the `agent-browser` CLI run from `bash` (see the `ultimate-browsing` skill's `references/chrome-stealth.md`) — the owned engine (a local `agent-browser --cdp <port>` session on a task-owned profile, CloakBrowser for bot-scored targets) for unauthenticated pages, the attached engine (the user's signed-in browser, reached through `scripts/extract_cookies.py` cookie injection) when the page needs their login; never a clone of or a launch against the live profile.
    - Computer use: OS-level GUI automation against the running desktop app when the surface is not a page.
-   - TUI visual evidence: when a TUI claim needs visual QA or PR proof, run `node script/qa/web-terminal-visual-qa.mjs --command "<cmd>" --input "{Enter}" --evidence-dir <dir>` (real pty rendered through xterm.js in Chrome) and attach `terminal.png` plus `metadata.json`.
+   - TUI visual evidence: when a TUI claim needs visual QA or PR proof, run `bun script/qa/web-terminal-visual-qa.mjs --command "<cmd>" --input "{Enter}" --evidence-dir <dir>` (real pty rendered through xterm.js in Chrome) and attach `terminal.png` plus `metadata.json`.
 6. The adversarial classes that apply to this sub-task (from the 9 ultraqa classes) and how each is probed.
 7. Required artifact path and cleanup receipt.
 8. Tool-use expectations: batch independent tool calls in parallel; when the harness exposes a code-execution surface (eval), use it for multi-call steps instead of one-by-one calls.
@@ -223,17 +224,20 @@ Only after verification passes:
 When all top-level checkboxes in `## TODOs` and `## Final Verification Wave` are complete:
 
 1. Run the plan's final verification commands.
-2. For PR/branch work, finish the lifecycle from the task-owned worktree: sync `.mpd/` state back to the main repo, create or update the PR, wait for review/verification gates, merge by default unless explicitly opted out, and remove the worktree only after successful merge or explicit handoff.
-3. Remove or mark the Boulder work as completed.
-4. Print an `ORCHESTRATION COMPLETE` block with the plan path, verification commands, artifacts, and cleanup receipts.
+2. Record a self-review in the notepad: re-read the diff, run diagnostics, and capture evidence for every acceptance criterion. Run your own manual QA on the real surface.
+3. Only when the user demanded strict, rigorous, or high-accuracy review, spawn ONE rigorous reviewer — `mpd_role_spawn(role="Architect", task=...)` on the pro model; otherwise your self-review is the final verification.
+4. Finish the PR/branch lifecycle from its task-owned worktree: sync `.mpd/` state back to the main repo, create or update the PR, wait for review/verification gates, merge by default unless explicitly opted out, and remove the worktree only after successful merge or explicit handoff.
+5. Remove or mark the Boulder work as completed.
+6. Print an `ORCHESTRATION COMPLETE` block with the plan path, verification commands, artifacts, and cleanup receipts.
 
 ## Hard rules
 
-- No production change before a failing-first proof exists (unit test at a seam, otherwise the failing Manual-QA scenario), and no change to existing behavior before a baseline characterization test pins the current behavior and passes on the unchanged code.
+- No production change before the tests covering that behavior were read and a bug's reproduction captured; existing tests are green on the unchanged code first, and one that contradicts the intent is a FINDING, never edited green.
 - No `--dry-run` as completion evidence.
 - No tests-only completion claim. A Manual-QA artifact is required.
 - **NO DIRECT IMPLEMENTATION BY THE ORCHESTRATOR.** Root NEVER edits product files, writes tests, or runs QA itself — a spawned worker does.
 - No completion claim while an applicable ultraqa adversarial class was never probed. Each applicable class needs a captured observable result; each skipped class needs a one-line not-applicable reason in the ledger.
-- No PR/branch implementation, review, or merge in the main worktree; use the task-owned git worktree.
-- No unprefixed session ids in Boulder state. Sessions are always recorded as `dsh:<session_id>`.
+- No implementation, review, or merge in the main checkout; every phase works in a task-owned worktree.
+- No unprefixed session ids in Boulder state. Sessions are always recorded as `codex:<session_id>`.
 - No stale-memory execution. The plan and ledger are the durable source of truth.
+- Codex final verification is the exception to the delegated-QA-only rule above: perform your own manual QA on the real surface and record a self-review before completion.

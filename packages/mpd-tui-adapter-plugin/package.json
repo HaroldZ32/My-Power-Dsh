@@ -7,5 +7,5 @@
   "scripts": {
     "test": "bun test"
   },
-  "license": "SEE LICENSE IN ../../LICENSE.md"
+  "license": "MIT"
 }

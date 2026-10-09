@@ -126,7 +126,7 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 
 | 你想做的事 | 工具 | 说明 |
 |---|---|---|
-| 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（定义、引用、诊断、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。第四个家族 `mcp__git_bash__*` **默认不可用**：它的行自带 `disabled: true`（上游服务器仅支持原生 Windows），因此普通会话里不会出现这类工具 —— 想启用就在 `cordis.patch.yml` 中把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
+| 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（cclsp：定义、引用、实现、诊断、悬停、工作区符号、调用层级、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。另外两个家族 **默认不可用**：`mcp__git__*`（git 工具箱，28 个工具）与 `mcp__shell__*`（`run_process`，裸 shell）。两行都自带 `disabled: true`，因此普通会话里不会出现这类工具 —— 想启用哪一个，就把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
 | 安全地修改 | 写入守卫与输出截断（无需配置）、`mpd_hashline_read/edit/format/restore`、`mpd_comment_check` | 哈希锚定编辑在锚点过期时会拒绝写入，而不是写到错误的行 |
 | 推进长任务 | `mpd_ulw`（轻量）/ `mpd_ultrawork`（完整纪律：计划关卡、执行轮次、验证关卡），或等价的 `/ulw <objective>` / `/ultrawork <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 两个命令会注入 ULW 自治指令 —— 该运行不向用户提问，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
 | 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据 —— heavy 档 ULW 运行或绑定 plan 的 boulder 工作会自动 anchor 一个（`goal.autoAnchor`），而当 turn 内引擎提前停下时它会保持启用 |
@@ -547,9 +547,9 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   → 已安装的 harness 改变了 `dsh-persona` 契约（它接受 `prefix`，而不是已退休的 `text`），于是
   拒绝挂载整个 preset。更新 bundle（`git pull`，然后 `dsh plugin --profile <p> add <repo>`）
   —— 这是 harness 版本兼容性修复，不是你这边配置的问题。
-- **缺少 `mcp__git_bash__*` 工具** → 这是预期行为而非故障：`mcp-gitbash` 行自带
-  `disabled: true`（上游服务器仅支持原生 Windows）。请改用 harness 自带的 `bash` 工具，或把该行
-  改成 `disabled: false` 并重新安装 bundle。
+- **缺少 `mcp__git__*` / `mcp__shell__*` 工具** → 这是预期行为而非故障：`mcp-git` 与 `mcp-shell`
+  两行都自带 `disabled: true`。请改用 harness 自带的 `bash` 工具与 git 命令，或把想要的那行改成
+  `disabled: false` 并重新安装 bundle。`mcp-git` 行还需要 `PATH` 上有 `git`。
 - **`mpd_comment_check` 报告二进制缺失** → 它是需要主动开启的检测器：把
   `@code-yeongyu/comment-checker` 装进 `.toolchain`（`--with-comment-checker`），或把
   `MPD_DSH_COMMENT_CHECKER_BIN` 设为绝对路径。
@@ -651,7 +651,8 @@ mpd_role_persona { "role": "Architect" }
 
 `role` 按功能**名字**应答（`Architect`、`deep worker`、`plan-reviewer`）。只读角色在 spawn 时会
 带上针对恰好 `write`、`edit`、`mpd_hashline_edit`、`bash`、`mcp__ast_grep__rewrite`、
-`mcp__ast_grep__scan`、`mcp__lsp__rename` 的禁用过滤 —— 这套纪律是机械强制的，不是口头约定。
+`mcp__ast_grep__scan`、`mcp__lsp__rename_symbol`、`mcp__lsp__rename_symbol_strict` 的禁用过滤
+—— 这套纪律是机械强制的，不是口头约定。
 
 ### 13.4 workmate 库
 
@@ -794,9 +795,9 @@ mcp__ast_grep__search { "pattern": "useEffect($$$)", "language": "tsx", "paths":
 mcp__ast_grep__rewrite { "pattern": "console.log($A)", "rewrite": "logger.info($A)", "language": "typescript", "paths": ["src"], "apply": false }
 
 # 语言服务器智能
-mcp__lsp__diagnostics { "filePath": "packages/mpd-roles-plugin/src/index.ts" }
+mcp__lsp__get_diagnostics { "filePath": "packages/mpd-roles-plugin/src/index.ts" }
 mcp__lsp__find_references { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9 }
-mcp__lsp__rename { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9, "newName": "resolvedConfig" }
+mcp__lsp__rename_symbol { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9, "newName": "resolvedConfig" }
 
 # 工程图 —— 提一个问题，拿回相关符号与调用路径
 mcp__codegraph__codegraph_explore { "query": "how does a task get claimed and updated?" }
@@ -806,9 +807,10 @@ mcp__context7__resolve-library-id { "libraryName": "zod", "query": "schema parsi
 mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScript"] }
 ```
 
-`mcp__lsp__rename` 与 `mcp__ast_grep__rewrite` / `mcp__ast_grep__scan` 会**写文件**：重写类调用先
-带 `apply: false` 跑一遍，读完 diff 再应用。`mcp__git_bash__*` 默认不启用（上游仅支持原生 Windows，
-§3）。两个远端行（`context7`、`grep_app`）是公共 HTTP 服务，需要网络；三个本地服务器需要各自的
+`mcp__lsp__rename_symbol`（以及它的 `rename_symbol_strict` 孪生工具）与 `mcp__ast_grep__rewrite` /
+`mcp__ast_grep__scan` 会**写文件**：重写类调用先
+带 `apply: false` 跑一遍，读完 diff 再应用。`mcp-git` / `mcp-shell` 两行默认不启用（§3）。两个远端
+行（`context7`、`grep_app`）是公共 HTTP 服务，需要网络；三个本地服务器需要各自的
 二进制（§11）。
 
 ## 14. 这些能力的来源
@@ -820,16 +822,16 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 |---|---|---|---|
 | 团队模式 —— `spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_*` 任务板与 Web 面板 | **官方** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` 三个包，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载 | MIT（harness 包组）；声明在 `package.json` 的 `dependencies` | `cordis.patch.yml`；`README.md`（*这次安装挂载了哪些插件*） |
 | 被采纳（随后退役、再被**删除**）的内置 `agent-teams` 主体 | **dsh-agent-teams**，作者 程序员阿江（Relakkes）—— 曾被整体采纳并作为一等主代码 | MIT；采纳版本 `0.1.16-rc.3-mpd`（`0.1.14` 主体 + 回移的 `0.1.16-rc.3` 增量）；自 0.1.7-rc.2 起**没有任何行挂载它**，去 vendor 波（2026-10-07）又删除了 `packages/mpd-agent-teams-plugin/**` —— 仅有两块被迁移的产物以我们自己的代码形式存续：`packages/mpd-schemastery/**` 与位于 `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` 的采纳浏览器 bundle | `LICENSE-NOTICES.md` 的 *dsh-agent-teams* 一节 |
-| 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20） | SUL-1.0 —— 本仓库继承的许可证 | `LICENSE-NOTICES.md` §1；`VENDOR_LOCK.json` |
-| 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 上游技能从 oh-my-openagent 整体搬运；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | 语料为 SUL-1.0；MIT 材料为引用、不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
+| 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20）—— 这里只是**名称与词汇**的历史来源；persona 文本已在 D 波改从宽松许可来源取材 | MIT（本仓库自己的作品）；名称所来自的那个上游当时是 SUL-1.0，仅作历史记录 | `LICENSE-NOTICES.md`；`VENDOR_LOCK.json` |
+| 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 16 个移植技能改从 **lazycodex** 取材（同一作者对 oh-my-openagent 语料的 MIT 再许可）；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | MIT —— 再取样的语料为 `Copyright (c) 2026 Yeongyu Kim`；引用的 harness 材料是 MIT 且不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
 | `mcp__ast_grep__*` | **ast-grep** —— 可选依赖 `@ast-grep/cli` | MIT；`0.45.2`；运行时解析，不再分发 | `package.json` 的 `optionalDependencies`；`MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim —— 可选依赖 `@colbymchenry/codegraph` | MIT；`1.5.0`；预构建服务器已搬运并做 sha256 固定 | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；`0.8.0`；**不**随包分发 —— 按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |
 | 插件系统、工具 / 技能 / preset / agent 接缝、模型 provider、Web 外壳 | DeepSeek Harness —— **`@deepseek-ai/*`** 包 | MIT；仅作为依赖引用 | `LICENSE-NOTICES.md` |
 | Agent Teams Web 面板 | 官方客户端插件 `@deepseek-ai/dsh-experimental-client-ui-agent-team` | MIT（harness 包组） | 见上文 §8；patch 行 `mpd-ui-agent-team` |
 | Workmates 侧边栏标签页 | 由社区 bundle **`dsh-better-sidebar`** 承载，它是本 bundle 的**可选 peer**（外加一个 `devDependency`）：bundle 从不安装它，带守卫的 `mpd-better-sidebar` 行在它可解析时挂载它 | — | 见上文 §8；`package.json` 的 `peerDependencies` / `peerDependenciesMeta`；patch 行 `mpd-better-sidebar` |
-| DSH 接线（adapter、运行时插件、`mpd` preset、合并后的 Web 客户端）、TUI 版本、QA 套件、文档、扩展接口 | 本项目自己编写 | SUL-1.0 | `README.md`（鸣谢）；`LICENSE.md` |
+| DSH 接线（adapter、运行时插件、`mpd` preset、合并后的 Web 客户端）、TUI 版本、QA 套件、文档、扩展接口 | 本项目自己编写 | MIT | `README.md`（鸣谢）；`LICENSE.md` |
 
 有两条值得记住的结论：组件即使在 bundle 内也各自保留**自己的**许可证（采纳的浏览器 bundle 与迁移过来
-的 schemastery 校验器是 MIT，而本仓库是 SUL-1.0）；本 bundle 也从不配置你的 provider 凭据 ——
+的 schemastery 校验器是 MIT，本仓库自身也是 MIT）；本 bundle 也从不配置你的 provider 凭据 ——
 `MISSING_CREDENTIAL` 属于你的 DSH 凭据存储，而不是这些文档该负责的事。

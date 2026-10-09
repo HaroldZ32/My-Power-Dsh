@@ -1,0 +1,108 @@
+{
+  "wave": "de-omo C — vendored cores",
+  "branch": "feature/de-omo-wave-c-cores",
+  "role": "SINGLE WRITER for the wave",
+  "utc": "2026-10-08T16:29:20Z",
+  "writer_note": "No git write command was run. The captain commits and branches.",
+
+  "job1_hashline_core": {
+    "replaced": "packages/mpd-hashline-plugin/src/vendor/** — 17 files whose header read 'Vendored core: the upstream project packages/hashline-core (base 8c57e46; SUL-1.0, inherited from upstream)'",
+    "with": "our own TypeScript, 8 files: constants.ts, types.ts, text.ts, hash.ts, anchors.ts, edits.ts, diff.ts, index.ts. No SUL bytes remain in any src/vendor tree (grep for SUL-1.0 / 8c57e46 / oh-my-openagent / hashline-core across every packages/*/src/vendor returns nothing).",
+    "provenance_carried": {
+      "kind": "MIT — DERIVED, notice carried honestly; NOT claimed as written from scratch",
+      "design_source": "crates/pi-edit of https://github.com/can1357/oh-my-pi at commit 602b6c812fa9ef774f359f1e399a09d30ee2eaca",
+      "licence_field": "Cargo.toml [workspace.package] license = \"MIT\"; the crate inherits it via license.workspace = true",
+      "copyright_line": ["Copyright (c) 2025 Mario Zechner", "Copyright (c) 2025-2026 Can Bölük", "Copyright (c) 2026 Stencil Labs, Inc."],
+      "full_mit_text_where": "the complete MIT permission text plus the three copyright lines are reproduced verbatim at the top of EVERY file under src/vendor/** (30-line notice block), and again in LICENSE-NOTICES.md under 'Vendored plugin cores'",
+      "ported_design": [
+        "text.ts — detect_line_ending / normalize_to_lf / restore_line_endings / strip_bom, i.e. the BOM + original-line-ending capture-and-restore pair (pi-edit src/text.rs)",
+        "anchors.ts — a quoted tag is validated against the CURRENT text before any write, and a mismatch is reported as a diagnostic that says what happened, shows the drifted lines with their FRESH anchors, and states the remedy (pi-edit src/modes/hashline/mismatch.rs, format_anchored_context)",
+        "diff.ts — the read view renders one addressable anchor line per source line with the trailing empty element popped (split_addressable_file_lines), and the unified diff uses three context lines, pi-edit's default (src/diff_string.rs)",
+        "edits.ts — batch validated AS A WHOLE before anything runs, applied bottom-up so an earlier splice cannot shift a later anchor"
+      ],
+      "declared_reduction": "the fuzzy 'autocorrect' heuristic layer of the replaced core (wrapped-line re-joining, paired-line indent repair) is NOT reproduced; it was heuristic and outside the tool contract. Declared in vendor/edits.ts's header and in LICENSE-NOTICES.md."
+    },
+    "invariants_verified": {
+      "four_tool_names_and_order": "mpd_hashline_read / mpd_hashline_edit / mpd_hashline_format / mpd_hashline_restore — asserted by test/tool-schema.test.ts, which was NOT modified",
+      "seven_entry_points_plus_types": "toHashlineContent, applyHashlineEditsWithReport, generateUnifiedDiff, computeLineHash, normalizeHashlineEdits, canonicalizeFileText, restoreFileText + FileTextEnvelope, HashlineEdit — all still exported from ./vendor/index.ts; src/index.ts is unchanged apart from its header comment; tsgo --noEmit exits 0",
+      "anchor_shape_and_alphabet": "LINE#HASH|content with the 16-character alphabet ZPMQVRWSNKTXJBYH; HASHLINE_REF_PATTERN and HASHLINE_OUTPUT_PATTERN preserved verbatim",
+      "stale_anchor_reporting": "HashlineMismatchError carries a stale->current remap table and a report naming every drifted line with its fresh anchor, plus '>>>' markers and '...' elision",
+      "crlf_bom_envelope": "canonicalize-then-restore kept; asserted by 'an anchored edit keeps a CRLF file's line endings and a BOM file's BOM'",
+      "guard_and_registry": "post-execute guard over edit / str_replace_editor / write and the registry at <workspace>/.mpd/hashline-files.json — asserted by 'the guard resolves a RELATIVE file_path against the session workspace, not process.cwd()'"
+    },
+    "tests_before": "packages/mpd-hashline-plugin: 14 pass / 0 fail (hashline.test.ts 7, tool-schema.test.ts 7)",
+    "tests_after": "packages/mpd-hashline-plugin: 14 pass / 0 fail — identical, with tool-schema.test.ts byte-unchanged",
+    "dist": "packages/mpd-hashline-plugin/dist/index.js rebuilt with the PINNED toolchain .toolchain/node_modules/.bin/bun from the repo root"
+  },
+
+  "job2_boulder_core": {
+    "replaced": "packages/mpd-boulder-plugin/src/vendor/** — 13 files whose header read 'Vendored core: the upstream project packages/boulder-state (base 8c57e46; SUL-1.0, inherited from upstream)'",
+    "with": "written FRESH here: constants.ts, types.ts, plan-checklist.ts, top-level-task.ts, index.ts + storage/{index,path,plan-progress,read-state,session,shared,task,write-state}.ts — 13 files, mpd-owned, NO third-party source and no third-party licence obligation",
+    "provenance_carried": "none required — this tree was written in this repository, so LICENSE-NOTICES.md records it as 'WRITTEN HERE, mpd-owned' rather than as a derived work",
+    "invariants_verified": {
+      "thirteen_exports": "readBoulderState, createBoulderState, writeBoulderState, completeBoulder, addBoulderWork, getActiveWorks, getWorkById, getWorkForSession, getWorkResumeOptions, getPlanProgress, findPrometheusPlans, startTaskTimer, endTaskTimer — all present; src/index.ts imports them unchanged",
+      "full_previous_surface": "the whole former barrel surface is preserved too (29 values + 9 types), including normalizeSessionId and getPlanChecklist that test/boulder.test.ts imports",
+      "state_root_convention": ".mpd state root kept; '<ws>/.mpd/boulder.json' asserted by the unchanged test",
+      "legacy_session_prefixes": "codex: / opencode: / senpi: still ACCEPTED as data-compatibility values while this bundle WRITES dsh: — asserted by 'session ids are dsh-prefixed by default'"
+    },
+    "tests_before": "packages/mpd-boulder-plugin: 7 pass / 0 fail",
+    "tests_after": "packages/mpd-boulder-plugin: 7 pass / 0 fail — identical, test/boulder.test.ts byte-unchanged",
+    "dist": "packages/mpd-boulder-plugin/dist/index.js rebuilt with the pinned toolchain from the repo root"
+  },
+
+  "job3_blind_spot": {
+    "a_deleted_dead_code": {
+      "removed": "packages/mpd-comment-checker-plugin/src/vendor/{apply-patch-edits.ts,types.ts} (2 files, 417 lines)",
+      "proof_it_was_dead": [
+        "no import of './vendor' anywhere in packages/mpd-comment-checker-plugin/src/index.ts (its only 'vendor' hits are the npm package's own vendor/<platform>/comment-checker binary path)",
+        "no import of comment-checker-plugin/src/vendor anywhere in the repository (packages, scripts, cordis.patch.yml, presets)",
+        "packages/mpd-comment-checker-plugin/dist/index.js carries ZERO 'src/vendor' path comments, i.e. the tree was never bundled — so deleting it cannot change the artifact, and verify-dist-fresh stays green"
+      ]
+    },
+    "b_lock_entries_added": {
+      "why_a_hand_edit": "scripts/repin-vendor.ts has NO add mode: planAssets() iterates the lock's OWN assets, so an asset the lock never listed can never be introduced by it. The five keys below were therefore inserted by a scripted hand edit, with values computed by the same algorithm scripts/verify-vendor.ts uses (readBytes: raw unless the file has no NUL, in which case CRLF/CR collapse to LF; listFiles: recursive walk skipping node_modules/__pycache__/*.pyc/*.pyo; fold: sha256 over sorted POSIX relpath + '\\n' + per-file sha256 + '\\n'), then PROVEN by the gate.",
+      "entries": [
+        { "asset": "packages/mpd-hashline-plugin/src/vendor", "fileCount": 8, "treeSha": "7c38d4f18e056e2f79eac37908cc6250dd8d917185609b3e7a5b3c13f2be0495", "fingerprint": "treeSha" },
+        { "asset": "packages/mpd-boulder-plugin/src/vendor", "fileCount": 13, "treeSha": "fa19e7243941dc9fa229eb0a2c7bafd42267c4db094aec23ce1626f283115f81", "fingerprint": "treeSha" },
+        { "asset": "packages/mpd-schemastery", "fileCount": 19, "treeSha": "1d086f00dad5c204a3d7d4cec92efb205f847f5914c7ee90c02554fa0b9ea4ed", "fingerprint": "treeSha" },
+        { "asset": "packages/mpd-bundle-plugin/adopted", "fileCount": 2, "treeSha": "a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f", "fingerprint": "treeSha" },
+        { "asset": "packages/mpd-bundle-plugin/client.js", "fileCount": 1, "sha256": "1d59f4c9d802848780a88635390736aeabb0d8d0da44b6fb78434e1fd2be3f8f", "fingerprint": "sha256 over RAW bytes (the lock's single-file rule), 670950 bytes" }
+      ],
+      "not_added": "packages/mpd-comment-checker-plugin/src/vendor — deleted in (a), so it must not be fingerprinted",
+      "effect": "verify-vendor now fingerprints 7 shipped assets instead of 2; the five previously-invisible trees can no longer be purged silently"
+    },
+    "single_repin": {
+      "command": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step",
+      "exit": 0,
+      "observed": "WRITE     : nothing to re-pin - /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json left byte-identical",
+      "meaning": "the authority recomputed every treeSha and agreed with the hand-computed values byte-for-byte, so it had nothing to splice; VENDOR_LOCK.json was NOT rewritten by it",
+      "lockedAt_untouched": "the repin left the file byte-identical, so the `lockedAt` stamp still reads 2026-10-07T10:30:31Z. That field is the authority's to move; it deliberately did not move it, and editing it by hand would have destroyed the byte-identical observation above."
+    }
+  },
+
+  "gates": {
+    "run_with": "the PINNED toolchain .toolchain/node_modules/.bin/bun for every `bun …` command, from the REPO ROOT, path-qualified args",
+    "results": [
+      { "gate": "node scripts/verify-vendor.ts", "exit": 0, "observed": "[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked" },
+      { "gate": "node scripts/repin-vendor.ts --check", "exit": 0, "observed": "[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)" },
+      { "gate": "bun run verify:comments", "exit": 0, "observed": "scanned 364 TypeScript file(s) of 364; inspected 32723 declaration(s) — VERDICT: PASS" },
+      { "gate": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed" },
+      { "gate": "bun run typecheck", "exit": 0, "observed": "$ tsgo --noEmit (no diagnostics)" },
+      { "gate": "bun test packages", "exit": 0, "observed": "1707 pass / 0 fail — Ran 1710 tests across 105 files" },
+      { "gate": "bun run verify:manifest", "exit": 0, "observed": "VERDICT: PASS — the install-time rules and the packaging contract hold." },
+      { "gate": "node scripts/verify-pack-closure.ts", "exit": 0, "observed": "completeness 494 declared source file(s) compared, 493 present, 1 declared exemption, 0 absent; content bytes 592 compared, 590 identical, 0 drift, 2 expected-after-pack" }
+    ]
+  },
+
+  "could_not_prove": [
+    "T-26 BOUND, stated not hidden: verify-pack-closure's exit code certifies COMPLETENESS plus byte identity, NOT freshness. Its own output names the two files whose source moved after the artifact stamp — packages/mpd-boulder-plugin/dist/index.js and packages/mpd-hashline-plugin/dist/index.js — as CONTENT-DRIFT-EXPECTED, 'a writer landed after the pack'. dist/mpd-package/ is therefore one pack behind; the next `npm run pack` (release step) refreshes it. I did not re-pack, because it is not one of the eight named gates and the gate blesses this reading as non-violating.",
+    "The hashline port is a REDUCTION, not a byte-equivalent reimplementation: the replaced core's fuzzy autocorrect layer is gone. Nothing in the shipped contract or the tests covers it, but a caller who relied on a mangled replacement being silently repaired will now get the text it actually sent. Declared in vendor/edits.ts and LICENSE-NOTICES.md.",
+    "The hashline digest ALGORITHM changed in the sense that the old core could use Bun's native xxHash32 while the new one always uses its own pure-TypeScript xxHash32. Anchors are session-scoped and never persisted, so nothing pinned externally, but I did NOT prove the new digest equals the old one for any given line — no consumer requires it.",
+    "verify-pack-closure and verify:manifest were run against the local tree only; no boot/mount lane (Docker or preset-conformance) was run, because this wave touches no patch row, preset or tool schema."
+  ],
+
+  "evidence": {
+    "dir": "evidence/de-omo/cores/20261008T162920Z/",
+    "files": ["result.json", "output.log (raw stdout+stderr of all eight gates, with each EXIT code inline)"]
+  }
+}

@@ -1,0 +1,30 @@
+### FINAL round: repin + vendor + docs + comments + tests + aggregate
+[repin-vendor] assets    : 1 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (2562 bytes, 1 treeSha asset(s))
+[repin-vendor]   locked       : treeSha=dc05c4ecc601d7fb5306da4cd24fa1f4a3898ea831ebc07653ce810a4221da80 fileCount=371
+[repin-vendor]   computed (LF) : treeSha=1169952b376923e25ac078a8dfc530279525c4a4b2aebc960a8c49f832a2c084 fileCount=371 (1 file(s) LF-normalized)
+[repin-vendor]   DELTA        : treeSha dc05c4ecc601d7fb5306da4cd24fa1f4a3898ea831ebc07653ce810a4221da80 -> 1169952b376923e25ac078a8dfc530279525c4a4b2aebc960a8c49f832a2c084
+[repin-vendor] WRITE     : applied 1 field change(s) to /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json
+[repin-vendor]   skills.treeSha: dc05c4ecc601d7fb5306da4cd24fa1f4a3898ea831ebc07653ce810a4221da80 -> 1169952b376923e25ac078a8dfc530279525c4a4b2aebc960a8c49f832a2c084
+[repin-vendor]   - (line 8)       "treeSha": "dc05c4ecc601d7fb5306da4cd24fa1f4a3898ea831ebc07653ce810a4221da80"
+[repin-vendor]   + (line 8)       "treeSha": "1169952b376923e25ac078a8dfc530279525c4a4b2aebc960a8c49f832a2c084"
+[repin-vendor] WRITE     : linesChanged=1 bytes 2562 -> 2562 (differingBytes=58)
+REPIN_EXIT=0
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 371 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+VENDOR_EXIT=0
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=424 dead=0 — PASS
+DOCS_EXIT=0
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+COMMENTS_EXIT=0
+ 3 skip
+ 0 fail
+ 22308 expect() calls
+Ran 1710 tests across 105 files. [21.01s]
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 73ms
+[verify-gates] PASS - 8/8 member gate(s) green

@@ -1,0 +1,8 @@
+package-tests exit=0
+typecheck exit=0
+comments exit=0
+dist-fresh exit=0
+docs exit=0
+manifest exit=0
+readonly-deny-selftest exit=0
+mcp-framing exit=0

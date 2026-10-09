@@ -206,7 +206,26 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-mcp-codegraph/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
   "packages/mpd-mcp-codegraph/src/launch.ts :: import { resolveCodegraphBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
   "packages/mpd-mcp-gitbash/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
-  "packages/mpd-mcp-lsp/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-lsp/src/launch.ts :: import { installTerminalSilence, resolveLogRoots } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  // THE TWO LAUNCHERS BECAME REAL THIN LAUNCHERS (de-omo wave B2, 2026-10-08): they no longer import
+  // a vendored `./cli.js` beside them, so they resolve their server through the SHARED dependency
+  // resolver, type their diagnostics channel on the SHARED sink interface, and degrade through the
+  // SHARED unavailable-server fallback. Six NEW edges, frozen here rather than discovered later —
+  // the R5 sink edge above was re-spelled in the same edit (it now also imports `resolveLogRoots`).
+  "packages/mpd-mcp-gitbash/src/launch.ts :: import { resolveDependencyEntry } from \"../../mpd-mcp-shared/dependency-entry.ts\"",
+  "packages/mpd-mcp-gitbash/src/launch.ts :: import type { LogSink } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-gitbash/src/launch.ts :: import { serveUnavailable } from \"../../mpd-mcp-shared/unavailable-server.ts\"",
+  "packages/mpd-mcp-lsp/src/launch.ts :: import { resolveDependencyEntry } from \"../../mpd-mcp-shared/dependency-entry.ts\"",
+  "packages/mpd-mcp-lsp/src/launch.ts :: import type { LogSink } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-lsp/src/launch.ts :: import { serveUnavailable } from \"../../mpd-mcp-shared/unavailable-server.ts\"",
+  // THE AST_GREP SERVER IS OURS NOW (de-omo wave B1, 2026-10-08): the vendored artifact inlined both
+  // shared modules, so these two edges are NEW to the scan even though the imports themselves only
+  // moved from a bundle into source. `cli.ts` routes the row's diagnostics through THE shared sink
+  // (R5) and `server.ts` resolves the engine through the shared binary resolver — the same pair the
+  // launchers above already carry. Frozen here by the registration repair, which owns this inventory
+  // this wave; the gate stays green instead of reddening on an edge that was written on purpose.
+  "packages/mpd-mcp-astgrep/src/cli.ts :: import { openLogSink } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-astgrep/src/server.ts :: import { probeAstGrep, resolveAstGrepBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
   // THE DEBT IS REPAID, NOT DELETED (de-vendor wave): the four files below used to import the
   // schemastery tree vendored inside the adopted `packages/mpd-agent-teams-plugin`, which is why
   // docs/independence.md §4 carried them as a PINNED DEBT. That body is DELETED and the validator

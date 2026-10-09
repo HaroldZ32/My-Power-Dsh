@@ -1,0 +1,170 @@
+{
+  "wave": "de-omo B2 \u2014 the MCP plane (last wave that removes SUL-derived source)",
+  "producedAt": "2026-10-08T16:10:00Z",
+  "branch": "feature/de-omo-wave-b2-mcp",
+  "replacements": [
+    {
+      "row": "mcp-lsp (serverName lsp)",
+      "replaced": "vendored lsp-daemon build (SUL-1.0, packages/mpd-mcp-lsp/dist/cli.js, built offline by the now-retired scripts/build-mcp.ts from vendor/mcp-src/**)",
+      "now": "declared npm dependency cclsp 0.7.0",
+      "licence": "MIT (package.json license field; LICENSE file, sha256 fecd11b4eba68e89ea53aa0cf0531a39d817df68c27bc5fae78af452489912e1, 'Copyright (c) 2025 ktnyt')",
+      "entry": "bin cclsp -> dist/index.js (shipped prebuilt in the tarball)",
+      "installScripts": "none (only prepublishOnly/dev/test/build); tarball contains no install-time script"
+    },
+    {
+      "row": "mcp-git (serverName git) \u2014 NEW row, split out of the single old mcp-gitbash row",
+      "replaced": "nothing: the old vendored git-bash-mcp was a raw SHELL runner (tools run/which_bash/diagnose), not a git toolbox",
+      "now": "declared npm dependency @cyanheads/git-mcp-server 2.15.3",
+      "licence": "Apache-2.0 (package.json license field; LICENSE sha256 7915fc5b047784f96aeb6af9df72298c96d34c8f50ff6087a85366c60508a11d)",
+      "entry": "bin git-mcp-server -> dist/index.js (shipped prebuilt)",
+      "installScripts": "published manifest carries prepare: bunx husky, which is NOT an install script for a registry dependency; pnpm 12.8.1 installed it with exit 0 and no ignored-builds error (observed, see output.log)"
+    },
+    {
+      "row": "mcp-shell (serverName shell) \u2014 NEW row, split out of the single old mcp-gitbash row",
+      "replaced": "the old vendored git-bash-mcp raw shell tools (run, which_bash, diagnose)",
+      "now": "declared npm dependency mcp-server-commands 0.8.2",
+      "licence": "MIT licence FILE (sha256 bee06c5563a7eb67f83ed5c56d42787fc84dce8a02edf51a52ae18184027cb15) \u2014 its package.json carries NO `license` field at all; that absence is the recorded evidence",
+      "entry": "bin mcp-server-commands -> ./build/index.js (shipped prebuilt)",
+      "installScripts": "published manifest carries prepare: npm run build, which is NOT an install script for a registry dependency; pnpm installed it with exit 0 and no ignored-builds error"
+    }
+  ],
+  "rowSet": {
+    "before": [
+      "mcp-astgrep",
+      "mcp-gitbash (disabled: true, serverName git_bash)",
+      "mcp-lsp (serverName lsp)",
+      "mcp-codegraph"
+    ],
+    "after": [
+      "mcp-astgrep",
+      "mcp-git (disabled: true, serverName git)",
+      "mcp-shell (disabled: true, serverName shell)",
+      "mcp-lsp (serverName lsp, no `mcp` argv)",
+      "mcp-codegraph"
+    ],
+    "declaredIn": [
+      "cordis.patch.yml",
+      "scripts/install-profile.ts"
+    ],
+    "verifiedBy": "node scripts/verify-rows-parity.ts (35 row ids match the 2-file bundle patch layer)"
+  },
+  "capabilityDeltas": {
+    "dropped_with_statement": [
+      "status \u2014 reported the retired daemon's own state, which no longer exists; restart_server is the surviving operational verb and the launcher's log file is the LSP plane's self-report",
+      "prepare_rename \u2014 subsumed by cclsp's rename_symbol, which resolves the symbol and applies the edit atomically",
+      "install_decision \u2014 recorded a decision the retired lsp-core read; cclsp has no such mechanism",
+      "which_bash, diagnose \u2014 the old git-bash server's shell-discovery tools; the built-in bash tool covers the first, the second's subject no longer exists"
+    ],
+    "replaced_names": {
+      "diagnostics": "get_diagnostics",
+      "goto_definition": "find_definition",
+      "find_references": "find_references",
+      "symbols": "find_workspace_symbols",
+      "rename": "rename_symbol + rename_symbol_strict"
+    },
+    "new_names": [
+      "find_implementation",
+      "get_hover",
+      "prepare_call_hierarchy",
+      "get_incoming_calls",
+      "get_outgoing_calls",
+      "restart_server",
+      "the whole git_* family (28 tools)",
+      "run_process"
+    ],
+    "languageCoverage": "the retired overlay carried install hints for ~40 languages and its own server selection; cclsp drives whatever cclsp.json names. TS/JS works out of the box (cclsp's own typescript-language-server dependency, wired by the launcher's generated config); every other language is a config entry plus the user's own server. DOCUMENTED in packages/mpd-mcp-lsp/README.md and README.zh-CN.md.",
+    "readonlyDenyList": "7 -> 8 names: mcp__lsp__rename became mcp__lsp__rename_symbol AND mcp__lsp__rename_symbol_strict (both write). Updated in mpd-roles-plugin, mpd-workmate-plugin, law.ts (VERIFIER_DENIED_TOOLS also re-pointed at cclsp's query family), AGENTS.md \u00a713, agent-references/glossary.md, the roles/workmate/verify tests, the dsh-qa cases and the EN+zh docs."
+  },
+  "consumerSweep": [
+    "packages/mpd-roles-plugin/src/index.ts (READONLY_DENY)",
+    "packages/mpd-workmate-plugin/src/index.ts (READONLY_DENY)",
+    "packages/mpd-verify-plugin/src/law.ts (VERIFIER_DENIED_TOOLS)",
+    "packages/mpd-roles-plugin/test/roles.test.ts, test/team-plane.test.ts (7 -> 8)",
+    "packages/mpd-workmate-plugin/test/rename-delete.test.ts",
+    "packages/mpd-verify-plugin/test/law.test.ts",
+    "packages/mpd-ext-plugin/test/mcp.test.ts (real-server acceptance now drives dist/launch.js)",
+    "packages/mpd-roles-plugin/personas/librarian.md",
+    "packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts (EXEMPT entry for the shared unavailable-server writer)",
+    "packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts (7 new frozen edges)",
+    "scripts/mpd-doctor.ts (lsp + git-bash entries, dead resolveWindowsBash removed)",
+    "docker/probe.ts",
+    "skills/dsh-qa/scripts/mcp-call.ts, scripts/readonly-deny.ts, SKILL.md",
+    "skills/cordis-dev/references/mcp-bundle.md",
+    "cordis.patch.yml, scripts/install-profile.ts, package.json, VENDOR_LOCK.json",
+    "AGENTS.md (\u00a79, \u00a713), agent-references/glossary.md",
+    "docs/user-guide.{md,zh-CN.md}, docs/design.{md,zh-CN.md}, docs/tui.{md,zh-CN.md}, docs/feature-audit.{md,zh-CN.md}"
+  ],
+  "retired": [
+    "scripts/build-mcp.ts (deleted; no consumer left)",
+    "vendor/mcp-src/** (459 files, deleted LAST after both servers stopped reading it)",
+    "packages/mpd-mcp-{lsp,gitbash}/dist/cli.js + dist/BUILD.lock",
+    "packages/mpd-mcp-lsp/overlay/lsp/** (the SUL-derived build overlay)",
+    "verify-dist-fresh's `mpd-mcp-* -> built offline by scripts/build-mcp.ts` NOT-COVERED branch"
+  ],
+  "vendorLock": {
+    "repins": "the helper was applied three times across the working session (each time a later skills/** edit re-invalidated the corpus); the lock ends at ONE consistent value, which is the single re-pin the wave commits",
+    "help": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step (twice in the working session because a later edit to skills/dsh-qa/scripts/readonly-deny.ts re-invalidated the corpus; the committed lock ends at ONE consistent value)",
+    "handEdit": "the three dead assets (vendor/mcp-src, packages/mpd-mcp-{lsp,gitbash}/dist/cli.js) were removed by hand because the helper has no delete mode",
+    "finalSkillsTreeSha": "1169952b376923e25ac078a8dfc530279525c4a4b2aebc960a8c49f832a2c084 (fileCount 371, read from VENDOR_LOCK.json after the final re-pin)",
+    "lockedAt": "left at 2026-10-07T10:30:31Z: the helper does not touch that metadata field and the vendor gate ignores it",
+    "remainingAssets": [
+      "skills",
+      "packages/mpd-mcp-codegraph/dist/serve.js"
+    ]
+  },
+  "gates": {
+    "node scripts/verify-vendor.ts": "PASS - 2 shipped asset(s) fingerprinted (exit 0) \u2014 final round",
+    "node scripts/repin-vendor.ts --check": "CHECK: GREEN - lock matches the working tree (drift=0, problems=0) (exit 0)",
+    "bun run verify:rows": "ok: 35 row ids match the 2-file bundle patch layer (exit 0)",
+    "node skills/dsh-qa/scripts/preset-conformance.ts --self-test": "PASS: 32 harness rows conform, mpd preset 28 child rows, row parity 26/25, negative controls 4/4 reddened (exit 0)",
+    "bun run verify:comments": "VERDICT: PASS \u2014 every declaration in the family carries a precise comment and a full signature (exit 0)",
+    "node scripts/verify-dist-fresh.ts": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical) \u2014 1 NOT COVERED file (the codegraph prebuilt) (exit 0)",
+    "node scripts/verify-pack-closure.ts": "POST-PACK GREEN: 592 files compared, 591 identical, 0 drift, 1 expected-after-pack; pack stamp 2026-10-08T16:09:01.244Z (exit 0)",
+    "bun run verify:manifest": "VERDICT: PASS \u2014 the install-time rules and the packaging contract hold (exit 0)",
+    "bun run verify:docs": "pairs=47 failed=0 violations=0 exempt=24 derived=3 links=424 dead=0 \u2014 PASS (exit 0)",
+    "bun run typecheck": "tsgo --noEmit (exit 0)",
+    "bun test packages": "1710 tests across 105 files: 1707 pass, 3 skip, 0 fail, 22308 expect() calls (exit 0) \u2014 final round",
+    "node scripts/pack-mpd.ts": "staged package -> dist/mpd-package (606 files), exit 0 (needed so the mcp-call live lane boots THIS tree)",
+    "bun run verify:gates (fast aggregate)": "PASS - 8/8 member gate(s) green (exit 0) \u2014 final round"
+  },
+  "liveEvidence": {
+    "launcherHandshakes": {
+      "artifact": "launcher-live-proof.json",
+      "lsp": "12 cclsp tools, 0 stderr bytes, a real get_diagnostics call answered by the bundled typescript-language-server",
+      "git": "28 git_* tools, 0 stderr bytes",
+      "shell": "1 tool (run_process), 0 stderr bytes",
+      "note": "each handshake is a real MCP stdio initialize + tools/list against the BUILT launcher; the zero stderr byte count is the R5 terminal-silence proof"
+    },
+    "mcpCall": {
+      "command": "node skills/dsh-qa/scripts/mcp-call.ts (after node scripts/pack-mpd.ts)",
+      "enumArm": "GREEN \u2014 a real mounted session's harness-recorded tool list carried ALL TWELVE cclsp names (mcp__lsp__find_definition, find_references, find_implementation, get_diagnostics, get_hover, find_workspace_symbols, prepare_call_hierarchy, get_incoming_calls, get_outgoing_calls, rename_symbol, rename_symbol_strict, restart_server) plus the ast_grep family; 107 tools recorded",
+      "callArm": "RED for a PRE-EXISTING host bound: the ast-grep CALL returned an empty result and the model prose names BINARY_NOT_FOUND because no ast-grep binary exists on this host (ast-grep NOT ON PATH; /usr/bin/sg is the shadow-utils look-alike the resolver rejects). Wave B1 declared the same bound.",
+      "caseVerdict": "ok=false (exit 1) \u2014 the case ANDs both arms, so the enum arm alone cannot make it green"
+    },
+    "readonlyDeny": {
+      "command": "node skills/dsh-qa/scripts/readonly-deny.ts",
+      "selfTest": "GREEN \u2014 24 checks (after re-pointing its offline arm at the launcher + installed cclsp)",
+      "liveLane": "RED \u2014 dsh exits 1 with `MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch` before the child is composed",
+      "notMyChange": "the SAME failure is on disk from 2026-10-08T15:38:41.801Z, measured BEFORE this wave's first edit; the last green run of this case is 2026-09-14T09-15-46.694Z and ran on a DIFFERENT host (/root/dshProj/my-power-dsh)",
+      "partialEvidence": "the live parent request still witnesses the new deny list: 107 tools with ALL EIGHT write-capable names visible (write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename_symbol, mcp__lsp__rename_symbol_strict) and restrictError=false \u2014 i.e. the 8-name list is accepted by the harness at spawn time"
+    }
+  },
+  "bounds": [
+    "The readonly-deny ENFORCEMENT arm could not be witnessed here: the model step dies with MALFORMED_RESPONSE on this host, reproduced on the pre-change tree. What IS witnessed is that the 8-name list reaches tools.restrict() with no refusal and that all eight names are visible to the parent.",
+    "No ast-grep binary exists on this host (B1's declared bound), so mcp-call's CALL arm stays red; its ENUM arm carries the wave's evidence.",
+    "cclsp's own get_diagnostics returned 'no diagnostics found' for a file with a deliberate type error in the scratch workspace: the log shows the language server was spawned and the file opened, but its initialization exceeded cclsp's 2s init timeout on first use. The LSP plane is wired and answers; a cold-start diagnostic in this environment is the measured limit.",
+    "git-mcp-server's 28 tools were proven by a real tools/list handshake; no git_* tool was CALLED (the row ships disabled: true, and calling one would mutate a repository).",
+    "mcp-server-commands' run_process was proven by handshake only, never executed \u2014 the same disabled-row posture.",
+    "The live lanes booted an isolated DSH_HOME + sandbox HOME + sandbox workspace, but the two QA cases still failed at the model step, so the three-way isolation is asserted by the case's own checks (isolation.ok=true, realWorkmateUntouched=true) rather than by a green verdict."
+  ],
+  "finishedAt": "2026-10-08T16:14:59Z",
+  "extraSweepAfterFirstGateRun": [
+    "skills/dsh-qa/scripts/extension-mcp-bridge.ts (live arm now drives dist/launch.js and asserts cclsp's get_diagnostics)",
+    "skills/dsh-qa/scripts/extension-isolation.ts (launcher path)",
+    "skills/dsh-qa/SKILL.md (case-table description)",
+    "skills/lsp-setup/SKILL.md (the LSP plane it points at)",
+    "CONTRIBUTING.md + CONTRIBUTING.zh-CN.md (the retired build step, bilingual pair)",
+    "docker/lib/rebuild.ts (the same NOT-COVERED reason string as verify-dist-fresh)",
+    "LICENSE-NOTICES.md (the SUL-1.0 snapshot section rewritten as a HISTORICAL record of the removal)"
+  ]
+}

@@ -134,8 +134,36 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
   模型请求。该断言以 `null` 加原因记录——绝不记为通过。
 - 组合出的行列表与挂载的行列表完全一致。`--dump-config` 只组合行、从不执行插件代码（`AGENTS.md` §4）；证据中
   它被标注为仅组合，所有挂载主张都来自第 9 步的启动或第 10 步的会话创建。
-- 打包/tarball 安装（`dist/mpd-package`）或迁移安装；
+- 把 `dist/mpd-package` **作为安装包**的打包/tarball 安装，以及迁移安装。它的一致性与新鲜度**确实被评测**
+  （见下文 §7 各项）——但该产物从未被安装，因此 tarball 安装这条路径仍未得到证明；
 - 离线运行：apt、nodejs.org、bun.sh、npm 与包注册表都会被使用。
+
+## §7 验收项（restore-three-capabilities §7——跳过不等于通过）
+
+`.mpd/plans/restore-three-capabilities.md` §7 规定：凡是开发宿主机无法判定的主张，都由本 lane 在真实机器上判定。
+为此新增了五项答案，每一项都是 `docker/lib/report.ts` 的 `EXPECTED` 清单中**已声明**的一行——因此从未执行到的
+项会被报告为"应做而未做"，而不是被悄悄丢掉。
+
+| 断言 | 它测量什么 | 它如何变红（负向对照） |
+|---|---|---|
+| `install.buildScripts` | 客户端安装以"没有任何未批准的依赖构建脚本"完成：退出码 0、输出中没有 `ERR_PNPM_IGNORED_BUILDS`、没有 `Ignored build scripts` 警告——并附带对已安装闭包中**声明**了 `preinstall`/`install`/`postinstall`/`prepare` 的每一个 manifest 的清单 | 日志里出现该错误类或该警告，或退出码非 0。已在宿主机演练：日志中被植入 `ERR_PNPM_IGNORED_BUILDS` 时记为 `false`，并引用两处原文 |
+| `pack.present`、`pack.licenceCoherence`、`pack.declarationCoherence`、`pack.staticCoherence`、`pack.distFreshRebuild` | 打包产物 `dist/mpd-package`：它究竟有没有被带进来；它的 `LICENSE.md`/`LICENSE-NOTICES.md` 是否与切出它的那棵树逐字节相同、声明的 `license` 是否仍然一致；它对自己做出的每一项声明是否都成立（`files` 白名单可解析、`dsh.bundle.patch` 层存在、它自己的 patch 里点名的每个行模块路径都能在包内解析、没有把 `evidence/`/`.git/`/`docker/`/`node_modules` 带进来）；它与切出它的那棵树是否逐字节一致（且只有**两个已声明**的生成路径例外：`package.json`、`packages/mpd-ext-plugin/dist/validator.js`）；以及每个已构建条目是否等于容器自己从源码重建出的那份 | 第二项是**正在生效的**对照而不是假设：今天携带的产物就在 `pack.staticCoherence` 上以 10 个不同文件变红（打包之后那棵树又前进了），并在 `pack.distFreshRebuild` 上以 2 个变红——这正是宿主机门禁拒绝做出的测量（`verify-pack-closure.ts` 明示不证明新鲜度；`--pack` 没有许可证检查）。产物缺失时五项全部记为 `false`，绝不用 `null` |
+| `boot.mcpToolNaming` | 探针枚举**每一个**已注册的 `mcp__*` 名称；本行评测 `mcp__<server>__<tool>` 形状、服务端集合是否**恰好**是随包启用的三行、`disabled: true` 的行是否真的什么都没注册、以及 ast-grep 行是否发布了它声明的全部工具 | 出现 `{ast_grep, lsp, codegraph}` 之外的服务端段就变红——例如被禁用的行泄漏出 `mcp__git__*`/`mcp__shell__*`，或某行改了个没人断言过的 `serverName`。已用合成启动日志演练 |
+| `boot.mcpLiveSearch` | 通过已挂载的 adapter **真实调用**一次 `mcp__ast_grep__search`，搜索本 bundle 自己的源码，并**附带负向对照**（任何源码文件都不可能匹配的模式必须命中 0 次） | 返回 `BINARY_NOT_FOUND`（没有引擎）会变红，对照项命中任何东西也会变红——一个对两次调用回同样答案的桩无法通过。已用合成日志双向演练 |
+| `restore.reviewPanelSelfTest`、`restore.reviewPanelCase`、`restore.lspBootstrap`、`restore.hashlineRepair`、`qa.mcpCall`、`qa.readonlyDeny` | §7 应做的各用例，**在容器内**运行：三个被恢复能力各自的用例，以及在开发宿主机上因**既存原因**变红的那两个 live QA 用例 | 用例退出码非 0 记为 `false`；用例打印出自己的拒绝标记（如 `[mcp-call] missing credentials`）时记为 `null` 并引用该标记，**绝不记为 `true`**；本 wave 应做而树里没有的用例记为 `false`，不是跳过 |
+
+`restore.lspBootstrap` 是一**对**对照，而不是单点检查：launcher 会在 stdin 关闭的情况下被驱动两次——一次在没有配置
+的空目录（它必须**生成** `<root>/.mpd/lsp/cclsp.json`、能解析、并至少有一个覆盖 TypeScript 族的服务端），一次在
+携带用户自有 `cclsp.json` 的目录（后者必须逐字节存活，且旁边不得出现任何生成文件）。一个会覆盖用户文件的
+launcher 能通过"是否写出了配置"的检查，却违背契约所述的能力。
+
+live 搜索所需的引擎由本仓库**自己的**安装脚本 `node scripts/install-mcp.ts` 落地（第 09d 步）：
+`@ast-grep/cli` 已不在 bundle 的 `dependencies` 中，而在许多 Linux 主机上 `/usr/bin/sg` 是 util-linux 的
+`setgroups`，并非 ast-grep——因此最终判定的是服务端自己的 `--version` 探测，而不是 PATH。
+
+这些仪器与本 lane 的其他模块（`report.ts`、`rebuild.ts`、`live-verdict.ts`）放在一起：
+`docker/lib/owed-install.ts`、`owed-pack.ts`、`owed-mcp.ts`、`owed-cases.ts`。它们是仅用于 QA 的仪器，被固化在
+`/opt/mpd-e2e/lib/`，绝不取自被测树——仓库副本可以提供自己的插件，但永远不能提供自己的判决。
 
 ## 仓库是如何进入镜像的
 
@@ -152,7 +180,7 @@ Dockerfile 把该上下文复制到 `/src`。**磁盘上不存在任何暂存目
 |---|---|
 | `.git`、`.gitignore`、`.gitattributes` | 安装不应依赖历史 |
 | `node_modules`、`**/node_modules` | `bun install` 会在容器内重建 |
-| **根级** `dist/` | 本仓库的打包产物，不是源码输入 |
+| `dist/*`，**但 `dist/mpd-package` 除外** | 打包产物不是源码输入——然而 §7 第 5 项正是要**对它**做测量，因此恰好这一个路径会进镜像，并由 `copy.contextFiltered` 断言 `dist/` 下没有别的东西跟进 |
 | `evidence`、`.qa-*`、`.toolchain`、`.codegraph`、`.t18ev`、`.t28ev`、`.bun-tmp`、`.mpd` | 宿主机本地状态 |
 
 `packages/*/dist` 是**刻意保留**的：容器会从源码重建它们，而这次重建本身就是一个断言，不是走过场。过滤结果还会

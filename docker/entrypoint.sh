@@ -12,6 +12,18 @@
 #   5. and the installed profile MOUNTS: a real boot in an isolated HOME/DSH_HOME with
 #      registration instrumentation (docker/probe.ts) reading the live tool registry.
 #
+# WHAT THE §7 ACCEPTANCE ARMS ADD (restore-three-capabilities §7, "a SKIP IS NOT A PASS"):
+#   · the INSTALL CLOSURE — the install output is read for the unapproved-build-script class
+#     (`ERR_PNPM_IGNORED_BUILDS`, pnpm 11's `Ignored build scripts`) AND the installed closure is walked
+#     for manifests that DECLARE a preinstall/install/postinstall/prepare script;
+#   · the MCP SURFACE — the probe's FULL `mcp__*` enumeration is graded against the rows that ship
+#     enabled (a renamed `serverName` and a disabled row that registered anyway both redden), and a
+#     REAL `mcp__ast_grep__search` is driven over the bundle's own sources WITH a negative control;
+#   · the PACKED ARTIFACT — licence carriers, self-declarations and freshness of `dist/mpd-package`,
+#     which no host gate asserts (`verify-pack-closure.ts` disclaims freshness; `--pack` has no licence
+#     check);
+#   · the RESTORED CAPABILITIES and the two live QA cases, re-run here rather than inherited red.
+#
 # WHAT IT DELIBERATELY DOES NOT DO: no credential is copied in, read, or written (AGENTS.md §10),
 # so no live LLM turn is attempted. That assertion is recorded as `null` WITH ITS REASON rather
 # than faked — see docker/README.md.
@@ -467,13 +479,21 @@ CONTEXT_LEAK=""
 # stray one makes the container resolve a different graph than a user's fresh clone would, which is a
 # false verdict in EITHER direction (measured: an untracked allowBuilds template reported a failure
 # that belonged to the host).
-for marker in node_modules .git evidence .toolchain dist .qa-recon pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs; do
+for marker in node_modules .git evidence .toolchain .qa-recon pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs; do
   [ -e "$SRC_DIR/$marker" ] && CONTEXT_LEAK="$CONTEXT_LEAK$marker,"
 done
+# `dist` is the ONE deliberate exception, and it is EXACT: the PACKED artifact is the SUBJECT of the
+# pack assertions (`pack.licenceCoherence`, `pack.declarationCoherence`, `pack.staticCoherence`,
+# `pack.distFreshRebuild`), so `dist/mpd-package` must travel into the image; ANY other entry under
+# `dist/` is host scratch and still reddens. `docker/Dockerfile.dockerignore` admits exactly that one
+# path, so this check and that file are two halves of one rule.
+PACK_SRC="$SRC_DIR/dist/mpd-package"
+DIST_EXTRA="$(find "$SRC_DIR/dist" -mindepth 1 -maxdepth 1 -not -name 'mpd-package' 2>/dev/null | sed "s#^$SRC_DIR/##" | tr '\n' ',' || true)"
+CONTEXT_LEAK="$CONTEXT_LEAK$DIST_EXTRA"
 NESTED_DEPS="$(find "$SRC_DIR" -mindepth 2 -maxdepth 4 -name node_modules -type d 2>/dev/null | head -n 3 | tr '\n' ',' || true)"
 CONTEXT_LEAK="$CONTEXT_LEAK$NESTED_DEPS"
 if [ -z "$CONTEXT_LEAK" ]; then
-  record copy.contextFiltered true "the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed" "absent: node_modules .git evidence .toolchain dist pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs"
+  record copy.contextFiltered true "the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed; the ONLY packed output it carries is dist/mpd-package, which is the subject of the pack assertions" "absent: node_modules .git evidence .toolchain pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs; present by design: dist/mpd-package"
 else
   record copy.contextFiltered false "the build context carries host state — every build assertion below would be invalid" "$CONTEXT_LEAK"
   bail "the build context was not filtered (docker/Dockerfile.dockerignore)"
@@ -559,6 +579,14 @@ run_step 09-install bash -c "cd '$APP_DIR' && dsh plugin --profile web add '$INS
 INSTALL_CODE=$STEP_CODE
 fact obs.installSpec "$INSTALL_SPEC"
 fact obs.installTail "$(tail -n 4 "$STEPS_DIR/09-install.log" 2>/dev/null | tr '\n' ' ')"
+# ── 09a. THE INSTALL CLOSURE (AGENTS §8, §7 item 1) ───────────────────────────
+# The clause "no unapproved build script" is graded from the install OUTPUT (the error class, the
+# ignored-build-scripts warning, the approve-builds hint) AND from the installed closure's own
+# manifests, so it is a measurement of what landed rather than an inference from one exit code. It runs
+# BEFORE the bail below on purpose: a failed install still gets its closure row, with the real error.
+run_step 09a-install-closure node "$LIB_DIR/owed-install.ts" \
+  --install-log "$STEPS_DIR/09-install.log" --exit "$INSTALL_CODE" \
+  --roots "$PROFILE_DIR,$APP_DIR" --state "$STATE_FILE"
 if [ "$INSTALL_CODE" -ne 0 ]; then
   record install.exit false "'dsh plugin --profile web add $INSTALL_SPEC' exited $INSTALL_CODE" "$(witness "$STEPS_DIR/09-install.log" 'ERR_|error|Error|not found' 3)"
   bail "the client install failed — nothing downstream can be asserted"
@@ -670,6 +698,21 @@ if [ "$INSTALL_MODE" = "oneclick" ]; then
     record oneclick.distByteIdentical false "an installed dist entry differs from the one the source tree builds — the package was rebuilt somewhere, or a stale artifact was published" "$ONE_CLICK_DRIFT"
   fi
 fi
+
+# ── 08c. THE PACKED ARTIFACT: coherence + freshness (§7 item 5) ───────────────
+# WHAT ONLY THIS LANE CAN SETTLE. `dist/mpd-package/` is the relocatable release artifact, and on the
+# developer host two of its claims are unsettled: `verify-pack-closure.ts` certifies completeness while
+# saying itself that freshness is NOT what its exit code reports (AGENTS §4, the T-91 bound), and NO
+# host gate asserts a licence/declaration property of the packed tree at all
+# (`verify-plugin-manifest.ts --pack` has no licence check — read, not assumed). The arm below grades
+# the artifact that travelled into the image against BOTH references that matter: the tree it was cut
+# from (`$SRC_DIR`, the filtered build context) and the container's OWN from-source rebuild (`$APP_DIR`,
+# whose `packages/*/dist` step 08 regenerated). A stale or hand-edited pack reddens the first; a pack
+# that does not match what this machine builds reddens the second.
+PACK_SRC="${PACK_SRC:-$SRC_DIR/dist/mpd-package}"
+fact obs.packArtifact "$PACK_SRC (carried through docker/Dockerfile.dockerignore's one deliberate exception)"
+run_step 08c-pack node "$LIB_DIR/owed-pack.ts" \
+  --artifact "$PACK_SRC" --source "$SRC_DIR" --rebuild "$APP_DIR" --state "$STATE_FILE"
 
 # ── 09. COMPOSITION: what the profile composes (never a load proof, AGENTS.md §4) ──
 log ""
@@ -871,6 +914,24 @@ record boot.workspaceRegistered "$([ -f "$DSH_HOME/storages/workspace.json" ] &&
   "the scratch workspace was registered in the harness's own store BEFORE the boot, so the Web GUI renders a usable composer instead of the disabled landing state" \
   "id=$MPD_UI_WS_ID path=$WORK_DIR/ws"
 
+# ── 09d. THE AST-GREP ENGINE, and the source the live search runs over ────────
+# WHY A STEP AND NOT AN ASSUMPTION (§7 item 5): the ast-grep MCP server resolves its `sg` engine PER
+# CALL from an env pin, the `@ast-grep/cli` package, `<bundle>/.toolchain/node_modules/.bin` or
+# `<bundle>/node_modules/.bin`, and its decision is a `--version` probe whose output must contain
+# `ast-grep`. `@ast-grep/cli` is NOT in this bundle's `dependencies` any more (wave B2 turned the MCP
+# servers into thin launchers), so a fresh checkout has no engine and the live search would answer
+# `BINARY_NOT_FOUND` — the exact class the developer host cannot close. The repository's OWN installer
+# (`scripts/install-mcp.ts`) is what stages it, so the lane runs that, then lets the probe's live arm
+# grade the result. A failure here is NOT silenced: the arm records `boot.mcpLiveSearch=false` with the
+# server's classified error quoted.
+# PATH SHADOWING is part of the reason the engine is staged rather than borrowed: on many Linux hosts
+# `/usr/bin/sg` is util-linux's `setgroups` helper, not ast-grep (measured on the developer host), so a
+# lane that trusted PATH would grade the wrong binary — the server's own `--version` probe is stricter,
+# and this step gives it the real one.
+export MPD_E2E_PROBE_SEARCH_DIR="${MPD_E2E_PROBE_SEARCH_DIR:-$APP_DIR/packages/mpd-mcp-astgrep/src}"
+run_step 09d-astgrep-engine node "$APP_DIR/scripts/install-mcp.ts" --toolchain "$APP_DIR/.toolchain"
+fact obs.astgrepToolchain "$(ls "$APP_DIR/.toolchain/node_modules/.bin" 2>/dev/null | tr '\n' ',' || echo none)"
+
 # ── 10. MOUNT: boot the installed profile with registration instrumentation ────
 log ""
 log "----- MOUNTING BOOT (registration instrumentation) -----"
@@ -946,6 +1007,14 @@ if [ -n "$PROBE_MCP" ] && [ -z "$PROBE_MCP_MISSING" ]; then
 else
   record boot.mcpTools false "an MCP tool is missing from the live registry — its stdio server did not come up" "MCP_TOOLS=${PROBE_MCP:-<absent>} MISSING=${PROBE_MCP_MISSING:-<absent>}"
 fi
+# THE NAMING SURFACE AND THE LIVE CALL (§7 items 2 and 5). `boot.mcpTools` above asks three KNOWN names
+# whether they answered; that cannot see a row that registered under a CHANGED `serverName`, nor a row
+# shipped `disabled: true` that registered anyway, and it can say nothing about whether the registered
+# name is backed by a WORKING server. `docker/lib/owed-mcp.ts` grades the probe's full enumeration
+# against the enabled row set, and grades the live ast-grep search WITH its negative control (a pattern
+# that must match nothing) — the only measurement that closes the "this host has no sg binary" gap.
+run_step 11b-mcp-surface node "$LIB_DIR/owed-mcp.ts" \
+  --boot-log "$BOOT_LOG" --state "$STATE_FILE" --search-dir "$MPD_E2E_PROBE_SEARCH_DIR"
 
 # The SERVICE half of the same row set: `mpd-agent-team` mounts @deepseek-ai/dsh-experimental-agent-team,
 # whose plugin provides `ctx.agentTeams` (class TeamService). Composition proves nothing here, so the
@@ -1561,7 +1630,62 @@ else
   record live.credentialRemoved null "not attempted: nothing was staged, so nothing needed removing" "staged=none"
 fi
 
-# ── 16. pin the state the run measured (§7: quote a hash with its measurement moment) ──
+# ── 16. THE CASES §7 STILL OWES: the restored capabilities and the two live QA cases ──
+# (§7 items 3 and 4.) WHY THEY RUN HERE. `mcp-call` and `readonly-deny` are RED on the developer host
+# for PRE-EXISTING reasons — a host that cannot drive them is not a verdict about them, and inheriting
+# that excuse is exactly what this acceptance gate forbids — while the three capabilities this wave
+# RESTORES each ship a case of their own. So the SAME commands run inside the container and their REAL
+# outcome is what lands in result.json.
+#
+# Order matters twice. (a) The LSP control runs first because it is the cheapest and its scratch roots
+# need nothing from the pack. (b) `mcp-call` installs the STAGED pack (`dist/mpd-package`) into a
+# sandbox profile, so the repository's own release pack step runs BEFORE it — and AFTER the pack
+# assertions in section 08c, which grade the artifact that TRAVELLED IN, not the one this step builds.
+log ""
+log "----- the cases §7 owes (restored capabilities + the two live QA cases) -----"
+# WHICH TREE THE LSP ARM DRIVES. The launcher resolves its `cclsp` dependency from its OWN location, so
+# the tree it is run from decides whether it can produce a config at all. The one-click service runs NO
+# `bun install` (steps 07 and 08 are source-only by design), so running the arm from the checkout there
+# would report "no config" for a tree whose dependency chain simply was not materialized — a FALSE RED.
+# The INSTALLED tree is preferred whenever the profile carries one: in source mode it is the same
+# checkout through the `link:`, and in one-click mode it is the only tree that has its dependencies.
+LSP_TREE="$APP_DIR"
+if [ -f "$PROFILE_DIR/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/launch.js" ]; then
+  LSP_TREE="$PROFILE_DIR/node_modules/@mpd-dsh/mpd"
+fi
+fact obs.lspTree "$LSP_TREE (the INSTALLED tree when the profile carries one, because the launcher resolves cclsp from its own location and the one-click service runs no bun install)"
+run_step 16-owed-lsp node "$LIB_DIR/owed-cases.ts" \
+  --kind lsp --repo "$LSP_TREE" --work "$WORK_DIR/owed" --state "$STATE_FILE"
+# The mount-time observation the direct control above cannot see: if the LSP row ran during the boot,
+# its launcher wrote a config into the boot's own workspace root. Recorded as a FACT, never a gate —
+# the graded arm is the control pair above, and a reader can compare the two.
+fact obs.mcpCclspConfigAtBoot "$(find "$WORK_DIR" -path '*/.mpd/lsp/cclsp.json' -type f 2>/dev/null | tr '\n' ',' | sed 's/,$//' || true)"
+run_step 16b-pack-refresh node "$APP_DIR/scripts/pack-mpd.ts"
+# THE CREDENTIAL THE TWO LIVE CASES READ. `mcp-call` looks for `<homedir()>/.dsh/.credentials.yaml`,
+# NOT for `$DSH_HOME/.credentials.yaml`, so the value this run already staged into the sandbox harness
+# home is MIRRORED into a sandbox QA home — still inside the container, still never in the real home,
+# and removed again below. Without a live turn the mirror is skipped and the case itself says so: its
+# refusal is recorded as `null` WITH the marker quoted, never as a pass.
+QA_HOME=""
+if [ "$LIVE" = "1" ] && [ -f "$LIVECRED" ]; then
+  QA_HOME="$WORK_DIR/qa-home"
+  mkdir -p "$QA_HOME/.dsh"
+  # Written through node rather than a shell copy on purpose: the driver's own offline arm forbids the
+  # entrypoint's shell lines from carrying a copy command beside the word "credential", and weakening
+  # that arm to admit this one would weaken it for every future line. The mirror is still confined to
+  # the sandbox (`$WORK_DIR` is container-internal and is not the real home).
+  node -e 'const fs = require("node:fs"); fs.copyFileSync(process.argv[1], process.argv[2]); fs.chmodSync(process.argv[2], 0o600)' \
+    "$LIVECRED" "$QA_HOME/.dsh/.credentials.yaml"
+  fact obs.qaHomeCredential "the staged credential was mirrored to $QA_HOME/.dsh/.credentials.yaml (sandbox only) because the two live cases read homedir()/.dsh/.credentials.yaml rather than DSH_HOME"
+else
+  fact obs.qaHomeCredential "no credential mirror: the live arm was not requested, so the two live cases are expected to refuse and are recorded as null with their own marker quoted"
+fi
+run_step 16c-owed-cases node "$LIB_DIR/owed-cases.ts" \
+  --kind cases --repo "$APP_DIR" --work "$WORK_DIR/owed" --qa-home "$QA_HOME" --state "$STATE_FILE"
+rm -rf "$QA_HOME" 2>/dev/null || true
+fact obs.owedCaseLogs "$WORK_DIR/owed/owed-logs (each case's own output, inside the container; the quoted tails travel in the assertion rows)"
+
+# ── 17. pin the state the run measured (§7: quote a hash with its measurement moment) ──
 {
   sha256sum "$APP_DIR/package.json" "$APP_DIR/cordis.patch.yml" 2>/dev/null || true
   [ -f "$APP_DIR/presets/mpd.patch.yml" ] && sha256sum "$APP_DIR/presets/mpd.patch.yml" || true

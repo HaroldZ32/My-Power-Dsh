@@ -1,0 +1,3 @@
+{"scenario":"scan-apply","applying":false,"argv":["--version"]}
+{"scenario":"scan-apply","applying":false,"argv":["scan","--inline-rules","id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n","--json=stream","src"]}
+{"scenario":"scan-apply","applying":true,"argv":["scan","--inline-rules","id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n","--update-all","src"]}

@@ -1,0 +1,84 @@
+{
+  "task": "wave C (de-omo) — repair five statements that still described the pre-wave-C state",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "feature/de-omo-wave-c-cores",
+  "timestamp_utc": "2026-10-08T16:35:19Z",
+  "files_touched": [
+    "packages/mpd-hashline-plugin/README.md",
+    "packages/mpd-hashline-plugin/README.zh-CN.md",
+    "packages/mpd-comment-checker-plugin/src/index.ts",
+    "packages/mpd-comment-checker-plugin/README.md",
+    "packages/mpd-comment-checker-plugin/README.zh-CN.md"
+  ],
+  "files_touched_not_required": [],
+  "items": [
+    {
+      "n": 1,
+      "file": "packages/mpd-hashline-plugin/README.md",
+      "old": "Vendored core: the upstream project `packages/hashline-core` (base commit\n8c57e46; SUL-1.0, inherited from upstream). Adaptation: `src/vendor/diff-utils.ts` bundles a\nminimal unified-diff generator instead of the npm `diff` dependency.",
+      "new": "This tree is our own TypeScript, ported **BY DESIGN** from the `crates/pi-edit` crate of\n`can1357/oh-my-pi` @ `602b6c812fa9ef774f359f1e399a09d30ee2eaca` (MIT). No SUL-1.0 source is\ninherited any more, and the port is a DELIBERATE REDUCTION: the replaced core's fuzzy\n\"autocorrect\" heuristics are not reproduced. The port carries the MIT obligation that crate's\ndesign comes under — the upstream MIT permission text and copyright lines are reproduced\nverbatim at the top of EVERY file under `src/vendor/**`, and `LICENSE-NOTICES.md` records the\nprovenance. The eight files and the responsibility each carries:\n\n- `src/vendor/index.ts` — the public surface the `mpd-hashline` row imports.\n- `src/vendor/constants.ts` — the fixed `LINE#HASH|content` vocabulary: alphabet, digest width and the format patterns.\n- `src/vendor/hash.ts` — the per-line digest: xxHash32 folded to the short alphabet-encoded anchor.\n- `src/vendor/text.ts` — the BOM and line-ending envelope (`canonicalizeFileText` / `restoreFileText`).\n- `src/vendor/types.ts` — the edit vocabulary the tool surface accepts.\n- `src/vendor/anchors.ts` — parsing and validating a caller's `LINE#HASH` anchor, plus the stale-anchor report.\n- `src/vendor/edits.ts` — normalizing and applying an anchored edit batch.\n- `src/vendor/diff.ts` — the read-side anchor view and the unified diff an edit reports: our own generator, so no npm `diff` dependency.",
+      "evidence_source": "eight file headers under packages/mpd-hashline-plugin/src/vendor/ + LICENSE-NOTICES.md heading 'Vendored plugin cores — REPLACED / WRITTEN, no SUL source (wave de-omo C)'",
+      "verified_absent": "packages/mpd-hashline-plugin/src/vendor/diff-utils.ts (ENOENT), packages/hashline-core (ENOENT)"
+    },
+    {
+      "n": 2,
+      "file": "packages/mpd-hashline-plugin/README.zh-CN.md",
+      "old": "Vendored core：上游项目 `packages/hashline-core`（base commit 8c57e46；依 SUL-1.0 授权）。改编：`src/vendor/diff-utils.ts` 打包了一个极简 unified-diff 生成器，替代 npm `diff` 依赖。",
+      "new": "这棵树是我们自己的 TypeScript，**按设计**移植自 `can1357/oh-my-pi` 的 `crates/pi-edit` crate @ `602b6c812fa9ef774f359f1e399a09d30ee2eaca`（MIT）。此处不再继承任何 SUL-1.0 源码，且该移植是一次**有意的削减**：被替换的核心中模糊的「autocorrect」启发式规则没有被复现。该移植承担了那个 crate 的设计所附带的 MIT 义务——上游 MIT 许可全文与版权行逐字复制在每个 `src/vendor/**` 文件的顶部，来源记录在 `LICENSE-NOTICES.md`。八个文件及其各自承担的责任：\n\n- `src/vendor/index.ts` —— `mpd-hashline` row 导入的公开接口面。\n- `src/vendor/constants.ts` —— 固定的 `LINE#HASH|content` 词汇表：字母表、摘要宽度与格式模式。\n- `src/vendor/hash.ts` —— 逐行摘要：xxHash32 折叠为短的字母表编码锚点。\n- `src/vendor/text.ts` —— BOM 与行尾封装（`canonicalizeFileText` / `restoreFileText`）。\n- `src/vendor/types.ts` —— 工具接口面接受的编辑词汇表。\n- `src/vendor/anchors.ts` —— 解析并校验调用方给出的 `LINE#HASH` 锚点，以及 stale-anchor 报告。\n- `src/vendor/edits.ts` —— 规范化并应用一批锚定编辑。\n- `src/vendor/diff.ts` —— 读取侧的锚点视图与编辑返回的 unified diff：我们自己的生成器，因此不依赖 npm `diff`。",
+      "note": "substance identical to item 1; heading tree and the [English](./README.md) switch link untouched"
+    },
+    {
+      "n": 3,
+      "file": "packages/mpd-comment-checker-plugin/src/index.ts",
+      "old": "// Vendored core: the upstream project packages/comment-checker-core parser\n// (base 8c57e46; SUL-1.0, inherited from upstream). The check runner is adapted to a\n// spawnSync-based stdin JSON call against the @code-yeongyu/comment-checker\n// native binary (MIT, github.com/code-yeongyu/go-claude-code-comment-checker).",
+      "new": "// No vendored parser: this row VENDORS NOTHING. Detection is done by the on-demand npm\n// binary @code-yeongyu/comment-checker, which this plugin RESOLVES and then SPAWNS per\n// check as a spawnSync-based stdin JSON call (MIT,\n// github.com/code-yeongyu/go-claude-code-comment-checker).",
+      "verified_absent": "packages/comment-checker-core (ENOENT); the wave-C diff deletes packages/mpd-comment-checker-plugin/src/vendor/{apply-patch-edits.ts,types.ts}",
+      "dist_impact": "packages/mpd-comment-checker-plugin/dist/index.js does NOT embed the header comment (bun strips it); verify-dist-fresh reports 31/31 FRESH with no rebuild"
+    },
+    {
+      "n": 4,
+      "file": "packages/mpd-comment-checker-plugin/README.md",
+      "old": "Vendored parser: the upstream project `packages/comment-checker-core` (base\n8c57e46; SUL-1.0, inherited from upstream; `isRecord` inlined). Check binary:\n`@code-yeongyu/comment-checker` 0.8.0 (MIT,\ngithub.com/code-yeongyu/go-claude-code-comment-checker) — native tree-sitter\nbinary: used UNMODIFIED and declared as an optionalDependency of the `@mpd-dsh/mpd`\nbundle (policy: third-party packages are dependencies, never vendored copies).",
+      "new": "No vendored parser: this plugin VENDORS NOTHING and carries no SUL-1.0 source — detection\nruns in the on-demand npm binary `@code-yeongyu/comment-checker` 0.8.0 (MIT,\ngithub.com/code-yeongyu/go-claude-code-comment-checker), which the plugin resolves and spawns\nper check. Native tree-sitter\nbinary: used UNMODIFIED and declared as an optionalDependency of the `@mpd-dsh/mpd`\nbundle (policy: third-party packages are dependencies, never vendored copies).",
+      "verified_absent": "`isRecord` occurs ONLY in the two READMEs being repaired — zero hits in any source file of the package"
+    },
+    {
+      "n": 5,
+      "file": "packages/mpd-comment-checker-plugin/README.zh-CN.md",
+      "old": "Vendored 解析器：上游项目 `packages/comment-checker-core`（base 8c57e46；依 SUL-1.0\n授权；`isRecord` 已内联）。检查二进制：`@code-yeongyu/comment-checker` 0.8.0\n（MIT，github.com/code-yeongyu/go-claude-code-comment-checker）——原生 tree-sitter\n二进制：按原样使用（UNMODIFIED）并声明为 `@mpd-dsh/mpd` bundle 的 optionalDependency\n（策略：第三方包是依赖，绝不 vendored 复制）。",
+      "new": "无 vendored 解析器：本插件**不 vendored 任何东西**，也不含 SUL-1.0 源码——检测在按需 npm 二进制\n`@code-yeongyu/comment-checker` 0.8.0（MIT，github.com/code-yeongyu/go-claude-code-comment-checker）\n中运行，插件负责解析它并在每次检查时 spawn。原生 tree-sitter\n二进制：按原样使用（UNMODIFIED）并声明为 `@mpd-dsh/mpd` bundle 的 optionalDependency\n（策略：第三方包是依赖，绝不 vendored 复制）。解析顺序：依赖（通过 createRequire\n按包相对定位）-> `MPD_DSH_COMMENT_CHECKER_BIN` -> 本地 checkout QA 的 dev-toolchain\n回退。",
+      "note": "substance identical to item 4; heading tree and the [English](./README.md) switch link untouched"
+    }
+  ],
+  "gates": [
+    {
+      "command": "bun run verify:docs",
+      "exit_code": 0,
+      "observed": "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=424 dead=0 — PASS",
+      "log": "docs.txt"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit_code": 0,
+      "observed": "scanned 364 TypeScript file(s) of 364 in the source set; inspected 32723 declaration(s) | VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.",
+      "log": "comments.txt"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit_code": 0,
+      "observed": "build toolchain: bun 1.4.0 from the repository toolchain (.toolchain/node_modules/.bin/bun) | ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 639ms",
+      "log": "dist-fresh.txt"
+    },
+    {
+      "command": "node scripts/verify-vendor.ts",
+      "exit_code": 0,
+      "observed": "asset OK: skills 371 files | packages/mpd-mcp-codegraph/dist/serve.js 1 | packages/mpd-hashline-plugin/src/vendor 8 | packages/mpd-boulder-plugin/src/vendor 13 | packages/mpd-schemastery 19 | packages/mpd-bundle-plugin/adopted 2 | packages/mpd-bundle-plugin/client.js 1 | PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked",
+      "log": "vendor.txt"
+    }
+  ],
+  "not_verified": [
+    "No dist rebuild was performed: the dist-fresh gate proved the header-comment edit does not reach packages/mpd-comment-checker-plugin/dist/index.js (31/31 FRESH without touching it).",
+    "No git write command was run (AGENTS.md §5 one-git-writer rule); the five files sit uncommitted in the working tree together with the rest of wave C.",
+    "No test suite was run — the change is comment/prose only and touches no executable branch."
+  ]
+}

@@ -1,0 +1,179 @@
+================================================================================================
+S3 — hashline fuzzy repair (packages/mpd-hashline-plugin/**)   ·   task T4   ·   writer: Senior Engineer
+measured 2026-10-08T23:47:48Z   ·   toolchain: bun 1.4.0 (.toolchain/node_modules/.bin/bun, pinned)
+================================================================================================
+
+WHAT CHANGED (5 modified files + 1 new test; NO git command was run by this lane)
+
+  packages/mpd-hashline-plugin/src/vendor/types.ts   NEW HashlineRepairReport; HashlineApplyReport gains `repairs`
+  packages/mpd-hashline-plugin/src/vendor/edits.ts   THE PASS: repairReplacementBlock + its evidence helpers
+  packages/mpd-hashline-plugin/src/vendor/index.ts   one TYPE name added to the EXISTING re-export statement
+  packages/mpd-hashline-plugin/src/index.ts          editFile(): the repair notice, rendered into the tool result
+  packages/mpd-hashline-plugin/dist/index.js         rebuilt with the pinned toolchain from the repo root
+  packages/mpd-hashline-plugin/test/repair.test.ts   NEW (untracked): the 7 acceptance cases
+
+  The editable header paragraph of edits.ts ("DELIBERATE REDUCTION") was UPDATED — it said the fuzzy
+  layer was NOT reproduced, and leaving that sentence would have made the file lie about itself.
+
+THE ALGORITHM (ORIGINAL mpd implementation; the SUL-1.0-derived old core was never opened)
+
+  Two repairs, both proved from the file's own bytes, neither ever guessed:
+
+  wrapped-line  A pair (i, i+1) of the replacement block is an eligible site IFF both entries are
+                non-empty, entry i+1 carries NO indentation of its own, entry i OPENS a bracket or a
+                quote, and entry i+1 is a NET CLOSER returning the delimiter state to exactly what
+                entry i started from. Rejoin with one space after a token needing a right operand
+                ([,+-*/%=<>&|?!:]$), otherwise with nothing — so `call(one,` + `two)` -> `call(one, two)`,
+                `foo(` + `bar)` -> `foo(bar)`, `"hello ` + `world"` -> `"hello world"`.
+
+  paired-indent EVERY non-empty entry flush left while the replaced range carries >= 1 indent, block
+                spanning >= 2 entries. Each entry takes the indent of the replaced line it stands in
+                for (k-th <- k-th); a block that grew keeps the range's last indent.
+
+  THREE REFUSALS — the whole point of the word "conservative":
+    (1) block EQUALS the range it replaces  -> return untouched (the exact-match clause)
+    (2) MORE THAN ONE eligible wrap site    -> repair neither, splice the block exactly as written
+    (3) append / prepend                    -> never reach the pass (no range to prove against)
+
+  Scanner: ()[]{} depth + double-quote and backtick quotes with backslash escapes, line-agnostic.
+  A SINGLE QUOTE is deliberately NOT tracked (string delimiter in some languages, apostrophe in prose);
+  leaving it out can only make a line look LESS open, and an open line is only ever a CANDIDATE.
+
+FALSIFIABILITY CONTROL — a case that cannot fail is not evidence
+(raw/mutation-control.log; edits.ts sha256 before == after both reverts == ddf1535787525cf5…)
+
+  MUTATION 1  repair pass disabled entirely      ->  2 pass / 5 FAIL   (the 2 repair cases, the CRLF
+                                                      round trip, the report case, and the negative
+                                                      control's second half all redden)
+  MUTATION 2  exact-match guard removed          ->  6 pass / 1 FAIL   (exactly the exact-match case)
+
+ACCEPTANCE CASES — observed (test/repair.test.ts, 7 cases, ALL PASS)
+
+  [a1] a replacement line the block wrapped across two entries IS repaired                PASS
+       file ['function run() {', '    call(one,', '}'] ; replace line 2 with ['    call(one,','two)']
+       -> content === "function run() {\n    call(one, two)\n}"
+       -> repairs === [{kind:'wrapped-line', at:0, line:2, span:2}]
+
+  [a2] a flush-left replacement block IS re-indented from the range it replaces            PASS
+       file ['def run():','    first()','    second()','done'] ; replace 2-3 with ['third()','fourth()']
+       -> content === "def run():\n    third()\n    fourth()\ndone"
+       -> repairs === [{kind:'paired-indent', at:0, line:2, span:2}]
+       (without the repair the SECOND line lands at column 0 — the old restoreLeadingIndent covered index 0 only)
+
+  [a3] an AMBIGUOUS block naming two candidate splits is LEFT UNTOUCHED   <-- THE NEGATIVE CONTROL   PASS
+       file ['    start()'] ; replace line 1 with ['    alpha(beta,','gamma)','    delta(epsilon,','zeta)']
+       -> repairs === []   AND   content === "    alpha(beta,\ngamma)\n    delta(epsilon,\nzeta)"
+          (every entry survives byte for byte)
+       SECOND HALF, so the refusal is attributable to the COUNT and not the shape:
+       the SAME pair alone -> content === "    alpha(beta, gamma)", repairs === [{kind:'wrapped-line',...}]
+
+  [a4] a replacement that EQUALS the range it replaces is never altered                    PASS
+       file ['    alpha(beta,','gamma)'] — the range ITSELF is wrap-shaped; the edit hands both lines back
+       -> repairs === [] ; noopEdits === 1 ; content unchanged
+
+  [a5] a CRLF + BOM file repaired through the tool round-trips its envelope                PASS
+       written "\uFEFFtitle\r\n    call(one)\r\n" ; read -> edit line 2 with ['    call(other,','arg)']
+       -> bytes === "\uFEFFtitle\r\n    call(other, arg)\r\n" ; startsWith BOM true ; /[^\r]\n/ FALSE
+
+  [a6] the tool result reports the repair, and stays silent when nothing was repaired      PASS
+       conforming edit : diff has NO '[mpd-hashline repair]' and HAS '+    call(two)'
+       wrapped   edit : diff HAS '[mpd-hashline repair] rejoined a replacement line the block had
+                        wrapped across 2 entries (block line 1, file line 2)'
+
+  [a7] the seven vendor entry points, the four tool names, the anchor alphabet unchanged   PASS
+       Object.keys(vendor).sort() === the frozen 17-name list ; NIBBLE_STR === "ZPMQVRWSNKTXJBYH" ;
+       HASHLINE_DICT.length === 256 ; HASHLINE_OUTPUT_PATTERN matches "12#ZK|some content" ;
+       all four mpd_hashline_* tools registered in order
+
+FROZEN INTERFACES — proved, not asserted
+
+  tool-schema.test.ts UNEDITED : `git diff --name-only -- packages/mpd-hashline-plugin/test/` is EMPTY
+                                 (raw/frozen-tests-diff.txt has zero bytes). Its 7 cases all PASS,
+                                 including "no registered hashline schema uses a type ARRAY" and
+                                 "the committed src AND dist carry no array-typed schema form".
+  NO tool-schema change: no field added/removed/renamed in any parameter or output schema.
+  The seven export STATEMENTS of vendor/index.ts are still seven — one TYPE name was added to the
+  EXISTING type re-export line.
+  REPORTING CARRIER: the EXISTING `diff` field, prefixed with one "[mpd-hashline repair] ..." line per
+  repair. Constraint 4 forbids a schema change and decision 2.3 forbids a new tool field; `diff` is
+  already the field that says what an edit did. The notice is prepended AFTER the maxDiffChars slice,
+  so a long diff can never truncate away the statement that the applier changed more than was asked.
+  The tool DESCRIPTION is deliberately UNCHANGED — decision 2.3 is SILENT-but-REPORTED.
+
+GATES — observed output and exit codes
+
+  bun test packages/mpd-hashline-plugin   EXIT 0
+      21 pass / 0 fail / 80 expect() calls across 3 files                        raw/bun-test-hashline.log
+
+  bun run typecheck  (tsgo --noEmit)      EXIT 0                                  raw/typecheck.log
+
+  bun run verify:comments                 EXIT 0                                  raw/verify-comments.log
+      scanned 371 TypeScript file(s) of 371 in the source set; inspected 33095 declaration(s);
+      skipped 14838 inline callback(s) as out of family
+      VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+  node scripts/verify-dist-fresh.ts       EXIT 0                                  raw/verify-dist-fresh.log
+      FRESH   packages/mpd-hashline-plugin/dist/index.js  sha c7c40d3524b6…  <- packages/mpd-hashline-plugin/src/index.ts
+      build toolchain: bun 1.4.0 from the repository toolchain · recorded buildToolchain bun@1.4.0
+      ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed
+      (the NOT COVERED file is the sha-pinned prebuilt packages/mpd-mcp-codegraph/dist/serve.js)
+
+  REBUILD COMMAND (exactly this, from the repo root):
+      .toolchain/node_modules/.bin/bun build packages/mpd-hashline-plugin/src/index.ts \
+        --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js
+
+  bun test packages  (FULL repo)          EXIT 1                                  raw/bun-test-all.log
+      1740 pass / 3 skip / 2 FAIL / 22436 expect() calls across 109 files
+      BOTH failures are in packages/mpd-mcp-lsp/test/language-coverage.test.ts — S2's lane, whose src
+      is dirty in the shared checkout and whose work is in flight. ZERO hashline failures: all 21
+      hashline cases pass inside this same run.
+
+  node scripts/verify-vendor.ts           EXIT 1  (EXPECTED — see the re-pin handover)
+      FAIL - asset skills count drifted: 372 vs 371          <- S1's lane
+      FAIL - asset skills treeSha mismatch                   <- S1's lane
+      FAIL - asset packages/mpd-hashline-plugin/src/vendor treeSha mismatch   <- THIS LANE
+      every other asset: OK
+                                                                              raw/verify-vendor.log
+
+RE-PIN HANDOVER — REPORTED, NOT ACTED ON (no repin was run; VENDOR_LOCK.json untouched)
+
+  asset            packages/mpd-hashline-plugin/src/vendor
+  recorded treeSha 7c38d4f18e056e2f79eac37908cc6250dd8d917185609b3e7a5b3c13f2be0495
+  fileCount        8 -> 8 (UNCHANGED; no file added or removed, so only the treeSha moves)
+  changed in tree  src/vendor/types.ts, src/vendor/edits.ts, src/vendor/index.ts
+  unchanged in tree src/vendor/anchors.ts, constants.ts, diff.ts, hash.ts, text.ts
+  outside the tree, still this lane:
+                   src/index.ts, dist/index.js, test/repair.test.ts (new)
+  WAVE COUPLING   the wave now has TWO invalidated assets — skills/** (S1) and this tree (S3) — and ONE
+                  repin re-derives every asset, so the single re-pin must be taken AFTER both writers
+                  settle, or the first is invalidated by the second.
+
+LICENSE-NOTICES.md PARAGRAPH — for the S1 writer (this lane did NOT touch that file)
+
+  The hashline core in packages/mpd-hashline-plugin/src/vendor/** is our own TypeScript, designed from
+  the `crates/pi-edit` crate of can1357/oh-my-pi at commit 602b6c812fa9ef774f359f1e399a09d30ee2eaca, whose
+  workspace manifest declares MIT and whose LICENSE carries the text reproduced in every file header.
+  One part of that tree is not a design port and has no upstream counterpart: the conservative repair
+  pass (`repairReplacementBlock` in src/vendor/edits.ts, with its helpers findWrapSites, scanDelimiters,
+  scanBlockStates, opensSomething, closesSomething, isFlushLeftBlock and pairIndent) is an ORIGINAL mpd
+  implementation written for this repository, restoring by design a capability the replaced core had.
+  No upstream source was read or copied for it.
+
+WHAT THIS LANE COULD NOT PROVE — the honest list
+
+  1. `verify-vendor` green. It is expected red until the wave's single re-pin lands, and it also reports
+     S1's skills/** drift, which is not this lane's.
+  2. Any behaviour on a real MOUNTED harness session. Every case drives the plugin's own registered tool
+     bodies through the same fake-ctx mount test/tool-schema.test.ts uses; no dsh boot was run — and no
+     boot-mount gate is triggered, because no tool schema changed.
+  3. That the pass never misfires on real-world prose. The bound is STATED, not measured: it separates a
+     wrapped line from a deliberate column-0 continuation by delimiter evidence plus the uniqueness gate,
+     so prose carrying a genuinely unmatched bracket followed by an unindented line can read as a
+     candidate. It never deletes, never reorders, and never fires on a block it cannot decide. A
+     corpus-scale false-positive sweep over real repositories was NOT run.
+  4. Any behavioural equivalence with the replaced core. That is not a goal: contract §0 constraint 1
+     declares such a criterion invalid, and the SUL-1.0-derived bytes were never opened.
+  5. Independence. These results are SELF-REPORTED. Under the Verification Law they are closed only by a
+     DIFFERENT agent's recorded verdict, taken from the frozen contract and this packet — never from the
+     implementation.
+================================================================================================

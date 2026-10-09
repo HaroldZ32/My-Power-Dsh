@@ -597,10 +597,13 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 
 ## 7. 对生态惯例的刻意偏离
 
+有一项曾经的偏离已**关闭**：DSH-TUI 生态对第三方插件的惯例之一就是 **MIT** 许可，而自去 omo 的 E 波许可证
+替换之后，本 bundle 采用的正是同一份 MIT 许可（`LICENSE.md`，`Copyright (c) 2026 HaroldZ32`）——因此许可证
+不再是偏离项，下方不再列出。仍然成立的偏离如下。
+
 | 偏离项 | 取值 | 为什么是刻意的 |
 |---|---|---|
 | 包名 | `@mpd-dsh/mpd-tui` | 保持本 bundle 的命名空间；生态使用自己的命名。 |
-| 许可证 | SUL-1.0（`LICENSE.md`） | 本版本未改动；任何产物都不得声明许可证变更。 |
 | 清单 | **唯一**一份 bundle 级 `dsh-plugin.json`，而非 25 份逐包清单 | 本 bundle 作为一个整体安装；清单的 host facet 指向唯一的 TUI 插件模块。 |
 | 宿主输入总线 | 接缝之外**唯一**被计数的接触面，且自 0.13.0 起是一个**版本门控**的接触面：适配器解析**已安装**宿主的根目录，按**文件 URL** 动态 import `<hostRoot>/lib/types/ui.js`，取得宿主自己的 `useStdin`。**门控覆盖的是「是否拦截」，不是那次加载**：探测在每种组合下都会进行（0.13.0 通道自己的适配器日志里就有 `host contact bound: … (lib/types/ui.js)` 这一行），被版本分流的只是 `Ctrl+A` 的处理方式 | `Ctrl+A` 是宿主的内建动作，任何贡献类型都够不到它，所以在 0.13.0 之前的宿主上，另一条路只能是放弃这条需求。**门控规则：** 在**提供**面板接缝的宿主（0.13.0+）上该接触面保持**惰性**——`Ctrl+A` 保留宿主自己的 dashboard 语义，合并视图改经 `alt+a` / `/mpd panel` 打开（§3.3），这一点由 0.13.0 真机 PTY 通道实测（`evidence/tui/lanes/2026-10-06T10-28-57.807Z/`：宿主自己的 dashboard 被打开，且 `/mpd panel` 证明了侧栏注册 + 被接受的打开）；在**没有**该接缝的宿主（0.12.0）上旧行为不变——当 `tui.dashboardKey` 打开且工作区团队投影含有至少一项任务时接触面就绪。因此 `tui.dashboardKey` 仍留在配置 schema 与 `/settings` 行里，但文档写明它**只在旧宿主**上有意义。逐次按键的规则只存在于一个函数里——`packages/mpd-tui-plugin/src/panel.ts` 的 `takeoverArmed`（**接缝优先**于任何配置层；只有没有接缝时才由已保存值、否则由行配置的下限决定），而适配器的 `panelSeamBound()` 是**每次按键**读取的，不只是应用期读一次。**历史（在 0.12.0 上实测，按记录原样保留）：** 那份 import 得到的是**另一份**模块实例，其 `useStdin()` 什么也不返回，因此适配器还会保存**场景渲染**收到的那份活 kit 并优先使用它——这正是接管会在"本次会话渲染过任一 MPD 面板或场景"之后就绪、在那之前保持惰性的原因。适配器内部还遵守另外两条宿主规则：状态类注册的 identity 必须是**正在调用它的激活**（注入 scope），并且不写入任何 DSH-TUI 文件。**边界：** 本波次没有取得 0.12.0 的 PTY 证据（§11.3），因此旧宿主的就绪路径靠单元测试而非 pane 抓取支撑。 |
 
@@ -642,9 +645,9 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 | `mpd-tui-plugin` | TUI 原生界面包（本版本） | usable | 组合行 `mpd-tui` → `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` |
 | `mpd-agent-teams-plugin` | 内置的 AgentTeams 插件（工具 + Web 面板）—— **已于 0.1.7-rc.2 从组合中退役；本行是 2026-09-15 的历史测量** | 当时 usable | 17 个团队工具 |
 | `mpd-mcp-astgrep` | ast-grep MCP 服务器（stdio 启动器） | usable | 3 个 `mcp__ast_grep__*` 工具 |
-| `mpd-mcp-lsp` | LSP MCP 服务器（stdio 启动器） | usable | 8 个 `mcp__lsp__*` 工具 |
+| `mpd-mcp-lsp` | LSP MCP 服务器（为已声明的 `cclsp` 依赖提供的 stdio 启动器） | usable | 12 个 `mcp__lsp__*` 工具（cclsp 自己的名字） |
 | `mpd-mcp-codegraph` | codegraph MCP 服务器（stdio 启动器） | usable | 服务器在进程内运行；**在该沙箱**中 0 个工具，因为 CodeGraph 策略排除含 `.mpd` 的项目路径（沙箱现象，不是 TUI 限制） |
-| `mpd-mcp-gitbash` | git-bash MCP 服务器（上游仅 Windows） | inert | 任何 profile 下该行组合为 `disabled: true` |
+| `mpd-mcp-gitbash` | 一个启动器同时服务 git 工具箱与裸 shell 运行器（均为已声明 npm 依赖） | inert | `mcp-git`（28 个 `mcp__git__git_*` 工具）与 `mcp-shell`（`mcp__shell__run_process`）两行在任何 profile 下都组合为 `disabled: true` |
 | `mpd-mcp-shared` | MCP 启动器共用的二进制解析库 | usable | 支持库，自身无行/工具；由已启动的 MCP 子进程间接见证 |
 | `mpd-bundle-plugin` | bundle web 兼容包（浏览器客户端 + 空操作 main） | **web-only** | 无 TUI 渲染面；TUI 等价物见 §3 |
 | `mpd-qa-roles-probe` | 仅 QA 的探针包 | inert | bundle patch 中没有它的行（仅由 QA overlay 挂载） |

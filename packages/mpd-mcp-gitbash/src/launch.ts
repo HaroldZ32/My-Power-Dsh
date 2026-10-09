@@ -1,42 +1,87 @@
 #!/usr/bin/env node
-// mpd git-bash MCP launcher (R5, lane F).
+// mpd git-bash MCP launcher — two third-party servers behind ONE launcher (de-omo wave B2).
 //
-// WHY THIS FILE EXISTS: the `mcp-gitbash` row launches the adopted `dist/cli.js` directly, and that
-// file is a sha-pinned prebuilt behind the blocking vendor gate (`dist/BUILD.lock`, source `8c57e46`)
-// — editing it would either fail the gate or turn the gate into a self-attestation. The terminal
-// silence therefore cannot live inside the adopted entry; it lives here, in our own file.
+// WHAT REPLACED WHAT: this launcher used to start the vendored `git-bash-mcp` build that shipped beside
+// it as `./cli.js` (SUL-1.0, built offline by the now-retired `scripts/build-mcp.ts` from
+// `vendor/mcp-src/**`). That artifact, the build script and the whole snapshot are gone. The row's
+// capability is re-sourced from two DECLARED npm dependencies:
 //
-// HOOKUP STATE (honest): the row must name THIS file in `args[0]` instead of `dist/cli.js`.
-// `cordis.patch.yml` is lane B's write scope, so that one-line repoint is handed to the captain; until
-// it lands the row still starts `dist/cli.js` and this launcher is not yet in the path. The launcher
-// itself is proven working — `node packages/mpd-mcp-gitbash/dist/launch.js bogus` writes the adopted
-// server's usage line into `<root>/.mpd/logs/mpd-mcp-gitbash.log` and zero bytes to stderr.
+//   argv[2] `git`   (the default) -> `@cyanheads/git-mcp-server` (Apache-2.0), 28 `git_*` tools.
+//   argv[2] `shell`              -> `mcp-server-commands` (MIT licence FILE, no `license` field in its
+//                                   package.json — see packages/mpd-mcp-gitbash/README.md), `run_process`.
 //
-// The measured reason the silence is needed at all: the harness builds every stdio MCP row as
-// `new StdioClientTransport({ command, args, env, cwd })` with NO `stderr` option, and the MCP SDK
-// spawns the child with `stdio: ["pipe", "pipe", this._serverParams.stderr ?? "inherit"]`. This
-// process's fd 2 IS the dsh process's fd 2 — in a TUI session, the Ink alternate screen.
+// WHY ONE LAUNCHER AND NOT TWO PACKAGES: the two rows differ ONLY in which dependency they start, and
+// the argv word already selects that. One launcher keeps the already-exempt terminal-silence file the
+// single place fd 2 is taken away from the terminal, instead of duplicating that install (and its R5
+// gate exemption) into a second file.
 //
-// Behaviour is otherwise unchanged: the adopted entry runs `main()` unconditionally at module scope,
-// reads its command word from `argv.slice(2)` (defaulting to `mcp`), and resolves `stderr` from
-// `node:process` to the `process.stderr` OBJECT — so its `stderr.write(...)` calls do a property lookup
-// at call time and hit the replacement installed below.
+// The row's launch shape is unchanged: `command: node`, `args: [<bundle>/packages/mpd-mcp-gitbash/dist/launch.js, <word>]`.
+// There is NO default server word any more: the old vendored server was a raw shell runner (`run`,
+// `which_bash`, `diagnose`), so `git` is the closest thing to a NEW capability and `shell` is the one
+// that replaces the old tools. Both rows ship `disabled: true`, exactly as the single old row did.
+//
+// CAPABILITY DELTAS are stated in `packages/mpd-mcp-gitbash/README.md`: what the old server exposed,
+// which new tool covers it, and the two old tools that have no counterpart.
+import { resolveDependencyEntry } from "../../mpd-mcp-shared/dependency-entry.ts"
 import { installTerminalSilence } from "../../mpd-mcp-shared/log-sink.ts"
+import type { LogSink } from "../../mpd-mcp-shared/log-sink.ts"
+import { serveUnavailable } from "../../mpd-mcp-shared/unavailable-server.ts"
 
-// The install is the FIRST statement of the module body: this file's own import above is
-// `log-sink.ts` (node builtins only, chatter-free), and the adopted entry is imported DYNAMICALLY
-// below on purpose — a static import would be hoisted above this line and defeat the whole point.
-installTerminalSilence("mpd-mcp-gitbash")
+/** The two servers this launcher can start, keyed by the word the row passes as `argv[2]`. */
+type ServerWord = "git" | "shell"
 
-// The adopted CLI is a built artifact with no declaration file; widening the specifier to `string`
-// keeps the runtime specifier untouched while TypeScript stops resolving it (TS7016).
-// The adopted server is a built artifact with no declaration file, so the specifier is typed as a
-// plain string (TS7016). IT IS ALSO A NAMED CONSTANT ON PURPOSE: `bun build` follows a LITERAL
-// dynamic import and would INLINE the whole adopted server into this launcher (measured 2026-10-03 on
-// the ast-grep twin: the bundle ended in `init_cli()` and every adopted byte was duplicated). A
-// non-literal specifier is left alone, and the path resolves at RUNTIME beside THIS MODULE'S BUILT
-// LOCATION (packages/mpd-mcp-<x>/dist/launch.js) — which is why it reads `./cli.js` rather than a
-// path relative to this source file.
-/** The adopted server entry, resolved at runtime beside the built launcher. */
-const ADOPTED_ENTRY: string = "./cli.js"
-await import(ADOPTED_ENTRY)
+/** One startable server: the dependency, its `bin` key, and what the row loses without it. */
+interface ServerSpec {
+  /** The npm package name, exactly as the bundle's `optionalDependencies` declares it. */
+  readonly dependency: string
+  /** The dependency's `bin` key, which is the MCP server entry (not `main`). */
+  readonly bin: string
+  /** What the user loses when the dependency is absent, one line, for the log sink. */
+  readonly capability: string
+}
+
+/** The server table: every word this launcher accepts, and the dependency behind it. */
+const SERVERS: Readonly<Record<ServerWord, ServerSpec>> = {
+  git: {
+    dependency: "@cyanheads/git-mcp-server",
+    bin: "git-mcp-server",
+    capability: "the git_* tool family"
+  },
+  shell: {
+    dependency: "mcp-server-commands",
+    bin: "mcp-server-commands",
+    capability: "run_process (raw shell execution)"
+  }
+}
+
+// FIRST statement of the module body: this file's own imports are node builtins and chatter-free, and
+// the dependency below is imported DYNAMICALLY on the last line — a static import would be hoisted
+// above this call and defeat the whole point. The measured reason it matters here: `git-mcp-server`
+// initializes a pino logger at module load and writes JSON records to stderr.
+/** The terminal-silence sink: the launcher's log file, and the diagnostics channel of the fallback below. */
+const sink: LogSink = installTerminalSilence("mpd-mcp-gitbash")
+
+/** The server word the row selected; anything but `shell` means the git toolbox. */
+const word: ServerWord = process.argv[2] === "shell" ? "shell" : "git"
+/** The selected server's dependency and metadata. */
+const spec: ServerSpec = SERVERS[word]
+/** The located dependency, or null when the profile did not materialize it. */
+const dependency = resolveDependencyEntry(import.meta.url, spec.dependency, spec.bin)
+
+if (dependency === null) {
+  // The declared dependency is absent. Stay alive with zero tools rather than killing the row's child;
+  // the reason lands in the log sink above.
+  await serveUnavailable(sink, {
+    name: "mpd-mcp-gitbash:" + word,
+    reason: "the declared dependency " + spec.dependency + " is not installed in this profile",
+    hint: "install the bundle's dependency closure (npm/pnpm install) — without it this row loses " + spec.capability
+  })
+  process.exitCode = 0
+} else {
+  sink.write("[mpd-mcp-gitbash] starting " + spec.dependency + "@" + dependency.version + " (" + word + ") from " + dependency.entry)
+  // The specifier is a RUNTIME VALUE on purpose: a literal one would make `bun build` inline the whole
+  // third-party server into this launcher (measured on the ast-grep twin).
+  /** The dependency's MCP server entry, resolved from the installed profile. */
+  const entry: string = dependency.entry
+  await import(entry)
+}

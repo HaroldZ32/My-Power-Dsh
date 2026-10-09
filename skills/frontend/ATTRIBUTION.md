@@ -1,20 +1,67 @@
-# ATTRIBUTION / NOTICE
+# ATTRIBUTION / NOTICE — `frontend`
 
-This package (`@oh-my-opencode/shared-skills`) includes third-party content that is
-redistributed under its original license, consistent with the project's distribution
-license (see `LICENSE.md`: "All third party components incorporated into the
-oh-my-opencode Software are licensed under the original license provided by the owner of
-the applicable component"). Each upstream's license and required notices are reproduced
-below. Modifications to the original files are noted where applicable.
+> **Honest provenance statement.** The body of this skill is **upstream content re-sourced under its
+> own author's MIT grant**. It was **not** written in this repository. Until wave A of the de-omo
+> decoupling (`.mpd/plans/de-omo-decoupling.md`) the corpus was ported from
+> `code-yeongyu/oh-my-openagent` (SUL-1.0); it is now sourced from the same author's MIT re-license of
+> that corpus. Where a file below is listed as ours, that file is this repository's own work.
 
-These third-party references are NOT committed to this repository. Each upstream is
-tracked as a pinned git submodule under `packages/shared-skills/upstreams/<name>`, and the
-build materializes the referenced files path-mapped into this skill's `references/` tree,
-when packaging the published artifact. The file bodies are copied verbatim, except
-materialized `SKILL.md` frontmatter may normalize an unquoted single-line `description:`
-scalar into a JSON-quoted YAML string so Codex/OpenCode frontmatter parsing remains
-deterministic; the description text itself is unchanged. The `Pinned upstream commit` line
-in each section below records the exact submodule commit that the materialization reads.
+## Source
+
+- Repository: <https://github.com/code-yeongyu/lazycodex>
+- Pinned revision: `6f08c77347a68eaa87f4e7656147e8d793c9a069`
+- Source path: `plugins/omo/skills/frontend/`
+- Source licence: **MIT**, `Copyright (c) 2026 Yeongyu Kim` (LICENSE at the pinned revision)
+- Re-sourced: 2026-10-08 — every file the two trees share was rebuilt from the pinned bytes, with
+  this repository's local adaptations re-applied and Codex-harness-only material removed
+  (`## Codex Harness Tool Compatibility` / `## Codex Subagent Reliability` blocks,
+  `multi_agent_v1.*` calls, `lazycodex-*` agent types, `~/.codex/...` agent paths).
+
+### Local adaptations in this repository (NOT upstream)
+
+our frontmatter `description`; `.mpd/` state paths in the designpowers lanes; `.gitignore` and `.npmignore`.
+
+The third-party sections BELOW (§1 Open Design Apache-2.0, §2 taste-skill, §3 ui-ux-db, §4 designpowers) are untouched by this re-source and remain in force.
+
+### MIT License (verbatim from the source repository's LICENSE)
+
+```
+MIT License
+
+Copyright (c) 2026 Yeongyu Kim
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### Re-license notice (verbatim from the source repository)
+
+Quoted verbatim from `plugins/omo/components/rules/NOTICE` at the pinned revision
+(sha256 `8068fb3509c240a37192caa9192fad768ecec91b64cb5ce0dbd82aa03c37069a`):
+
+> Yeongyu Kim (https://github.com/code-yeongyu), author of omo, pi-rules, and this
+> package, licenses the source distributed in this repository under the MIT License.
+> If any source was ported from omo or pi-rules, that ported source is re-licensed
+> here under MIT for distribution as a Codex plugin. See LICENSE for terms.
+
+The copyright holder of the SUL-1.0 corpus and the licensor of this MIT grant are the same person, so
+the grant above is the rightsholder's own re-license of the source it covers. This file records
+provenance only — it does not change this repository's own licence.
 
 ---
 
@@ -188,36 +235,41 @@ SOFTWARE.
 
 ---
 
-## 5. Project-original files
+## 5. Upstream first-party files (with their own third-party lineage notes)
+
+**These files are NOT original to this repository.** They are the upstream author's own
+first-party content, re-sourced from `code-yeongyu/lazycodex` @ `6f08c77…` under the MIT
+grant recorded at the top of this file (see **Source**), so they require no third-party
+attribution beyond the lineage notes kept below:
 
 `frontend/SKILL.md`, `frontend/references/design/README.md`, `_INDEX.md`, `aside.md`,
-`design-system-architecture.md`, `react-dev-tooling-skill.md`,
-`frontend/references/perfection/README.md`, `react-perf-tooling.md`, and
-`frontend/scripts/perfection/lighthouse-audit.py` are original to this project and require
-no third-party attribution. The perfection docs and script only invoke third-party tools
-(react-scan, react-doctor, react-grab, playwright-lighthouse, lighthouse, chrome-launcher)
-at runtime; no source from those tools is vendored, so their licenses are not carried here.
+`design-system-architecture.md`, `react-dev-tooling-skill.md`, `interaction-skill.md`,
+`clone-from-url.md`, `lazyweb.md`, `frontend/references/perfection/README.md`,
+`react-perf-tooling.md`, and `frontend/scripts/perfection/lighthouse-audit.py`. The
+perfection docs and script only invoke third-party tools (react-scan, react-doctor,
+react-grab, playwright-lighthouse, lighthouse, chrome-launcher) at runtime; no source from
+those tools is vendored, so their licenses are not carried here.
 
-`frontend/references/design/aside.md` is a project-original synthesis from live browser
+`frontend/references/design/aside.md` is an upstream synthesis from live browser
 capture evidence and a local reconnaissance run following the MIT-licensed
 `JCodesMore/ai-website-cloner-template` workflow; it is not copied from Aside or from the
 template. Aside names, trademarks, product text, and visual assets remain the property of
 their respective owners and are referenced only for descriptive design-analysis purposes.
 
-`frontend/references/design/lazyweb.md` is a project-original, curl-only operating guide
+`frontend/references/design/lazyweb.md` is an upstream, curl-only operating guide
 for the Lazyweb (lazyweb.com) design-research API, written from live endpoint verification;
 no Lazyweb source, documentation text, or screenshot content is vendored. Lazyweb names
 remain the property of their owner, and the guide grants no license to ship, trace, or
 commit reference screenshots harvested through it.
 
-`frontend/references/design/interaction-skill.md` is a project-original, curl-only
+`frontend/references/design/interaction-skill.md` is an upstream, curl-only
 operating guide for consulting the beui.dev animated-component registry during interaction
 and motion work, written from live endpoint verification; no beui.dev source code,
 documentation text, or component implementations are vendored. beui.dev names remain the
 property of their owner, and the guide instructs reading component source for mechanism
 extraction only, not vendoring it into references or projects.
 
-`frontend/references/design/clone-from-url.md` is a project-original runtime-extraction
+`frontend/references/design/clone-from-url.md` is an upstream runtime-extraction
 workflow guide. Its browser + `getComputedStyle` clone approach follows the same
 MIT-licensed `JCodesMore/ai-website-cloner-template` clone-website workflow that `aside.md`
 cites; no source from that template is copied. It carries no third-party attribution beyond

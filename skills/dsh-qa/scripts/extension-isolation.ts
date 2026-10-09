@@ -1306,8 +1306,8 @@ async function selfTest(): Promise<void> {
   const patch = readFileSync(join(REPO, "cordis.patch.yml"), "utf8")
   check(/- id: mpd-ext\b/.test(patch), "the bundle patch no longer carries the mpd-ext row")
   // The repo's own stdio MCP server, the healthy server the bridge case boots against.
-  const lsp = join(REPO, "packages", "mpd-mcp-lsp", "dist", "cli.js")
-  check(existsSync(lsp), "the repo's own stdio MCP server (packages/mpd-mcp-lsp/dist/cli.js) is missing")
+  const lsp = join(REPO, "packages", "mpd-mcp-lsp", "dist", "launch.js")
+  check(existsSync(lsp), "the repo's own stdio MCP launcher (packages/mpd-mcp-lsp/dist/launch.js) is missing")
 
   if (problems.length > 0) {
     for (const problem of problems) console.error("[extension-isolation self-test] FAIL: " + problem)

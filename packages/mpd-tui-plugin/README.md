@@ -764,5 +764,5 @@ vendored copy so the shipped artifact has no relative specifier at all.
 
 ## License
 
-Unchanged: the repository license (`LICENSE.md`, SUL-1.0). This package claims no
-license change.
+Unchanged: the repository license (`LICENSE.md`, **MIT**, `Copyright (c) 2026 HaroldZ32`). This package
+claims no license change of its own.

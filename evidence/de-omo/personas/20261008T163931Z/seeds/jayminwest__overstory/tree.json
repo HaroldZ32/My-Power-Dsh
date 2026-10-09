@@ -1,0 +1,4027 @@
+{
+  "sha": "ff38f3f76f084abcc34f519bcaa69580f6e53cf1",
+  "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/ff38f3f76f084abcc34f519bcaa69580f6e53cf1",
+  "tree": [
+    {
+      "path": ".canopy",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2853ce4030fc75740819bf76d74a461c21109d6b",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/2853ce4030fc75740819bf76d74a461c21109d6b"
+    },
+    {
+      "path": ".canopy/.gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "63f1fef0e5c965b127ef226fe8a1f31ef0db844a",
+      "size": 7,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/63f1fef0e5c965b127ef226fe8a1f31ef0db844a"
+    },
+    {
+      "path": ".canopy/config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "61ddd3b7c4b7ad68ddc206eef568772b0e19d754",
+      "size": 94,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/61ddd3b7c4b7ad68ddc206eef568772b0e19d754"
+    },
+    {
+      "path": ".canopy/prompts.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9611366e9f91d7bdde7b0205d0a6321ab692367b",
+      "size": 2012338,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9611366e9f91d7bdde7b0205d0a6321ab692367b"
+    },
+    {
+      "path": ".canopy/schemas.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7e7af0129a4c2229fcd5b6e562502e965e562495",
+      "size": 4250,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7e7af0129a4c2229fcd5b6e562502e965e562495"
+    },
+    {
+      "path": ".claude",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0fdfbb441a5257d40e5bdfacb28c8cf88a99ca74",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/0fdfbb441a5257d40e5bdfacb28c8cf88a99ca74"
+    },
+    {
+      "path": ".claude/commands",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "805aae5009ecc422f679610bf1d6853f59b77471",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/805aae5009ecc422f679610bf1d6853f59b77471"
+    },
+    {
+      "path": ".claude/commands/customize.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7ab9b9195b9455036bc4383b60e0090de60a7ea9",
+      "size": 4891,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7ab9b9195b9455036bc4383b60e0090de60a7ea9"
+    },
+    {
+      "path": ".claude/commands/discover.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8494a9a223bd65be48e93853ba9cde868092218a",
+      "size": 504,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8494a9a223bd65be48e93853ba9cde868092218a"
+    },
+    {
+      "path": ".claude/commands/issue-reviews.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8a6646d2f1515e379cdca2dbd3ec8bb8de342f4b",
+      "size": 3331,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8a6646d2f1515e379cdca2dbd3ec8bb8de342f4b"
+    },
+    {
+      "path": ".claude/commands/pr-reviews.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ce391a7458c38c9eaea5b7ca7eef6dc20ef9ea6",
+      "size": 2666,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9ce391a7458c38c9eaea5b7ca7eef6dc20ef9ea6"
+    },
+    {
+      "path": ".claude/commands/prioritize.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "210616f17178fe982ff0615de0e7db4798a6b51c",
+      "size": 4797,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/210616f17178fe982ff0615de0e7db4798a6b51c"
+    },
+    {
+      "path": ".claude/commands/release.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "90660ba2aa4b11bce2650028621b5194c887f593",
+      "size": 2094,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/90660ba2aa4b11bce2650028621b5194c887f593"
+    },
+    {
+      "path": ".claude/commands/triage.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "12000b4e69978fe12f33b134aa5548d9033026b2",
+      "size": 8215,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/12000b4e69978fe12f33b134aa5548d9033026b2"
+    },
+    {
+      "path": ".claude/settings.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "404782e8079bd4c442786d519dbadb74eca90b63",
+      "size": 77,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/404782e8079bd4c442786d519dbadb74eca90b63"
+    },
+    {
+      "path": ".gitattributes",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8d9d713ab2b286b0b43b02d939d8eb80b68a6bb2",
+      "size": 210,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8d9d713ab2b286b0b43b02d939d8eb80b68a6bb2"
+    },
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ea9017c08c9dc5e9ba01d092ef7354d34ece0ce8",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/ea9017c08c9dc5e9ba01d092ef7354d34ece0ce8"
+    },
+    {
+      "path": ".github/FUNDING.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41ff7a011eb1e682b5e2a1905f3a3563e36e8cea",
+      "size": 19,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/41ff7a011eb1e682b5e2a1905f3a3563e36e8cea"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "38cd54968646950eddaf1eb95ff73e54f6a8c8ad",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/38cd54968646950eddaf1eb95ff73e54f6a8c8ad"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "358491bea208a4c9dded8d5795f9f84122578795",
+      "size": 1207,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/358491bea208a4c9dded8d5795f9f84122578795"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0086358db1eb971c0cfa8739c27518bbc18a5ff4",
+      "size": 27,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0086358db1eb971c0cfa8739c27518bbc18a5ff4"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5318f827e2798a14519f3d694a22c3727d55a42d",
+      "size": 626,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5318f827e2798a14519f3d694a22c3727d55a42d"
+    },
+    {
+      "path": ".github/dependabot.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aaaa4295572bb4fd5a92daa47130682a291708be",
+      "size": 242,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/aaaa4295572bb4fd5a92daa47130682a291708be"
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3a1a23e6a48eef1bd33bd1c0260c2cb672edc549",
+      "size": 254,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3a1a23e6a48eef1bd33bd1c0260c2cb672edc549"
+    },
+    {
+      "path": ".github/workflows",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e55edde11139ef9a1ef3cffab3087f11665c11b3",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/e55edde11139ef9a1ef3cffab3087f11665c11b3"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bcf7eaeab79356d5a22fa251c91b2069246657e2",
+      "size": 380,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/bcf7eaeab79356d5a22fa251c91b2069246657e2"
+    },
+    {
+      "path": ".github/workflows/publish.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa47fcf62a04051e90ed691f894eac84abf6d2c1",
+      "size": 3575,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/aa47fcf62a04051e90ed691f894eac84abf6d2c1"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d2f5b9b405a9bf1af5dcb439d9b65380d9a1b818",
+      "size": 449,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d2f5b9b405a9bf1af5dcb439d9b65380d9a1b818"
+    },
+    {
+      "path": ".mulch",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "92d8959f77bd3c1bb8ba37c6330b8516afc944fe",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/92d8959f77bd3c1bb8ba37c6330b8516afc944fe"
+    },
+    {
+      "path": ".mulch/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3656cab82a5782016273aa36884cbcc917eaa5b0",
+      "size": 809,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3656cab82a5782016273aa36884cbcc917eaa5b0"
+    },
+    {
+      "path": ".mulch/expertise",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "aca488b4965405cc0fe18e157a81133dc0c43234",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/aca488b4965405cc0fe18e157a81133dc0c43234"
+    },
+    {
+      "path": ".mulch/expertise/agents.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1712ab5d94d75106910f1bc76d172ec7b4e69df",
+      "size": 114914,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d1712ab5d94d75106910f1bc76d172ec7b4e69df"
+    },
+    {
+      "path": ".mulch/expertise/architecture.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0d311a26f2a64e1dd5a5e8c65ad0506a55ee2ac1",
+      "size": 19215,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0d311a26f2a64e1dd5a5e8c65ad0506a55ee2ac1"
+    },
+    {
+      "path": ".mulch/expertise/cli.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1ffa5f443b44e5ece168714947d95c2d0c88d82f",
+      "size": 140815,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/1ffa5f443b44e5ece168714947d95c2d0c88d82f"
+    },
+    {
+      "path": ".mulch/expertise/communication.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6738ec8a5b0b54947255f4f4b5240877587f7a72",
+      "size": 1291,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6738ec8a5b0b54947255f4f4b5240877587f7a72"
+    },
+    {
+      "path": ".mulch/expertise/coordination.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9919f99e5f2b17a6923e70ecb3ff52a37dc12bd0",
+      "size": 5996,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9919f99e5f2b17a6923e70ecb3ff52a37dc12bd0"
+    },
+    {
+      "path": ".mulch/expertise/docs.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9a862b82b8c2597964f7a692c2e092f3816f17e7",
+      "size": 1214,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9a862b82b8c2597964f7a692c2e092f3816f17e7"
+    },
+    {
+      "path": ".mulch/expertise/ecosystem.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "24c490d23e173f4cb18f7e1dddfeec315b164a89",
+      "size": 3183,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/24c490d23e173f4cb18f7e1dddfeec315b164a89"
+    },
+    {
+      "path": ".mulch/expertise/events.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa33ea8cffbeca5c4c09c4dcaf28bfd667e53a64",
+      "size": 705,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/aa33ea8cffbeca5c4c09c4dcaf28bfd667e53a64"
+    },
+    {
+      "path": ".mulch/expertise/mail.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b9504a845b4307a45ab09ec4ea3a653afaed0a0c",
+      "size": 895,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b9504a845b4307a45ab09ec4ea3a653afaed0a0c"
+    },
+    {
+      "path": ".mulch/expertise/messaging.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b92f0ae25914fb4a51e7a72cdf0e700779175e8",
+      "size": 6211,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3b92f0ae25914fb4a51e7a72cdf0e700779175e8"
+    },
+    {
+      "path": ".mulch/expertise/observability.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "990fa170ecba5ce062671b97d75cc91d72b51d19",
+      "size": 1697,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/990fa170ecba5ce062671b97d75cc91d72b51d19"
+    },
+    {
+      "path": ".mulch/expertise/orchestration.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b90953e164af03a9feae3d39c349a414a8a7066",
+      "size": 3091,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3b90953e164af03a9feae3d39c349a414a8a7066"
+    },
+    {
+      "path": ".mulch/expertise/overstory.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c445e412afed1bcea4fbb90a74aff5da63299915",
+      "size": 9469,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c445e412afed1bcea4fbb90a74aff5da63299915"
+    },
+    {
+      "path": ".mulch/expertise/runtime.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "73af2abfdce330e1e99a4b788ea414b8dae23ce2",
+      "size": 544,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/73af2abfdce330e1e99a4b788ea414b8dae23ce2"
+    },
+    {
+      "path": ".mulch/expertise/runtimes.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a05f4691e72f1abe1174d2ab55ede74c0ee0b2c9",
+      "size": 16851,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a05f4691e72f1abe1174d2ab55ede74c0ee0b2c9"
+    },
+    {
+      "path": ".mulch/expertise/sessions.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "62176065612c10f3ae9383e798a6abcf716d20ec",
+      "size": 3715,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/62176065612c10f3ae9383e798a6abcf716d20ec"
+    },
+    {
+      "path": ".mulch/expertise/testing.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a5d30e26f4c8e591818fc0d60aa583cfbe4aada",
+      "size": 807,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0a5d30e26f4c8e591818fc0d60aa583cfbe4aada"
+    },
+    {
+      "path": ".mulch/expertise/turn-runner.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "03568e37bb2fa540211753fafb49e5fcc034e9f7",
+      "size": 546,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/03568e37bb2fa540211753fafb49e5fcc034e9f7"
+    },
+    {
+      "path": ".mulch/expertise/typescript.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a16edaae0e72a16d79646dd2c71b98a133f11202",
+      "size": 41856,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a16edaae0e72a16d79646dd2c71b98a133f11202"
+    },
+    {
+      "path": ".mulch/expertise/ui.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a12be3a9f73a365b6bab8e0a057848a697f6554e",
+      "size": 5560,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a12be3a9f73a365b6bab8e0a057848a697f6554e"
+    },
+    {
+      "path": ".mulch/mulch.config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c8a1eeec192a7576b642e6c26aaf4d4dc1999d84",
+      "size": 435,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c8a1eeec192a7576b642e6c26aaf4d4dc1999d84"
+    },
+    {
+      "path": ".overstory",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d9d2f6b0181c24735f248614929f607e7a0fdda2",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/d9d2f6b0181c24735f248614929f607e7a0fdda2"
+    },
+    {
+      "path": ".overstory/.gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "36a1649249735e2869e6d69d6dd91a6ce26b277e",
+      "size": 225,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/36a1649249735e2869e6d69d6dd91a6ce26b277e"
+    },
+    {
+      "path": ".overstory/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a34549850e91b8951eb3a70233a0ac81b0e6679c",
+      "size": 1204,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a34549850e91b8951eb3a70233a0ac81b0e6679c"
+    },
+    {
+      "path": ".overstory/agent-defs",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c4b8bf83e2cfa448e956922d05e0a63c71ddeecf",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/c4b8bf83e2cfa448e956922d05e0a63c71ddeecf"
+    },
+    {
+      "path": ".overstory/agent-defs/builder.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8ef8644e075d62f4f2a6ee118b1d2fcafa12472a",
+      "size": 8153,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8ef8644e075d62f4f2a6ee118b1d2fcafa12472a"
+    },
+    {
+      "path": ".overstory/agent-defs/coordinator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b9c2c987d091ac5de36b773fea8645cf04c69bab",
+      "size": 20448,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b9c2c987d091ac5de36b773fea8645cf04c69bab"
+    },
+    {
+      "path": ".overstory/agent-defs/lead.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c5dec4323b0768715b0938d139b692d3f920c656",
+      "size": 21764,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c5dec4323b0768715b0938d139b692d3f920c656"
+    },
+    {
+      "path": ".overstory/agent-defs/merger.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b3759fcaaafca4d47edda8b3b702388293fae778",
+      "size": 8615,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b3759fcaaafca4d47edda8b3b702388293fae778"
+    },
+    {
+      "path": ".overstory/agent-defs/monitor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7f6fe58446570bb64fd13e6cd32913c95999330b",
+      "size": 11671,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7f6fe58446570bb64fd13e6cd32913c95999330b"
+    },
+    {
+      "path": ".overstory/agent-defs/orchestrator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a46597f03c18cf096bcc7c2248a9e1c7adcc8680",
+      "size": 12696,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a46597f03c18cf096bcc7c2248a9e1c7adcc8680"
+    },
+    {
+      "path": ".overstory/agent-defs/reviewer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b4031505617e8be23bc75d86b6ca69927aebe18",
+      "size": 7255,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3b4031505617e8be23bc75d86b6ca69927aebe18"
+    },
+    {
+      "path": ".overstory/agent-defs/scout.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea949834d6bba98350cb332aa266b70e446af3d8",
+      "size": 6629,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ea949834d6bba98350cb332aa266b70e446af3d8"
+    },
+    {
+      "path": ".overstory/agent-defs/supervisor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "113ab53ef1a22d3e4117f870920039b5ce97b556",
+      "size": 22814,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/113ab53ef1a22d3e4117f870920039b5ce97b556"
+    },
+    {
+      "path": ".overstory/agent-manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f663a816f073da6e36136d69430e17a7d3377268",
+      "size": 2466,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f663a816f073da6e36136d69430e17a7d3377268"
+    },
+    {
+      "path": ".overstory/config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6c526cea2399dd676360b7baab4791f17031d769",
+      "size": 1473,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6c526cea2399dd676360b7baab4791f17031d769"
+    },
+    {
+      "path": ".overstory/groups.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33aee5ac7204f90b561eccb196852c8a030bae3a",
+      "size": 26213,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/33aee5ac7204f90b561eccb196852c8a030bae3a"
+    },
+    {
+      "path": ".overstory/hooks.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f031890693d87a4876c7bb2e218c3197efb4cc05",
+      "size": 1967,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f031890693d87a4876c7bb2e218c3197efb4cc05"
+    },
+    {
+      "path": ".overstory/mail-check-state.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "475b38cca5eed09187e1b9b092a1bf0e9acb4834",
+      "size": 34,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/475b38cca5eed09187e1b9b092a1bf0e9acb4834"
+    },
+    {
+      "path": ".pi",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6003268d0dd9da56000dcd8cdeb08b4aaa429397",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/6003268d0dd9da56000dcd8cdeb08b4aaa429397"
+    },
+    {
+      "path": ".pi/extensions",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "45264cc772859e3d60652c4e098c27b55258f9fe",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/45264cc772859e3d60652c4e098c27b55258f9fe"
+    },
+    {
+      "path": ".pi/extensions/dev-status.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "227b1f5a710d59b711fbb7a7d1f156464c7e3f8b",
+      "size": 2727,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/227b1f5a710d59b711fbb7a7d1f156464c7e3f8b"
+    },
+    {
+      "path": ".pi/extensions/mulch-context.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bf2a505871f6a912654d5b6f5b2d0c09f7e9da88",
+      "size": 2209,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/bf2a505871f6a912654d5b6f5b2d0c09f7e9da88"
+    },
+    {
+      "path": ".pi/extensions/mulch-read.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a9663eacd8832d7e6e03fbbfaadbfc68eabc723",
+      "size": 2489,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0a9663eacd8832d7e6e03fbbfaadbfc68eabc723"
+    },
+    {
+      "path": ".pi/extensions/overstory-guard.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cac1016699c75379f8617fbf736b23efb1d1ff0b",
+      "size": 7515,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/cac1016699c75379f8617fbf736b23efb1d1ff0b"
+    },
+    {
+      "path": ".pi/settings.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0f7b49b1c822af9019d218faffdf5a5da0fe1453",
+      "size": 41,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0f7b49b1c822af9019d218faffdf5a5da0fe1453"
+    },
+    {
+      "path": ".sapling",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d694ba21aff9291a13489dfccb99757da6c2c4c5",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/d694ba21aff9291a13489dfccb99757da6c2c4c5"
+    },
+    {
+      "path": ".sapling/.gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "63f1fef0e5c965b127ef226fe8a1f31ef0db844a",
+      "size": 7,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/63f1fef0e5c965b127ef226fe8a1f31ef0db844a"
+    },
+    {
+      "path": ".sapling/config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b75c37773b204de2dba000d8db661171bcac65c",
+      "size": 109,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/2b75c37773b204de2dba000d8db661171bcac65c"
+    },
+    {
+      "path": ".sapling/guards.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ae107c7bdb0dbcd82d005326cf2ebc64cdd3de0c",
+      "size": 34,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ae107c7bdb0dbcd82d005326cf2ebc64cdd3de0c"
+    },
+    {
+      "path": ".sapling/session.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": ".seeds",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c0cff4c6b8d19ab39c91e8aedb473dc6a671fbd6",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/c0cff4c6b8d19ab39c91e8aedb473dc6a671fbd6"
+    },
+    {
+      "path": ".seeds/.gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "63f1fef0e5c965b127ef226fe8a1f31ef0db844a",
+      "size": 7,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/63f1fef0e5c965b127ef226fe8a1f31ef0db844a"
+    },
+    {
+      "path": ".seeds/config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fd96f1db55066193643db39db0cbb9788c424cad",
+      "size": 34,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/fd96f1db55066193643db39db0cbb9788c424cad"
+    },
+    {
+      "path": ".seeds/issues.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fa0d01f6f0a49c758f0cb0f552eb49a086733848",
+      "size": 1165410,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/fa0d01f6f0a49c758f0cb0f552eb49a086733848"
+    },
+    {
+      "path": ".seeds/templates.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "632759bcb03fbca7f3dbd9db3fa9ee77209ad0de",
+      "size": 177164,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/632759bcb03fbca7f3dbd9db3fa9ee77209ad0de"
+    },
+    {
+      "path": "CLAUDE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "674bac9665309a228476c48c2d8ac0ac8dfc73c2",
+      "size": 43250,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/674bac9665309a228476c48c2d8ac0ac8dfc73c2"
+    },
+    {
+      "path": "CODEOWNERS",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "76e53348729988d6f7bd66f032bef7e0dc17cd9d",
+      "size": 14,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/76e53348729988d6f7bd66f032bef7e0dc17cd9d"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8bdc29fa69d9c47efd1cce2a4de616e31da8fc5d",
+      "size": 6267,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8bdc29fa69d9c47efd1cce2a4de616e31da8fc5d"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e54eda69e01726031c1191fef9b3e6aa52ed6753",
+      "size": 1068,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e54eda69e01726031c1191fef9b3e6aa52ed6753"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "150aeb1d2c35be17abdfb92729fdfce792fd82e7",
+      "size": 26086,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/150aeb1d2c35be17abdfb92729fdfce792fd82e7"
+    },
+    {
+      "path": "SECURITY.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e90e79e61b85a9ea21e99b546eeadef23e94370c",
+      "size": 2599,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e90e79e61b85a9ea21e99b546eeadef23e94370c"
+    },
+    {
+      "path": "STEELMAN.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7e8d72d9f36bf762d740693bcfb848fa20a1629",
+      "size": 11643,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a7e8d72d9f36bf762d740693bcfb848fa20a1629"
+    },
+    {
+      "path": "agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ad9c49eb39c3c9850858003a529c6932859fd6ea",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/ad9c49eb39c3c9850858003a529c6932859fd6ea"
+    },
+    {
+      "path": "agents/builder.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cb1850533f5dc79b91b53cbd89e4dfeea2f9e3e7",
+      "size": 9390,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/cb1850533f5dc79b91b53cbd89e4dfeea2f9e3e7"
+    },
+    {
+      "path": "agents/coordinator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8a9b4b14847e944b91703c9f159f1f2b51de572",
+      "size": 22939,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d8a9b4b14847e944b91703c9f159f1f2b51de572"
+    },
+    {
+      "path": "agents/lead.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b5c224fe4990aa49ef1ade1030d121b34f6fcd7",
+      "size": 32848,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/4b5c224fe4990aa49ef1ade1030d121b34f6fcd7"
+    },
+    {
+      "path": "agents/merger.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b5f0e8a5f9a3bb140e3d84ca968ac38ddd996c6",
+      "size": 9753,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9b5f0e8a5f9a3bb140e3d84ca968ac38ddd996c6"
+    },
+    {
+      "path": "agents/monitor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7f6fe58446570bb64fd13e6cd32913c95999330b",
+      "size": 11671,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7f6fe58446570bb64fd13e6cd32913c95999330b"
+    },
+    {
+      "path": "agents/orchestrator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a46597f03c18cf096bcc7c2248a9e1c7adcc8680",
+      "size": 12696,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a46597f03c18cf096bcc7c2248a9e1c7adcc8680"
+    },
+    {
+      "path": "agents/ov-co-creation.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "595c9682013f1775dd3f6a206d871f1c71a5df7c",
+      "size": 5823,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/595c9682013f1775dd3f6a206d871f1c71a5df7c"
+    },
+    {
+      "path": "agents/reviewer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5a36c7a8aafd97fc77f7af024ab8ab2b52f37130",
+      "size": 8031,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5a36c7a8aafd97fc77f7af024ab8ab2b52f37130"
+    },
+    {
+      "path": "agents/scout.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40dd71fe6b1e5cf08c72c7692913bb84fa9daead",
+      "size": 7245,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/40dd71fe6b1e5cf08c72c7692913bb84fa9daead"
+    },
+    {
+      "path": "agents/supervisor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b7f1ccb48ba9de34cd2b22370eaea304521d724",
+      "size": 24245,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6b7f1ccb48ba9de34cd2b22370eaea304521d724"
+    },
+    {
+      "path": "biome.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7ab9cea93061992e31576c526bf6afe71ba464c",
+      "size": 671,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a7ab9cea93061992e31576c526bf6afe71ba464c"
+    },
+    {
+      "path": "bun.lock",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0ba5b1f084a896651c7d06589f383b21a9e7daa",
+      "size": 5600,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c0ba5b1f084a896651c7d06589f383b21a9e7daa"
+    },
+    {
+      "path": "bunfig.toml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6455090e1717e5971d0753b6e46accb97b32b26e",
+      "size": 185,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6455090e1717e5971d0753b6e46accb97b32b26e"
+    },
+    {
+      "path": "docs",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d73bdc208471f9f7432df6eef6d39245ee900eb1",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/d73bdc208471f9f7432df6eef6d39245ee900eb1"
+    },
+    {
+      "path": "docs/canopy-prompt-architecture.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ed1df43d829dc6e4f7fe23f93b702abece4d3509",
+      "size": 14271,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ed1df43d829dc6e4f7fe23f93b702abece4d3509"
+    },
+    {
+      "path": "docs/design",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "55944f78fe32868e9389d4619e4c766911cdec2a",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/55944f78fe32868e9389d4619e4c766911cdec2a"
+    },
+    {
+      "path": "docs/design/containerize-swarms.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f932f33d69dda3e19e9faa5e39be8235391e0753",
+      "size": 23007,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f932f33d69dda3e19e9faa5e39be8235391e0753"
+    },
+    {
+      "path": "docs/direction-multi-swarm-and-containers.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f96a51fd09c35a2f9cd3e8a03d61a43cadd62a60",
+      "size": 19162,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f96a51fd09c35a2f9cd3e8a03d61a43cadd62a60"
+    },
+    {
+      "path": "docs/direction-ui-and-ipc.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2667399789dd910a6d97b7d6f0c1dbfa893e24bd",
+      "size": 17975,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/2667399789dd910a6d97b7d6f0c1dbfa893e24bd"
+    },
+    {
+      "path": "docs/headless-hooks-design.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe9d0144f84317d3eef3cdaf2249b9bd8492aff7",
+      "size": 24907,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/fe9d0144f84317d3eef3cdaf2249b9bd8492aff7"
+    },
+    {
+      "path": "docs/runtime-abstraction.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87a3fa992246d5c16f88739d69d2458e7e801f2e",
+      "size": 34343,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/87a3fa992246d5c16f88739d69d2458e7e801f2e"
+    },
+    {
+      "path": "docs/runtime-adapters.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "76c32ca2dafbb175b3f5199801873eeea672b962",
+      "size": 37322,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/76c32ca2dafbb175b3f5199801873eeea672b962"
+    },
+    {
+      "path": "package.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "99bf93eb78608504e282262ee23b35f431f0c26b",
+      "size": 1398,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/99bf93eb78608504e282262ee23b35f431f0c26b"
+    },
+    {
+      "path": "scripts",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "39f8a3577ba7e8e278c6ecf4cd27e5ee5b3c7de9",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/39f8a3577ba7e8e278c6ecf4cd27e5ee5b3c7de9"
+    },
+    {
+      "path": "scripts/version-bump.ts",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "c623cd067d943619947e4e60f965ec13fa2e3244",
+      "size": 2325,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c623cd067d943619947e4e60f965ec13fa2e3244"
+    },
+    {
+      "path": "src",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7b3c53cc10cc04956f9ddb713ba77aa7468d883d",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/7b3c53cc10cc04956f9ddb713ba77aa7468d883d"
+    },
+    {
+      "path": "src/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e426b2014d17962fcf7fb636e439553d0579855c",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/e426b2014d17962fcf7fb636e439553d0579855c"
+    },
+    {
+      "path": "src/agents/capabilities.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea93b6171817391c1f50220b23efecc7f9a7fdfe",
+      "size": 2789,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ea93b6171817391c1f50220b23efecc7f9a7fdfe"
+    },
+    {
+      "path": "src/agents/capabilities.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f54930b263f0c68ed4c52f234206ccbd3ca73f51",
+      "size": 5737,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f54930b263f0c68ed4c52f234206ccbd3ca73f51"
+    },
+    {
+      "path": "src/agents/checkpoint.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6544dc347acaf43bce44b8a9e4d72ec00e9ddb83",
+      "size": 3071,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6544dc347acaf43bce44b8a9e4d72ec00e9ddb83"
+    },
+    {
+      "path": "src/agents/checkpoint.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59edfde91317e1ed8b7c6d2d8c19a533b9685f10",
+      "size": 2768,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/59edfde91317e1ed8b7c6d2d8c19a533b9685f10"
+    },
+    {
+      "path": "src/agents/copilot-hooks-deployer.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59ff40a07590636a899688c6c35d8d6351874e4e",
+      "size": 6108,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/59ff40a07590636a899688c6c35d8d6351874e4e"
+    },
+    {
+      "path": "src/agents/copilot-hooks-deployer.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bee0e5a968350011a85341dcbe569f2e7909aedb",
+      "size": 3128,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/bee0e5a968350011a85341dcbe569f2e7909aedb"
+    },
+    {
+      "path": "src/agents/guard-rules.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d4d88907c82dcaa8b90ca86b117213bc17ebcd1a",
+      "size": 12315,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d4d88907c82dcaa8b90ca86b117213bc17ebcd1a"
+    },
+    {
+      "path": "src/agents/guard-rules.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1be13ea703f5224e7ed8e2ed2c7c3fdb06140f3",
+      "size": 2464,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a1be13ea703f5224e7ed8e2ed2c7c3fdb06140f3"
+    },
+    {
+      "path": "src/agents/headless-mail-injector.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "af1ac0671a88b56d244e498196510ded6d8d6954",
+      "size": 19292,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/af1ac0671a88b56d244e498196510ded6d8d6954"
+    },
+    {
+      "path": "src/agents/headless-mail-injector.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "437a01e47dd51ab7e56930348e9a055c0ed92fc4",
+      "size": 13611,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/437a01e47dd51ab7e56930348e9a055c0ed92fc4"
+    },
+    {
+      "path": "src/agents/headless-prompt.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aad5acc50498df3299f4ccaeab5cf9b18e17d053",
+      "size": 3602,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/aad5acc50498df3299f4ccaeab5cf9b18e17d053"
+    },
+    {
+      "path": "src/agents/headless-prompt.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c8fd0b53d84fe9601a80ab17287ffb8438117a32",
+      "size": 2456,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c8fd0b53d84fe9601a80ab17287ffb8438117a32"
+    },
+    {
+      "path": "src/agents/hooks-deployer.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c1aff6ce8f63d260d451520c14297897f789af58",
+      "size": 113918,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c1aff6ce8f63d260d451520c14297897f789af58"
+    },
+    {
+      "path": "src/agents/hooks-deployer.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c04c8858cff4946e3a252e7d8eb594c4ae140c0",
+      "size": 32051,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/4c04c8858cff4946e3a252e7d8eb594c4ae140c0"
+    },
+    {
+      "path": "src/agents/identity.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3162ac95623bab4eae79b46b42272914a435157b",
+      "size": 18395,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3162ac95623bab4eae79b46b42272914a435157b"
+    },
+    {
+      "path": "src/agents/identity.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "84a8f829fc9e6e4a393128cf1f94cf00d017eda3",
+      "size": 10733,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/84a8f829fc9e6e4a393128cf1f94cf00d017eda3"
+    },
+    {
+      "path": "src/agents/lifecycle.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9949da813d325445c06c0206acb8a4177b5fa720",
+      "size": 5807,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9949da813d325445c06c0206acb8a4177b5fa720"
+    },
+    {
+      "path": "src/agents/lifecycle.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "49d2eef426a8556040963c948bd37b797c33da96",
+      "size": 4921,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/49d2eef426a8556040963c948bd37b797c33da96"
+    },
+    {
+      "path": "src/agents/mail-poll-detect.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "effbb596eb0c7d1c09eaa7188f0c8cb1bb055439",
+      "size": 6042,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/effbb596eb0c7d1c09eaa7188f0c8cb1bb055439"
+    },
+    {
+      "path": "src/agents/mail-poll-detect.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "77984b5c8700bac8c45bb75be88011c079a84a3d",
+      "size": 2640,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/77984b5c8700bac8c45bb75be88011c079a84a3d"
+    },
+    {
+      "path": "src/agents/manifest.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5db8a1e8f9beb1e4fa6c401686dd164eeb4bf5df",
+      "size": 30440,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5db8a1e8f9beb1e4fa6c401686dd164eeb4bf5df"
+    },
+    {
+      "path": "src/agents/manifest.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e3c75d12a3f1d3bd724d1587892a96d37cd1393a",
+      "size": 11021,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e3c75d12a3f1d3bd724d1587892a96d37cd1393a"
+    },
+    {
+      "path": "src/agents/overlay.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d382f552fb2eb53e0feeb810df88b206d5d783e",
+      "size": 37267,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/2d382f552fb2eb53e0feeb810df88b206d5d783e"
+    },
+    {
+      "path": "src/agents/overlay.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3110fab59fa80f19d001878959329cadae9a7f89",
+      "size": 19609,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3110fab59fa80f19d001878959329cadae9a7f89"
+    },
+    {
+      "path": "src/agents/scope-detect.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b4cc7cb70f8418666172fd5ae3765ce79000d29",
+      "size": 5885,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8b4cc7cb70f8418666172fd5ae3765ce79000d29"
+    },
+    {
+      "path": "src/agents/scope-detect.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a47d6aaf55ebb0b1cdfd75c8769495d08faa5779",
+      "size": 4944,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a47d6aaf55ebb0b1cdfd75c8769495d08faa5779"
+    },
+    {
+      "path": "src/agents/turn-lock.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cb691bf3b451d24647a2820e2c02527b7a266573",
+      "size": 5807,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/cb691bf3b451d24647a2820e2c02527b7a266573"
+    },
+    {
+      "path": "src/agents/turn-lock.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6329bcf4bead1fd34c1296544d1c62fe0ecb5fa7",
+      "size": 7010,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6329bcf4bead1fd34c1296544d1c62fe0ecb5fa7"
+    },
+    {
+      "path": "src/agents/turn-runner-dispatch.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "044d86d53cb27fb73643768e8b850c073fa7a621",
+      "size": 5666,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/044d86d53cb27fb73643768e8b850c073fa7a621"
+    },
+    {
+      "path": "src/agents/turn-runner-dispatch.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6966a07675e5714e7b6142d87e8ab85d61dfa4e",
+      "size": 4165,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c6966a07675e5714e7b6142d87e8ab85d61dfa4e"
+    },
+    {
+      "path": "src/agents/turn-runner.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "acb6498685937cc58d20cdb1fd1925301ac93ff9",
+      "size": 73403,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/acb6498685937cc58d20cdb1fd1925301ac93ff9"
+    },
+    {
+      "path": "src/agents/turn-runner.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "97e8fa25b93d4df4e1f8fde352f080eae7c43e14",
+      "size": 44773,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/97e8fa25b93d4df4e1f8fde352f080eae7c43e14"
+    },
+    {
+      "path": "src/beads",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9933e41f4b6ce4e18e72e72300b6ac6a96aee0d7",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/9933e41f4b6ce4e18e72e72300b6ac6a96aee0d7"
+    },
+    {
+      "path": "src/beads/client.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "74d59de16d0bd68c49e508c2eb872da564b49e23",
+      "size": 6742,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/74d59de16d0bd68c49e508c2eb872da564b49e23"
+    },
+    {
+      "path": "src/beads/client.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da3e396a3dde1599cc2fc5f09038f5ff67770cfd",
+      "size": 6369,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/da3e396a3dde1599cc2fc5f09038f5ff67770cfd"
+    },
+    {
+      "path": "src/beads/molecules.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "72abf1b51bba080b48097a58a3c755d504112abd",
+      "size": 9745,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/72abf1b51bba080b48097a58a3c755d504112abd"
+    },
+    {
+      "path": "src/beads/molecules.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "adfbb0758cd1971a129f6e96ebc39d9153a5a0b8",
+      "size": 5122,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/adfbb0758cd1971a129f6e96ebc39d9153a5a0b8"
+    },
+    {
+      "path": "src/canopy",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "75a2356f6aba434eaa20bc6a90e135577e562e93",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/75a2356f6aba434eaa20bc6a90e135577e562e93"
+    },
+    {
+      "path": "src/canopy/client.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bf71aa4a4feb880c8b8438fa21a68edca0f9dc57",
+      "size": 3991,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/bf71aa4a4feb880c8b8438fa21a68edca0f9dc57"
+    },
+    {
+      "path": "src/canopy/client.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3bf0751b4798d4e5383f936607bd1213cc25e57e",
+      "size": 4791,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3bf0751b4798d4e5383f936607bd1213cc25e57e"
+    },
+    {
+      "path": "src/commands",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f2746b6e360a80223b82b7f4ea485d0e589b5e1e",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/f2746b6e360a80223b82b7f4ea485d0e589b5e1e"
+    },
+    {
+      "path": "src/commands/agents.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2deb075fd322f114f55410aebaf600ce3f2b876",
+      "size": 8771,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a2deb075fd322f114f55410aebaf600ce3f2b876"
+    },
+    {
+      "path": "src/commands/agents.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "df25d3e34bfe64d79aa49915d502edcd0eae4945",
+      "size": 8308,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/df25d3e34bfe64d79aa49915d502edcd0eae4945"
+    },
+    {
+      "path": "src/commands/clean.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a4bb36a689526ca092ff1b4022255afb019d41db",
+      "size": 25650,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a4bb36a689526ca092ff1b4022255afb019d41db"
+    },
+    {
+      "path": "src/commands/clean.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "917963e2964073db06d6f0a6b7ac2f9d18506d05",
+      "size": 23446,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/917963e2964073db06d6f0a6b7ac2f9d18506d05"
+    },
+    {
+      "path": "src/commands/completions.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fbbf2945ad0f79ea3a8a19c730b36fe9873c6170",
+      "size": 10772,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/fbbf2945ad0f79ea3a8a19c730b36fe9873c6170"
+    },
+    {
+      "path": "src/commands/completions.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5df08cc60affdf49b19b1108e25b89ad9aae366e",
+      "size": 28845,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5df08cc60affdf49b19b1108e25b89ad9aae366e"
+    },
+    {
+      "path": "src/commands/coordinator.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41f2eca2d863ed751bd0bb902b22d28d65f508f5",
+      "size": 97013,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/41f2eca2d863ed751bd0bb902b22d28d65f508f5"
+    },
+    {
+      "path": "src/commands/coordinator.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a8ffcb73f03ad11d1330fc3d0575408d025f9e3f",
+      "size": 60358,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a8ffcb73f03ad11d1330fc3d0575408d025f9e3f"
+    },
+    {
+      "path": "src/commands/costs.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5aeb34ebb3a56d8c898fdadce89da92839e0494b",
+      "size": 35075,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5aeb34ebb3a56d8c898fdadce89da92839e0494b"
+    },
+    {
+      "path": "src/commands/costs.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e89502c48e48443bddd10fb54d09fef26261bafe",
+      "size": 17729,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e89502c48e48443bddd10fb54d09fef26261bafe"
+    },
+    {
+      "path": "src/commands/dashboard.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d7317fbf08e890800433385d7c2ec3f9417cd67",
+      "size": 27777,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5d7317fbf08e890800433385d7c2ec3f9417cd67"
+    },
+    {
+      "path": "src/commands/dashboard.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f6eb89feec50065094754032463b27befa3724c",
+      "size": 38769,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8f6eb89feec50065094754032463b27befa3724c"
+    },
+    {
+      "path": "src/commands/discover.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "36381b41b1a3e9872f24e3131ba06293921d067d",
+      "size": 9569,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/36381b41b1a3e9872f24e3131ba06293921d067d"
+    },
+    {
+      "path": "src/commands/discover.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "35a2356bbaa56e54f5532a19113bea0a396ca2b2",
+      "size": 7186,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/35a2356bbaa56e54f5532a19113bea0a396ca2b2"
+    },
+    {
+      "path": "src/commands/doctor.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f94fd1330e8f32c116f0fa785fa927df7ecb29c8",
+      "size": 9279,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f94fd1330e8f32c116f0fa785fa927df7ecb29c8"
+    },
+    {
+      "path": "src/commands/doctor.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ff87a4f9150ad1cf595628f993a2fa393ab34212",
+      "size": 8993,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ff87a4f9150ad1cf595628f993a2fa393ab34212"
+    },
+    {
+      "path": "src/commands/ecosystem.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a42306fbbfca89ac35472094a927056719c410b6",
+      "size": 6564,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a42306fbbfca89ac35472094a927056719c410b6"
+    },
+    {
+      "path": "src/commands/ecosystem.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25d71765694497a48859e775fc6b80f4f8d11b3b",
+      "size": 6766,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/25d71765694497a48859e775fc6b80f4f8d11b3b"
+    },
+    {
+      "path": "src/commands/errors.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64160523710b7fcf4c61ee57fda4aa7485db03e2",
+      "size": 18788,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/64160523710b7fcf4c61ee57fda4aa7485db03e2"
+    },
+    {
+      "path": "src/commands/errors.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "92f11013d0658d0de5e50e76423a519efa97206e",
+      "size": 5687,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/92f11013d0658d0de5e50e76423a519efa97206e"
+    },
+    {
+      "path": "src/commands/feed.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa49b0b56c32dbfaf923421ce0e23afcd36ded52",
+      "size": 20911,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/aa49b0b56c32dbfaf923421ce0e23afcd36ded52"
+    },
+    {
+      "path": "src/commands/feed.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "48084ac4c70b332217ae03167e9a38d55ee110ec",
+      "size": 7572,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/48084ac4c70b332217ae03167e9a38d55ee110ec"
+    },
+    {
+      "path": "src/commands/group.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45d7bb8b74782c323ac3cdc6b11e87b4478be769",
+      "size": 15180,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/45d7bb8b74782c323ac3cdc6b11e87b4478be769"
+    },
+    {
+      "path": "src/commands/group.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "140df929060edf25835b069478098766d6a920ff",
+      "size": 15815,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/140df929060edf25835b069478098766d6a920ff"
+    },
+    {
+      "path": "src/commands/hooks.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa16c9d9e9c435d18e502a2b3d7ce0f3e21428db",
+      "size": 15050,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/aa16c9d9e9c435d18e502a2b3d7ce0f3e21428db"
+    },
+    {
+      "path": "src/commands/hooks.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "178b901c3a9086825e106aaf403028e76fd06014",
+      "size": 8159,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/178b901c3a9086825e106aaf403028e76fd06014"
+    },
+    {
+      "path": "src/commands/init.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b7eed3ab13a6b2ff7f4bff6e75bda0e2b3b8afec",
+      "size": 36702,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b7eed3ab13a6b2ff7f4bff6e75bda0e2b3b8afec"
+    },
+    {
+      "path": "src/commands/init.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d768440f44e1a49f5516ee6e5bf9c4a1c7aad2e",
+      "size": 28687,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5d768440f44e1a49f5516ee6e5bf9c4a1c7aad2e"
+    },
+    {
+      "path": "src/commands/inspect.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "287a2f5bd81553148577a2b117531e68bd6cb7f8",
+      "size": 37370,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/287a2f5bd81553148577a2b117531e68bd6cb7f8"
+    },
+    {
+      "path": "src/commands/inspect.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6912982a2deec43b356cd8debd35aa160f8513a",
+      "size": 20153,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c6912982a2deec43b356cd8debd35aa160f8513a"
+    },
+    {
+      "path": "src/commands/log.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bb1f394e974bd39bd98bcb482031dff760b3fee7",
+      "size": 63110,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/bb1f394e974bd39bd98bcb482031dff760b3fee7"
+    },
+    {
+      "path": "src/commands/log.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b9d23340f669cd5c9de44f3dfb9e2b7d65e53ef1",
+      "size": 31571,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b9d23340f669cd5c9de44f3dfb9e2b7d65e53ef1"
+    },
+    {
+      "path": "src/commands/logs.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5de5c7cd575cd53fb92403b7b19b6b8fd703b1f9",
+      "size": 21423,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5de5c7cd575cd53fb92403b7b19b6b8fd703b1f9"
+    },
+    {
+      "path": "src/commands/logs.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "072bedf3d64bb438c47f29a375600c5d641b48a6",
+      "size": 12571,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/072bedf3d64bb438c47f29a375600c5d641b48a6"
+    },
+    {
+      "path": "src/commands/mail.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64852326c0c8e990137e47cb61fd1938040b7a11",
+      "size": 45454,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/64852326c0c8e990137e47cb61fd1938040b7a11"
+    },
+    {
+      "path": "src/commands/mail.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "23df456c44319bf11bd055a008f113958183d15c",
+      "size": 25679,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/23df456c44319bf11bd055a008f113958183d15c"
+    },
+    {
+      "path": "src/commands/merge.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2a1f5c997b02c2b926cf67ba9af47662a855d015",
+      "size": 29452,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/2a1f5c997b02c2b926cf67ba9af47662a855d015"
+    },
+    {
+      "path": "src/commands/merge.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e95e73c759c471079cfcc70be7e4d25799071493",
+      "size": 11336,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e95e73c759c471079cfcc70be7e4d25799071493"
+    },
+    {
+      "path": "src/commands/metrics.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "36140ce0fdb375895b42c3d2f60650ebbf7c8c73",
+      "size": 11655,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/36140ce0fdb375895b42c3d2f60650ebbf7c8c73"
+    },
+    {
+      "path": "src/commands/metrics.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06c76fd2f0bf12c0a1b78f2e5fa2185e90f61eb3",
+      "size": 3790,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/06c76fd2f0bf12c0a1b78f2e5fa2185e90f61eb3"
+    },
+    {
+      "path": "src/commands/monitor.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e0850d21d033358e2c5cf61f0e3892eb805b1c39",
+      "size": 5658,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e0850d21d033358e2c5cf61f0e3892eb805b1c39"
+    },
+    {
+      "path": "src/commands/monitor.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e06e082dab4aa61a4e6f67b788a313a6787be9a",
+      "size": 12787,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8e06e082dab4aa61a4e6f67b788a313a6787be9a"
+    },
+    {
+      "path": "src/commands/nudge.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a8fd3af1294329f8868173efd683fa26ac063ee3",
+      "size": 19844,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a8fd3af1294329f8868173efd683fa26ac063ee3"
+    },
+    {
+      "path": "src/commands/nudge.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa46f377154f5e577f0ae52f5fc48f172337c8ca",
+      "size": 20413,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/aa46f377154f5e577f0ae52f5fc48f172337c8ca"
+    },
+    {
+      "path": "src/commands/orchestrator.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8d7bbe79361cd5f25cc760b9414212598c62b28e",
+      "size": 1553,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8d7bbe79361cd5f25cc760b9414212598c62b28e"
+    },
+    {
+      "path": "src/commands/prime.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ac843bf9d85f2e8c2d5be26152dc4d8b78ca3bf5",
+      "size": 18300,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ac843bf9d85f2e8c2d5be26152dc4d8b78ca3bf5"
+    },
+    {
+      "path": "src/commands/prime.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b55fa2bb25e4f202bd55a4e29bf1049d7e46b307",
+      "size": 11465,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b55fa2bb25e4f202bd55a4e29bf1049d7e46b307"
+    },
+    {
+      "path": "src/commands/replay.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "283950d3aed061b5b4ddbe43a1461cf4ea1edb2d",
+      "size": 24355,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/283950d3aed061b5b4ddbe43a1461cf4ea1edb2d"
+    },
+    {
+      "path": "src/commands/replay.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7dc129a84f9266b529de789c90c49cc2617d2d71",
+      "size": 6840,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7dc129a84f9266b529de789c90c49cc2617d2d71"
+    },
+    {
+      "path": "src/commands/run.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22b3806ed539957d8a482f76d28b126c46596190",
+      "size": 14905,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/22b3806ed539957d8a482f76d28b126c46596190"
+    },
+    {
+      "path": "src/commands/run.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2760efd32dfcb666ac9c9d21156325c7ebc8e02e",
+      "size": 10051,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/2760efd32dfcb666ac9c9d21156325c7ebc8e02e"
+    },
+    {
+      "path": "src/commands/serve.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ed35f516446eecb320fd8ee22d5b4542001df10f",
+      "size": 14988,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ed35f516446eecb320fd8ee22d5b4542001df10f"
+    },
+    {
+      "path": "src/commands/serve.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0856d0dccb582b695b327da53afdd79dc176b2eb",
+      "size": 21985,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0856d0dccb582b695b327da53afdd79dc176b2eb"
+    },
+    {
+      "path": "src/commands/serve",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "dd2cefd1036d54244cab3ac1aa7732605876b16a",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/dd2cefd1036d54244cab3ac1aa7732605876b16a"
+    },
+    {
+      "path": "src/commands/serve/build.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d36275e61d52b78dd9e9fcab35842010fd3c781",
+      "size": 7111,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6d36275e61d52b78dd9e9fcab35842010fd3c781"
+    },
+    {
+      "path": "src/commands/serve/build.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "efd56b46e6ceaac813532e1f37734dd32cbbf736",
+      "size": 5747,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/efd56b46e6ceaac813532e1f37734dd32cbbf736"
+    },
+    {
+      "path": "src/commands/serve/coordinator-actions.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7a57dda7984a9acf0d0d780a9ad515db13f13246",
+      "size": 12182,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7a57dda7984a9acf0d0d780a9ad515db13f13246"
+    },
+    {
+      "path": "src/commands/serve/coordinator-actions.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "662044b266585399b3f8cbf3a1e8f453dab1ffaf",
+      "size": 13633,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/662044b266585399b3f8cbf3a1e8f453dab1ffaf"
+    },
+    {
+      "path": "src/commands/serve/dev.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4222c9e300726e1749b3314f757d3b96b749ec6f",
+      "size": 4657,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/4222c9e300726e1749b3314f757d3b96b749ec6f"
+    },
+    {
+      "path": "src/commands/serve/dev.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ec9a53415ac3840458b5cb7d0d0e79db855e517",
+      "size": 3266,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5ec9a53415ac3840458b5cb7d0d0e79db855e517"
+    },
+    {
+      "path": "src/commands/serve/mail-actions.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91b1adddcafc2095befcf17252a098e479ff7e00",
+      "size": 9929,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/91b1adddcafc2095befcf17252a098e479ff7e00"
+    },
+    {
+      "path": "src/commands/serve/mail-actions.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2a69ae845f58fd615fae7841d94189e4893233ff",
+      "size": 5319,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/2a69ae845f58fd615fae7841d94189e4893233ff"
+    },
+    {
+      "path": "src/commands/serve/rest.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2cce4544777aea6afc1a5ed8d33660770710fd3",
+      "size": 45727,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a2cce4544777aea6afc1a5ed8d33660770710fd3"
+    },
+    {
+      "path": "src/commands/serve/rest.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6c41be7dbb23624e02a164cab2ad4ee0852bf7ad",
+      "size": 23899,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6c41be7dbb23624e02a164cab2ad4ee0852bf7ad"
+    },
+    {
+      "path": "src/commands/serve/static.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7f7ed6615c783dafc5fa8a98da2bbdf480f0a9e1",
+      "size": 1531,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7f7ed6615c783dafc5fa8a98da2bbdf480f0a9e1"
+    },
+    {
+      "path": "src/commands/serve/ws.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1de3bb9b4db4f65b10223949c57c482fe4573053",
+      "size": 12620,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/1de3bb9b4db4f65b10223949c57c482fe4573053"
+    },
+    {
+      "path": "src/commands/serve/ws.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40fb6f555e47f845ccb74457421d3f175cc0830a",
+      "size": 8290,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/40fb6f555e47f845ccb74457421d3f175cc0830a"
+    },
+    {
+      "path": "src/commands/sling.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aca079fc6ab4d446ab4e2ba08d920193dd9cc9f3",
+      "size": 53787,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/aca079fc6ab4d446ab4e2ba08d920193dd9cc9f3"
+    },
+    {
+      "path": "src/commands/sling.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b0d21127d6eb3a52a76e90676f351a283c38c351",
+      "size": 48045,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b0d21127d6eb3a52a76e90676f351a283c38c351"
+    },
+    {
+      "path": "src/commands/spec.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04678641dc0605939d5e0c32e62aff21f3e503e7",
+      "size": 5977,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/04678641dc0605939d5e0c32e62aff21f3e503e7"
+    },
+    {
+      "path": "src/commands/spec.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ec09c9595f39dc41f34c524ee0554aee67046420",
+      "size": 2746,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ec09c9595f39dc41f34c524ee0554aee67046420"
+    },
+    {
+      "path": "src/commands/status.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a71e335273545b5a4bbda73270f9241b16801c8",
+      "size": 17753,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6a71e335273545b5a4bbda73270f9241b16801c8"
+    },
+    {
+      "path": "src/commands/status.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e73e5f7f4bbb6910b11c2636d8f4fc24310cf663",
+      "size": 12690,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e73e5f7f4bbb6910b11c2636d8f4fc24310cf663"
+    },
+    {
+      "path": "src/commands/stop.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45700740086de91cf3c949b896746af19d04e40e",
+      "size": 32529,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/45700740086de91cf3c949b896746af19d04e40e"
+    },
+    {
+      "path": "src/commands/stop.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "661c3a97104daa448c1fa84d66c72be54617340c",
+      "size": 11005,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/661c3a97104daa448c1fa84d66c72be54617340c"
+    },
+    {
+      "path": "src/commands/supervisor.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f32db7268f3fe4cf5e364f814c79e0fe798e4ada",
+      "size": 5005,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f32db7268f3fe4cf5e364f814c79e0fe798e4ada"
+    },
+    {
+      "path": "src/commands/supervisor.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "efe83e120b0418ef09e2ff60c33d96fc9a51cfc4",
+      "size": 16728,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/efe83e120b0418ef09e2ff60c33d96fc9a51cfc4"
+    },
+    {
+      "path": "src/commands/trace.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6950fc07d4fcd60c7b0e0a2c0559a7d39d9846ce",
+      "size": 23811,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6950fc07d4fcd60c7b0e0a2c0559a7d39d9846ce"
+    },
+    {
+      "path": "src/commands/trace.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "821a33f7294307610c27667b9de1e2de70ce2339",
+      "size": 6038,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/821a33f7294307610c27667b9de1e2de70ce2339"
+    },
+    {
+      "path": "src/commands/update.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5da1283db7fe367dea52b99a89ef71c0052654c7",
+      "size": 14762,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5da1283db7fe367dea52b99a89ef71c0052654c7"
+    },
+    {
+      "path": "src/commands/update.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9c42ff2799b2d9a79aadbb27b614c0542f492508",
+      "size": 6974,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9c42ff2799b2d9a79aadbb27b614c0542f492508"
+    },
+    {
+      "path": "src/commands/upgrade.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5179217fdedf26a193676bb5d83d04d98c3cf47b",
+      "size": 1516,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5179217fdedf26a193676bb5d83d04d98c3cf47b"
+    },
+    {
+      "path": "src/commands/upgrade.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab912f03758142444adb49fde20b57f2d62715ef",
+      "size": 6383,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ab912f03758142444adb49fde20b57f2d62715ef"
+    },
+    {
+      "path": "src/commands/watch.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6ba6761288a72673202b014432b8f1588eb6b05",
+      "size": 8565,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c6ba6761288a72673202b014432b8f1588eb6b05"
+    },
+    {
+      "path": "src/commands/watch.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "617406d9c22089f756f165a97d9077665c3be42c",
+      "size": 9602,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/617406d9c22089f756f165a97d9077665c3be42c"
+    },
+    {
+      "path": "src/commands/worktree.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d64bd36796c04f7ad5a604571a8c1d8a8cefada",
+      "size": 37514,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9d64bd36796c04f7ad5a604571a8c1d8a8cefada"
+    },
+    {
+      "path": "src/commands/worktree.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a294edc306e2424e010432fef3a3ac8d0c22747d",
+      "size": 13199,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a294edc306e2424e010432fef3a3ac8d0c22747d"
+    },
+    {
+      "path": "src/config.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a9115eab5fadfd45dec21380b32e9852f3c5ead",
+      "size": 45940,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0a9115eab5fadfd45dec21380b32e9852f3c5ead"
+    },
+    {
+      "path": "src/config.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "017c530ce000b5eb8914d2d237f3d8b2516eb93f",
+      "size": 34526,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/017c530ce000b5eb8914d2d237f3d8b2516eb93f"
+    },
+    {
+      "path": "src/doctor",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fbb4541b4f77ad2a8ba9d41b7be095423eb17263",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/fbb4541b4f77ad2a8ba9d41b7be095423eb17263"
+    },
+    {
+      "path": "src/doctor/agents.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ca5eb107e37e5f0fafd3223779a3b44ee705791",
+      "size": 14725,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9ca5eb107e37e5f0fafd3223779a3b44ee705791"
+    },
+    {
+      "path": "src/doctor/agents.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2f7932a24540f15cab2b4736403a2d6e3574c578",
+      "size": 11142,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/2f7932a24540f15cab2b4736403a2d6e3574c578"
+    },
+    {
+      "path": "src/doctor/config-check.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04a09feed4ae704ec094104ea5a1f8a7fd05e041",
+      "size": 5686,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/04a09feed4ae704ec094104ea5a1f8a7fd05e041"
+    },
+    {
+      "path": "src/doctor/config-check.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cb02cb2474ca6a86d8e4ab7fdde392bb87479312",
+      "size": 4518,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/cb02cb2474ca6a86d8e4ab7fdde392bb87479312"
+    },
+    {
+      "path": "src/doctor/consistency.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "315d1cc19afce2f3e0e19ee9bfbbac9a1bd65ef0",
+      "size": 25163,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/315d1cc19afce2f3e0e19ee9bfbbac9a1bd65ef0"
+    },
+    {
+      "path": "src/doctor/consistency.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "31175e0b887b8c2cf064f6c9ef14a6d65540cb88",
+      "size": 11102,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/31175e0b887b8c2cf064f6c9ef14a6d65540cb88"
+    },
+    {
+      "path": "src/doctor/databases.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9013a37ac6b865dc19193e1c2c000751b23fd6f7",
+      "size": 10894,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9013a37ac6b865dc19193e1c2c000751b23fd6f7"
+    },
+    {
+      "path": "src/doctor/databases.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "00587b2a1eddc859d5c2dd6966699908240a1627",
+      "size": 5350,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/00587b2a1eddc859d5c2dd6966699908240a1627"
+    },
+    {
+      "path": "src/doctor/dependencies.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8a38e0f056a3a1e283f33545c8888ea524bf4955",
+      "size": 10426,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8a38e0f056a3a1e283f33545c8888ea524bf4955"
+    },
+    {
+      "path": "src/doctor/dependencies.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6ddef4bf210c99dc248af581df6857549e2a1f02",
+      "size": 7818,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6ddef4bf210c99dc248af581df6857549e2a1f02"
+    },
+    {
+      "path": "src/doctor/ecosystem.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cd078dde28c8d90e978c06704cd26c3cc1594719",
+      "size": 9964,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/cd078dde28c8d90e978c06704cd26c3cc1594719"
+    },
+    {
+      "path": "src/doctor/ecosystem.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "89dd144904a49e7fafcad14690536e9092e5b582",
+      "size": 4457,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/89dd144904a49e7fafcad14690536e9092e5b582"
+    },
+    {
+      "path": "src/doctor/logs.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a8f59a7ff9fc17e286e77e103ca5683553b7be1c",
+      "size": 8719,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a8f59a7ff9fc17e286e77e103ca5683553b7be1c"
+    },
+    {
+      "path": "src/doctor/logs.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ee18ffb1900762f823fb2efeecdd7d8775e0ba1",
+      "size": 7832,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9ee18ffb1900762f823fb2efeecdd7d8775e0ba1"
+    },
+    {
+      "path": "src/doctor/merge-queue.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d80db77bbd4b87714a9ae6e4da5905f32ec42738",
+      "size": 10120,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d80db77bbd4b87714a9ae6e4da5905f32ec42738"
+    },
+    {
+      "path": "src/doctor/merge-queue.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e90cae8c5cb90fa472d24cf1b0e4190dd0bdeabc",
+      "size": 4583,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e90cae8c5cb90fa472d24cf1b0e4190dd0bdeabc"
+    },
+    {
+      "path": "src/doctor/providers.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be952e1652d714fc3ce7bbcb2396e451e5f42e71",
+      "size": 12508,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/be952e1652d714fc3ce7bbcb2396e451e5f42e71"
+    },
+    {
+      "path": "src/doctor/providers.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1877cf4d7c0314c17a91cf52770706f3abe5b4f0",
+      "size": 7673,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/1877cf4d7c0314c17a91cf52770706f3abe5b4f0"
+    },
+    {
+      "path": "src/doctor/serve.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ef509aebcff593b7b5e1684a95e9dd90bdcbd363",
+      "size": 3361,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ef509aebcff593b7b5e1684a95e9dd90bdcbd363"
+    },
+    {
+      "path": "src/doctor/serve.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2c6fab5753ec5d9af85ba2ecd8925f99747d9ed7",
+      "size": 2462,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/2c6fab5753ec5d9af85ba2ecd8925f99747d9ed7"
+    },
+    {
+      "path": "src/doctor/structure.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fc259d7725d713b1179c059bb768397eb0c70719",
+      "size": 14753,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/fc259d7725d713b1179c059bb768397eb0c70719"
+    },
+    {
+      "path": "src/doctor/structure.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59e0bc9048eaaacdaa98d7accfbe76a0ff6cf587",
+      "size": 8505,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/59e0bc9048eaaacdaa98d7accfbe76a0ff6cf587"
+    },
+    {
+      "path": "src/doctor/types.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "627b8fd743492d4022c1a97b8f72f1e94f6959d2",
+      "size": 1111,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/627b8fd743492d4022c1a97b8f72f1e94f6959d2"
+    },
+    {
+      "path": "src/doctor/version.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e576869ffa3ed00c5f6a1cbde01a09adeb338fb8",
+      "size": 7236,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e576869ffa3ed00c5f6a1cbde01a09adeb338fb8"
+    },
+    {
+      "path": "src/doctor/version.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ff94c6aed9ec8c7a6a4190eea493cdedb09465e4",
+      "size": 3759,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ff94c6aed9ec8c7a6a4190eea493cdedb09465e4"
+    },
+    {
+      "path": "src/doctor/watchdog.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30c5d18e352700ca87b3430fee8e741878b57d62",
+      "size": 6396,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/30c5d18e352700ca87b3430fee8e741878b57d62"
+    },
+    {
+      "path": "src/doctor/watchdog.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a8d01f5d421920952011af55df0bbfeead556dac",
+      "size": 6453,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a8d01f5d421920952011af55df0bbfeead556dac"
+    },
+    {
+      "path": "src/e2e",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c863c2abe329d58ec61aa1b9dc299a8c0cb87c9c",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/c863c2abe329d58ec61aa1b9dc299a8c0cb87c9c"
+    },
+    {
+      "path": "src/e2e/init-sling-lifecycle.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "79854940700da125095d99cce2202147eb1bc02d",
+      "size": 10217,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/79854940700da125095d99cce2202147eb1bc02d"
+    },
+    {
+      "path": "src/errors.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0e0eb962b1c492756bc0cd1dfb5b425994e2ff4",
+      "size": 9793,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c0e0eb962b1c492756bc0cd1dfb5b425994e2ff4"
+    },
+    {
+      "path": "src/errors.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0d44419ea2779863446c8b7ce9e4154155268d27",
+      "size": 5320,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0d44419ea2779863446c8b7ce9e4154155268d27"
+    },
+    {
+      "path": "src/events",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9ed79fac0b60a087562e129476d5b2dc032caeb1",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/9ed79fac0b60a087562e129476d5b2dc032caeb1"
+    },
+    {
+      "path": "src/events/store.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5a2d27ac81792bd00187e14a5f457ec101653fd8",
+      "size": 19759,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5a2d27ac81792bd00187e14a5f457ec101653fd8"
+    },
+    {
+      "path": "src/events/store.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "654fb5d804ad5036de95af7561252158952f0b93",
+      "size": 11066,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/654fb5d804ad5036de95af7561252158952f0b93"
+    },
+    {
+      "path": "src/events/tailer.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8917a8d3e70aeed82c57bd94f68eafba33af2916",
+      "size": 22095,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8917a8d3e70aeed82c57bd94f68eafba33af2916"
+    },
+    {
+      "path": "src/events/tailer.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f932e1eb312dbe92e1d9747e11f4576c54af952",
+      "size": 11028,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8f932e1eb312dbe92e1d9747e11f4576c54af952"
+    },
+    {
+      "path": "src/events/tool-filter.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc96675778e4fdba29107b2201cd2642de3ffd20",
+      "size": 10024,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/cc96675778e4fdba29107b2201cd2642de3ffd20"
+    },
+    {
+      "path": "src/events/tool-filter.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a928f5dd1b71038698be6970e8504f78839c7d5d",
+      "size": 4320,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a928f5dd1b71038698be6970e8504f78839c7d5d"
+    },
+    {
+      "path": "src/index.ts",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "9d6e05ff8474a218dfe1971ff39bdcaeb592a0d7",
+      "size": 18136,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9d6e05ff8474a218dfe1971ff39bdcaeb592a0d7"
+    },
+    {
+      "path": "src/insights",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "aeaacc2c0e275a214f1d8067020f83ef362d1af9",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/aeaacc2c0e275a214f1d8067020f83ef362d1af9"
+    },
+    {
+      "path": "src/insights/analyzer.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25020838f63d4433de189eda507d76def6e06b4c",
+      "size": 13667,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/25020838f63d4433de189eda507d76def6e06b4c"
+    },
+    {
+      "path": "src/insights/analyzer.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab431ebda53e153d2524aafb836238aae0c857c2",
+      "size": 5614,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ab431ebda53e153d2524aafb836238aae0c857c2"
+    },
+    {
+      "path": "src/insights/quality-gates.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33e78064e3ccbaf2472cdf6f9d8dcfdb712af55b",
+      "size": 5223,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/33e78064e3ccbaf2472cdf6f9d8dcfdb712af55b"
+    },
+    {
+      "path": "src/insights/quality-gates.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8d07a62cea2022f083de7fbf23df4da47d2ddd6",
+      "size": 4136,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b8d07a62cea2022f083de7fbf23df4da47d2ddd6"
+    },
+    {
+      "path": "src/json.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e02229f51b65c6e5d5132a10ffd4cfdfa729ae60",
+      "size": 2158,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e02229f51b65c6e5d5132a10ffd4cfdfa729ae60"
+    },
+    {
+      "path": "src/json.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "62134f61a556e101c564e93785b36d24a720e210",
+      "size": 1718,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/62134f61a556e101c564e93785b36d24a720e210"
+    },
+    {
+      "path": "src/logging",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "471f8f177a02fd84f72fee390362f59c71cdfeee",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/471f8f177a02fd84f72fee390362f59c71cdfeee"
+    },
+    {
+      "path": "src/logging/color.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3575e5b8706148a0841a4a3c36d09afe0d7ccfa8",
+      "size": 8038,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3575e5b8706148a0841a4a3c36d09afe0d7ccfa8"
+    },
+    {
+      "path": "src/logging/color.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4269ce0931c24bac08cbe8fdcc886bd6c20980b7",
+      "size": 3310,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/4269ce0931c24bac08cbe8fdcc886bd6c20980b7"
+    },
+    {
+      "path": "src/logging/format.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eaef62d99b9c1b97fce15dc606d2b4761c59b3a1",
+      "size": 3786,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/eaef62d99b9c1b97fce15dc606d2b4761c59b3a1"
+    },
+    {
+      "path": "src/logging/format.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "661ac97045973abfff9799f1ce08652fc60e07b5",
+      "size": 7151,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/661ac97045973abfff9799f1ce08652fc60e07b5"
+    },
+    {
+      "path": "src/logging/logger.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04d5bf4deb1f6d528a8695d77b267371c00de69b",
+      "size": 23057,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/04d5bf4deb1f6d528a8695d77b267371c00de69b"
+    },
+    {
+      "path": "src/logging/logger.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e0921488fc4b196044beef09764420665e564e5",
+      "size": 7552,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3e0921488fc4b196044beef09764420665e564e5"
+    },
+    {
+      "path": "src/logging/reporter.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f3ade5d435bd6492371ff127a509fbbebceb8b67",
+      "size": 9039,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f3ade5d435bd6492371ff127a509fbbebceb8b67"
+    },
+    {
+      "path": "src/logging/reporter.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c6785ae0946a255a1e6e87e4334031305458de6",
+      "size": 2949,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7c6785ae0946a255a1e6e87e4334031305458de6"
+    },
+    {
+      "path": "src/logging/sanitizer.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "daef0aba1a482e8dfe9cc7ad275f91fe3f485077",
+      "size": 5554,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/daef0aba1a482e8dfe9cc7ad275f91fe3f485077"
+    },
+    {
+      "path": "src/logging/sanitizer.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59bbb723edd18eaf79ba86b01517da96d4ad0dc1",
+      "size": 1517,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/59bbb723edd18eaf79ba86b01517da96d4ad0dc1"
+    },
+    {
+      "path": "src/logging/theme.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2609d49da0c67e67e395deeec43b3d42c9e4eba0",
+      "size": 4743,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/2609d49da0c67e67e395deeec43b3d42c9e4eba0"
+    },
+    {
+      "path": "src/mail",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c2c8a08350b124991cd002eec77bc986186b22e2",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/c2c8a08350b124991cd002eec77bc986186b22e2"
+    },
+    {
+      "path": "src/mail/broadcast.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7540f1348b748dc350d614670a576f96f4e09d76",
+      "size": 7698,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7540f1348b748dc350d614670a576f96f4e09d76"
+    },
+    {
+      "path": "src/mail/broadcast.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "26cd699b468ac2da7ce0716291303eb2e077313d",
+      "size": 2668,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/26cd699b468ac2da7ce0716291303eb2e077313d"
+    },
+    {
+      "path": "src/mail/client.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "89004490b6872a85c797c9b512880e1795b843c6",
+      "size": 20167,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/89004490b6872a85c797c9b512880e1795b843c6"
+    },
+    {
+      "path": "src/mail/client.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c6cea3e087410075d457b880f521344b80cecb5",
+      "size": 6005,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/4c6cea3e087410075d457b880f521344b80cecb5"
+    },
+    {
+      "path": "src/mail/store.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "528c44f8a84242e18dcf4e319fd31fa8bd326029",
+      "size": 21471,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/528c44f8a84242e18dcf4e319fd31fa8bd326029"
+    },
+    {
+      "path": "src/mail/store.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1dcc473601697639483a1f079a95a6ffa62bb1ae",
+      "size": 12933,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/1dcc473601697639483a1f079a95a6ffa62bb1ae"
+    },
+    {
+      "path": "src/merge",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6c7a071ce3f21e43fe6d6ad575ddc32886c539d3",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/6c7a071ce3f21e43fe6d6ad575ddc32886c539d3"
+    },
+    {
+      "path": "src/merge/lock.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f7209c44fd8196789c097422dc94b98075c1895c",
+      "size": 4669,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f7209c44fd8196789c097422dc94b98075c1895c"
+    },
+    {
+      "path": "src/merge/lock.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "819a43f9c3a2fe802d7c54b77117ca4143cfe8b6",
+      "size": 4227,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/819a43f9c3a2fe802d7c54b77117ca4143cfe8b6"
+    },
+    {
+      "path": "src/merge/predict.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea84c7bc8fc64f9f59dff9bb0afeed2109c6bcc4",
+      "size": 14485,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ea84c7bc8fc64f9f59dff9bb0afeed2109c6bcc4"
+    },
+    {
+      "path": "src/merge/predict.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "23778711d86231c4cfd901fb7c41427fa1276884",
+      "size": 7824,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/23778711d86231c4cfd901fb7c41427fa1276884"
+    },
+    {
+      "path": "src/merge/queue.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a04d220d940db4f505437ae052d61be2435d7c85",
+      "size": 13467,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a04d220d940db4f505437ae052d61be2435d7c85"
+    },
+    {
+      "path": "src/merge/queue.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a9d7b2a93418da406dfb773def3629d3d7978190",
+      "size": 7131,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a9d7b2a93418da406dfb773def3629d3d7978190"
+    },
+    {
+      "path": "src/merge/resolver.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "20fc2724ca5cb18f068adf16af6147efafaa9066",
+      "size": 64085,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/20fc2724ca5cb18f068adf16af6147efafaa9066"
+    },
+    {
+      "path": "src/merge/resolver.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6b1f1713e5e6c3cf830106cae9bd64f93c7c9d1",
+      "size": 28170,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c6b1f1713e5e6c3cf830106cae9bd64f93c7c9d1"
+    },
+    {
+      "path": "src/metrics",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cd9cd0fd050094777da81e8a23e47ff14e56a614",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/cd9cd0fd050094777da81e8a23e47ff14e56a614"
+    },
+    {
+      "path": "src/metrics/pricing.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d6fa5eac8f988a2669871ab887f392432383c38",
+      "size": 7697,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3d6fa5eac8f988a2669871ab887f392432383c38"
+    },
+    {
+      "path": "src/metrics/pricing.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "69a8d3d05c7699dfeeaca810cad776a5cd0128a0",
+      "size": 4117,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/69a8d3d05c7699dfeeaca810cad776a5cd0128a0"
+    },
+    {
+      "path": "src/metrics/store.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "53247dc6b3af9de8b064d326302c29d7a5687840",
+      "size": 29131,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/53247dc6b3af9de8b064d326302c29d7a5687840"
+    },
+    {
+      "path": "src/metrics/store.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c351d3113092c4534188241a78f4c88392c1afd",
+      "size": 16556,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7c351d3113092c4534188241a78f4c88392c1afd"
+    },
+    {
+      "path": "src/metrics/summary.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c39c2f4c175b19e781bd1c2aa1a1afdb75a2c421",
+      "size": 11316,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c39c2f4c175b19e781bd1c2aa1a1afdb75a2c421"
+    },
+    {
+      "path": "src/metrics/summary.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d748a39db811e74ffa4f3a9910a3a5f11fc7b51",
+      "size": 5525,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9d748a39db811e74ffa4f3a9910a3a5f11fc7b51"
+    },
+    {
+      "path": "src/metrics/transcript.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04831a5e2eeea04aebc8e27768f0983af9711ffc",
+      "size": 13164,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/04831a5e2eeea04aebc8e27768f0983af9711ffc"
+    },
+    {
+      "path": "src/metrics/transcript.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0eb1bc3c9de3b886880677377aadd5f8cfc40b7",
+      "size": 3455,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d0eb1bc3c9de3b886880677377aadd5f8cfc40b7"
+    },
+    {
+      "path": "src/mulch",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4d9b7c0c8655878838276755cdceaa674cde8159",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/4d9b7c0c8655878838276755cdceaa674cde8159"
+    },
+    {
+      "path": "src/mulch/client.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "deccedc0d5fbb4c0acb845aea81d7aaeaf135240",
+      "size": 22901,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/deccedc0d5fbb4c0acb845aea81d7aaeaf135240"
+    },
+    {
+      "path": "src/mulch/client.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7dbc4a228ab7a4ae3d28cfe85f98c71e1a8465d6",
+      "size": 17334,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7dbc4a228ab7a4ae3d28cfe85f98c71e1a8465d6"
+    },
+    {
+      "path": "src/runtimes",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "897c001c65d4352f4f0983b0f649131fab90f800",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/897c001c65d4352f4f0983b0f649131fab90f800"
+    },
+    {
+      "path": "src/runtimes/__fixtures__",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1ca86d835b20dde5ddd0853201b41cac30fb1b76",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/1ca86d835b20dde5ddd0853201b41cac30fb1b76"
+    },
+    {
+      "path": "src/runtimes/__fixtures__/claude-stream-fixture.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9f9833e7de5f3c97e3750e4d0d66d743648ee90c",
+      "size": 629,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9f9833e7de5f3c97e3750e4d0d66d743648ee90c"
+    },
+    {
+      "path": "src/runtimes/aider.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "10ebef8f08bcf08dbdfc0e6ee04229f93c39a482",
+      "size": 3786,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/10ebef8f08bcf08dbdfc0e6ee04229f93c39a482"
+    },
+    {
+      "path": "src/runtimes/aider.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c325676188bba9ae6aadc9fb061b05fffa06426e",
+      "size": 4841,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c325676188bba9ae6aadc9fb061b05fffa06426e"
+    },
+    {
+      "path": "src/runtimes/amp.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0d9de8f48f8731c0ae946646316b615cbc3ffab1",
+      "size": 5088,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0d9de8f48f8731c0ae946646316b615cbc3ffab1"
+    },
+    {
+      "path": "src/runtimes/amp.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6628a73fb9268d1c0f09f652131693782b834317",
+      "size": 4806,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6628a73fb9268d1c0f09f652131693782b834317"
+    },
+    {
+      "path": "src/runtimes/claude.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f7daa11ce1683b2b470b64a74680b42c938c313e",
+      "size": 50374,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f7daa11ce1683b2b470b64a74680b42c938c313e"
+    },
+    {
+      "path": "src/runtimes/claude.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45b316b42ba74a00cf83955e1113a32f5eacb765",
+      "size": 21734,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/45b316b42ba74a00cf83955e1113a32f5eacb765"
+    },
+    {
+      "path": "src/runtimes/codex.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a8d5f64f2d7dcd5a7c4e240a598fddefb5ef03de",
+      "size": 26510,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a8d5f64f2d7dcd5a7c4e240a598fddefb5ef03de"
+    },
+    {
+      "path": "src/runtimes/codex.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7df06a24c68c3199bfb97aea7174073dd43b6c23",
+      "size": 9665,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7df06a24c68c3199bfb97aea7174073dd43b6c23"
+    },
+    {
+      "path": "src/runtimes/connections.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f6a6500cb99aa6b1ae2482cf5de8c129a692b0d0",
+      "size": 5963,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f6a6500cb99aa6b1ae2482cf5de8c129a692b0d0"
+    },
+    {
+      "path": "src/runtimes/connections.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0496ebc508e74ad12de21ee8da74b6768ce7a7e2",
+      "size": 3928,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0496ebc508e74ad12de21ee8da74b6768ce7a7e2"
+    },
+    {
+      "path": "src/runtimes/copilot.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a26f734fbe7c075f8336e18e79393970d9531fdc",
+      "size": 24598,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a26f734fbe7c075f8336e18e79393970d9531fdc"
+    },
+    {
+      "path": "src/runtimes/copilot.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dc51fc1e5a6b708d8fcf13368a5837ffa4728e40",
+      "size": 11133,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/dc51fc1e5a6b708d8fcf13368a5837ffa4728e40"
+    },
+    {
+      "path": "src/runtimes/cursor.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "699245bd9dc9996cf1dc1c302920f07937b4b997",
+      "size": 16035,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/699245bd9dc9996cf1dc1c302920f07937b4b997"
+    },
+    {
+      "path": "src/runtimes/cursor.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e00783b144e84613bd0c32a597f2ea7acef3ab56",
+      "size": 6397,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e00783b144e84613bd0c32a597f2ea7acef3ab56"
+    },
+    {
+      "path": "src/runtimes/gemini.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9eb92f638370fd9fe49dac35ebe256e5b700aeb7",
+      "size": 17141,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9eb92f638370fd9fe49dac35ebe256e5b700aeb7"
+    },
+    {
+      "path": "src/runtimes/gemini.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "82948ecbd684ae7687f3fb93057a8d9997531b9c",
+      "size": 8230,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/82948ecbd684ae7687f3fb93057a8d9997531b9c"
+    },
+    {
+      "path": "src/runtimes/goose.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e5563c54683d88df8163883b7db54f08ef1d06d6",
+      "size": 4134,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e5563c54683d88df8163883b7db54f08ef1d06d6"
+    },
+    {
+      "path": "src/runtimes/goose.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "47e7ff8fe5a562e5cec1ee71d3601abe7b659a07",
+      "size": 4988,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/47e7ff8fe5a562e5cec1ee71d3601abe7b659a07"
+    },
+    {
+      "path": "src/runtimes/headless-connection.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "05d3b8536eec5e29b771976055ac102c4b1a18c9",
+      "size": 7540,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/05d3b8536eec5e29b771976055ac102c4b1a18c9"
+    },
+    {
+      "path": "src/runtimes/headless-connection.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1d8d254c520a91b053cd2ef46864a0b93fd880a7",
+      "size": 5158,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/1d8d254c520a91b053cd2ef46864a0b93fd880a7"
+    },
+    {
+      "path": "src/runtimes/opencode.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e873c76211cb339cbb30b4d4698b19143b832694",
+      "size": 10407,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e873c76211cb339cbb30b4d4698b19143b832694"
+    },
+    {
+      "path": "src/runtimes/opencode.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e036919bece5687ef2926a1128664d86651748b0",
+      "size": 7440,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e036919bece5687ef2926a1128664d86651748b0"
+    },
+    {
+      "path": "src/runtimes/pi-guards.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "67a25139cf836ff6aedda182ac97f32d585e3f47",
+      "size": 19825,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/67a25139cf836ff6aedda182ac97f32d585e3f47"
+    },
+    {
+      "path": "src/runtimes/pi-guards.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8d15d5edb8125cb2f60c092dfdf763dc3df0662",
+      "size": 15958,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d8d15d5edb8125cb2f60c092dfdf763dc3df0662"
+    },
+    {
+      "path": "src/runtimes/pi.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "09f2e7c65161c745f6dc5734edff7c82b4bb1174",
+      "size": 27230,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/09f2e7c65161c745f6dc5734edff7c82b4bb1174"
+    },
+    {
+      "path": "src/runtimes/pi.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4ddc04e27080d257135e99f1151aeb7356f3b24d",
+      "size": 10773,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/4ddc04e27080d257135e99f1151aeb7356f3b24d"
+    },
+    {
+      "path": "src/runtimes/registry.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bd55061830749fbff2a4f28e3685095a5e1605f9",
+      "size": 7122,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/bd55061830749fbff2a4f28e3685095a5e1605f9"
+    },
+    {
+      "path": "src/runtimes/registry.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8c829d1b111317999d55fab2adfd16425bc7c6d3",
+      "size": 3305,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8c829d1b111317999d55fab2adfd16425bc7c6d3"
+    },
+    {
+      "path": "src/runtimes/sapling.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dd425184b2a47fc4a5f33a3d903749d0887a6f7b",
+      "size": 42923,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/dd425184b2a47fc4a5f33a3d903749d0887a6f7b"
+    },
+    {
+      "path": "src/runtimes/sapling.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea06bc81bce9405ad742adbbf9d72f92d3f1bcca",
+      "size": 24832,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ea06bc81bce9405ad742adbbf9d72f92d3f1bcca"
+    },
+    {
+      "path": "src/runtimes/types.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f0fa1224514b33dfc02f990dfd23db76a542521",
+      "size": 9732,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6f0fa1224514b33dfc02f990dfd23db76a542521"
+    },
+    {
+      "path": "src/schema-consistency.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a748ae570d61ad5c4ef866930cdbfb00b1dd5c40",
+      "size": 6351,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a748ae570d61ad5c4ef866930cdbfb00b1dd5c40"
+    },
+    {
+      "path": "src/sessions",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "20de2efbfbf3ccbdb55197f425ec60f07a146551",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/20de2efbfbf3ccbdb55197f425ec60f07a146551"
+    },
+    {
+      "path": "src/sessions/compat.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3fd0fe3fec8e79934abd3369248deb9edc8648ed",
+      "size": 9264,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3fd0fe3fec8e79934abd3369248deb9edc8648ed"
+    },
+    {
+      "path": "src/sessions/compat.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6549182a15cbec15f94e99c190d97a7323bbabe5",
+      "size": 3624,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6549182a15cbec15f94e99c190d97a7323bbabe5"
+    },
+    {
+      "path": "src/sessions/store.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b76ba7a3d55741b4dee6f587c26fe84962273a2b",
+      "size": 60174,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b76ba7a3d55741b4dee6f587c26fe84962273a2b"
+    },
+    {
+      "path": "src/sessions/store.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b885ff323cf48efef96a06afbeca1739204f9468",
+      "size": 30672,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b885ff323cf48efef96a06afbeca1739204f9468"
+    },
+    {
+      "path": "src/test-helpers.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "46cd0b03db4ab05ec4cd8c4cff72a173f7f2ddbb",
+      "size": 3249,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/46cd0b03db4ab05ec4cd8c4cff72a173f7f2ddbb"
+    },
+    {
+      "path": "src/test-helpers.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a281830bf9aae292c1ddb3b8e741c07e7a187cd6",
+      "size": 4875,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a281830bf9aae292c1ddb3b8e741c07e7a187cd6"
+    },
+    {
+      "path": "src/test-setup.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5b6f7c4dca685494204f5bc9d4a7d73f3dcf2175",
+      "size": 1004,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/5b6f7c4dca685494204f5bc9d4a7d73f3dcf2175"
+    },
+    {
+      "path": "src/test-setup.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ad14b5b6531f7f104b52e31d7074f660d2dbcd1a",
+      "size": 1224,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ad14b5b6531f7f104b52e31d7074f660d2dbcd1a"
+    },
+    {
+      "path": "src/tracker",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "dc4b13d7c4db4d805b3d58f9f7b74446377ef9b6",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/dc4b13d7c4db4d805b3d58f9f7b74446377ef9b6"
+    },
+    {
+      "path": "src/tracker/beads.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8cdce07d289960767526f974a8dcacd93c5dd5b2",
+      "size": 12997,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8cdce07d289960767526f974a8dcacd93c5dd5b2"
+    },
+    {
+      "path": "src/tracker/beads.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6522348cc7abd6b082efc2112e9240464428924",
+      "size": 1348,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c6522348cc7abd6b082efc2112e9240464428924"
+    },
+    {
+      "path": "src/tracker/factory.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4dbf68984c7cdd440b106910ff3411f3a2ae2824",
+      "size": 3203,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/4dbf68984c7cdd440b106910ff3411f3a2ae2824"
+    },
+    {
+      "path": "src/tracker/factory.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4337aab71309cb3849fe6697299ab4f9dac57dee",
+      "size": 2040,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/4337aab71309cb3849fe6697299ab4f9dac57dee"
+    },
+    {
+      "path": "src/tracker/seeds.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "db048a45767b61803c9a3068f40f7ace1fa18f93",
+      "size": 14034,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/db048a45767b61803c9a3068f40f7ace1fa18f93"
+    },
+    {
+      "path": "src/tracker/seeds.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f2bacaa17e5cf18d8e48842282744d409f5d2a5e",
+      "size": 5110,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f2bacaa17e5cf18d8e48842282744d409f5d2a5e"
+    },
+    {
+      "path": "src/tracker/types.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ad047f8d5bf25f931613b85de7221e1fd67024f5",
+      "size": 1379,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ad047f8d5bf25f931613b85de7221e1fd67024f5"
+    },
+    {
+      "path": "src/types.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "01fef7cce0efbf6a5bbb6835d3c6e7b4a1286474",
+      "size": 29662,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/01fef7cce0efbf6a5bbb6835d3c6e7b4a1286474"
+    },
+    {
+      "path": "src/utils",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "800f1cd7de8659cd36f899ea9fcb1fcfeee4e611",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/800f1cd7de8659cd36f899ea9fcb1fcfeee4e611"
+    },
+    {
+      "path": "src/utils/bin.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cbd7803f9356c5851386bb74e454a40f096f8863",
+      "size": 320,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/cbd7803f9356c5851386bb74e454a40f096f8863"
+    },
+    {
+      "path": "src/utils/bin.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab8c5c15adb86a7dadeee2ad390a52021ad899b1",
+      "size": 895,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ab8c5c15adb86a7dadeee2ad390a52021ad899b1"
+    },
+    {
+      "path": "src/utils/fs.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "085cfc8bd1f741f0f15009691579baf0f99309ec",
+      "size": 3707,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/085cfc8bd1f741f0f15009691579baf0f99309ec"
+    },
+    {
+      "path": "src/utils/fs.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "98b03385dc5a1677ab76796c1e1c3959377b90ab",
+      "size": 1372,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/98b03385dc5a1677ab76796c1e1c3959377b90ab"
+    },
+    {
+      "path": "src/utils/pid.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "753107c7098346c9f9d6657c87358102aa383451",
+      "size": 5116,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/753107c7098346c9f9d6657c87358102aa383451"
+    },
+    {
+      "path": "src/utils/pid.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "849ee6b221f3665b8880fa8754f98583651a441b",
+      "size": 4247,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/849ee6b221f3665b8880fa8754f98583651a441b"
+    },
+    {
+      "path": "src/utils/process-scan.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ffa1444de5958cfa75d325c094cc484073e3512a",
+      "size": 2077,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ffa1444de5958cfa75d325c094cc484073e3512a"
+    },
+    {
+      "path": "src/utils/process-scan.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22b71325b245c3c1f1a308aaaa46eaa3e0868db6",
+      "size": 2658,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/22b71325b245c3c1f1a308aaaa46eaa3e0868db6"
+    },
+    {
+      "path": "src/utils/time.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f47032cac14f1e077238601cb9c0f7c62c8bd341",
+      "size": 1493,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f47032cac14f1e077238601cb9c0f7c62c8bd341"
+    },
+    {
+      "path": "src/utils/time.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a81bb33a80395f76be774433458d72d9da25aa20",
+      "size": 847,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a81bb33a80395f76be774433458d72d9da25aa20"
+    },
+    {
+      "path": "src/utils/version.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bbe95a7d310642ae4b38d7655eab21537079299d",
+      "size": 1112,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/bbe95a7d310642ae4b38d7655eab21537079299d"
+    },
+    {
+      "path": "src/utils/version.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ced4524f8211f12dcfd5f2c195d43395c0313e4",
+      "size": 1959,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9ced4524f8211f12dcfd5f2c195d43395c0313e4"
+    },
+    {
+      "path": "src/watchdog",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6973d50f74421cb663893c0ebf356b8712fcff74",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/6973d50f74421cb663893c0ebf356b8712fcff74"
+    },
+    {
+      "path": "src/watchdog/daemon.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d959ad13716383e29600815fdecb3541f28bd4b",
+      "size": 110787,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6d959ad13716383e29600815fdecb3541f28bd4b"
+    },
+    {
+      "path": "src/watchdog/daemon.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eae6066e846c9fd57b51fda9025dbccb3bc843df",
+      "size": 42787,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/eae6066e846c9fd57b51fda9025dbccb3bc843df"
+    },
+    {
+      "path": "src/watchdog/health.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0ef3c47e060a0cb9a3d8bfb8abd757bee8e61a7a",
+      "size": 28219,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0ef3c47e060a0cb9a3d8bfb8abd757bee8e61a7a"
+    },
+    {
+      "path": "src/watchdog/health.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "978aef0507b35313a0d2327732733b8335a0ed81",
+      "size": 16141,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/978aef0507b35313a0d2327732733b8335a0ed81"
+    },
+    {
+      "path": "src/watchdog/triage.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a07098a13cb02cc0564852fe48465afb176378fa",
+      "size": 6720,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a07098a13cb02cc0564852fe48465afb176378fa"
+    },
+    {
+      "path": "src/watchdog/triage.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d4d12bc14bb06eaa26db6a58d733aa374fbf2e1b",
+      "size": 6332,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d4d12bc14bb06eaa26db6a58d733aa374fbf2e1b"
+    },
+    {
+      "path": "src/worktree",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4174a5b76ee7407fe5e6d3ab9d57c8dd253edee3",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/4174a5b76ee7407fe5e6d3ab9d57c8dd253edee3"
+    },
+    {
+      "path": "src/worktree/manager.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38d127d6eeef5db1fad6c4523aa7a6d016e95562",
+      "size": 22328,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/38d127d6eeef5db1fad6c4523aa7a6d016e95562"
+    },
+    {
+      "path": "src/worktree/manager.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "83465c9a8c5328e42868558f2676eb5e3be07989",
+      "size": 12509,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/83465c9a8c5328e42868558f2676eb5e3be07989"
+    },
+    {
+      "path": "src/worktree/process.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b7e2339ad55e8738f998fe0137b445c61e9714b1",
+      "size": 5337,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b7e2339ad55e8738f998fe0137b445c61e9714b1"
+    },
+    {
+      "path": "src/worktree/process.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b9444ee3fdd8ab27c4181fbfb9b56d7c9e7b4ed7",
+      "size": 4862,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b9444ee3fdd8ab27c4181fbfb9b56d7c9e7b4ed7"
+    },
+    {
+      "path": "src/worktree/tmux.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "763dd818ecc5425a3f68564d0d38e948000aa78c",
+      "size": 47448,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/763dd818ecc5425a3f68564d0d38e948000aa78c"
+    },
+    {
+      "path": "src/worktree/tmux.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "37c3a734f1a9218c6077d0b1ca56c1c0b8c57e15",
+      "size": 24303,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/37c3a734f1a9218c6077d0b1ca56c1c0b8c57e15"
+    },
+    {
+      "path": "templates",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9bef0fe8d1fdbf2b124fecf41d9d38865f2bab11",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/9bef0fe8d1fdbf2b124fecf41d9d38865f2bab11"
+    },
+    {
+      "path": "templates/CLAUDE.md.tmpl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8731b71e55e227432d3436e4fb01afde73812501",
+      "size": 4074,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8731b71e55e227432d3436e4fb01afde73812501"
+    },
+    {
+      "path": "templates/copilot-hooks.json.tmpl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0459b023823d73c46887c77eea06a32bf614c4b4",
+      "size": 534,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0459b023823d73c46887c77eea06a32bf614c4b4"
+    },
+    {
+      "path": "templates/hooks.json.tmpl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea7a40a6b0152a03d61489494a30436c4dc6cb7f",
+      "size": 2660,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ea7a40a6b0152a03d61489494a30436c4dc6cb7f"
+    },
+    {
+      "path": "templates/overlay.md.tmpl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ce2b32d191af6206ded84e75b042f8e3564ac573",
+      "size": 2405,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ce2b32d191af6206ded84e75b042f8e3564ac573"
+    },
+    {
+      "path": "tsconfig.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "321b2dc7fff035cd904f7182e17ad10449d876e9",
+      "size": 373,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/321b2dc7fff035cd904f7182e17ad10449d876e9"
+    },
+    {
+      "path": "ui",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d22062c81d5c4dbdc6a8a638f3990d83f92568f1",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/d22062c81d5c4dbdc6a8a638f3990d83f92568f1"
+    },
+    {
+      "path": "ui/.gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0de4ddd358b1ae1e8ce158bf8a47b841abf28dea",
+      "size": 43,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0de4ddd358b1ae1e8ce158bf8a47b841abf28dea"
+    },
+    {
+      "path": "ui/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2657d0db5b805296e8a18fab11a43e2d30b096d3",
+      "size": 363,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/2657d0db5b805296e8a18fab11a43e2d30b096d3"
+    },
+    {
+      "path": "ui/biome.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f804ef4a5dfea68c07ee303f4339bef237d38fdc",
+      "size": 761,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f804ef4a5dfea68c07ee303f4339bef237d38fdc"
+    },
+    {
+      "path": "ui/build.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e3b547dc930357ea8d5e8653b1e7f841fc53fe29",
+      "size": 539,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e3b547dc930357ea8d5e8653b1e7f841fc53fe29"
+    },
+    {
+      "path": "ui/bun.lock",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "89ecdbe372afbccadf647559eec85ab24039fdee",
+      "size": 31198,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/89ecdbe372afbccadf647559eec85ab24039fdee"
+    },
+    {
+      "path": "ui/bunfig.toml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "de249f953ed8db60b7d8a3f4518369448b736b87",
+      "size": 49,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/de249f953ed8db60b7d8a3f4518369448b736b87"
+    },
+    {
+      "path": "ui/components.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9463d98b599f9c161b98f0c46fe05530107f09d6",
+      "size": 395,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9463d98b599f9c161b98f0c46fe05530107f09d6"
+    },
+    {
+      "path": "ui/dev-server.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "88dd948dc41d1219bc7cabd474f35c2faf751eb2",
+      "size": 1820,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/88dd948dc41d1219bc7cabd474f35c2faf751eb2"
+    },
+    {
+      "path": "ui/index.html",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "509e4a76fa86023481213c19e73c6718c8933619",
+      "size": 696,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/509e4a76fa86023481213c19e73c6718c8933619"
+    },
+    {
+      "path": "ui/package.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0af68e79ab76bbeb33a94d361f96b9dd9ae70c56",
+      "size": 1025,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0af68e79ab76bbeb33a94d361f96b9dd9ae70c56"
+    },
+    {
+      "path": "ui/public",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ffe5c9424ff63545ae108d3115b9a1d496d7039e",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/ffe5c9424ff63545ae108d3115b9a1d496d7039e"
+    },
+    {
+      "path": "ui/public/apple-touch-icon.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "420a10ff7d8f7646175be8294ea60427dfebbe4f",
+      "size": 5310,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/420a10ff7d8f7646175be8294ea60427dfebbe4f"
+    },
+    {
+      "path": "ui/public/favicon.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fb66960a880a639230c040bb2da7f870d87a070a",
+      "size": 267,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/fb66960a880a639230c040bb2da7f870d87a070a"
+    },
+    {
+      "path": "ui/src",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "92b0b99a4318324090eaa30a51ded3be9933425b",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/92b0b99a4318324090eaa30a51ded3be9933425b"
+    },
+    {
+      "path": "ui/src/components",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9938c6e1fefce09c9d63d35ab2875fd173ca7fd7",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/9938c6e1fefce09c9d63d35ab2875fd173ca7fd7"
+    },
+    {
+      "path": "ui/src/components/Layout.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91147d03dbad8f0e7358357d10c2710460e123b5",
+      "size": 2335,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/91147d03dbad8f0e7358357d10c2710460e123b5"
+    },
+    {
+      "path": "ui/src/components/Logo.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0163a1215f7922708869a816769be2c47a436b78",
+      "size": 2063,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/0163a1215f7922708869a816769be2c47a436b78"
+    },
+    {
+      "path": "ui/src/components/command-palette.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ff83204a289160cd12a84f85a03d162f6bf19a97",
+      "size": 3536,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ff83204a289160cd12a84f85a03d162f6bf19a97"
+    },
+    {
+      "path": "ui/src/components/connection-status.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c87e16c91f14594e9329b9125bf8b68e40a9a137",
+      "size": 1086,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c87e16c91f14594e9329b9125bf8b68e40a9a137"
+    },
+    {
+      "path": "ui/src/components/theme-toggle.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "576f580e7d0f73cbec156cc3af8611167c81171b",
+      "size": 1113,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/576f580e7d0f73cbec156cc3af8611167c81171b"
+    },
+    {
+      "path": "ui/src/components/ui",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5b03337ee386179f3eb287f7330a5866a8ff349b",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/5b03337ee386179f3eb287f7330a5866a8ff349b"
+    },
+    {
+      "path": "ui/src/components/ui/badge.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9505a4ec3203a551ac479f9b40e3609b18e1137b",
+      "size": 1595,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9505a4ec3203a551ac479f9b40e3609b18e1137b"
+    },
+    {
+      "path": "ui/src/components/ui/button.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c4e6d5fed870eb45ca9d3a65200e933c3da58da7",
+      "size": 2127,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c4e6d5fed870eb45ca9d3a65200e933c3da58da7"
+    },
+    {
+      "path": "ui/src/components/ui/card.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e49664f76f2c46a3a96a4631c89eeb3b92daeb3",
+      "size": 1852,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8e49664f76f2c46a3a96a4631c89eeb3b92daeb3"
+    },
+    {
+      "path": "ui/src/components/ui/code-block.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f9619fbb2789b43cab81c9f79b0bef7fad4ff866",
+      "size": 2619,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f9619fbb2789b43cab81c9f79b0bef7fad4ff866"
+    },
+    {
+      "path": "ui/src/components/ui/collapsible.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe273773c1994dba8e29adc2ac610864ff421036",
+      "size": 3021,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/fe273773c1994dba8e29adc2ac610864ff421036"
+    },
+    {
+      "path": "ui/src/components/ui/command.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8901ece5525f874b3c21313be04749402036da1",
+      "size": 4482,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e8901ece5525f874b3c21313be04749402036da1"
+    },
+    {
+      "path": "ui/src/components/ui/dialog.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "443b746db2e6db4536947cda45bc66b3ca8af704",
+      "size": 3705,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/443b746db2e6db4536947cda45bc66b3ca8af704"
+    },
+    {
+      "path": "ui/src/components/ui/dropdown-menu.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "10aae72e7b2685bfcdd62088cbc3c42e0281351c",
+      "size": 3498,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/10aae72e7b2685bfcdd62088cbc3c42e0281351c"
+    },
+    {
+      "path": "ui/src/components/ui/empty-state.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "86c6c6b4764b09ab78f87f6e65e9699625a0ac12",
+      "size": 1265,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/86c6c6b4764b09ab78f87f6e65e9699625a0ac12"
+    },
+    {
+      "path": "ui/src/components/ui/input.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf2b4923ab76fda1f4abcc414752afd345a5458a",
+      "size": 675,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/cf2b4923ab76fda1f4abcc414752afd345a5458a"
+    },
+    {
+      "path": "ui/src/components/ui/loading-card.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04ddfb2cec2c67de06104bd8a7416ffbbfaeaf55",
+      "size": 1077,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/04ddfb2cec2c67de06104bd8a7416ffbbfaeaf55"
+    },
+    {
+      "path": "ui/src/components/ui/resizable.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d7a3b3b788f41c62899b0b0064015e9a39929656",
+      "size": 1808,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d7a3b3b788f41c62899b0b0064015e9a39929656"
+    },
+    {
+      "path": "ui/src/components/ui/scroll-area.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1c7423a13c8b04a3c9f2b47ba6dc9536ee04c379",
+      "size": 1510,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/1c7423a13c8b04a3c9f2b47ba6dc9536ee04c379"
+    },
+    {
+      "path": "ui/src/components/ui/select.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "75155f3ef1b3dfd6ff1c92ecb5200b13a1b372eb",
+      "size": 621,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/75155f3ef1b3dfd6ff1c92ecb5200b13a1b372eb"
+    },
+    {
+      "path": "ui/src/components/ui/sonner.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "07da0d21ee4b40ac93287290525710aa5d67f3b7",
+      "size": 381,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/07da0d21ee4b40ac93287290525710aa5d67f3b7"
+    },
+    {
+      "path": "ui/src/components/ui/table.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f91488ab9f60b8b7c781201b8cab640d96938e61",
+      "size": 2282,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f91488ab9f60b8b7c781201b8cab640d96938e61"
+    },
+    {
+      "path": "ui/src/components/ui/tabs.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "28c511b25204f3b85ae02dc8341568fd22316a41",
+      "size": 1794,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/28c511b25204f3b85ae02dc8341568fd22316a41"
+    },
+    {
+      "path": "ui/src/index.css",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1b40dc0781292b7f77802b05c84d7ffaa9e124ef",
+      "size": 5821,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/1b40dc0781292b7f77802b05c84d7ffaa9e124ef"
+    },
+    {
+      "path": "ui/src/lib",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "86c26f61560168cd59a9124385f5540ed086294a",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/86c26f61560168cd59a9124385f5540ed086294a"
+    },
+    {
+      "path": "ui/src/lib/api.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ede58bfa3ed819f9c96c7d1eff74980b759314c6",
+      "size": 6288,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ede58bfa3ed819f9c96c7d1eff74980b759314c6"
+    },
+    {
+      "path": "ui/src/lib/brand.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "70910ded4583941e6e30e22ea3b14f0ca1ffcc21",
+      "size": 1330,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/70910ded4583941e6e30e22ea3b14f0ca1ffcc21"
+    },
+    {
+      "path": "ui/src/lib/theme.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c4103526c6067f31256af8314f5d5b1f3bca6ff5",
+      "size": 2947,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c4103526c6067f31256af8314f5d5b1f3bca6ff5"
+    },
+    {
+      "path": "ui/src/lib/toast.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f63601afa6e0669c4e0accf2b0f5ebd990a5941",
+      "size": 448,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8f63601afa6e0669c4e0accf2b0f5ebd990a5941"
+    },
+    {
+      "path": "ui/src/lib/use-auto-scroll.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a78b1386dad203e4f9059d44c3abb27ead68b1ba",
+      "size": 2836,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a78b1386dad203e4f9059d44c3abb27ead68b1ba"
+    },
+    {
+      "path": "ui/src/lib/use-auto-scroll.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "782332023c740b87acc587077ebf4de2163aa95e",
+      "size": 2553,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/782332023c740b87acc587077ebf4de2163aa95e"
+    },
+    {
+      "path": "ui/src/lib/use-scroll-fade.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b88aafca22cec29259d9b5eca595ee48d3b6594",
+      "size": 1587,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6b88aafca22cec29259d9b5eca595ee48d3b6594"
+    },
+    {
+      "path": "ui/src/lib/use-scroll-fade.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4ad3ca425515a60c5b184e6f533748ef0c8b8ade",
+      "size": 1752,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/4ad3ca425515a60c5b184e6f533748ef0c8b8ade"
+    },
+    {
+      "path": "ui/src/lib/utils.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ac680b303c9f4606446fb080a9cbc7c222ea5a99",
+      "size": 168,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ac680b303c9f4606446fb080a9cbc7c222ea5a99"
+    },
+    {
+      "path": "ui/src/lib/ws-status.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3c4498ebeb7d1b3588fd79b4f552f374ba07f8d",
+      "size": 2547,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d3c4498ebeb7d1b3588fd79b4f552f374ba07f8d"
+    },
+    {
+      "path": "ui/src/lib/ws.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1110d9e318276d13e9c4301658f5297210eaa19b",
+      "size": 4900,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/1110d9e318276d13e9c4301658f5297210eaa19b"
+    },
+    {
+      "path": "ui/src/main.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3f023f0e25160c82a225c932c3ecfa6e9a99a0c",
+      "size": 1720,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/d3f023f0e25160c82a225c932c3ecfa6e9a99a0c"
+    },
+    {
+      "path": "ui/src/routes",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "81bc78e3f958d5e6cbce731bf270368110898ec5",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/81bc78e3f958d5e6cbce731bf270368110898ec5"
+    },
+    {
+      "path": "ui/src/routes/AgentDetail.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b7d2a72b6a82acd35b34830983aedcaea329d67a",
+      "size": 6074,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/b7d2a72b6a82acd35b34830983aedcaea329d67a"
+    },
+    {
+      "path": "ui/src/routes/Home.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "50552b066c0d841c1d78081e95a2d45c6610a44e",
+      "size": 2608,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/50552b066c0d841c1d78081e95a2d45c6610a44e"
+    },
+    {
+      "path": "ui/src/routes/Mail.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e48ee215abc698ec4840f80b8f6382946cf2f23a",
+      "size": 3907,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/e48ee215abc698ec4840f80b8f6382946cf2f23a"
+    },
+    {
+      "path": "ui/src/routes/agent",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "252b9a075e91735c10bae9de15fbc62843162d73",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/252b9a075e91735c10bae9de15fbc62843162d73"
+    },
+    {
+      "path": "ui/src/routes/agent/EventRow.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d27fe33d855603757929c7b8729c89b93f4ba25",
+      "size": 7191,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6d27fe33d855603757929c7b8729c89b93f4ba25"
+    },
+    {
+      "path": "ui/src/routes/coordinator",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1f13ec8feff61c75a8a5502665c59a326287fa7b",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/1f13ec8feff61c75a8a5502665c59a326287fa7b"
+    },
+    {
+      "path": "ui/src/routes/coordinator/Composer.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f502190ca04594446efed57d300f2b88052afa24",
+      "size": 7600,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f502190ca04594446efed57d300f2b88052afa24"
+    },
+    {
+      "path": "ui/src/routes/coordinator/ConsolePage.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "db5ed7514011b31837b8b09fe285dc5c27c376db",
+      "size": 16058,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/db5ed7514011b31837b8b09fe285dc5c27c376db"
+    },
+    {
+      "path": "ui/src/routes/coordinator/EmptyState.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1df716c44b1a642d08d8b73ec29151b370dc4010",
+      "size": 2034,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/1df716c44b1a642d08d8b73ec29151b370dc4010"
+    },
+    {
+      "path": "ui/src/routes/coordinator/NewRunDialog.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65689b62bd4ec48910c415834b3fb9f27afd436f",
+      "size": 3595,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/65689b62bd4ec48910c415834b3fb9f27afd436f"
+    },
+    {
+      "path": "ui/src/routes/coordinator/PendingBubble.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a16f15589211bfeba860e90ce0462ceab70db530",
+      "size": 4688,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/a16f15589211bfeba860e90ce0462ceab70db530"
+    },
+    {
+      "path": "ui/src/routes/coordinator/StatusPill.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "76275f8f15796dc729037babe7251c38ee3ab007",
+      "size": 1991,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/76275f8f15796dc729037babe7251c38ee3ab007"
+    },
+    {
+      "path": "ui/src/routes/coordinator/Thread.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "48160e0edbde7ba77d2a8f3760887a4af1e0eca6",
+      "size": 5189,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/48160e0edbde7ba77d2a8f3760887a4af1e0eca6"
+    },
+    {
+      "path": "ui/src/routes/coordinator/api.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ffe8e6e86036983e372030ba83edcb28da7c715",
+      "size": 3374,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/9ffe8e6e86036983e372030ba83edcb28da7c715"
+    },
+    {
+      "path": "ui/src/routes/fleet",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ec172065ec5859b4ac4e20abc27204ff22708c31",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/ec172065ec5859b4ac4e20abc27204ff22708c31"
+    },
+    {
+      "path": "ui/src/routes/fleet/AgentTable.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "737dc7ac29499ae1196326faa7a95406bc212031",
+      "size": 3277,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/737dc7ac29499ae1196326faa7a95406bc212031"
+    },
+    {
+      "path": "ui/src/routes/fleet/RunPicker.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6e98605ca4edb3bf514d3c62aca4554c3b98ccee",
+      "size": 904,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/6e98605ca4edb3bf514d3c62aca4554c3b98ccee"
+    },
+    {
+      "path": "ui/src/routes/fleet/SummaryCards.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b241be2e37efa30ab2fdbfb4b1d58b4b1efbd9b",
+      "size": 1316,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3b241be2e37efa30ab2fdbfb4b1d58b4b1efbd9b"
+    },
+    {
+      "path": "ui/src/routes/fleet/format.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab75ddd01cf5b3803574a904e2da384bf6c1daf4",
+      "size": 532,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/ab75ddd01cf5b3803574a904e2da384bf6c1daf4"
+    },
+    {
+      "path": "ui/src/routes/mail",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3994f83b101e9abd6c7cd435b79e4e0b684c443f",
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/trees/3994f83b101e9abd6c7cd435b79e4e0b684c443f"
+    },
+    {
+      "path": "ui/src/routes/mail/Composer.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c0874b5298dec917aedeec579263616ab50d781",
+      "size": 10103,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/4c0874b5298dec917aedeec579263616ab50d781"
+    },
+    {
+      "path": "ui/src/routes/mail/FilterChips.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b20cbd1b118d67f3027be5de9078994b68d0d57",
+      "size": 1424,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/3b20cbd1b118d67f3027be5de9078994b68d0d57"
+    },
+    {
+      "path": "ui/src/routes/mail/MessageDetail.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7cebca587cbd26bff86d5807f6f5361bdcf0975c",
+      "size": 4354,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/7cebca587cbd26bff86d5807f6f5361bdcf0975c"
+    },
+    {
+      "path": "ui/src/routes/mail/ThreadList.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c055eea84b14407788ecd5098fc9fc5a9d557537",
+      "size": 3112,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/c055eea84b14407788ecd5098fc9fc5a9d557537"
+    },
+    {
+      "path": "ui/src/routes/mail/api.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f5ed093e50d33eba77ffc420263be340ff2ba287",
+      "size": 179,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/f5ed093e50d33eba77ffc420263be340ff2ba287"
+    },
+    {
+      "path": "ui/src/routes/mail/types.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8a61c9d5b22078be08ef20bee6c279c788071471",
+      "size": 679,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/8a61c9d5b22078be08ef20bee6c279c788071471"
+    },
+    {
+      "path": "ui/src/routes/mail/ws.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "58ad1271d34155e743ec10af472bf3d3229d0780",
+      "size": 42,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/58ad1271d34155e743ec10af472bf3d3229d0780"
+    },
+    {
+      "path": "ui/tsconfig.app.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "141f87ba5f583f6006044b166b3e491387d8ab96",
+      "size": 570,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/141f87ba5f583f6006044b166b3e491387d8ab96"
+    },
+    {
+      "path": "ui/tsconfig.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "50384f161b687c330331623496d239078d676d8f",
+      "size": 152,
+      "url": "https://api.github.com/repos/jayminwest/overstory/git/blobs/50384f161b687c330331623496d239078d676d8f"
+    }
+  ],
+  "truncated": false
+}

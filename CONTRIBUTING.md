@@ -12,7 +12,7 @@ maintainer-facing) and the working detail in [`docs/development.md`](./docs/deve
 file is the contributor's entry point; where it and `AGENTS.md` disagree, `AGENTS.md` wins.
 
 By contributing you agree that your contribution is distributed under the repository's licence,
-**SUL-1.0** ([`LICENSE.md`](./LICENSE.md)).
+**MIT** ([`LICENSE.md`](./LICENSE.md), `Copyright (c) 2026 HaroldZ32`).
 
 ## Table of contents
 
@@ -97,7 +97,7 @@ reproduces those exact bytes — a build run from inside a package directory is 
 Other build entry points:
 
 ```bash
-node scripts/build-mcp.ts          # MCP servers, offline from in-repo sources
+bun run --filter '*' build        # or run a package's own `build` script; MCP launchers build one file each
 node scripts/build-mpd-client.ts   # the combined web client, after agent-teams client changes
 node scripts/pack-mpd.ts           # RELEASE only: the relocatable dist/mpd-package/ artifact
 ```
@@ -245,6 +245,6 @@ and a documentation rewrite do not.
 
 ## Licence
 
-The repository is licensed under **SUL-1.0** ([`LICENSE.md`](./LICENSE.md)); the adopted
-`agent-teams` component keeps its own MIT licence, which covers that component only. See
+The repository is licensed under **MIT** ([`LICENSE.md`](./LICENSE.md)); third-party components keep
+their own licences, which cover those components only. See
 [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md) for the complete notices.

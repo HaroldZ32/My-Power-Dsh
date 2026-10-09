@@ -1,0 +1,27 @@
+# sha256 of the delivered persona bytes — read at 2026-10-08T16:56:24Z (UTC)
+# subject: the 11 persona texts + ATTRIBUTION.md (packages/mpd-roles-plugin/personas/)
+69e6ed07b74c69dfc564b4f756218db3ed1c80ab710bccedb469b869347d4781  packages/mpd-roles-plugin/personas/atlas.md
+c8ab71bd8af7c1b5f5946c00d75a528e4f7f6904502335a376814d6b72ef4025  packages/mpd-roles-plugin/personas/ATTRIBUTION.md
+653075775436e5585857f797ed005dee1f1917cae6b51bd6653cdaa7f452d8e1  packages/mpd-roles-plugin/personas/explore.md
+ed0f0e9d1c740622571a2a26c92e1a1676475a11a7608251b394964cc5b3359b  packages/mpd-roles-plugin/personas/hephaestus.md
+4d44f2fde3a9d3744e1fb9691ae8db601651dd27595e4ae848e6e20115a55da5  packages/mpd-roles-plugin/personas/librarian.md
+50b81acb95cea4c2ae8705ecc0c48951dabf5107048c50b38ad3a112bc892de0  packages/mpd-roles-plugin/personas/metis.md
+713d251e0fb9bcaa49cfcebd9cd0c86038674e3c44ff9aa19ff6edec314c808e  packages/mpd-roles-plugin/personas/momus.md
+8908b5c6f9638055598577879c1e0a5694bcaa87fa3ac78be90b58f977678bad  packages/mpd-roles-plugin/personas/multimodal-looker.md
+6a7bb2e4e9f4ca1536e66583aa5698352c41e09fa6159e7dfb90a032cfe304bd  packages/mpd-roles-plugin/personas/oracle.md
+e8ff575dcb5b0fe28b96d232edaa6cd536d8cd2ace47ef734e25d0f2f3a0ed48  packages/mpd-roles-plugin/personas/prometheus.md
+b18e01cc56e51e588c43ef0a178724a21c37c67b368aebfb297d99f19cbc2161  packages/mpd-roles-plugin/personas/sisyphus-junior.md
+0ea947deac439cb62ba7f81646b5f8b292c7e7a4730ea9c46752fa230aa99505  packages/mpd-roles-plugin/personas/sisyphus.md
+# baseline: the pre-wave-D texts (read from git HEAD) and the measurement instrument
+7a785807e202a14befd34a7f8b55c1499b04a25f222699c21e3f7c292d371557  evidence/de-omo/personas/20261008T163931Z/analysis/old-atlas.md
+d898a61b720a207ad03e83970e9a974e9521e8ae7906ace9fafeaa4d068b2bc1  evidence/de-omo/personas/20261008T163931Z/analysis/old-explore.md
+cb93ae41557b0e94d6c33d5ce1780f45069e29390f45a0104213833a440599b1  evidence/de-omo/personas/20261008T163931Z/analysis/old-hephaestus.md
+2e663ccf35cc42c765885eda752f4e67a9f0621339db8a51e7de43faadf8ef92  evidence/de-omo/personas/20261008T163931Z/analysis/old-librarian.md
+04605366c45a75fb91e0945ffeb5c1b94aede1f8b8a377ee056a7d453eba0d53  evidence/de-omo/personas/20261008T163931Z/analysis/old-metis.md
+3796e34bd9459cd5cc7b00b1af8582ec075f5d577be4bea1565d415e240510b3  evidence/de-omo/personas/20261008T163931Z/analysis/old-momus.md
+aff35bdc328c73c5f1164758b6f0ee5dad106e896d379f2f94c75513c9b4fd4b  evidence/de-omo/personas/20261008T163931Z/analysis/old-multimodal-looker.md
+ef15e8ab195169f44f5235a602713d8dfd7f322555dc1747ab8c35136ea0e0a4  evidence/de-omo/personas/20261008T163931Z/analysis/old-oracle.md
+eb769ebd57a0288a21335dfcf4be5b60bc6253bc9a7ac9e86de8d6ec0f47a652  evidence/de-omo/personas/20261008T163931Z/analysis/old-prometheus.md
+eb03b11198a0865a2f82def9baab37673dfdee28f1ddd39f793d2e5b805d0abb  evidence/de-omo/personas/20261008T163931Z/analysis/old-sisyphus-junior.md
+b9e997b58abcda0be6f1743183f1fa536df54f074c4f7704f4a163448842829d  evidence/de-omo/personas/20261008T163931Z/analysis/old-sisyphus.md
+2c67d2083f8a7ad0a216d4d765b1025d78dd7cac81112848a2836b1b688aebbb  evidence/de-omo/personas/20261008T163931Z/analysis/overlap.mjs

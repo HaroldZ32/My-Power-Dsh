@@ -1,0 +1,3 @@
+{"scenario":"rewrite-stale","applying":false,"argv":["--version"]}
+{"scenario":"rewrite-stale","applying":false,"argv":["run","-p","foo($A)","-r","qux($A)","--lang","typescript","--json=stream","--strictness","smart","src"]}
+{"scenario":"rewrite-stale","applying":true,"argv":["run","-p","foo($A)","-r","qux($A)","--lang","typescript","--update-all","--strictness","smart","src"]}

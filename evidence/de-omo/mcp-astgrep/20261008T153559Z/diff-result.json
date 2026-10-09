@@ -1,0 +1,1349 @@
+{
+  "oracle": "evidence/de-omo/mcp-astgrep/20261008T153559Z/oracle-vendored-cli.mjs",
+  "replacement": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-astgrep/dist/cli.js",
+  "cases": [
+    {
+      "id": "protocol-surface",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 7,
+      "oracleResponses": 7,
+      "replacementResponses": 7,
+      "maskedDescriptions": [
+        "search:582",
+        "rewrite:540",
+        "scan:505"
+      ],
+      "oracleArgv": [],
+      "replacementArgv": [],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"capabilities\":{\"tools\":{\"listChanged\":false}},\"serverInfo\":{\"name\":\"ast_grep\",\"version\":\"0.1.0\"},\"protocolVersion\":\"2025-06-18\"}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"tools\":[{\"name\":\"search\",\"description\":\"<description>\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"pattern\":{\"type\":\"string\",\"minLength\":1,\"description\":\"ast-grep pattern — code, not regex. Max 16 KiB (16384 BYTES, UTF-8) — the limit counts bytes, not characters.\"},\"language\":{\"type\":\"string\",\"enum\":[\"bash\",\"c\",\"cpp\",\"csharp\",\"css\",\"elixir\",\"go\",\"haskell\",\"html\",\"java\",\"javascript\",\"json\",\"kotlin\",\"lua\",\"nix\",\"php\",\"python\",\"ruby\",\"rust\",\"scala\",\"solidity\",\"swift\",\"typescript\",\"tsx\",\"yaml\"],\"description\":\"Language the pattern must parse in.\"},\"paths\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":64,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"description\":\"Files or directories to search. Required — there is no implicit '.' default.\"},\"workdir\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096,\"description\":\"Working directory for the sg process. Defaults to the server's cwd.\"},\"globs\":{\"type\":\"array\",\"maxItems\":32,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"description\":\"Optional include/exclude globs passed through to ast-grep.\"},\"selector\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128,\"description\":\"Optional sub-node selector.\"},\"strictness\":{\"type\":\"string\",\"enum\":[\"cst\",\"smart\",\"ast\",\"relaxed\",\"signature\"],\"description\":\"Match strictness (default smart).\"},\"maxMatches\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":500,\"description\":\"Maximum matches to return (default 50).\"},\"timeoutMs\":{\"type\":\"integer\",\"minimum\":1000,\"maximum\":300000,\"description\":\"Whole-call timeout budget in milliseconds (default 300000).\"},\"includeHidden\":{\"type\":\"boolean\",\"description\":\"Include hidden files (--no-ignore hidden).\"},\"followSymlinks\":{\"type\":\"boolean\",\"description\":\"Follow symlinks (--follow).\"},\"force\":{\"type\":\"boolean\",\"description\":\"Bypass non-fatal pattern hint rejections.\"}},\"required\":[\"pattern\",\"language\",\"paths\"],\"additionalProperties\":false}},{\"name\":\"rewrite\",\"description\":\"<description>\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"pattern\":{\"type\":\"string\",\"minLength\":1,\"description\":\"ast-grep pattern — code, not regex. Max 16 KiB (16384 BYTES, UTF-8) — the limit counts bytes, not characters.\"},\"rewrite\":{\"type\":\"string\",\"description\":\"Replacement code; empty deletes the match. Max 64 KiB (65536 BYTES, UTF-8) — the limit counts bytes, not characters.\"},\"language\":{\"type\":\"string\",\"enum\":[\"bash\",\"c\",\"cpp\",\"csharp\",\"css\",\"elixir\",\"go\",\"haskell\",\"html\",\"java\",\"javascript\",\"json\",\"kotlin\",\"lua\",\"nix\",\"php\",\"python\",\"ruby\",\"rust\",\"scala\",\"solidity\",\"swift\",\"typescript\",\"tsx\",\"yaml\"],\"description\":\"Language the pattern must parse in.\"},\"paths\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":64,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"description\":\"Files or directories to search. Required — there is no implicit '.' default.\"},\"workdir\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096,\"description\":\"Working directory for the sg process. Defaults to the server's cwd.\"},\"globs\":{\"type\":\"array\",\"maxItems\":32,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"description\":\"Optional include/exclude globs passed through to ast-grep.\"},\"selector\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128,\"description\":\"Optional sub-node selector.\"},\"strictness\":{\"type\":\"string\",\"enum\":[\"cst\",\"smart\",\"ast\",\"relaxed\",\"signature\"],\"description\":\"Match strictness (default smart).\"},\"apply\":{\"type\":\"boolean\",\"description\":\"Write the rewrite to disk. Default false (dry run).\"},\"maxMatches\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":500,\"description\":\"Maximum matches to return (default 50).\"},\"timeoutMs\":{\"type\":\"integer\",\"minimum\":1000,\"maximum\":300000,\"description\":\"Whole-call timeout budget in milliseconds (default 300000).\"},\"includeHidden\":{\"type\":\"boolean\",\"description\":\"Include hidden files (--no-ignore hidden).\"},\"followSymlinks\":{\"type\":\"boolean\",\"description\":\"Follow symlinks (--follow).\"},\"force\":{\"type\":\"boolean\",\"description\":\"Bypass non-fatal pattern hint rejections.\"}},\"required\":[\"pattern\",\"rewrite\",\"language\",\"paths\"],\"additionalProperties\":false}},{\"name\":\"scan\",\"description\":\"<description>\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"ruleFile\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096,\"description\":\"Path to a YAML rule file. Mutually exclusive with inlineRules.\"},\"inlineRules\":{\"type\":\"string\",\"minLength\":1,\"description\":\"Inline YAML rule text. Mutually exclusive with ruleFile. Max 64 KiB (65536 BYTES, UTF-8) — the limit counts bytes, not characters.\"},\"paths\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":64,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"description\":\"Files or directories to search. Required — there is no implicit '.' default.\"},\"workdir\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096,\"description\":\"Working directory for the sg process. Defaults to the server's cwd.\"},\"globs\":{\"type\":\"array\",\"maxItems\":32,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"description\":\"Optional include/exclude globs passed through to ast-grep.\"},\"maxMatches\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":500,\"description\":\"Maximum matches to return (default 50).\"},\"timeoutMs\":{\"type\":\"integer\",\"minimum\":1000,\"maximum\":300000,\"description\":\"Whole-call timeout budget in milliseconds (default 300000).\"},\"includeHidden\":{\"type\":\"boolean\",\"description\":\"Include hidden files (--no-ignore hidden).\"},\"followSymlinks\":{\"type\":\"boolean\",\"description\":\"Follow symlinks (--follow).\"},\"includeMetadata\":{\"type\":\"boolean\",\"description\":\"Include rule metadata in each match.\"},\"apply\":{\"type\":\"boolean\",\"description\":\"Write rule fixes to disk. Default false (dry run).\"}},\"required\":[\"paths\"],\"additionalProperties\":false}}]}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":4,\"error\":{\"code\":-32602,\"message\":\"tools/call requires params.name\"}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":5,\"error\":{\"code\":-32601,\"message\":\"Method not found: no/such/method\"}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":6,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Unknown ast_grep tool: nope. Available tools: search, rewrite, scan.\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"details\\\":{}}}\"}],\"isError\":true}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error\",\"data\":\"Unexpected token 'N', \\\"NOT JSON AT ALL\\\" is not valid JSON\"}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"capabilities\":{\"tools\":{\"listChanged\":false}},\"serverInfo\":{\"name\":\"ast_grep\",\"version\":\"0.1.0\"},\"protocolVersion\":\"2025-06-18\"}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"tools\":[{\"name\":\"search\",\"description\":\"<description>\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"pattern\":{\"type\":\"string\",\"minLength\":1,\"description\":\"ast-grep pattern — code, not regex. Max 16 KiB (16384 BYTES, UTF-8) — the limit counts bytes, not characters.\"},\"language\":{\"type\":\"string\",\"enum\":[\"bash\",\"c\",\"cpp\",\"csharp\",\"css\",\"elixir\",\"go\",\"haskell\",\"html\",\"java\",\"javascript\",\"json\",\"kotlin\",\"lua\",\"nix\",\"php\",\"python\",\"ruby\",\"rust\",\"scala\",\"solidity\",\"swift\",\"typescript\",\"tsx\",\"yaml\"],\"description\":\"Language the pattern must parse in.\"},\"paths\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":64,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"description\":\"Files or directories to search. Required — there is no implicit '.' default.\"},\"workdir\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096,\"description\":\"Working directory for the sg process. Defaults to the server's cwd.\"},\"globs\":{\"type\":\"array\",\"maxItems\":32,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"description\":\"Optional include/exclude globs passed through to ast-grep.\"},\"selector\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128,\"description\":\"Optional sub-node selector.\"},\"strictness\":{\"type\":\"string\",\"enum\":[\"cst\",\"smart\",\"ast\",\"relaxed\",\"signature\"],\"description\":\"Match strictness (default smart).\"},\"maxMatches\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":500,\"description\":\"Maximum matches to return (default 50).\"},\"timeoutMs\":{\"type\":\"integer\",\"minimum\":1000,\"maximum\":300000,\"description\":\"Whole-call timeout budget in milliseconds (default 300000).\"},\"includeHidden\":{\"type\":\"boolean\",\"description\":\"Include hidden files (--no-ignore hidden).\"},\"followSymlinks\":{\"type\":\"boolean\",\"description\":\"Follow symlinks (--follow).\"},\"force\":{\"type\":\"boolean\",\"description\":\"Bypass non-fatal pattern hint rejections.\"}},\"required\":[\"pattern\",\"language\",\"paths\"],\"additionalProperties\":false}},{\"name\":\"rewrite\",\"description\":\"<description>\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"pattern\":{\"type\":\"string\",\"minLength\":1,\"description\":\"ast-grep pattern — code, not regex. Max 16 KiB (16384 BYTES, UTF-8) — the limit counts bytes, not characters.\"},\"rewrite\":{\"type\":\"string\",\"description\":\"Replacement code; empty deletes the match. Max 64 KiB (65536 BYTES, UTF-8) — the limit counts bytes, not characters.\"},\"language\":{\"type\":\"string\",\"enum\":[\"bash\",\"c\",\"cpp\",\"csharp\",\"css\",\"elixir\",\"go\",\"haskell\",\"html\",\"java\",\"javascript\",\"json\",\"kotlin\",\"lua\",\"nix\",\"php\",\"python\",\"ruby\",\"rust\",\"scala\",\"solidity\",\"swift\",\"typescript\",\"tsx\",\"yaml\"],\"description\":\"Language the pattern must parse in.\"},\"paths\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":64,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"description\":\"Files or directories to search. Required — there is no implicit '.' default.\"},\"workdir\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096,\"description\":\"Working directory for the sg process. Defaults to the server's cwd.\"},\"globs\":{\"type\":\"array\",\"maxItems\":32,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"description\":\"Optional include/exclude globs passed through to ast-grep.\"},\"selector\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128,\"description\":\"Optional sub-node selector.\"},\"strictness\":{\"type\":\"string\",\"enum\":[\"cst\",\"smart\",\"ast\",\"relaxed\",\"signature\"],\"description\":\"Match strictness (default smart).\"},\"apply\":{\"type\":\"boolean\",\"description\":\"Write the rewrite to disk. Default false (dry run).\"},\"maxMatches\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":500,\"description\":\"Maximum matches to return (default 50).\"},\"timeoutMs\":{\"type\":\"integer\",\"minimum\":1000,\"maximum\":300000,\"description\":\"Whole-call timeout budget in milliseconds (default 300000).\"},\"includeHidden\":{\"type\":\"boolean\",\"description\":\"Include hidden files (--no-ignore hidden).\"},\"followSymlinks\":{\"type\":\"boolean\",\"description\":\"Follow symlinks (--follow).\"},\"force\":{\"type\":\"boolean\",\"description\":\"Bypass non-fatal pattern hint rejections.\"}},\"required\":[\"pattern\",\"rewrite\",\"language\",\"paths\"],\"additionalProperties\":false}},{\"name\":\"scan\",\"description\":\"<description>\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"ruleFile\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096,\"description\":\"Path to a YAML rule file. Mutually exclusive with inlineRules.\"},\"inlineRules\":{\"type\":\"string\",\"minLength\":1,\"description\":\"Inline YAML rule text. Mutually exclusive with ruleFile. Max 64 KiB (65536 BYTES, UTF-8) — the limit counts bytes, not characters.\"},\"paths\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":64,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"description\":\"Files or directories to search. Required — there is no implicit '.' default.\"},\"workdir\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096,\"description\":\"Working directory for the sg process. Defaults to the server's cwd.\"},\"globs\":{\"type\":\"array\",\"maxItems\":32,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"description\":\"Optional include/exclude globs passed through to ast-grep.\"},\"maxMatches\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":500,\"description\":\"Maximum matches to return (default 50).\"},\"timeoutMs\":{\"type\":\"integer\",\"minimum\":1000,\"maximum\":300000,\"description\":\"Whole-call timeout budget in milliseconds (default 300000).\"},\"includeHidden\":{\"type\":\"boolean\",\"description\":\"Include hidden files (--no-ignore hidden).\"},\"followSymlinks\":{\"type\":\"boolean\",\"description\":\"Follow symlinks (--follow).\"},\"includeMetadata\":{\"type\":\"boolean\",\"description\":\"Include rule metadata in each match.\"},\"apply\":{\"type\":\"boolean\",\"description\":\"Write rule fixes to disk. Default false (dry run).\"}},\"required\":[\"paths\"],\"additionalProperties\":false}}]}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":4,\"error\":{\"code\":-32602,\"message\":\"tools/call requires params.name\"}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":5,\"error\":{\"code\":-32601,\"message\":\"Method not found: no/such/method\"}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":6,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Unknown ast_grep tool: nope. Available tools: search, rewrite, scan.\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"details\\\":{}}}\"}],\"isError\":true}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error\",\"data\":\"Unexpected token 'N', \\\"NOT JSON AT ALL\\\" is not valid JSON\"}}"
+      ]
+    },
+    {
+      "id": "search-match",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1},{\\\"path\\\":\\\"src/b.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"baz()\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":2,\\\"column\\\":0,\\\"byteOffset\\\":0},\\\"end\\\":{\\\"line\\\":2,\\\"column\\\":5,\\\"byteOffset\\\":5}},\\\"metavariables\\\":{\\\"single\\\":{},\\\"multi\\\":{}}}],\\\"counts\\\":{\\\"returnedMatches\\\":2,\\\"returnedFiles\\\":2,\\\"totalMatches\\\":2,\\\"totalFiles\\\":2,\\\"atLeastMatches\\\":2},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1},{\\\"path\\\":\\\"src/b.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"baz()\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":2,\\\"column\\\":0,\\\"byteOffset\\\":0},\\\"end\\\":{\\\"line\\\":2,\\\"column\\\":5,\\\"byteOffset\\\":5}},\\\"metavariables\\\":{\\\"single\\\":{},\\\"multi\\\":{}}}],\\\"counts\\\":{\\\"returnedMatches\\\":2,\\\"returnedFiles\\\":2,\\\"totalMatches\\\":2,\\\"totalFiles\\\":2,\\\"atLeastMatches\\\":2},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "search-none",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[],\\\"counts\\\":{\\\"returnedMatches\\\":0,\\\"returnedFiles\\\":0,\\\"totalMatches\\\":0,\\\"totalFiles\\\":0,\\\"atLeastMatches\\\":0},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[],\\\"counts\\\":{\\\"returnedMatches\\\":0,\\\"returnedFiles\\\":0,\\\"totalMatches\\\":0,\\\"totalFiles\\\":0,\\\"atLeastMatches\\\":0},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "search-all-flags",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "ast",
+          "--selector",
+          "call_expression",
+          "--globs",
+          "*.ts",
+          "--globs",
+          "!*.test.ts",
+          "--no-ignore",
+          "hidden",
+          "--follow",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "ast",
+          "--selector",
+          "call_expression",
+          "--globs",
+          "*.ts",
+          "--globs",
+          "!*.test.ts",
+          "--no-ignore",
+          "hidden",
+          "--follow",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1},{\\\"path\\\":\\\"src/b.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"baz()\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":2,\\\"column\\\":0,\\\"byteOffset\\\":0},\\\"end\\\":{\\\"line\\\":2,\\\"column\\\":5,\\\"byteOffset\\\":5}},\\\"metavariables\\\":{\\\"single\\\":{},\\\"multi\\\":{}}}],\\\"counts\\\":{\\\"returnedMatches\\\":2,\\\"returnedFiles\\\":2,\\\"totalMatches\\\":2,\\\"totalFiles\\\":2,\\\"atLeastMatches\\\":2},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":7,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1},{\\\"path\\\":\\\"src/b.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"baz()\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":2,\\\"column\\\":0,\\\"byteOffset\\\":0},\\\"end\\\":{\\\"line\\\":2,\\\"column\\\":5,\\\"byteOffset\\\":5}},\\\"metavariables\\\":{\\\"single\\\":{},\\\"multi\\\":{}}}],\\\"counts\\\":{\\\"returnedMatches\\\":2,\\\"returnedFiles\\\":2,\\\"totalMatches\\\":2,\\\"totalFiles\\\":2,\\\"atLeastMatches\\\":2},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":7,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "search-invalid-args",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"pattern must be a string\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{}}}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"pattern must be a string\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{}}}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "search-unknown-prop",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Unknown property: nope\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{}}}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Unknown property: nope\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{}}}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "search-hint-reject",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"PATTERN_HINT_REJECTED\\\",\\\"message\\\":\\\"Metavariable name $name must be UPPERCASE (e.g. $NAME) or use $_ for wildcard.\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"stderr\\\":\\\"\\\",\\\"hint\\\":\\\"Metavariable name $name must be UPPERCASE (e.g. $NAME) or use $_ for wildcard.\\\"}}}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"PATTERN_HINT_REJECTED\\\",\\\"message\\\":\\\"Metavariable name $name must be UPPERCASE (e.g. $NAME) or use $_ for wildcard.\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"stderr\\\":\\\"\\\",\\\"hint\\\":\\\"Metavariable name $name must be UPPERCASE (e.g. $NAME) or use $_ for wildcard.\\\"}}}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "search-hint-force",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($name)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($name)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1},{\\\"path\\\":\\\"src/b.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"baz()\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":2,\\\"column\\\":0,\\\"byteOffset\\\":0},\\\"end\\\":{\\\"line\\\":2,\\\"column\\\":5,\\\"byteOffset\\\":5}},\\\"metavariables\\\":{\\\"single\\\":{},\\\"multi\\\":{}}}],\\\"counts\\\":{\\\"returnedMatches\\\":2,\\\"returnedFiles\\\":2,\\\"totalMatches\\\":2,\\\"totalFiles\\\":2,\\\"atLeastMatches\\\":2},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[\\\"Metavariable name $name must be UPPERCASE (e.g. $NAME) or use $_ for wildcard.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1},{\\\"path\\\":\\\"src/b.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"baz()\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":2,\\\"column\\\":0,\\\"byteOffset\\\":0},\\\"end\\\":{\\\"line\\\":2,\\\"column\\\":5,\\\"byteOffset\\\":5}},\\\"metavariables\\\":{\\\"single\\\":{},\\\"multi\\\":{}}}],\\\"counts\\\":{\\\"returnedMatches\\\":2,\\\"returnedFiles\\\":2,\\\"totalMatches\\\":2,\\\"totalFiles\\\":2,\\\"atLeastMatches\\\":2},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[\\\"Metavariable name $name must be UPPERCASE (e.g. $NAME) or use $_ for wildcard.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "search-warn-alternation",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "a|b",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "a|b",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1},{\\\"path\\\":\\\"src/b.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"baz()\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":2,\\\"column\\\":0,\\\"byteOffset\\\":0},\\\"end\\\":{\\\"line\\\":2,\\\"column\\\":5,\\\"byteOffset\\\":5}},\\\"metavariables\\\":{\\\"single\\\":{},\\\"multi\\\":{}}}],\\\"counts\\\":{\\\"returnedMatches\\\":2,\\\"returnedFiles\\\":2,\\\"totalMatches\\\":2,\\\"totalFiles\\\":2,\\\"atLeastMatches\\\":2},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[\\\"Literal '|' may be a TS union or bitwise-or. If regex alternation, use separate calls.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1},{\\\"path\\\":\\\"src/b.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"baz()\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":2,\\\"column\\\":0,\\\"byteOffset\\\":0},\\\"end\\\":{\\\"line\\\":2,\\\"column\\\":5,\\\"byteOffset\\\":5}},\\\"metavariables\\\":{\\\"single\\\":{},\\\"multi\\\":{}}}],\\\"counts\\\":{\\\"returnedMatches\\\":2,\\\"returnedFiles\\\":2,\\\"totalMatches\\\":2,\\\"totalFiles\\\":2,\\\"atLeastMatches\\\":2},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[\\\"Literal '|' may be a TS union or bitwise-or. If regex alternation, use separate calls.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "search-truncated",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1}],\\\"counts\\\":{\\\"returnedMatches\\\":1,\\\"returnedFiles\\\":1,\\\"totalMatches\\\":null,\\\"totalFiles\\\":null,\\\"atLeastMatches\\\":2},\\\"truncation\\\":{\\\"truncated\\\":true,\\\"reason\\\":\\\"match_limit\\\",\\\"maxMatches\\\":1,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[\\\"Result limit reached; narrow paths or globs.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1}],\\\"counts\\\":{\\\"returnedMatches\\\":1,\\\"returnedFiles\\\":1,\\\"totalMatches\\\":null,\\\"totalFiles\\\":null,\\\"atLeastMatches\\\":2},\\\"truncation\\\":{\\\"truncated\\\":true,\\\"reason\\\":\\\"match_limit\\\",\\\"maxMatches\\\":1,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"warnings\\\":[\\\"Result limit reached; narrow paths or globs.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "search-sg-exit2",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"SG_FAILED\\\",\\\"message\\\":\\\"ast-grep exited with code 2\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"search\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"stderr\\\":\\\"error: broken query\\\\n\\\",\\\"hint\\\":\\\"\\\"}}}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"SG_FAILED\\\",\\\"message\\\":\\\"ast-grep exited with code 2\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"search\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"stderr\\\":\\\"error: broken query\\\\n\\\",\\\"hint\\\":\\\"\\\"}}}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "search-error-node",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"PATTERN_PARSE_FAILED\\\",\\\"message\\\":\\\"Pattern did not parse as one typescript AST node.\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"search\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"stderr\\\":\\\"Warning: Pattern contains an ERROR node\\\\n\\\",\\\"hint\\\":\\\"Use a complete function, call, declaration, or wrapped context.\\\"}}}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"PATTERN_PARSE_FAILED\\\",\\\"message\\\":\\\"Pattern did not parse as one typescript AST node.\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"search\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"stderr\\\":\\\"Warning: Pattern contains an ERROR node\\\\n\\\",\\\"hint\\\":\\\"Use a complete function, call, declaration, or wrapped context.\\\"}}}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "search-malformed-salvage",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1}],\\\"counts\\\":{\\\"returnedMatches\\\":1,\\\"returnedFiles\\\":1,\\\"totalMatches\\\":null,\\\"totalFiles\\\":null,\\\"atLeastMatches\\\":1},\\\"truncation\\\":{\\\"truncated\\\":true,\\\"reason\\\":\\\"sg_output_truncated\\\",\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":1},\\\"warnings\\\":[\\\"Result limit reached; narrow paths or globs.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"search\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1}],\\\"counts\\\":{\\\"returnedMatches\\\":1,\\\"returnedFiles\\\":1,\\\"totalMatches\\\":null,\\\"totalFiles\\\":null,\\\"atLeastMatches\\\":1},\\\"truncation\\\":{\\\"truncated\\\":true,\\\"reason\\\":\\\"sg_output_truncated\\\",\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":1},\\\"warnings\\\":[\\\"Result limit reached; narrow paths or globs.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "search-garbage-only",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"OUTPUT_PARSE_FAILED\\\",\\\"message\\\":\\\"ast-grep produced no parseable JSON records\\\",\\\"retryable\\\":true,\\\"phase\\\":\\\"search\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"stderr\\\":\\\"\\\",\\\"hint\\\":\\\"\\\"}}}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"OUTPUT_PARSE_FAILED\\\",\\\"message\\\":\\\"ast-grep produced no parseable JSON records\\\",\\\"retryable\\\":true,\\\"phase\\\":\\\"search\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"stderr\\\":\\\"\\\",\\\"hint\\\":\\\"\\\"}}}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "rewrite-dry-run",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"rewrite\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux($A)\\\"}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"idempotencyChecked\\\":false,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"rewrite\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux($A)\\\"}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"idempotencyChecked\\\":false,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "rewrite-apply",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--update-all",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--update-all",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"rewrite\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":true,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux($A)\\\"}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":true,\\\"performed\\\":true,\\\"countsArePreviewBased\\\":true,\\\"idempotencyChecked\\\":false,\\\"secondPassExitCode\\\":0},\\\"warnings\\\":[\\\"Mutation counts are based on the preview pass; sg update-all does not return equivalent JSON.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"rewrite\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":true,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux($A)\\\"}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":true,\\\"performed\\\":true,\\\"countsArePreviewBased\\\":true,\\\"idempotencyChecked\\\":false,\\\"secondPassExitCode\\\":0},\\\"warnings\\\":[\\\"Mutation counts are based on the preview pass; sg update-all does not return equivalent JSON.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "rewrite-stale-preview",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--update-all",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--update-all",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"rewrite\\\",\\\"error\\\":{\\\"code\\\":\\\"REWRITE_STALE_PREVIEW\\\",\\\"message\\\":\\\"The preview found matches but the mutation pass found none; the files or search scope changed between passes. Re-run the preview before applying.\\\",\\\"retryable\\\":true,\\\"phase\\\":\\\"apply\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"stderr\\\":\\\"\\\"}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"rewrite\\\",\\\"error\\\":{\\\"code\\\":\\\"REWRITE_STALE_PREVIEW\\\",\\\"message\\\":\\\"The preview found matches but the mutation pass found none; the files or search scope changed between passes. Re-run the preview before applying.\\\",\\\"retryable\\\":true,\\\"phase\\\":\\\"apply\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"stderr\\\":\\\"\\\"}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "rewrite-apply-no-match",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "run",
+          "-p",
+          "foo($A)",
+          "-r",
+          "qux($A)",
+          "--lang",
+          "typescript",
+          "--json=stream",
+          "--strictness",
+          "smart",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"rewrite\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[],\\\"counts\\\":{\\\"plannedMatches\\\":0,\\\"plannedFiles\\\":0},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":true,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"idempotencyChecked\\\":false,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[\\\"Nothing to apply: the preview found no matches.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"rewrite\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[],\\\"counts\\\":{\\\"plannedMatches\\\":0,\\\"plannedFiles\\\":0},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":true,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"idempotencyChecked\\\":false,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[\\\"Nothing to apply: the preview found no matches.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "rewrite-unbound-metavar",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"rewrite\\\",\\\"error\\\":{\\\"code\\\":\\\"REWRITE_UNBOUND_METAVARIABLE\\\",\\\"message\\\":\\\"Rewrite uses metavariable $NOPE not captured by pattern.\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"hints\\\":[\\\"Rewrite uses metavariable $NOPE not captured by pattern.\\\"]}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"rewrite\\\",\\\"error\\\":{\\\"code\\\":\\\"REWRITE_UNBOUND_METAVARIABLE\\\",\\\"message\\\":\\\"Rewrite uses metavariable $NOPE not captured by pattern.\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"hints\\\":[\\\"Rewrite uses metavariable $NOPE not captured by pattern.\\\"]}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "rewrite-cardinality",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"rewrite\\\",\\\"error\\\":{\\\"code\\\":\\\"REWRITE_METAVARIABLE_KIND_MISMATCH\\\",\\\"message\\\":\\\"Metavariable A cardinality mismatch between pattern and rewrite.\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"hints\\\":[\\\"Metavariable A cardinality mismatch between pattern and rewrite.\\\"]}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"rewrite\\\",\\\"error\\\":{\\\"code\\\":\\\"REWRITE_METAVARIABLE_KIND_MISMATCH\\\",\\\"message\\\":\\\"Metavariable A cardinality mismatch between pattern and rewrite.\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{\\\"hints\\\":[\\\"Metavariable A cardinality mismatch between pattern and rewrite.\\\"]}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "rewrite-invalid-args",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"rewrite\\\",\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Unknown property: unknownFlag\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"rewrite\\\",\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Unknown property: unknownFlag\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"language\\\":\\\"typescript\\\",\\\"details\\\":{}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "scan-dry-run",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--json=stream",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--json=stream",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux(bar)\\\",\\\"replacementOffsets\\\":{\\\"start\\\":10,\\\"end\\\":18},\\\"rule\\\":{\\\"ruleId\\\":\\\"no-foo\\\",\\\"severity\\\":\\\"warning\\\",\\\"note\\\":\\\"prefer qux\\\",\\\"message\\\":\\\"foo is deprecated\\\",\\\"labels\\\":[{\\\"style\\\":\\\"primary\\\"}],\\\"metadata\\\":{\\\"owner\\\":\\\"qa\\\"}}}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux(bar)\\\",\\\"replacementOffsets\\\":{\\\"start\\\":10,\\\"end\\\":18},\\\"rule\\\":{\\\"ruleId\\\":\\\"no-foo\\\",\\\"severity\\\":\\\"warning\\\",\\\"note\\\":\\\"prefer qux\\\",\\\"message\\\":\\\"foo is deprecated\\\",\\\"labels\\\":[{\\\"style\\\":\\\"primary\\\"}],\\\"metadata\\\":{\\\"owner\\\":\\\"qa\\\"}}}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "scan-apply",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--json=stream",
+          "src"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--update-all",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--json=stream",
+          "src"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--update-all",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":true,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux(bar)\\\",\\\"replacementOffsets\\\":{\\\"start\\\":10,\\\"end\\\":18},\\\"rule\\\":{\\\"ruleId\\\":\\\"no-foo\\\",\\\"severity\\\":\\\"warning\\\",\\\"note\\\":\\\"prefer qux\\\",\\\"message\\\":\\\"foo is deprecated\\\",\\\"labels\\\":[{\\\"style\\\":\\\"primary\\\"}],\\\"metadata\\\":{\\\"owner\\\":\\\"qa\\\"}}}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":true,\\\"performed\\\":true,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":0},\\\"warnings\\\":[\\\"Mutation counts are based on the preview pass; sg scan --update-all does not return equivalent JSON.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":true,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux(bar)\\\",\\\"replacementOffsets\\\":{\\\"start\\\":10,\\\"end\\\":18},\\\"rule\\\":{\\\"ruleId\\\":\\\"no-foo\\\",\\\"severity\\\":\\\"warning\\\",\\\"note\\\":\\\"prefer qux\\\",\\\"message\\\":\\\"foo is deprecated\\\",\\\"labels\\\":[{\\\"style\\\":\\\"primary\\\"}],\\\"metadata\\\":{\\\"owner\\\":\\\"qa\\\"}}}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":true,\\\"performed\\\":true,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":0},\\\"warnings\\\":[\\\"Mutation counts are based on the preview pass; sg scan --update-all does not return equivalent JSON.\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "scan-metadata-and-flags",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--include-metadata",
+          "--json=stream",
+          "--globs",
+          "*.ts",
+          "--no-ignore",
+          "hidden",
+          "--follow",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--include-metadata",
+          "--json=stream",
+          "--globs",
+          "*.ts",
+          "--no-ignore",
+          "hidden",
+          "--follow",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux(bar)\\\",\\\"replacementOffsets\\\":{\\\"start\\\":10,\\\"end\\\":18},\\\"rule\\\":{\\\"ruleId\\\":\\\"no-foo\\\",\\\"severity\\\":\\\"warning\\\",\\\"note\\\":\\\"prefer qux\\\",\\\"message\\\":\\\"foo is deprecated\\\",\\\"labels\\\":[{\\\"style\\\":\\\"primary\\\"}],\\\"metadata\\\":{\\\"owner\\\":\\\"qa\\\"}}}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":3,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux(bar)\\\",\\\"replacementOffsets\\\":{\\\"start\\\":10,\\\"end\\\":18},\\\"rule\\\":{\\\"ruleId\\\":\\\"no-foo\\\",\\\"severity\\\":\\\"warning\\\",\\\"note\\\":\\\"prefer qux\\\",\\\"message\\\":\\\"foo is deprecated\\\",\\\"labels\\\":[{\\\"style\\\":\\\"primary\\\"}],\\\"metadata\\\":{\\\"owner\\\":\\\"qa\\\"}}}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":3,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "scan-rule-file",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--rule",
+          "rules/no-foo.yml",
+          "--json=stream",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--rule",
+          "rules/no-foo.yml",
+          "--json=stream",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux(bar)\\\",\\\"replacementOffsets\\\":{\\\"start\\\":10,\\\"end\\\":18},\\\"rule\\\":{\\\"ruleId\\\":\\\"no-foo\\\",\\\"severity\\\":\\\"warning\\\",\\\"note\\\":\\\"prefer qux\\\",\\\"message\\\":\\\"foo is deprecated\\\",\\\"labels\\\":[{\\\"style\\\":\\\"primary\\\"}],\\\"metadata\\\":{\\\"owner\\\":\\\"qa\\\"}}}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux(bar)\\\",\\\"replacementOffsets\\\":{\\\"start\\\":10,\\\"end\\\":18},\\\"rule\\\":{\\\"ruleId\\\":\\\"no-foo\\\",\\\"severity\\\":\\\"warning\\\",\\\"note\\\":\\\"prefer qux\\\",\\\"message\\\":\\\"foo is deprecated\\\",\\\"labels\\\":[{\\\"style\\\":\\\"primary\\\"}],\\\"metadata\\\":{\\\"owner\\\":\\\"qa\\\"}}}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "scan-both-sources",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"scan\\\",\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Exactly one of ruleFile or inlineRules must be provided\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"details\\\":{}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"scan\\\",\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Exactly one of ruleFile or inlineRules must be provided\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"details\\\":{}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "scan-no-source",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"scan\\\",\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Exactly one of ruleFile or inlineRules must be provided\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"details\\\":{}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"scan\\\",\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Exactly one of ruleFile or inlineRules must be provided\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"details\\\":{}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "scan-rule-parse-failed",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--json=stream",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--json=stream",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[],\\\"counts\\\":{\\\"plannedMatches\\\":0,\\\"plannedFiles\\\":0},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[],\\\"counts\\\":{\\\"plannedMatches\\\":0,\\\"plannedFiles\\\":0},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "scan-deprecation-warning",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--json=stream",
+          "src"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ],
+        [
+          "scan",
+          "--inline-rules",
+          "id: no-foo\nlanguage: TypeScript\nrule:\n  pattern: foo($A)\n",
+          "--json=stream",
+          "src"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux(bar)\\\",\\\"replacementOffsets\\\":{\\\"start\\\":10,\\\"end\\\":18},\\\"rule\\\":{\\\"ruleId\\\":\\\"no-foo\\\",\\\"severity\\\":\\\"warning\\\",\\\"note\\\":\\\"prefer qux\\\",\\\"message\\\":\\\"foo is deprecated\\\",\\\"labels\\\":[{\\\"style\\\":\\\"primary\\\"}],\\\"metadata\\\":{\\\"owner\\\":\\\"qa\\\"}}}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[\\\"warning: sg scan is deprecated in this configuration\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":true,\\\"kind\\\":\\\"scan\\\",\\\"workdir\\\":\\\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh\\\",\\\"applied\\\":false,\\\"matches\\\":[{\\\"path\\\":\\\"src/a.ts\\\",\\\"language\\\":\\\"typescript\\\",\\\"text\\\":\\\"foo(bar)\\\",\\\"range\\\":{\\\"start\\\":{\\\"line\\\":3,\\\"column\\\":0,\\\"byteOffset\\\":10},\\\"end\\\":{\\\"line\\\":3,\\\"column\\\":8,\\\"byteOffset\\\":18}},\\\"metavariables\\\":{\\\"single\\\":{\\\"A\\\":\\\"bar\\\"},\\\"multi\\\":{\\\"ARGS\\\":\\\"bar\\\"}},\\\"customField\\\":1,\\\"replacement\\\":\\\"qux(bar)\\\",\\\"replacementOffsets\\\":{\\\"start\\\":10,\\\"end\\\":18},\\\"rule\\\":{\\\"ruleId\\\":\\\"no-foo\\\",\\\"severity\\\":\\\"warning\\\",\\\"note\\\":\\\"prefer qux\\\",\\\"message\\\":\\\"foo is deprecated\\\",\\\"labels\\\":[{\\\"style\\\":\\\"primary\\\"}],\\\"metadata\\\":{\\\"owner\\\":\\\"qa\\\"}}}],\\\"counts\\\":{\\\"plannedMatches\\\":1,\\\"plannedFiles\\\":1},\\\"truncation\\\":{\\\"truncated\\\":false,\\\"reason\\\":null,\\\"maxMatches\\\":50,\\\"maxPayloadBytes\\\":4194304,\\\"salvagedRecords\\\":0},\\\"application\\\":{\\\"requested\\\":false,\\\"performed\\\":false,\\\"countsArePreviewBased\\\":true,\\\"secondPassExitCode\\\":null},\\\"warnings\\\":[\\\"warning: sg scan is deprecated in this configuration\\\"],\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":false}}"
+      ]
+    },
+    {
+      "id": "scan-unknown-prop",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "replacementArgv": [
+        [
+          "--version"
+        ]
+      ],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"scan\\\",\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Unknown property: nope\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"details\\\":{}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"kind\\\":\\\"scan\\\",\\\"error\\\":{\\\"code\\\":\\\"INVALID_ARGUMENT\\\",\\\"message\\\":\\\"Unknown property: nope\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"details\\\":{}},\\\"durationMs\\\":\\\"<ms>\\\"}\"}],\"isError\":true}}"
+      ]
+    },
+    {
+      "id": "no-binary-found",
+      "same": true,
+      "sameResponses": true,
+      "sameArgv": true,
+      "sameStderr": true,
+      "expectedResponses": 1,
+      "oracleResponses": 1,
+      "replacementResponses": 1,
+      "maskedDescriptions": [],
+      "oracleArgv": [],
+      "replacementArgv": [],
+      "oracleResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"BINARY_NOT_FOUND\\\",\\\"message\\\":\\\"<resolver message>\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"details\\\":{\\\"hints\\\":[\\\"<hints>\\\"]}}}\"}],\"isError\":true}}"
+      ],
+      "replacementResponsesText": [
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schemaVersion\\\":1,\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"BINARY_NOT_FOUND\\\",\\\"message\\\":\\\"<resolver message>\\\",\\\"retryable\\\":false,\\\"phase\\\":\\\"preflight\\\",\\\"details\\\":{\\\"hints\\\":[\\\"<hints>\\\"]}}}\"}],\"isError\":true}}"
+      ]
+    }
+  ],
+  "equal": 31,
+  "different": 0
+}

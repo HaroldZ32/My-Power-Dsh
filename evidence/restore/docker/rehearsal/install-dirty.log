@@ -1,0 +1,4 @@
+Progress: resolved 1, reused 0, downloaded 1
+ WARN  Ignored build scripts: @ast-grep/cli@0.45.3.
+Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+ ERR_PNPM_IGNORED_BUILDS  Ignored build scripts

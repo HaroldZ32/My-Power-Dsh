@@ -1,0 +1,1166 @@
+{
+  "sha": "19e0695accb8b9db0be0235ecdfb7fcb23106820",
+  "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/19e0695accb8b9db0be0235ecdfb7fcb23106820",
+  "tree": [
+    {
+      "path": ".claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8877e847a67a38ab4a35ad5a3458c28d4d4cbade",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/8877e847a67a38ab4a35ad5a3458c28d4d4cbade"
+    },
+    {
+      "path": ".claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9566cadebe82ab3e35ad10ee45bd847fa96e9054",
+      "size": 648,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/9566cadebe82ab3e35ad10ee45bd847fa96e9054"
+    },
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "82b955effbe0093b33e40328eb60ffcd203f82fa",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/82b955effbe0093b33e40328eb60ffcd203f82fa"
+    },
+    {
+      "path": ".github/CODEOWNERS",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ddf2f82c8b9ed83f23f2b6bfe825d16f1b71be44",
+      "size": 83,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/ddf2f82c8b9ed83f23f2b6bfe825d16f1b71be44"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "08fc3b05c41d45be93e83b98adb1e571b053e28c",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/08fc3b05c41d45be93e83b98adb1e571b053e28c"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "818117849130a1a55d109b628376a964d078abfb",
+      "size": 824,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/818117849130a1a55d109b628376a964d078abfb"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/chore.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "47dc9497b4183d4f2e791789202de96fe082e5fd",
+      "size": 751,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/47dc9497b4183d4f2e791789202de96fe082e5fd"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/ci.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25fd7b664fa565f69d2e705b06b881221e80bc94",
+      "size": 721,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/25fd7b664fa565f69d2e705b06b881221e80bc94"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3ba13e0cec6cbbfd462e9ebf529dd2093148cd69",
+      "size": 28,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/3ba13e0cec6cbbfd462e9ebf529dd2093148cd69"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/documentation.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "88578d562116f85adc604f0a8b4ef6e9bc4e91f4",
+      "size": 764,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/88578d562116f85adc604f0a8b4ef6e9bc4e91f4"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4308f23c38157ffe84d197f52ea42095e3d5455a",
+      "size": 749,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/4308f23c38157ffe84d197f52ea42095e3d5455a"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/refactor.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "82311c2011564031a992ab607278886b70b42483",
+      "size": 799,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/82311c2011564031a992ab607278886b70b42483"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5a9e04e43f36008894a4ad2448d040685ed95b7f",
+      "size": 368,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/5a9e04e43f36008894a4ad2448d040685ed95b7f"
+    },
+    {
+      "path": ".github/dependabot.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "27cdd19b60cd1ba56af02a285a1997afdad2e445",
+      "size": 177,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/27cdd19b60cd1ba56af02a285a1997afdad2e445"
+    },
+    {
+      "path": ".github/workflows",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f8be0630e82166b5a87f0c6e837ac1895cbde0f5",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/f8be0630e82166b5a87f0c6e837ac1895cbde0f5"
+    },
+    {
+      "path": ".github/workflows/ci.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2c36a2e744f10f5022badafb497b2641a4c08cec",
+      "size": 1171,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/2c36a2e744f10f5022badafb497b2641a4c08cec"
+    },
+    {
+      "path": ".github/workflows/release_please.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0556ed1727cc34c39794590bcfdecfe46bac4029",
+      "size": 467,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/0556ed1727cc34c39794590bcfdecfe46bac4029"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c7678b0dc5ee347ae0b8d39b939d89aa5956046c",
+      "size": 125,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/c7678b0dc5ee347ae0b8d39b939d89aa5956046c"
+    },
+    {
+      "path": ".mcp.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6977b9a292db4912b48dcb4d31484512de1d69eb",
+      "size": 151,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/6977b9a292db4912b48dcb4d31484512de1d69eb"
+    },
+    {
+      "path": ".release-please-config.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a60f4b8ef2fab55f1ab448948fe8831b12540ea4",
+      "size": 1390,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/a60f4b8ef2fab55f1ab448948fe8831b12540ea4"
+    },
+    {
+      "path": ".release-please-manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45ca42f079eab03cd2fc229b531a196821f9d5b7",
+      "size": 19,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/45ca42f079eab03cd2fc229b531a196821f9d5b7"
+    },
+    {
+      "path": "AGENTS.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7e15f567d60d75202a05b5aea042555b5a888b6",
+      "size": 8408,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/a7e15f567d60d75202a05b5aea042555b5a888b6"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "73b8a61bf32dfe76800262c08ce2f06f83217318",
+      "size": 25177,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/73b8a61bf32dfe76800262c08ce2f06f83217318"
+    },
+    {
+      "path": "CLAUDE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ced7b7c2efa73da662fc10703f3bbf8983c14280",
+      "size": 2585,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/ced7b7c2efa73da662fc10703f3bbf8983c14280"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3c9dffb1a6194def7e8f24c3072b771e664a7bb6",
+      "size": 3365,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/3c9dffb1a6194def7e8f24c3072b771e664a7bb6"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "52b742b6b72fd472bc47c59bea8fd54d1fb46b87",
+      "size": 12305,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/52b742b6b72fd472bc47c59bea8fd54d1fb46b87"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04414865673dddd4f6c31e9583d5bc0c822175c0",
+      "size": 1075,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/04414865673dddd4f6c31e9583d5bc0c822175c0"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0fc8e8823d54af4c425c7716729688061f046b0",
+      "size": 9550,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/c0fc8e8823d54af4c425c7716729688061f046b0"
+    },
+    {
+      "path": "SECURITY.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0bf8da6f6ca410ed2527553abf506bdea475b32e",
+      "size": 1473,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/0bf8da6f6ca410ed2527553abf506bdea475b32e"
+    },
+    {
+      "path": "agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "89db1985a5766397a9629313daf6e6f45b87038e",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/89db1985a5766397a9629313daf6e6f45b87038e"
+    },
+    {
+      "path": "agents/analysis",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7578d26cc274a1e7f003888167c5e4c4e3b383fb",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/7578d26cc274a1e7f003888167c5e4c4e3b383fb"
+    },
+    {
+      "path": "agents/analysis/plan-splitting-agent.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a8661186b74ad4cc09af8a62928cedfeac568b58",
+      "size": 5591,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/a8661186b74ad4cc09af8a62928cedfeac568b58"
+    },
+    {
+      "path": "agents/analysis/user-flow-analysis-agent.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bc9abf9217c4e88e74139deccb4e40de17207e52",
+      "size": 4848,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/bc9abf9217c4e88e74139deccb4e40de17207e52"
+    },
+    {
+      "path": "agents/codebase-review",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0d31a4ac84eb46d0c4177ab28d85e71e7a6b6fc5",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/0d31a4ac84eb46d0c4177ab28d85e71e7a6b6fc5"
+    },
+    {
+      "path": "agents/codebase-review/code-simplicity-review-agent.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ac9c3b686a268b4ea3393534ea2a00486f74caf5",
+      "size": 5800,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/ac9c3b686a268b4ea3393534ea2a00486f74caf5"
+    },
+    {
+      "path": "agents/codebase-review/codebase-review-agent.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4878b0023313544eb003f3b0bd46f2320d3f8f53",
+      "size": 7212,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/4878b0023313544eb003f3b0bd46f2320d3f8f53"
+    },
+    {
+      "path": "agents/codebase-review/vgv-review-agent.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "123f31b7adc9af2bde06c3682bef7633a710ce73",
+      "size": 16410,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/123f31b7adc9af2bde06c3682bef7633a710ce73"
+    },
+    {
+      "path": "agents/quality-review",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7a7483975527d6fba5332adab6662442322e0790",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/7a7483975527d6fba5332adab6662442322e0790"
+    },
+    {
+      "path": "agents/quality-review/architecture-review-agent.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "beecfda109840df86eb517bfbe49135a22c1bb26",
+      "size": 8254,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/beecfda109840df86eb517bfbe49135a22c1bb26"
+    },
+    {
+      "path": "agents/quality-review/pr-readiness-review-agent.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dbce837b43af357f5920de21cd604c2992eef850",
+      "size": 5117,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/dbce837b43af357f5920de21cd604c2992eef850"
+    },
+    {
+      "path": "agents/quality-review/test-quality-review-agent.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "264d912cfda9744e35a1e2b5c1904ba70f2ffcdb",
+      "size": 7876,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/264d912cfda9744e35a1e2b5c1904ba70f2ffcdb"
+    },
+    {
+      "path": "agents/research",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b22c2bb0c2ce494b5414e3ddd187181ba2db1ccd",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/b22c2bb0c2ce494b5414e3ddd187181ba2db1ccd"
+    },
+    {
+      "path": "agents/research/best-practices-research-agent.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1ed820bf317f5922a397f745c2f00c2ef9fd535",
+      "size": 5666,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/d1ed820bf317f5922a397f745c2f00c2ef9fd535"
+    },
+    {
+      "path": "agents/research/official-docs-research-agent.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "76fe78d4aa36558c9071da31da8197d77f5f20eb",
+      "size": 5102,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/76fe78d4aa36558c9071da31da8197d77f5f20eb"
+    },
+    {
+      "path": "assets",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "27c06d4fc3ed1409b360b00abc1132226d5f44c7",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/27c06d4fc3ed1409b360b00abc1132226d5f44c7"
+    },
+    {
+      "path": "assets/wingspan-logo.jpeg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3952e8112d31e82f3d2f2e20f7503b2b04c985b3",
+      "size": 196805,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/3952e8112d31e82f3d2f2e20f7503b2b04c985b3"
+    },
+    {
+      "path": "config",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a833aa3f0612fac8c09bde6b873c57f0bad6e0b3",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/a833aa3f0612fac8c09bde6b873c57f0bad6e0b3"
+    },
+    {
+      "path": "config/cspell.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "175b2c24b10112c711211c50d7b1804dfd1575a2",
+      "size": 454,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/175b2c24b10112c711211c50d7b1804dfd1575a2"
+    },
+    {
+      "path": "config/custom.markdownlint.jsonc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe20cdc10760b02833c521db5c3ec545c17b0a5d",
+      "size": 110,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/fe20cdc10760b02833c521db5c3ec545c17b0a5d"
+    },
+    {
+      "path": "hooks",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5f201a9144e0fa87cc041ede41795503164655c7",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/5f201a9144e0fa87cc041ede41795503164655c7"
+    },
+    {
+      "path": "hooks/hooks.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9a4338b1e4e490be7f2881b07944771b065e3fd8",
+      "size": 356,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/9a4338b1e4e490be7f2881b07944771b065e3fd8"
+    },
+    {
+      "path": "hooks/recommend-plugins.sh",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "069838cce27399c7503d0fcaa51996e24227242c",
+      "size": 4433,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/069838cce27399c7503d0fcaa51996e24227242c"
+    },
+    {
+      "path": "hooks/recommendations",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "05b925b327ee426d3b7c3530e0b9699a684ec5de",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/05b925b327ee426d3b7c3530e0b9699a684ec5de"
+    },
+    {
+      "path": "hooks/recommendations/vgv-ai-flutter-plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b831e773a52f665c11c175d557092d3e3facf8a0",
+      "size": 549,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/b831e773a52f665c11c175d557092d3e3facf8a0"
+    },
+    {
+      "path": "hooks/test_recommend_plugins.sh",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65df5304feca0f10c4b9abb836da74d1965908cf",
+      "size": 16512,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/65df5304feca0f10c4b9abb836da74d1965908cf"
+    },
+    {
+      "path": "skills",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e90e31f91b4c9425fad957509ec04d8347ea2197",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/e90e31f91b4c9425fad957509ec04d8347ea2197"
+    },
+    {
+      "path": "skills/brainstorm",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a31b6fd7d2b800cee2f896b3e81b51b98fb43ce0",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/a31b6fd7d2b800cee2f896b3e81b51b98fb43ce0"
+    },
+    {
+      "path": "skills/brainstorm/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a750ac97bfebb36c9a9953ed5fffc406f91e0852",
+      "size": 7219,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/a750ac97bfebb36c9a9953ed5fffc406f91e0852"
+    },
+    {
+      "path": "skills/brainstorm/references",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2a70115f8ee65063de7fb16f558fa827a3d1139a",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/2a70115f8ee65063de7fb16f558fa827a3d1139a"
+    },
+    {
+      "path": "skills/brainstorm/references/clear-context-handoff.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "18bd754877260dffec5657f4a09415b1da902624",
+      "size": 48,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/18bd754877260dffec5657f4a09415b1da902624"
+    },
+    {
+      "path": "skills/brainstorm/references/template.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d9c700d6801ab1f6b84edaa41c5bfd5bd70f829a",
+      "size": 366,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/d9c700d6801ab1f6b84edaa41c5bfd5bd70f829a"
+    },
+    {
+      "path": "skills/build",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f6bde49131c9e95dfe36367d41be5831e8d7793a",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/f6bde49131c9e95dfe36367d41be5831e8d7793a"
+    },
+    {
+      "path": "skills/build/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0edb49f5c4b985bed2337951e5e300ce19083d4",
+      "size": 15194,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/c0edb49f5c4b985bed2337951e5e300ce19083d4"
+    },
+    {
+      "path": "skills/build/references",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "646f1a3808d5fb6cf5126075829f5aa6802c30e7",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/646f1a3808d5fb6cf5126075829f5aa6802c30e7"
+    },
+    {
+      "path": "skills/build/references/clear-context-handoff.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "18bd754877260dffec5657f4a09415b1da902624",
+      "size": 48,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/18bd754877260dffec5657f4a09415b1da902624"
+    },
+    {
+      "path": "skills/build/references/drive-to-green.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "3928cea0d2d70c89bd60340d8e8ba41673bc1b9e",
+      "size": 41,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/3928cea0d2d70c89bd60340d8e8ba41673bc1b9e"
+    },
+    {
+      "path": "skills/build/references/implementation-phases.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "dc7db95c7ebc78a45e9521590a7c9eb7016111fa",
+      "size": 63,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/dc7db95c7ebc78a45e9521590a7c9eb7016111fa"
+    },
+    {
+      "path": "skills/build/references/pr-template.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0ce58f3112b1abfa164a5fa9b3d950b7ad93c850",
+      "size": 204,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/0ce58f3112b1abfa164a5fa9b3d950b7ad93c850"
+    },
+    {
+      "path": "skills/build/references/review-agent-instructions.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "963262894eda7a4681cab47f1c309fae04f764b3",
+      "size": 52,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/963262894eda7a4681cab47f1c309fae04f764b3"
+    },
+    {
+      "path": "skills/build/references/review-consolidation.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "97de2856c8ac77f62e324e3b54b49919ed46af80",
+      "size": 47,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/97de2856c8ac77f62e324e3b54b49919ed46af80"
+    },
+    {
+      "path": "skills/build/references/review-report-template.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "f8ff1a976fc0a0aba96a3599ea91409f895d4f89",
+      "size": 49,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/f8ff1a976fc0a0aba96a3599ea91409f895d4f89"
+    },
+    {
+      "path": "skills/build/references/surgical-diff-gate.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3eb0d8ae5eccadb85e3802d8de4726a04d7cf843",
+      "size": 3507,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/3eb0d8ae5eccadb85e3802d8de4726a04d7cf843"
+    },
+    {
+      "path": "skills/build/references/validate-and-fix.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "173ee62267b51df2461b05b5188f81598f4fa369",
+      "size": 43,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/173ee62267b51df2461b05b5188f81598f4fa369"
+    },
+    {
+      "path": "skills/create-pr",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "129a9f7d42a70ab9510bf001d088c0e065b489eb",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/129a9f7d42a70ab9510bf001d088c0e065b489eb"
+    },
+    {
+      "path": "skills/create-pr/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cadee17cb35737a45df27e9303a4bf7fd7fe8ba0",
+      "size": 5279,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/cadee17cb35737a45df27e9303a4bf7fd7fe8ba0"
+    },
+    {
+      "path": "skills/create-pr/references",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "06cd36c732e2fe3900b04f231d2084e8becab8ba",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/06cd36c732e2fe3900b04f231d2084e8becab8ba"
+    },
+    {
+      "path": "skills/create-pr/references/ci-checks.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aeb1e010149f95ffcf297e5080463d0a6a10bf3c",
+      "size": 1302,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/aeb1e010149f95ffcf297e5080463d0a6a10bf3c"
+    },
+    {
+      "path": "skills/create-pr/references/conventional-commits.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64dfbeb616c498b4885535ed937ccb6086a9225e",
+      "size": 1262,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/64dfbeb616c498b4885535ed937ccb6086a9225e"
+    },
+    {
+      "path": "skills/create-pr/references/pr-cli.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d17ced9eae1054fd1d276562c7fe77101992eb8a",
+      "size": 1023,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/d17ced9eae1054fd1d276562c7fe77101992eb8a"
+    },
+    {
+      "path": "skills/create-pr/references/pull-request-template.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c40e85a1316e09a818a79296a5052691a6608d4",
+      "size": 1769,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/7c40e85a1316e09a818a79296a5052691a6608d4"
+    },
+    {
+      "path": "skills/create-pr/references/push.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66b365ab3161380c0c48300aefcad9959c83ad87",
+      "size": 597,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/66b365ab3161380c0c48300aefcad9959c83ad87"
+    },
+    {
+      "path": "skills/create",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9888245004e5e8c0b9ed023379c3fef06cdf81e4",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/9888245004e5e8c0b9ed023379c3fef06cdf81e4"
+    },
+    {
+      "path": "skills/create/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9cb2ff628e12746df35889afb0fca59610457808",
+      "size": 3757,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/9cb2ff628e12746df35889afb0fca59610457808"
+    },
+    {
+      "path": "skills/debrief",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a2be8d4d6acf4c9532ab75c3a4f9b5aa17f7fef0",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/a2be8d4d6acf4c9532ab75c3a4f9b5aa17f7fef0"
+    },
+    {
+      "path": "skills/debrief/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e58a9d44759b558cd2b34812e28d852fac15252e",
+      "size": 7476,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/e58a9d44759b558cd2b34812e28d852fac15252e"
+    },
+    {
+      "path": "skills/debrief/references",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cd900c4ad0c41655a0d6f0dae0560b521df7a7bf",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/cd900c4ad0c41655a0d6f0dae0560b521df7a7bf"
+    },
+    {
+      "path": "skills/debrief/references/template.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "85933a8caaa703e7776f89d79908e86117dbadb3",
+      "size": 1742,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/85933a8caaa703e7776f89d79908e86117dbadb3"
+    },
+    {
+      "path": "skills/elements-of-style",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "820c279d806d3bf38e0e998b7d2fc1888c30d296",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/820c279d806d3bf38e0e998b7d2fc1888c30d296"
+    },
+    {
+      "path": "skills/elements-of-style/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f00e76e30f6b7ebaf3c3e931d9db07d63a556779",
+      "size": 3100,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/f00e76e30f6b7ebaf3c3e931d9db07d63a556779"
+    },
+    {
+      "path": "skills/hotfix",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "68dbc5ed2906c3139dc9da8688adb5356d83c94d",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/68dbc5ed2906c3139dc9da8688adb5356d83c94d"
+    },
+    {
+      "path": "skills/hotfix/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c65a5e069fce4e587151431cad4933bf9afe8b65",
+      "size": 7719,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/c65a5e069fce4e587151431cad4933bf9afe8b65"
+    },
+    {
+      "path": "skills/hotfix/references",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "87b0ec60272de3f2491464286dfdee5e278bef13",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/87b0ec60272de3f2491464286dfdee5e278bef13"
+    },
+    {
+      "path": "skills/hotfix/references/drive-to-green.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "3928cea0d2d70c89bd60340d8e8ba41673bc1b9e",
+      "size": 41,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/3928cea0d2d70c89bd60340d8e8ba41673bc1b9e"
+    },
+    {
+      "path": "skills/hotfix/references/pr-template.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1820272e6ec62d5fc1095d4b8536fd0e238763c4",
+      "size": 345,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/1820272e6ec62d5fc1095d4b8536fd0e238763c4"
+    },
+    {
+      "path": "skills/hotfix/references/review-agent-instructions.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "963262894eda7a4681cab47f1c309fae04f764b3",
+      "size": 52,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/963262894eda7a4681cab47f1c309fae04f764b3"
+    },
+    {
+      "path": "skills/hotfix/references/review-consolidation.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "97de2856c8ac77f62e324e3b54b49919ed46af80",
+      "size": 47,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/97de2856c8ac77f62e324e3b54b49919ed46af80"
+    },
+    {
+      "path": "skills/hotfix/references/review-report-template.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "f8ff1a976fc0a0aba96a3599ea91409f895d4f89",
+      "size": 49,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/f8ff1a976fc0a0aba96a3599ea91409f895d4f89"
+    },
+    {
+      "path": "skills/hotfix/references/validate-and-fix.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "173ee62267b51df2461b05b5188f81598f4fa369",
+      "size": 43,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/173ee62267b51df2461b05b5188f81598f4fa369"
+    },
+    {
+      "path": "skills/plan-technical-review",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "74f44ba4b55f9e9c405d92c47cd50ff1445ee5ef",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/74f44ba4b55f9e9c405d92c47cd50ff1445ee5ef"
+    },
+    {
+      "path": "skills/plan-technical-review/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a37ec2f23936190ecc628067409f02e50d0308f2",
+      "size": 1924,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/a37ec2f23936190ecc628067409f02e50d0308f2"
+    },
+    {
+      "path": "skills/plan-technical-review/references",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b8361fca4a2dbd59e38c5c518c39d039a21bbf30",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/b8361fca4a2dbd59e38c5c518c39d039a21bbf30"
+    },
+    {
+      "path": "skills/plan-technical-review/references/clear-context-handoff.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "18bd754877260dffec5657f4a09415b1da902624",
+      "size": 48,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/18bd754877260dffec5657f4a09415b1da902624"
+    },
+    {
+      "path": "skills/plan-technical-review/references/plan-review.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "668d49c71fc49df9ace29f754f5ac5447996cfda",
+      "size": 38,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/668d49c71fc49df9ace29f754f5ac5447996cfda"
+    },
+    {
+      "path": "skills/plan",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "af2ed75cac7d6b35c90f636025ac33669c1c9178",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/af2ed75cac7d6b35c90f636025ac33669c1c9178"
+    },
+    {
+      "path": "skills/plan/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a95d79df8cb81751371b9cd4d5d76a0536de16b7",
+      "size": 11397,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/a95d79df8cb81751371b9cd4d5d76a0536de16b7"
+    },
+    {
+      "path": "skills/plan/references",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fe33b9ce3c67bab7d0740190a675daa8a484f787",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/fe33b9ce3c67bab7d0740190a675daa8a484f787"
+    },
+    {
+      "path": "skills/plan/references/clear-context-handoff.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "18bd754877260dffec5657f4a09415b1da902624",
+      "size": 48,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/18bd754877260dffec5657f4a09415b1da902624"
+    },
+    {
+      "path": "skills/plan/references/extensive.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "94f99fa004b3ac7a769ec0a869307194f634dfb1",
+      "size": 51,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/94f99fa004b3ac7a769ec0a869307194f634dfb1"
+    },
+    {
+      "path": "skills/plan/references/implementation-phases.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "dc7db95c7ebc78a45e9521590a7c9eb7016111fa",
+      "size": 63,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/dc7db95c7ebc78a45e9521590a7c9eb7016111fa"
+    },
+    {
+      "path": "skills/plan/references/minimal.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "5d036e23e2f2c8f57e2c13e12650c7b8307e527a",
+      "size": 49,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/5d036e23e2f2c8f57e2c13e12650c7b8307e527a"
+    },
+    {
+      "path": "skills/plan/references/plan-review.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "668d49c71fc49df9ace29f754f5ac5447996cfda",
+      "size": 38,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/668d49c71fc49df9ace29f754f5ac5447996cfda"
+    },
+    {
+      "path": "skills/plan/references/standard.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "ac1610fcf0b4628195d2b34b6da924ccd6bfe345",
+      "size": 50,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/ac1610fcf0b4628195d2b34b6da924ccd6bfe345"
+    },
+    {
+      "path": "skills/plan/references/success-criteria.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "52446964a4541714b7ea2e616aeb90549131d5a3",
+      "size": 58,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/52446964a4541714b7ea2e616aeb90549131d5a3"
+    },
+    {
+      "path": "skills/rebase",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "baff882a79357c1aaa251c81faa29a27f70c2a0f",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/baff882a79357c1aaa251c81faa29a27f70c2a0f"
+    },
+    {
+      "path": "skills/rebase/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "863e131177e7f4a8b6e48964d3a55d60883d6b0b",
+      "size": 3154,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/863e131177e7f4a8b6e48964d3a55d60883d6b0b"
+    },
+    {
+      "path": "skills/rebase/scripts",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fc36f3907f120a9798fa6b6f1b67b8165ed027e3",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/fc36f3907f120a9798fa6b6f1b67b8165ed027e3"
+    },
+    {
+      "path": "skills/rebase/scripts/detect-base-branch.sh",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "f741a0e5e9ceadee37ac0aa74af4f9d7f5935fcb",
+      "size": 42,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/f741a0e5e9ceadee37ac0aa74af4f9d7f5935fcb"
+    },
+    {
+      "path": "skills/refine-approach",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "693519892c7d5c83c40a332012c066533833c90e",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/693519892c7d5c83c40a332012c066533833c90e"
+    },
+    {
+      "path": "skills/refine-approach/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "11cb213c86c37756cf1ef90025f9e43309e2e6b3",
+      "size": 4708,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/11cb213c86c37756cf1ef90025f9e43309e2e6b3"
+    },
+    {
+      "path": "skills/refine-approach/references",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5d5f45660fc1d43c91e708beeaf2c2b169524795",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/5d5f45660fc1d43c91e708beeaf2c2b169524795"
+    },
+    {
+      "path": "skills/refine-approach/references/clear-context-handoff.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "18bd754877260dffec5657f4a09415b1da902624",
+      "size": 48,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/18bd754877260dffec5657f4a09415b1da902624"
+    },
+    {
+      "path": "skills/review",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b4993ca60802dd5b6f2334db10371c09c8734083",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/b4993ca60802dd5b6f2334db10371c09c8734083"
+    },
+    {
+      "path": "skills/review/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e4f57fc82297f44299162be8ce2d1e764ef515d",
+      "size": 6941,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/0e4f57fc82297f44299162be8ce2d1e764ef515d"
+    },
+    {
+      "path": "skills/review/references",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e0d5fdb61763db2429143759cbc8c47f582f271b",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/e0d5fdb61763db2429143759cbc8c47f582f271b"
+    },
+    {
+      "path": "skills/review/references/file-findings-on-pr.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "cbb8942e2df7b2d1e9cb61b967339653db108f1a",
+      "size": 46,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/cbb8942e2df7b2d1e9cb61b967339653db108f1a"
+    },
+    {
+      "path": "skills/review/references/review-agent-instructions.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "963262894eda7a4681cab47f1c309fae04f764b3",
+      "size": 52,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/963262894eda7a4681cab47f1c309fae04f764b3"
+    },
+    {
+      "path": "skills/review/references/review-consolidation.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "97de2856c8ac77f62e324e3b54b49919ed46af80",
+      "size": 47,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/97de2856c8ac77f62e324e3b54b49919ed46af80"
+    },
+    {
+      "path": "skills/review/references/review-report-template.md",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "f8ff1a976fc0a0aba96a3599ea91409f895d4f89",
+      "size": 49,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/f8ff1a976fc0a0aba96a3599ea91409f895d4f89"
+    },
+    {
+      "path": "skills/review/scripts",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4d9689409ad4e1bf2c83011fa324948b4b268fc6",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/4d9689409ad4e1bf2c83011fa324948b4b268fc6"
+    },
+    {
+      "path": "skills/review/scripts/detect-review-scope.sh",
+      "mode": "120000",
+      "type": "blob",
+      "sha": "bc2fdc1e2091fd91bef759ba337963e7ddc71095",
+      "size": 43,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/bc2fdc1e2091fd91bef759ba337963e7ddc71095"
+    },
+    {
+      "path": "skills/shared",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "26eb0731963790ab5b912321fe36e66990f1e283",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/26eb0731963790ab5b912321fe36e66990f1e283"
+    },
+    {
+      "path": "skills/shared/references",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c5ba960456b1ccd2507bc5e41863335addb7c650",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/c5ba960456b1ccd2507bc5e41863335addb7c650"
+    },
+    {
+      "path": "skills/shared/references/clear-context-handoff.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "912382bc106b8e13636bea4bd2fe6ad219dc8608",
+      "size": 529,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/912382bc106b8e13636bea4bd2fe6ad219dc8608"
+    },
+    {
+      "path": "skills/shared/references/drive-to-green.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3be4dca0dea36569e22ebcfb470173129d32f8ad",
+      "size": 4398,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/3be4dca0dea36569e22ebcfb470173129d32f8ad"
+    },
+    {
+      "path": "skills/shared/references/file-findings-on-pr.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d91bc8d17fb8c64bfddfbe2336f07c0307507127",
+      "size": 4001,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/d91bc8d17fb8c64bfddfbe2336f07c0307507127"
+    },
+    {
+      "path": "skills/shared/references/plan-review.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f3821545e8909d4e3dded2ad69f891466f3ef86",
+      "size": 3466,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/8f3821545e8909d4e3dded2ad69f891466f3ef86"
+    },
+    {
+      "path": "skills/shared/references/plan-templates",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8334b1d0396c1037e73d0559ed50c8a69c895b3d",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/8334b1d0396c1037e73d0559ed50c8a69c895b3d"
+    },
+    {
+      "path": "skills/shared/references/plan-templates/extensive.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "de6a9b27026627890be980c80261b9461a93014c",
+      "size": 1617,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/de6a9b27026627890be980c80261b9461a93014c"
+    },
+    {
+      "path": "skills/shared/references/plan-templates/implementation-phases.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b9bce24fb40db9a13776fb5405f6f15540742c0b",
+      "size": 1456,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/b9bce24fb40db9a13776fb5405f6f15540742c0b"
+    },
+    {
+      "path": "skills/shared/references/plan-templates/minimal.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bdbc49fe53283d48b6923a71cedc6bcd7b037feb",
+      "size": 486,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/bdbc49fe53283d48b6923a71cedc6bcd7b037feb"
+    },
+    {
+      "path": "skills/shared/references/plan-templates/standard.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "631592cc77a2c472f59e841fa29b0f7cd8cdcd94",
+      "size": 996,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/631592cc77a2c472f59e841fa29b0f7cd8cdcd94"
+    },
+    {
+      "path": "skills/shared/references/plan-templates/success-criteria.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5b362bff6d710b3c9001dcee9ed7172089b92fdb",
+      "size": 1063,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/5b362bff6d710b3c9001dcee9ed7172089b92fdb"
+    },
+    {
+      "path": "skills/shared/references/review-agent-instructions.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1446aee526d507040cb7baae03f3f80351a4f954",
+      "size": 3675,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/1446aee526d507040cb7baae03f3f80351a4f954"
+    },
+    {
+      "path": "skills/shared/references/review-consolidation.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bbef99c3d3b49b20950d47de52152bb5e735f0e5",
+      "size": 6020,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/bbef99c3d3b49b20950d47de52152bb5e735f0e5"
+    },
+    {
+      "path": "skills/shared/references/review-report-template.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e6c8d0bbbcf86df6ba38d04e01c9a8a07b47c0c",
+      "size": 3558,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/0e6c8d0bbbcf86df6ba38d04e01c9a8a07b47c0c"
+    },
+    {
+      "path": "skills/shared/references/validate-and-fix.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "836f7838b048bc327e38f192eee5ace2cafad41e",
+      "size": 573,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/836f7838b048bc327e38f192eee5ace2cafad41e"
+    },
+    {
+      "path": "skills/shared/scripts",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b50187c9961b83e1ac8267d0d6e858e8a32dbc02",
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/trees/b50187c9961b83e1ac8267d0d6e858e8a32dbc02"
+    },
+    {
+      "path": "skills/shared/scripts/detect-base-branch.sh",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "d2aa3233324e36c99f37c105329df6062c695fbf",
+      "size": 441,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/d2aa3233324e36c99f37c105329df6062c695fbf"
+    },
+    {
+      "path": "skills/shared/scripts/detect-review-scope.sh",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "ee7d31807ba254299e2728c85db9f717d70d634f",
+      "size": 1240,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/ee7d31807ba254299e2728c85db9f717d70d634f"
+    },
+    {
+      "path": "skills_lint.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b87f2c705b8df548e1a49b8b50a011b87179be87",
+      "size": 339,
+      "url": "https://api.github.com/repos/VeryGoodOpenSource/vgv-wingspan/git/blobs/b87f2c705b8df548e1a49b8b50a011b87179be87"
+    }
+  ],
+  "truncated": false
+}

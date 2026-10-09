@@ -200,8 +200,9 @@ patch 文件（`presets/mpd.patch.yml`）再携带一个
 | 行 id | 包 | Composition | 用途 | 工具 / 服务 | 关键配置 |
 |---|---|---|---|---|---|
 | `mcp-astgrep` | dsh-mcp-client | web + dsh-tui | 本地 ast-grep stdio 服务器；`launch.ts` 按 bundle 相对路径解析二进制（env pin → `$MPD_AST_GREP_BIN_DIR` → createRequire 可选依赖 → `<bundle>/.toolchain/node_modules/.bin` → `<bundle>/node_modules/.bin`；每个候选都会展开为该主机可执行的各种拼写：win32 解析 `.exe`/`.com`，绝不使用无 shell 运行器无法启动的 `.cmd` 垫片） | `mcp__ast_grep__*`（search / rewrite / scan） | `serverName: ast_grep`、`toolCallTimeoutMs: 60000` |
-| `mcp-gitbash` | dsh-mcp-client | web + dsh-tui，**默认禁用** | 本地 git-bash stdio 服务器；上游按 Windows 专属设计，因此该行自带 `disabled: true` | 启用后为 `mcp__git_bash__*` | 改 `disabled: false` 启用 |
-| `mcp-lsp` | dsh-mcp-client | web + dsh-tui | 本地 LSP 桥（`…/mpd-mcp-lsp/dist/cli.js mcp`） | `mcp__lsp__*` | `serverName: lsp`、`toolCallTimeoutMs: 60000` |
+| `mcp-git` | dsh-mcp-client | web + dsh-tui，**默认禁用** | 本地 git stdio 服务器：薄启动器 `mpd-mcp-gitbash/dist/launch.js` 从已安装 profile 解析已声明的 `@cyanheads/git-mcp-server` 依赖（B2 波替换掉了 vendored 的 SUL-1.0 服务器） | 启用后为 `mcp__git__git_*`（28 个工具） | 改 `disabled: false` 启用；需要 `PATH` 上有 `git` |
+| `mcp-shell` | dsh-mcp-client | web + dsh-tui，**默认禁用** | 同一个启动器加 `shell` 词元：解析已声明的 `mcp-server-commands` 依赖 | 启用后为 `mcp__shell__run_process` | 改 `disabled: false` 启用；取代已退役的 `git_bash` 裸 shell 工具 |
+| `mcp-lsp` | dsh-mcp-client | web + dsh-tui | 本地 LSP stdio 服务器：薄启动器 `mpd-mcp-lsp/dist/launch.js` 解析已声明的 `cclsp` 依赖，并把其配置指向随附的 `typescript-language-server`（B2 波替换掉了 vendored 的 SUL-1.0 daemon） | `mcp__lsp__*`（cclsp 的 12 个工具） | `serverName: lsp`、`toolCallTimeoutMs: 60000` |
 | `mcp-codegraph` | dsh-mcp-client | web + dsh-tui | 本地 codegraph stdio 服务器；`launch.ts` 按 bundle 相对路径解析二进制，并且只在调用方未设置时写入 `MPD_CODEGRAPH_BIN` | `mcp__codegraph__*` | `serverName: codegraph`、`toolCallTimeoutMs: 60000` |
 | `mcp-context7` | dsh-mcp-client | web + dsh-tui（需网络） | 远端 streamable-http MCP 服务器（公共服务，按需使用） | `mcp__context7__*` | `url: https://mcp.context7.com/mcp` |
 | `mcp-grepapp` | dsh-mcp-client | web + dsh-tui（需网络） | 远端 streamable-http MCP 服务器（公共服务，按需使用） | `mcp__grep_app__*` | `url: https://mcp.grep.app` |
@@ -557,7 +558,8 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —�
   **可选 peer**，而没有它时同样这两张页面会注册进 harness 自带的右侧边栏，因此这条限制描述的是代码
   路径，而不是一步安装。Agent Teams 面板是按构造的例外：官方客户端插件把它渲染在**会话头部**，
   而不是侧边栏里。
-- **有两行按设计是惰性或降级的。** `mcp-gitbash` 默认禁用（上游为 Windows 专属），`mpd-tui` 在没有
+- **有三行按设计是惰性或降级的。** `mcp-git` 与 `mcp-shell` 默认禁用（二者都是可选能力，且 `mcp-git`
+  还需要 `PATH` 上有 `git`），`mpd-tui` 在没有
   TUI 接缝的 composition 中 warn-once 降级，因此"该行已被组合"与"该能力已存在"是两个不同的陈述
   （§4）。
 - **vendored skill 语料是固定快照。** `skills/**` 的指纹记录在 `VENDOR_LOCK.json`；语料改动会使该

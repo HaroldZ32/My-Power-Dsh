@@ -4,7 +4,7 @@
 
 [![Version](https://img.shields.io/badge/version-0.12.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
-[![License: SUL-1.0](https://img.shields.io/badge/license-SUL--1.0-orange.svg)](./LICENSE.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.0--rc.2-4B32C3.svg)](#acknowledgements)
 [![Platforms](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#one-plugin-two-surfaces)
 [![Runtime](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
@@ -217,8 +217,8 @@ library, which is HOME-scoped at `~/.mpd/workmate/`. See
   Playwright; terminal tiles are the TUI's own ANSI byte stream rasterized at tmux's character grid.
   A different browser size or terminal will lay out differently: the *facts on screen* are the claim,
   not the pixels.
-- **License: source-available, not open-source.** SUL-1.0 permits internal and personal use and free
-  non-commercial distribution; it is not an OSI license.
+- **License: MIT.** This repository's own code is MIT (`LICENSE.md`, Copyright (c) 2026 HaroldZ32);
+  third-party material keeps its own licence, recorded per component in `LICENSE-NOTICES.md`.
 
 ## Documentation
 
@@ -247,11 +247,15 @@ version (the current release is **v0.12.0**). Annotated tags are listed under
 
 ## Acknowledgements
 
-The specialist roster, the model-chain vocabulary and the roster's stable ids are adapted from
+The specialist roster's names and stable ids and the model-chain vocabulary are adapted from
 [`code-yeongyu/oh-my-openagent`](https://github.com/code-yeongyu/oh-my-openagent) (v5.0.0-beta.20),
 recorded as historical provenance in [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — a *reference, not a
 dependency*: nothing here reads, copies, patches or audits it, and no gate fails when it is
-unreachable.
+unreachable. The content that record once described no longer travels with it: the served skill corpus
+is MIT, re-sourced from the same author's `lazycodex`; the eleven persona texts were re-sourced from
+the permissively licensed public agent prompts listed in
+[`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md); and the vendored cores, the MCP servers and the adopted
+agent-teams body were replaced or deleted outright.
 
 The bundle composes over the harness's own official packages rather than forking them, and mounts the
 community sidebar bundle `dsh-better-sidebar` for the Workmates tab. Attribution and third-party
@@ -259,5 +263,5 @@ notices are in [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md).
 
 ## License
 
-**SUL-1.0** — see [`LICENSE.md`](./LICENSE.md). Internal and personal use; distribution is free and
-non-commercial only.
+**MIT** — see [`LICENSE.md`](./LICENSE.md), Copyright (c) 2026 HaroldZ32. Third-party components keep
+their own licences; the complete notices are in [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md).

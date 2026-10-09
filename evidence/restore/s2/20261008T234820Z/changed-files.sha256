@@ -1,0 +1,13 @@
+18805fb6cf3ee56d85552efe92191a7d7178cac6b0458559c068c51616f86ce0  packages/mpd-mcp-lsp/src/cclsp-config.ts
+c9b6d574af0ac8edaa6cac46eb77cf312c47b8a7db0d2aaa3d3c36f2451a5863  packages/mpd-mcp-lsp/src/launch.ts
+f1a55bc365c4633db1c85c1eefaf9225c27601247a5175dae2e8372cf9af901e  packages/mpd-mcp-lsp/src/server-catalog.ts
+0e17051548ccb21e2df04ee0ed070ff5b9fae88e02d1689f60852c9845ce1a49  packages/mpd-mcp-lsp/test/cclsp-config.test.ts
+d85cf5ca18c1e9d598d48dea7a10335bff98c3d86f1922b4495f31cfe0bc85fe  packages/mpd-mcp-lsp/test/language-coverage.test.ts
+ae11b54f2d6c2d9a2bada1d477690400e319c9618e9f062a4ee9976fd1aa30aa  packages/mpd-mcp-lsp/test/server-catalog.test.ts
+e85155716d735b7dbf7d2e4d05dace85d78b57d7119b29d0de4f4b37d142d94d  packages/mpd-mcp-lsp/README.md
+9cb0fc835843f1ad5371619f93658a18c4988856cb39d19726b57c4b0f4640a9  packages/mpd-mcp-lsp/README.zh-CN.md
+f32b37a0959f4347524f746866cf7d9762af71d28e7a6c1e019562268e0a8ad1  packages/mpd-mcp-lsp/references/systemverilog/README.md
+892500810eb32bb95a2f0ec57dad11bc2d2d6fbded7ddaf32349f2e93aa338cc  packages/mpd-mcp-lsp/references/systemverilog/README.zh-CN.md
+1d8435b09938c73ae1f36b1dcdc1b1c26e05755f103a59ab3402e36be6cb00bb  packages/mpd-mcp-lsp/references/verilog/README.md
+8202f9f9bf3192a10b7774648a40fcba614666ed3211d16b5dd98e7decfa6bbe  packages/mpd-mcp-lsp/references/verilog/README.zh-CN.md
+048f009f8ef2aaf75fe29ac316315074991a23bf44ad6b66349997de28a41d97  packages/mpd-mcp-lsp/dist/launch.js

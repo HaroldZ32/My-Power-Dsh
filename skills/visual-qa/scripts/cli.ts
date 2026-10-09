@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import { diffImages } from "./image-diff.ts"
 import { decodePng } from "./png-decode.ts"
 import { checkTui } from "./tui-grid.ts"
-import type { ImageDiffResult, TuiCheckResult } from "./types.ts"
+import type { ImageDiffResult, TuiCheckResult } from "./types"
 
 /** Usage error: raised for bad arguments or an unknown command, and printed verbatim as `visual-qa error: …`. */
 export class CliError extends Error {

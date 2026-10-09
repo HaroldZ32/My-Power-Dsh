@@ -1,0 +1,177 @@
+{
+  "schema": "mpd-restore-s3/1",
+  "wave": "restore-three-capabilities",
+  "stream": "S3 — hashline fuzzy repair (packages/mpd-hashline-plugin/**)",
+  "task": "T4 (WORK S3)",
+  "writer": "Senior Engineer",
+  "role": "Senior Engineer (T4 work task; a DIFFERENT agent verifies — Verification Law)",
+  "measuredAt": "2026-10-08T23:47:48Z",
+  "buildToolchain": "bun 1.4.0 from .toolchain/node_modules/.bin/bun (pinned; a PATH bun 1.4.2 would ship a stale tree — AGENTS §6)",
+  "branch": "dev (single-branch wave branch is the captain's; this lane wrote NO git command)",
+
+  "requirement": "Restore the fuzzy-repair capability the MIT design-port deliberately dropped, as OUR OWN implementation: a CONSERVATIVE pass that (i) runs only on a UNIQUE candidate, (ii) never alters a successful EXACT match, (iii) REPORTS what it repaired in the tool result, (iv) holds for CRLF/BOM files — with NO tool-schema change.",
+
+  "algorithm": {
+    "location": "packages/mpd-hashline-plugin/src/vendor/edits.ts — repairReplacementBlock (the pass), findWrapSites/scanDelimiters/scanBlockStates/opensSomething/closesSomething (the evidence), isFlushLeftBlock/pairIndent (the second repair)",
+    "provenance": "ORIGINAL mpd implementation. It is NOT a port: no upstream code was read for it and none was copied. It restores a capability of the replaced core by DESIGN only; the old core is SUL-1.0-derived and was deliberately never opened (contract §0 constraint 1).",
+    "two_repairs": {
+      "wrapped-line": "The caller's block split one logical line across two entries. A PAIR (i, i+1) is an eligible site iff: both entries are non-empty; entry i+1 carries NO indentation of its own; entry i OPENS a bracket or a quote; entry i+1 is a NET CLOSER that returns the delimiter state to exactly what entry i started from. The pair is then rejoined, with one space after a token that needs a right operand ([,+-*/%=<>&|?!:]$) and with nothing otherwise — so `call(one,` + `two)` becomes `call(one, two)`, `foo(` + `bar)` becomes `foo(bar)`, and `\"hello ` + `world\"` becomes `\"hello world\"`.",
+      "paired-indent": "The block lost its block-level indentation: EVERY non-empty block entry is flush left while the range it replaces carries at least one indent, and the block spans >= 2 entries. Each entry then takes the indent of the replaced line it stands in for (k-th block entry <- k-th replaced line), a block that grew keeping the range's last indent."
+    },
+    "scanner": "scanDelimiters is language-agnostic on purpose: ()[]{} depth plus the double-quote and backtick quotes with backslash escapes. A SINGLE QUOTE is deliberately not tracked (string delimiter in some languages, an apostrophe in prose); leaving it out can only make a line look LESS open, and an open line is only ever a CANDIDATE.",
+    "the_three_refusals": [
+      "arraysEqual(block, range) -> return immediately: a block that already EQUALS the range it replaces is a successful exact edit and is never touched, even when it carries a wrap-shaped pair (proved by the 4th case).",
+      ">1 eligible wrap site -> repair NEITHER and splice the block exactly as written: two candidate splits are an ambiguous request (proved by the negative control).",
+      "append/prepend never reach the pass at all: neither has a replaced range to prove a mangling against."
+    ],
+    "declared_bound": "The pass is heuristic by nature and this bound is stated rather than implied: it distinguishes a wrapped line from a DELIBERATE column-0 continuation by delimiter evidence (the fragment must close what the wrapper opened) plus the uniqueness gate. Prose carrying a genuinely unmatched bracket followed by an unindented line can therefore read as a wrap candidate. It never deletes, never reorders, and never fires on a block it cannot decide."
+  },
+
+  "acceptance": {
+    "a_cases": {
+      "file": "packages/mpd-hashline-plugin/test/repair.test.ts (NEW, 7 cases, untracked)",
+      "observed": "21 pass / 0 fail / 80 expect() calls across 3 files, exit 0",
+      "cases": [
+        {
+          "name": "a replacement line the block wrapped across two entries IS repaired",
+          "level": "vendor",
+          "input": "file ['function run() {', '    call(one,', '}']; replace line 2 with ['    call(one,', 'two)']",
+          "observed": "content === \"function run() {\\n    call(one, two)\\n}\"; repairs === [{kind:'wrapped-line', at:0, line:2, span:2}]",
+          "result": "PASS"
+        },
+        {
+          "name": "a flush-left replacement block IS re-indented from the range it replaces",
+          "level": "vendor",
+          "input": "file ['def run():', '    first()', '    second()', 'done']; replace lines 2-3 with ['third()', 'fourth()']",
+          "observed": "content === \"def run():\\n    third()\\n    fourth()\\ndone\"; repairs === [{kind:'paired-indent', at:0, line:2, span:2}]",
+          "note": "without the repair the second line would have landed at column 0 (the pre-existing restoreLeadingIndent covers index 0 only)",
+          "result": "PASS"
+        },
+        {
+          "name": "an AMBIGUOUS block naming two candidate splits is LEFT UNTOUCHED",
+          "level": "vendor",
+          "role": "THE NEGATIVE CONTROL",
+          "input": "single-line file ['    start()']; replace line 1 with ['    alpha(beta,', 'gamma)', '    delta(epsilon,', 'zeta)'] — two pairs, each individually wrap-shaped",
+          "observed": "repairs === [] AND content === \"    alpha(beta,\\ngamma)\\n    delta(epsilon,\\nzeta)\" (every entry survives byte for byte)",
+          "second_half": "the SAME pair alone in a block IS repaired: content === \"    alpha(beta, gamma)\", repairs === [{kind:'wrapped-line', at:0, line:1, span:2}] — so the refusal is attributable to the COUNT (ambiguity) and not to the shape",
+          "result": "PASS"
+        },
+        {
+          "name": "a replacement that EQUALS the range it replaces is never altered",
+          "level": "vendor",
+          "role": "the exact-match clause, in its strongest form",
+          "input": "file ['    alpha(beta,', 'gamma)'] — the range ITSELF is wrap-shaped; the edit hands the same two lines back for the range 1-2",
+          "observed": "repairs === []; noopEdits === 1; content === the input unchanged",
+          "result": "PASS"
+        },
+        {
+          "name": "a CRLF + BOM file repaired through the tool round-trips its envelope",
+          "level": "TOOL (real registration, real file on disk)",
+          "input": "file written as \"\\uFEFFtitle\\r\\n    call(one)\\r\\n\"; mpd_hashline_read then mpd_hashline_edit replacing line 2 with ['    call(other,', 'arg)']",
+          "observed": "bytes on disk === \"\\uFEFFtitle\\r\\n    call(other, arg)\\r\\n\"; startsWith BOM true; /[^\\r]\\n/ false (no lone LF); result.diff contains '[mpd-hashline repair]'",
+          "result": "PASS"
+        },
+        {
+          "name": "the tool result reports the repair, and stays silent when nothing was repaired",
+          "level": "TOOL (acceptance criterion (c))",
+          "input": "plain LF file; a conforming single-entry replacement, then a wrapped replacement",
+          "observed": "conforming edit: diff does NOT contain '[mpd-hashline repair]' and DOES contain '+    call(two)'; wrapped edit: diff contains '[mpd-hashline repair] rejoined a replacement line the block had wrapped across 2 entries (block line 1, file line 2)'",
+          "result": "PASS"
+        },
+        {
+          "name": "the seven vendor entry points, the four tool names and the anchor alphabet are unchanged",
+          "level": "vendor + tool",
+          "observed": "Object.keys(vendor).sort() equals the frozen 17-name list; NIBBLE_STR === 'ZPMQVRWSNKTXJBYH'; HASHLINE_DICT.length 256; HASHLINE_OUTPUT_PATTERN matches '12#ZK|some content'; all four mpd_hashline_* tools registered",
+          "result": "PASS"
+        }
+      ],
+      "falsifiability_control": {
+        "why": "A case that cannot fail is not evidence. Two surgical mutations were applied to the working tree, run, then reverted; the sha256 after each revert equals the before-hash, so the restore is PROVEN and not asserted.",
+        "edits_ts_sha256_before_and_after": "ddf1535787525cf54556721815b66a8404a784062d32b2c5eeb5e4b940071350 (identical before, after mutation 1, after mutation 2, and at the settled sweep)",
+        "mutation_1": "the whole repair pass disabled -> 2 pass / 5 FAIL (the two repair cases, the CRLF round trip, the report case, and the negative control's second half all redden)",
+        "mutation_2": "the exact-match guard removed -> 6 pass / 1 FAIL (exactly the exact-match case reddens)",
+        "log": "evidence/restore/s3/20261008T234748Z/raw/mutation-control.log"
+      }
+    },
+    "b_frozen_interfaces": {
+      "frozen_test_unedited": "git diff --name-only -- packages/mpd-hashline-plugin/test/ is EMPTY: tool-schema.test.ts and hashline.test.ts carry NO modification. The only test change is the NEW untracked repair.test.ts.",
+      "frozen_test_observed": "tool-schema.test.ts: 7 pass (incl. 'no registered hashline schema uses a type ARRAY (parameters or output)', 'edit.lines is a oneOf union of the string and array-of-string shapes', 'the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix', 'an anchored edit keeps a CRLF file's line endings and a BOM file's BOM'); hashline.test.ts: 7 pass. 0 fail, exit 0.",
+      "template_invariant": "No field was added to, removed from or renamed in any tool parameter or output schema. The four tool names and their registration ORDER are unchanged (asserted). The seven export statements of vendor/index.ts are still SEVEN: the only change to that file is one extra TYPE name (HashlineRepairReport) added to the EXISTING type re-export statement.",
+      "schema_authority": "tool-schema.test.ts is the authoritative assertion here and it passed UNEDITED, so acceptance criterion (b) is carried by a test this lane did not write."
+    },
+    "c_reported": {
+      "decision_2_3": "SILENT-BUT-REPORTED: the tool DESCRIPTION is unchanged (the repair is not advertised in the tool contract) while the RESULT states what was repaired.",
+      "carrier": "the EXISTING output field `diff`, prefixed with one '[mpd-hashline repair] <sentence>' line per repair. Constraint 4 forbids a tool-schema change and decision 2.3 forbids a new tool field, and `diff` is already the field that says what an edit did. The notice is prepended AFTER the maxDiffChars slice, so a long diff can never truncate away the statement that the applier changed more than the caller asked for.",
+      "render": "the tool's existing render text already concatenates `v.diff`, so the notice reaches the model with no render change."
+    },
+    "d_gates": {
+      "verify:comments": { "command": "bun run verify:comments", "exit": 0, "observed": "scanned 371 TypeScript file(s) of 371 in the source set; inspected 33095 declaration(s); skipped 14838 inline callback(s) as out of family — VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.", "log": "raw/verify-comments.log" },
+      "verify-dist-fresh": { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "FRESH packages/mpd-hashline-plugin/dist/index.js sha c7c40d3524b6… <- packages/mpd-hashline-plugin/src/index.ts; 'ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed' (the NOT COVERED file is the sha-pinned prebuilt packages/mpd-mcp-codegraph/dist/serve.js, declared in its README).", "log": "raw/verify-dist-fresh.log" },
+      "bun test packages/mpd-hashline-plugin": { "exit": 0, "observed": "21 pass / 0 fail / 80 expect() calls, 3 files", "log": "raw/bun-test-hashline.log" },
+      "bun run typecheck": { "command": "tsgo --noEmit", "exit": 0, "log": "raw/typecheck.log" },
+      "bun test packages (FULL repo)": {
+        "exit": 1,
+        "observed": "1740 pass / 3 skip / 2 FAIL / 22436 expect() calls across 109 files, exit 1",
+        "attribution": "BOTH failures are in packages/mpd-mcp-lsp/test/language-coverage.test.ts ('language coverage (acceptance (a)) > the catalog carries at least the full ~40-language set' and 'non-permissive servers ... > all four are carried, each with their real licence') — that is S2's lane, whose src is dirty in the shared checkout and whose work is in flight. ZERO hashline test failures: all 21 hashline cases pass inside this same run.",
+        "log": "raw/bun-test-all.log"
+      },
+      "verify-vendor": { "exit": 1, "expected": true, "observed": "FAIL - asset skills count drifted: 372 vs 371; FAIL - asset skills treeSha mismatch (S1's lane); FAIL - asset packages/mpd-hashline-plugin/src/vendor treeSha mismatch (THIS lane); all other assets OK.", "log": "raw/verify-vendor.log", "note": "This gate is EXPECTED red until the wave's single re-pin lands. This lane wrote NO repin and did NOT touch VENDOR_LOCK.json (captain's instruction)." }
+    }
+  },
+
+  "repin_handover": {
+    "instruction": "REPORTED, NOT ACTED ON. This lane ran no repin script and did not touch VENDOR_LOCK.json or LICENSE-NOTICES.md.",
+    "asset": "packages/mpd-hashline-plugin/src/vendor",
+    "recordedTreeSha": "7c38d4f18e056e2f79eac37908cc6250dd8d917185609b3e7a5b3c13f2be0495",
+    "recordedFileCount": 8,
+    "fileCountAfter": 8,
+    "note": "fileCount is UNCHANGED (no file was added to or removed from the tree); only the treeSha moves, because 3 of the 8 files changed.",
+    "filesChangedInThatTree": [
+      "packages/mpd-hashline-plugin/src/vendor/types.ts",
+      "packages/mpd-hashline-plugin/src/vendor/edits.ts",
+      "packages/mpd-hashline-plugin/src/vendor/index.ts"
+    ],
+    "filesUnchangedInThatTree": [
+      "packages/mpd-hashline-plugin/src/vendor/anchors.ts",
+      "packages/mpd-hashline-plugin/src/vendor/constants.ts",
+      "packages/mpd-hashline-plugin/src/vendor/diff.ts",
+      "packages/mpd-hashline-plugin/src/vendor/hash.ts",
+      "packages/mpd-hashline-plugin/src/vendor/text.ts"
+    ],
+    "outsideThatTree_but_in_lane": [
+      "packages/mpd-hashline-plugin/src/index.ts",
+      "packages/mpd-hashline-plugin/dist/index.js",
+      "packages/mpd-hashline-plugin/test/repair.test.ts (new, untracked)"
+    ],
+    "wave_coupling": "The wave now has TWO invalidated assets — skills/** (S1) and this vendor tree (S3) — and ONE repin pass re-derives every asset, so the wave's SINGLE repin must be taken AFTER both writers have settled, or the first one is invalidated by the second.",
+    "license_notices_paragraph_for_the_S1_writer": "The hashline core in packages/mpd-hashline-plugin/src/vendor/** is our own TypeScript, designed from the `crates/pi-edit` crate of can1357/oh-my-pi at commit 602b6c812fa9ef774f359f1e399a09d30ee2eaca, whose workspace manifest declares MIT and whose LICENSE carries the text reproduced in every file header. One part of that tree is not a design port and has no upstream counterpart: the conservative repair pass (`repairReplacementBlock` in src/vendor/edits.ts, with its helpers findWrapSites, scanDelimiters, scanBlockStates, opensSomething, closesSomething, isFlushLeftBlock and pairIndent) is an ORIGINAL mpd implementation written for this repository, restoring by design a capability the replaced core had. No upstream source was read or copied for it."
+  },
+
+  "not_proven": [
+    "NOT proven by this lane: that `verify-vendor` passes. It is EXPECTED to fail until the wave's single re-pin lands, and it also reports S1's skills/** drift, which is not this lane's.",
+    "NOT proven: any behaviour on a real MOUNTED harness session. Every case here drives the plugin's own registered tool bodies through the same fake-ctx mount the existing test/tool-schema.test.ts uses; no dsh boot was run, because the contract forbids a tool-schema change and this lane changed none, so no boot-mount gate is triggered by it.",
+    "NOT proven: that the pass never misfires on real-world prose. The bound is stated in the algorithm section and its falsifier is the uniqueness gate plus the net-closer clause; a corpus-scale false-positive sweep over real repositories was NOT run.",
+    "NOT proven: exact behavioural equivalence with anything the replaced core did. That is not a goal — contract §0 constraint 1 declares an acceptance criterion that can only be met by matching old behaviour INVALID, and the old SUL-1.0-derived bytes were never opened.",
+    "NOT proven independently: this lane's own results are SELF-reported. Under the Verification Law they are closed only by a DIFFERENT agent's recorded verdict, from the frozen contract and this packet — never from the implementation."
+  ],
+
+  "artifacts": {
+    "evidenceDir": "evidence/restore/s3/20261008T234748Z/",
+    "result": "result.json",
+    "output": "output.log",
+    "raw": [
+      "raw/mutation-control.log",
+      "raw/edits.sha256.before",
+      "raw/edits.sha256.after",
+      "raw/bun-test-hashline.log",
+      "raw/bun-test-all.log",
+      "raw/typecheck.log",
+      "raw/verify-comments.log",
+      "raw/verify-dist-fresh.log",
+      "raw/verify-vendor.log",
+      "raw/changed-files.sha256",
+      "raw/git-diff-stat.txt",
+      "raw/frozen-tests-diff.txt (EMPTY — the proof the frozen tests are unedited)"
+    ]
+  }
+}

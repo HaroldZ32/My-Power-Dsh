@@ -1,0 +1,24 @@
+### bun test packages/mpd-mcp-shared
+
+ 27 pass
+ 0 fail
+ 72 expect() calls
+Ran 27 tests across 2 files. [130.00ms]
+exit=0
+### bun test packages/mpd-dsh-adapter-plugin
+
+ 180 pass
+ 2 fail
+ 870 expect() calls
+Ran 182 tests across 10 files. [1.93s]
+exit=1
+### node skills/dsh-qa/scripts/readonly-deny.ts
+[readonly-deny] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/workmate/roles-readonly/2026-10-08T15-38-41.801Z
+  positive: {"exit":1,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":2,"stubTrace":[{"call":1,"hasTools":true,"bytes":220809,"toolCount":103,"writeCapableVisible":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename"],"_toolN
+  enforcement: {"ok":false,"childRequests":0,"parentRequests":1,"childToolCounts":[],"parentToolCount":103,"childLeaksWriteCapable":[],"childHasStructuredOutput":false,"parentHasAllSeven":true,"note":"read-only authority is ENFORCED: the child's own requests cannot see any of the seven write-capable tools, while t
+  positiveOk: {"ok":false,"note":"the seven-name list reached tools.restrict(), the child was created and answered, and the child's visible toolset excludes all seven write-capable names"}
+  reinjectionDiagnostic: {"exit":1,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":2,"stubTrace":[{"call":1,"hasTools":true,"bytes":220765,"toolCount":103,"writeCapableVisible":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename"],"_toolN
+  reinjectionControl: {"ok":false,"mutationLoaded":false,"injectedNamesSeenByAdapter":[],"childRequestsUnderRestriction":0,"parentToolCount":103,"parentSeesWriteCapable":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename"],"refusalSeen":false,"note":"control: the m
+  reinjectionNote: "with the unregistered names re-injected, the sandbox boot still composed the child and emitted no refusal (refusalSeen=false) — the refusal is therefore NOT reproducible in this profile, so the positive lane carries the proof"
+  isolation: {"ok":true,"realWorkmateUntouched":true,"realWm":"/home/haroldzhao/.mpd/workmate"}
+exit=1

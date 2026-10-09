@@ -31,7 +31,7 @@ const ENUM_JOB = "Do only one thing: list all available tool names in your curre
 /** The call arm's prompt: call the ast-grep search on the fixture and report the result verbatim. */
 const CALL_JOB = "The current directory has tests/mcp-fixtures/sample.c. Call the tool mcp__ast_grep__search to scan that file for the pattern return 0 (pass parameters per the tool schema), then report the tool's returned content verbatim. Do not use the bash tool."
 /** The two tool names the enum arm must find in the harness-recorded tool list (its self-test fixture). */
-const FIXTURE_LIST = "- mcp__ast_grep__search\n- mcp__lsp__status"
+const FIXTURE_LIST = "- mcp__ast_grep__search\n- mcp__lsp__get_diagnostics"
 /** The MCP tool the call arm must find a recorded call for. */
 const AST_TOOL = "mcp__ast_grep__search"
 /** The source line the fixture carries and the recorded tool result must therefore contain. */
@@ -88,8 +88,8 @@ interface ArmRun {
 function selfTest(): void {
   /** Whether the fixture list names the ast-grep search tool the call arm asserts. */
   const hasAst = FIXTURE_LIST.includes("mcp__ast_grep__search")
-  /** Whether the fixture list names the LSP status tool the enum arm asserts. */
-  const hasLsp = FIXTURE_LIST.includes("mcp__lsp__status")
+  /** Whether the fixture list names the LSP diagnostics tool the enum arm asserts (cclsp's own name). */
+  const hasLsp = FIXTURE_LIST.includes("mcp__lsp__get_diagnostics")
   if (!hasAst || !hasLsp) { console.error("[mcp-call self-test] FAIL"); process.exit(1) }
   // The asserted tool name must be COMPOSED by the profile this case boots (bundle
   // patch rows declare serverName astgrep -> mcp__ast_grep__…), otherwise the case
@@ -99,6 +99,12 @@ function selfTest(): void {
   /** That row's own chunk of the patch, split on the `- id: ` separators. */
   const row = patch.split(/\n\s*- id: /).find((chunk) => chunk.startsWith("mcp-astgrep"))
   if (row === undefined || !row.includes("serverName: ast_grep")) { console.error("[mcp-call self-test] FAIL: the mcp-astgrep row does not declare serverName: ast_grep"); process.exit(1) }
+  // The LSP half of the same guard (de-omo wave B2): the row's serverName composes every mcp__lsp__*
+  // name the enum arm looks for, so a rename there (or a launcher that has grown a subcommand the row
+  // still passes) would silently make this case unfalsifiable.
+  /** The `mcp-lsp` row's own chunk of the patch. */
+  const lspRow = patch.split(/\n\s*- id: /).find((chunk) => chunk.startsWith("mcp-lsp"))
+  if (lspRow === undefined || !lspRow.includes("serverName: lsp")) { console.error("[mcp-call self-test] FAIL: the mcp-lsp row does not declare serverName: lsp"); process.exit(1) }
   if (AST_TOOL !== "mcp__ast_grep__search") { console.error("[mcp-call self-test] FAIL: the asserted tool name does not match the composed server name"); process.exit(1) }
   // The fixture content the call arm asserts on must exist, or the assertion is vacuous.
   /** The ast-grep fixture copied into the sandbox workspace; the result must quote its line. */

@@ -249,7 +249,7 @@ describe("the verifier's envelope", () => {
     expect(verifierEnvelopeDecision({ toolName: "bash", args: {}, workspaceRoot: ws, seat: undefined }).deny).toBeUndefined()
   })
   test("bash and the source-returning tools are DENIED outright", () => {
-    for (const toolName of ["bash", "powershell", "pwsh", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename", "mcp__codegraph__codegraph_explore"]) {
+    for (const toolName of ["bash", "powershell", "pwsh", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict", "mcp__lsp__get_diagnostics", "mcp__lsp__find_definition", "mcp__codegraph__codegraph_explore"]) {
       expect(verifierEnvelopeDecision({ toolName, args: {}, workspaceRoot: ws, seat: seat(false) }).deny).toBeDefined()
     }
   })

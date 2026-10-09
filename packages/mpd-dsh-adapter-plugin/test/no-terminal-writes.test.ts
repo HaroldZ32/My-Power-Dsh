@@ -168,9 +168,19 @@ export const EXEMPT_FILES: readonly ExemptFile[] = [
     requires: 'installTerminalSilence("mpd-mcp-astgrep")',
   },
   {
+    path: "packages/mpd-mcp-astgrep/src/protocol.ts",
+    reason: "the ast_grep MCP server's own protocol writer: this file IS the stdio JSON-RPC loop, so fd 1 is the client channel the row spawns it with, never a terminal",
+    requires: "process.stdout.write",
+  },
+  {
     path: "packages/mpd-mcp-codegraph/src/launch.ts",
     reason: "silenced MCP launcher (also carries the MCP protocol's own stdout writer for the unavailable-server fallback, which legitimately owns fd 1)",
     requires: 'installTerminalSilence("mpd-mcp-codegraph")',
+  },
+  {
+    path: "packages/mpd-mcp-shared/unavailable-server.ts",
+    reason: "the SHARED unavailable-server fallback (de-omo wave B2): this file IS the stdio JSON-RPC loop a row keeps when its declared dependency cannot be loaded, so fd 1 is the client channel the row spawned it with, never a terminal; its diagnostics go through the caller's log sink, not through any terminal writer",
+    requires: "process.stdout.write",
   },
   {
     path: "packages/mpd-mcp-gitbash/src/launch.ts",

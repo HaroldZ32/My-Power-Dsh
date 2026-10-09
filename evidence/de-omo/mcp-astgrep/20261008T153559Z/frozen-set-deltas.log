@@ -1,0 +1,6 @@
+### no-terminal-writes report
+  - packages/mpd-mcp-astgrep/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-astgrep\")"]
+UNFROZEN TERMINAL WRITES — 2 new write(s) that must go through the log sink:
+  packages/mpd-mcp-astgrep/src/cli.ts:23 [process.stderr.write]
+  packages/mpd-mcp-astgrep/src/protocol.ts:69 [process.stdout.write]
+### coupling report

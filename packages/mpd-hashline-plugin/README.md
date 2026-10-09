@@ -3,9 +3,22 @@
 
 Plan C / C3 — hash-anchored edit discipline on the DeepSeek Harness tool seam.
 
-Vendored core: the upstream project `packages/hashline-core` (base commit
-8c57e46; SUL-1.0, inherited from upstream). Adaptation: `src/vendor/diff-utils.ts` bundles a
-minimal unified-diff generator instead of the npm `diff` dependency.
+This tree is our own TypeScript, ported **BY DESIGN** from the `crates/pi-edit` crate of
+`can1357/oh-my-pi` @ `602b6c812fa9ef774f359f1e399a09d30ee2eaca` (MIT). No SUL-1.0 source is
+inherited any more, and the port is a DELIBERATE REDUCTION: the replaced core's fuzzy
+"autocorrect" heuristics are not reproduced. The port carries the MIT obligation that crate's
+design comes under — the upstream MIT permission text and copyright lines are reproduced
+verbatim at the top of EVERY file under `src/vendor/**`, and `LICENSE-NOTICES.md` records the
+provenance. The eight files and the responsibility each carries:
+
+- `src/vendor/index.ts` — the public surface the `mpd-hashline` row imports.
+- `src/vendor/constants.ts` — the fixed `LINE#HASH|content` vocabulary: alphabet, digest width and the format patterns.
+- `src/vendor/hash.ts` — the per-line digest: xxHash32 folded to the short alphabet-encoded anchor.
+- `src/vendor/text.ts` — the BOM and line-ending envelope (`canonicalizeFileText` / `restoreFileText`).
+- `src/vendor/types.ts` — the edit vocabulary the tool surface accepts.
+- `src/vendor/anchors.ts` — parsing and validating a caller's `LINE#HASH` anchor, plus the stale-anchor report.
+- `src/vendor/edits.ts` — normalizing and applying an anchored edit batch.
+- `src/vendor/diff.ts` — the read-side anchor view and the unified diff an edit reports: our own generator, so no npm `diff` dependency.
 
 ## Tools
 

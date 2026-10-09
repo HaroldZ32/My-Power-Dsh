@@ -33,11 +33,13 @@ here for the full body; where the two differ, the manual wins.
   (chain key, `personas/<id>.md`, workmate `meta.baseId`) is INTERNAL: **refused as tool INPUT** (the
   tools accept a NAME spelling only; the internal `mpdRoles.get` service path still resolves the id for
   chain lookup and legacy callers), and exposed by NO tool output, description, render, web route or GUI. The **read-only discipline is the exported deny list** —
-  exactly seven names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted equal by
+  exactly eight names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted equal by
   `roles.test.ts`): `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`,
-  `mcp__ast_grep__scan`, `mcp__lsp__rename`. `bash` is denied on purpose (a shell can write files);
-  `read`/`glob`/`grep` stay available. Enforced TWO ways that must keep agreeing: the one-shot path
-  passes it as `toolFilter.deny` to `mpd_role_spawn`, and a tool GUARD denies the same seven names for a
+  `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict` (cclsp's own two
+  rename tools, which replaced the single `mcp__lsp__rename` in de-omo wave B2). `bash` is denied on
+  purpose (a shell can write files); `read`/`glob`/`grep` stay available. Enforced TWO ways that must
+  keep agreeing: the one-shot path passes it as `toolFilter.deny` to `mpd_role_spawn`, and a tool GUARD
+  denies the same eight names for a
   live Team teammate whose name normalises to a read-only roster member — the official `spawn_teammate`
   accepts no per-teammate tool filter. **Do NOT re-add
   `str_replace_editor` or `apply_patch`**: both
@@ -97,11 +99,20 @@ A seat is bound with `mpd_verify_seat {loop_id, role:"verifier"}`, which is idem
 and which REFUSES a caller that is the loop's own writer. From that moment:
 
 - **DENIED outright**: the shell (`bash`, `powershell`, `pwsh`); the source-returning tools
-  (`mcp__codegraph__codegraph_explore`, the whole `mcp__lsp__*` family, `mcp__ast_grep__rewrite`,
-  `mcp__ast_grep__scan`, `mcp__lsp__rename`); and every `agent_teams_*` / `mpd_*` board or team MUTATION —
+  (`mcp__codegraph__codegraph_explore`, cclsp's query family — `find_definition`, `find_references`,
+  `find_implementation`, `get_diagnostics`, `get_hover`, `find_workspace_symbols`,
+  `prepare_call_hierarchy`, `get_incoming_calls`, `get_outgoing_calls` — `mcp__ast_grep__rewrite`,
+  `mcp__ast_grep__scan`, and cclsp's two renames `mcp__lsp__rename_symbol` /
+  `mcp__lsp__rename_symbol_strict`); and every `agent_teams_*` / `mpd_*` board or team MUTATION —
   with `mpd_verify_*` explicitly exempt, because those five tools ARE the seat's job.
 - **PATH-SCOPED while BLIND**: `read` / `glob` / `grep` pass only under the loop's frozen `basis.docs[]`,
-  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**` and `<ws>/.mpd/verify/**`. A BARE path
+  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**`, `<ws>/.mpd/verify/**` and
+  `<ws>/evidence/**`. MEASURED 2026-10-08: the mounted guard's own bare-path refusal names `evidence/` in
+  the live band, and a `glob {path:"evidence", pattern:"…"}` is ANSWERED (it reports no matches, not a
+  refusal). An earlier revision of this line OMITTED `evidence/**`, and a bound seat concluded from the
+  omission that it could not read a writer's evidence packet at all — it retracted after re-measuring, but
+  the wrong conclusion had already been broadcast to writers and into a wave contract. Do not re-narrow
+  this list without re-measuring the guard. A BARE path
   argument is refused, because the tool's default path is the whole workspace and that includes the
   implementation.
 - **WRITE confined** to `<ws>/.mpd/verify/**`. A verifier never fixes what it found: the record tool writes

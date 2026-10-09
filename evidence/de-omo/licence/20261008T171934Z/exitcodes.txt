@@ -1,0 +1,11 @@
+verify:docs|bun run verify:docs|0
+verify:manifest|bun run verify:manifest|0
+verify:rows|bun run verify:rows|0
+verify-vendor|node scripts/verify-vendor.ts|0
+verify:comments|bun run verify:comments|0
+verify-dist-fresh|node scripts/verify-dist-fresh.ts|0
+typecheck|bun run typecheck|0
+test-packages|bun test packages|0
+verify-pack-closure|node scripts/verify-pack-closure.ts|0
+verify-manual-paths|node scripts/verify-manual-paths.ts|0
+verify-no-host-override|node scripts/verify-no-host-override.ts|0

@@ -29,7 +29,7 @@
 // root, so a `--outfile` slip can never rewrite a committed `dist/`.
 //
 // COVERAGE IS LOUD: `dist` files that no target maps to are printed in a NOT COVERED section with
-// a derived reason (adopted main code / built offline by scripts/build-mcp.ts / sha-pinned
+// a derived reason (adopted main code / sha-pinned
 // prebuilt / build metadata / no local source). The list is the complete complement of the
 // covered set, so a committed dist file can never be silently skipped — the reason only explains,
 // it never decides whether the file is listed.
@@ -386,7 +386,6 @@ function uncoveredReason(root: string, pkg: string, dist: string, ctx: Uncovered
   if (!dist.endsWith(".js")) return "build metadata, not a bun build artifact"
   if (ctx.declaredNoSource.has(dist)) return "declared by scripts.build but its source file is absent (no local source)"
   if (pkg === "mpd-mcp-codegraph") return "sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/"
-  if (pkg.startsWith("mpd-mcp-")) return "built offline by scripts/build-mcp.ts from the upstream checkout — no local src/"
   if (!existsSync(join(root, "packages", pkg, "src"))) return "package has no src/ directory (dist is the only committed artifact)"
   return `no src/${basename(dist, ".js")}.ts for this dist file`
 }

@@ -500,13 +500,18 @@ var VERIFIER_DENIED_TOOLS = [
   "pwsh",
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
-  "mcp__lsp__rename",
+  "mcp__lsp__rename_symbol",
+  "mcp__lsp__rename_symbol_strict",
   "mcp__codegraph__codegraph_explore",
-  "mcp__lsp__diagnostics",
-  "mcp__lsp__goto_definition",
+  "mcp__lsp__find_definition",
   "mcp__lsp__find_references",
-  "mcp__lsp__symbols",
-  "mcp__lsp__prepare_rename"
+  "mcp__lsp__find_implementation",
+  "mcp__lsp__get_diagnostics",
+  "mcp__lsp__get_hover",
+  "mcp__lsp__find_workspace_symbols",
+  "mcp__lsp__prepare_call_hierarchy",
+  "mcp__lsp__get_incoming_calls",
+  "mcp__lsp__get_outgoing_calls"
 ];
 var VERIFIER_DENIED_PREFIXES = ["agent_teams_", "mpd_", "spawn_teammate", "team_task_", "team_"];
 var VERIFY_TOOL_PREFIX = "mpd_verify_";
@@ -2805,7 +2810,8 @@ var READONLY_DENY = [
   "bash",
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
-  "mcp__lsp__rename"
+  "mcp__lsp__rename_symbol",
+  "mcp__lsp__rename_symbol_strict"
 ];
 var REPORT_SCHEMA = {
   type: "object",

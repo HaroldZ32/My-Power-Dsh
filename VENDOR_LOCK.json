@@ -1,36 +1,41 @@
 {
-  "_note": "HISTORICAL REFERENCE ONLY - the upstream project oh-my-openagent (https://github.com/code-yeongyu/oh-my-openagent, commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29, v5.0.0-beta.20, SUL-1.0) is NOT a checked baseline. De-vendored 2026-10-07 (wave de-vendor-and-verify-law): no gate resolves, fetches, copies from, fingerprints or audits that checkout any more, and this file carries no upstream identity field. The commit is recorded here as attribution only; attribution also survives in LICENSE-NOTICES.md, README.md and README.zh-CN.md. This file's real subject is the `assets` half: the bytes THIS repository ships.",
+  "_note": "HISTORICAL REFERENCE ONLY - the upstream project oh-my-openagent (https://github.com/code-yeongyu/oh-my-openagent, commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29, v5.0.0-beta.20, whose own content was SUL-1.0) is NOT a checked baseline, and the IDENTITY HALF HAS NO CONSUMER: no gate resolves, fetches, copies from, fingerprints or audits that checkout, this file carries no upstream identity field, and a reachability check on it would report nothing. The de-omo program (waves A-F, 2026-10-08) purged and replaced every derived byte, which is what makes the assets below THIS repository's own work, licensed MIT (LICENSE.md, Copyright (c) 2026 HaroldZ32). The commit is recorded here as attribution HISTORY only, as it is in LICENSE-NOTICES.md. This file's real subject is the `assets` half: the fingerprints of the bytes THIS repository SHIPS, which is what scripts/verify-vendor.ts checks and what still reddens on a corrupted byte.",
   "assets": {
     "_note": "directory assets: fileCount + treeSha (sorted relpath + LF-normalized per-file sha256 aggregation) double gate; single-file assets: fileCount + sha256 gate - both verified by scripts/verify-vendor.ts, which refuses a zero-subject run",
     "skills": {
-      "fileCount": 331,
+      "fileCount": 372,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, extension-template, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe + the five TUI lanes and their shared harness: scripts/tui-mount.mjs, tui-panels.mjs, tui-admission.mjs, tui-distribution.mjs, tui-spec-conformance.mjs, lib/tui-lane.mjs + the settings-bridge lanes and their shared engine: scripts/tui-settings-bridge.mjs, web-settings-bridge.mjs, lib/settings-bridge-lane.mjs + the six team-watchdog lanes and their shared harness: scripts/team-watchdog-{heartbeat,fault,scene,config,notify,boot}.mjs, lib/watchdog-lane.mjs + the real-dsh boot lane); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "d55938c34e1d2c3a82ca7ffe130d19f66dc4a6ad151441df364c2ac1cbef7850"
-    },
-    "vendor/mcp-src": {
-      "fileCount": 459,
-      "source": "in-repo source snapshot of the three MCP servers and their four shared packages, copied at the pinned upstream commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29; this is the ONLY source scripts/build-mcp.ts reads (no external checkout, no network). Its origin, the one-time sparse fetch that produced it, the declared omission of the upstream AGENTS.md instruction files and the MEASURED licence (SUL-1.0; lsp-daemon self-declares MIT - NOT the MIT the wave plan assumed) are recorded in vendor/mcp-src/README.md",
-      "treeSha": "af7aafdd3b207314479cb5907e2ff799613abf062c716a435a5f5f0b50ac855c"
-    },
-    "packages/mpd-mcp-astgrep/dist/cli.js": {
-      "fileCount": 1,
-      "source": "built offline via scripts/build-mcp.ts from the vendor/mcp-src/ast-grep-mcp snapshot",
-      "sha256": "f06bba310cad306b5638efb90a69e50b2c6a7416c0c536867f02c70f4b4fa4c5"
-    },
-    "packages/mpd-mcp-gitbash/dist/cli.js": {
-      "fileCount": 1,
-      "source": "built offline via scripts/build-mcp.ts from the vendor/mcp-src/git-bash-mcp snapshot",
-      "sha256": "6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5"
-    },
-    "packages/mpd-mcp-lsp/dist/cli.js": {
-      "fileCount": 1,
-      "source": "built offline via scripts/build-mcp.ts from the vendor/mcp-src/lsp-daemon snapshot",
-      "sha256": "555d6bf2b940ea2c76c0154092e78ba1517d608a2aa5c7c84568f70f123b3720"
+      "treeSha": "cd15617139d73c35e9758d84cca6b58410e3b2bf3339edd19362a19d7860ceca"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
       "source": "vendored prebuilt from the upstream codegraph dist (MIT, see packages/mpd-mcp-codegraph/LICENSE/NOTICE)",
       "sha256": "ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375"
+    },
+    "packages/mpd-hashline-plugin/src/vendor": {
+      "fileCount": 8,
+      "treeSha": "7e6a28e2b1c6dc9c3942bb17da5cef86ae8398af6ed63bfe3cd128a08701c34a",
+      "source": "hashline core, mpd-owned TypeScript ported from the DESIGN of crates/pi-edit in the MIT project can1357/oh-my-pi (@602b6c81); MIT notice + copyright line in every file header and in LICENSE-NOTICES.md"
+    },
+    "packages/mpd-boulder-plugin/src/vendor": {
+      "fileCount": 13,
+      "treeSha": "fa19e7243941dc9fa229eb0a2c7bafd42267c4db094aec23ce1626f283115f81",
+      "source": "boulder ledger core, WRITTEN HERE (no third-party source): durable .mpd/boulder.json ledger + per-task timers, keeping the 13 exports the row imports"
+    },
+    "packages/mpd-schemastery": {
+      "fileCount": 19,
+      "treeSha": "1d086f00dad5c204a3d7d4cec92efb205f847f5914c7ee90c02554fa0b9ea4ed",
+      "source": "schemastery validator relocated out of the deleted adopted agent-teams body (MIT; see packages/mpd-schemastery/LICENSE and LICENSE-NOTICES.md)"
+    },
+    "packages/mpd-bundle-plugin/adopted": {
+      "fileCount": 2,
+      "treeSha": "a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f",
+      "source": "adopted agent-teams browser client, relocated out of the deleted tree (MIT; see LICENSE-NOTICES.md)"
+    },
+    "packages/mpd-bundle-plugin/client.js": {
+      "fileCount": 1,
+      "sha256": "1d59f4c9d802848780a88635390736aeabb0d8d0da44b6fb78434e1fd2be3f8f",
+      "source": "combined web client DERIVED from packages/mpd-bundle-plugin/adopted/** by scripts/build-mpd-client.ts; rebuild it, never rewrite this fingerprint"
     }
   },
   "verification": "node scripts/verify-vendor.ts: asset count and fingerprint mismatches are blockers; a zero-subject run is refused; NO upstream identity is checked, and a flag that would require one is refused by name",

@@ -139,7 +139,7 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 
 | You want to… | Tools | Notes |
 |---|---|---|
-| Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (definitions, references, diagnostics, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. A fourth family, `mcp__git_bash__*`, is **not available by default**: its row ships `disabled: true` (the upstream server is native-Windows-only), so no such tool appears in a normal session — enable it by flipping that row's `disabled:` to `false` in `cordis.patch.yml` and reinstalling the bundle. |
+| Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (cclsp: definitions, references, implementation, diagnostics, hover, workspace symbols, call hierarchy, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. Two more families are **not available by default**: `mcp__git__*` (a git toolbox, 28 tools) and `mcp__shell__*` (`run_process`, raw shell). Both rows ship `disabled: true`, so no such tool appears in a normal session — enable the one you want by flipping that row's `disabled:` to `false` in `cordis.patch.yml` and reinstalling the bundle. |
 | Edit safely | the write guard and output truncation (no configuration needed), `mpd_hashline_read/edit/format/restore`, `mpd_comment_check` | hash-anchored edits reject a stale anchor instead of writing to the wrong line |
 | Drive long work | `mpd_ulw` (light) / `mpd_ultrawork` (full discipline: plan gate, execution rounds, verification gate), or the equivalent `/ulw <objective>` / `/ultrawork <objective>` commands, `mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | the commands inject the ULW autonomy directive — a run asks the user nothing and stages its own team when the work warrants one; `mpd_boulder_*` tracks progress of a plan markdown file across sessions |
 | Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` (plus the host's `/goal` command and its goal round driver) | see §13.10: the **persisted goal** is the bundle's basis of continuous execution — a heavy ULW run or a plan-bound boulder work anchors one automatically (`goal.autoAnchor`), and it stays armed when the in-turn engine stops short of the objective |
@@ -608,9 +608,10 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
   not the retired `text`) and refuses to mount the whole preset. Update the bundle (`git pull`,
   then `dsh plugin --profile <p> add <repo>`) — this is a harness-version compatibility fix, not a
   configuration problem on your side.
-- **`mcp__git_bash__*` tools are missing** → expected, not a fault: the `mcp-gitbash` row ships
-  `disabled: true` (the upstream server is native-Windows-only). Use the harness's own `bash` tool,
-  or enable that row (`disabled: false`) and reinstall the bundle.
+- **`mcp__git__*` / `mcp__shell__*` tools are missing** → expected, not a fault: the `mcp-git` and
+  `mcp-shell` rows both ship `disabled: true`. Use the harness's own `bash` tool and its git commands,
+  or enable the row you want (`disabled: false`) and reinstall the bundle. The `mcp-git` row also needs
+  `git` on `PATH`.
 - **`mpd_comment_check` reports the binary is missing** → it is the opt-in detector: install
   `@code-yeongyu/comment-checker` into `.toolchain` (`--with-comment-checker`), or set
   `MPD_DSH_COMMENT_CHECKER_BIN` to an absolute path.
@@ -721,7 +722,8 @@ mpd_role_persona { "role": "Architect" }
 
 `role` answers to the functional NAME (`Architect`, `deep worker`, `plan-reviewer`). A read-only role
 is spawned with a deny filter over exactly `write`, `edit`, `mpd_hashline_edit`, `bash`,
-`mcp__ast_grep__rewrite`, `mcp__ast_grep__scan` and `mcp__lsp__rename` — the discipline is mechanical,
+`mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol` and
+`mcp__lsp__rename_symbol_strict` — the discipline is mechanical,
 not advisory.
 
 ### 13.4 The workmate library
@@ -871,9 +873,9 @@ mcp__ast_grep__search { "pattern": "useEffect($$$)", "language": "tsx", "paths":
 mcp__ast_grep__rewrite { "pattern": "console.log($A)", "rewrite": "logger.info($A)", "language": "typescript", "paths": ["src"], "apply": false }
 
 # Language-server intelligence
-mcp__lsp__diagnostics { "filePath": "packages/mpd-roles-plugin/src/index.ts" }
+mcp__lsp__get_diagnostics { "filePath": "packages/mpd-roles-plugin/src/index.ts" }
 mcp__lsp__find_references { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9 }
-mcp__lsp__rename { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9, "newName": "resolvedConfig" }
+mcp__lsp__rename_symbol { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9, "newName": "resolvedConfig" }
 
 # Project graph — ask a question, get the relevant symbols plus the call path
 mcp__codegraph__codegraph_explore { "query": "how does a task get claimed and updated?" }
@@ -883,9 +885,10 @@ mcp__context7__resolve-library-id { "libraryName": "zod", "query": "schema parsi
 mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScript"] }
 ```
 
-`mcp__lsp__rename` and `mcp__ast_grep__rewrite` / `mcp__ast_grep__scan` **write files**: run the
-rewrites with `apply: false` first, read the diff, then apply. `mcp__git_bash__*` ships disabled
-(native-Windows upstream, §3). The two remote rows (`context7`, `grep_app`) are public HTTP services
+`mcp__lsp__rename_symbol` (and its `rename_symbol_strict` twin) and `mcp__ast_grep__rewrite` /
+`mcp__ast_grep__scan` **write files**: run the
+rewrites with `apply: false` first, read the diff, then apply. The `mcp-git` / `mcp-shell` rows ship
+disabled (§3). The two remote rows (`context7`, `grep_app`) are public HTTP services
 and need network access; the three local servers need their binary (§11).
 
 ## 14. Where these capabilities come from
@@ -898,18 +901,18 @@ other people's. The authoritative record, with the full licence texts, is
 |---|---|---|---|
 | Team mode — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, the `team_task_*` board and the Web panel | the **official** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` packages, mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows | MIT (harness package set); declared in `package.json` `dependencies` | `cordis.patch.yml`; `README.md` (*What the install mounts*) |
 | The adopted (then retired, then DELETED) vendored `agent-teams` body | **dsh-agent-teams** by 程序员阿江 (Relakkes) — adopted outright as first-class main code | MIT; adopted package version `0.1.16-rc.3-mpd` (a `0.1.14` body with the audited `0.1.16-rc.3` deltas backported); NO row mounted it since 0.1.7-rc.2, and the de-vendor wave (2026-10-07) removed `packages/mpd-agent-teams-plugin/**` — two relocated pieces survive as our own code: `packages/mpd-schemastery/**` and the adopted browser bundle at `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` | `LICENSE-NOTICES.md` §*dsh-agent-teams* |
-| The 11-specialist roster, the model-chain vocabulary, the teammate / workmate BASE templates | **oh-my-openagent** by code-yeongyu, pinned at commit `8c57e46` (v5.0.0-beta.20) | SUL-1.0 — the licence this repository inherits | `LICENSE-NOTICES.md` §1; `VENDOR_LOCK.json` |
-| The served skill corpus (19 skills, incl. the repo's own `dsh-qa` and `cordis-dev`) | the upstream skills are vendored from **oh-my-openagent**; `cordis-dev` is written here, adapting the DeepSeek Harness's 创造模式 preset skills (`@deepseek-ai/dsh-agent-preset`, MIT) | SUL-1.0 for the corpus; MIT material referenced, not redistributed | `VENDOR_LOCK.json` `assets.skills`; `LICENSE-NOTICES.md` |
+| The 11-specialist roster, the model-chain vocabulary, the teammate / workmate BASE templates | **oh-my-openagent** by code-yeongyu, pinned at commit `8c57e46` (v5.0.0-beta.20) — historical provenance for the NAMES and the vocabulary; the persona texts were re-sourced under permissive licences in wave D | MIT (this repository's own work); the upstream those names came from was SUL-1.0, recorded as history only | `LICENSE-NOTICES.md`; `VENDOR_LOCK.json` |
+| The served skill corpus (19 skills, incl. the repo's own `dsh-qa` and `cordis-dev`) | the 16 ported skills are re-sourced from **lazycodex** (the same author's MIT re-license of the oh-my-openagent corpus); `cordis-dev` is written here, adapting the DeepSeek Harness's 创造模式 preset skills (`@deepseek-ai/dsh-agent-preset`, MIT) | MIT — `Copyright (c) 2026 Yeongyu Kim` for the re-sourced corpus; the referenced harness material is MIT and not redistributed | `VENDOR_LOCK.json` `assets.skills`; `LICENSE-NOTICES.md` |
 | `mcp__ast_grep__*` | **ast-grep** — the optional dependency `@ast-grep/cli` | MIT; `0.45.2`; resolved at runtime, not redistributed | `package.json` `optionalDependencies`; `MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` and the `mpd-codegraph` row | **codegraph** by Yeongyu Kim — the optional dependency `@colbymchenry/codegraph` | MIT; `1.5.0`; the prebuilt server is vendored and sha256-pinned | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`; `VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; `0.8.0`; **not** redistributed — installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
 | The plugin system, the tool / skill / preset / agent seams, the model providers, the Web shell | DeepSeek Harness — the **`@deepseek-ai/*`** packages | MIT; referenced as dependencies only | `LICENSE-NOTICES.md` |
 | The Agent Teams Web panel | the official `@deepseek-ai/dsh-experimental-client-ui-agent-team` client plugin | MIT (harness package set) | §8 above; patch row `mpd-ui-agent-team` |
 | The Workmates sidebar tab | hosted by the community bundle **`dsh-better-sidebar`**, an **optional peer** of this bundle (+ a `devDependency`): the bundle never installs it, and the guarded `mpd-better-sidebar` row mounts it when it is resolvable | — | §8 above; `package.json` `peerDependencies` / `peerDependenciesMeta`; patch row `mpd-better-sidebar` |
-| The DSH plumbing (adapter, runtime plugins, `mpd` preset, combined web client), the TUI edition, the QA suite, the documentation, the extension interface | written here | SUL-1.0 | `README.md` (Acknowledgements); `LICENSE.md` |
+| The DSH plumbing (adapter, runtime plugins, `mpd` preset, combined web client), the TUI edition, the QA suite, the documentation, the extension interface | written here | MIT | `README.md` (Acknowledgements); `LICENSE.md` |
 
 Two consequences worth carrying away: a component keeps its **own** licence even inside this bundle
-(the adopted client bundle and the relocated schemastery validator are MIT while the repository is
-SUL-1.0), and nothing here
+(the adopted client bundle and the relocated schemastery validator are MIT, as is this repository), and
+nothing here
 configures your provider credentials — a `MISSING_CREDENTIAL` error belongs to your DSH credential
 store, not to these docs.

@@ -166,8 +166,42 @@ Does NOT prove:
 - that the COMPOSED row list equals the MOUNTED row list. `--dump-config` composes rows and never
   executes plugin code (`AGENTS.md` §4); it is labelled composition-only in the evidence, and every
   mount claim comes from the boot (step 9) or from session creation (step 10).
-- a packed/tarball install (`dist/mpd-package`) or a relocation test;
+- a packed/tarball install (`dist/mpd-package`) **as a package** or a relocation test. Its coherence
+  and its freshness ARE graded (see the §7 arms below) — but the artifact is never installed, so the
+  tarball install path itself stays unproven;
 - offline operation: apt, nodejs.org, bun.sh, npm and the package registry are all used.
+
+## The §7 acceptance arms (restore-three-capabilities §7 — a SKIP IS NOT A PASS)
+
+`.mpd/plans/restore-three-capabilities.md` §7 makes this lane the place where every claim the developer
+host cannot settle is settled on a real machine. Five answers were added for that, each a DECLARED row
+in `docker/lib/report.ts`'s `EXPECTED` list, so a run that never reached one reports it as owed instead
+of dropping it.
+
+| Assertion | What it measures | How it REDDENS (the negative control) |
+|---|---|---|
+| `install.buildScripts` | the client install completed with NO unapproved dependency build script: exit 0, no `ERR_PNPM_IGNORED_BUILDS`, no `Ignored build scripts` warning — plus an inventory of every manifest in the installed closure that DECLARES `preinstall`/`install`/`postinstall`/`prepare` | a log line carrying the error class or the warning, or a non-zero exit. Rehearsed on the host: a log with a planted `ERR_PNPM_IGNORED_BUILDS` line records `false` with both lines quoted |
+| `pack.present`, `pack.licenceCoherence`, `pack.declarationCoherence`, `pack.staticCoherence`, `pack.distFreshRebuild` | the PACKED artifact `dist/mpd-package`: that it arrived at all; that its `LICENSE.md`/`LICENSE-NOTICES.md` are byte-identical to the tree it was cut from and its declared `license` still matches; that everything it declares about itself is true of it (the `files` allowlist resolves, the `dsh.bundle.patch` layers exist, every row module path its own patch names resolves inside it, no `evidence/`/`.git/`/`docker/`/`node_modules` travelled along); that it agrees byte for byte with the tree it was cut from, with exactly TWO declared generated exceptions (`package.json`, `packages/mpd-ext-plugin/dist/validator.js`); and that every built entry equals the container's OWN from-source rebuild | the second arm is LIVE, not hypothetical: the artifact carried today reddens `pack.staticCoherence` with 10 differing files (the tree moved on after the pack) and `pack.distFreshRebuild` with 2 — which is the measurement a host gate refuses to make (`verify-pack-closure.ts` disclaims freshness; `--pack` has no licence check). A missing artifact records all five as `false`, never as `null` |
+| `boot.mcpToolNaming` | the probe enumerates EVERY registered `mcp__*` name; the row grades the `mcp__<server>__<tool>` shape, that the server set is EXACTLY the three rows that ship enabled, that no `disabled: true` row registered anything, and that the ast-grep row published its whole declared surface | a server segment outside `{ast_grep, lsp, codegraph}` reddens — a leaked `mcp__git__*`/`mcp__shell__*` from a disabled row, or a row renamed to a `serverName` nobody asserted. Rehearsed against a synthetic boot log |
+| `boot.mcpLiveSearch` | a REAL `mcp__ast_grep__search` driven through the mounted adapter over the bundle's own sources, WITH a negative control (a pattern no source file can contain must match 0) | `BINARY_NOT_FOUND` (no engine) reddens, and so does a control that matches anything — a stub echoing the same answer twice cannot pass. Rehearsed in both directions against synthetic logs |
+| `restore.reviewPanelSelfTest`, `restore.reviewPanelCase`, `restore.lspBootstrap`, `restore.hashlineRepair`, `qa.mcpCall`, `qa.readonlyDeny` | the cases §7 owes, run IN the container: the three restored capabilities' own cases, and the two live QA cases that are red on the developer host for PRE-EXISTING reasons | a case that exits non-zero is `false`; a case that prints its own refusal marker (e.g. `[mcp-call] missing credentials`) is `null` WITH the marker quoted, NEVER `true`; a case the wave owes and the tree does not carry is `false`, not a skip |
+
+`restore.lspBootstrap` is a control PAIR, not a single check: the launcher is driven twice with a closed
+stdin, once in a scratch root with no config (it must GAIN `<root>/.mpd/lsp/cclsp.json`, parse it, and
+name at least one server covering the TypeScript family) and once in a scratch root carrying the user's
+own `cclsp.json` (which must survive byte for byte, and no generated file may appear beside it). A
+launcher that overwrote a user's file would pass a "was a config written" check while failing the
+capability the contract states.
+
+The engine the live search needs is staged by the repository's OWN installer, `node
+scripts/install-mcp.ts` (step 09d): `@ast-grep/cli` is no longer in the bundle's `dependencies`, and on
+many Linux hosts `/usr/bin/sg` is util-linux's `setgroups` helper rather than ast-grep — which is why
+the server's own `--version` probe, not PATH, decides.
+
+The apparatus lives beside the lane's other modules (`report.ts`, `rebuild.ts`, `live-verdict.ts`):
+`docker/lib/owed-install.ts`, `owed-pack.ts`, `owed-mcp.ts`, `owed-cases.ts`. It is QA-only
+instrumentation baked at `/opt/mpd-e2e/lib/`, never taken from the tree under test — a repository copy
+can supply its own plugins, never its own verdict.
 
 ## How the repository gets into the image
 
@@ -185,7 +219,7 @@ belongs to, so this repository needs no root-level `.dockerignore`. It excludes:
 |---|---|
 | `.git`, `.gitignore`, `.gitattributes` | an install must not need history |
 | `node_modules`, `**/node_modules` | `bun install` recreates them inside the container |
-| the **root** `dist/` | this repository's packed output, not a source input |
+| `dist/*` **except** `dist/mpd-package` | the packed output is not a source input — but §7 item 5 owes a measurement OF it, so exactly that one path travels in and `copy.contextFiltered` asserts nothing else under `dist/` did |
 | `evidence`, `.qa-*`, `.toolchain`, `.codegraph`, `.t18ev`, `.t28ev`, `.bun-tmp`, `.mpd` | host-local state |
 
 `packages/*/dist` is deliberately **kept**: the container rebuilds it from source, and the rebuild is

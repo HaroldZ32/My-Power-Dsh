@@ -603,4 +603,4 @@ Node 内建模块。`Config` schema 来自本 bundle **自有**的 schemastery
 
 ## 许可证
 
-不变：沿用仓库许可证（`LICENSE.md`，SUL-1.0）。本包不主张任何许可证变更。
+不变：沿用仓库许可证（`LICENSE.md`，**MIT**，`Copyright (c) 2026 HaroldZ32`）。本包不另行主张任何许可证变更。

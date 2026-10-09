@@ -76,7 +76,7 @@ interface PackedManifest {
   type: "module"
   /** The root bundle description; `undefined` when the root manifest omits it. */
   description: string | undefined
-  /** A pointer into the shipped licence file rather than an SPDX id. */
+  /** The SPDX id the packed artifact declares, kept in step with the root manifest and `LICENSE.md`. */
   license: string
   /** The packed entry point the `@mpd-dsh/mpd` specifier resolves. */
   main: string
@@ -397,7 +397,7 @@ function cpDist(): void {
     cpSync(src, join(outDir, "packages", p, "dist"), { recursive: true })
   }
   if (missing.length > 0) {
-    console.error("[pack-mpd] FAIL: missing dist for " + missing.join(", ") + " — run bun build / scripts/build-mcp.ts first; a bundle must never ship without a plugin")
+    console.error("[pack-mpd] FAIL: missing dist for " + missing.join(", ") + " — run the package's build script (bun build / scripts.build) first; a bundle must never ship without a plugin")
     process.exit(1)
   }
 }
@@ -647,7 +647,7 @@ function writeManifest(): void {
     private: true,
     type: "module",
     description: root.description,
-    license: "SEE LICENSE IN LICENSE.md",
+    license: "MIT",
     main: "packages/mpd-bundle-plugin/dist/index.js",
     exports: {
       ".": "./packages/mpd-bundle-plugin/dist/index.js",

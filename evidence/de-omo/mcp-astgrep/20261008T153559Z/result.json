@@ -1,0 +1,112 @@
+{
+  "wave": "de-omo B1 — the ast_grep MCP server is now written in this repository",
+  "producedAt": "2026-10-08T15:41Z",
+  "engine": {
+    "choice": "the MIT ast-grep CLI binary (`ast-grep`), resolved at runtime by this bundle's own packages/mpd-mcp-shared/bin-resolve.ts",
+    "why": "one engine, byte-identical semantics to what shipped: the vendored server also drove the CLI (sg run/scan --json=stream), and `scan` (YAML rule files, --update-all, --include-metadata) has no faithful @ast-grep/napi equivalent. @ast-grep/cli cannot become an install dependency (postinstall), so it stays the OUT-OF-CLOSURE binary it already was; no install-time closure change.",
+    "probing": "the env pin MPD_AST_GREP_SG_PATH is accepted only after the same `--version` probe the resolver applies (rejects util-linux `sg`), then bin-resolve tiers: MPD_AST_GREP_BIN_DIR -> @ast-grep/cli -> <bundle>/.toolchain -> <bundle>/bin"
+  },
+  "framework": {
+    "choice": "no new dependency: the stdio JSON-RPC 2.0 transport is written here (src/protocol.ts, 150 lines)",
+    "why": "@modelcontextprotocol/sdk would add an install-time network fetch to the published closure for ~150 lines of framing; the closure stays BUILD-SCRIPT-FREE and unchanged",
+    "declared": "package.json dependencies/optionalDependencies/peerDependencies UNCHANGED (verified by verify:manifest PASS); files allowlist unchanged and sufficient (packages/** admits every new runtime path, npm pack --dry-run lists 950 files, 0 required paths absent)"
+  },
+  "tools": {
+    "search": "faithful: validation + hint linter + `sg run --json=stream` + normalization + counts/truncation",
+    "rewrite": "faithful: two passes (JSON preview, then --update-all), PREVIEW_TRUNCATED / REWRITE_STALE_PREVIEW gates, metavariable preflight that `force` cannot bypass",
+    "scan": "faithful: exactly one explicit rule source (ruleFile XOR inlineRules), inline-rules/rule-file argv, --include-metadata, RULE_PARSE_FAILED mapping, two-pass apply",
+    "names": "raw names search / rewrite / scan unchanged; descriptors publish identical input schemas (property order, enums, required, additionalProperties:false)"
+  },
+  "files": {
+    "added": [
+      "packages/mpd-mcp-astgrep/src/cli.ts (entry; built to dist/cli.js)",
+      "packages/mpd-mcp-astgrep/src/protocol.ts",
+      "packages/mpd-mcp-astgrep/src/server.ts",
+      "packages/mpd-mcp-astgrep/src/runner.ts",
+      "packages/mpd-mcp-astgrep/src/normalize.ts",
+      "packages/mpd-mcp-astgrep/src/hints.ts",
+      "packages/mpd-mcp-astgrep/src/search.ts",
+      "packages/mpd-mcp-astgrep/src/rewrite.ts",
+      "packages/mpd-mcp-astgrep/src/scan.ts"
+    ],
+    "changed": [
+      "packages/mpd-mcp-astgrep/dist/cli.js (vendored 84651 B f06bba31… -> our build 71085 B ddf7111e…, built with .toolchain bun 1.4.0 from the repo root)",
+      "packages/mpd-mcp-astgrep/package.json (scripts.build now also builds src/cli.ts -> dist/cli.js)",
+      "scripts/build-mcp.ts (ast-grep removed from SERVERS, REQUIRED_SNAPSHOT_PACKAGES and MPD_SCRUB; git-bash + lsp untouched)",
+      "VENDOR_LOCK.json (the `packages/mpd-mcp-astgrep/dist/cli.js` sha256 asset REMOVED: the file is our own build artifact now, verified by verify-dist-fresh instead)"
+    ],
+    "deleted": ["packages/mpd-mcp-astgrep/dist/BUILD.lock (build-mcp provenance for a build that no longer happens here)"],
+    "untouched": ["vendor/mcp-src/**", "packages/mpd-mcp-{gitbash,lsp,codegraph,shared}/**", "cordis.patch.yml (the mcp-astgrep row still launches dist/launch.js over stdio — no change required)", "packages/mpd-mcp-astgrep/src/launch.ts"]
+  },
+  "gates": [
+    { "command": "node scripts/verify-vendor.ts", "exit": 0, "observed": "PASS - 5 shipped asset(s) fingerprinted" },
+    { "command": "node scripts/repin-vendor.ts --check", "exit": 0, "observed": "CHECK GREEN - lock matches the working tree (drift=0, problems=0)" },
+    { "command": "bun run verify:comments", "exit": 0, "observed": "PASS - 376 files, 32964 declarations, 14761 inline callbacks skipped" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "31 targets; packages/mpd-mcp-astgrep/dist/cli.js FRESH (sha ddf7111e…), launch.js FRESH" },
+    { "command": "bun run verify:manifest", "exit": 0, "observed": "PASS - 27 module paths 0 missing; packed-content 950 files, 0 required absent" },
+    { "command": "node scripts/verify-pack-closure.ts", "exit": 1, "observed": "0 CONTENT drift, 459 identical, 90 expected-after-pack; ONE pre-existing TREE-DRIFT: docs/verification/2026-10-08T1203Z/verdict.md is in the tree but not in the stale dist/mpd-package (pack stamp 08:51:48Z, file mtime 13:21:41Z) — not caused by B1, cleared only by a re-pack" },
+    { "command": "bun test packages/mpd-mcp-shared", "exit": 0, "observed": "27 pass / 0 fail" },
+    { "command": "bun test packages/mpd-dsh-adapter-plugin", "exit": 1, "observed": "180 pass / 2 fail — BOTH are frozen-set gates that B1 legitimately extends (see blockers)" },
+    { "command": "node packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts --self-test", "exit": 0, "observed": "PASS 10/10" },
+    { "command": "bun packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts --self-test", "exit": 0, "observed": "SELF-TEST PASS 14/14" },
+    { "command": "node skills/dsh-qa/scripts/readonly-deny.ts --self-test", "exit": 0, "observed": "ok: 23 checks (includes the built-dist greps for the rewrite/scan tool names)" },
+    { "command": "bun run typecheck", "exit": 1, "observed": "2 errors, BOTH in skills/programming/scripts/typescript/check-no-excuse-rules.ts (wave A corpus); 0 errors mention packages/mpd-mcp-astgrep" }
+  ],
+  "proof": {
+    "differential": {
+      "method": "31 scenarios; each drives the recovered vendored server (sha256 f06bba31… == the VENDOR_LOCK value, restored from git HEAD) and the new dist/cli.js over real stdio with the SAME requests and the SAME fake engine, which records every argv",
+      "result": "cases=31 equal=31 different=0",
+      "comparedExactly": "argv of every invocation (probe + preview + apply passes), and every JSON-RPC line — payload key order included",
+      "masked": "only `durationMs` (wall clock) and the three tool `description` strings (this repository now writes its own prose; the schemas, names, results and error shapes are byte-identical)",
+      "coverage": "initialize/notifications/tools-list/ping/-32602/-32601/-32700; search success, empty, all-flags, truncated, malformed-salvage, garbage-only, sg exit 2, ERROR-node, hint reject, force, warning; rewrite dry-run, apply, stale preview, no-match apply, unbound metavariable, cardinality, bad args; scan dry-run, apply, metadata+flags, ruleFile, both-sources, no-source, rule-parse-failed, deprecation warning, unknown prop; BINARY_NOT_FOUND"
+    },
+    "launchPathMount": {
+      "method": "the REAL launcher (dist/launch.js, exactly what the patch row names) spawned with node over stdio from an isolated HOME/DSH_HOME/workspace sandbox under the evidence dir, with MPD_AST_GREP_BIN_DIR pointing at a fake engine",
+      "result": "tools/list returned exactly [search, rewrite, scan]; tools/call search returned ok:true, kind:search, 2 matches, first path src/a.ts; the engine saw the probe then `run -p foo($A) --lang typescript --json=stream --strictness smart src`; stderr empty (terminal silence held)",
+      "noEngineRun": "same path with no engine resolvable anywhere: tools/list still lists the three tools, tools/call search answers isError:true with code BINARY_NOT_FOUND — the honest shape on this machine, which has no ast-grep installed"
+    },
+    "notProven": [
+      "no REAL ast-grep binary exists on this machine (PATH `sg` is util-linux, no @ast-grep/cli installed), so no live search over real source was run; the engine behind both servers is the same binary by construction, and argv identity is proven instead",
+      "no full harness ROW MOUNT (a live dsh session mounting the row) was attempted: it needs an installed profile plus a live LLM route; the launch-path handshake above drives the same artifact the row names",
+      "no package-local unit tests were added for the new server (none existed for the vendored one either); the differential harness is the substitute"
+    ]
+  },
+  "blockers": [
+    {
+      "what": "packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts — EXEMPT_FILES needs one entry for the MCP protocol writer",
+      "why": "UNFROZEN TERMINAL WRITES: packages/mpd-mcp-astgrep/src/protocol.ts:69 [process.stdout.write]. It is the stdio MCP server's protocol channel (fd 1 is the client pipe, not a terminal), which is exactly the precedent the codegraph launcher already carries; SWEEP_INVENTORY may only shrink, so an EXEMPT_FILES entry is the sanctioned route",
+      "exactAmendmentText": "{ path: \"packages/mpd-mcp-astgrep/src/protocol.ts\", reason: \"the ast_grep MCP server's own protocol writer: this file IS the stdio JSON-RPC loop, so fd 1 is the client channel the row spawns it with, never a terminal\", requires: \"process.stdout.write\" },",
+      "file": "packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts (outside this wave's write scope)"
+    },
+    {
+      "what": "packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts — FROZEN_COUPLINGS needs two entries",
+      "why": "the new server consumes two shared modules the vendored artifact inlined instead of importing",
+      "exactAmendmentText": "\"packages/mpd-mcp-astgrep/src/cli.ts :: import { openLogSink } from \\\"../../mpd-mcp-shared/log-sink.ts\\\"\",\n  \"packages/mpd-mcp-astgrep/src/server.ts :: import { probeAstGrep, resolveAstGrepBinary } from \\\"../../mpd-mcp-shared/bin-resolve.ts\\\"\",",
+      "regenerateWith": "bun packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts --print-inventory",
+      "file": "packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts (outside this wave's write scope)"
+    },
+    {
+      "what": "the wave's ONE VENDOR_LOCK re-pin had to be a REMOVAL, applied by hand",
+      "why": "scripts/repin-vendor.ts never rewrites single-file sha256 assets and has no delete mode (its own POLICY line says a sha256 build artifact is re-pinned 'by rebuilding'); since dist/cli.js is now our own build artifact — like dist/launch.js, which carries no lock entry — the stale entry had to go. `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` was NOT run: with the entry removed the helper reports drift=0 and would have written nothing.",
+      "verified": "verify-vendor PASS (5 assets), repin --check GREEN"
+    }
+  ],
+  "residuals": [
+    "MASKED IN THE DIFFERENTIAL: the three tool description strings are written by this repository now, so tools/list prose differs from the vendored text. Names, input schemas, result payloads and error shapes are byte-identical.",
+    "packages/mpd-mcp-astgrep/dist/cli.js now contains a `--version` probe of the env pin per call (parity with the vendored resolver, which probed the pin too — the differential argv logs match).",
+    "the vendored snapshot package vendor/mcp-src/ast-grep-mcp/** is still on disk (B2's build input list is unchanged) but is no longer read by scripts/build-mcp.ts.",
+    "running the dsh-qa readonly-deny live case wrote its own record under evidence/workmate/roles-readonly/…; it is that case's output, not a B1 edit."
+  ],
+  "evidence": {
+    "dir": "evidence/de-omo/mcp-astgrep/20261008T153559Z/",
+    "files": {
+      "result.json": "this summary",
+      "output.log": "concatenated observed transcripts of every gate, self-test, harness and proof run",
+      "diff-result.json": "the 31-case differential result (per case: argv, masked responses, equality flags)",
+      "launch-proof.json": "the real-launcher MCP handshake, with and without an engine",
+      "oracle-vendored-cli.mjs": "the vendored server recovered from git HEAD (sha256 f06bba31… == VENDOR_LOCK)",
+      "harness/": "fake-sg.mjs, diff-harness.mjs, launch-proof.mjs and their sandbox",
+      "final-gates.log / gates-final*.log / dist-fresh.log / pack-closure-full.log / tests-and-deny.log / frozen-set-deltas.log / refreeze-print-inventory.log / self-tests.log": "per-gate raw transcripts"
+    }
+  }
+}
