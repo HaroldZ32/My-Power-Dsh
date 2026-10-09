@@ -1,0 +1,12 @@
+=== COMMAND: node skills/dsh-qa/scripts/readonly-deny.ts
+=== STARTED: 2026-10-09T12:11:51Z
+[readonly-deny] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/workmate/roles-readonly/2026-10-09T12-11-51.841Z
+  positive: {"exit":0,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":2,"stubTrace":[{"call":1,"hasTools":false,"bytes":115496,"toolCount":0,"writeCapableVisible":[],"_toolNames":[]},{"call":2,"hasTools":true,"bytes":209930,"toolCount":104,"writeCapableVisible":["write","edit","mp
+  enforcement: {"ok":false,"childRequests":0,"parentRequests":1,"childLeaksWriteCapable":[],"childHasStructuredOutput":false,"parentSeesAllDenyNames":true,"note":"read-only authority is ENFORCED: the child's own requests cannot see any of the eight write-capable tools, while the parent's sees all of them"}
+  positiveOk: {"ok":false,"note":"the eight-name list reached tools.restrict(), the child was created and answered, and the child's visible toolset excludes all eight write-capable names"}
+  reinjectionDiagnostic: {"exit":0,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":3,"stubTrace":[{"call":1,"hasTools":true,"bytes":220448,"toolCount":106,"writeCapableVisible":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename_symbol","
+  reinjectionControl: {"ok":true,"mutationLoaded":true,"injectedNamesSeenByAdapter":["str_replace_editor","apply_patch"],"childRequestsUnderRestriction":0,"parentSeesWriteCapable":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename_symbol","mcp__lsp__rename_symbol_s
+  reinjectionNote: "with the unregistered names re-injected, the sandbox boot REFUSED the restricted spawn (recorded spawnErrored=true, stdout refusal=false) and made zero child requests — the loud route for a name outside the scope's restrictable set"
+  isolation: {"ok":true,"realWorkmateUntouched":true,"realWm":"/home/haroldzhao/.mpd/workmate"}
+EXIT=1
+=== ENDED: 2026-10-09T12:12:29Z

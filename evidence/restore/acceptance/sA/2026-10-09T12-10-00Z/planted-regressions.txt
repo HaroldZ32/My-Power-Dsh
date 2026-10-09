@@ -1,0 +1,33 @@
+### Planted regressions (the offline arms' falsifier)
+
+$ node evidence/restore/acceptance/sA/2026-10-09T12-10-00Z/planted-regression.mjs <repoRoot> <stampDir> p1
+### planted regression p1 on /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/lib/session-evidence.ts
+pristine sha256=8ed4e2d22ea06dd4ac51dece758762cf26146a386536a6f17b1403bff1a47007
+mutated sha256=616c91bf62b0c7428a13b1bef42635099c4aadf657b6b28a62607077c4b1644d
+
+MUTATED  skills/dsh-qa/scripts/lib/session-evidence.ts --self-test -> EXIT=1
+         [session-evidence self-test] FAIL: a v4 result flagged isError:true must report succeeded=false
+
+restored sha256=8ed4e2d22ea06dd4ac51dece758762cf26146a386536a6f17b1403bff1a47007
+RESTORE PROVEN (sha256 identical)
+RESTORED skills/dsh-qa/scripts/lib/session-evidence.ts --self-test -> EXIT=0
+RUNNER_EXIT=0
+
+$ node evidence/restore/acceptance/sA/2026-10-09T12-10-00Z/planted-regression.mjs <repoRoot> <stampDir> p2
+### planted regression p2 on /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/lib/messages-sse.ts
+pristine sha256=e5c4e83ce78f189bc26c4584cb848cfbb40419da042bf674367f23a279e8775d
+mutated sha256=d604af2b825092bc83525abad5e02a59432031e9fa61dafa65a516a76f896900
+
+MUTATED  skills/dsh-qa/scripts/lib/messages-sse.ts --self-test -> EXIT=1
+         [messages-sse self-test] FAIL: a tool-call turn must emit the six Messages events in order, saw ["message_start",null,"content_block_delta","content_block_stop","message_delta","message_stop"]
+MUTATED  skills/dsh-qa/scripts/readonly-deny.ts --self-test -> EXIT=1
+         [readonly-deny] FAIL: self-test: the tool-call frames are the six Messages events, in order | no OpenAI streaming-object frame crosses the wire
+MUTATED  skills/dsh-qa/scripts/software-smoke.ts --self-test -> EXIT=1
+         [software-smoke self-test] FAIL: the stub answered with an OpenAI streaming-object frame
+
+restored sha256=e5c4e83ce78f189bc26c4584cb848cfbb40419da042bf674367f23a279e8775d
+RESTORE PROVEN (sha256 identical)
+RESTORED skills/dsh-qa/scripts/lib/messages-sse.ts --self-test -> EXIT=0
+RESTORED skills/dsh-qa/scripts/readonly-deny.ts --self-test -> EXIT=0
+RESTORED skills/dsh-qa/scripts/software-smoke.ts --self-test -> EXIT=0
+RUNNER_EXIT=0

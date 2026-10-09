@@ -1,0 +1,26 @@
+### Amendment 4b (no fixed tool COUNT) evidence, UTC 2026-10-09T12:17:48Z
+
+## 4b-A: the retired count fields are GONE from the case source
+$ grep -n "childToolCounts\|parentToolCount\|parentHasAllSeven" skills/dsh-qa/scripts/readonly-deny.ts
+EXIT=1 (1 = no match, the intended result)
+
+## 4b-B: every verdict field the case asserts on is a MEMBERSHIP field
+$ grep -n "parentSeesAllDenyNames\|writeCapableVisible: WRITE_CAPABLE.filter\|childLeaksWriteCapable" skills/dsh-qa/scripts/readonly-deny.ts
+520:        writeCapableVisible: WRITE_CAPABLE.filter((n) => wire.toolNames.includes(n)),
+775:      childLeaksWriteCapable: childSpy.flatMap((c) => c.writeCapableVisible),
+779:      parentSeesAllDenyNames: parentShowsAllDenied,
+802:        + ", childLeaksWriteCapable=" + JSON.stringify(childSpy.flatMap((c) => c.writeCapableVisible)),
+EXIT=0
+
+## 4b-C: the live run's own enforcement verdict (membership only, no counts)
+$ node -e <read evidence/workmate/roles-readonly/2026-10-09T12-14-05.555Z/result.json>
+{
+ "ok": true,
+ "childRequests": 1,
+ "parentRequests": 3,
+ "childLeaksWriteCapable": [],
+ "childHasStructuredOutput": true,
+ "parentSeesAllDenyNames": true,
+ "note": "read-only authority is ENFORCED: the child's own requests cannot see any of the eight write-capable tools, while the parent's sees all of them"
+}
+EXIT=0

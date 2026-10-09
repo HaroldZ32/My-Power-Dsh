@@ -1,0 +1,5 @@
+=== COMMAND: node skills/dsh-qa/scripts/codegraph-smoke.ts
+=== STARTED: 2026-10-09T12:15:28Z
+[codegraph-smoke] ok=false (tool recorded, result 502 chars) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/codegraph/2026-10-09T12-16-02.197Z
+EXIT=1
+=== ENDED: 2026-10-09T12:16:02Z

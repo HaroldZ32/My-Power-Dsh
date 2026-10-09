@@ -1,0 +1,10 @@
+### Real-store reader check at UTC 2026-10-09T12:12:18Z
+### Subject: the LIVE harness session store (v4), decoded read-only
+$ node --input-type=module -e "<decode + pair real records with findToolCall>"
+store=/home/haroldzhao/.dsh/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh--/f990e8e7-b48c-4a96-93b7-fe99a0ea0178/session.v4.jsonl.zstd
+records=962 frames=617 calls=171 results=170
+--- REAL ERRORED CALL paired through the fixed reader ---
+{"tool":"bash","called":true,"succeeded":false,"resultChars":673,"reason":"the harness recorded 1 call(s) to bash but every recorded result is an ERROR"}
+--- REAL SUCCESSFUL CALL paired through the fixed reader ---
+{"tool":"read","called":true,"succeeded":true,"resultChars":8191,"reason":""}
+EXIT=0

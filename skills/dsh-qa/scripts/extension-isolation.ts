@@ -7,7 +7,7 @@
 // real tool execution — but a provider credential is needed for the model step,
 // and a QA sandbox must never depend on one (this environment has none: the real
 // ~/.dsh holds no provider key and is read-only). So the model step is answered
-// by a local OpenAI-shaped endpoint (the `software-smoke` pattern): the harness
+// by a local DeepSeek Messages endpoint (the `software-smoke` pattern): the harness
 // really executes the tool calls the stub scripts, and the results come back as
 // real `tool` messages. NOTHING about the extension interface is mocked: the
 // rows, the registry, the discovery, the providers, the bridge and the tools are
@@ -22,7 +22,7 @@
 // and its own `--self-test` is offline (stub protocol + fixtures + contract).
 import { spawn, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { createServer, type ServerResponse } from "node:http"
+import { createServer } from "node:http"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
@@ -31,6 +31,7 @@ import { pathToFileURL } from "node:url"
 import { REPO_ROOT, projectKey, assertSessionsSandboxed, sandboxWorkspace, type SessionSandboxVerdict } from "./lib/workspace-isolation.ts"
 import { readSessionEvents, findToolCall, recordedToolNames, type SessionStore, type ToolCallEvidence } from "./lib/session-evidence.ts"
 import { DSH_MISSING, dshCommand, resolveDshLauncher, type CommandSpec, type Env } from "./lib/dsh-launcher.ts"
+import { messagesTextEvents, messagesToolUseEvents, readWireRequest, writeMessagesSse } from "./lib/messages-sse.ts"
 
 /** The repository root, as the shared workspace-isolation helper derives it from its own URL. */
 export const REPO: string = REPO_ROOT
@@ -244,7 +245,7 @@ export function manifest(id: string, contributes: ExtensionContributes = {}, ext
   return { apiVersion: 1, id, description: `QA extension ${id}`, contributes, ...extra }
 }
 
-// ── the local OpenAI-shaped stub model ──────────────────────────────────────
+// ── the local DeepSeek Messages stub model ──────────────────────────────────
 
 /** One scripted step: exactly one of a tool call and a closing text, never both. */
 type StubStep =
@@ -302,51 +303,12 @@ interface StubTraceEntry {
   readonly decided: "fresh" | "memoized"
 }
 
-/** The single choice of one streaming chunk. */
-interface ChatChunkChoice {
-  /** Choice index; always 0 for this single-choice stub. */
-  readonly index: number
-  /** The incremental payload the harness accumulates into an assistant message. */
-  readonly delta: Record<string, unknown>
-  /** The stop reason, `null` while the turn continues. */
-  readonly finish_reason: string | null
-}
-
-/** One chunk in the OpenAI streaming shape the harness's SSE reader parses. */
-interface ChatChunk {
-  /** Synthetic completion id, stable so a memoized answer looks like a fresh one. */
-  readonly id: string
-  /** The wire object kind the SSE reader keys on. */
-  readonly object: string
-  /** Synthetic creation stamp; the stub never varies it. */
-  readonly created: number
-  /** The model label the stub answers as. */
-  readonly model: string
-  /** Exactly one choice, carrying the delta and its finish reason. */
-  readonly choices: ChatChunkChoice[]
-}
-
 /** One wire message of the stub protocol: only the fields the driver reads are named. */
 interface StubMessage {
-  /** The speaker role, tested against the two tool-result spellings. */
+  /** The speaker role. */
   readonly role?: unknown
-  /** The message content: a plain string, or an array of text parts. */
+  /** The message content: a plain string, or an array of parts (`text` or `tool_result` blocks). */
   readonly content?: unknown
-  /** Tool calls an assistant message asks for; only the probe's own request literals carry them. */
-  readonly tool_calls?: readonly unknown[]
-  /** The call id a tool-result message answers; only the probe's own request literals carry it. */
-  readonly tool_call_id?: string
-}
-
-/** One content part of a message: a bare string, or an object whose `text` is read. */
-type MessagePart = string | { readonly text?: unknown }
-
-/** One tool entry as it appears in a request: the OpenAI nesting, or the flat name spelling. */
-interface OfferedToolWire {
-  /** The OpenAI nesting whose `name` is the public tool name. */
-  readonly function?: { readonly name?: unknown } | undefined
-  /** The flat spelling some clients send instead. */
-  readonly name?: unknown
 }
 
 /** The knobs `makeStubModel` accepts. */
@@ -376,7 +338,7 @@ interface StubModel {
 }
 
 /**
- * A deterministic OpenAI-shaped streaming endpoint.
+ * A deterministic DeepSeek Messages streaming endpoint (lib/messages-sse.ts owns the wire shape).
  *
  * `script` is a list of steps:
  *   { tool: "<name>", args: {...} }   issue one real tool call
@@ -406,45 +368,6 @@ export function makeStubModel({
   const memo = new Map<string, StubDecision>()
   // How many requests have arrived; also the trace ordinal.
   let requests = 0
-  /**
-   * One chunk in the wire shape the harness's SSE reader parses.
-   * @param delta The incremental payload of this chunk.
-   * @param finish The stop reason; omitted while the turn continues.
-   * @returns The chunk object serialized into one `data:` line.
-   */
-  const chunk = (delta: Record<string, unknown>, finish?: string): ChatChunk => ({
-    id: "chatcmpl-" + label,
-    object: "chat.completion.chunk",
-    created: 1,
-    model: label,
-    choices: [{ index: 0, delta, finish_reason: finish ?? null }],
-  })
-  /**
-   * Write the whole SSE response: one `data:` chunk plus the `[DONE]` sentinel.
-   * @param res The response to write onto.
-   * @param payload The chunk to serialize.
-   * @returns Nothing; the response is ended here.
-   */
-  const sse = (res: ServerResponse, payload: ChatChunk): void => {
-    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store" })
-    res.write("data: " + JSON.stringify(payload) + "\n\n")
-    res.write("data: [DONE]\n\n")
-    res.end()
-  }
-  /**
-   * The text of one wire message, whichever content shape the client sent.
-   * @param message The message to read.
-   * @returns Its text: a plain string, or the concatenated `text` of its parts.
-   */
-  const textOf = (message: StubMessage): string => {
-    // The content before the string/array distinction is made.
-    const content = message?.content
-    if (typeof content === "string") return content
-    // `Array.isArray` widens the unknown content to `any[]`; naming the part shape keeps
-    // each part's `text` read typed instead of implicit `any`.
-    if (Array.isArray(content)) return (content as readonly MessagePart[]).map((part) => (typeof part === "string" ? part : part?.text ?? "")).join("")
-    return ""
-  }
   /** Answer one request: a tool call while the script has steps, else plain text. */
   const decide = (offeredTools: string[], toolResults: string[], blob: string): StubDecision => {
     if (offeredTools.length === 0) return { kind: "text", text: "QA-STUB-NO-TOOLS", why: "plain text (no tools offered)" }
@@ -472,25 +395,21 @@ export function makeStubModel({
     }
     return { kind: "tool", name: step.tool, args: step.args ?? {}, why: "tool call " + step.tool }
   }
-  // The loopback HTTP endpoint the harness sends its chat completions to.
+  // The loopback HTTP endpoint the harness sends its model requests to.
   const server = createServer((req, res) => {
     // The request body accumulated across `data` events.
     let body = ""
     req.on("data", (piece: Buffer) => { body += piece })
     req.on("end", () => {
-      // The parsed request body; a malformed body stays the empty object.
-      let parsed: Record<string, unknown> = {}
-      try { parsed = JSON.parse(body) } catch { /* keep {} */ }
-      // The offered tool entries, or none when the field is absent or not an array.
-      const tools: readonly OfferedToolWire[] = Array.isArray(parsed.tools) ? parsed.tools : []
-      // The public names of those entries; a nameless entry contributes nothing.
-      const offeredTools: string[] = tools.map((entry) => entry?.function?.name ?? entry?.name).filter((name): name is string => typeof name === "string")
-      // The conversation, or none when the field is absent or not an array.
-      const messages: readonly StubMessage[] = Array.isArray(parsed.messages) ? parsed.messages : []
+      // The request read in whichever wire shape the client used: the pinned provider sends Messages,
+      // whose tool results are `tool_result` BLOCKS rather than `role: "tool"` messages.
+      const wire = readWireRequest(body)
+      // The public names of the tools the request offered.
+      const offeredTools: string[] = wire.toolNames
       // The text of every tool result the conversation already carries.
-      const toolResults = messages.filter((message) => message?.role === "tool" || message?.role === "tool_result").map(textOf)
+      const toolResults: string[] = wire.toolResults
       // The serialized conversation, hashed into the memo key.
-      const blob = JSON.stringify(messages)
+      const blob = JSON.stringify(wire.messages)
       requests += 1
       // The memo key: the conversation plus the tool list offered for it.
       const key = createHash("sha256").update(blob + "\u0000" + offeredTools.join(",")).digest("hex")
@@ -508,16 +427,8 @@ export function makeStubModel({
         decision: decision.why + (cached === undefined ? "" : " (memoized)"),
         decided: cached === undefined ? "fresh" : "memoized",
       })
-      if (decision.kind === "text") return sse(res, chunk({ role: "assistant", content: decision.text }, "stop"))
-      return sse(res, chunk({
-        role: "assistant",
-        tool_calls: [{
-          index: 0,
-          id: "call_" + label + "_" + toolResults.length,
-          type: "function",
-          function: { name: decision.name, arguments: JSON.stringify(decision.args) },
-        }],
-      }))
+      if (decision.kind === "text") return writeMessagesSse(res, messagesTextEvents(decision.text))
+      return writeMessagesSse(res, messagesToolUseEvents("call_" + label + "_" + toolResults.length, decision.name, decision.args))
     })
   })
   return {
@@ -772,6 +683,10 @@ interface ToolResultRecordData {
   readonly message?: {
     /** Its content blocks, unvalidated: the reader narrows it with `Array.isArray`. */
     readonly content?: unknown
+    /** v4 only: the call id sits on the MESSAGE, not on a content block. */
+    readonly toolCallId?: unknown
+    /** v4 only: the error flag sits on the MESSAGE, not on a content block. */
+    readonly isError?: unknown
   }
 }
 
@@ -788,17 +703,35 @@ interface ToolResultSummary {
  * useless when one session calls the same tool several times with different
  * arguments (the MCP case calls `mpd_ext_show` once per extension). Pairing by
  * `toolCallId` keeps every assertion tied to the call it belongs to.
+ *
+ * BOTH session shapes are read (measured 2026-10-09): v3 keeps the call id, the error flag and the
+ * payload on a `tool-result` CONTENT BLOCK, while v4 moved them onto the MESSAGE (`data.message.{toolCallId,isError}`
+ * with the payload in its `text` blocks). Reading only v3 returned an EMPTY map for every live store —
+ * so each consuming case's per-call text assertions measured `""` rather than failing loudly.
  * @param store The decoded session store to read.
- * @returns Every `tool-result` block keyed by its call id (or `undefined` when the block carried none).
+ * @returns Every recorded result keyed by its call id (or `undefined` when the record carried none).
  */
 export function toolResultsByCallId(store: SessionStore): Map<string | undefined, ToolResultSummary> {
-  // The paired results, keyed by the call id the result block carries.
+  // The paired results, keyed by the call id the result carries.
   const map = new Map<string | undefined, ToolResultSummary>()
   for (const record of store?.records ?? []) {
     if (record?.type !== "tool/result") continue
     // The record's payload as the writer stores it: a JSON object, so the `unknown`
     // record field is given its shape once here instead of narrowed at every read.
     const data = record?.data as ToolResultRecordData | undefined
+    if (typeof data?.message?.toolCallId === "string" || typeof data?.message?.isError === "boolean") {
+      // The v4 shape: the payload is the message's own text blocks, and there is no `tool-result` block.
+      const parts: readonly ResultPart[] = Array.isArray(data.message.content) ? data.message.content : []
+      map.set(
+        typeof data.message.toolCallId === "string" ? data.message.toolCallId : undefined,
+        {
+          // The joined text of every part, newline-separated.
+          text: parts.map((part) => (typeof part?.text === "string" ? part.text : "")).join("\n"),
+          isError: data.message.isError === true,
+        },
+      )
+      continue
+    }
     // The result blocks the message carries; a malformed payload contributes none.
     const blocks: readonly ToolResultBlock[] = Array.isArray(data?.message?.content) ? data.message.content : []
     for (const block of blocks) {
@@ -1215,47 +1148,61 @@ async function selfTest(): Promise<void> {
   /** Record one violation without aborting the run. */
   const check = (condition: boolean, message: string): void => { if (!condition) problems.push(message) }
 
-  // 1) the stub protocol really answers an OpenAI-shaped request with a tool call.
+  // 1) the stub protocol really answers a MESSAGES-shaped request with a tool call, and advances on a
+  // `tool_result` BLOCK — the shape the pinned provider sends back. The OpenAI chunk shape this probe
+  // used before is what made every case importing this module die on the parent's first model step with
+  // `MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch`.
+  // The OpenAI streaming-object needle, assembled from parts so that it cannot appear in this file's own
+  // bytes and make the absence assertions below vacuous.
+  const OPENAI_CHUNK_NEEDLE = "chat" + ".completion" + ".chunk"
   // The stub whose script the protocol probe drives.
   const stub = makeStubModel({ script: [{ tool: "mpd_ext_list", args: {} }, { text: "done" }], label: "selftest" })
   // The loopback port the protocol probe sends its requests to.
   const port = await stub.listen()
   /**
-   * Send one OpenAI-shaped chat request to the self-test stub.
+   * Send one Messages-shaped chat request to the self-test stub.
    * @param messages The conversation to send.
    * @param tools The tool list to offer; an empty list means none.
    * @returns The raw SSE body.
    */
   const askOnce = async (messages: readonly StubMessage[], tools: readonly unknown[]): Promise<string> => {
     // The stub's response to this request.
-    const response = await fetch("http://127.0.0.1:" + port + "/v1/chat/completions", {
+    const response = await fetch("http://127.0.0.1:" + port + "/v1/messages", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ model: "probe", stream: true, messages, tools }),
     })
     return await response.text()
   }
-  // The first response, which must carry the scripted tool call.
-  const first = await askOnce([{ role: "user", content: "go" }], [{ type: "function", function: { name: "mpd_ext_list" } }])
+  // The first response, which must carry the scripted tool call in the provider's own frames.
+  const first = await askOnce([{ role: "user", content: "go" }], [{ name: "mpd_ext_list" }])
   check(first.includes("mpd_ext_list"), "the stub did not answer with the scripted tool call")
-  // The second response, sent after a tool result, which must advance the script.
+  check(first.includes('"input_json_delta"'), "the stub's tool call must travel as input_json_delta")
+  check(first.includes('"message_start"') && first.includes('"message_stop"'), "a Messages turn must open with message_start and settle with message_stop")
+  check(!first.includes(OPENAI_CHUNK_NEEDLE), "the stub must never emit an OpenAI streaming-object frame")
+  // The second response, sent after a `tool_result` BLOCK, which must advance the script.
   const second = await askOnce([
     { role: "user", content: "go" },
-    { role: "assistant", content: "", tool_calls: [{ id: "c1", type: "function", function: { name: "mpd_ext_list", arguments: "{}" } }] },
-    { role: "tool", tool_call_id: "c1", content: "[]" },
-  ], [{ type: "function", function: { name: "mpd_ext_list" } }])
-  check(second.includes("done"), "the stub did not advance to the final text after a tool result")
+    { role: "assistant", content: [{ type: "tool_use", id: "c1", name: "mpd_ext_list", input: {} }] },
+    { role: "user", content: [{ type: "tool_result", tool_use_id: "c1", content: [{ type: "text", text: "[]" }] }] },
+  ], [{ name: "mpd_ext_list" }])
+  check(second.includes("done"), "the stub did not advance to the final text after a tool_result block")
+  check(second.includes('"text_delta"'), "an assistant text turn must travel as a text_delta")
   // A tool-less request, which must be answered with plain text rather than a call.
   const capped = await askOnce([{ role: "user", content: "no tools here" }], [])
   check(capped.includes("QA-STUB-NO-TOOLS"), "the stub must answer a tool-less request with plain text")
+  // A LEGACY OpenAI-shaped request must still be READ, so the shared request reader cannot silently
+  // regress to a single shape (`role: "tool"` message + nested `function.name` tool entry).
+  const legacy = await askOnce([{ role: "tool", content: "[]" }], [{ type: "function", function: { name: "mpd_ext_list" } }])
+  check(legacy.includes("done"), "a legacy OpenAI-shaped request must still advance the script")
   // The stub that answers a marker-carrying child request with the child answer.
   const childStub = makeStubModel({ script: [{ tool: "x", args: {} }], childMarker: "QA-CHILD-MARKER", childAnswer: "QA-CHILD-ANSWER" })
   // The port the child-answer probe sends its request to.
   const childPort = await childStub.listen()
   // The child turn's raw SSE body.
-  const childText = await (await fetch("http://127.0.0.1:" + childPort + "/v1/chat/completions", {
+  const childText = await (await fetch("http://127.0.0.1:" + childPort + "/v1/messages", {
     method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ messages: [{ role: "user", content: "QA-CHILD-MARKER do it" }], tools: [{ type: "function", function: { name: "x" } }] }),
+    body: JSON.stringify({ messages: [{ role: "user", content: "QA-CHILD-MARKER do it" }], tools: [{ name: "x" }] }),
   })).text()
   check(childText.includes("QA-CHILD-ANSWER"), "a spawned child carrying the marker must get the child answer")
   await stub.close()
@@ -1313,7 +1260,7 @@ async function selfTest(): Promise<void> {
     for (const problem of problems) console.error("[extension-isolation self-test] FAIL: " + problem)
     process.exit(1)
   }
-  console.log("[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified")
+  console.log("[extension-isolation self-test] ok: stub protocol in DeepSeek Messages frames (tool call as input_json_delta, advance on a tool_result block, child marker, no-tools text, legacy OpenAI request still read) + descriptor contract + shipped example + boot recipe verified")
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv.includes("--self-test")) {
