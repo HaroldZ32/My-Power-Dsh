@@ -106,7 +106,13 @@ and which REFUSES a caller that is the loop's own writer. From that moment:
   `mcp__lsp__rename_symbol_strict`); and every `agent_teams_*` / `mpd_*` board or team MUTATION —
   with `mpd_verify_*` explicitly exempt, because those five tools ARE the seat's job.
 - **PATH-SCOPED while BLIND**: `read` / `glob` / `grep` pass only under the loop's frozen `basis.docs[]`,
-  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**` and `<ws>/.mpd/verify/**`. A BARE path
+  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**`, `<ws>/.mpd/verify/**` and
+  `<ws>/evidence/**`. MEASURED 2026-10-08: the mounted guard's own bare-path refusal names `evidence/` in
+  the live band, and a `glob {path:"evidence", pattern:"…"}` is ANSWERED (it reports no matches, not a
+  refusal). An earlier revision of this line OMITTED `evidence/**`, and a bound seat concluded from the
+  omission that it could not read a writer's evidence packet at all — it retracted after re-measuring, but
+  the wrong conclusion had already been broadcast to writers and into a wave contract. Do not re-narrow
+  this list without re-measuring the guard. A BARE path
   argument is refused, because the tool's default path is the whole workspace and that includes the
   implementation.
 - **WRITE confined** to `<ws>/.mpd/verify/**`. A verifier never fixes what it found: the record tool writes
