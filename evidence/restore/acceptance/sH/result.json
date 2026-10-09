@@ -1,0 +1,60 @@
+{
+  "wave": "restore/sH",
+  "subject": "vendor corpus fingerprint reproducible from a clean checkout",
+  "measuredAt": "2026-10-09T15:50:48Z",
+  "baseRevision": "33c4db16658f9178da980f6fcfd5b7b6e2c3a910 (fix/restore-wave-acceptance)",
+  "defect": "the corpus fingerprint was computed over the WORKING TREE; skills/frontend/.gitignore ignores references/design/*.md, so a developer tree counted 373 files and a clean checkout 371 - the gate passed locally and could never pass in CI, and the re-pin baked the local value into VENDOR_LOCK.json",
+  "theOneRule": {
+    "module": "scripts/lib/asset-files.ts (NEW) - listAssetFiles() / readAssetBytes()",
+    "rule": "inside a git work tree the file list is `git ls-files -z -- .` (the index, which a clean checkout equals HEAD); outside one it falls back to the filesystem walk; a single-file asset is its own list; an index that reports no tracked file under the path also falls back to the walk, so the result is never a silently empty asset",
+    "skipSetKept": "node_modules / __pycache__ / *.pyc / *.pyo, applied to the tracked list AND the walk, via one predicate",
+    "consumers": [
+      "scripts/verify-vendor.ts - the gate: imports listAssetFiles + readAssetBytes, local readBytes/listFiles DELETED",
+      "scripts/repin-vendor.ts - the re-pin: imports the same two symbols, local mirrors DELETED; only the tree fold stays mirrored"
+    ],
+    "guard": "scripts/repin-vendor.ts assertAuthorityShape() now pins, on every run: 3 AUTHORITY_MARKERS in scripts/verify-vendor.ts (the shared-module specifier + both calls), 5 SHARED_TOKENS in scripts/lib/asset-files.ts, 3 AUTHORITY_TOKENS for the mirrored fold, and the shared-rule binding held at run time. arm (g) is the falsifier (tamper -> exit 1 'changed shape'; restore -> exit 0).",
+    "missingTrackedFile": "enumerated from the index, so a tracked file absent from the tree is named and FAILS (gate) and REFUSES the re-pin (planAssets problem, no write)"
+  },
+  "skillsAsset": {
+    "before": { "fileCount": 373, "treeSha": "cb6df509c3f05cdae25b6b60bb71fa592cd1ef20e6a4c7fda3483b75072e49fc", "basis": "working-tree walk incl. the 2 gitignored files" },
+    "after": { "fileCount": 371, "treeSha": "7b697057ec9dda6897d479bfb2a9a90a388bcd64e9e7f5fea329c11fe3ef7195", "basis": "git index" }
+  },
+  "otherAssets": "unchanged: mpd-mcp-codegraph/dist/serve.js 1, hashline vendor 8, boulder vendor 13, schemastery 19, bundle adopted 2, bundle client.js 1 (tracked == on-disk for every one of them)",
+  "lock": {
+    "sha256Before": "8c8ec7243a6bbfed71fe37b12b7443da22188d8f4646fb558c22dddf6c24b7b1",
+    "sha256After": "5d7d49fa3d4cf72d8bdb2fc22ddb8909c98220be5d9370e772c581ef14c8c051",
+    "diff": "2 field changes on the `skills` entry only (fileCount, treeSha, line 8); identity/provenance fields untouched",
+    "rePinAmendment": "the wave's 'exactly ONE re-pin' invariant was amended by the captain for this task: the re-pin IS the fix and lands in the same commit as the code that invalidated the old value"
+  },
+  "fileHashes": {
+    "scripts/lib/asset-files.ts": "4e2a97ba08253a57bbf2d1b892d55a85035178b804935885dc8c9e6d5ab001a6",
+    "scripts/verify-vendor.ts": "00c914b003028a8b0509cb1da174be952ec5a886e69e550a36d16fed3fa35ae9",
+    "scripts/repin-vendor.ts": "02baa0ede1e7073c5110fccc60118a9e64fcf6764a1123fd43d2f0ba488ec8a0",
+    "scripts/lib/repo.ts": "724fe41926df2ca8f182752b3aa127a955fe005e0242c217bb5f62c10906cbc7"
+  },
+  "commands": [
+    { "cmd": "node scripts/verify-vendor.ts --self-test", "log": "self-test-verify-vendor.log", "exit": 0, "observed": "SELF-TEST PASS - 9/9 arm(s) passed (8 pre-existing + the new non-git-fallback-walks arm)" },
+    { "cmd": "node scripts/repin-vendor.ts --self-test", "log": "self-test-repin-vendor.log", "exit": 0, "observed": "SELF-TEST PASS - 10/10 arm(s) passed" },
+    { "cmd": "bun run verify:vendor (before the re-pin)", "log": "before-verify-vendor.log", "exit": 1, "observed": "FAIL - asset skills count drifted: 371 vs 373 / FAIL - asset skills treeSha mismatch" },
+    { "cmd": "node scripts/repin-vendor.ts --check (before the re-pin)", "log": "before-repin-check.log", "exit": 1, "observed": "CHECK: RED - drift=1; skills 373/cb6df509.. -> 371/7b697057.." },
+    { "cmd": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step", "log": "repin-write.log", "exit": 0, "observed": "applied 2 field change(s); linesChanged=2 bytes 4504 -> 4504" },
+    { "cmd": "bun run verify:vendor (after, the 2 gitignored files still on disk)", "log": "final-verify-vendor.log", "exit": 0, "observed": "asset OK: skills 371 files; PASS - 7 shipped asset(s) fingerprinted" },
+    { "cmd": "node scripts/repin-vendor.ts --check (after)", "log": "final-repin-check.log", "exit": 0, "observed": "CHECK: GREEN - lock matches the working tree (drift=0, problems=0)" },
+    { "cmd": "move-aside CI-condition replay (both gitignored files out, then restored byte-for-byte)", "log": "ci-condition-move-aside.log", "exit": 0, "observed": "disk 373/371 tracked -> moved aside 371/371 -> verify:vendor PASS + repin GREEN -> restored, sha256 2fce271a.. and 01ee071f.. identical before and after" },
+    { "cmd": "planted control in a throwaway copy (.git + scripts/ + skills/ + a skills-only lock, run in /tmp)", "log": "planted-control-throwaway.log", "exit": "0/1/0/1/0 as expected", "observed": "intact PASS(371) -> one byte appended to a TRACKED file FAIL treeSha mismatch -> restored PASS -> TRACKED file deleted FAIL 'tracked file(s) missing from the tree: skills/dsh-qa/SKILL.md' -> restored PASS" },
+    { "cmd": "bun run verify:gates", "log": "verify-gates.log", "exit": 0, "observed": "PASS - 8/8 member gate(s) green: vendor 0, dist-fresh 0, rows-parity 0, docs-parity 0, preset-conformance 0, plugin-manifest 0, comment-coverage 0, workflows 0" },
+    { "cmd": "bun run verify:comments", "log": "verify-comments.log", "exit": 0, "observed": "VERDICT: PASS - 378 file(s), 33560 declaration(s)" },
+    { "cmd": "bun run typecheck", "log": "typecheck.log", "exit": 0, "observed": "tsgo --noEmit, no diagnostics" },
+    { "cmd": "bun test packages", "log": "bun-test-packages.log", "exit": 0, "observed": "1748 pass, 3 skip, 0 fail (1751 tests / 109 files)" }
+  ],
+  "bounds": [
+    "The CI run itself is NOT verified here - the captain pushes; what is verified is that the gate now passes with the two gitignored files present AND with them moved aside, i.e. in both the developer-tree and clean-checkout conditions.",
+    "The self-test fixtures live in /tmp (no git work tree), so they exercise the WALK fallback; the git-index path is exercised by the real repository run and by the planted control's throwaway copy. No self-test creates a git repo (git init is outside this session's write scope).",
+    "A single-FILE asset (packages/mpd-bundle-plugin/client.js, packages/mpd-mcp-codegraph/dist/serve.js) is deliberately returned as its own list without an index lookup: the lock pins its raw sha256, so the asset IS the file. The tracked-file rule is a directory rule.",
+    "The walk fallback cannot detect a DELETED tracked file (it never knew the file existed); that check exists only on the index path. Stated as a bound, not a claim.",
+    "The git path enumerates the INDEX, so a file staged but not committed would be fingerprinted - in a clean checkout the index equals HEAD.",
+    "Not run here: verify:docs, verify-pack-closure, the Docker lanes, the live smoke cases (they are outside this scope and untouched by a scripts-only change); verify:gates covers docs-parity, dist-fresh, rows-parity and preset-conformance."
+  ],
+  "incident": "During the move-aside replay, one restore attempt used a bare `.` as the destination and put the two gitignored files at the repository ROOT. They were moved straight back to skills/frontend/references/design/, sha256 2fce271aa5c5cc6b0467131cdea1104333ba5b595847054b973c956037b66546 and 01ee071f308c87c489635fa86cc70fd4e634f6b0bf11f7ee3945671f3b5540bd (identical to the pre-move values), and `git status --porcelain skills` is empty. The recorded replay log is the corrected run.",
+  "scopeCheck": "git status shows exactly: M VENDOR_LOCK.json, M scripts/lib/repo.ts, M scripts/repin-vendor.ts, M scripts/verify-vendor.ts, ?? scripts/lib/asset-files.ts, ?? evidence/restore/acceptance/sH/ (plus the pre-existing M .github/workflows/docker-e2e.yml, ?? .bun/, ?? .coderabbit.yaml and the other pre-existing evidence dirs). No skills/** content file was touched."
+}

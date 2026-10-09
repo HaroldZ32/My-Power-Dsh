@@ -18,21 +18,35 @@
 // The remaining subject is the asset half: the bytes THIS repository ships (the served skill corpus,
 // the in-repo MCP source snapshot, the committed MCP dists).
 //
+// WHAT A FINGERPRINT COVERS (2026-10-09): an asset's fingerprint is computed over the files the
+// REPOSITORY SHIPS, never over whatever a working tree happens to hold. The rule lives in ONE module,
+// scripts/lib/asset-files.ts, imported by this gate AND by scripts/repin-vendor.ts - so a re-pin
+// cannot produce a lock this gate rejects. Inside a git work tree the file list is `git ls-files`
+// (the index, which a clean checkout equals HEAD), which is what stops the measured defect this
+// repairs: `skills/frontend/.gitignore` ignores `references/design/*.md`, so a developer machine
+// holding two such files counted 373 files and CI counted 371, and the re-pin recorded a treeSha a
+// clean checkout cannot reproduce. Outside a work tree the shared module falls back to the
+// filesystem walk - a packed copy still fingerprints, and a run says which basis it used. The rule
+// narrows WHICH files are the asset and never weakens the byte check: a tracked file that was EDITED
+// still fails its fingerprint, and a tracked file MISSING from the tree fails by name.
+//
 // `--self-test` is the SHIPPED FALSIFIER for that half: an intact fixture must PASS, a one-byte edit
 // and an added file must each FAIL naming the asset, and an empty asset table must be REFUSED rather
 // than silently pass. Every arm works on a COPY of this script against a COPY of the lock inside a
 // temp root, so the shipped VENDOR_LOCK.json is never read or written.
 //
-// The fingerprint algorithm below is MIRRORED by scripts/repin-vendor.ts, which re-reads this file on
-// every run and refuses to work when one of its decisive tokens has moved. Edit the two together.
+// The tree FOLD below is MIRRORED by scripts/repin-vendor.ts, which re-reads this file on every run
+// and refuses to work when one of its decisive tokens has moved; the FILE LIST is not mirrored any
+// more — both sides call the one shared rule (scripts/lib/asset-files.ts). Edit the two together.
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import {
-  copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync,
+  copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { listAssetFiles, readAssetBytes, type AssetEnumeration } from "./lib/asset-files.ts"
 import { readJson, repoRootFrom } from "./lib/repo.ts"
 
 /** One vendored asset's fingerprint declaration. */
@@ -133,45 +147,11 @@ function fail(msg: string): void { console.error("[verify-vendor] FAIL -", msg);
 // The vendored-asset half: the ONE subject this gate still has. Everything below is the fingerprint
 // algorithm scripts/repin-vendor.ts mirrors.
 
-// Read a vendored file as bytes, normalizing text (no NUL) to LF. The repo's
-// .gitattributes declares eol=lf for text files, so tree hashes must be
-// computed on normalized bytes — otherwise a CRLF working copy drifts the lock
-// even though git sees a clean tree. Binary files hash raw.
-/** Read one asset file as bytes: LF-normalized when it is text, raw when it is binary. */
-function readBytes(p: string): Buffer {
-  /** The file's raw bytes, read once for both the NUL test and the hash. */
-  const buf: Buffer = readFileSync(p)
-  if (!buf.includes(0)) return Buffer.from(buf.toString("utf8").replace(/\r\n?/g, "\n"))
-  return buf
-}
-
-/** Enumerate one asset's files: a single file is its own list, a directory is walked recursively. */
-function listFiles(dir: string): string[] {
-  // node-only file enumeration (no `find` dependency); handles single-file assets
-  if (statSync(dir).isFile()) return [dir]
-  /** The collected absolute paths, in walk order. */
-  const out: string[] = []
-  /** Recursive walker over one directory of the asset. */
-  const walk = (d: string): void => {
-    // Entry name of the current directory's child.
-    for (const entry of readdirSync(d)) {
-      /** Absolute path of that child. */
-      const p: string = join(d, entry)
-      if (entry === "node_modules") continue
-      // Bytecode caches are BUILD artifacts, not corpus content: `python3 -m py_compile`
-      // (a documented verify command for the ast-grep helper) writes
-      // `skills/ast-grep/scripts/__pycache__/*.pyc`, which used to drift the count
-      // 297 -> 298 and fail this gate on a legitimately unchanged corpus, while the .pyc
-      // itself is not gitignored and could be committed as corpus content (measured
-      // 2026-09-14: RED "count drifted: 298 vs 297", GREEN after this skip).
-      if (entry === "__pycache__" || entry.endsWith(".pyc") || entry.endsWith(".pyo")) continue
-      if (statSync(p).isDirectory()) walk(p)
-      else out.push(p)
-    }
-  }
-  walk(dir)
-  return out
-}
+// Read one asset file as bytes, normalizing text (no NUL) to LF, and enumerate one asset's files:
+// BOTH now come from the ONE shared rule in scripts/lib/asset-files.ts (`readAssetBytes` and
+// `listAssetFiles`), imported at the top of this file. The private copies that used to live here
+// walked the WORKING TREE, which is the defect the shared rule repairs; scripts/repin-vendor.ts
+// imports the same module, so one rule governs the gate and the re-pin instead of two copies of one.
 
 /**
  * Fingerprint one directory exactly as the real run does, so a fixture lock can be written with the
@@ -184,18 +164,18 @@ function listFiles(dir: string): string[] {
  * @returns The file count and the treeSha fold over the fixture's sorted relpaths.
  */
 function fixtureTree(dir: string): { fileCount: number; treeSha: string } {
-  /** Every file the fixture directory holds, in walk order. */
-  const files: string[] = listFiles(dir)
+  /** Every file the fixture directory ships, by the same enumeration the real run uses. */
+  const enumerated = listAssetFiles(dir)
   /** The fixture's relpaths, POSIX-spelled and sorted — the same fold input the real run uses. */
-  const rels: string[] = files.map((f: string): string => f.slice(dir.length + 1).split(sep).join("/")).sort()
+  const rels: string[] = enumerated.files.map((f: string): string => f.slice(dir.length + 1).split(sep).join("/")).sort()
   /** The running fold hash over (relpath, per-file sha256) pairs. */
   const h = createHash("sha256")
   for (const f of rels) {
     /** That fixture file's own sha256, over the same LF-normalized bytes. */
-    const fh: string = createHash("sha256").update(readBytes(join(dir, f))).digest("hex")
+    const fh: string = createHash("sha256").update(readAssetBytes(join(dir, f))).digest("hex")
     h.update(f + "\n" + fh + "\n")
   }
-  return { fileCount: files.length, treeSha: h.digest("hex") }
+  return { fileCount: enumerated.fileCount, treeSha: h.digest("hex") }
 }
 
 /**
@@ -243,6 +223,9 @@ function selfTest(): number {
     mkdirSync(join(root, "assets", "corpus"), { recursive: true })
     copyFileSync(SELF_PATH, join(root, "scripts", "verify-vendor.ts"))
     copyFileSync(join(dirname(SELF_PATH), "lib", "repo.ts"), join(root, "scripts", "lib", "repo.ts"))
+    // The shared enumeration rule the fixture gate imports: stage it at the SAME depth, or every arm
+    // dies with ERR_MODULE_NOT_FOUND for a reason no arm is about.
+    copyFileSync(join(dirname(SELF_PATH), "lib", "asset-files.ts"), join(root, "scripts", "lib", "asset-files.ts"))
     /** The fixture script the arms spawn — a COPY, so the shipped gate is never executed here. */
     const script: string = join(root, "scripts", "verify-vendor.ts")
     /** The fixture lock the arms rewrite between runs. */
@@ -312,6 +295,11 @@ function selfTest(): number {
     // (viii) THE CLOSING CONTROL: the fixture is restored, so the SAME lock must pass again — this is
     // what proves arms (ii)-(v) failed because of their mutation and not because a run left it dirty.
     expect("restored-fixture-PASS", run(good), 0, "[verify-vendor] PASS")
+
+    // (ix) THE NON-GIT FALLBACK: the fixture root is not a git work tree, so the fingerprint must
+    // come from the filesystem walk AND the run must say so. This is the arm that keeps an unpacked
+    // copy working - a fallback that silently reported an empty asset would fail the count instead.
+    expect("non-git-fallback-walks", run(good), 0, "filesystem walk")
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -343,13 +331,24 @@ for (const [rel, meta] of assetEntries) {
   /** The asset's path inside the repository. */
   const dir: string = join(repoRoot, rel)
   if (!existsSync(dir)) { fail("asset missing: " + rel); continue }
-  /** Every file the asset currently contains. */
-  const files: string[] = listFiles(dir)
+  /** The asset's SHIPPED files, by the one shared rule: the git index, or the walk off a work tree. */
+  const asset: AssetEnumeration = listAssetFiles(dir)
+  // The basis is printed whenever it is NOT the index, so a packed copy and a checkout are
+  // distinguishable in one log and a fallback never stays silent.
+  if (asset.source === "walk") {
+    console.log("[verify-vendor] note: " + rel + " enumerated by " + asset.detail + " (" + asset.fileCount + " file(s))")
+  }
   // An asset that failed any of its gates must never also report OK.
   /** Whether this asset has passed every fingerprint check so far. */
   let assetOk: boolean = true
-  if (files.length !== meta.fileCount) {
-    fail("asset " + rel + " count drifted: " + files.length + " vs " + meta.fileCount)
+  if (asset.fileCount !== meta.fileCount) {
+    fail("asset " + rel + " count drifted: " + asset.fileCount + " vs " + meta.fileCount)
+    assetOk = false
+  }
+  // A tracked file the tree no longer has is a MISSING shipped byte, never a re-pin candidate: the
+  // index still names it, so the gate fails by name instead of quietly fingerprinting the remainder.
+  if (asset.missing.length > 0) {
+    fail("asset " + rel + " tracked file(s) missing from the tree: " + asset.missing.map((p: string): string => p.slice(repoRoot.length + 1)).join(", "))
     assetOk = false
   }
   if (typeof meta.sha256 === "string") {
@@ -363,22 +362,22 @@ for (const [rel, meta] of assetEntries) {
     // and the lock could only ever satisfy one of them — measured: a clean Windows checkout
     // recomputed 4b4f37… for a corpus the lock pins as 220ddd2c…, i.e. this gate was permanently
     // RED here while the same bytes were GREEN on the POSIX machine that wrote the pin. Same
-    // discipline as readBytes()'s LF normalization above: the fingerprint is of the CONTENT.
+    // discipline as readAssetBytes()'s LF normalization above: the fingerprint is of the CONTENT.
     /** The asset's relpaths, POSIX-spelled and sorted — the fold's input order. */
-    const files2: string[] = files.map((f: string): string => f.slice(dir.length + 1).split(sep).join("/")).sort()
+    const files2: string[] = asset.files.map((f: string): string => f.slice(dir.length + 1).split(sep).join("/")).sort()
     /** The running fold hash over (relpath, per-file sha256) pairs. */
     const h = createHash("sha256")
     // Relpath of one file inside the asset, in sorted order.
     for (const f of files2) {
       /** That file's own sha256, over LF-normalized bytes. */
-      const fh: string = createHash("sha256").update(readBytes(join(dir, f))).digest("hex")
+      const fh: string = createHash("sha256").update(readAssetBytes(join(dir, f))).digest("hex")
       h.update(f + "\n" + fh + "\n")
     }
     /** The asset's folded tree fingerprint. */
     const actual: string = h.digest("hex")
     if (actual !== meta.treeSha) { fail("asset " + rel + " treeSha mismatch"); assetOk = false }
   }
-  if (assetOk) console.log("[verify-vendor] asset OK:", rel, files.length, "files")
+  if (assetOk) console.log("[verify-vendor] asset OK:", rel, asset.fileCount, "files")
 }
 
 if (failed) process.exit(1)
