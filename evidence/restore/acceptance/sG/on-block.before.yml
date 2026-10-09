@@ -1,0 +1,13 @@
+on:
+  workflow_dispatch:
+    inputs:
+      npm_registry:
+        description: "Registry to use INSTEAD of the official one (e.g. https://registry.npmmirror.com). Empty = let the lane probe the official registry and fall back to its own mirror."
+        required: false
+        default: ""
+        type: string
+  schedule:
+    # Nightly at 03:41 UTC. The minute is off the hour ON PURPOSE: `:00` is where GitHub's scheduled
+    # queue is most congested, and a congested schedule is delayed or dropped rather than queued.
+    - cron: "41 3 * * *"
+
