@@ -165,6 +165,27 @@ live 搜索所需的引擎由本仓库**自己的**安装脚本 `node scripts/in
 `docker/lib/owed-install.ts`、`owed-pack.ts`、`owed-mcp.ts`、`owed-cases.ts`。它们是仅用于 QA 的仪器，被固化在
 `/opt/mpd-e2e/lib/`，绝不取自被测树——仓库副本可以提供自己的插件，但永远不能提供自己的判决。
 
+## restore wave 的验收项（restore-acceptance-fix §4 S-B，2026-10-09）
+
+PR #28 已合并三项被恢复的能力，但本 lane 自己的验收运行发生在该合并**之后**且从未提交。重新测量后，它的五行
+不是环境事实，而是 QA 仪器的缺陷。以下修正全部落在本 lane 与其 reporter 内：
+
+| 行 | 变更内容 |
+|---|---|
+| `toolchain.bunPinned`（新增） | 容器把 `package.json.buildToolchain` 声明的编译器（`bun@1.4.0`）落地到**独立**前缀（`$TOOLCHAIN_DIR/bun-pinned`），并断言它报告的版本与之完全一致。它绝不链接进 PATH，因此 `toolchain.bun` 仍测量机器自带的 bun。版本比较是**精确相等**、不是子串：官方脚本抖动时回退到 npm 路径，落地失败会记为 `false` 而不是静默穿过 |
+| `pack.distFreshRebuild` | 现在是一次真正的**陈旧性**测量：重建在落地后的 pin 下运行，比较只看字节。该行的 raw 见证引用**实际产出**此次重建的编译器——取自重建自身的 `--json` 见证（`rebuildBun`、`rebuildBunVersion`），而不是别处做的 PATH 查找。旧版本在 PATH 上问 `bun --version` 并用 `declaredPin.includes(containerBun)` 判断，于是即使干活的是 pin 二进制也会报 `1.4.2`，且两段式 `1.4` 也能匹配 `bun@1.4.0` |
+| `pack.rebuildToolchain`（新增） | 配套行：产出重建的编译器是否**精确**等于声明的 pin（与重建见证做字符串相等比较）。没有重建（one-click 模式）或没有见证时，它带着实测原因记 `null`/`false`，而不是一个什么都没测的绿灯 |
+| `pack.distFreshRebuildControl`（新增） | **反向对照**，在同一容器内运行：复制一份产物，改动其中一个已构建条目，再对**同一次**重建重新判定。仅当该副本把陈旧性行翻成 `false` 时此行才为 `true`——因此未改动产物上的绿灯是一次测量，而不是常量。没有这一项，一个永远回答 `true` 的相等测试与正确的测试无法区分 |
+| `tui.mergedPanelOpens`、`tui.mergedPanelOrder` | **实测**，不再是 `null`。在提供 0.13.0 `ctx.tuiPanels` seam 的主机上，这两行曾以"主机**接受**的 `open()` 改变 tmux 捕获的零个字节"为由记为 `null`——而该依据是在 0.13.0 **之前**的全屏场景上测得的，在合并视图变成**侧栏面板**之后再未复测。权威运行自己的 `tui-panes/pane-merged.txt` 携带完整面板正文；两行由 `docker/lib/tui-panel-body.ts` 判定，它读取面板外框、主机自带的 subagent 区块与 MPD 的团队头部/DAG 页脚，并且**当按键前的捕获已经携带面板正文时拒绝称之为"打开"**（这正是捕获顺序或按键失效时该行变红的方式） |
+| `qa.mcpCallEngine`（新增） | 引擎被落地到 `mcp-call` launcher **实际读取**的那棵树：该用例用 `npm install file:` 把打包产物（`dist/mpd-package`）装入沙箱 profile，而 MCP launcher 以 bundle 相对路径解析 `sg`——因此 `node scripts/install-mcp.ts --toolchain <APP>/dist/mpd-package/.toolchain` 在打包刷新**之后**运行（否则那一步会把它删掉）。第 09d 步的落地覆盖各行；这一步覆盖该用例 |
+| `EXPECTED` 主脊 | 现在一条主脊覆盖**两种**模式：两种模式已记录名称的并集是 114，且 one-click 集合是 source 集合的严格超集，因此四个仅 one-click 的行被声明，并在 source 模式下以**实测模式**为原因记为 `null`——绝不用缺失名称会合成出的"not reached"。旧主脊之外被记录的那 13 行也已声明 |
+
+该分类器与离线证伪器**共用同一份代码**：`node scripts/docker-e2e.ts --self-test` 会用植入的 pane 驱动
+`docker/lib/tui-panel-body.ts`（面板正文存在 → `OPENS=true`；区块顺序**颠倒** → `ORDER=false`；对照捕获已携带正文
+→ `false`；0.13.0 之前的形态 → 仍然判定），并断言 `docker/tui-lane.sh` 确实在调用它。`--self-test` 还会在植入的
+产物/重建/见证三棵树上驱动打包比较器（含 `1.4` 对 `bun@1.4.0` 的子串陷阱与改动产物的对照），并用一个植入的假
+编译器驱动 `rebuild.ts`，以证明见证确实来自被调用的二进制。
+
 ## 仓库是如何进入镜像的
 
 `docker/docker-compose.yml` 使用 `context: ..`（仓库根目录）与 `dockerfile: docker/Dockerfile` 构建；

@@ -170,6 +170,8 @@ function gradeLiveSearch(text: string, state: string, searchDir: string): void {
   const found = countOf(live)
   /** The control call's match count. */
   const controlFound = countOf(control)
+  /** The result ENVELOPE the probe measured, quoted so the verdict is read from a shape, not a guess. */
+  const shape = probeValue(text, "MCP_LIVE_SEARCH_SHAPE") ?? "<not reported>"
   /** True when real source matched AND the impossible pattern matched nothing. */
   const ok = found !== null && found > 0 && controlFound === 0
   record(state, {
@@ -178,7 +180,7 @@ function gradeLiveSearch(text: string, state: string, searchDir: string): void {
     reason: ok
       ? "a REAL mcp__ast_grep__search call through the mounted adapter matched " + found + " site(s) in " + searchDir + ", and the negative control matched 0 — the search engine ran, so the registered name is backed by a working server on this machine"
       : "the live ast-grep search did not settle: graded=" + String(live) + " control=" + String(control) + " (the control MUST be 0 matches, and the graded call at least 1)",
-    raw: "dir=" + searchDir + " MCP_LIVE_SEARCH=" + String(live) + " MCP_LIVE_SEARCH_CONTROL=" + String(control),
+    raw: "dir=" + searchDir + " MCP_LIVE_SEARCH=" + String(live) + " MCP_LIVE_SEARCH_CONTROL=" + String(control) + " SHAPE=" + shape,
   })
 }
 

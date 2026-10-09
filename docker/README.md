@@ -203,6 +203,30 @@ The apparatus lives beside the lane's other modules (`report.ts`, `rebuild.ts`, 
 instrumentation baked at `/opt/mpd-e2e/lib/`, never taken from the tree under test — a repository copy
 can supply its own plugins, never its own verdict.
 
+## The restore-wave acceptance arms (restore-acceptance-fix §4 S-B, 2026-10-09)
+
+The PR #28 wave shipped the three restored capabilities, but this lane's own acceptance run landed AFTER
+that merge and was never committed. Re-measuring it turned five of its rows into QA-apparatus defects
+rather than environment facts. The corrections below are all in this lane and its reporter:
+
+| Row | What changed |
+|---|---|
+| `toolchain.bunPinned` (new) | The container STAGES the compiler `package.json.buildToolchain` declares (`bun@1.4.0`) into a SEPARATE prefix (`$TOOLCHAIN_DIR/bun-pinned`) and asserts it reports exactly that version. It is never linked onto PATH, so `toolchain.bun` keeps measuring the machine's own bun. An exact version match, never a substring: the staging falls back to the npm route when the official script flake, and a failed stage records `false` rather than falling through silently |
+| `pack.distFreshRebuild` | Now a real STALENESS measurement: the rebuild runs under the staged pin, and the comparison is bytes only. The row's raw witness quotes the compiler that ACTUALLY produced the rebuild — read from the rebuild's own `--json` witness (`rebuildBun`, `rebuildBunVersion`), never from a PATH lookup made somewhere else. The previous version asked `bun --version` on PATH and tested `declaredPin.includes(containerBun)`, which reports `1.4.2` even when the pinned binary did the work and lets a two-part `1.4` match `bun@1.4.0` |
+| `pack.rebuildToolchain` (new) | The companion row: does the compiler that produced the rebuild equal the declared pin, by exact string equality against the rebuild's witness? With no rebuild (one-click mode) or no witness, it records `null`/`false` with the measured reason instead of a green that measures nothing |
+| `pack.distFreshRebuildControl` (new) | THE NEGATIVE CONTROL, run inside the same container: a copy of the artifact is mutated in one built entry and re-graded against the SAME rebuild. The row is `true` only when that copy flips the freshness row to `false` — so a green on the untouched artifact is a measurement, not a constant. Without this arm an equality test that always answers `true` is indistinguishable from a correct one |
+| `tui.mergedPanelOpens`, `tui.mergedPanelOrder` | MEASURED, not `null`. Both rows were recorded `null` on any host offering the 0.13.0 `ctx.tuiPanels` seam on the ground that "a host-ACCEPTED `open()` changes zero bytes of a tmux capture" — a ground measured on the PRE-0.13 full-screen scene and never re-measured after the merged view became a SIDEBAR PANEL. The authoritative run's own `tui-panes/pane-merged.txt` carries the whole panel body; the rows are graded by `docker/lib/tui-panel-body.ts`, which reads the panel chrome, the host's subagent section and MPD's team header/DAG footer, and **refuses to call it an open when the PRE-KEY capture already carries the body** (that is how the row reddens if the capture order or the keypress breaks) |
+| `qa.mcpCallEngine` (new) | The engine is staged into the tree the `mcp-call` launcher ACTUALLY reads: the case installs the packed artifact (`dist/mpd-package`) into a sandbox profile with `npm install file:`, and the MCP launcher resolves `sg` bundle-relatively — so `node scripts/install-mcp.ts --toolchain <APP>/dist/mpd-package/.toolchain` runs AFTER the pack refresh (which would otherwise delete it). Step 09d's staging covers the rows; this one covers the case |
+| the `EXPECTED` spine | One spine now covers BOTH modes: the union of the two modes' recorded names is 114 and the one-click set is a strict superset of the source set, so the four one-click-only rows are declared and recorded in SOURCE mode as `null` with the measured mode as the reason — never as the synthesized "not reached" a missing name would produce. The 13 rows the lanes recorded outside the old spine are declared too |
+
+The classifier is shared with the offline falsifier: `node scripts/docker-e2e.ts --self-test` drives
+`docker/lib/tui-panel-body.ts` over planted panes (panel body present → `OPENS=true`, an INVERTED section
+order → `ORDER=false`, a control that already carries the body → `false`, the pre-0.13 shape → still
+graded) and asserts that `docker/tui-lane.sh` really calls it. `--self-test` also drives the pack
+comparator over planted artifact/rebuild/witness trees, including the `1.4` vs `bun@1.4.0` substring trap
+and the mutated-artifact control, and drives `rebuild.ts` with a planted fake compiler so the witness is
+proven to be a measurement of the invoked binary.
+
 ## How the repository gets into the image
 
 `docker/docker-compose.yml` builds with `context: ..` (the repository root) and

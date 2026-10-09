@@ -29,6 +29,10 @@
 //   [docker-probe] MCP_SERVER_COUNTS=<server>:<count>,…          (the server SET, not one name each)
 //   [docker-probe] MCP_LIVE_SEARCH=ok:<n>|fail:<reason>          (a REAL mcp__ast_grep__search call)
 //   [docker-probe] MCP_LIVE_SEARCH_CONTROL=ok:<n>|fail:<reason>  (negative control: 0 matches expected)
+//   [docker-probe] MCP_LIVE_SEARCH_SHAPE=<keys/ok/isError/value keys>  (the envelope itself, so a
+//                                                                     verdict is read from a
+//                                                                     MEASURED shape rather than a
+//                                                                     guess about one)
 //   [docker-probe] AGENT_TEAMS=MOUNTED|ABSENT serviceName=<class>
 //   [docker-probe] AGENT_TEAMS_METHODS=<csv>
 //   [docker-probe] DONE=1
@@ -258,34 +262,94 @@ function mcpServerCounts(names: readonly string[]): string {
 }
 
 /**
- * The match count a `mcp__ast_grep__search` answer carried, read from the adapter's projected value
- * first and from the harness's raw envelope second (`null` is "unreadable", never "zero").
+ * The outcome of one `mcp__ast_grep__search` call: either a readable match count or the classified
+ * reason it produced none.
+ *
+ * THE ORDER IS THE POINT, and it was arrived at by being wrong twice. A match LIST is positive evidence
+ * that the server answered, so it wins over every marker — including `isError`, which the first version
+ * of this arm believed was a pure failure flag and which the second version therefore let overrule a
+ * perfectly readable result (measured: the source lane regressed from `ok:1` to `unreadable-result` the
+ * moment that assumption entered the code). Only when no match list is readable does a classified
+ * `error` object decide, because an MCP-level failure travels INSIDE a successful tool call as
+ * `{"ok":false,"error":{"code":"BINARY_NOT_FOUND"}}` — the shape the very first version printed as
+ * `unreadable-result`, hiding the one word a reader needs. `MCP_LIVE_SHAPE` is printed beside this
+ * verdict so the next reader MEASURES the envelope instead of inferring it.
  *
  * @param call - The `executeTool` result to read.
- * @returns The number of matches, or `null` when the answer carried no readable payload.
+ * @returns `{count}` on a readable match list, otherwise `{failure}` naming the classified cause.
  */
-function searchMatchCount(call: unknown): number | null {
-  /** The call result viewed as a bag, so the projected and raw arms can both be read. */
+function searchOutcome(call: unknown): { readonly count: number } | { readonly failure: string } {
+  /** The call result viewed as a bag, so the adapter's own markers can be read. */
   const bag = asRecord(call)
-  /** The match list the adapter projected onto `value`, when it projected one. */
-  const projected = asRecord(bag?.value)?.matches
-  if (Array.isArray(projected)) return projected.length
-  /** The harness's raw envelope, whose `content` carries the MCP text part verbatim. */
-  const content = asRecord(bag?.raw)?.content
-  if (!Array.isArray(content)) return null
-  for (const part of content) {
-    /** The text of one content part, the only member an MCP payload travels in. */
-    const text = asRecord(part)?.text
-    if (typeof text !== "string") continue
-    try {
-      /** The parsed payload's match list, when this part is the JSON document the server sends. */
-      const parsed = asRecord(JSON.parse(text))?.matches
-      if (Array.isArray(parsed)) return parsed.length
-    } catch {
-      // A non-JSON content part is not the payload this arm reads; the next part is tried.
+  /** The MCP payload, from the projected `value` or from the raw content part it travels in. */
+  const payload = mcpPayload(bag)
+  /** The payload's match list, when it carried one. */
+  const matches = payload?.matches
+  // A readable match list is the strongest evidence available and is accepted FIRST: whatever a marker
+  // says, a server that returned matches ran.
+  if (Array.isArray(matches)) return { count: matches.length }
+  /** The classified error object a failed ast-grep call publishes. */
+  const error = asRecord(payload?.error)
+  if (error !== undefined) return { failure: failureText(error) }
+  if (bag?.ok !== true || bag?.isError === true) return { failure: failureText(bag?.error) }
+  return { failure: "unreadable-result" }
+}
+
+/**
+ * A bounded, key-level description of a tool-call result: which members carried what, so a reader can
+ * see the ENVELOPE the verdict came from without a raw dump of the payload.
+ *
+ * @param call - The `executeTool` result to describe.
+ * @returns A one-line shape report, e.g. `keys=ok,isError,value,raw valueKeys=matches,truncated`.
+ */
+function callShape(call: unknown): string {
+  /** The call result viewed as a bag; a non-object is named by its type. */
+  const bag = asRecord(call)
+  if (bag === undefined) return "type=" + typeof call
+  /** The members actually present on the result itself. */
+  const keys = Object.keys(bag).sort().join(",")
+  /** The projected value viewed as a bag, when the adapter projected one. */
+  const value = asRecord(bag.value)
+  /** The shape of the projected value, or its own type when it is not an object. */
+  const valueShape = value === undefined ? "type=" + typeof bag.value : "keys=" + Object.keys(value).sort().join(",") + " matches=" + (Array.isArray(value.matches) ? value.matches.length : "none")
+  return "keys=" + keys + " ok=" + String(bag.ok) + " isError=" + String(bag.isError) + " value(" + valueShape + ")"
+}
+
+/**
+ * The MCP payload of a tool-call result: the adapter's projected `value`, the MCP envelope nested in
+ * that value, or the JSON document inside a content part of either the raw result or the value.
+ *
+ * @param bag - The call result viewed as a bag.
+ * @returns The payload as a bag, or `undefined` when no shape carried one.
+ */
+function mcpPayload(bag: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  /** The projected value, when the adapter parsed the payload for us. */
+  const projected = asRecord(bag?.value)
+  // A payload that already carries `matches` is the searched document itself.
+  if (projected !== undefined && Array.isArray(projected.matches)) return projected
+  // THREE MORE PLACES THE DOCUMENT CAN SIT, tried rather than assumed: the MCP envelope nested in the
+  // projected `value`, the harness's own raw result, and the raw result's nested `value`. The search
+  // document is a JSON TEXT part in every one of them.
+  /** Every content array this result could carry, outermost first. */
+  const contentArrays: readonly unknown[] = [projected?.content, asRecord(bag?.raw)?.content, asRecord(asRecord(bag?.raw)?.value)?.content]
+  for (const content of contentArrays) {
+    if (!Array.isArray(content)) continue
+    for (const part of content) {
+      /** The text of one content part, the only member an MCP payload travels in. */
+      const text = asRecord(part)?.text
+      if (typeof text !== "string") continue
+      try {
+        /** The parsed payload, still untyped until the bag check below. */
+        const parsed = asRecord(JSON.parse(text))
+        if (parsed !== undefined) return parsed
+      } catch {
+        // A non-JSON content part is not the payload this arm reads; the next part is tried.
+      }
     }
   }
-  return null
+  // Last resort: the projected value itself, even without a `matches` list — a classified `error`
+  // object arrives exactly this way, and that is the branch a missing engine needs to be readable in.
+  return projected
 }
 
 /**
@@ -470,17 +534,13 @@ export async function apply(ctx: ProbeContext): Promise<void> {
             arguments: { pattern, language: LIVE_SEARCH_LANGUAGE, paths: [searchDir] },
             timeoutMs: 120000,
           })
-          // The projected payload's match count, and the adapter's own `ok` marker.
-          const count = searchMatchCount(answer)
-          /** The answer viewed as a bag, for the adapter's verdict and its classified error. */
-          const answerRecord = asRecord(answer)
-          if (answerRecord?.ok === true && count !== null) {
-            console.log("[docker-probe] " + label + "=ok:" + count)
-          } else if (count === null) {
-            console.log("[docker-probe] " + label + "=fail:unreadable-result")
-          } else {
-            console.log("[docker-probe] " + label + "=fail:" + failureText(answerRecord?.error))
-          }
+          // The one reader that decides between a match count and a classified failure.
+          const outcome = searchOutcome(answer)
+          if ("count" in outcome) console.log("[docker-probe] " + label + "=ok:" + outcome.count)
+          else console.log("[docker-probe] " + label + "=fail:" + outcome.failure)
+          // THE ENVELOPE, printed beside the verdict: this arm has been wrong twice about the shape a
+          // result takes, and a reader who can see the members cannot repeat that.
+          console.log("[docker-probe] " + label + "_SHAPE=" + callShape(answer))
         } catch (error) {
           console.log("[docker-probe] " + label + "=fail:" + messageOf(error))
         }
@@ -492,6 +552,7 @@ export async function apply(ctx: ProbeContext): Promise<void> {
       console.log("[docker-probe] ADAPTER_TOOL_CALL=fail:adapter-service-absent")
       console.log("[docker-probe] MCP_LIVE_SEARCH=fail:adapter-service-absent")
       console.log("[docker-probe] MCP_LIVE_SEARCH_CONTROL=fail:adapter-service-absent")
+      console.log("[docker-probe] MCP_LIVE_SEARCH_SHAPE=adapter-service-absent")
     }
 
     // THE OFFICIAL AGENT-TEAMS SERVICE. `mpd-agent-team` mounts
