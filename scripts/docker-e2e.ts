@@ -768,6 +768,33 @@ function selfTest(): void {
   check("tui-lane.sh no longer records the merged rows as unreachable", !/record tui\.mergedPanelOpens null/.test(tuiLane) && !/record tui\.mergedPanelOrder null/.test(tuiLane))
   check("the Dockerfile carries the new apparatus module", readFileSync(DOCKERFILE, "utf8").includes("COPY docker/lib/ /opt/mpd-e2e/lib/"))
 
+  // 8c.15 THE MCP SERVER-SET ARMS (measured 2026-10-09): the bundle's OWN patch mounts FIVE rows, two
+  //       of them REMOTE streamable-http services that register only when their handshake completes. The
+  //       row used to call those two "unexpected", so it was green only while the network refused them —
+  //       and it went red the moment a one-click run actually reached mcp.context7.com and mcp.grep.app.
+  //       These arms drive the REAL module over planted boot logs, in both directions.
+  /** One planted boot log, in the probe's own line shape. */
+  const mcpLog = (registered: string): string => `[docker-probe] MCP_REGISTERED=${registered}\n[docker-probe] MCP_SERVER_COUNTS=ast_grep:3,lsp:11,codegraph:1\n`
+  /** The local three, which MUST be up. */
+  const LOCAL3 = "mcp__ast_grep__rewrite,mcp__ast_grep__scan,mcp__ast_grep__search,mcp__lsp__find_definition,mcp__codegraph__codegraph_explore"
+  /** A representative ast-grep surface, so the "missingAstGrepTools" clause is not what these arms test. */
+  const AST_FULL = ["rewrite", "scan", "search"].map((t: string) => "mcp__ast_grep__" + t).join(",")
+  /** Run the real owed-mcp module over a planted log and return its row verdict for one name. */
+  const runOwedMcp = (tag: string, registered: string): string => {
+    /** The planted boot log this arm hands the module. */
+    const logFile = join(sbDir, `mcp-${tag}.log`)
+    /** This arm's own state file, so no arm can read another's rows. */
+    const state = join(sbDir, `mcp-${tag}.ndjson`)
+    writeFileSync(logFile, mcpLog(registered))
+    runApparatus("owed-mcp.ts", ["--boot-log", logFile, "--state", state])
+    return stateRow(state, "boot.mcpToolNaming")
+  }
+  check("the local MCP rows alone pass the naming row", runOwedMcp("local", LOCAL3) === "true", runOwedMcp("local-verify", LOCAL3))
+  check("the two REMOTE rows registering is NOT a defect (the planted control for the 2026-10-09 red)", runOwedMcp("remote", LOCAL3 + ",mcp__context7__resolve-library-id,mcp__grep_app__searchGitHub") === "true")
+  check("a server NO shipped patch row declares still reddens (the leak class)", runOwedMcp("leak", LOCAL3 + ",mcp__git__run") === "false")
+  check("a LOCAL row that registered nothing still reddens", runOwedMcp("silent", "mcp__ast_grep__search,mcp__lsp__find_definition") === "false")
+  check("the reason names the declared set, not a hard-coded count", readFileSync(join(sbDir, "mcp-local.ndjson"), "utf8").includes("declared: ast_grep,lsp,codegraph,context7,grep_app"))
+
   // 8c.2 THE REBUILD'S COMPILER WITNESS (criteria 1 and 2). The arm runs the REAL rebuild module with a
   //       PLANTED fake compiler, so the witness it prints is a measurement of the binary it invoked —
   //       not a reading of PATH.
@@ -885,6 +912,10 @@ function selfTest(): void {
   // The case-engine probe must try `ast-grep` (the resolver's first candidate) and read BOTH streams:
   // the deprecated `sg` shim prints a warning to stderr and nothing to stdout.
   check("the case-engine probe uses the resolver's own candidate order and both streams", /CASE_ENGINE_BIN=""/.test(entrypoint) && entrypoint.includes('"$candidate" --version 2>&1'))
+  // THE FILE, not the environment: `pnpm config get registry` printed the DEFAULT with both env forms
+  // exported to the mirror, and printed the mirror only once `<HOME>/.npmrc` carried it — which is what
+  // `dsh plugin … add` (a pnpm call) resolves through. Measured 2026-10-09.
+  check("the selected registry is ALSO written to the sandbox home's .npmrc (what pnpm reads)", /printf 'registry=%s\\n' "\$NPM_REGISTRY" > "\$HOME\/\.npmrc"/.test(entrypoint) && entrypoint.includes("fact obs.npmrc"))
   check("compose interpolates the npm transport knobs (a knob only the entrypoint reads is unreachable)", /MPD_E2E_NPM_REGISTRY: \$\{MPD_E2E_NPM_REGISTRY:-\}/.test(compose) && /MPD_E2E_NPM_MIRROR: \$\{MPD_E2E_NPM_MIRROR:-\}/.test(compose) && /MPD_E2E_STEP_TIMEOUT: \$\{MPD_E2E_STEP_TIMEOUT:-\}/.test(compose))
   /** The names the union of BOTH modes' recorded rows demands (the four one-click-only names plus the
    *  thirteen the lanes recorded outside the old spine), quoted so a missing one reddens here. */

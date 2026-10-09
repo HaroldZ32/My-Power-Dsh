@@ -1,0 +1,42 @@
+== offline gates, run at 2026-10-09T14:51:22Z ==
+
+$ bash -n docker/entrypoint.sh docker/tui-lane.sh
+exit 0 (both)
+
+$ node scripts/docker-e2e.ts --self-test
+[self-test] ok   the EXPECTED spine declares the union row tui.teamGraphDrawn
+[self-test] ok   the EXPECTED spine declares the union row tui.teamGraphEdges
+[self-test] ok   the EXPECTED spine declares the union row tui.teamGraphContent
+[self-test] ok   the EXPECTED spine declares the union row tui.laneExit
+[self-test] ok   the EXPECTED spine declares the union row oneclick.scratchRepo
+[self-test] ok   the EXPECTED spine declares the union row oneclick.requiredPaths
+[self-test] ok   the EXPECTED spine declares the union row oneclick.filesAllowlist
+[self-test] ok   the EXPECTED spine declares the union row oneclick.distByteIdentical
+[self-test] ok   the EXPECTED spine declares the new S-B row toolchain.bunPinned
+[self-test] ok   the EXPECTED spine declares the new S-B row pack.rebuildToolchain
+[self-test] ok   the EXPECTED spine declares the new S-B row pack.distFreshRebuildControl
+[self-test] ok   the EXPECTED spine declares the new S-B row qa.mcpCallEngine
+[self-test] ok   the EXPECTED spine carries no duplicate name
+[self-test] ok   the declared spine covers the union of both modes' rows
+[self-test] ok   buildxEnv injects a writable BUILDX_CONFIG
+[self-test] ok   buildxEnv keeps the caller's BUILDX_CONFIG
+[self-test] ok   result.json round-trips byte-identically
+[self-test] ok   output.log is written redacted
+[self-test] ok   resolveDocker reports a missing docker precisely
+[self-test] ok   a ROOTLESS daemon runs the lane
+[self-test] ok   a ROOTFUL daemon is SKIPPED with a notice, not failed
+[self-test] ok   an unusable daemon is SKIPPED, never thrown
+[self-test] ok   --allow-rootful-docker opts a rootful daemon in
+[self-test] ok   --require-docker turns the skip into a failure
+[self-test] ok   --allow-rootful-docker does NOT rescue an unusable daemon
+[self-test] ok   the skip notice names the cause and the overrides
+[self-test] ok   the rootless run line reports the measured mode
+[self-test] ok   the probe reads `name=rootless` out of SecurityOptions
+[self-test] ok   the scrub guard fails a planted leak (exit 1)
+[self-test] ok   the scrub guard marks the verdict red
+[self-test] ok   the guard names itself in failedNames
+[self-test] ok   no planted shape survives into the artifacts
+[self-test] ok   a clean report carries evidenceScrubbed: true
+[self-test] ok   a clean report exits 0
+[self-test] all arms passed (offline: no docker, no network)
+exit 0

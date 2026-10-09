@@ -396,6 +396,21 @@ export NPM_CONFIG_REGISTRY="$NPM_REGISTRY"
 # its `dsh plugin add` retried and failed), and the two install paths of one lane disagreeing about the
 # registry is not a state any reader could have inferred from the report.
 export npm_config_registry="$NPM_REGISTRY"
+# AND THE FILE, because the environment forms do NOT reach pnpm (measured 2026-10-09): with BOTH
+# `NPM_CONFIG_REGISTRY` and `npm_config_registry` exported to the mirror, `pnpm config get registry`
+# still printed `https://registry.npmjs.org/` — so every `dsh plugin … add`, which forwards to pnpm,
+# kept resolving through the DEFAULT registry while the lane's own `npm i -g` installs used the mirror.
+# The same export PLUS this one-line `.npmrc` made `pnpm config get registry` print the mirror and the
+# exact command that had failed repeatedly (in the TUI lane, at its own line 182) exit 0. It is written
+# into the SANDBOX home — never the real user home — and the selected URL is recorded as a fact.
+if [ -n "${NPM_REGISTRY:-}" ]; then
+  printf 'registry=%s\n' "$NPM_REGISTRY" > "$HOME/.npmrc" 2>/dev/null || true
+fi
+if [ -s "$HOME/.npmrc" ]; then
+  fact obs.npmrc "$(head -n 1 "$HOME/.npmrc") (a SANDBOX-home .npmrc; pnpm — and therefore every `dsh plugin` — resolves through the FILE, not the environment, measured 2026-10-09)"
+else
+  fact obs.npmrc "<not written: HOME=$HOME is not writable>"
+fi
 fact obs.npmRegistry "$NPM_REGISTRY (route=$NPM_REGISTRY_ROUTE; the scoped-metadata endpoint was probed because npm hangs silently on an unreachable one)"
 grep -a -m1 '^REGISTRY=' "$STEPS_DIR/01b-npm-registry.log" 2>/dev/null || cat "$STEPS_DIR/01b-npm-registry.log"
 
