@@ -6,29 +6,33 @@
 // the whole restriction list while composing the child, so EVERY read-only spawn died with
 // `tools.restrict() names unknown global tools "..."` and no child was ever created.
 //
-// THE MEASURED FAILURE MODE IS *SILENT UN-GUARDING*, NOT A LOUD REFUSAL (§W3): a name that is stale but
-// still KNOWN to the scope's restrictable set does not throw — it simply makes the restriction partly
-// inert, and the child then receives the FULL, unguarded toolset with no error anywhere. Two anchors
-// explain both behaviours: `@deepseek-ai/dsh-subagent` applies the filter only when
-// `composition.toolFilter` is defined (lib/index.ts:711), while `@deepseek-ai/dsh-tools` throws only
-// for names OUTSIDE `view(scope).restrictableNames` (lib/index.ts:2804) — so a stale-but-known name
-// passes that check, the list is accepted, and the denial it was supposed to contribute simply never
-// takes effect. Older text in this delivery described the failure as a loud refusal; that is only one of
-// the two routes. The re-injection control lane below reproduces the silent route on real data, which is
-// what makes the enforcement assertion falsifiable instead of decorative.
+// THE TWO ROUTES, and which one this case MEASURES (re-derived from measurement 2026-10-09, replacing
+// the earlier "the control reproduces silent un-guarding" reading, which the control never evidenced):
+// `@deepseek-ai/dsh-subagent` applies the filter only when `composition.toolFilter` is defined, while
+// `@deepseek-ai/dsh-tools` THROWS (`tools.restrict() names unknown global tool…`) for a name outside
+// `view(scope).restrictableNames` and accepts a name that is stale but still KNOWN to that set. So an
+// UNREGISTERED name takes the LOUD route — a throw, an errored tool result, no child — while only a
+// registered-but-stale name could take the silent one. The two names injected here are unregistered,
+// so the control lane below MEASURES the loud route: refusalSeen comes from the harness's OWN session
+// store (the `mpd_role_spawn` tool result carrying `isError: true` and the unknown-name message), read
+// with lib/session-evidence.ts — never from stderr, which cannot tell a refusal apart from a run that
+// never reached the spawn. The silent route stays a DECLARED classifier for a different input.
 //
 // HOW THIS CASE PROVES ALL OF THAT WITHOUT A PROVIDER CREDENTIAL (t5, captain decision):
-// A local OpenAI-shaped stub answers the PARENT model step with a tool call for mpd_role_spawn, so the
-// child-composition path really runs in a FRESH dsh process with a throwaway key.
+// A local stub answers the PARENT model step with a tool call for mpd_role_spawn, so the child-composition
+// path really runs in a FRESH dsh process with a throwaway key. The stub speaks DEEPSEEK MESSAGES SSE
+// (lib/messages-sse.ts) because the pinned provider is Messages-only; the OpenAI-shape frames this case
+// used before made the parent's FIRST model step die with
+// `MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch`, so the capability was never exercised.
 //   WHAT CARRIES THE PROOF (two independent assertions):
 //   1. the instrumented sandbox copy of the adapter records the exact restriction mpd_role_spawn handed
 //      to the harness (filterSent), so "the eight live names were sent" is on the record; and
 //   2. every request in the stub trace is classified by the harness's own markers — the child's request
 //      carries the composed role persona ("deployment:persona") and never the parent-only delegation
 //      section ("subagent:delegation") — so the case can assert the child's VISIBLE TOOLSET excludes all
-//      eight write-capable names while the parent's includes them (reviewer measurement: child 81 tools
-//      with none, parent 87 with all eight). Assertion 2 is the one that can fail: with the pre-fix
-//      names re-injected the child sees the full toolset, and the control lane asserts exactly that.
+//      eight write-capable names while the parent's includes them. Assertion 2 is the one that can fail:
+//      with the pre-fix names re-injected the restricted spawn is REFUSED and the control lane asserts
+//      exactly that (zero child requests, a recorded refusal).
 //   WHAT DOES NOT CARRY PROOF: the mere ABSENCE of the restrict error proves nothing, because a run
 //   that never reaches the spawn (no parent credential, or a plugin tree that fails to apply) produces
 //   the same silence; a non-zero exit or a missing filterSent fails this case for that reason. Likewise
@@ -36,6 +40,8 @@
 //   happens BEFORE the child is composed, so the parent never calls mpd_role_spawn at all.
 //   A run that never reaches a child request cannot pass: the enforcement assertion requires at least
 //   one child request carrying a toolset.
+//   NO ASSERTION RESTS ON A FIXED TOOL COUNT (amendment 4b): the live registry varies (107/105/103
+//   names measured across identical lanes), so every check below reads MEMBERSHIP of the eight names.
 //
 // Isolation: isolated DSH_HOME + sandbox HOME/workspace; the ONLY edits are to the sandbox's own
 // profile patch; the real ~/.dsh, real HOME and the real ~/.mpd/workmate are never written (and the
@@ -43,7 +49,6 @@
 // --self-test is offline.
 import { spawn, execFileSync } from "node:child_process"
 import { createServer } from "node:http"
-import type { ServerResponse } from "node:http"
 import type { AddressInfo } from "node:net"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
@@ -52,7 +57,9 @@ import { fileURLToPath } from "node:url"
 import type { Env } from "./lib/credentials.ts"
 import { seedSandboxCredentials } from "./lib/credentials.ts"
 import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.ts"
+import { MESSAGES_EVENT_TYPES, messagesTextEvents, messagesToolUseEvents, readWireRequest, writeMessagesSse } from "./lib/messages-sse.ts"
 import { readMpdPresetSource } from "./lib/preset-source.ts"
+import { findToolCall, readSessionEvents } from "./lib/session-evidence.ts"
 
 // .../skills/dsh-qa/scripts/readonly-deny.ts -> the repository root.
 const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -76,30 +83,6 @@ const DEFECT_SIGNATURE: string = "names unknown global tool"
 
 /** Report one failed case assertion and end the run with exit 1; never returns. */
 function fail(msg: string): never { console.error("[" + SLUG + "] FAIL: " + msg); process.exit(1) }
-
-/**
- * The value of one own property of a decoded record, as `unknown`.
- * @param value Any decoded JSON value.
- * @param key Property name to read.
- * @returns The property value, or `undefined` when `value` is not a non-null object.
- */
-function fieldOf(value: unknown, key: string): unknown {
-  if (typeof value !== "object" || value === null) return undefined
-  // Narrowing above proves a non-null object; a dynamic key needs the record view.
-  return (value as Record<string, unknown>)[key]
-}
-
-/**
- * The array at `key` of a decoded record, as `readonly unknown[]`.
- * @param value Any decoded JSON value.
- * @param key Property name to read.
- * @returns The property value when it is an array, else an empty array.
- */
-function arrayFieldOf(value: unknown, key: string): readonly unknown[] {
-  // The raw property value, before the array test decides whether it is usable.
-  const raw = fieldOf(value, key)
-  return Array.isArray(raw) ? raw : []
-}
 
 /** One request the local stub served, with the tool-set signature the assertions read. */
 interface StubTraceEntry {
@@ -134,6 +117,16 @@ interface RawProbeLine {
 /** What the adapter's probe line carried: the parsed filter, or the raw line when it was not JSON. */
 type AdapterFilterReport = AdapterFilter | RawProbeLine
 
+/** What the harness's OWN session store says about this lane's spawn attempt. */
+interface SpawnRecord {
+  /** Whether a `mpd_role_spawn` tool call was recorded at all. */
+  readonly called: boolean
+  /** Whether that call's recorded result is an ERROR — the shape a refused spawn takes. */
+  readonly errored: boolean
+  /** The recorded result text, so a refusal can be quoted instead of merely counted. */
+  readonly text: string
+}
+
 /** One COMPLETED probe lane: every measurement the enforcement and control assertions read. */
 interface ProbeRun {
   /** `false` only on the `probe()` failure arm, whose records carry no measurements. */
@@ -150,8 +143,14 @@ interface ProbeRun {
   readonly stubCalls: number
   /** Every request the stub served, in call order. */
   readonly stubTrace: StubTraceEntry[]
-  /** Whether the parent was driven into the spawn (at least two stub calls). */
+  /** Whether the parent was driven into the spawn: the ADAPTER-PROBE line was seen (never a call count). */
   readonly spawnDriven: boolean
+  /** Whether the harness's own session store recorded a `mpd_role_spawn` call in this lane. */
+  readonly spawnCalled: boolean
+  /** Whether that recorded call's result is an ERROR — the loud route a refused spawn takes. */
+  readonly spawnErrored: boolean
+  /** The recorded result text, kept whole so a refusal stays quotable evidence. */
+  readonly spawnResultText: string
   /** The harness's own unknown-name message, or `null` when none was raised. */
   readonly rejectedName: string | null
   /** The restriction the instrumented adapter handed over, or `null` when none was seen. */
@@ -216,7 +215,7 @@ interface ChildRun {
   readonly out: string
 }
 
-/** The local OpenAI-shaped stub: its request trace and its lifecycle. */
+/** The local stub in the pinned provider's protocol: its request trace and its lifecycle. */
 interface StubServer {
   /** Every request the stub served, in call order. */
   readonly trace: StubTraceEntry[]
@@ -387,6 +386,48 @@ function selfTest(): void {
   checks.push(["bundle mounts the lsp MCP row", /id: mcp-lsp/.test(bundlePatch) && /serverName: lsp/.test(bundlePatch)])
   checks.push(["bundle mounts the hashline plugin that owns mpd_hashline_edit", /mpd-hashline-plugin/.test(bundlePatch)])
 
+  // WIRE SHAPE (2026-10-09): the pinned provider is Messages-only, so the stub's frames are asserted
+  // here as DATA. A regression to the OpenAI chunk shape then reddens THIS offline arm instead of only
+  // surfacing as `MALFORMED_RESPONSE` inside a slow container run. The forbidden needle is assembled
+  // from parts on purpose: written out whole it would appear in this file's own bytes and make the
+  // absence assertion below pass vacuously — the trap this arm exists to avoid.
+  // The OpenAI streaming-object name, as a needle that is never spelled out in this source.
+  const OPENAI_CHUNK_NEEDLE = "chat" + ".completion" + ".chunk"
+  // The stub's tool-call frames, which drive the parent into one mpd_role_spawn.
+  const toolFrames = messagesToolUseEvents("call_probe_1", "mpd_role_spawn", { role: "Architect", task: "Reply OK" })
+  // The stub's text frames, which answer every later step.
+  const textFrames = messagesTextEvents("probe-child-answered")
+  /**
+   * The `type` of each frame, in order, which is what the provider's parser matches exactly.
+   * @param frames The frames to read.
+   * @returns Their discriminators, in emission order.
+   */
+  const frameTypes = (frames: readonly { readonly type: string }[]): string[] => frames.map((f) => f.type)
+  checks.push(["the tool-call frames are the six Messages events, in order", JSON.stringify(frameTypes(toolFrames)) === JSON.stringify(MESSAGES_EVENT_TYPES)])
+  checks.push(["the text frames are the six Messages events, in order", JSON.stringify(frameTypes(textFrames)) === JSON.stringify(MESSAGES_EVENT_TYPES)])
+  // The serialized wire body, which is what really crosses the loopback socket.
+  const wireBody = [...toolFrames, ...textFrames].map((f) => "data: " + JSON.stringify(f)).join("\n\n")
+  checks.push(["no OpenAI streaming-object frame crosses the wire", !wireBody.includes(OPENAI_CHUNK_NEEDLE)])
+  checks.push(["no `[DONE]` sentinel crosses the wire (the Messages reader JSON.parses every data line)", !wireBody.includes("[DONE]")])
+  checks.push(["the tool call travels as input_json_delta, which message_stop re-parses as an object", wireBody.includes('"input_json_delta"') && wireBody.includes('"tool_use"')])
+  // The REQUEST reader, which must read a Messages-shaped body as well as the older OpenAI one.
+  const messagesWire = readWireRequest(JSON.stringify({
+    tools: [{ name: "read" }, { name: "bash" }],
+    messages: [{ role: "user", content: [{ type: "tool_result", tool_use_id: "c1", content: [{ type: "text", text: "ok" }] }] }],
+  }))
+  checks.push(["a Messages request's tool names are read", JSON.stringify(messagesWire.toolNames) === JSON.stringify(["read", "bash"])])
+  checks.push(["a Messages request's tool_result block is read as a tool result", JSON.stringify(messagesWire.toolResults) === JSON.stringify(["ok"])])
+  // The case's OWN bytes: criterion 4 and 6 are CODE-shape claims, so they are asserted against the
+  // file rather than trusted to a reader's summary of the file.
+  const ownSource = readFileSync(fileURLToPath(import.meta.url), "utf8")
+  checks.push(["this case's source carries no OpenAI streaming-object shape", !ownSource.includes(OPENAI_CHUNK_NEEDLE)])
+  checks.push(["spawnDriven keys on the ADAPTER-PROBE filterSent, never on the stub's call count", ownSource.includes("spawnDriven: filterSent !== null") && !ownSource.includes("stub.calls() >= " + "2")])
+  // The stub must pick the step it drives from the REQUEST'S SHAPE. An order-keyed stub answered the
+  // wrong step when the tool-less session-title request arrived first (measured 2026-10-09: the same
+  // source was green with that request at call#2 and RED with it at call#1), which is a flake in the
+  // apparatus rather than a fact about read-only authority.
+  checks.push(["the stub keys on the REQUEST SHAPE, never on arrival order", ownSource.includes("wire.toolNames.length > 0 && wire.toolResults.length === 0") && !ownSource.includes("if (calls === " + "1)")])
+
   // The matrix that must stay green: the roles suite carries the coverage + dead-name + parity guards.
   // The roles package's own unit suite, whose guard names this case pins.
   const rolesTest = readFileSync(join(repoRoot, "packages", "mpd-roles-plugin", "test", "roles.test.ts"), "utf8")
@@ -451,7 +492,8 @@ function runAsync(cmd: string, args: string[], opts: RunAsyncOptions = {}): Prom
 }
 
 /**
- * One OpenAI-shaped stub: call 1 drives the parent into a single mpd_role_spawn, later calls answer.
+ * One stub in the pinned provider's protocol: the parent's first tool-carrying request drives it into a
+ * single mpd_role_spawn, every later request is answered with text.
  * @returns The stub's request trace plus its `calls`, `listen` and `close` handles.
  */
 function makeStub(): StubServer {
@@ -459,13 +501,8 @@ function makeStub(): StubServer {
   const trace: StubTraceEntry[] = []
   // How many requests have been served, which is also the call number.
   let calls = 0
-  /** Answer one request with a server-sent-events chunk, the OpenAI streaming shape. */
-  const sse = (res: ServerResponse, payload: Record<string, unknown>): void => {
-    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store" })
-    res.write(`data: ${JSON.stringify(payload)}\n\n`)
-    res.write("data: [DONE]\n\n")
-    res.end()
-  }
+  // Whether the spawn call has already been issued, so exactly one is ever sent.
+  let spawnIssued = false
   // The loopback server every model request from the dsh child arrives at.
   const server = createServer((req, res) => {
     // The request body, accumulated as it streams in.
@@ -473,36 +510,30 @@ function makeStub(): StubServer {
     req.on("data", (c: Buffer): void => { body += c })
     req.on("end", (): void => {
       calls += 1
-      // Whether the request declared any tools at all.
-      let hasTools = false
-      // Every tool name the request declared, kept for the child-request signature.
-      let toolNames: string[] = []
-      try {
-        // `JSON.parse` is untyped, so the request body is narrowed through the helpers below.
-        const parsed: unknown = JSON.parse(body)
-        // The declared tool array, empty when the request carries none.
-        const tools = arrayFieldOf(parsed, "tools")
-        hasTools = tools.length > 0
-        toolNames = tools.map((t) => fieldOf(fieldOf(t, "function"), "name") ?? fieldOf(t, "name")).filter((n): n is string => typeof n === "string")
-      } catch { /* ignore */ }
+      // The request read in whichever wire shape the client used (tool names + tool results).
+      const wire = readWireRequest(body)
       trace.push({
-        call: calls, hasTools, bytes: body.length,
-        toolCount: toolNames.length,
+        call: calls, hasTools: wire.toolNames.length > 0, bytes: body.length,
+        toolCount: wire.toolNames.length,
         // The property this case exists to prove: read-only authority means the child CANNOT SEE the
         // write-capable tools, not merely that the deny list was handed to the harness.
-        writeCapableVisible: WRITE_CAPABLE.filter((n) => toolNames.includes(n)),
-        _toolNames: toolNames,
+        writeCapableVisible: WRITE_CAPABLE.filter((n) => wire.toolNames.includes(n)),
+        _toolNames: wire.toolNames,
       })
-      if (calls === 1) {
-        sse(res, {
-          id: "chatcmpl-probe", object: "chat.completion.chunk", created: 1, model: "probe",
-          choices: [{ index: 0, delta: { role: "assistant", tool_calls: [{ index: 0, id: "call_probe_1", type: "function", function: { name: "mpd_role_spawn", arguments: JSON.stringify({ role: "Architect", task: "Reply OK" }) } }] }, finish_reason: null }],
-        })
+      // Keyed on the REQUEST'S SHAPE — tools offered and no tool result yet — never on arrival order.
+      // The session-title side request carries NO tools and lands at NO FIXED POSITION (measured
+      // 2026-10-09, same source: it was call#2 in the green run and call#1 in the run that went red, so
+      // an order-keyed stub answered the wrong step and the case reddened for a reason that had nothing
+      // to do with read-only authority). A request already carrying a tool result is a LATER step, and
+      // the child's own request can only arrive after the spawn — both fall through to the text answer.
+      if (!spawnIssued && wire.toolNames.length > 0 && wire.toolResults.length === 0) {
+        spawnIssued = true
+        // The parent's model step: one tool call for the read-only spawn, in Messages SSE, because the
+        // pinned provider hard-fails on an OpenAI-shaped chunk frame.
+        writeMessagesSse(res, messagesToolUseEvents("call_probe_1", "mpd_role_spawn", { role: "Architect", task: "Reply OK" }))
       } else {
-        sse(res, {
-          id: "chatcmpl-probe2", object: "chat.completion.chunk", created: 2, model: "probe",
-          choices: [{ index: 0, delta: { role: "assistant", content: "probe-child-answered" }, finish_reason: null }],
-        })
+        // Every other step (the child's turn, the session-title side request, the follow-up) gets text.
+        writeMessagesSse(res, messagesTextEvents("probe-child-answered"))
       }
     })
   })
@@ -641,6 +672,32 @@ function runReal(): Promise<void> {
       const run = await runAsync("dsh", ["--profile", "mpd-headless", task], { env, cwd: ws, timeout: 600000 })
       // The boot's whole output, which every marker assertion reads.
       const out = run.out
+      // The exact restriction the roles plugin handed the harness, captured from the instrumented
+      // adapter copy: without this, "the child ran" does not say WHICH list was accepted.
+      const filterSent = ((): AdapterFilterReport | null => {
+        // The adapter's own probe line, printed for the restriction it handed over.
+        const m = /\[ADAPTER-PROBE\] toolFilter=([^\n]*)/.exec(out)
+        if (!m) return null
+        // `JSON.parse` answers an untyped value, and the declared return type of this reader is the
+        // contract it feeds; a line that is not JSON falls through to its raw text below.
+        try { return JSON.parse(m[1]) } catch { return m[1] }
+      })()
+      // The harness's OWN record of this lane's spawn attempt, read from the isolated session store.
+      // The instrumented adapter prints its probe immediately BEFORE `subagents.start(`, so a probe line
+      // proves a spawn really started; whether that start produced a child or a refusal is a separate,
+      // measured question that only the store can answer. A store that cannot be read is reported as a
+      // measured absence, never swallowed into a silent `false`.
+      const spawnRecord = ((): SpawnRecord => {
+        try {
+          // This lane's newest session store, keyed by the sandbox workspace the boot ran in.
+          const store = readSessionEvents(dshHome, { workspace: ws })
+          // The harness's recorded verdict for the spawn tool call.
+          const evidence = findToolCall(store.records, "mpd_role_spawn")
+          return { called: evidence.called, errored: evidence.called && !evidence.succeeded, text: evidence.resultText.slice(0, 4000) }
+        } catch (error) {
+          return { called: false, errored: false, text: "session store unreadable: " + (error instanceof Error ? error.message : String(error)) }
+        }
+      })()
       // The lane's measurements, in the exact shape the evidence JSON records.
       const res: ProbeRun = {
         exit: run.status,
@@ -649,18 +706,16 @@ function runReal(): Promise<void> {
         authFailed: /AUTH:|Authentication Fails/.test(out),
         stubCalls: stub.calls(),
         stubTrace: stub.trace,
-        spawnDriven: stub.calls() >= 2,
+        // Keyed on the ADAPTER-PROBE line, never on the stub's call count: the session-title side
+        // request makes a second call with NO spawn, so `calls() >= 2` could report "the parent was
+        // driven into the spawn" for a run in which no spawn was ever attempted (measured defect t9).
+        spawnDriven: filterSent !== null,
         rejectedName: (out.match(/names unknown global tools? [^\n;]*/) || [null])[0],
-        // The exact restriction the roles plugin handed the harness, captured from the instrumented
-        // adapter copy: without this, "the child ran" does not say WHICH list was accepted.
-        filterSent: ((): AdapterFilterReport | null => {
-          // The adapter's own probe line, printed for the restriction it handed over.
-          const m = /\[ADAPTER-PROBE\] toolFilter=([^\n]*)/.exec(out)
-          if (!m) return null
-          // `JSON.parse` answers an untyped value, and the declared return type of this reader is the
-          // contract it feeds; a line that is not JSON falls through to its raw text below.
-          try { return JSON.parse(m[1]) } catch { return m[1] }
-        })(),
+        filterSent,
+        // The harness's session-store verdict, which the control lane asserts on.
+        spawnCalled: spawnRecord.called,
+        spawnErrored: spawnRecord.errored,
+        spawnResultText: spawnRecord.text,
         // Full output, not a sample: when a probe lane misbehaves the log is the only way to tell
         // "the control fired" apart from "the control never ran".
         fullOutput: out.slice(-20000),
@@ -672,8 +727,10 @@ function runReal(): Promise<void> {
     // POSITIVE: the shipped code must apply the restriction without the harness refusing it.
     // `probe()` answers a union whose failure arm carries no measurements, and every assertion below
     // reads a COMPLETED run — the arm the code has always assumed — so the run shape is asserted here
-    // rather than guarded with a branch the original never had.
-    steps.positive = await probe("pos", { reInjectDeadNames: false }) as ProbeRun
+    // rather than guarded with a branch the original never had. Held in a local as well, so the notes
+    // built from these measurements are typed fields rather than a union read.
+    const positiveRun = await probe("pos", { reInjectDeadNames: false }) as ProbeRun
+    steps.positive = positiveRun
     // ENFORCEMENT (t13 / t9 F1): the case must assert what is MEASURED about the child, not merely that
     // the deny list was handed over. The child request is found by its own signature: a request that
     // carries tools whose names are a PROPER SUBSET of the parent's toolset. Measured basis (raw
@@ -713,11 +770,13 @@ function runReal(): Promise<void> {
       ok: childSpy.length > 0 && parentShowsAllDenied && childSpy.every((c) => c.writeCapableVisible.length === 0),
       childRequests: childReqs.length,
       parentRequests: parentReq ? steps.positive.stubTrace.filter((c) => c !== parentReq).length : 0,
-      childToolCounts: childSpy.map((c) => c.toolCount),
-      parentToolCount: parentReq?.toolCount ?? 0,
+      // The registry's SIZE is deliberately NOT recorded as a verdict input (amendment 4b: it varies
+      // across identical lanes); the child's request count is a fact about this run, not a registry.
       childLeaksWriteCapable: childSpy.flatMap((c) => c.writeCapableVisible),
       childHasStructuredOutput: childSpy.some((c) => c._toolNames.includes("structured_output")),
-      parentHasAllSeven: parentShowsAllDenied,
+      // MEMBERSHIP of the eight deny names, never a registry count: the live tool registry's size varies
+      // between identical lanes (107 / 105 / 103 names measured), so a count assertion is a flake.
+      parentSeesAllDenyNames: parentShowsAllDenied,
       note: "read-only authority is ENFORCED: the child's own requests cannot see any of the eight write-capable tools, while the parent's sees all of them",
     }
 
@@ -731,21 +790,25 @@ function runReal(): Promise<void> {
         && steps.positive.spawnDriven
         && !steps.positive.missingCredential
         && JSON.stringify(steps.positive.filterSent?.deny) === JSON.stringify(EXPECTED_DENY),
-      note: "the eight-name list reached tools.restrict(), the child was created and answered, and the child's visible toolset excludes all eight write-capable names",
+      // A FUNCTION of the measurements above, never a fixed sentence: the previous static wording
+      // ("the child was created and answered") read as a measurement in the wave's own review while the
+      // run that produced it had `childRequests: 0` — a note that cannot be falsified by its own fields.
+      note: "positive lane: exit=" + positiveRun.exit
+        + ", denyListMatchesTheEight=" + (JSON.stringify(positiveRun.filterSent?.deny) === JSON.stringify(EXPECTED_DENY))
+        + ", spawnDriven=" + positiveRun.spawnDriven
+        + ", restrictError=" + positiveRun.restrictError
+        + ", missingCredential=" + positiveRun.missingCredential
+        + ", childRequests=" + childReqs.length
+        + ", childLeaksWriteCapable=" + JSON.stringify(childSpy.flatMap((c) => c.writeCapableVisible)),
     }
-    // CONTROL (t13 / t9 F1): the re-injection lane is where read-only authority SILENTLY DEGRADES in
-    // this harness — a stale-but-known name overlaps the scope's restrictable names, so restrict()
-    // applies nothing and the child sees the full toolset with no refusal (contract §W3). Asserting
-    // that degraded state is what makes the enforcement assertion above falsifiable rather than
-    // decorative: if this lane ever stops leaking, the enforcement assertion must be re-derived.
-    // DIAGNOSTIC (control) lane: re-injecting the unregistered names into a sandbox copy reproduces the
-    // SILENT route, not the loud one (§W3). Asserted below, after the lane has run.
+    // CONTROL (t13 / t9 F1): the re-injection lane is where read-only authority must degrade LOUDLY.
+    // The two re-injected names are NOT registered in this profile, so `tools.restrict()` refuses the
+    // composition by throwing (see the header's two routes): the child is never created and the refusal
+    // lands in the harness's OWN session store as an ERRORED `mpd_role_spawn` result. Asserting that
+    // recorded refusal — plus ZERO restricted-child requests next to it — is what makes the enforcement
+    // assertion above falsifiable instead of decorative: a lane that silently un-guarded would show
+    // children and no refusal, and one that never reached the spawn would show neither.
     steps.reinjectionDiagnostic = await probe("neg", { reInjectDeadNames: true }) as ProbeRun
-    // CONTROL (t13 / t9 F1): the re-injection lane is where read-only authority SILENTLY DEGRADES in
-    // this harness — a stale-but-known name overlaps the scope's restrictable names, so restrict()
-    // applies nothing and the child sees the full toolset with no refusal (contract §W3). Asserting
-    // that degraded state is what makes the enforcement assertion above falsifiable rather than
-    // decorative: if this lane ever stops leaking, the enforcement assertion must be re-derived.
     // The control lane's own trace, which the mutation assertions read.
     const diagTrace = steps.reinjectionDiagnostic.stubTrace
     // The control lane's parent request: the first one that carries tools at all.
@@ -763,22 +826,36 @@ function runReal(): Promise<void> {
     const diagSent = steps.reinjectionDiagnostic.filterSent?.deny ?? []
     // Whether both injected names really reached the harness, which is what proves the mutation loaded.
     const mutationLoaded = DEAD_NAMES.every((n) => diagSent.includes(n))
+    // The refusal as the HARNESS recorded it — the spawn tool's own errored result carrying the
+    // unknown-name message. Read from the session store, because stderr cannot tell a refusal apart
+    // from a run that never reached the spawn (the trap this control lane was rebuilt to close).
+    const refusalSeen = steps.reinjectionDiagnostic.spawnCalled
+      && steps.reinjectionDiagnostic.spawnErrored
+      && steps.reinjectionDiagnostic.spawnResultText.includes(DEFECT_SIGNATURE)
     steps.reinjectionControl = {
-      ok: mutationLoaded && diagChild.length === 0 && (diagParent?.writeCapableVisible.length ?? 0) === WRITE_CAPABLE.length && steps.reinjectionDiagnostic.restrictError === false,
+      // Falsifiable by construction: a lane that silently un-guarded would show child requests and no
+      // recorded refusal, so this conjunction reddens on either half.
+      ok: mutationLoaded && refusalSeen && diagChild.length === 0 && (diagParent?.writeCapableVisible.length ?? 0) === WRITE_CAPABLE.length,
       mutationLoaded,
       injectedNamesSeenByAdapter: DEAD_NAMES.filter((n) => diagSent.includes(n)),
+      // ZERO restricted-child requests: composition threw before any child existed. A count of CHILD
+      // REQUESTS, never of tools — the live registry's size varies between identical lanes.
       childRequestsUnderRestriction: diagChild.length,
-      parentToolCount: diagParent?.toolCount ?? 0,
       parentSeesWriteCapable: diagParent?.writeCapableVisible ?? [],
-      refusalSeen: steps.reinjectionDiagnostic.restrictError,
-      note: "control: the mutation provably loaded (the adapter received the injected names) and the restriction then silently stopped applying — no request is a restricted child and no refusal is raised, which is the exact degradation the enforcement assertion above exists to catch",
+      refusalSeen,
+      refusalReadFrom: "the harness session store: the mpd_role_spawn tool result with isError:true",
+      recordedSpawnCalled: steps.reinjectionDiagnostic.spawnCalled,
+      recordedSpawnErrored: steps.reinjectionDiagnostic.spawnErrored,
+      recordedSpawnText: steps.reinjectionDiagnostic.spawnResultText.slice(0, 300),
+      refusalInStdout: steps.reinjectionDiagnostic.restrictError,
+      note: "control: the mutation provably loaded (the adapter received the injected names) and the harness then REFUSED the restricted spawn — refusalSeen=" + refusalSeen + " read from the session store, childRequests=" + diagChild.length + ", parentSeesWriteCapable=" + (diagParent?.writeCapableVisible.length ?? 0) + "/" + WRITE_CAPABLE.length,
     }
     steps.reinjectionNote = ((): string => {
       // The control lane's own result, which the note explains in one line.
       const neg = steps.reinjectionDiagnostic
       return neg.reason
         ? "diagnostic lane could not be prepared: " + neg.reason
-        : "with the unregistered names re-injected, the sandbox boot still composed the child and emitted no refusal (refusalSeen=" + neg.restrictError + ") — the refusal is therefore NOT reproducible in this profile, so the positive lane carries the proof"
+        : "with the unregistered names re-injected, the sandbox boot REFUSED the restricted spawn (recorded spawnErrored=" + neg.spawnErrored + ", stdout refusal=" + neg.restrictError + ") and made zero child requests — the loud route for a name outside the scope's restrictable set"
     })()
     steps.isolation = {
       ok: JSON.stringify(fpTree(realWm)) === JSON.stringify(realFpBefore),
@@ -790,7 +867,7 @@ function runReal(): Promise<void> {
     const allOk = Object.values(steps).every((s) => s.ok !== false)
     writeFileSync(join(outDir, "result.json"), JSON.stringify({
       ok: allOk, slug: SLUG, defect: DEFECT_SIGNATURE, expectedDenyList: EXPECTED_DENY, deadNames: DEAD_NAMES,
-      method: "local OpenAI-shaped stub drives the parent into one mpd_role_spawn in a FRESH dsh process (throwaway key), with a negative control that re-injects the pre-fix names in the sandbox copy",
+      method: "a local DeepSeek Messages SSE stub (lib/messages-sse.ts) drives the parent into one mpd_role_spawn in a FRESH dsh process (throwaway key), with a negative control that re-injects the pre-fix names in the sandbox copy",
       steps,
     }, null, 2))
     writeFileSync(join(outDir, "output.log"), JSON.stringify({ positiveFullOutput: steps.positive.fullOutput, reinjectionFullOutput: steps.reinjectionDiagnostic.fullOutput }, null, 2))

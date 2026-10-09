@@ -1,0 +1,24 @@
+{
+  "case": "docker-client-install",
+  "ok": false,
+  "complete": false,
+  "driver": {
+    "synthesized": true,
+    "reason": "the container exited 137 without writing result.json",
+    "containerExit": 137
+  },
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "null": 0,
+    "failedNames": [],
+    "nullNames": []
+  },
+  "assertions": [],
+  "observations": {},
+  "facts": {},
+  "hashes": [],
+  "steps": [],
+  "outputLog": "output.log"
+}

@@ -1,0 +1,38 @@
+== temp dir: /tmp/mpd-sh-ci-cond-p0itBc   (repo: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh)
+== sha256 BEFORE the move ==
+2fce271aa5c5cc6b0467131cdea1104333ba5b595847054b973c956037b66546  skills/frontend/references/design/ambience-skill.md
+01ee071f308c87c489635fa86cc70fd4e634f6b0bf11f7ee3945671f3b5540bd  skills/frontend/references/design/component-catalogs.md
+== counts with the ignored files present: disk=373 tracked=371
+== git status of the corpus before (empty line below means clean):
+-- (end)
+== moved aside -> counts: disk=371 tracked=371 ('a clean checkout')
+== bun run verify:vendor ==
+$ node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 371 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] asset OK: packages/mpd-hashline-plugin/src/vendor 8 files
+[verify-vendor] asset OK: packages/mpd-boulder-plugin/src/vendor 13 files
+[verify-vendor] asset OK: packages/mpd-schemastery 19 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+EXIT=0
+== node scripts/repin-vendor.ts --check ==
+[repin-vendor]   file list    : git index (371 shipped file(s))
+[repin-vendor]   file list    : git index (8 shipped file(s))
+[repin-vendor]   file list    : git index (13 shipped file(s))
+[repin-vendor]   file list    : git index (19 shipped file(s))
+[repin-vendor]   file list    : git index (2 shipped file(s))
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)
+EXIT=0
+== sha256 AFTER the restore (must equal the BEFORE block) ==
+2fce271aa5c5cc6b0467131cdea1104333ba5b595847054b973c956037b66546  skills/frontend/references/design/ambience-skill.md
+01ee071f308c87c489635fa86cc70fd4e634f6b0bf11f7ee3945671f3b5540bd  skills/frontend/references/design/component-catalogs.md
+== counts restored: disk=373 tracked=371
+== git status of the corpus after (empty line below means clean):
+-- (end)
+== gate after the restore, with the ignored files back on disk ==
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+EXIT=0

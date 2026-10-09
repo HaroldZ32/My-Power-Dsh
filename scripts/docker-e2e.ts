@@ -677,6 +677,263 @@ function selfTest(): void {
   }
   check("pack.present is declared too (a missing artifact is a FAIL, never a skip)", reported.includes('"pack.present"'))
 
+  // 8c. THE S-B ARMS (§4 S-B, 2026-10-09). Every arm below RUNS the real apparatus module it grades
+  //     against PLANTED fixtures, and every one of them has a planted NEGATIVE control. A self-test that
+  //     only greps a file for a name would pass on a module that always answers `true` — these do not:
+  //     the panel classifier, the rebuild's compiler witness and the pack comparator are all driven, and
+  //     the controls below are the same fixture with one field turned.
+  // THE FIXTURES LIVE OUTSIDE THE REPOSITORY on purpose: `verify:comments` scans this repository's
+  // TypeScript sources, and a planted `src/index.ts` under `docker/` is a policed declaration — measured
+  // 2026-10-09, when a fixture tree left behind by a failing run reddened that STANDING gate. A temp
+  // directory keeps the fixture out of every tree-walking gate, and it is removed at the end of the run.
+  /** Scratch root for the S-B arms (outside the repository, so no gate ever walks it). */
+  const sbDir = mkdtempSync(join(tmpdir(), "mpd-docker-e2e-sb-"))
+  /** Run one apparatus module under this interpreter, returning its combined output and exit status. */
+  const runApparatus = (script: string, args: readonly string[]): { status: number | null; out: string } => {
+    /** The child run; both streams are merged because the modules print their contract to stdout. */
+    const run = spawnSync(process.execPath, [join(DOCKER_DIR, "lib", script), ...args], { encoding: "utf8" })
+    return { status: run.status, out: `${run.stdout ?? ""}${run.stderr ?? ""}` }
+  }
+  /** The value of one `[tag] KEY=value` line an apparatus module printed, or the empty string. */
+  const printed = (out: string, key: string): string => new RegExp(`^\\[[a-z-]+\\] ${key}=(.*)$`, "m").exec(out)?.[1] ?? ""
+  /** Read one assertion row's `ok` out of an NDJSON state file, as a string (`missing` when absent). */
+  const stateRow = (stateFile: string, name: string): string => {
+    /** Every non-empty line of the state file, parsed as a row (a corrupt line is reported as such). */
+    const rows = readFileSync(stateFile, "utf8").split("\n").filter((line: string) => line.trim() !== "").map((line: string) => JSON.parse(line) as { name: string; ok: unknown })
+    /** The last row recorded under this name — the reporter's own last-wins rule. */
+    const row = [...rows].reverse().find((candidate) => candidate.name === name)
+    return row === undefined ? "missing" : String(row.ok)
+  }
+
+  // 8c.1 THE TUI PANEL CLASSIFIER (criterion 4's measurement, criterion 7's offline falsifier).
+  //      The fixtures carry the REAL strings the authoritative capture carries (`pane-merged.txt`), and
+  //      the control is the PRE-KEY capture: a pane taken before the combo was sent.
+  /** The sidebar panel body, exactly as the 0.14.0 capture carries it. */
+  const panelBodyPane = [
+    "  chat screen                                                                   │┌MPD──────────────────────────────────────┐",
+    "                                                                                ││MPD                                       ⤢│",
+    "                                                                                ││subagents  0 total · 0 running · 0 completed · 0 failed│",
+    "                                                                                ││⚪ No subagents in the current session     │",
+    "                                                                                ││team Scene Smoke  phase active  tasks 1/3  members 2  █████░░░░│",
+    "                                                                                │││ ✓ T1   │                                 │",
+    "                                                                                ││view boxes · 3 tasks · ranks derived       │",
+  ].join("\n") + "\n"
+  /** The same terminal BEFORE the combo: a chat screen with no panel body in it. */
+  const preKeyPane = "  chat screen\n  ▶ loaded context\n  mpd: team Scene Smoke 2·1/3 (workspace-level)\n"
+  /** The pre-0.13 full-screen scene, whose strings the `absent` shape still grades. */
+  const sceneBodyPane = "MPD subagents + team\nsubagents  0 total · 0 running\nbuild the graph to see dependencies\n"
+  /** Where the fixture panes live. */
+  const panelDir = join(sbDir, "panel")
+  mkdirSync(panelDir, { recursive: true })
+  writeFileSync(join(panelDir, "pane-merged.txt"), panelBodyPane)
+  writeFileSync(join(panelDir, "pane-teamClosed.txt"), preKeyPane)
+  writeFileSync(join(panelDir, "pane-scene.txt"), sceneBodyPane)
+  writeFileSync(join(panelDir, "pane-inverted.txt"), [
+    "│┌MPD──────┐",
+    "││team Scene Smoke  phase active  tasks 1/3  members 2│",
+    "││subagents  0 total · 0 running│",
+  ].join("\n") + "\n")
+  // A pane already showing the panel BEFORE the key: the capture cannot attribute the open to the combo.
+  writeFileSync(join(panelDir, "pane-control-dirty.txt"), panelBodyPane)
+  /** The positive run: panel body present, control clean. */
+  const panelGood = runApparatus("tui-panel-body.ts", ["--pane", join(panelDir, "pane-merged.txt"), "--control", join(panelDir, "pane-teamClosed.txt"), "--shape", "present"])
+  check("tui-panel-body reads the panel body as an OPEN (criterion 4)", panelGood.status === 0 && printed(panelGood.out, "OPENS") === "true", panelGood.out.trim())
+  check("tui-panel-body reads the subagent section ABOVE the team body", printed(panelGood.out, "ORDER") === "true", printed(panelGood.out, "ORDER"))
+  // MEMBERSHIP, NEVER A FIXED COUNT (criterion 4b): the assertion is that each family is PRESENT and the
+  // control is clean — the counts themselves vary with how many lines a host draws per family.
+  /** The classifier's own hit line; `printed()` returns the value after `TITLE_HITS=`, which carries the
+   *  three sibling counts, so each family is asserted on that one line — as PRESENCE, never as a count. */
+  const panelHitLine = printed(panelGood.out, "TITLE_HITS")
+  check("the open verdict quotes a present marker in every family and a CLEAN control", /^[1-9]/.test(panelHitLine) && /SUB_HITS=[1-9]/.test(panelHitLine) && /TEAM_HITS=[1-9]/.test(panelHitLine) && /CONTROL_HITS=0/.test(panelHitLine), panelHitLine)
+  // THE FALSIFIER (criterion 7): the SAME pane, with a control that already carries the body, must NOT
+  // be readable as an open — this is how the row reddens when the capture order or the key breaks.
+  const panelDirty = runApparatus("tui-panel-body.ts", ["--pane", join(panelDir, "pane-merged.txt"), "--control", join(panelDir, "pane-control-dirty.txt"), "--shape", "present"])
+  check("a control that already carries the body makes the open FALSE (the planted falsifier)", panelDirty.status === 0 && printed(panelDirty.out, "OPENS") === "false" && printed(panelDirty.out, "ORDER") === "false", panelDirty.out.trim())
+  check("the falsifier names the control as the cause", printed(panelDirty.out, "REASON").includes("PRE-KEY capture already carries"), printed(panelDirty.out, "REASON"))
+  // The ORDER row is a comparison, not a constant: the same markers INVERTED must go false while the
+  // open stays true (otherwise a "true" on order would carry no information).
+  const panelInverted = runApparatus("tui-panel-body.ts", ["--pane", join(panelDir, "pane-inverted.txt"), "--control", join(panelDir, "pane-teamClosed.txt"), "--shape", "present"])
+  check("inverted section order opens but FAILS the order row", printed(panelInverted.out, "OPENS") === "true" && printed(panelInverted.out, "ORDER") === "false", panelInverted.out.trim())
+  // A host WITHOUT the seam keeps its previous meaning: the pre-0.13 scene's own strings.
+  const panelAbsent = runApparatus("tui-panel-body.ts", ["--pane", join(panelDir, "pane-scene.txt"), "--control", join(panelDir, "pane-teamClosed.txt"), "--shape", "absent"])
+  check("the pre-0.13 shape still grades the full-screen scene", printed(panelAbsent.out, "OPENS") === "true" && printed(panelAbsent.out, "SHAPE") === "absent", panelAbsent.out.trim())
+  check("a missing pane is a usage failure, never a silent false", runApparatus("tui-panel-body.ts", ["--pane", join(panelDir, "does-not-exist.txt")]).status === 2)
+  // THE WIRE (criterion 7): the lane must USE that classifier — a falsified module nobody calls is not
+  // an offline falsifier of `docker/tui-lane.sh`. The lane keeps no marker of its own, so this arm and
+  // the classifier arms above together cover the whole path.
+  /** The TUI lane's own text, read for the two wires below. */
+  const tuiLane = readFileSync(join(DOCKER_DIR, "tui-lane.sh"), "utf8")
+  check("tui-lane.sh drives the shared panel classifier", tuiLane.includes("tui-panel-body.ts") && tuiLane.includes('--shape "$PANEL_SEAM"'))
+  check("tui-lane.sh hands the classifier the PRE-KEY capture as its control", /--control "\$MERGED_TEAMCLOSED_PANE"/.test(tuiLane))
+  check("tui-lane.sh no longer records the merged rows as unreachable", !/record tui\.mergedPanelOpens null/.test(tuiLane) && !/record tui\.mergedPanelOrder null/.test(tuiLane))
+  check("the Dockerfile carries the new apparatus module", readFileSync(DOCKERFILE, "utf8").includes("COPY docker/lib/ /opt/mpd-e2e/lib/"))
+
+  // 8c.15 THE MCP SERVER-SET ARMS (measured 2026-10-09): the bundle's OWN patch mounts FIVE rows, two
+  //       of them REMOTE streamable-http services that register only when their handshake completes. The
+  //       row used to call those two "unexpected", so it was green only while the network refused them —
+  //       and it went red the moment a one-click run actually reached mcp.context7.com and mcp.grep.app.
+  //       These arms drive the REAL module over planted boot logs, in both directions.
+  /** One planted boot log, in the probe's own line shape. */
+  const mcpLog = (registered: string): string => `[docker-probe] MCP_REGISTERED=${registered}\n[docker-probe] MCP_SERVER_COUNTS=ast_grep:3,lsp:11,codegraph:1\n`
+  /** The local three, which MUST be up. */
+  const LOCAL3 = "mcp__ast_grep__rewrite,mcp__ast_grep__scan,mcp__ast_grep__search,mcp__lsp__find_definition,mcp__codegraph__codegraph_explore"
+  /** A representative ast-grep surface, so the "missingAstGrepTools" clause is not what these arms test. */
+  const AST_FULL = ["rewrite", "scan", "search"].map((t: string) => "mcp__ast_grep__" + t).join(",")
+  /** Run the real owed-mcp module over a planted log and return its row verdict for one name. */
+  const runOwedMcp = (tag: string, registered: string): string => {
+    /** The planted boot log this arm hands the module. */
+    const logFile = join(sbDir, `mcp-${tag}.log`)
+    /** This arm's own state file, so no arm can read another's rows. */
+    const state = join(sbDir, `mcp-${tag}.ndjson`)
+    writeFileSync(logFile, mcpLog(registered))
+    runApparatus("owed-mcp.ts", ["--boot-log", logFile, "--state", state])
+    return stateRow(state, "boot.mcpToolNaming")
+  }
+  check("the local MCP rows alone pass the naming row", runOwedMcp("local", LOCAL3) === "true", runOwedMcp("local-verify", LOCAL3))
+  check("the two REMOTE rows registering is NOT a defect (the planted control for the 2026-10-09 red)", runOwedMcp("remote", LOCAL3 + ",mcp__context7__resolve-library-id,mcp__grep_app__searchGitHub") === "true")
+  check("a server NO shipped patch row declares still reddens (the leak class)", runOwedMcp("leak", LOCAL3 + ",mcp__git__run") === "false")
+  check("a LOCAL row that registered nothing still reddens", runOwedMcp("silent", "mcp__ast_grep__search,mcp__lsp__find_definition") === "false")
+  check("the reason names the declared set, not a hard-coded count", readFileSync(join(sbDir, "mcp-local.ndjson"), "utf8").includes("declared: ast_grep,lsp,codegraph,context7,grep_app"))
+
+  // 8c.2 THE REBUILD'S COMPILER WITNESS (criteria 1 and 2). The arm runs the REAL rebuild module with a
+  //       PLANTED fake compiler, so the witness it prints is a measurement of the binary it invoked —
+  //       not a reading of PATH.
+  /** A fake `bun` that answers `--version` and refuses to build: the witness is all this arm reads. */
+  const fakeBun = join(sbDir, "fake-bun")
+  writeFileSync(fakeBun, "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"1.4.0-planted\"; exit 0; fi\necho \"fake bun: this arm does not build\" >&2\nexit 1\n")
+  /** The fixture tree the rebuild walks; one package with a same-name src/dist pair. */
+  const rebuildRepo = join(sbDir, "rebuild-repo")
+  mkdirSync(join(rebuildRepo, "packages", "demo", "src"), { recursive: true })
+  mkdirSync(join(rebuildRepo, "packages", "demo", "dist"), { recursive: true })
+  writeFileSync(join(rebuildRepo, "packages", "demo", "src", "index.ts"), "export const x = 1\n")
+  writeFileSync(join(rebuildRepo, "packages", "demo", "dist", "index.js"), "export const x = 1\n")
+  spawnSync("chmod", ["755", fakeBun])
+  /** The witness file the run writes. */
+  const rebuildJson = join(sbDir, "rebuild.json")
+  /** The witness run: the REAL rebuild module, driven with the planted compiler. */
+  const rebuildRun = spawnSync(process.execPath, [join(DOCKER_DIR, "lib", "rebuild.ts"), "--repo", rebuildRepo, "--bun", fakeBun, "--json", rebuildJson], { encoding: "utf8" })
+  /** The run's combined output. */
+  const rebuildOut = `${rebuildRun.stdout ?? ""}${rebuildRun.stderr ?? ""}`
+  check("rebuild.ts names the binary it invoked and that binary's own version", rebuildOut.includes(`[rebuild] BUN=${fakeBun} VERSION=1.4.0-planted`), rebuildOut.trim().split("\n")[0] ?? "")
+  check("rebuild.ts carries the same witness into its json payload", existsSync(rebuildJson) && readJson<{ bun?: { bin?: string; version?: string } }>(rebuildJson).bun?.version === "1.4.0-planted", existsSync(rebuildJson) ? readFileSync(rebuildJson, "utf8").slice(0, 120) : "<no json>")
+  /** The same run with no `--bun`: the default must be reported as the BARE name, never as a resolved path. */
+  const rebuildDefaultRun = spawnSync(process.execPath, [join(DOCKER_DIR, "lib", "rebuild.ts"), "--repo", rebuildRepo], { encoding: "utf8" })
+  check("the default compiler is reported as the bare `bun`, not as a silent PATH resolution", `${rebuildDefaultRun.stdout ?? ""}`.includes("[rebuild] BUN=bun VERSION="), `${rebuildDefaultRun.stdout ?? ""}`.split("\n")[0] ?? "")
+
+  // 8c.3 THE PACK COMPARATOR (criteria 2 and 3): green on an unmodified artifact, red on a mutated one,
+  //       and the toolchain compared by EXACT version equality — including the substring trap that the
+  //       previous implementation (`declaredPin.includes(containerBun)`) would have passed.
+  /** The graded artifact fixture. */
+  const packArtifact = join(sbDir, "pack-artifact")
+  /** The tree the artifact claims to be cut from. */
+  const packSource = join(sbDir, "pack-source")
+  /** The from-source rebuild the freshness row compares against. */
+  const packRebuild = join(sbDir, "pack-rebuild")
+  for (const root of [packArtifact, packSource, packRebuild]) mkdirSync(join(root, "packages", "demo", "dist"), { recursive: true })
+  writeFileSync(join(packSource, "packages", "demo", "dist", "index.js"), "export const demo = 1\n")
+  writeFileSync(join(packSource, "package.json"), JSON.stringify({ name: "demo-bundle", buildToolchain: "bun@1.4.0" }) + "\n")
+  writeFileSync(join(packArtifact, "packages", "demo", "dist", "index.js"), "export const demo = 1\n")
+  writeFileSync(join(packRebuild, "packages", "demo", "dist", "index.js"), "export const demo = 1\n")
+  /** The rebuild's witness, naming the compiler that produced it. */
+  const rebuildWitness = join(sbDir, "rebuild-witness.json")
+  writeFileSync(rebuildWitness, JSON.stringify({ ok: true, bun: { bin: "/opt/toolchain/bun-pinned/bin/bun", version: "1.4.0" }, entries: 1 }) + "\n")
+  /** One comparator run against the current fixtures; each arm below turns exactly one field. */
+  const runPack = (tag: string): string => {
+    /** This run's own state file, so no arm can read another arm's rows. */
+    const state = join(sbDir, `pack-${tag}.ndjson`)
+    rmSync(state, { force: true })
+    runApparatus("owed-pack.ts", ["--artifact", packArtifact, "--source", packSource, "--rebuild", packRebuild, "--rebuild-report", rebuildWitness, "--state", state])
+    return state
+  }
+  /** The unmodified fixture: fresh AND under the declared compiler. */
+  const packGreen = runPack("green")
+  check("an unmodified artifact is FRESH against its rebuild (criterion 3, green arm)", stateRow(packGreen, "pack.distFreshRebuild") === "true", stateRow(packGreen, "pack.distFreshRebuild"))
+  check("the rebuild's own witness is matched EXACTLY against the declared pin", stateRow(packGreen, "pack.rebuildToolchain") === "true", stateRow(packGreen, "pack.rebuildToolchain"))
+  // THE MUTATION (criterion 3's negative control): one byte-run appended to the graded artifact.
+  appendFileSync(join(packArtifact, "packages", "demo", "dist", "index.js"), "// planted mutation\n")
+  /** The same fixture, re-graded after the planted mutation. */
+  const packMutated = runPack("mutated")
+  check("a MUTATED artifact is NOT fresh (the planted negative control)", stateRow(packMutated, "pack.distFreshRebuild") === "false", stateRow(packMutated, "pack.distFreshRebuild"))
+  check("the mutation leaves the toolchain row green, so the two subjects stay separate", stateRow(packMutated, "pack.rebuildToolchain") === "true", stateRow(packMutated, "pack.rebuildToolchain"))
+  writeFileSync(join(packArtifact, "packages", "demo", "dist", "index.js"), "export const demo = 1\n")
+  // THE TOOLCHAIN CONTROL: the artifact is byte-identical again, and only the WITNESS moves.
+  writeFileSync(rebuildWitness, JSON.stringify({ ok: true, bun: { bin: "/usr/local/bin/bun", version: "1.4.2" }, entries: 1 }) + "\n")
+  /** The fixture with a byte-identical artifact and a witness naming a DIFFERENT compiler. */
+  const packDrift = runPack("drift")
+  check("a rebuild under a DIFFERENT bun reddens the toolchain row", stateRow(packDrift, "pack.rebuildToolchain") === "false", stateRow(packDrift, "pack.rebuildToolchain"))
+  check("the freshness row quotes the compiler that actually produced the rebuild", readFileSync(packDrift, "utf8").includes("rebuildBunVersion=1.4.2"), readFileSync(packDrift, "utf8").split("\n").find((line: string) => line.includes("distFreshRebuild"))?.slice(0, 200) ?? "")
+  // THE SUBSTRING TRAP: `1.4` must NOT read as the declared `bun@1.4.0` — the exact defect criterion 2
+  // names, and one the previous `declaredPin.includes(containerBun)` predicate would have passed.
+  writeFileSync(rebuildWitness, JSON.stringify({ ok: true, bun: { bin: "/opt/toolchain/bun-pinned/bin/bun", version: "1.4" }, entries: 1 }) + "\n")
+  check("a partial version (`1.4` vs `bun@1.4.0`) is NOT an exact match", stateRow(runPack("partial"), "pack.rebuildToolchain") === "false")
+  // NO WITNESS = NO CLAIM: with no `--rebuild-report` the compiler is unknown, and the row says so.
+  writeFileSync(rebuildWitness, JSON.stringify({ ok: true, entries: 1 }) + "\n")
+  /** The state file of the run handed a rebuild report with no `bun` block at all. */
+  const packNoWitness = join(sbDir, "pack-nowitness.ndjson")
+  rmSync(packNoWitness, { force: true })
+  runApparatus("owed-pack.ts", ["--artifact", packArtifact, "--source", packSource, "--rebuild", packRebuild, "--state", packNoWitness])
+  check("a rebuild with no compiler witness cannot claim the toolchain", stateRow(packNoWitness, "pack.rebuildToolchain") === "false", stateRow(packNoWitness, "pack.rebuildToolchain"))
+  // NO REBUILD = NO MEASUREMENT: the one-click mode's shape, where BOTH rows are null with a reason.
+  const packNoRebuild = join(sbDir, "pack-norebuild.ndjson")
+  rmSync(packNoRebuild, { force: true })
+  runApparatus("owed-pack.ts", ["--artifact", packArtifact, "--source", packSource, "--state", packNoRebuild])
+  check("with no rebuild both pack rows are null, never a green that measures nothing", stateRow(packNoRebuild, "pack.distFreshRebuild") === "null" && stateRow(packNoRebuild, "pack.rebuildToolchain") === "null")
+
+  // 8c.4 THE ENTRYPOINT WIRES the criteria rest on. Each string below is a place where the lane has to
+  //       ASK the question; without it the row can only ever be "not reached".
+  check("entrypoint stages the PINNED build toolchain read from the tree", entrypoint.includes("buildToolchain") && entrypoint.includes("03b-bun-pin") && entrypoint.includes('BUN_INSTALL="$PINNED_BUN_DIR"'))
+  check("entrypoint hands the PINNED binary to the rebuild", entrypoint.includes('--bun "$REBUILD_BUN"'))
+  check("entrypoint passes the rebuild's witness to the pack comparator", entrypoint.includes('--rebuild-report "$PACK_REBUILD_REPORT"'))
+  check("entrypoint runs the MUTATED-artifact control of the freshness row", entrypoint.includes("08c2-pack-control") && entrypoint.includes("pack.distFreshRebuildControl"))
+  check("entrypoint records the one-click-only rows in source mode, with the mode as the reason", /record oneclick\.scratchRepo null/.test(entrypoint) && /record oneclick\.distByteIdentical null/.test(entrypoint) && entrypoint.includes("mode=$INSTALL_MODE"))
+  check("entrypoint stages the engine into the tree the mcp-call launcher reads, AFTER the re-pack", entrypoint.includes("16b2-case-engine") && entrypoint.includes('--toolchain "$CASE_ENGINE_TREE/.toolchain"'))
+  check("entrypoint records whether that engine is really there", entrypoint.includes("record qa.mcpCallEngine"))
+  // 8c.5 THE HANG GUARD AND THE NPM TRANSPORT (measured 2026-10-09: a stalled `npm i -g` sat 23 minutes
+  //      at 0.3% CPU until the run had to be killed, and the official registry's SCOPED endpoint —
+  //      the one the harness pin resolves through — failed one probe and answered the next).
+  check("run_step bounds every step in time", entrypoint.includes('timeout --kill-after=15 "$STEP_TIMEOUT"'))
+  check("a timeout kill is recorded as such, never as a verdict", /KILLED BY THE \$\{STEP_TIMEOUT\}s STEP TIMEOUT/.test(entrypoint))
+  check("npm's own per-request timeouts are bounded", entrypoint.includes("NPM_CONFIG_FETCH_TIMEOUT") && entrypoint.includes("NPM_CONFIG_FETCH_RETRIES"))
+  check("the lane probes the SCOPED registry endpoint the harness pin resolves through", entrypoint.includes("@deepseek-ai%2fdsh"))
+  check("the probe falls back to a mirror ONLY when the official registry does not answer, and says which was used", entrypoint.includes("mirror-fallback") && entrypoint.includes("fact obs.npmRegistry"))
+  check("the registry actually used is exported to npm", entrypoint.includes('export NPM_CONFIG_REGISTRY='))
+  // The selection is READ FROM A FILE, not parsed out of the step log: measured 2026-10-09, the log of
+  // this very step carried a NUL frame, and a plain grep answers `binary file matches` for such a file
+  // INSTEAD of the line — so the parse came back empty, the shell kept the OFFICIAL registry, and the
+  // run went on stalling against the endpoint the step exists to avoid.
+  check("the registry selection is read from its own file, not grepped out of a binary log", /sed -n '1p' "\$NPM_SELECTION_FILE"/.test(entrypoint) && entrypoint.includes('NPM_SELECTION_FILE="$WORK_DIR/npm-registry.txt"'))
+  check("every grep over the container's step logs tolerates a NUL frame", !/grep -m1[^\n]*01b-npm-registry\.log/.test(entrypoint) && entrypoint.includes("grep -a -m1"))
+  check("the TUI lane step is bounded in time too (it was the one unbounded command)", entrypoint.includes('timeout --kill-after=15 "$TUI_TIMEOUT" bash /opt/mpd-e2e/tui-lane.sh'))
+  check("the TUI lane's elapsed seconds are measured, not written as 0", entrypoint.includes('append_step 14-tui "$TUI_STEP" "$TUI_SECONDS"'))
+  // pnpm resolves its registry through the LOWERCASE env form (`dsh plugin` forwards to it), so the
+  // uppercase export alone leaves every plugin install on the default registry — measured 2026-10-09,
+  // when the lane's own `npm i -g` used the mirror while `dsh plugin add` kept retrying the flaky one.
+  check("the selected registry is exported in BOTH cases (pnpm reads the lowercase form)", entrypoint.includes('export NPM_CONFIG_REGISTRY="$NPM_REGISTRY"') && entrypoint.includes('export npm_config_registry="$NPM_REGISTRY"'))
+  // The case-engine probe must try `ast-grep` (the resolver's first candidate) and read BOTH streams:
+  // the deprecated `sg` shim prints a warning to stderr and nothing to stdout.
+  check("the case-engine probe uses the resolver's own candidate order and both streams", /CASE_ENGINE_BIN=""/.test(entrypoint) && entrypoint.includes('"$candidate" --version 2>&1'))
+  // THE FILE, not the environment: `pnpm config get registry` printed the DEFAULT with both env forms
+  // exported to the mirror, and printed the mirror only once `<HOME>/.npmrc` carried it — which is what
+  // `dsh plugin … add` (a pnpm call) resolves through. Measured 2026-10-09.
+  check("the selected registry is ALSO written to the sandbox home's .npmrc (what pnpm reads)", /printf 'registry=%s\\n' "\$NPM_REGISTRY" > "\$HOME\/\.npmrc"/.test(entrypoint) && entrypoint.includes("fact obs.npmrc"))
+  check("compose interpolates the npm transport knobs (a knob only the entrypoint reads is unreachable)", /MPD_E2E_NPM_REGISTRY: \$\{MPD_E2E_NPM_REGISTRY:-\}/.test(compose) && /MPD_E2E_NPM_MIRROR: \$\{MPD_E2E_NPM_MIRROR:-\}/.test(compose) && /MPD_E2E_STEP_TIMEOUT: \$\{MPD_E2E_STEP_TIMEOUT:-\}/.test(compose))
+  /** The names the union of BOTH modes' recorded rows demands (the four one-click-only names plus the
+   *  thirteen the lanes recorded outside the old spine), quoted so a missing one reddens here. */
+  const unionRequired: readonly string[] = [
+    "team.route.state", "team.route.plan", "team.route.task", "team.route.mail", "team.routesAll", "team.planLookup",
+    "tui.teamSceneOtherSessionInvisible", "tui.teamFixtureBound", "tui.teamSceneOpened", "tui.teamGraphDrawn",
+    "tui.teamGraphEdges", "tui.teamGraphContent", "tui.laneExit",
+    "oneclick.scratchRepo", "oneclick.requiredPaths", "oneclick.filesAllowlist", "oneclick.distByteIdentical",
+  ]
+  for (const name of unionRequired) check(`the EXPECTED spine declares the union row ${name}`, reported.includes(`"${name}"`))
+  for (const name of ["toolchain.bunPinned", "pack.rebuildToolchain", "pack.distFreshRebuildControl", "qa.mcpCallEngine"]) {
+    check(`the EXPECTED spine declares the new S-B row ${name}`, reported.includes(`"${name}"`))
+  }
+  /** The declared spine, parsed so a duplicate can be caught (the reporter keys rows by NAME). */
+  const spineNames = [...(/const EXPECTED: readonly string\[\] = \[([\s\S]*?)^\]/m.exec(reported)?.[1] ?? "").split("\n").filter((line: string) => !line.trim().startsWith("//")).join("\n").matchAll(/"([^"]+)"/g)].map((match) => match[1])
+  check("the EXPECTED spine carries no duplicate name", spineNames.length === new Set(spineNames).size, `names=${spineNames.length} unique=${new Set(spineNames).size}`)
+  check("the declared spine covers the union of both modes' rows", unionRequired.every((name) => spineNames.includes(name)) && spineNames.length >= 114, `spine=${spineNames.length}`)
+
   // 9. BUILDX_CONFIG: the sandbox cannot write ~/.docker/buildx, so every docker child must run
   //    with a writable buildx state dir and the caller's own value must win.
   /** A caller with no BUILDX_CONFIG: the driver must inject its own writable dir and own it. */
@@ -769,6 +1026,7 @@ function selfTest(): void {
   check("a clean report exits 0", cleanRun.status === 0, `status=${cleanRun.status}`)
 
   rmSync(SELFTEST_DIR, { recursive: true, force: true })
+  rmSync(sbDir, { recursive: true, force: true })
   if (failures.length > 0) {
     console.error(`[self-test] ${failures.length} FAILED`)
     process.exit(1)

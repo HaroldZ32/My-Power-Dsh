@@ -38,7 +38,6 @@ here for the full set.
    anything under `packages/`.
 4. [`../AGENTS.md`](../AGENTS.md) — the binding repository manual (English-only).
 5. [`../CHANGELOG.md`](../CHANGELOG.md) — what changed in each release.
-6. [`../SECURITY.md`](../SECURITY.md) — how to report a vulnerability privately.
 
 ### For agents
 
@@ -67,7 +66,6 @@ bilingual band this hub documents.
 | [`design.md`](design.md) | engineers, curious users | How the bundle is assembled and mounts: patch layers, boot chain, plugin inventory, interaction flows, state layout, web-client wiring, TUI edition wiring. |
 | [`development.md`](development.md) | developers | Repo layout, build/test commands, the QA case catalog, gates, packing/installing, vendoring, git model, common pitfalls. |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | contributors | How to contribute: development setup, gates, the git model, documentation rules, evidence, pull requests. |
-| [`../SECURITY.md`](../SECURITY.md) | reporters | The security policy: supported versions, the private reporting path, and which code is in scope. |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | everyone | Release notes, newest first, one section per released version. |
 | [`../AGENTS.md`](../AGENTS.md) | agents + maintainers | The binding repository manual: conventions, gates, git model, troubleshooting. |
 | [`../extensions/README.md`](../extensions/README.md) | extension authors | The bundle-shipped discovery root: the three roots, their lifecycles and the shipped reference extension. |

@@ -1,0 +1,12 @@
+### Hermeticity measurement, UTC 2026-10-09T12:15:03Z
+$ node evidence/restore/acceptance/sA/2026-10-09T12-10-00Z/hermeticity-probe.mjs
+subject=evidence/workmate/roles-readonly/2026-10-09T12-10-15.012Z/result.json
+ok=true stubCalls=4 (every model request the case served)
+  call#1 toolCount=104 writeCapableVisible=8 hasStructuredOutput=false -> parent/side request, served by the stub
+  call#2 toolCount=0 writeCapableVisible=0 hasStructuredOutput=false -> parent/side request, served by the stub
+  call#3 toolCount=97 writeCapableVisible=0 hasStructuredOutput=true -> CHILD REQUEST, SERVED BY THE STUB
+  call#4 toolCount=104 writeCapableVisible=8 hasStructuredOutput=false -> parent/side request, served by the stub
+missingCredential=false authFailed=false restrictError=false
+spawnDriven(filterSent seen)=true
+CONCLUSION: every model step this run made, the child's included, was answered by the case's own stub on its ephemeral loopback port (the trace IS the stub's own record of serving them); no step could reach a real provider, and authFailed=false confirms no real route answered.
+EXIT=0

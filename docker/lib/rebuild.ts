@@ -15,8 +15,17 @@
 // because `bun build` embeds each bundled module's path RELATIVE TO CWD in the artifact, so a
 // build run from a package directory is not the artifact the repository ships.
 //
-// Usage: node rebuild.ts --repo <dir> [--json <file>]
+// THE BINARY IS A WITNESS, NOT A DETAIL (2026-10-09). `bun build` inlines a helper preamble whose bytes
+// a bun MINOR rewrites (AGENTS.md §6, the T16 measurement: one adapter edit plus a 1.4.2 rebuild left 24
+// of 30 entries "stale" against a 1.4.0-cut tree), so "the artifact differs from this rebuild" is a
+// TOOLCHAIN statement until the rebuild is shown to have run under the version the artifact declares
+// (`package.json.buildToolchain`). `--bun <path>` selects the compiler; the script resolves that binary's
+// OWN `--version` and prints both, so no caller has to infer the compiler from PATH — and `bun` bare,
+// the default, is reported as the bare name rather than silently resolved to whatever PATH held.
+//
+// Usage: node rebuild.ts --repo <dir> [--bun <path>] [--json <file>]
 // Output contract (the entrypoint greps these prefixes):
+//   [rebuild] BUN=<path> VERSION=<version|unreadable>
 //   [rebuild] ENTRIES=<n>
 //   [rebuild] BUILD_OK=<built>/<total>
 //   [rebuild] BUILD_FAILED=<src>:exit<code>,...
@@ -75,9 +84,23 @@ const arg = (flag: string, fallback: string = ""): string => {
 /** The repository root to rebuild — the tree is discovered by reading `packages/` under this path. */
 const repo: string = arg("repo")
 if (repo === "") {
-  process.stderr.write("[rebuild] usage: rebuild.ts --repo <dir> [--json <file>]\n")
+  process.stderr.write("[rebuild] usage: rebuild.ts --repo <dir> [--bun <path>] [--json <file>]\n")
   process.exit(2)
 }
+/** The compiler to build with: the caller's `--bun`, or the bare `bun` PATH resolution as the default. */
+const bunBin: string = arg("bun", "bun")
+/** The compiler's OWN reported version, read from the binary the builds below actually invoke. */
+const bunVersion: string = (() => {
+  // The probe run: `--version` on the selected binary, never on another `bun` PATH may hold.
+  const probe = spawnSync(bunBin, ["--version"], { encoding: "utf8", timeout: 60_000 })
+  /** The first line the binary printed, trimmed; empty when it never ran. */
+  const printed = `${probe.stdout ?? ""}`.split("\n")[0].trim()
+  return probe.status === 0 && printed !== "" ? printed : "unreadable"
+})()
+// Printed BEFORE any build, so a log whose builds all failed still names the compiler that was asked to
+// run them — the failure diagnosis depends on the version, and that is exactly the case where the tail
+// of a build log is all a reader has.
+console.log(`[rebuild] BUN=${bunBin} VERSION=${bunVersion}`)
 
 /**
  * View an unknown JSON value as a string-keyed bag, so a parsed manifest can be read safely.
@@ -183,9 +206,10 @@ const built: BuildTarget[] = []
 /** Targets that failed, with the child's exit code, artifact size and output tail. */
 const failed: FailedBuild[] = []
 for (const target of targets) {
-  // The canonical repo-root build: path-qualified args, run with `cwd` at the tree root.
+  // The canonical repo-root build: path-qualified args, run with `cwd` at the tree root — and with the
+  // SELECTED compiler, so the artifact's toolchain can be matched against the one that produced it.
   const result = spawnSync(
-    "bun",
+    bunBin,
     ["build", target.src, "--target", "node", "--format", "esm", "--outfile", target.dist],
     { cwd: repo, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
   )
@@ -215,6 +239,10 @@ if (jsonPath !== "") {
   writeFileSync(jsonPath, JSON.stringify({
     ok: failed.length === 0 && targets.length > 0,
     repo,
+    // The compiler witness, in the same machine-readable copy the pack arm reads: the bin the caller
+    // selected AND the version that binary reported, so `pack.rebuildToolchain` compares two MEASURED
+    // strings instead of trusting a PATH lookup performed somewhere else.
+    bun: { bin: bunBin, version: bunVersion },
     entries: targets.length,
     built: built.map((b) => b.dist),
     failed,

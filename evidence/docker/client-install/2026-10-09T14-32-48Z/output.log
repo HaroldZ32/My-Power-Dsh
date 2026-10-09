@@ -1,0 +1,2878 @@
+===== Docker client-install E2E (ubuntu:24.04 + compose) =====
+stamp:   2026-10-09T14:32:52Z
+image:   mpd-docker-e2e:local
+command: node scripts/docker-e2e.ts   (container: docker/entrypoint.sh)
+
+PROVES: a clean ubuntu:24.04 container installs node/bun/pnpm + @deepseek-ai/dsh,
+        copies this checkout, rebuilds every packages/*/dist from source, installs the
+        bundle with `dsh plugin --profile web add .`, composes the mpd rows, and MOUNTS
+        the installed profile in an isolated HOME/DSH_HOME with registration
+        instrumentation (docker/probe.ts) reading the live tool registry, plus a real
+        `POST /api/session/create` with agentPreset=mpd (the gateway refuses on an
+        inactive preset row).
+DOES NOT PROVE: any live LLM turn (no credentials are staged, AGENTS.md §10); that the
+        COMPOSED row list equals the MOUNTED row list (the dump is labelled composition
+        only); a packed/tarball install (dist/mpd-package is not exercised here).
+
+===== facts =====
+stamp = 2026-10-09T14:32:52Z
+entrypoint = docker/entrypoint.sh
+image = mpd-docker-e2e:local
+ubuntuImage = ubuntu 24.04 (Ubuntu 24.04.5 LTS)
+pins = nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0
+home = /root/sandbox-home
+dshHome = /root/sandbox-dsh
+aptSeconds = 16
+nodeArch = amd64 -> linux-x64
+nodeSource = image (node:24-bookworm /usr/local)
+node = v24.21.0 (npm 11.19.0)
+bunPath = /opt/toolchain/bun/bin/bun
+bun = 1.4.2 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)
+bunPinned = /opt/toolchain/bun-pinned/bin/bun version=1.4.0 route=official-script declared=bun@1.4.0
+pnpm = 11.23.0
+dsh = 0.2.0-rc.2 (/usr/local/bin/dsh)
+harnessVersion = 0.2.0-rc.2
+harnessVersionExpected = 0.2.0-rc.2
+copyManifest = @mpd-dsh/mpd
+rebuildEntries = ENTRIES=31
+profileDep = link:/opt/mpd
+profileBundles = @deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd
+bootCoreTools = 6/6
+bootTeamToolsRootPlane = 0/9
+bootAdapterCaps = tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals
+bootAgentTeamsMethods = listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+bootCookieJarLines = 4
+bootCookieExchange = http=303 tokenPresent=yes
+bootHttp = /plugins/mpd-workmate/list -> 200
+bootAgentTeamToolsScoped = [docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-8310b8a9-c277-477a-b16e-02189feb
+bootSessionGate = [mpd-roles] session gate listener registered for agent "session-8310b8a9-c277-477a-b16e-02189febe550" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)
+teamRoutesSession = session-8310b8a9-c277-477a-b16e-02189febe550
+teamRoutes =  state=200/true plan=200/true task=200/true mail=200/true
+hashesMeasuredAt = 2026-10-09T14:41:51Z
+finishedAt = 2026-10-09T14:41:51Z
+
+===== observations (reported, never gated) =====
+npmrc = registry=https://registry.npmmirror.com (a SANDBOX-home .npmrc; pnpm — and therefore every  — resolves through the FILE, not the environment, measured 2026-10-09)
+npmRegistry = https://registry.npmmirror.com (route=operator-set-ok; the scoped-metadata endpoint was probed because npm hangs silently on an unreachable one)
+buildToolchain = bun@1.4.0
+rebuildNoSrc = NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built by the package itself (bun build src/launch.ts -> dist/launch.js) or a sha-pinned prebuilt — no offline snapshot build any more,mpd-schemastery=package has no src/ directory (dist is the only committed artifact)
+rebuildBun = [rebuild] BUN=/opt/toolchain/bun-pinned/bin/bun VERSION=1.4.0
+installSpec = .
+installTail = + @mpd-dsh/mpd link:/opt/mpd  Already up to date Done in 358ms using pnpm v11.23.0 
+packArtifact = /src/dist/mpd-package (carried through docker/Dockerfile.dockerignore's one deliberate exception)
+dumpMpdRowIds = mpd-agent-team,mpd-better-sidebar,mpd-bootstrap,mpd-boulder,mpd-codegraph,mpd-comment-checker,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-goal,mpd-hashline,mpd-memory,mpd-modelchain,mpd-roles,mpd-roster-provider,mpd-team-compact,mpd-team-core,mpd-team-watchdog,mpd-tool-agent-team,mpd-tools,mpd-tui,mpd-tui-adapter,mpd-ui-agent-team,mpd-ulw,mpd-verify,mpd-web-compat,mpd-workmate,
+dumpDefaultMpdLines = 0 (expected 0: the bundle ships no preset override)
+dumpAgentTeamRows = mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team,
+qaHomeCredential = no credential mirror: the live arm was not requested, so the two live cases are expected to refuse and are recorded as null with their own marker quoted
+astgrepEngineTree = /opt/mpd (the tree whose bundle-relative .toolchain the MCP launcher reads; the installer SCRIPT runs from /opt/mpd/scripts/install-mcp.ts because node_modules paths refuse type stripping)
+astgrepToolchain = ast-grep,codegraph,sg,
+retiredToolsPresent = <probe did not report>
+teamToolPlane = root-plane read=0/9 (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below
+uiTeamRow = resolved in the bundle's own node_modules (resolved through the link: dependency) at /opt/mpd/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json with dsh.client.platform=web; host half is a no-op apply(), so no server-side registration can witness this browser-discovered plugin — its load is witnessed as resolved+composed+no apply failure (boot.noFatalSignatures)
+sessionCreate = http=200 type=server-response rpcIdEcho=match ok=true agentPreset=mpd
+realHomeMarkers = .bashrc,.profile,sandbox-dsh,sandbox-home,
+credentialFiles = .credentials.yaml(161B),.npmrc(40B), (sizes only; the CONTENT of a credential-shaped file is deliberately never copied into the evidence — the check is a secret-shape match, not a dump)
+lspTree = /root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd (the INSTALLED tree when the profile carries one, because the launcher resolves cclsp from its own location and the one-click service runs no bun install)
+mcpCclspConfigAtBoot = /work/.mpd/lsp/cclsp.json,/work/ws/.mpd/lsp/cclsp.json
+caseEngineTree = /opt/mpd/dist/mpd-package (the bundle root the mcp-call launcher resolves bundle-relatively: the case installs that packed tree with npm  into its sandbox profile)
+qaHomeMirrorPresent = false
+owedCaseLogs = /out/owed/owed-logs (each case's own output, in the EVIDENCE tree so a red row can be read verbatim; the quoted tails also travel in the assertion rows)
+
+===== steps =====
+----- STEP 01b-npm-registry (exit=0, 0s) -----
+$ node -e    const registry = process.argv[1]   const probeUrl = process.argv[2]   const mirror = process.argv[3]   const label = process.argv[4]   const out = process.argv[5]   const fs = await import("node:fs")   const probe = async (target) => {     const started = Date.now()     const controller = new AbortController()     const timer = setTimeout(() => controller.abort(), 20000)     try {       const response = await fetch(target, { signal: controller.signal })       await response.text()       clearTimeout(timer)       return { ok: response.status === 200, ms: Date.now() - started, status: "http=" + response.status }     } catch (error) {       clearTimeout(timer)       return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }     }   }   const first = await probe(probeUrl)   const settle = (chosen, route, detail) => {     fs.writeFileSync(out, chosen + "\n" + route + "\n")     console.log("REGISTRY=" + chosen + " ROUTE=" + route + " " + detail)   }   if (first.ok) { settle(registry, label + "-ok", "probeMs=" + first.ms); process.exit(0) }   const second = await probe(mirror + "/@deepseek-ai%2fdsh")   if (second.ok) {     settle(mirror, "mirror-fallback", "officialProbe=" + first.status + " officialProbeMs=" + first.ms + " mirrorMs=" + second.ms)     process.exit(0)   }   settle(registry, "both-unreachable", "officialProbe=" + first.status + " mirrorProbe=" + second.status)  https://registry.npmmirror.com https://registry.npmmirror.com/@deepseek-ai%2fdsh https://registry.npmmirror.com operator-set /work/npm-registry.txt 
+REGISTRY=https://registry.npmmirror.com ROUTE=operator-set-ok probeMs=112
+
+
+----- STEP 01-apt-update (exit=0, 7s) -----
+$ apt-get update 
+Get:1 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]
+Get:3 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [61.4 kB]
+Get:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:5 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [2069 kB]
+Get:6 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:7 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1546 kB]
+Get:8 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]
+Get:9 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1381 kB]
+Get:10 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]
+Get:11 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]
+Get:12 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]
+Get:13 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2166 kB]
+Get:14 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [67.4 kB]
+Get:15 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2177 kB]
+Get:16 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1702 kB]
+Get:17 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]
+Get:18 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]
+Get:19 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]
+Fetched 33.5 MB in 7s (5036 kB/s)
+Reading package lists...
+
+
+----- STEP 01-apt-install (exit=0, 9s) -----
+$ env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux 
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  git-man libbrotli1 libcurl3t64-gnutls libcurl4t64 liberror-perl
+  libevent-core-2.1-7t64 libexpat1 libgdbm-compat4t64 libgdbm6t64
+  libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0
+  libldap2 libnghttp2-14 libperl5.38t64 libpsl5t64 librtmp1 libsasl2-2
+  libsasl2-modules-db libssh-4 libssl3t64 libutempter0 openssl perl
+  perl-modules-5.38
+Suggested packages:
+  gettext-base git-daemon-run | git-daemon-sysvinit git-doc git-email git-gui
+  gitk gitweb git-cvs git-mediawiki git-svn gdbm-l10n krb5-doc krb5-user
+  perl-doc libterm-readline-gnu-perl | libterm-readline-perl-perl make
+  libtap-harness-archive-perl zip
+Recommended packages:
+  patch less ssh-client krb5-locales libldap-common publicsuffix
+  libsasl2-modules netbase
+The following NEW packages will be installed:
+  ca-certificates curl git git-man libbrotli1 libcurl3t64-gnutls libcurl4t64
+  liberror-perl libevent-core-2.1-7t64 libexpat1 libgdbm-compat4t64
+  libgdbm6t64 libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3
+  libkrb5support0 libldap2 libnghttp2-14 libperl5.38t64 libpsl5t64 librtmp1
+  libsasl2-2 libsasl2-modules-db libssh-4 libutempter0 openssl perl
+  perl-modules-5.38 tmux unzip xz-utils
+The following packages will be upgraded:
+  libssl3t64
+1 upgraded, 32 newly installed, 0 to remove and 2 not upgraded.
+Need to get 19.8 MB of archives.
+After this operation, 87.3 MB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 perl-modules-5.38 all 5.38.2-3.2ubuntu0.6 [3110 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble/main amd64 libgdbm6t64 amd64 1.23-5.1build1 [34.4 kB]
+Get:3 http://archive.ubuntu.com/ubuntu noble/main amd64 libgdbm-compat4t64 amd64 1.23-5.1build1 [6710 B]
+Get:4 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libperl5.38t64 amd64 5.38.2-3.2ubuntu0.6 [4864 kB]
+Get:5 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 perl amd64 5.38.2-3.2ubuntu0.6 [231 kB]
+Get:6 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libssl3t64 amd64 3.0.13-0ubuntu3.16 [1945 kB]
+Get:7 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 openssl amd64 3.0.13-0ubuntu3.16 [1004 kB]
+Get:8 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 ca-certificates all 20260601~24.04.1 [139 kB]
+Get:9 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libexpat1 amd64 2.6.1-2ubuntu0.6 [98.9 kB]
+Get:10 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libkrb5support0 amd64 1.20.1-6ubuntu2.10 [34.9 kB]
+Get:11 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libk5crypto3 amd64 1.20.1-6ubuntu2.10 [81.9 kB]
+Get:12 http://archive.ubuntu.com/ubuntu noble/main amd64 libkeyutils1 amd64 1.6.3-3build1 [9490 B]
+Get:13 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libkrb5-3 amd64 1.20.1-6ubuntu2.10 [348 kB]
+Get:14 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libgssapi-krb5-2 amd64 1.20.1-6ubuntu2.10 [143 kB]
+Get:15 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libnghttp2-14 amd64 1.59.0-1ubuntu0.4 [74.6 kB]
+Get:16 http://archive.ubuntu.com/ubuntu noble/main amd64 libpsl5t64 amd64 0.21.2-1.1build1 [57.1 kB]
+Get:17 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 xz-utils amd64 5.6.1+really5.4.5-1ubuntu0.3 [267 kB]
+Get:18 http://archive.ubuntu.com/ubuntu noble/main amd64 libbrotli1 amd64 1.1.0-2build2 [331 kB]
+Get:19 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg1-5ubuntu3.1 [20.4 kB]
+Get:20 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libsasl2-2 amd64 2.1.28+dfsg1-5ubuntu3.1 [53.2 kB]
+Get:21 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libldap2 amd64 2.6.10+dfsg-0ubuntu0.24.04.1 [198 kB]
+Get:22 http://archive.ubuntu.com/ubuntu noble/main amd64 librtmp1 amd64 2.4+20151223.gitfa8646d.1-2build7 [56.3 kB]
+Get:23 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libssh-4 amd64 0.10.6-2ubuntu0.5 [191 kB]
+Get:24 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libcurl4t64 amd64 8.5.0-2ubuntu10.15 [343 kB]
+Get:25 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 curl amd64 8.5.0-2ubuntu10.15 [227 kB]
+Get:26 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libcurl3t64-gnutls amd64 8.5.0-2ubuntu10.15 [336 kB]
+Get:27 http://archive.ubuntu.com/ubuntu noble/main amd64 liberror-perl all 0.17029-2 [25.6 kB]
+Get:28 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 git-man all 1:2.43.0-1ubuntu7.3 [1100 kB]
+Get:29 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 git amd64 1:2.43.0-1ubuntu7.3 [3680 kB]
+Get:30 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libevent-core-2.1-7t64 amd64 2.1.12-stable-9ubuntu2.2 [91.9 kB]
+Get:31 http://archive.ubuntu.com/ubuntu noble/main amd64 libutempter0 amd64 1.2.1-3build1 [9606 B]
+Get:32 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 tmux amd64 3.4-1ubuntu0.1 [480 kB]
+Get:33 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 unzip amd64 6.0-28ubuntu4.1 [174 kB]
+debconf: delaying package configuration, since apt-utils is not installed
+Fetched 19.8 MB in 4s (5092 kB/s)
+Selecting previously unselected package perl-modules-5.38.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 4381 files and directories currently installed.)
+Preparing to unpack .../0-perl-modules-5.38_5.38.2-3.2ubuntu0.6_all.deb ...
+Unpacking perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...
+Selecting previously unselected package libgdbm6t64:amd64.
+Preparing to unpack .../1-libgdbm6t64_1.23-5.1build1_amd64.deb ...
+Unpacking libgdbm6t64:amd64 (1.23-5.1build1) ...
+Selecting previously unselected package libgdbm-compat4t64:amd64.
+Preparing to unpack .../2-libgdbm-compat4t64_1.23-5.1build1_amd64.deb ...
+Unpacking libgdbm-compat4t64:amd64 (1.23-5.1build1) ...
+Selecting previously unselected package libperl5.38t64:amd64.
+Preparing to unpack .../3-libperl5.38t64_5.38.2-3.2ubuntu0.6_amd64.deb ...
+Unpacking libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...
+Selecting previously unselected package perl.
+Preparing to unpack .../4-perl_5.38.2-3.2ubuntu0.6_amd64.deb ...
+Unpacking perl (5.38.2-3.2ubuntu0.6) ...
+Preparing to unpack .../5-libssl3t64_3.0.13-0ubuntu3.16_amd64.deb ...
+Unpacking libssl3t64:amd64 (3.0.13-0ubuntu3.16) over (3.0.13-0ubuntu3.15) ...
+Setting up libssl3t64:amd64 (3.0.13-0ubuntu3.16) ...
+Selecting previously unselected package openssl.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6393 files and directories currently installed.)
+Preparing to unpack .../00-openssl_3.0.13-0ubuntu3.16_amd64.deb ...
+Unpacking openssl (3.0.13-0ubuntu3.16) ...
+Selecting previously unselected package ca-certificates.
+Preparing to unpack .../01-ca-certificates_20260601~24.04.1_all.deb ...
+Unpacking ca-certificates (20260601~24.04.1) ...
+Selecting previously unselected package libexpat1:amd64.
+Preparing to unpack .../02-libexpat1_2.6.1-2ubuntu0.6_amd64.deb ...
+Unpacking libexpat1:amd64 (2.6.1-2ubuntu0.6) ...
+Selecting previously unselected package libkrb5support0:amd64.
+Preparing to unpack .../03-libkrb5support0_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libkrb5support0:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libk5crypto3:amd64.
+Preparing to unpack .../04-libk5crypto3_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libkeyutils1:amd64.
+Preparing to unpack .../05-libkeyutils1_1.6.3-3build1_amd64.deb ...
+Unpacking libkeyutils1:amd64 (1.6.3-3build1) ...
+Selecting previously unselected package libkrb5-3:amd64.
+Preparing to unpack .../06-libkrb5-3_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libgssapi-krb5-2:amd64.
+Preparing to unpack .../07-libgssapi-krb5-2_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libnghttp2-14:amd64.
+Preparing to unpack .../08-libnghttp2-14_1.59.0-1ubuntu0.4_amd64.deb ...
+Unpacking libnghttp2-14:amd64 (1.59.0-1ubuntu0.4) ...
+Selecting previously unselected package libpsl5t64:amd64.
+Preparing to unpack .../09-libpsl5t64_0.21.2-1.1build1_amd64.deb ...
+Unpacking libpsl5t64:amd64 (0.21.2-1.1build1) ...
+Selecting previously unselected package xz-utils.
+Preparing to unpack .../10-xz-utils_5.6.1+really5.4.5-1ubuntu0.3_amd64.deb ...
+Unpacking xz-utils (5.6.1+really5.4.5-1ubuntu0.3) ...
+Selecting previously unselected package libbrotli1:amd64.
+Preparing to unpack .../11-libbrotli1_1.1.0-2build2_amd64.deb ...
+Unpacking libbrotli1:amd64 (1.1.0-2build2) ...
+Selecting previously unselected package libsasl2-modules-db:amd64.
+Preparing to unpack .../12-libsasl2-modules-db_2.1.28+dfsg1-5ubuntu3.1_amd64.deb ...
+Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Selecting previously unselected package libsasl2-2:amd64.
+Preparing to unpack .../13-libsasl2-2_2.1.28+dfsg1-5ubuntu3.1_amd64.deb ...
+Unpacking libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Selecting previously unselected package libldap2:amd64.
+Preparing to unpack .../14-libldap2_2.6.10+dfsg-0ubuntu0.24.04.1_amd64.deb ...
+Unpacking libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...
+Selecting previously unselected package librtmp1:amd64.
+Preparing to unpack .../15-librtmp1_2.4+20151223.gitfa8646d.1-2build7_amd64.deb ...
+Unpacking librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2build7) ...
+Selecting previously unselected package libssh-4:amd64.
+Preparing to unpack .../16-libssh-4_0.10.6-2ubuntu0.5_amd64.deb ...
+Unpacking libssh-4:amd64 (0.10.6-2ubuntu0.5) ...
+Selecting previously unselected package libcurl4t64:amd64.
+Preparing to unpack .../17-libcurl4t64_8.5.0-2ubuntu10.15_amd64.deb ...
+Unpacking libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...
+Selecting previously unselected package curl.
+Preparing to unpack .../18-curl_8.5.0-2ubuntu10.15_amd64.deb ...
+Unpacking curl (8.5.0-2ubuntu10.15) ...
+Selecting previously unselected package libcurl3t64-gnutls:amd64.
+Preparing to unpack .../19-libcurl3t64-gnutls_8.5.0-2ubuntu10.15_amd64.deb ...
+Unpacking libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...
+Selecting previously unselected package liberror-perl.
+Preparing to unpack .../20-liberror-perl_0.17029-2_all.deb ...
+Unpacking liberror-perl (0.17029-2) ...
+Selecting previously unselected package git-man.
+Preparing to unpack .../21-git-man_1%3a2.43.0-1ubuntu7.3_all.deb ...
+Unpacking git-man (1:2.43.0-1ubuntu7.3) ...
+Selecting previously unselected package git.
+Preparing to unpack .../22-git_1%3a2.43.0-1ubuntu7.3_amd64.deb ...
+Unpacking git (1:2.43.0-1ubuntu7.3) ...
+Selecting previously unselected package libevent-core-2.1-7t64:amd64.
+Preparing to unpack .../23-libevent-core-2.1-7t64_2.1.12-stable-9ubuntu2.2_amd64.deb ...
+Unpacking libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...
+Selecting previously unselected package libutempter0:amd64.
+Preparing to unpack .../24-libutempter0_1.2.1-3build1_amd64.deb ...
+Unpacking libutempter0:amd64 (1.2.1-3build1) ...
+Selecting previously unselected package tmux.
+Preparing to unpack .../25-tmux_3.4-1ubuntu0.1_amd64.deb ...
+Unpacking tmux (3.4-1ubuntu0.1) ...
+Selecting previously unselected package unzip.
+Preparing to unpack .../26-unzip_6.0-28ubuntu4.1_amd64.deb ...
+Unpacking unzip (6.0-28ubuntu4.1) ...
+Setting up libexpat1:amd64 (2.6.1-2ubuntu0.6) ...
+Setting up libkeyutils1:amd64 (1.6.3-3build1) ...
+Setting up libgdbm6t64:amd64 (1.23-5.1build1) ...
+Setting up libgdbm-compat4t64:amd64 (1.23-5.1build1) ...
+Setting up unzip (6.0-28ubuntu4.1) ...
+Setting up libbrotli1:amd64 (1.1.0-2build2) ...
+Setting up libpsl5t64:amd64 (0.21.2-1.1build1) ...
+Setting up libnghttp2-14:amd64 (1.59.0-1ubuntu0.4) ...
+Setting up libkrb5support0:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Setting up librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2build7) ...
+Setting up xz-utils (5.6.1+really5.4.5-1ubuntu0.3) ...
+update-alternatives: using /usr/bin/xz to provide /usr/bin/lzma (lzma) in auto mode
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzma.1.gz because associated file /usr/share/man/man1/xz.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/unlzma.1.gz because associated file /usr/share/man/man1/unxz.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzcat.1.gz because associated file /usr/share/man/man1/xzcat.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzmore.1.gz because associated file /usr/share/man/man1/xzmore.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzless.1.gz because associated file /usr/share/man/man1/xzless.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzdiff.1.gz because associated file /usr/share/man/man1/xzdiff.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzcmp.1.gz because associated file /usr/share/man/man1/xzcmp.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzgrep.1.gz because associated file /usr/share/man/man1/xzgrep.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzegrep.1.gz because associated file /usr/share/man/man1/xzegrep.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzfgrep.1.gz because associated file /usr/share/man/man1/xzfgrep.1.gz (of link group lzma) doesn't exist
+Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...
+Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Setting up libutempter0:amd64 (1.2.1-3build1) ...
+Setting up git-man (1:2.43.0-1ubuntu7.3) ...
+Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...
+Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...
+Setting up openssl (3.0.13-0ubuntu3.16) ...
+Setting up tmux (3.4-1ubuntu0.1) ...
+Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...
+Setting up ca-certificates (20260601~24.04.1) ...
+Updating certificates in /etc/ssl/certs...
+121 added, 0 removed; done.
+Setting up perl (5.38.2-3.2ubuntu0.6) ...
+Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...
+Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...
+Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...
+Setting up liberror-perl (0.17029-2) ...
+Setting up git (1:2.43.0-1ubuntu7.3) ...
+Setting up curl (8.5.0-2ubuntu10.15) ...
+Processing triggers for debianutils (5.17build1) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+Processing triggers for ca-certificates (20260601~24.04.1) ...
+Updating certificates in /etc/ssl/certs...
+0 added, 0 removed; done.
+Running hooks in /etc/ca-certificates/update.d...
+done.
+
+
+----- STEP 03-bun (exit=0, 8s) -----
+$ bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash 
+#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                    -=#=#   #   #                                                                  -=O#-#   #   #                                                                 -=O=#  #   #   #                                                               -=O=-#  #    #   #                                                             -=O=- #   #   #    #                                                           -=O=-   #   #   #     #                                                        -=O=-    #   #    #     #                                                      -=O=-      #   #     #    #                                                    -=O=-        #   #     #    #                                                                                                                             0.0%                                                                           0.1%                                                                           0.3%                                                                           0.4%                                                                           0.6%                                                                           1.0%#                                                                          1.5%#                                                                          2.3%##                                                                         3.3%###                                                                        5.0%#####                                                                      7.4%#######                                                                   10.9%##########                                                                15.3%#############                                                             18.8%################                                                          22.6%#####################                                                     29.3%########################                                                  33.9%############################                                              39.7%################################                                          45.0%####################################                                      51.2%#######################################                                   55.3%#############################################                             63.3%##############################################                            64.7%###################################################                       71.2%######################################################                    75.8%##########################################################                81.3%############################################################              84.6%################################################################          90.2%###################################################################       94.1%#######################################################################   99.8%######################################################################## 100.0%
+bun was installed successfully to /opt/toolchain/bun/bin/bun 
+Run 'bun --help' to get started
+
+
+----- STEP 03b-bun-pin (exit=0, 7s) -----
+$ env BUN_INSTALL=/opt/toolchain/bun-pinned bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash -s -- 'bun-v1.4.0' 
+#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                                                                                               0.0%                                                                           0.1%                                                                           0.3%                                                                           0.4%                                                                           0.7%                                                                           1.0%#                                                                          1.6%#                                                                          2.4%##                                                                         3.6%###                                                                        5.4%#####                                                                      8.0%########                                                                  11.6%###########                                                               16.4%##############                                                            20.7%##################                                                        25.4%######################                                                    30.8%########################                                                  34.4%###########################                                               38.2%##############################                                            43.0%###################################                                       48.7%#######################################                                   54.2%###########################################                               59.8%###############################################                           65.4%###################################################                       72.1%######################################################                    75.0%##########################################################                81.6%##############################################################            86.3%##################################################################        93.0%####################################################################      95.2%######################################################################## 100.0%
+bun was installed successfully to /opt/toolchain/bun-pinned/bin/bun 
+Run 'bun --help' to get started
+
+
+----- STEP 04-pnpm (exit=0, 1s) -----
+$ npm i -g pnpm@11.23.0 
+
+added 1 package in 1s
+
+1 package is looking for funding
+  run `npm fund` for details
+
+
+----- STEP 05-dsh (exit=0, 14s) -----
+$ npm i -g @deepseek-ai/dsh@0.2.0-rc.2 
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 538 packages in 14s
+
+63 packages are looking for funding
+  run `npm fund` for details
+npm warn install-scripts 5 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @deepseek-ai/dsh-subprocess-local@0.2.0-rc.2 (postinstall: node scripts/ensure-spawn-helper.mjs)
+npm warn install-scripts   koffi@3.1.1 (install: node ./cnoke.cjs -P . -D src/koffi --prebuild --release)
+npm warn install-scripts   node-pty@1.2.0-beta.15 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)
+npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.
+
+
+----- STEP 06-copy (exit=0, 0s) -----
+$ cp -a /src/. /opt/mpd/ 
+
+
+----- STEP 07-bun-install (exit=0, 11s) -----
+$ bash -c cd '/opt/mpd' && bun install 
+bun install v1.4.2 (744846f84)
+Resolving dependencies
+Resolved, downloaded and extracted [598]
+Saved lockfile
+
++ @typescript/native-preview@7.0.0-dev.20260707.2
++ bun-types@1.4.0
++ dsh-better-sidebar@0.24.1
++ typescript5@5.9.3
++ @colbymchenry/codegraph@1.5.0
++ @cyanheads/git-mcp-server@2.15.3
++ cclsp@0.7.0
++ mcp-server-commands@0.8.2
++ @deepseek-ai/dsh-experimental-agent-team@0.2.0-rc.2
++ @deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.0-rc.2
++ @deepseek-ai/dsh-experimental-tool-agent-team@0.2.0-rc.2
+
+436 packages installed [11.11s]
+
+
+----- STEP 08-rebuild (exit=0, 0s) -----
+$ node /opt/mpd-e2e/lib/rebuild.ts --repo /opt/mpd --bun /opt/toolchain/bun-pinned/bin/bun --json /work/rebuild.json 
+[rebuild] BUN=/opt/toolchain/bun-pinned/bin/bun VERSION=1.4.0
+[rebuild] OK   packages/mpd-better-sidebar-host/src/index.ts -> packages/mpd-better-sidebar-host/dist/index.js (exit=0 bytes=1652)
+[rebuild] OK   packages/mpd-bootstrap-plugin/src/index.ts -> packages/mpd-bootstrap-plugin/dist/index.js (exit=0 bytes=77496)
+[rebuild] OK   packages/mpd-boulder-plugin/src/index.ts -> packages/mpd-boulder-plugin/dist/index.js (exit=0 bytes=97245)
+[rebuild] OK   packages/mpd-bundle-plugin/src/index.ts -> packages/mpd-bundle-plugin/dist/index.js (exit=0 bytes=75582)
+[rebuild] OK   packages/mpd-codegraph-plugin/src/index.ts -> packages/mpd-codegraph-plugin/dist/index.js (exit=0 bytes=68837)
+[rebuild] OK   packages/mpd-comment-checker-plugin/src/index.ts -> packages/mpd-comment-checker-plugin/dist/index.js (exit=0 bytes=70837)
+[rebuild] OK   packages/mpd-config-plugin/src/index.ts -> packages/mpd-config-plugin/dist/index.js (exit=0 bytes=151481)
+[rebuild] OK   packages/mpd-dsh-adapter-plugin/src/index.ts -> packages/mpd-dsh-adapter-plugin/dist/index.js (exit=0 bytes=66875)
+[rebuild] OK   packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js (exit=0 bytes=197283)
+[rebuild] OK   packages/mpd-ext-plugin/src/sdk.ts -> packages/mpd-ext-plugin/dist/sdk.js (exit=0 bytes=1708)
+[rebuild] OK   packages/mpd-goal-plugin/src/index.ts -> packages/mpd-goal-plugin/dist/index.js (exit=0 bytes=75619)
+[rebuild] OK   packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js (exit=0 bytes=100224)
+[rebuild] OK   packages/mpd-mcp-astgrep/src/cli.ts -> packages/mpd-mcp-astgrep/dist/cli.js (exit=0 bytes=76468)
+[rebuild] OK   packages/mpd-mcp-astgrep/src/launch.ts -> packages/mpd-mcp-astgrep/dist/launch.js (exit=0 bytes=11231)
+[rebuild] OK   packages/mpd-mcp-codegraph/src/launch.ts -> packages/mpd-mcp-codegraph/dist/launch.js (exit=0 bytes=15956)
+[rebuild] OK   packages/mpd-mcp-gitbash/src/launch.ts -> packages/mpd-mcp-gitbash/dist/launch.js (exit=0 bytes=12800)
+[rebuild] OK   packages/mpd-mcp-lsp/src/launch.ts -> packages/mpd-mcp-lsp/dist/launch.js (exit=0 bytes=61753)
+[rebuild] OK   packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js (exit=0 bytes=78219)
+[rebuild] OK   packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js (exit=0 bytes=70589)
+[rebuild] OK   packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js (exit=0 bytes=71640)
+[rebuild] OK   packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js (exit=0 bytes=138538)
+[rebuild] OK   packages/mpd-roster-provider-plugin/src/index.ts -> packages/mpd-roster-provider-plugin/dist/index.js (exit=0 bytes=111525)
+[rebuild] OK   packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js (exit=0 bytes=82940)
+[rebuild] OK   packages/mpd-team-core-plugin/src/index.ts -> packages/mpd-team-core-plugin/dist/index.js (exit=0 bytes=153106)
+[rebuild] OK   packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js (exit=0 bytes=194746)
+[rebuild] OK   packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js (exit=0 bytes=66339)
+[rebuild] OK   packages/mpd-tui-adapter-plugin/src/index.ts -> packages/mpd-tui-adapter-plugin/dist/index.js (exit=0 bytes=44232)
+[rebuild] OK   packages/mpd-tui-plugin/src/index.ts -> packages/mpd-tui-plugin/dist/index.js (exit=0 bytes=388142)
+[rebuild] OK   packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js (exit=0 bytes=107185)
+[rebuild] OK   packages/mpd-verify-plugin/src/index.ts -> packages/mpd-verify-plugin/dist/index.js (exit=0 bytes=119154)
+[rebuild] OK   packages/mpd-workmate-plugin/src/index.ts -> packages/mpd-workmate-plugin/dist/index.js (exit=0 bytes=104408)
+[rebuild] ENTRIES=31
+[rebuild] BUILD_OK=31/31
+[rebuild] BUILD_FAILED=
+[rebuild] NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built by the package itself (bun build src/launch.ts -> dist/launch.js) or a sha-pinned prebuilt — no offline snapshot build any more,mpd-schemastery=package has no src/ directory (dist is the only committed artifact)
+[rebuild] SKIPPED_SRC=
+[rebuild] OK=true
+
+
+----- STEP 09-install (exit=0, 1s) -----
+$ bash -c cd '/opt/mpd' && dsh plugin --profile web add '.' 
+dsh: initialized profile web at /root/sandbox-dsh/profiles/web
+
+dependencies:
++ @mpd-dsh/mpd link:/opt/mpd
+
+Already up to date
+Done in 358ms using pnpm v11.23.0
+
+
+----- STEP 09a-install-closure (exit=0, 0s) -----
+$ node /opt/mpd-e2e/lib/owed-install.ts --install-log /work/steps/09-install.log --exit 0 --roots /root/sandbox-dsh/profiles/web,/opt/mpd --state /work/assertions.ndjson 
+[owed-install] install.buildScripts=true — the client install completed with NO unapproved build script: exit 0, no ERR_PNPM_IGNORED_BUILDS anywhere in the install output, no ignored-build-scripts warning, and the 2 installed closure root(s) were walked for manifests declaring preinstall/install/postinstall/prepare (0 found)
+
+
+----- STEP 08c-pack (exit=0, 0s) -----
+$ node /opt/mpd-e2e/lib/owed-pack.ts --artifact /src/dist/mpd-package --source /src --rebuild /opt/mpd --rebuild-report /work/rebuild.json --state /work/assertions.ndjson 
+[owed-pack] pack.present=true — the packed artifact travelled into the container and is graded below
+[owed-pack] artifact files=608 bytes=13903769
+[owed-pack] pack.licenceCoherence=true — the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does
+[owed-pack] pack.declarationCoherence=true — every declaration the artifact makes about itself holds: 18 files entries resolve, its 2 bundle-patch layers exist, all 27 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along
+[owed-pack] pack.staticCoherence=false — the artifact does NOT agree with the tree it was cut from — it is stale or was edited after the pack: 6 differing file(s), 0 carried file(s) with no twin
+[owed-pack] pack.rebuildToolchain=true — the from-source rebuild ran under bun 1.4.0, which IS the version the repository declares for its canonical build (bun@1.4.0), so a byte difference from this rebuild can be read as staleness rather than as a compiler difference
+[owed-pack] pack.distFreshRebuild=true — every one of the 31 built entries in the artifact is byte-identical to the container's own from-source rebuild — the packed dist is FRESH, not merely present
+
+
+----- STEP 08c2-pack-control (exit=0, 0s) -----
+$ node /opt/mpd-e2e/lib/owed-pack.ts --artifact /work/pack-mutated --source /src --rebuild /opt/mpd --rebuild-report /work/rebuild.json --state /work/pack-control.ndjson 
+[owed-pack] pack.present=true — the packed artifact travelled into the container and is graded below
+[owed-pack] artifact files=608 bytes=13903864
+[owed-pack] pack.licenceCoherence=true — the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does
+[owed-pack] pack.declarationCoherence=true — every declaration the artifact makes about itself holds: 18 files entries resolve, its 2 bundle-patch layers exist, all 27 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along
+[owed-pack] pack.staticCoherence=false — the artifact does NOT agree with the tree it was cut from — it is stale or was edited after the pack: 7 differing file(s), 0 carried file(s) with no twin
+[owed-pack] pack.rebuildToolchain=true — the from-source rebuild ran under bun 1.4.0, which IS the version the repository declares for its canonical build (bun@1.4.0), so a byte difference from this rebuild can be read as staleness rather than as a compiler difference
+[owed-pack] pack.distFreshRebuild=false — the packed artifact's built entries do not match this container's from-source rebuild: 1 differing, 0 not produced by the rebuild. Both the artifact and this rebuild are under bun 1.4.0 (the declared bun@1.4.0, see pack.rebuildToolchain), so the difference is NOT explained by the compiler version
+
+
+----- STEP 10-dump (exit=0, 0s) -----
+$ node /opt/mpd/scripts/dump-config.ts --profile web 
+[dump-config] COMPOSITION ONLY — rows composed, no plugin code executed.
+[dump-config] The flag COMPOSES rows (base / bundle / patch / preset layers) and NEVER executes plugin code,
+[dump-config] so it CANNOT witness a plugin load, an apply abort or a schema rejection.
+[dump-config] Measured (AGENTS.md §4): `dsh --profile mpd --dump-config` exited 0 with the mpd-workmate row
+[dump-config] present while the real boot of the same profile could not load the tree.
+[dump-config] profile: web
+[dump-config] command: dsh --profile web --dump-config
+[dump-config] For a LOAD proof run a mounting boot instead: `bun skills/dsh-qa/scripts/bundle-lifecycle.ts`,
+[dump-config] `node skills/dsh-qa/scripts/preset-conformance.ts`, or a boot with registration instrumentation.
+[dump-config] ---- the composed rows below are the child's own output ----
+# == @deepseek-ai/dsh-base
+- id: tool-plugin-manager
+  name: '@deepseek-ai/dsh-plugin-manager/tools'
+  disabled: true
+- id: plugin-manager
+  name: '@deepseek-ai/dsh-plugin-manager'
+  disabled: !!js '!ctx.get(''profileContext'')'
+- id: timer
+  name: '@deepseek-ai/cordis-plugin-timer'
+- id: hmr
+  name: '@deepseek-ai/dsh-hmr'
+  disabled: !!js '!ctx.get(''profileContext'')'
+  config:
+    root: []
+- id: llm
+  name: '@deepseek-ai/dsh-llm'
+- id: deepseek-llm-api-extensions
+  name: '@deepseek-ai/dsh-deepseek-llm-api-extensions'
+- id: session
+  name: '@deepseek-ai/dsh-session'
+- id: session-log-deepseek
+  name: '@deepseek-ai/dsh-session-log-deepseek'
+- id: typert
+  name: '@deepseek-ai/dsh-typert-registry'
+- id: typert-loader
+  name: '@deepseek-ai/dsh-typert-loader'
+- id: typert-gateway
+  name: '@deepseek-ai/dsh-api-gateway'
+- id: session-title
+  name: '@deepseek-ai/dsh-session-title'
+  config:
+    fallbackMaxWords: 5
+    fallbackMaxBytes: 40
+    maxTitleBytes: 80
+- id: session-title-llm
+  name: '@deepseek-ai/dsh-session-title-first-prompt-llm'
+  config:
+    targetWords: 5
+    targetCjkCharacters: 10
+    maxInputBytes: 4096
+    maxOutputTokens: 64
+    timeoutMs: 60000
+- id: user-questions
+  name: '@deepseek-ai/dsh-user-questions'
+- id: agent
+  name: '@deepseek-ai/dsh-agent'
+- id: plugin-package-inventory-deepseek
+  name: '@deepseek-ai/dsh-plugin-package-inventory-deepseek'
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-flash
+- id: jobs
+  name: '@deepseek-ai/dsh-jobs-local'
+- id: llm-retry
+  name: '@deepseek-ai/dsh-llm-retry'
+- id: config-editor
+  name: '@deepseek-ai/dsh-config-editor'
+  disabled: !!js '!ctx.get(''profileContext'')'
+- id: settings
+  name: '@deepseek-ai/dsh-settings'
+  disabled: !!js '!ctx.get(''profileContext'')'
+- id: authorization
+  name: '@deepseek-ai/dsh-authorization'
+- id: deepseek-account
+  name: '@deepseek-ai/dsh-deepseek-account-platform'
+  config:
+    desktopPlatform: !!js >-
+      ctx.get('profileContext')?.name === 'desktop' && ['darwin',
+      'win32'].includes(process.platform) ? process.platform : null
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+- id: attachment-local
+  name: '@deepseek-ai/dsh-attachment-local'
+- id: session-query-sqlite
+  name: '@deepseek-ai/dsh-session-query-sqlite'
+  config:
+    path: ':memory:'
+    openAt: never
+- id: session-projection
+  name: '@deepseek-ai/dsh-session-projection'
+- id: storage
+  name: '@deepseek-ai/dsh-storage'
+- id: storage-json
+  name: '@deepseek-ai/dsh-storage-json'
+  config:
+    root: !!js dshHomePath('storages')
+- id: storage-domain
+  name: '@deepseek-ai/dsh-storage-domain'
+  config:
+    backend: json
+- id: session-projection-cache
+  name: '@deepseek-ai/dsh-session-projection-cache'
+  config:
+    writeEveryEvents: 200
+    writeIntervalMs: 5000
+- id: otel
+  name: '@deepseek-ai/dsh-otel'
+- id: session-telemetry-otel
+  name: '@deepseek-ai/dsh-session-telemetry-otel'
+  config:
+    mode: !!js process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'
+    shutdownTimeoutMillis: 3000
+    maxRequestBytes: 4000000
+    exporter:
+      url: !!js >-
+        process.env.DSH_TELEMETRY_OTLP_URL ??
+        'https://dsh-otel-collector.deepseeksvc.com/v1/logs'
+      compression: gzip
+      timeoutMillis: 1000
+    processor:
+      scheduledDelayMillis: 10000
+      maxQueueSize: 2048
+      maxExportBatchSize: 2048
+      exportTimeoutMillis: 1500
+- id: subprocess
+  name: '@deepseek-ai/dsh-subprocess-local'
+- id: sandbox
+  name: '@deepseek-ai/dsh-sandbox-local'
+- id: sandbox-policy
+  name: '@deepseek-ai/dsh-sandbox-policy'
+  config:
+    mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'
+    workspaceRoot: !!js process.cwd()
+- id: bash-sandbox
+  name: '@deepseek-ai/dsh-bash-sandbox'
+  disabled: !!js process.platform === 'win32'
+  config:
+    timeoutMs: 60000
+- id: pwsh-sandbox
+  name: '@deepseek-ai/dsh-pwsh-sandbox'
+  disabled: !!js process.platform !== 'win32'
+- id: approval
+  name: '@deepseek-ai/dsh-user-approval'
+  config:
+    policy: !!js >-
+      (process.env.DSH_PERMISSION_MODE ?? 'workspace-write') ===
+      'danger-full-access' ? 'never' : 'ask'
+- id: permission
+  name: '@deepseek-ai/dsh-permission-presets'
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+- id: shell-env
+  name: '@deepseek-ai/dsh-shell-env'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: true
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: true
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: fs-observation-policy
+  name: '@deepseek-ai/dsh-fs-observation-policy'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+  disabled: true
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+  disabled: true
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: skill
+  name: '@deepseek-ai/dsh-skill'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: skill-badge
+  name: '@deepseek-ai/dsh-skill-badge'
+  disabled: true
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: commands
+  name: '@deepseek-ai/dsh-commands'
+- id: command-feedback
+  name: '@deepseek-ai/dsh-command-feedback'
+- id: goal
+  name: '@deepseek-ai/dsh-goal'
+- id: goal-round-driver
+  name: '@deepseek-ai/dsh-goal-round-driver'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: command-goal
+  name: '@deepseek-ai/dsh-command-goal'
+  disabled: true
+- id: plan-mode
+  name: '@deepseek-ai/dsh-plan-mode'
+  config:
+    section: >
+      You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or
+      the user switches the session mode. Imperative language to implement
+      changes means plan the implementation, not execute it. A user's
+      conversational agreement — including an answer confirming something you
+      asked — approves nothing and does not end plan mode; fold the confirmed
+      decision into the plan and submit it through exit_plan_mode.
+
+
+      Explore first. Use non-mutating reads, searches, static analysis, and
+      checks to ground the plan in the actual repository. Do not edit or write
+      files, change configuration, run formatters or code generation that
+      rewrites tracked files, commit, or otherwise carry out the plan. Prefer
+      existing functions and patterns over new machinery.
+
+
+      The tool catalog stays the same across modes for request-cache stability.
+      These plan-mode rules override any later tool description or guidance that
+      suggests using mutation tools; those tools remain listed only to keep the
+      request shape stable. Do not use todo_write to track this planning phase:
+      it tracks implementation after an approved plan, while the plan itself
+      belongs in exit_plan_mode.
+
+
+      Resolve discoverable facts by inspection. Use ask_user_question only for
+      user-owned choices or material ambiguity that inspection cannot answer. Do
+      not ask the user where code lives or how current behavior works when you
+      can find out.
+
+
+      Make the plan decision-complete: state the goal and success criteria;
+      group implementation changes by subsystem; identify public API, schema,
+      and data-flow changes; cover edge cases, failure modes, tests, acceptance
+      criteria, and explicit assumptions. Keep it concise enough to review but
+      detailed enough that another engineer can implement it without making
+      design decisions.
+
+
+      When ready, call exit_plan_mode with the complete plan markdown, starting
+      with a # title. Make exit_plan_mode the only and final tool call in that
+      assistant response: it presents the plan for approval, and implementation
+      begins only in a later step after approval. Do not paste the final plan as
+      a plain reply or ask "should I proceed?" through prose or
+      ask_user_question. If review rejects it, incorporate the feedback and
+      present again. If the review channel is unavailable or aborted, stay in
+      plan mode and ask the user to switch modes manually; do not proceed with
+      implementation.
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: token-meter
+  name: '@deepseek-ai/dsh-token-meter'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: compaction-basic
+  name: '@deepseek-ai/dsh-compaction-basic'
+  disabled: true
+- id: command-compact
+  name: '@deepseek-ai/dsh-command-compact'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: subagent
+  name: '@deepseek-ai/dsh-subagent'
+- id: subagent-spawn-in-process
+  name: '@deepseek-ai/dsh-subagent-spawn-in-process'
+  config:
+    providerName: spawn
+- id: subagent-fork-in-process
+  name: '@deepseek-ai/dsh-subagent-fork-in-process'
+  config:
+    providerName: fork
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-subagent-control
+  name: '@deepseek-ai/dsh-tool-subagent-control'
+  disabled: true
+- id: tool-subagent-list-agents
+  name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+  disabled: true
+- id: tool-subagent
+  name: '@deepseek-ai/dsh-tool-subagent'
+  config:
+    provider: spawn
+    toolName: subagent
+    backgroundMode: continuable
+  disabled: true
+- id: tool-subagent-fork
+  name: '@deepseek-ai/dsh-tool-subagent'
+  config:
+    provider: fork
+    toolName: subagent_fork
+    backgroundMode: one-shot
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: ptc-runtime
+  name: '@deepseek-ai/dsh-ptc-runtime-node'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: workflow-ptc
+  name: '@deepseek-ai/dsh-workflow-ptc'
+  config:
+    provider: spawn
+  disabled: true
+- id: tool-workflow
+  name: '@deepseek-ai/dsh-tool-workflow'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: timeout-policy
+  name: '@deepseek-ai/dsh-tool-call-timeout-policy'
+- id: spill-local
+  name: '@deepseek-ai/dsh-spill-local'
+- id: spill-policy
+  name: '@deepseek-ai/dsh-spill-policy'
+  config:
+    maxInlineTokens: 12500
+- id: session-checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-result-pruner
+  name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+  config:
+    thresholdChars: 8192
+    headChars: 4096
+    tailChars: 1024
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: image-offload
+  name: '@deepseek-ai/dsh-compaction-image-offload'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true
+  disabled: true
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: tool-ralph
+  name: '@deepseek-ai/dsh-tool-ralph'
+  disabled: true
+  config:
+    subagentProvider: spawn
+    maxRounds: 64
+- id: repeat-tool-reminder
+  name: '@deepseek-ai/dsh-repeat-tool-reminder'
+  config:
+    thresholds:
+      - 3
+      - 5
+      - 8
+    argumentsPreviewChars: 500
+- id: web
+  name: '@deepseek-ai/dsh-web'
+  config:
+    searchProvider: deepseek-official
+    fetchProvider: http
+- id: web-search-deepseek
+  name: '@deepseek-ai/dsh-web-search-deepseek'
+  config:
+    apiKeyEnv: DEEPSEEK_API_KEY
+- id: web-fetch-http
+  name: '@deepseek-ai/dsh-web-fetch-http'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: true
+    searchTimeoutMs: 60000
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: mcp-resources
+  name: '@deepseek-ai/dsh-mcp-resources'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tools
+  name: '@deepseek-ai/dsh-tools'
+  config:
+    mode: !!js process.env.DSH_TOOLS_MODE
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+  config:
+    personaSuffix: Your working directory is {{cwd}}.
+    personaPrefix: You are a coding agent powered by the {{model}} model.
+# == @deepseek-ai/dsh-base
+- id: agent-loop
+  name: '@deepseek-ai/dsh-agent-loop'
+  config:
+    agents: []
+- id: fs-sandbox
+  name: '@deepseek-ai/dsh-fs-sandbox'
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+- id: llm-deepseek-account
+  name: '@deepseek-ai/dsh-llm-deepseek-account'
+# == @deepseek-ai/dsh-web-app
+- id: desktop-product-telemetry
+  name: '@deepseek-ai/dsh-host-product-telemetry-otel'
+  disabled: !!js ctx.get('profileContext')?.name !== 'desktop'
+  config:
+    scheduledDelayMillis: 30000
+    timeoutMillis: 15000
+    exportTimeoutMillis: 20000
+    shutdownTimeoutMillis: 2000
+    serviceName: deepseek-harness-desktop
+    serviceVersion: !!js process.env.DSH_CLIENT_VERSION
+    endpoint: !!js process.env.DSH_PRODUCT_ANALYTICS_OTLP_URL
+- id: product-analytics
+  name: '@deepseek-ai/dsh-client-product-analytics'
+  disabled: !!js ctx.get('profileContext')?.name !== 'desktop'
+  config:
+    enabled: true
+    appVersion: !!js process.env.DSH_CLIENT_VERSION
+- id: subagent-model-selection-settings
+  name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
+- id: message-feedback
+  name: '@deepseek-ai/dsh-message-feedback'
+  config:
+    maxNoteBytes: 8192
+- id: session-log-download
+  name: '@deepseek-ai/dsh-session-log-export'
+- id: open-in-app
+  name: '@deepseek-ai/dsh-host-open-in-app'
+  config:
+    probeTimeoutMs: 10000
+    iconTimeoutMs: 10000
+    launchWatchMs: 1000
+- id: ui-open-in-app
+  name: '@deepseek-ai/dsh-client-ui-open-in-app'
+- id: workspace
+  name: '@deepseek-ai/dsh-workspace'
+- id: session-reference
+  name: '@deepseek-ai/dsh-session-reference'
+- id: file-reference-local
+  name: '@deepseek-ai/dsh-file-reference-local'
+- id: session-stats
+  name: '@deepseek-ai/dsh-session-stats'
+- id: session-turn-outline
+  name: '@deepseek-ai/dsh-session-turn-outline'
+- id: directory-picker
+  name: '@deepseek-ai/dsh-host-directory-picker-auto'
+- id: plugin-inventory
+  name: '@deepseek-ai/dsh-host-plugin-inventory'
+- id: session-controller
+  name: '@deepseek-ai/dsh-api-session-controller'
+- id: job-controller
+  name: '@deepseek-ai/dsh-api-job-controller'
+- id: terminal-controller
+  name: '@deepseek-ai/dsh-api-terminal-controller'
+- id: workspace-files
+  name: '@deepseek-ai/dsh-api-workspace-files'
+- id: ui-settings-account
+  name: '@deepseek-ai/dsh-client-ui-settings-account'
+- id: account-controller
+  name: '@deepseek-ai/dsh-api-account-controller'
+- id: settings-controller
+  name: '@deepseek-ai/dsh-api-settings-controller'
+- id: workspace-controller
+  name: '@deepseek-ai/dsh-api-workspace-controller'
+- id: cordis-host-runner
+  name: '@deepseek-ai/dsh-cordis-host-runner'
+- id: cordis-inspect-providers
+  name: '@deepseek-ai/dsh-tool-cordis/host'
+- id: web-startup
+  name: '@deepseek-ai/dsh-web-app/startup'
+- id: webserver
+  name: '@deepseek-ai/dsh-host-webserver'
+  inject:
+    - webStartup
+  config:
+    host: !!js ctx.webStartup.host ?? '127.0.0.1'
+    port: !!js ctx.webStartup.port ?? 3080
+    compression: gzip
+    compressionLevel: 1
+    compressionThresholdBytes: 1024
+- id: web-runtime
+  name: '@deepseek-ai/dsh-web-app'
+  inject:
+    - webStartup
+  config:
+    openBrowser: !!js ctx.webStartup.openBrowser
+    printUrl: true
+    surfaceContext: true
+    trustedHosts: !!js ctx.webStartup.trustedHosts
+- id: client-hmr
+  name: '@deepseek-ai/dsh-client-hmr'
+- id: modules
+  name: '@deepseek-ai/dsh-client-modules'
+- id: connection
+  name: '@deepseek-ai/dsh-client-connection'
+  inject:
+    - webRuntime
+  config:
+    trustedHosts: !!js ctx.webRuntime.trustedHosts
+- id: file-upload
+  name: '@deepseek-ai/dsh-client-file-upload'
+- id: api-remotes
+  name: '@deepseek-ai/dsh-api-remotes'
+- id: cordis-client-runner
+  name: '@deepseek-ai/dsh-cordis-client-runner'
+- id: ui-theme
+  name: '@deepseek-ai/dsh-client-ui-theme'
+- id: locale
+  name: '@deepseek-ai/dsh-client-locale'
+- id: shortcuts
+  name: '@deepseek-ai/dsh-client-shortcuts'
+- id: ui-shortcuts
+  name: '@deepseek-ai/dsh-client-ui-shortcuts'
+- id: ui-layout
+  name: '@deepseek-ai/dsh-client-ui-layout'
+- id: ui-renderer
+  name: '@deepseek-ai/dsh-client-ui-renderer'
+- id: ui-session
+  name: '@deepseek-ai/dsh-client-ui-session'
+- id: resources
+  name: '@deepseek-ai/dsh-client-resources'
+- id: ui-sidebar
+  name: '@deepseek-ai/dsh-client-ui-sidebar'
+- id: ui-sidebar-right
+  name: '@deepseek-ai/dsh-client-ui-sidebar-right'
+- id: office-to-pdf
+  name: '@deepseek-ai/dsh-office-to-pdf'
+- id: ui-sidebar-documentpreview
+  name: '@deepseek-ai/dsh-client-ui-sidebar-documentpreview'
+- id: ui-sidebar-browser
+  name: '@deepseek-ai/dsh-client-ui-sidebar-browser'
+  disabled: !!js ctx.get('profileContext')?.name !== 'desktop'
+- id: ui-sidebar-terminal
+  name: '@deepseek-ai/dsh-client-ui-sidebar-terminal'
+- id: ui-sidebar-files
+  name: '@deepseek-ai/dsh-client-ui-sidebar-files'
+- id: ui-settings
+  name: '@deepseek-ai/dsh-client-ui-settings'
+- id: ui-settings-general
+  name: '@deepseek-ai/dsh-client-ui-settings-general'
+- id: ui-settings-models
+  name: '@deepseek-ai/dsh-client-ui-settings-models'
+- id: ui-plugin-manager
+  name: '@deepseek-ai/dsh-client-ui-plugin-manager'
+- id: ui-settings-plugin-inventory
+  name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'
+- id: ui-conversation
+  name: '@deepseek-ai/dsh-client-ui-conversation'
+- id: ui-approval
+  name: '@deepseek-ai/dsh-client-ui-approval'
+- id: ui-chat
+  name: '@deepseek-ai/dsh-client-ui-chat'
+- id: ui-brand-official
+  name: '@deepseek-ai/dsh-client-ui-brand-official'
+- id: ui-attachment
+  name: '@deepseek-ai/dsh-client-ui-attachment'
+- id: ui-tool
+  name: '@deepseek-ai/dsh-client-ui-tool'
+- id: ui-cordis
+  name: '@deepseek-ai/dsh-client-ui-cordis'
+- id: ui-deliverables
+  name: '@deepseek-ai/dsh-client-ui-deliverables'
+- id: workspace-changes
+  name: '@deepseek-ai/dsh-workspace-changes'
+- id: ui-workspace
+  name: '@deepseek-ai/dsh-client-ui-workspace'
+- id: ui-workflow-run
+  name: '@deepseek-ai/dsh-client-ui-workflow-run'
+- id: ui-input-trigger
+  name: '@deepseek-ai/dsh-client-ui-input-trigger'
+- id: ui-commands
+  name: '@deepseek-ai/dsh-client-ui-commands'
+- id: ui-skill
+  name: '@deepseek-ai/dsh-client-ui-skill'
+- id: ui-subagent
+  name: '@deepseek-ai/dsh-client-ui-subagent'
+- id: ui-reference
+  name: '@deepseek-ai/dsh-client-ui-reference'
+- id: ui-jobs
+  name: '@deepseek-ai/dsh-client-ui-jobs'
+- id: ui-goal
+  name: '@deepseek-ai/dsh-client-ui-goal'
+- id: ui-message-feedback
+  name: '@deepseek-ai/dsh-client-ui-message-feedback'
+- id: ui-model-selection
+  name: '@deepseek-ai/dsh-client-ui-model-selection'
+- id: ui-permission
+  name: '@deepseek-ai/dsh-client-ui-permission-presets'
+- id: ui-agent-preset
+  name: '@deepseek-ai/dsh-client-ui-agent-preset'
+- id: ui-settings-session-log
+  name: '@deepseek-ai/dsh-client-ui-settings-session-log'
+- id: ui-settings-plugins
+  name: '@deepseek-ai/dsh-client-ui-settings-plugins'
+- id: ui-settings-shell
+  name: '@deepseek-ai/dsh-client-ui-settings-shell'
+- id: ui-settings-agent-loop
+  name: '@deepseek-ai/dsh-client-ui-settings-agent-loop'
+- id: ui-settings-subagent
+  name: '@deepseek-ai/dsh-client-ui-settings-subagent'
+- id: ui-settings-web-search
+  name: '@deepseek-ai/dsh-client-ui-settings-web-search'
+- id: ui-plan
+  name: '@deepseek-ai/dsh-client-ui-plan'
+- id: ui-user-questions
+  name: '@deepseek-ai/dsh-client-ui-user-questions'
+- id: ui-trajectory
+  name: '@deepseek-ai/dsh-client-ui-trajectory'
+- id: agent-preset-registry
+  name: '@deepseek-ai/dsh-agent-preset-registry'
+  config:
+    default: standard
+- id: preset-standard
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: standard
+    order: 1
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          suffix: Your working directory is {{cwd}}.
+          prefix: You are a coding agent powered by the {{model}} model.
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+      - id: tool-jobs
+        name: '@deepseek-ai/dsh-tool-jobs'
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+      - id: command-goal
+        name: '@deepseek-ai/dsh-command-goal'
+      - id: tool-goal
+        name: '@deepseek-ai/dsh-tool-goal'
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: >
+                You are in plan mode. Stay in plan mode until exit_plan_mode
+                succeeds or the user switches the session mode. Imperative
+                language to implement changes means plan the implementation, not
+                execute it. A user's conversational agreement — including an
+                answer confirming something you asked — approves nothing and
+                does not end plan mode; fold the confirmed decision into the
+                plan and submit it through exit_plan_mode.
+
+
+                Explore first. Use non-mutating reads, searches, static
+                analysis, and checks to ground the plan in the actual
+                repository. Do not edit or write files, change configuration,
+                run formatters or code generation that rewrites tracked files,
+                commit, or otherwise carry out the plan. Prefer existing
+                functions and patterns over new machinery.
+
+
+                The tool catalog stays the same across modes for request-cache
+                stability. These plan-mode rules override any later tool
+                description or guidance that suggests using mutation tools;
+                those tools remain listed to keep the tool catalog unchanged. Do
+                not use todo_write to track this planning phase: it tracks
+                implementation after an approved plan, while the plan itself
+                belongs in exit_plan_mode.
+
+
+                Resolve discoverable facts by inspection. Use ask_user_question
+                only for user-owned choices or material ambiguity that
+                inspection cannot answer. Do not ask the user where code lives
+                or how current behavior works when you can find out.
+
+
+                Make the plan decision-complete: state the goal and success
+                criteria; group implementation changes by subsystem; identify
+                public API, schema, and data-flow changes; cover edge cases,
+                failure modes, tests, acceptance criteria, and explicit
+                assumptions. Keep it concise enough to review but detailed
+                enough that another engineer can implement it without making
+                design decisions.
+
+
+                When ready, call exit_plan_mode with the complete plan markdown,
+                starting with a # title. Make exit_plan_mode the only and final
+                tool call in that assistant response: it presents the plan for
+                approval, and implementation begins only in a later step after
+                approval. Do not paste the final plan as a plain reply or ask
+                "should I proceed?" through prose or ask_user_question. If
+                review rejects it, incorporate the feedback and present again.
+                If the review channel is unavailable or aborted, stay in plan
+                mode and ask the user to switch modes manually; do not proceed
+                with implementation.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 8192
+              headChars: 4096
+              tailChars: 1024
+      - id: delegation
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+              modelSelectionSettings: true
+              backgroundMode: continuable
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+              backgroundMode: continuable
+          - id: tool-subagent-codex
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: codex
+              toolName: subagent_codex
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: tool-subagent-claude-code
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: claude-code
+              toolName: subagent_claude_code
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            config:
+              provider: spawn
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ralph
+            name: '@deepseek-ai/dsh-tool-ralph'
+            disabled: true
+            config:
+              subagentProvider: spawn
+              maxRounds: 64
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: true
+          searchTimeoutMs: 60000
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+      - id: tool-plugin-manager
+        name: '@deepseek-ai/dsh-plugin-manager/tools'
+        disabled: true
+- id: preset-ptc
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: ptc
+    order: 2
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          suffix: Your working directory is {{cwd}}.
+          prefix: You are a coding agent powered by the {{model}} model.
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+      - id: tool-jobs
+        name: '@deepseek-ai/dsh-tool-jobs'
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+      - id: command-goal
+        name: '@deepseek-ai/dsh-command-goal'
+      - id: tool-goal
+        name: '@deepseek-ai/dsh-tool-goal'
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: >
+                You are in plan mode. Stay in plan mode until exit_plan_mode
+                succeeds or the user switches the session mode. Imperative
+                language to implement changes means plan the implementation, not
+                execute it. A user's conversational agreement — including an
+                answer confirming something you asked — approves nothing and
+                does not end plan mode; fold the confirmed decision into the
+                plan and submit it through exit_plan_mode.
+
+
+                Explore first. Use non-mutating reads, searches, static
+                analysis, and checks to ground the plan in the actual
+                repository. Do not edit or write files, change configuration,
+                run formatters or code generation that rewrites tracked files,
+                commit, or otherwise carry out the plan. Prefer existing
+                functions and patterns over new machinery.
+
+
+                The tool catalog stays the same across modes for request-cache
+                stability. These plan-mode rules override any later tool
+                description or guidance that suggests using mutation tools;
+                those tools remain listed to keep the tool catalog unchanged. Do
+                not use todo_write to track this planning phase: it tracks
+                implementation after an approved plan, while the plan itself
+                belongs in exit_plan_mode.
+
+
+                Resolve discoverable facts by inspection. Use ask_user_question
+                only for user-owned choices or material ambiguity that
+                inspection cannot answer. Do not ask the user where code lives
+                or how current behavior works when you can find out.
+
+
+                Make the plan decision-complete: state the goal and success
+                criteria; group implementation changes by subsystem; identify
+                public API, schema, and data-flow changes; cover edge cases,
+                failure modes, tests, acceptance criteria, and explicit
+                assumptions. Keep it concise enough to review but detailed
+                enough that another engineer can implement it without making
+                design decisions.
+
+
+                When ready, call exit_plan_mode with the complete plan markdown,
+                starting with a # title. Make exit_plan_mode the only and final
+                tool call in that assistant response: it presents the plan for
+                approval, and implementation begins only in a later step after
+                approval. Do not paste the final plan as a plain reply or ask
+                "should I proceed?" through prose or ask_user_question. If
+                review rejects it, incorporate the feedback and present again.
+                If the review channel is unavailable or aborted, stay in plan
+                mode and ask the user to switch modes manually; do not proceed
+                with implementation.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 8192
+              headChars: 4096
+              tailChars: 1024
+      - id: delegation
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+              modelSelectionSettings: true
+              backgroundMode: continuable
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+              backgroundMode: continuable
+          - id: tool-subagent-codex
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: codex
+              toolName: subagent_codex
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: tool-subagent-claude-code
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: claude-code
+              toolName: subagent_claude_code
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            disabled: true
+            config:
+              provider: spawn
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+            disabled: true
+          - id: tool-ralph
+            name: '@deepseek-ai/dsh-tool-ralph'
+            disabled: true
+            config:
+              subagentProvider: spawn
+              maxRounds: 64
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: true
+          searchTimeoutMs: 60000
+      - id: tool-presentation
+        name: '@deepseek-ai/dsh-agent-tool-presentation'
+        config:
+          mode: ptc
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+      - id: tool-plugin-manager
+        name: '@deepseek-ai/dsh-plugin-manager/tools'
+        disabled: true
+- id: preset-minimal
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: minimal
+    order: 3
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          prefix: You are a helpful software engineer assistant.
+          complete: true
+          includeRuntimeContext: false
+      - id: persistent-shell
+        name: cordis:group
+        group: true
+        isolate:
+          terminals: true
+        config:
+          - id: pty
+            name: '@deepseek-ai/dsh-terminal'
+          - id: terminal-bash
+            name: '@deepseek-ai/dsh-terminal-bash'
+            disabled: !!js process.platform === 'win32'
+            config:
+              timeoutMs: 300000
+          - id: persistent-bash
+            name: '@deepseek-ai/dsh-tool-bash-persistent'
+            disabled: !!js process.platform === 'win32'
+            config:
+              timeoutMs: 300000
+              description: >-
+                Run commands in a bash shell
+
+                * When invoking this tool, the contents of the "command"
+                parameter does NOT need to be XML-escaped.
+
+                * Network access depends on the task environment. Prefer
+                configured mirrors/proxies when they are available.
+
+                * State is persistent across command calls and discussions with
+                the user.
+
+                * To inspect a particular line range of a file, e.g. lines
+                10-25, try 'sed -n 10,25p /path/to/the/file'.
+
+                * Please avoid commands that may produce a very large amount of
+                output.
+
+                * Please run long lived commands in the background, e.g. 'sleep
+                10 &' or start a server in the background.
+          - id: terminal-pwsh
+            name: '@deepseek-ai/dsh-terminal-bash'
+            disabled: !!js process.platform !== 'win32'
+            config:
+              shellDialect: pwsh
+              timeoutMs: 300000
+          - id: persistent-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh-persistent'
+            disabled: !!js process.platform !== 'win32'
+            config:
+              timeoutMs: 300000
+              description: >-
+                Run commands in a PowerShell shell
+
+                * When invoking this tool, the contents of the "command"
+                parameter does NOT need to be XML-escaped.
+
+                * You don't have access to the internet via this tool.
+
+                * State is persistent across command calls and discussions with
+                the user.
+
+                * Use native Windows paths (C:\...) and $env:NAME variables;
+                this is PowerShell, not bash.
+
+                * Please avoid commands that may produce a very large amount of
+                output.
+
+                * Please run long lived commands in the background, e.g.
+                'Start-Job' or start a server with Start-Process.
+- id: preset-cordis
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: cordis
+    order: 4
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          suffix: Your working directory is {{cwd}}.
+          prefix: You are a coding agent powered by the {{model}} model.
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+      - id: tool-jobs
+        name: '@deepseek-ai/dsh-tool-jobs'
+      - id: command-goal
+        name: '@deepseek-ai/dsh-command-goal'
+      - id: tool-goal
+        name: '@deepseek-ai/dsh-tool-goal'
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: >
+                You are in plan mode. Stay in plan mode until exit_plan_mode
+                succeeds or the user switches the session mode. Imperative
+                language to implement changes means plan the implementation, not
+                execute it. A user's conversational agreement — including an
+                answer confirming something you asked — approves nothing and
+                does not end plan mode; fold the confirmed decision into the
+                plan and submit it through exit_plan_mode.
+
+
+                Explore first. Use non-mutating reads, searches, static
+                analysis, and checks to ground the plan in the actual
+                repository. Do not edit or write files, change configuration,
+                run formatters or code generation that rewrites tracked files,
+                commit, or otherwise carry out the plan. Prefer existing
+                functions and patterns over new machinery.
+
+
+                The tool catalog stays the same across modes for request-cache
+                stability. These plan-mode rules override any later tool
+                description or guidance that suggests using mutation tools;
+                those tools remain listed to keep the tool catalog unchanged. Do
+                not use todo_write to track this planning phase: it tracks
+                implementation after an approved plan, while the plan itself
+                belongs in exit_plan_mode.
+
+
+                Resolve discoverable facts by inspection. Use ask_user_question
+                only for user-owned choices or material ambiguity that
+                inspection cannot answer. Do not ask the user where code lives
+                or how current behavior works when you can find out.
+
+
+                Make the plan decision-complete: state the goal and success
+                criteria; group implementation changes by subsystem; identify
+                public API, schema, and data-flow changes; cover edge cases,
+                failure modes, tests, acceptance criteria, and explicit
+                assumptions. Keep it concise enough to review but detailed
+                enough that another engineer can implement it without making
+                design decisions.
+
+
+                When ready, call exit_plan_mode with the complete plan markdown,
+                starting with a # title. Make exit_plan_mode the only and final
+                tool call in that assistant response: it presents the plan for
+                approval, and implementation begins only in a later step after
+                approval. Do not paste the final plan as a plain reply or ask
+                "should I proceed?" through prose or ask_user_question. If
+                review rejects it, incorporate the feedback and present again.
+                If the review channel is unavailable or aborted, stay in plan
+                mode and ask the user to switch modes manually; do not proceed
+                with implementation.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 8192
+              headChars: 4096
+              tailChars: 1024
+      - id: delegation
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+              modelSelectionSettings: true
+              backgroundMode: continuable
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+              backgroundMode: continuable
+          - id: tool-subagent-codex
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: codex
+              toolName: subagent_codex
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: tool-subagent-claude-code
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: claude-code
+              toolName: subagent_claude_code
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            config:
+              provider: spawn
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ralph
+            name: '@deepseek-ai/dsh-tool-ralph'
+            disabled: true
+            config:
+              subagentProvider: spawn
+              maxRounds: 64
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: true
+          searchTimeoutMs: 60000
+      - id: tool-cordis
+        name: '@deepseek-ai/dsh-tool-cordis'
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+        config:
+          customSkillDirs:
+            - !!js >-
+              process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@deepseek-ai/dsh-agent-preset/package.json')),
+              'skills')
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+      - id: tool-plugin-manager
+        name: '@deepseek-ai/dsh-plugin-manager/tools'
+        disabled: !!js '!ctx.get(''profileContext'')'
+# == @mpd-dsh/mpd
+- id: mpd-better-sidebar
+  name: '@mpd-dsh/mpd/packages/mpd-better-sidebar-host/dist/index.js'
+  disabled: !!js >-
+    (() => { const logGuard = (text) => { try { const gfs =
+    process.getBuiltinModule('node:fs'); const gpath =
+    process.getBuiltinModule('node:path'); const gos =
+    process.getBuiltinModule('node:os'); let cwd = ''; try { cwd = process.cwd()
+    } catch (e) {} const roots = [process.env.MPD_MCP_LOG_DIR,
+    process.env.DSH_WORKSPACE_ROOT, cwd, gos.tmpdir()]; for (const root of
+    roots) { if (typeof root !== 'string' || root.trim() === '') { continue }
+    try { const dir = gpath.join(root, '.mpd', 'logs'); gfs.mkdirSync(dir, {
+    recursive: true }); gfs.appendFileSync(gpath.join(dir,
+    'mpd-patch-guards.log'), text + String.fromCharCode(10)); return } catch (e)
+    {} } } catch (e) {} }; const say = (decision, reason) => { try { const seen
+    = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen =
+    {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1;
+    logGuard('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) }
+    } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs');
+    const path = process.getBuiltinModule('node:path'); const profileDir =
+    path.normalize(process.getBuiltinModule('node:url').fileURLToPath(baseUrl));
+    const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p,
+    'utf8')) } catch (e) { return null } }; const readText = (p) => { try {
+    return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ =
+    String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH =
+    String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB =
+    String.fromCharCode(9); const stripComments = (text) => { const out = [];
+    for (const line of String(text).split(LF)) { let kept = ''; let quote = '';
+    for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if
+    (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote =
+    '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote =
+    (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0)
+    === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) {
+    return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0;
+    while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) ===
+    TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if
+    (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const
+    trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null }
+    return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar
+    = (text) => { const stripped = stripComments(text); if
+    (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows =
+    []; let current = null; for (const line of stripped.split(LF)) { if
+    (line.trim() === '') { continue } const indent = indentOf(line); const body
+    = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length
+    === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines:
+    [] }; rows.push(current) } if (current !== null && (isItem || indent >
+    current.indent)) { current.lines.push({ indent, body }) } } let named =
+    false; let mounting = false; for (const row of rows) { let nameValue = null;
+    let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for
+    (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv
+    !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent =
+    entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if
+    (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) {
+    disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null
+    || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true;
+    const literallyDisabled = disabledValue !== null && disabledIndent <=
+    nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if
+    (!literallyDisabled) { mounting = true } } if (mounting) { return true } if
+    (!named) { return true } return false }; const ownModules =
+    path.join(profileDir, 'node_modules'); const hostDirs =
+    [path.join(ownModules, 'dsh-better-sidebar'), path.join(ownModules,
+    '@mpd-dsh', 'mpd', 'node_modules', 'dsh-better-sidebar')]; if
+    (!hostDirs.some((dir) => fs.existsSync(dir))) { say('DISABLED',
+    'dsh-better-sidebar is resolvable from neither the profile node_modules nor
+    the bundle'); return true } const manifest = readJson(path.join(profileDir,
+    'package.json')); const bundles = manifest && manifest.dsh &&
+    manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ?
+    manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar')
+    >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle
+    layer'); return true } for (const bundle of bundles) { const name =
+    String(bundle); for (const dir of [path.join(ownModules, name),
+    path.join(profileDir, '..', 'node_modules', name)]) { const other =
+    readJson(path.join(dir, 'package.json')); if (!other) continue; if
+    (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh &&
+    other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !==
+    'string') continue; const text = readText(path.join(dir, rel)); if (text !==
+    null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' +
+    name + ' already mounts it in its own patch'); return true } } } const argv
+    = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for
+    (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string'
+    ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') {
+    overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) {
+    overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir,
+    'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')];
+    if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '')
+    { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for
+    (const overlay of overlays) { layers.push(path.resolve(overlay)) } for
+    (const layer of layers) { const text = readText(layer); if (text !== null &&
+    foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + '
+    already mounts it'); return true } } const entries =
+    [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options
+    && e.options.name === '@deepseek-ai/dsh-host-webserver' &&
+    (e.options.disabled === undefined || e.options.disabled === false)); if
+    (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver
+    entry in this composition'); return true } say('ENABLED', 'web plane present
+    and no other layer mounts dsh-better-sidebar'); return false } catch (e) {
+    try { logGuard('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' +
+    String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()
+- id: mcp-astgrep
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: ast_grep
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ?
+        decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/,
+        "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/launch.js")
+    toolCallTimeoutMs: 60000
+- id: mcp-git
+  name: '@deepseek-ai/dsh-mcp-client'
+  disabled: true
+  config:
+    serverName: git
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_GIT_CLI || ((typeof baseUrl === "string" ?
+        decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/,
+        "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/launch.js")
+      - git
+    toolCallTimeoutMs: 60000
+- id: mcp-shell
+  name: '@deepseek-ai/dsh-mcp-client'
+  disabled: true
+  config:
+    serverName: shell
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_SHELL_CLI || ((typeof baseUrl === "string" ?
+        decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/,
+        "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/launch.js")
+      - shell
+    toolCallTimeoutMs: 60000
+- id: mcp-lsp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: lsp
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ?
+        decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/,
+        "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/launch.js")
+    toolCallTimeoutMs: 60000
+- id: mcp-codegraph
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: codegraph
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ?
+        decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/,
+        "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/dist/launch.js")
+    toolCallTimeoutMs: 60000
+- id: mpd-web-compat
+  name: '@mpd-dsh/mpd'
+- id: mpd-dsh-adapter
+  name: '@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js'
+- id: mpd-config
+  name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+  config: {}
+- id: mpd-goal
+  name: '@mpd-dsh/mpd/packages/mpd-goal-plugin/dist/index.js'
+  config:
+    enabled: true
+    autoAnchor: true
+    autoRounds: 32
+- id: mpd-team-watchdog
+  name: '@mpd-dsh/mpd/packages/mpd-team-watchdog-plugin/dist/index.js'
+  config:
+    stateDir: .mpd/team
+    warnSilenceMs: 600000
+    tickIntervalMs: 15000
+    warnStreakToEscalate: 6
+    actionOnEscalate: warn-only
+    toolInFlightMaxMs: 900000
+    holdTtlMs: 900000
+- id: mpd-tools
+  name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
+  config:
+    writeGuard: true
+    truncateMaxBytes: 8192
+- id: mpd-modelchain
+  name: '@mpd-dsh/mpd/packages/mpd-modelchain-plugin/dist/index.js'
+- id: mpd-ext
+  name: '@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js'
+  config:
+    quiet: false
+- id: mpd-roles
+  name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
+- id: mpd-verify
+  name: '@mpd-dsh/mpd/packages/mpd-verify-plugin/dist/index.js'
+  config:
+    mode: hard
+    escapeUses: 1
+- id: mpd-ulw
+  name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
+  config:
+    maxRounds: 3
+- id: mpd-hashline
+  name: '@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js'
+  config:
+    guardEditTools: true
+- id: mpd-boulder
+  name: '@mpd-dsh/mpd/packages/mpd-boulder-plugin/dist/index.js'
+- id: mpd-comment-checker
+  name: '@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js'
+  config:
+    autoCheck: false
+- id: mpd-codegraph
+  name: '@mpd-dsh/mpd/packages/mpd-codegraph-plugin/dist/index.js'
+  config:
+    autoInit: true
+    initTimeoutMs: 60000
+- id: mpd-memory
+  name: '@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js'
+  config:
+    vcs: git
+- id: mpd-workmate
+  name: '@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js'
+- id: mpd-team-core
+  name: '@mpd-dsh/mpd/packages/mpd-team-core-plugin/dist/index.js'
+- id: mpd-team-compact
+  name: '@mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js'
+- id: mpd-bootstrap
+  name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
+- id: mpd-tui-adapter
+  name: '@mpd-dsh/mpd/packages/mpd-tui-adapter-plugin/dist/index.js'
+  config: {}
+- id: mpd-tui
+  name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+- id: mpd-agent-team
+  name: '@deepseek-ai/dsh-experimental-agent-team'
+  disabled: !!js >-
+    (() => { const logGuard = (text) => { try { const gfs =
+    process.getBuiltinModule('node:fs'); const gpath =
+    process.getBuiltinModule('node:path'); const gos =
+    process.getBuiltinModule('node:os'); let cwd = ''; try { cwd = process.cwd()
+    } catch (e) {} const roots = [process.env.MPD_MCP_LOG_DIR,
+    process.env.DSH_WORKSPACE_ROOT, cwd, gos.tmpdir()]; for (const root of
+    roots) { if (typeof root !== 'string' || root.trim() === '') { continue }
+    try { const dir = gpath.join(root, '.mpd', 'logs'); gfs.mkdirSync(dir, {
+    recursive: true }); gfs.appendFileSync(gpath.join(dir,
+    'mpd-patch-guards.log'), text + String.fromCharCode(10)); return } catch (e)
+    {} } } catch (e) {} }; try { const hit = [...ctx.loader.entries()].some((e)
+    => { const o = e && e.options; if (!o) return false; const n = typeof o.name
+    === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : '';
+    return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 ||
+    i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen =
+    globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if
+    (seen.said !== true) { seen.said = true; logGuard('[mpd-agent-team] DISABLED
+    in a dsh-tui composition: the official team plugin registers its session
+    projection through a ROOT-bound sessionProjections proxy, and the dsh-tui
+    host refuses root.effect from a plugin activation - mpd-agent-team and
+    mpd-tool-agent-team stay unmounted. THE MPD TEAM IS UNAFFECTED: since the
+    team-plane split (W2) it runs on the NATIVE executor over ctx.subagents,
+    which needs nothing from this row (see cordis.patch.yml TUI PLANE / W5)') }
+    } catch (e) {} return true } catch (e) { try { logGuard('[mpd-agent-team]
+    TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the
+    row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {}
+    return false } })()
+  config:
+    maxMembers: 16
+    maxTasks: 256
+    maxPendingMessagesPerMember: 64
+    maxMessageBytes: 32768
+    disposalTimeoutMs: 5000
+- id: mpd-roster-provider
+  name: '@mpd-dsh/mpd/packages/mpd-roster-provider-plugin/dist/index.js'
+  config:
+    baseProvider: spawn
+- id: mpd-tool-agent-team
+  name: '@deepseek-ai/dsh-experimental-tool-agent-team'
+  disabled: !!js >-
+    (() => { const logGuard = (text) => { try { const gfs =
+    process.getBuiltinModule('node:fs'); const gpath =
+    process.getBuiltinModule('node:path'); const gos =
+    process.getBuiltinModule('node:os'); let cwd = ''; try { cwd = process.cwd()
+    } catch (e) {} const roots = [process.env.MPD_MCP_LOG_DIR,
+    process.env.DSH_WORKSPACE_ROOT, cwd, gos.tmpdir()]; for (const root of
+    roots) { if (typeof root !== 'string' || root.trim() === '') { continue }
+    try { const dir = gpath.join(root, '.mpd', 'logs'); gfs.mkdirSync(dir, {
+    recursive: true }); gfs.appendFileSync(gpath.join(dir,
+    'mpd-patch-guards.log'), text + String.fromCharCode(10)); return } catch (e)
+    {} } } catch (e) {} }; try { const hit = [...ctx.loader.entries()].some((e)
+    => { const o = e && e.options; if (!o) return false; const n = typeof o.name
+    === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : '';
+    return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 ||
+    i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen =
+    globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if
+    (seen.said !== true) { seen.said = true; logGuard('[mpd-agent-team] DISABLED
+    in a dsh-tui composition: the official team plugin registers its session
+    projection through a ROOT-bound sessionProjections proxy, and the dsh-tui
+    host refuses root.effect from a plugin activation - mpd-agent-team and
+    mpd-tool-agent-team stay unmounted (see cordis.patch.yml TUI PLANE)') } }
+    catch (e) {} return true } catch (e) { try { logGuard('[mpd-agent-team]
+    TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the
+    row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {}
+    return false } })()
+  config:
+    freshProvider: mpd-roster
+    forkProvider: fork
+- id: mpd-ui-agent-team
+  name: '@deepseek-ai/dsh-experimental-client-ui-agent-team'
+- id: mcp-context7
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: context7
+    transport: streamable-http
+    url: https://mcp.context7.com/mcp
+    toolCallTimeoutMs: 60000
+- id: mcp-grepapp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: grep_app
+    transport: streamable-http
+    url: https://mcp.grep.app
+    toolCallTimeoutMs: 60000
+- id: preset-mpd
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: mpd
+    order: 1
+    name: MPD (Main Working Agent)
+    description: >-
+      The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every
+      project, works natively, one-shot-consults the specialists
+      (Architect/Researcher/Planner/Deep Worker/Senior
+      Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior
+      Engineer) via mpd_role_spawn, and runs teams through the official
+      @deepseek-ai/dsh-experimental-agent-team plugin.
+    plugins:
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          prefix: >-
+            You are MPD, the main working agent of the my-power-dsh DeepSeek
+            Harness bundle, powered by the {{model}} model. Your working
+            directory is {{cwd}}.
+
+            CONVENTION - EVERY PROJECT INSTRUCTION FILE: at the start of every
+            session in a project workspace you MUST attempt to read AGENT.md
+            (fall back to AGENTS.md, then CLAUDE.md) from the project root down
+            to the current directory, and follow it. Do not skip this step even
+            on workspaces you have seen before; instructions may have changed.
+
+            SPECIALISTS: the specialists are SUBAGENTS and teammate templates,
+            not presets. One-shot consult them with mpd_role_spawn (names from
+            mpd_roles_list), each named for what it does: Architect
+            (architecture review, deep debugging, self-review), Researcher
+            (evidence-based code / open-source search), Planner (produces
+            .mpd/plans plans, never implements), Deep Worker (executes goals
+            end-to-end with tools), Senior Engineer (primary implementation and
+            verification), Lead (orchestration, delegation, integration),
+            Explorer (read-only codebase search and location), Reviewer
+            (correctness/risk findings, no fixes), Plan Reviewer (plan
+            executability and reference review), Vision Analyst
+            (image/screenshot/PDF analysis), Junior Engineer (fast, well-scoped
+            execution). Read-only specialists (Architect/
+            Researcher/Planner/Explorer/Plan Reviewer/Vision Analyst) are
+            mechanically restricted from writing - treat their output as advice.
+            Workers (Senior Engineer/ Junior Engineer/Deep Worker/Lead/Reviewer)
+            can edit - their claimed results are closed by a DIFFERENT agent's
+            recorded verdict, never by your own reading of them.
+
+            Reconnaissance is DELEGATED: your own `read`/`grep`/`glob` on a
+            SOURCE path is REFUSED (the captain investigation guard;
+            `captain.investigation` in mpd.jsonc is "deny" by default and
+            "allow" restores access). The documentation band stays open -
+            .mpd/**, docs/**, evidence/**, agent-references/** and the root
+            AGENTS.md/README*.md/ CHANGELOG.md/LICENSE*.md - because integrating
+            a report needs the contract and the records, not the sources.
+            Delegate the search instead: mpd_role_spawn with the Explorer (find
+            files and code) or Researcher (evidence-based search) role, or a
+            team member, and consume the REPORT.
+
+            TEAM WORK uses the OFFICIAL Agent Teams plugin
+            (@deepseek-ai/dsh-experimental-agent-team), NOT bare mpd_role_spawn
+            loops. STAGING is OURS: the `agent_teams_plan` tool is the one write
+            path that records a plan before anybody exists — create ->
+            add_member / create_task -> approve, and approval is what EXECUTES
+            it (nothing is spawned before that). The OFFICIAL tools stay correct
+            for the members themselves, the shared board and delivery:
+            spawn_teammate (one call per teammate; name + description + complete
+            prompt + context fresh|fork), team_task_create / team_task_list /
+            team_task_get / team_task_update (the shared task DAG and its
+            compare-and-set lifecycle), send_message (durable peer message;
+            target "lead" reaches you), list_agents, wait_agent,
+            interrupt_agent. You are the captain: design the DAG, dispatch by
+            workload size, keep requirement / task / review as separate tasks,
+            and integrate results yourself. Every team edit a member makes is
+            immediately visible to everyone — split write work into disjoint
+            scopes and record the expected write scope on the task.
+
+            THE ROSTER IS YOUR TEMPLATE SET. The 11 specialists (Architect,
+            Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer,
+            Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) are
+            teammate INSTANTIATION TEMPLATES, not tools: fetch a member's
+            persona/role text with mpd_role_persona and paste it into the
+            spawn_teammate prompt. The read-only specialists (Architect,
+            Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) are
+            MECHANICALLY denied write/edit/bash/mpd_hashline_edit by the
+            bundle's guard, so treat their output as advice; workers (Senior
+            Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) can edit —
+            and their claimed results are closed by a DIFFERENT agent's recorded
+            verdict (the verification law below), never by your own reading of
+            them.
+
+            MODEL ROUTES: a teammate created by spawn_teammate runs on YOUR
+            route (the official TeamService forwards only the prompt and the
+            parent to the subagent registry, so no per-teammate model can be
+            injected). The mpd team-model slots still apply to the ONE-SHOT
+            consult path (mpd_role_spawn), where the route is explicit. If a
+            teammate needs a different model, state that in its prompt so it can
+            raise it with you.
+
+            SESSION STARTUP RULE (binding; MECHANICAL by default, evaluated by
+            the mpd session gate): a session starts with NO team — a team is NOT
+            a precondition of a session. At the session's first pre-step the
+            complexity gate is evaluated and behaves accordingly, and
+            `team.gate` in mpd.jsonc selects the mode: mechanical (default) |
+            advisory | off. Every notice it injects carries the marker
+            `[AgentTeams] Session-start team rule`.
+              - gate NOT triggered -> run the session solo; do NOT create a team, and do not invent
+                one. Ordinary questions, one-line edits and lookups belong here.
+              - gate TRIGGERED -> the gate STAGES an APPROVABLE PLAN SHELL (0 members, 0 tasks)
+                through the `agent_teams_plan` tool, then injects ONE notice naming the returned plan
+                id; NOTHING is spawned — the plan is INERT until you approve it with `agent_teams_plan
+                {action:"approve"}`; extend it with `add_member`/`create_task` first, and approval is
+                what spawns the members and posts the tasks. Never tell the user a team was created
+                while that shell is unapproved.
+              - an explicit `team:` / `!team` request ALSO stages the shell (signal A) and the marker is
+                CONSUMED from the goal text — you are the captain from that moment. Tell the user the
+                roster and DAG you are about to run, extend the staged shell, then approve it. If the
+                team does not fit, discard the plan and continue solo with the user — that is an
+                accepted outcome.
+              - without `agent_teams_plan` mounted, or with `team.gate: "advisory"`, the notice is
+                ADVISORY and says `NO team was staged`: you stage the team yourself at the moment the
+                work warrants one. If the work does not warrant a team (a short or single-threaded
+                task), continue solo and say so in one line.
+            The gate is frozen: trigger = explicit flag OR (matchedSignals >=
+            1), where the explicit flag is a `team:` prefix or `!team`, and the
+            soft signals are (B) >=4 distinct deliverable verbs, (C) >=3
+            enumerated steps/action verbs/clauses, (D) an ACTIVE boulder work
+            exists for this workspace (`status: "active"` in .mpd/boulder.json)
+            — a plan FILE alone is NOT a signal. This rule is enforced on the
+            PRE-STEP, BEFORE the sizing doctrine below — the sizing discipline
+            can only add team-shape advice once a team exists or the user asks
+            for one; it can never force a team into existence.
+
+            AGENT TEAM ROUTING — when you do build a team (the user asked for
+            one, or the gate triggered), FIRST size the task: estimate scope,
+            risk and parallelizable surface, then state your size judgment
+            (small / large + one line of rationale). After sizing pick exactly
+            one of the two modes:
+              a) SMALL task -> the internal roster of 11 normal-named specialists, staged as members
+                 through agent_teams_plan (add_member per member: its prompt is the persona text from
+                 mpd_role_persona) and then approved. No separate user
+                 confirmation for the mode itself; tell the user the roster and DAG you are running.
+              b) LARGE task (when you judge it necessary) -> a NON-built-in team group: on-the-spot
+                 formation (custom members staged the same way, with personas from mpd_role_persona,
+                 including specialists pulled from the roster or workmates) or any other team shape.
+                 BECAUSE this goes beyond the internal roster, you MUST ask the user first (one
+                 concise confirmation naming the proposed roster, extras and rationale); approve only
+                 after the user agrees. Both team forms always exist: the internal roster AND
+                 on-the-spot formation — pick per size, never both at once.
+
+            REQUIREMENTS CONFERENCE (both modes, non-optional) — before the team
+            writes any task DAG, hold a joint requirements session with the user
+            AND the AGENTS present (requirements/planning specialists such as
+            Architect/Planner/Plan Reviewer; include analysis members of the
+            planned roster). Use SOCRATIC questioning to squeeze the user's
+            requirements clean: challenge assumptions, surface edge cases, probe
+            for the real goal behind the goal, and agree definitions of done.
+            EVERY agent taking part may ask the user questions — route them
+            through the captain: collect member questions via send_message, then
+            put them to the user in one consolidated batch with
+            ask_user_question. Never silently assume an answer. Deliverable: a
+            crisp requirements summary + acceptance criteria agreed with the
+            user, which becomes the input to the staged plan.
+
+            WORKMATE LIBRARY (~/.mpd/workmate): the roster specialists are BASE
+            templates only. When creating a team or pulling up a specialist you
+            will reuse across sessions, you may INSTANTIATE it as a durable,
+            evolving workmate: call mpd_workmate_init (base + independent name)
+            to copy the base into ~/.mpd/workmate/<name>/. After each work
+            session the workmate self-summarizes via mpd_workmate_reflect
+            (evolving its own persona + independent memory, size-capped) and
+            keeps a short note in the library. Before delegating a role task,
+            consult mpd_workmate_list / mpd_workmate_match(task): if a workmate
+            note matches well, delegate to it — for one-shot use
+            mpd_workmate_spawn. Inside a TEAM, reuse is YOUR explicit act, not
+            an automatic injection: add a member whose name equals the workmate
+            name, hand it the task, and when it reports back call
+            mpd_workmate_reflect so the instance evolves. (MEASURED: the
+            automatic persona/memory injection lived in the vendored
+            dsh-agent-teams body, which no loader row has mounted since its
+            2026-09-27 retirement and which the de-vendor wave removed — so the
+            capability is NOT active. Re-establishing it belongs to the OFFICIAL
+            team path, mpd-roster-provider-plugin, which already routes a
+            teammate whose description names a roster member.) If no note
+            matches well enough (matched=false), initialize a NEW workmate with
+            mpd_workmate_init instead of forcing a weak match. Keep the library
+            tidy with mpd_workmate_rename and mpd_workmate_delete: delete is
+            ARCHIVE-FIRST (the instance moves to ~/.mpd/workmate/.archive/ and
+            only an explicit purge with confirm=<name> destroys it), both are
+            REFUSED while the workmate is in use by a member or a running spawn,
+            and names are ASCII-only [a-z0-9_-].
+
+            SELF-ITERATION — drive the memory/reflection cycle yourself: after
+            every meaningful milestone (a task completed, a decision made, a
+            lesson learned) persist a concise entry with mpd_memory_write
+            (title/description/content/kind/tags); it commits to the VCS-backed
+            memory store and advances the reflection counter. When
+            mpd_memory_reflect reports REFLECTION DUE (crossed
+            memory.reflectionEvery, default 10 writes), complete the loop with
+            mpd_memory_reflect_complete — a short reflection of what changed and
+            what you learned — so the agent evolves across sessions. Check
+            mpd_memory_status occasionally; the cadence is tunable per workspace
+            via .mpd/mpd.jsonc (memory.reflectionEvery, applied at boot).
+
+            THE VERIFICATION LAW — BINDING, in every mode (solo, one-shot, team,
+            ULW, ralph, workflow, headless). Code written by A is verified by a
+            DIFFERENT agent B; A and B are independent; B works from the frozen
+            contract and the DOCUMENTATION and never from the implementation; a
+            problem BOUNCES BACK to a writer for repair.
+
+              * You do NOT write code yourself. A `write`/`edit` on a code path is REFUSED for you
+                (the workspace's top-level agent) while no delegation+verification loop is armed —
+                the guard is mechanical, not a reminder. Delegate the scope to a write-capable
+                member instead: a team work task, or mpd_role_spawn / a subagent.
+              * If you genuinely must write it yourself, arm the loop first:
+                mpd_verify_open {writer:"self", self_write_reason:"…", verifier:"<another agent>"}
+                names a verifier that is NOT you and counts the write. The other route is the
+                COUNTED escape: mpd_verify_escape {reason:"…"} logs a row and allows one write.
+              * You do NOT verify your own work, and you do not "check the code yourself" in place
+                of verification. Verification is a DIFFERENT agent's recorded verdict:
+                mpd_verify_seat binds it to the loop, mpd_verify_evidence produces black-box
+                evidence (a whitelisted gate, or a content-free artifact probe), and
+                mpd_verify_record writes the verdict. A record with verifierId === writerId, with
+                no cited documents, or a PASS with no gate evidence is REFUSED.
+              * The verifier records its verdict BEFORE reading any implementation. Only a
+                recorded FAIL unlocks implementation reading, for diagnosis, counted — and a FAIL
+                opens a repair task for a WRITER; it never becomes a silent fix.
+              * Docs, README, `*.md`, `LICENSE*` and `.mpd/**` / `docs/**` / `evidence/**` /
+                `agent-references/**` are never gated: the manual, the PR body and the records
+                must stay writable.
+              * HONEST BOUND, stated rather than implied: a composition with no `tools.guard` seam
+                degrades to bookkeeping and its boot line says `verifyGate=absent`; and a gate's
+                output (tail) may print source frames, so it is controlled black-box evidence, not
+                a proof of reading nothing — blindness is proven by the plugin's own observation
+                log.
+
+            You are responsible for the final result, and the way you are now
+            responsible for it is by DELEGATING the write and ACCEPTING a
+            different agent's recorded verdict — never by writing the code and
+            re-reading it yourself. Your own reading of a result is INTEGRATION,
+            which is not verification.
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+          instructionFileCandidates:
+            - AGENT.md
+            - AGENTS.md
+            - CLAUDE.md
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+      - id: tool-jobs
+        name: '@deepseek-ai/dsh-tool-jobs'
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+      - id: command-goal
+        name: '@deepseek-ai/dsh-command-goal'
+      - id: tool-goal
+        name: '@deepseek-ai/dsh-tool-goal'
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: >
+                You are in plan mode. Stay in plan mode until exit_plan_mode
+                succeeds or the user switches the session mode. Imperative
+                language to implement changes means plan the implementation, not
+                execute it. A user's conversational agreement — including an
+                answer confirming something you asked — approves nothing and
+                does not end plan mode; fold the confirmed decision into the
+                plan and submit it through exit_plan_mode.
+
+
+                Explore first. Use non-mutating reads, searches, static
+                analysis, and checks to ground the plan in the actual
+                repository. Do not edit or write files, change configuration,
+                run formatters or code generation that rewrites tracked files,
+                commit, or otherwise carry out the plan. Prefer existing
+                functions and patterns over new machinery.
+
+
+                The tool catalog stays the same across modes for request-cache
+                stability. These plan-mode rules override any later tool
+                description or guidance that suggests using mutation tools;
+                those tools remain listed to keep the tool catalog unchanged. Do
+                not use todo_write to track this planning phase: it tracks
+                implementation after an approved plan, while the plan itself
+                belongs in exit_plan_mode.
+
+
+                Resolve discoverable facts by inspection. Use ask_user_question
+                only for user-owned choices or material ambiguity that
+                inspection cannot answer. Do not ask the user where code lives
+                or how current behavior works when you can find out.
+
+
+                Make the plan decision-complete: state the goal and success
+                criteria; group implementation changes by subsystem; identify
+                public API, schema, and data-flow changes; cover edge cases,
+                failure modes, tests, acceptance criteria, and explicit
+                assumptions. Keep it concise enough to review but detailed
+                enough that another engineer can implement it without making
+                design decisions.
+
+
+                When ready, call exit_plan_mode with the complete plan markdown,
+                starting with a # title. Make exit_plan_mode the only and final
+                tool call in that assistant response: it presents the plan for
+                approval, and implementation begins only in a later step after
+                approval. Do not paste the final plan as a plain reply or ask
+                "should I proceed?" through prose or ask_user_question. If
+                review rejects it, incorporate the feedback and present again.
+                If the review channel is unavailable or aborted, stay in plan
+                mode and ask the user to switch modes manually; do not proceed
+                with implementation.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 8192
+              headChars: 4096
+              tailChars: 1024
+      - id: delegation
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+              backgroundMode: continuable
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+              backgroundMode: continuable
+          - id: tool-subagent-codex
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: codex
+              toolName: subagent_codex
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: tool-subagent-claude-code
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: claude-code
+              toolName: subagent_claude_code
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            config:
+              provider: spawn
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ralph
+            name: '@deepseek-ai/dsh-tool-ralph'
+            config:
+              subagentProvider: spawn
+              maxRounds: 64
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: false
+          searchTimeoutMs: 60000
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).
+
+
+----- STEP 09d-astgrep-engine (exit=0, 2s) -----
+$ node /opt/mpd/scripts/install-mcp.ts --toolchain /opt/mpd/.toolchain 
+[install-mcp] installing npm toolchain: @ast-grep/cli + @colbymchenry/codegraph@1.5.0
+
+added 4 packages in 2s
+npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn install-scripts   @ast-grep/cli@0.50.0 (postinstall: node postinstall.js)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+[install-mcp] cannot write /root/sandbox-home/.mpd/mcp.env (ENOENT); content printed below — write it yourself or pass --env-out to a writable path
+
+# my-power-dsh MCP activation (generated by scripts/install-mcp.ts; source before dsh)
+export MPD_AST_GREP_SG_PATH="/opt/mpd/.toolchain/node_modules/.bin/sg"
+export MPD_CODEGRAPH_BIN="/opt/mpd/.toolchain/node_modules/.bin/codegraph"
+export PATH="/opt/mpd/.toolchain/bin:$PATH"   # toolchain bin dir (optional user binaries)
+
+[install-mcp] next: source /root/sandbox-home/.mpd/mcp.env in the shell that launches dsh, then restart dsh.
+
+
+----- STEP 11b-mcp-surface (exit=0, 0s) -----
+$ node /opt/mpd-e2e/lib/owed-mcp.ts --boot-log /work/steps/11-boot.log --state /work/assertions.ndjson --search-dir /opt/mpd/packages/mpd-mcp-astgrep/src 
+[owed-mcp] boot.mcpToolNaming=true — every registered MCP tool is named mcp__<server>__<tool>; no server outside the shipped patch's declared set registered (declared: ast_grep,lsp,codegraph,context7,grep_app; registered: ast_grep,codegraph,lsp); every LOCAL row came up (the two remote rows register only when their public service answers, so their absence is not graded); and the ast-grep row published its whole declared surface (search,rewrite,scan)
+[owed-mcp] boot.mcpLiveSearch=true — a REAL mcp__ast_grep__search call through the mounted adapter matched 1 site(s) in /opt/mpd/packages/mpd-mcp-astgrep/src, and the negative control matched 0 — the search engine ran, so the registered name is backed by a working server on this machine
+
+
+----- STEP 11-boot (exit=-1, 16s) -----
+$ dsh --profile web --patch probe.yml --port 3197 --no-open (background; terminated by the harness after the assertions)
+[docker-probe] APPLIED=ok
+[docker-probe] CORE_TOOLS=6/6
+[docker-probe] CORE_TOOLS_MISSING=
+[docker-probe] MCP_TOOLS=3/3
+[docker-probe] MCP_TOOLS_MISSING=
+[docker-probe] MCP_REGISTERED=mcp__ast_grep__rewrite,mcp__ast_grep__scan,mcp__ast_grep__search,mcp__codegraph__codegraph_explore,mcp__lsp__find_definition,mcp__lsp__find_implementation,mcp__lsp__find_references,mcp__lsp__find_workspace_symbols,mcp__lsp__get_diagnostics,mcp__lsp__get_hover,mcp__lsp__get_incoming_calls,mcp__lsp__get_outgoing_calls,mcp__lsp__prepare_call_hierarchy,mcp__lsp__rename_symbol,mcp__lsp__rename_symbol_strict,mcp__lsp__restart_server
+[docker-probe] MCP_SERVER_COUNTS=ast_grep:3,codegraph:1,lsp:12
+[docker-probe] TEAM_TOOLS_ROOT=0/9
+[docker-probe] AGENTS_AT_APPLY=0
+[docker-probe] RETIRED_TOOLS_PRESENT=
+[docker-probe] ADAPTER_SERVICE=present
+[docker-probe] ADAPTER_CAPS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals
+[docker-probe] ADAPTER_TOOL_CALL=ok
+[docker-probe] MCP_LIVE_SEARCH=ok:1
+[docker-probe] MCP_LIVE_SEARCH_SHAPE=keys=isError,ok,raw,value ok=true isError=false value(keys=content matches=none)
+[docker-probe] MCP_LIVE_SEARCH_CONTROL=ok:0
+[docker-probe] MCP_LIVE_SEARCH_CONTROL_SHAPE=keys=isError,ok,raw,value ok=true isError=false value(keys=content matches=none)
+[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService
+[docker-probe] AGENT_TEAMS_METHODS=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+[docker-probe] DONE=1
+dsh web: http://127.0.0.1:3197/?token=<redacted>
+[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-8310b8a9-c277-477a-b16e-02189feb scopelessRead=0/9
+[docker-probe] AGENT_VISIBLE_TOOLS=106 agent=session-8310b8a9-c277-477a-b16e-02189feb
+
+
+----- STEP 12-web-live (exit=0, 0s) -----
+$ skipped: no live credential staged
+[record] live.web.turnStarted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.web.turnCompleted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.web.noErrorTurns=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.web.noMalformedToolJson=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.web.toolCallsParsed=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.web.mpdToolCalled=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.web.assistantReplied=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+
+
+----- STEP 13-browser (exit=0, 0s) -----
+$ skipped: MPD_E2E_BROWSER was not set
+
+
+----- STEP 14-tui (exit=0, 93s) -----
+$ bash docker/tui-lane.sh
+[record] tui.hostInstall=true — the TUI host installs globally and lands on PATH
+[record] tui.pluginAddHost=true — the TUI host bundle installs into the dsh-tui profile
+[record] tui.pluginAddBundle=true — THIS bundle installs into the dsh-tui profile as the third patch layer
+[record] tui.compose=true — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)
+[record] tui.presetPreference=true — the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.14.0 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd
+[record] tui.presetRow=true — the mpd preset row is composed in the TUI plane
+[record] tui.mpdTuiRow=true — the bundle's mpd-tui row is composed in the TUI plane
+[record] tui.agentTeamRows=true — all three official Agent Teams rows are composed in the TUI plane
+[record] tui.teamSceneOtherSessionInvisible=true — a session with NO bound board drew the product's OWN empty-state marker, and the board a SIBLING session owns was NOT drawn in it: the marker is the exported constant NO_SESSION_TEAM_MARKER read out of its source declaration and matched as a SUBSTRING of the captured pane, and none of the 3 task id(s) the sibling's record carries appeared in that same pane as a node label
+[record] tui.teamFixtureBound=true — the seeded board is bound to the LIVE session this TUI runs as — the id discovered from the harness's OWN store (a pre-boot snapshot differenced against the store as it is now, so the id that APPEARED during this boot is the TUI's) and keyed through the PRODUCT's own rule, imported from packages/mpd-team-core-plugin/src/team-store.ts :: sessionKey. Both spellings the product's own createTeam writes are on disk: teams.json's active[<sessionKey>] = "tui-scene" AND the record's leadSessionId = <sessionKey>, because the product has two readers (the mpdTeams service answers from the index; its session-scoped degradation matches the record's leadSessionId). WITHOUT this binding the scene correctly draws its empty state and every team arm below reddens — which is exactly the F1 defect of evidence/docker/client-install/2026-10-08T08-52-23Z
+[record] tui.teamSceneOpened=true — the /mpd team scene opened on a real terminal
+[record] tui.teamGraphDrawn=true — the LAYERED BOXES were drawn: the ROUNDED corner census equals the record's own task count, one box per task, which a dropped box reddens (the square corners the old arm matched belong to the scene FRAME; the subjects are NOT claimed here, because clause AC1 moved them to the pinned detail body that tui.teamGraphContent asserts)
+[record] tui.teamGraphEdges=true — the dependency EDGES were drawn with box-drawing junctions
+[record] tui.teamGraphContent=true — every task id the lane's OWN record carries is drawn as a node label AND the record's own subject is reachable one keystroke away in the pinned detail body, where clause AC1 moved it (a literal id would keep passing after a dropped task)
+[record] tui.mergedPanelOpens=true — the MPD combo (alt+a, sent as tmux M-a from the plain chat state) opened the MERGED panel on a real terminal, and the PRE-KEY capture proves the combo is what opened it: the captured pane carries the merged panel: titleHits=2 subagentHits=2 teamHits=2 subagentMarker=line 6 teamMarker=line 9 header=line 6 emptyState=line 7 (each family must be > 0, pre-key control hits = 0)
+[record] tui.mergedPanelOrder=true — the captured pane holds the subagent section ABOVE the team body — measured on the same pane the open row reads: the captured pane carries the merged panel: titleHits=2 subagentHits=2 teamHits=2 subagentMarker=line 6 teamMarker=line 9 header=line 6 emptyState=line 7 (each family must be > 0, pre-key control hits = 0)
+[record] tui.hostDashboardKeyIntact=true — Ctrl+A stayed the HOST's key on this host, as frozen R4 requires wherever the panel seam is present: with the seeded team present it did NOT open MPD's merged panel, and after the team record was removed it still did not. The panel is reached through MPD's own entry points instead (tui.mergedPanelOpens above proves /mpd panel)
+[record] tui.noDirectTuiSeam=true — the D6 gate (no file outside mpd-tui-adapter-plugin names a ctx.tui* seam) passed on a byte-identical copy of the INSTALLED tree, executed where node can strip types
+[record] live.tui.turnStarted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.turnCompleted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.noErrorTurns=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.noMalformedToolJson=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.toolCallsParsed=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.mpdToolCalled=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.assistantReplied=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] tui.boot=true — the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)
+[record] tui.noFatalSignatures=true — no fatal apply/module/preset signature in the TUI pane or log
+[record] tui.sessionPreset=true — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)
+[record] tui.laneExit=true — the TUI lane ran to completion with every assertion green
+
+
+----- STEP 16-owed-lsp (exit=0, 1s) -----
+$ node /opt/mpd-e2e/lib/owed-cases.ts --kind lsp --repo /root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd --work /out/owed --state /work/assertions.ndjson 
+[owed-cases] restore.lspBootstrap=true — the launcher generated a valid .mpd/lsp/cclsp.json with 1 well-formed language server(s), 1 of them serving the TypeScript family, and left a pre-existing user cclsp.json byte-identical (the negative control)
+
+
+----- STEP 16b-pack-refresh (exit=0, 0s) -----
+$ node /opt/mpd/scripts/pack-mpd.ts 
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] modes normalized: 608 files (644: 592, 755: 16)
+[pack-mpd] staged package -> /opt/mpd/dist/mpd-package  (out-dir source: default (<repo>/dist/mpd-package))
+
+
+----- STEP 16b2-case-engine (exit=0, 1s) -----
+$ node /opt/mpd/scripts/install-mcp.ts --toolchain /opt/mpd/dist/mpd-package/.toolchain 
+[install-mcp] installing npm toolchain: @ast-grep/cli + @colbymchenry/codegraph@1.5.0
+
+added 4 packages in 1s
+npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn install-scripts   @ast-grep/cli@0.50.0 (postinstall: node postinstall.js)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+[install-mcp] written -> /root/sandbox-home/.mpd/mcp.env
+
+# my-power-dsh MCP activation (generated by scripts/install-mcp.ts; source before dsh)
+export MPD_AST_GREP_SG_PATH="/opt/mpd/dist/mpd-package/.toolchain/node_modules/.bin/sg"
+export MPD_CODEGRAPH_BIN="/opt/mpd/dist/mpd-package/.toolchain/node_modules/.bin/codegraph"
+export PATH="/opt/mpd/dist/mpd-package/.toolchain/bin:$PATH"   # toolchain bin dir (optional user binaries)
+
+[install-mcp] next: source /root/sandbox-home/.mpd/mcp.env in the shell that launches dsh, then restart dsh.
+
+
+----- STEP 16c-owed-cases (exit=0, 363s) -----
+$ node /opt/mpd-e2e/lib/owed-cases.ts --kind cases --repo /opt/mpd --work /out/owed --qa-home  --state /work/assertions.ndjson 
+[owed-cases] restore.reviewPanelSelfTest=true — the restored review panel's offline self-test (with its negative control) ran to a clean exit in this run — the case's own assertions are what passed
+[owed-cases] restore.reviewPanelCase=true — the restored review panel's real case ran to a clean exit in this run — the case's own assertions are what passed
+[owed-cases] restore.hashlineRepair=true — the restored hashline fuzzy-repair cases (wrapped line, paired indent, the ambiguous negative control, the CRLF round-trip) ran to a clean exit in this run — the case's own assertions are what passed
+[owed-cases] qa.mcpCall=null — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did not run to a verdict on this machine: the case itself reported "[mcp-call] missing credentials" — a skip is not a pass, and nothing about the bundle is settled by it
+[owed-cases] qa.readonlyDeny=true — the live readonly-deny case (a read-only spawn whose child must really be restricted) ran to a clean exit in this run — the case's own assertions are what passed
+
+
+===== assertions =====
+PASS ubuntu.version — the base image is ubuntu:24.04
+     raw: ubuntu 24.04
+PASS toolchain.apt — apt-get update + install curl git ca-certificates unzip xz-utils tmux
+     raw: exit=0/0
+PASS toolchain.node — node v24.21.0 and npm 11.19.0 come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org
+     raw: v24.21.0 npm=11.19.0
+PASS toolchain.bun — bun 1.4.2 on PATH, installed via official-script
+     raw: 1.4.2
+PASS toolchain.bunPinned — the build toolchain the tree declares is staged and reports EXACTLY that version, so the from-source rebuild below runs under the compiler the artifact was cut with
+     raw: bin=/opt/toolchain/bun-pinned/bin/bun version=1.4.0 declared=bun@1.4.0 route=official-script
+PASS toolchain.pnpm — required by 'dsh plugin' (it forwards to pnpm), available on PATH
+     raw: 11.23.0
+PASS harness.version — npm i -g then 'dsh --version' printed the pin exactly
+     raw: 0.2.0-rc.2
+PASS copy.contextFiltered — the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed; the ONLY packed output it carries is dist/mpd-package, which is the subject of the pack assertions
+     raw: absent: node_modules .git evidence .toolchain pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs; present by design: dist/mpd-package
+PASS copy.repo — package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present
+     raw: name=@mpd-dsh/mpd
+PASS build.bunInstall — bun install resolved the workspace and the dev/optional dependencies
+     raw: exit=0
+PASS build.dists — every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact
+     raw: BUILD_OK=31/31
+PASS install.exit — one command installed the bundle into the profile
+     raw: exit=0 spec=.
+PASS install.profileDep — the profile links the checkout and keeps the box bundles
+     raw: dep=link:/opt/mpd bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd
+PASS install.installedTree — the installed bundle resolves inside the profile
+     raw: /root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd
+PASS install.buildScripts — the client install completed with NO unapproved build script: exit 0, no ERR_PNPM_IGNORED_BUILDS anywhere in the install output, no ignored-build-scripts warning, and the 2 installed closure root(s) were walked for manifests declaring preinstall/install/postinstall/prepare (0 found)
+     raw: ERROR_CLASS_LINES=none WARN_LINES=none INVENTORY=none
+PASS pack.present — the packed artifact travelled into the container and is graded below
+     raw: artifact=/src/dist/mpd-package
+PASS pack.licenceCoherence — the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does
+     raw: carried=LICENSE.md,LICENSE-NOTICES.md artifactLicense=MIT sourceLicense=MIT
+PASS pack.declarationCoherence — every declaration the artifact makes about itself holds: 18 files entries resolve, its 2 bundle-patch layers exist, all 27 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along
+     raw: rowPathsChecked=27 files=608
+FAIL pack.staticCoherence — the artifact does NOT agree with the tree it was cut from — it is stale or was edited after the pack: 6 differing file(s), 0 carried file(s) with no twin
+     raw: drifted=skills/dsh-qa/SKILL.md,skills/dsh-qa/scripts/extension-isolation.ts,skills/dsh-qa/scripts/lib/messages-sse.ts,skills/dsh-qa/scripts/lib/session-evidence.ts,skills/dsh-qa/scripts/readonly-deny.ts,skills/dsh-qa/scripts/software-smoke.ts untwinned=none
+PASS pack.distFreshRebuild — every one of the 31 built entries in the artifact is byte-identical to the container's own from-source rebuild — the packed dist is FRESH, not merely present
+     raw: drifted=none uncovered=none rebuildBun=/opt/toolchain/bun-pinned/bin/bun rebuildBunVersion=1.4.0 declaredBuildToolchain=bun@1.4.0 declaredVersion=1.4.0 exactMatch=true witness=/work/rebuild.json
+PASS pack.rebuildToolchain — the from-source rebuild ran under bun 1.4.0, which IS the version the repository declares for its canonical build (bun@1.4.0), so a byte difference from this rebuild can be read as staleness rather than as a compiler difference
+     raw:  rebuildBun=/opt/toolchain/bun-pinned/bin/bun rebuildBunVersion=1.4.0 declaredBuildToolchain=bun@1.4.0 declaredVersion=1.4.0 exactMatch=true witness=/work/rebuild.json
+PASS pack.distFreshRebuildControl — the freshness arm is FALSIFIABLE on this machine: mutating one built entry in a copy of the same artifact flips pack.distFreshRebuild to FALSE against the SAME from-source rebuild, so a green on the untouched artifact is a measurement rather than a constant (the control's own rows are in /out/owed/pack-control.ndjson)
+     raw: mutated=packages/mpd-better-sidebar-host/dist/index.js controlVerdict=false artifactCopy=/work/pack-mutated
+PASS boot.mcpToolNaming — every registered MCP tool is named mcp__<server>__<tool>; no server outside the shipped patch's declared set registered (declared: ast_grep,lsp,codegraph,context7,grep_app; registered: ast_grep,codegraph,lsp); every LOCAL row came up (the two remote rows register only when their public service answers, so their absence is not graded); and the ast-grep row published its whole declared surface (search,rewrite,scan)
+     raw: MCP_REGISTERED=mcp__ast_grep__rewrite,mcp__ast_grep__scan,mcp__ast_grep__search,mcp__codegraph__codegraph_explore,mcp__lsp__find_definition,mcp__lsp__find_implementation,mcp__lsp__find_references,mcp__lsp__find_workspace_symbols,mcp__lsp__get_diagnostics,mcp__lsp__get_hover,mcp__lsp__get_incoming_calls,mcp__lsp__get_outgoing_calls,mcp__lsp__prepare_call_hierarchy,mcp__lsp__rename_symbol,mcp__lsp__rename_symbol_strict,mcp__lsp__restart_server MCP_SERVER_COUNTS=ast_grep:3,codegraph:1,lsp:12 declared=ast_grep,lsp,codegraph,context7,grep_app remote=context7,grep_app
+PASS boot.mcpLiveSearch — a REAL mcp__ast_grep__search call through the mounted adapter matched 1 site(s) in /opt/mpd/packages/mpd-mcp-astgrep/src, and the negative control matched 0 — the search engine ran, so the registered name is backed by a working server on this machine
+     raw: dir=/opt/mpd/packages/mpd-mcp-astgrep/src MCP_LIVE_SEARCH=ok:1 MCP_LIVE_SEARCH_CONTROL=ok:0 SHAPE=keys=isError,ok,raw,value ok=true isError=false value(keys=content matches=none)
+PASS restore.reviewPanelSelfTest — the restored review panel's offline self-test (with its negative control) ran to a clean exit in this run — the case's own assertions are what passed
+     raw: cmd=node skills/dsh-qa/scripts/review-panel.ts --self-test exit=0 log=/out/owed/owed-logs/restore.reviewPanelSelfTest.log tail=[review-panel self-test] ok: a missing verdict token reddens verdict-tokens | [review-panel self-test] ok: a stale hard-coded lane count reddens no-stale-all-N-verdict | [review-panel self-test] ok: a retired spelling reddens no-retired-spelling | [review-panel self-test] ok: tree scan finds both retired spellings and the stale count, and only in the poisoned file (../../tmp/review-panel-selftest-tree/poisoned.md:4, ../../tmp/review-panel-selftest-tree/poisoned.md:4) | [review-panel self-test] ok: a clean tree scans clean (negative control holds in both directions) | [review-panel self-test] all arms passed
+PASS restore.reviewPanelCase — the restored review panel's real case ran to a clean exit in this run — the case's own assertions are what passed
+     raw: cmd=node skills/dsh-qa/scripts/review-panel.ts exit=0 log=/out/owed/owed-logs/restore.reviewPanelCase.log tail=  ok   no-stale-all-N-verdict — no hard-coded lane/agent count |   ok   no-retired-spelling — no retired spelling |   ok   tree-no-retired-spelling — 2 file(s) scanned; no retired spelling |   ok   tree-no-stale-all-N-verdict — 2 file(s) scanned; no hard-coded lane/agent count | [review-panel] PASS | [review-panel] evidence -> evidence/restore/s1/2026-10-09T14-35-49-176Z
+PASS restore.lspBootstrap — the launcher generated a valid .mpd/lsp/cclsp.json with 1 well-formed language server(s), 1 of them serving the TypeScript family, and left a pre-existing user cclsp.json byte-identical (the negative control)
+     raw: generated=/out/owed/lsp-blessed/.mpd/lsp/cclsp.json userConfigDigestBefore=918e657509c6 after=918e657509c6
+PASS restore.hashlineRepair — the restored hashline fuzzy-repair cases (wrapped line, paired indent, the ambiguous negative control, the CRLF round-trip) ran to a clean exit in this run — the case's own assertions are what passed
+     raw: cmd=bun test packages/mpd-hashline-plugin exit=0 log=/out/owed/owed-logs/restore.hashlineRepair.log tail=(pass) the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix [0.26ms] | (pass) the guard resolves a RELATIVE file_path against the session workspace, not process.cwd() [0.71ms] |  21 pass |  0 fail |  80 expect() calls | Ran 21 tests across 3 files. [28.00ms]
+NULL qa.mcpCall — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did not run to a verdict on this machine: the case itself reported "[mcp-call] missing credentials" — a skip is not a pass, and nothing about the bundle is settled by it
+     raw: exit=1 marker=[mcp-call] missing credentials tail=[mcp-call] missing credentials
+PASS qa.readonlyDeny — the live readonly-deny case (a read-only spawn whose child must really be restricted) ran to a clean exit in this run — the case's own assertions are what passed
+     raw: cmd=node skills/dsh-qa/scripts/readonly-deny.ts exit=0 log=/out/owed/owed-logs/qa.readonlyDeny.log tail=  positiveOk: {"ok":true,"note":"positive lane: exit=0, denyListMatchesTheEight=true, spawnDriven=true, restrictError=false, missingCredential=false, childRequests=1, childLeaksWriteCapable=[]"} |   reinjectionDiagnostic: {"exit":0,"restrictError":false,"missingCredential":false,"authFailed":false,"stubCalls":3,"stubTrace":[{"call":1,"hasTools":false,"bytes":117420,"toolCount":0,"writeCapableVisible":[],"_toolNames":[]},{"call":2,"hasTools":true,"bytes":213826,"toolCount":106,"writeCapableVisible":["write","edit","mp |   reinjectionControl: {"ok":true,"mutationLoaded":true,"injectedNamesSeenByAdapter":["str_replace_editor","apply_patch"],"childRequestsUnderRestriction":0,"parentSeesWriteCapable":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename_symbol","mcp__lsp__rename_symbol_s |   reinjectionNote: "with the unregistered names re-injected, the sandbox boot REFUSED the restricted spawn (recorded spawnErrored=true, stdout refusal=false) and made zero child requests — the loud route for a name outside the scope's restrictable set" |   isolation: {"ok":true,"realWorkmateUntouched":true,"realWm":"/work/.mpd/workmate"} | [readonl
+PASS qa.mcpCallEngine — the ast-grep engine the call arm's launcher resolves (bundle-relative, inside the packed tree the case installs) is staged and its own --version probe reports ast-grep, so qa.mcpCall below measures the CASE rather than a missing binary
+     raw: bin=/opt/mpd/dist/mpd-package/.toolchain/node_modules/.bin/ast-grep probe=ast-grep 0.50.0
+NULL oneclick.scratchRepo — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+     raw: mode=source
+NULL oneclick.requiredPaths — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+     raw: mode=source
+NULL oneclick.filesAllowlist — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+     raw: mode=source
+NULL oneclick.distByteIdentical — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+     raw: mode=source
+PASS compose.dumpExit — the sanctioned composer exited 0
+     raw: exit=0
+PASS compose.mpdRows — the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's
+     raw: rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate layers=2 idTargets=0 defaultMpdLines=0 gate exit=0 subject=byte-identical [verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 185 host-declared row ids) 
+PASS compose.presetRow — the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)
+     raw: - id: preset-mpd
+PASS compose.agentTeamRows — the official agent-team rows compose under the mpd-owned ids (§4 D3)
+     raw: ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team
+PASS boot.probeApplied — the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition
+     raw: [docker-probe] APPLIED=ok
+PASS boot.adapterService — the mpd-dsh-adapter row applied and provided the mpdDsh service — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-dsh-adapter.log (R5: MPD diagnostics never touch the terminal)
+     raw: [mpd-dsh-adapter] mpdDsh provided (file=/work/.mpd/logs/mpd-dsh-adapter.log)
+PASS boot.adapterToolCall — an internal tool call through the adapter answered ok
+     raw: [docker-probe] ADAPTER_TOOL_CALL=ok
+PASS boot.mpdTools — every core mpd tool answered from the live registry
+     raw: CORE_TOOLS=6/6
+PASS boot.mcpTools — every MCP server this bundle mounts exposed its tool from the live registry
+     raw: MCP_TOOLS=3/3
+PASS boot.agentTeamTools — every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)
+     raw: [docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-8310b8a9-c277-477a-b16e-02189feb
+PASS boot.sessionGateListener — the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)
+     raw: [mpd-roles] session gate listener registered for agent "session-8310b8a9-c277-477a-b16e-02189febe550" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)
+PASS boot.agentTeamService — the official TeamService is mounted in the booted process (its class name is the witness)
+     raw: [docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService methods=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+PASS boot.servesHttp — the booted Web app answered 200
+     raw: /plugins/mpd-workmate/list -> 200
+PASS boot.presetMount — the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)
+     raw: POST /api/session/create -> {"type":"server-response","rpcId":"rpc-1-1791556450-24059","result":{"ok":true,"value":{"sessionId":"session-8310b8a9-c277-477a-b16e-02189febe550","agentPreset":"mpd"}}}
+PASS boot.noFatalSignatures — no fatal apply/module signature in the boot log
+     raw: 0 matches
+PASS isolation.home — HOME and DSH_HOME stay on the sandbox paths for every harness command
+     raw: HOME=/root/sandbox-home DSH_HOME=/root/sandbox-dsh
+PASS isolation.realHome — no harness/toolchain marker under the real home (/root)
+     raw: absent: .dsh .mpd .npm .bun
+PASS isolation.noCredentials — no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)
+     raw: inventory=.credentials.yaml(161B),.npmrc(40B), live=0
+PASS tui.hostInstall — the TUI host installs globally and lands on PATH
+     raw: version=0.14.0 bin=/usr/local/bin/dsh-tui
+PASS tui.pluginAddHost — the TUI host bundle installs into the dsh-tui profile
+     raw: exit=0
+PASS tui.pluginAddBundle — THIS bundle installs into the dsh-tui profile as the third patch layer
+     raw: exit=0
+PASS tui.compose — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)
+     raw: exit=0
+PASS tui.presetPreference — the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.14.0 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd
+     raw: pref=/root/sandbox-home/.dsh-tui/agent-preset.json hex=7b0a202022707265736574223a20226d7064220a7d writerParity=identical hostRowDefault=standard bundleForcedMpdLines=0 shippedIdTargets=<none> layers=2/2
+PASS tui.presetRow — the mpd preset row is composed in the TUI plane
+     raw: id=preset-mpd
+PASS tui.mpdTuiRow — the bundle's mpd-tui row is composed in the TUI plane
+     raw: id=mpd-tui
+PASS tui.agentTeamRows — all three official Agent Teams rows are composed in the TUI plane
+     raw: ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team
+PASS tui.mergedPanelOpens — the MPD combo (alt+a, sent as tmux M-a from the plain chat state) opened the MERGED panel on a real terminal, and the PRE-KEY capture proves the combo is what opened it: the captured pane carries the merged panel: titleHits=2 subagentHits=2 teamHits=2 subagentMarker=line 6 teamMarker=line 9 header=line 6 emptyState=line 7 (each family must be > 0, pre-key control hits = 0)
+     raw: panelSeam=present driver=docker/lib/tui-panel-body.ts TITLE_HITS=2 SUB_HITS=2 TEAM_HITS=2 CONTROL_HITS=0 SUB_LINE=6 TEAM_LINE=9 HEAD_LINE=6 EMPTY_LINE=7 pane=pane-merged.txt control=pane-teamClosed.txt chars=13365 controlChars=13035
+PASS tui.mergedPanelOrder — the captured pane holds the subagent section ABOVE the team body — measured on the same pane the open row reads: the captured pane carries the merged panel: titleHits=2 subagentHits=2 teamHits=2 subagentMarker=line 6 teamMarker=line 9 header=line 6 emptyState=line 7 (each family must be > 0, pre-key control hits = 0)
+     raw: panelSeam=present driver=docker/lib/tui-panel-body.ts TITLE_HITS=2 SUB_HITS=2 TEAM_HITS=2 CONTROL_HITS=0 SUB_LINE=6 TEAM_LINE=9 HEAD_LINE=6 EMPTY_LINE=7 pane=pane-merged.txt control=pane-teamClosed.txt chars=13365 controlChars=13035
+PASS tui.hostDashboardKeyIntact — Ctrl+A stayed the HOST's key on this host, as frozen R4 requires wherever the panel seam is present: with the seeded team present it did NOT open MPD's merged panel, and after the team record was removed it still did not. The panel is reached through MPD's own entry points instead (tui.mergedPanelOpens above proves /mpd panel)
+     raw: panelSeam=present phaseA=no-mpd-panel mpdTitleHits=0 hostDashboardTitleHits=0 phaseB=team-record-removed mpdTitleHits=0 hostDashboardTitleHits=0
+PASS tui.noDirectTuiSeam — the D6 gate (no file outside mpd-tui-adapter-plugin names a ctx.tui* seam) passed on a byte-identical copy of the INSTALLED tree, executed where node can strip types
+     raw: gate exit=0 subject=byte-identical (cmp over every copied .ts and the gate file itself) source=/root/sandbox-dsh/profiles/dsh-tui/node_modules/@mpd-dsh/mpd scanned: 28 package(s), 139 .ts file(s) RESULT: PASS (0 findings)
+PASS tui.boot — the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)
+     raw: tmux=new-session-ok ready=chat-screen noLaunchpad=1 onboardingHex=7b0a202022636f6d… landingMarkerHits=0
+PASS tui.noFatalSignatures — no fatal apply/module/preset signature in the TUI pane or log
+     raw: scanned=pane+pane-log
+PASS tui.sessionPreset — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)
+     raw: {"found":true,"sessionId":"2560bc8f-7292-4850-a23b-af273270e4cb","agentPreset":"mpd","bytes":938}
+PASS team.route.state — the mpd team route answered a JSON payload from a REAL mounted row
+     raw: HTTP 200 keys=workspace,sessionId,workspaceTeams,team,counts,members,tasks,cycles,executor,problems
+PASS team.route.plan — the mpd team route answered a JSON payload from a REAL mounted row
+     raw: HTTP 200 keys=workspace,sessionId,plan
+PASS team.route.task — the mpd team route answered a JSON payload from a REAL mounted row
+     raw: HTTP 200 keys=workspace,contracts,hold
+PASS team.route.mail — the mpd team route answered a JSON payload from a REAL mounted row
+     raw: HTTP 200 keys=workspace,messages,records
+PASS team.routesAll — all four /plugins/mpd-team routes are registered by the mounted row and answer ok:true
+     raw: green=4/4
+PASS team.planLookup — the plan route answered a plan SHAPE for the live session (null when nothing is staged, which is the honest pre-approval answer)
+     raw: plan=null session=session-8310b8a9-c277-477a-b16e-02189febe550
+PASS tui.teamSceneOtherSessionInvisible — a session with NO bound board drew the product's OWN empty-state marker, and the board a SIBLING session owns was NOT drawn in it: the marker is the exported constant NO_SESSION_TEAM_MARKER read out of its source declaration and matched as a SUBSTRING of the captured pane, and none of the 3 task id(s) the sibling's record carries appeared in that same pane as a node label
+     raw: otherSession=session-8310b8a9-c277-477a-b16e-02189febe550 liveSession=2560bc8f-7292-4850-a23b-af273270e4cb otherKey=session-8310b8a9-c277-477a-b16e-02189febe550 index={"session-8310b8a9-c277-477a-b16e-02189febe550":"tui-scene"} marker=[no team in this session] markerSite=packages/mpd-tui-plugin/src/team-state.ts#NO_SESSION_TEAM_MARKER assertedAbsent=[T1,T2,T3] foundDrawn=[none] corners=0 pane=pane-teamOtherSession.txt
+PASS tui.teamFixtureBound — the seeded board is bound to the LIVE session this TUI runs as — the id discovered from the harness's OWN store (a pre-boot snapshot differenced against the store as it is now, so the id that APPEARED during this boot is the TUI's) and keyed through the PRODUCT's own rule, imported from packages/mpd-team-core-plugin/src/team-store.ts :: sessionKey. Both spellings the product's own createTeam writes are on disk: teams.json's active[<sessionKey>] = "tui-scene" AND the record's leadSessionId = <sessionKey>, because the product has two readers (the mpdTeams service answers from the index; its session-scoped degradation matches the record's leadSessionId). WITHOUT this binding the scene correctly draws its empty state and every team arm below reddens — which is exactly the F1 defect of evidence/docker/client-install/2026-10-08T08-52-23Z
+     raw: session=2560bc8f-7292-4850-a23b-af273270e4cb source=created-during-this-boot-under-this-project-key projectKey=--work-ws-- index=/work/ws/.mpd/team/teams.json;active={"session-8310b8a9-c277-477a-b16e-02189febe550":"tui-scene","2560bc8f-7292-4850-a23b-af273270e4cb":"tui-scene"};recordLeadSessionId=2560bc8f-7292-4850-a23b-af273270e4cb;keySource=import:packages/mpd-team-core-plugin/src/team-store.ts#sessionKey resolve=store=/root/sandbox-dsh/sessions;before=1;after=2;created=--work-ws--/2560bc8f-7292-4850-a23b-af273270e4cb
+PASS tui.teamSceneOpened — the /mpd team scene opened on a real terminal
+     raw: chars=11738
+PASS tui.teamGraphDrawn — the LAYERED BOXES were drawn: the ROUNDED corner census equals the record's own task count, one box per task, which a dropped box reddens (the square corners the old arm matched belong to the scene FRAME; the subjects are NOT claimed here, because clause AC1 moved them to the pinned detail body that tui.teamGraphContent asserts)
+     raw: corners=╭3 ╮3 ╰3 ╯3 tasksFromRecord=3 ids=T1,T2,T3 pane=pane-team.txt
+PASS tui.teamGraphEdges — the dependency EDGES were drawn with box-drawing junctions
+     raw: junctions=46
+PASS tui.teamGraphContent — every task id the lane's OWN record carries is drawn as a node label AND the record's own subject is reachable one keystroke away in the pinned detail body, where clause AC1 moved it (a literal id would keep passing after a dropped task)
+     raw: ids=T1,T2,T3 fromRecord=3 labelsExpected=3 missing=[none] pane=pane-team.txt chars=11738 pinnedFocus=T1 detail=[T1 · requirement · freeze the contract] pinnedPane=pane-teamPinned.txt
+PASS tui.laneExit — the TUI lane ran to completion with every assertion green
+     raw: records=21
+NULL live.credentialStaged — not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum
+     raw: MPD_E2E_LIVE=0 key=absent
+NULL live.credentialScoped — not attempted: no credential was staged, so there was nothing to scope-check
+     raw: staged=none
+NULL live.credentialRemoved — not attempted: nothing was staged, so nothing needed removing
+     raw: staged=none
+NULL live.web.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.web.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.tui.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.headless.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+     raw: not attempted
+NULL live.teamRecord — not attempted: no live turn ran, so no approval could materialise a record
+     raw: staged=none
+NULL live.nativeExecutor — not attempted: no live turn ran, so no member could be raised
+     raw: staged=none
+NULL live.headlessPresetRow — not attempted: the headless profile was never driven, so its preset activation is unmeasured
+     raw: staged=none
+NULL boot.llmTurn — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+     raw: no credentials staged by design
+PASS boot.workspaceRegistered — the scratch workspace was registered in the harness's own store BEFORE the boot, so the Web GUI renders a usable composer instead of the disabled landing state
+     raw: id=ws-mpd-e2e path=/work/ws
+NULL ui.loads — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+     raw: not attempted
+NULL ui.workspaceSelected — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+     raw: not attempted
+NULL ui.composerPresent — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+     raw: not attempted
+NULL ui.promptSent — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+     raw: not attempted
+NULL ui.replyRendered — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+     raw: not attempted
+NULL ui.mpdSettingsSection — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+     raw: not attempted
+NULL ui.teamPanel — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+     raw: not attempted
+NULL ui.noConsoleErrors — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+     raw: not attempted
+
+===== summary =====
+passed=76 failed=1 null=41 total=118
+ok=false
+complete=false

@@ -19,12 +19,17 @@
 //   · pack.distFreshRebuild      — every built `packages/<pkg>/dist/**` entry in the artifact equals
 //                                  the container's OWN from-source rebuild of that entry. That is the
 //                                  freshness chain the host gate refuses to certify.
+//   · pack.rebuildToolchain      — the rebuild that produced those bytes ran under the SAME bun the
+//                                  repository declares (`package.json.buildToolchain`), compared by
+//                                  exact version equality against the rebuild's own witness file. A
+//                                  byte difference is a toolchain statement until this holds.
 //
 // The module writes assertion rows straight into the run's NDJSON state (the `live-verdict.ts` and
 // `report.ts` shape), so the entrypoint only has to invoke it under `run_step`.
 //
 // Usage:
-//   node docker/lib/owed-pack.ts --artifact <dir> --source <dir> --rebuild <dir> --state <file>
+//   node docker/lib/owed-pack.ts --artifact <dir> --source <dir> --rebuild <dir> \
+//     [--rebuild-report <rebuild.json>] --state <file>
 import { createHash } from "node:crypto"
 import { appendFileSync, existsSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { join, relative, sep } from "node:path"
@@ -65,6 +70,8 @@ interface Options {
   readonly source: string
   /** The from-source rebuilt tree, for the freshness comparison. */
   readonly rebuild: string
+  /** The rebuild's own witness file (`rebuild.ts --json`), naming the compiler that produced it. */
+  readonly rebuildReport: string
   /** The run's `assertions.ndjson` path. */
   readonly state: string
 }
@@ -85,12 +92,14 @@ function parseArgs(argv: readonly string[]): Options {
     found.set(flag.slice(2), argv[index + 1] ?? "")
     index += 1
   }
-  /** The four required flags, so a missing one is named rather than silently empty. */
-  const required: readonly string[] = ["artifact", "source", "rebuild", "state"]
+  // `rebuild` is OPTIONAL on purpose: a mode that produced no from-source rebuild passes an empty value
+  // and the freshness row records `null` with that reason, rather than a green that measures nothing.
+  /** The three required flags, so a missing one is named rather than silently empty. */
+  const required: readonly string[] = ["artifact", "source", "state"]
   /** The flags this call did not receive. */
   const missing = required.filter((key) => (found.get(key) ?? "") === "")
   if (missing.length > 0) {
-    console.error("usage: node docker/lib/owed-pack.ts --artifact <dir> --source <dir> --rebuild <dir> --state <ndjson>")
+    console.error("usage: node docker/lib/owed-pack.ts --artifact <dir> --source <dir> [--rebuild <dir>] [--rebuild-report <json>] --state <ndjson>")
     console.error("[owed-pack] missing: " + missing.join(", "))
     process.exit(2)
   }
@@ -98,6 +107,7 @@ function parseArgs(argv: readonly string[]): Options {
     artifact: found.get("artifact") ?? "",
     source: found.get("source") ?? "",
     rebuild: found.get("rebuild") ?? "",
+    rebuildReport: found.get("rebuild-report") ?? "",
     state: found.get("state") ?? "",
   }
 }
@@ -151,6 +161,20 @@ function sha256(path: string): string | null {
   } catch {
     return null
   }
+}
+
+/**
+ * View an unknown value as a string-keyed bag, so a nested field of a parsed JSON document can be read.
+ *
+ * @param value - A value produced by `JSON.parse`, or a field of one.
+ * @returns The value viewed as a bag, or `undefined` for a primitive (including `null`).
+ */
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  if (value === null) return undefined
+  /** The value's own type tag, tested against the two kinds that can carry properties. */
+  const kind = typeof value
+  // A cast is unavoidable: the witness is parsed JSON, so nothing about its shape is static.
+  return kind === "object" || kind === "function" ? (value as Record<string, unknown>) : undefined
 }
 
 /**
@@ -327,18 +351,74 @@ function staticCoherence(options: Options, files: readonly string[]): void {
  * @param files - The artifact's relative file list.
  */
 function distFreshRebuild(options: Options, files: readonly string[]): void {
+  // NO REBUILD GIVEN = NO MEASUREMENT, and the row says so instead of comparing the artifact with a
+  // tree that still carries the committed dist (which would be a second `staticCoherence` wearing this
+  // row's name). The one-click service runs no `bun install` and no from-source rebuild by design, so
+  // the entrypoint passes an empty `--rebuild` there and the source lane carries the real measurement.
+  if (options.rebuild === "" || !existsSync(options.rebuild)) {
+    record(options.state, {
+      name: "pack.distFreshRebuild",
+      ok: null,
+      reason: "not measured in this mode: no from-source rebuild of the tree was produced here, so there is nothing to compare the artifact against. A comparison against an un-rebuilt copy would be a second byte-coherence check wearing freshness's name — the source lane carries this measurement",
+      raw: "rebuild=" + (options.rebuild === "" ? "<none passed>" : options.rebuild),
+    })
+    // The toolchain row shares this subject: with no rebuild there is no compiler to name, and a green
+    // "the toolchain matched" here would be a claim about a build that never ran.
+    record(options.state, {
+      name: "pack.rebuildToolchain",
+      ok: null,
+      reason: "not measured in this mode: no from-source rebuild was produced, so no compiler produced the bytes this row would match against the artifact's declared buildToolchain",
+      raw: "rebuild=" + (options.rebuild === "" ? "<none passed>" : options.rebuild),
+    })
+    return
+  }
   /** The artifact's built entries, by the shape every plugin/MCP package ships. */
   const built = files.filter((file) => file.startsWith("packages/") && file.includes("/dist/") && !GENERATED.has(file))
   /** Built entries that differ from the container's rebuild of the same path. */
   const drifted = built.filter((file) => sha256(join(options.artifact, file)) !== sha256(join(options.rebuild, file)))
   /** Built entries the container's rebuild did not produce — the rebuild never covered them. */
   const uncovered = built.filter((file) => !existsSync(join(options.rebuild, file)))
+  // THE TOOLCHAIN IS READ FROM THE REBUILD'S OWN WITNESS, and that is a MEASURED correction rather than
+  // a preference (2026-10-09). The first version of this arm asked `bun --version` on THIS machine's
+  // PATH and matched it against the declared pin with `declaredPin.includes(containerBun)`. Both halves
+  // were wrong in the same direction: the PATH bun need not be the binary `rebuild.ts` invoked (the
+  // entrypoint now selects it explicitly), and a substring test makes "1.4" match "bun@1.4.0" while a
+  // two-part version reads as a match. The witness is now the rebuild's own `--json` payload — the bin
+  // it selected and the version THAT binary printed — and the comparison is exact string equality.
+  /** The rebuild's own witness: `{ bun: { bin, version } }`, as `docker/lib/rebuild.ts` wrote it. */
+  const witness = readJson(options.rebuildReport)
+  /** The compiler binary the rebuild used, or empty when the witness never arrived. */
+  const rebuildBunBin = typeof asRecord(witness?.bun)?.bin === "string" ? String(asRecord(witness?.bun)?.bin) : ""
+  /** The version that compiler reported — the measured half of the comparison below. */
+  const rebuildBunVersion = typeof asRecord(witness?.bun)?.version === "string" ? String(asRecord(witness?.bun)?.version) : ""
+  /** The bun the repository DECLARES for its canonical build (`package.json.buildToolchain`). */
+  const declaredPin = String(readJson(join(options.source, GENERATED_MANIFEST))?.buildToolchain ?? "<none>")
+  /** The version half of that declaration, or `null` when the record is absent or not a `name@version`. */
+  const declaredVersion = /^bun@(.+)$/.exec(declaredPin)?.[1] ?? null
+  /** True when the compiler that produced the rebuild IS the declared one, by exact version equality. */
+  const exactMatch = declaredVersion !== null && rebuildBunVersion !== "" && rebuildBunVersion === declaredVersion
+  /** Where the compiler witness came from, so a reader can tell a measured version from a missing one. */
+  const witnessSource = options.rebuildReport === ""
+    ? "<no --rebuild-report passed>"
+    : (existsSync(options.rebuildReport) ? options.rebuildReport : "<missing: " + options.rebuildReport + ">")
+  /** The toolchain witness, carried in the raw field of both rows below. */
+  const note = " rebuildBun=" + (rebuildBunBin || "<unreadable>") + " rebuildBunVersion=" + (rebuildBunVersion || "<unreadable>") +
+    " declaredBuildToolchain=" + declaredPin + " declaredVersion=" + (declaredVersion ?? "<unparsed>") +
+    " exactMatch=" + String(exactMatch) + " witness=" + witnessSource
+  record(options.state, {
+    name: "pack.rebuildToolchain",
+    ok: exactMatch,
+    reason: exactMatch
+      ? "the from-source rebuild ran under bun " + rebuildBunVersion + ", which IS the version the repository declares for its canonical build (" + declaredPin + "), so a byte difference from this rebuild can be read as staleness rather than as a compiler difference"
+      : "the from-source rebuild did NOT run under the declared build toolchain: the rebuild's own witness names bun " + (rebuildBunVersion || "<unreadable>") + " at " + (rebuildBunBin || "<unreadable>") + " while " + (options.source === "" ? "the tree" : GENERATED_MANIFEST) + " declares " + declaredPin + " (witness: " + witnessSource + "). A bun MINOR rewrites the emitted helper preamble (AGENTS §6 T16), so `pack.distFreshRebuild` cannot attribute a byte difference to the artifact while this holds",
+    raw: note,
+  })
   if (built.length === 0) {
     record(options.state, {
       name: "pack.distFreshRebuild",
       ok: false,
       reason: "the artifact carries no built package entry, so nothing could be compared against a from-source rebuild",
-      raw: "builtEntries=0",
+      raw: "builtEntries=0" + note,
     })
     return
   }
@@ -349,8 +429,10 @@ function distFreshRebuild(options: Options, files: readonly string[]): void {
     ok,
     reason: ok
       ? "every one of the " + built.length + " built entries in the artifact is byte-identical to the container's own from-source rebuild — the packed dist is FRESH, not merely present"
-      : "the packed artifact's built entries do not match this container's from-source rebuild: " + drifted.length + " differing, " + uncovered.length + " not produced by the rebuild",
-    raw: "drifted=" + (drifted.slice(0, 12).join(",") || "none") + " uncovered=" + (uncovered.slice(0, 6).join(",") || "none"),
+      : "the packed artifact's built entries do not match this container's from-source rebuild: " + drifted.length + " differing, " + uncovered.length + " not produced by the rebuild." + (exactMatch
+        ? " Both the artifact and this rebuild are under bun " + rebuildBunVersion + " (the declared " + declaredPin + ", see pack.rebuildToolchain), so the difference is NOT explained by the compiler version"
+        : " READ THIS WITH `pack.rebuildToolchain`, which is FALSE here: this machine rebuilt with bun " + (rebuildBunVersion || "<unreadable>") + " while the artifact declares " + declaredPin + ", and a bun minor changes the emitted bytes by itself (AGENTS §6 T16) — so a difference here is a TOOLCHAIN measurement first. The staleness question itself is `pack.staticCoherence`, which compares the artifact with the tree it was cut from"),
+    raw: "drifted=" + (drifted.slice(0, 12).join(",") || "none") + " uncovered=" + (uncovered.slice(0, 6).join(",") || "none") + note,
   })
 }
 
@@ -367,7 +449,7 @@ function main(): void {
     // machine.
     /** The one reason every row of this arm shares when the artifact never arrived. */
     const reason = "the packed artifact is not carried into this run at " + options.artifact + " — run `node scripts/pack-mpd.ts` before the acceptance lane, because §7 item 5 owes its coherence and freshness"
-    for (const name of ["pack.present", "pack.licenceCoherence", "pack.declarationCoherence", "pack.staticCoherence", "pack.distFreshRebuild"]) {
+    for (const name of ["pack.present", "pack.licenceCoherence", "pack.declarationCoherence", "pack.staticCoherence", "pack.distFreshRebuild", "pack.rebuildToolchain"]) {
       record(options.state, { name, ok: false, reason, raw: "artifact=" + options.artifact })
     }
     return

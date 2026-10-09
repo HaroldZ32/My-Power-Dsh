@@ -33,8 +33,6 @@
     "PLAN.md",
     "README.md",
     "README.zh-CN.md",
-    "SECURITY.md",
-    "SECURITY.zh-CN.md",
     "VENDOR_LOCK.json",
     "agent-references/**",
     "cordis.patch.yml",

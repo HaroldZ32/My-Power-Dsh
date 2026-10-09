@@ -1,0 +1,16 @@
+# YAML parse (python3 + pyyaml) of HEAD's workflow vs the working tree; both parsed by a real parser.
+$ git show HEAD:.github/workflows/docker-e2e.yml   # BEFORE
+  1. Check out the repository
+  2. Set up Node.js
+  3. Docker real-machine acceptance (source mode, no API key, no browser)
+  4. Upload the acceptance stamp directory
+  5. Print the stamp path and the row summary
+$ .github/workflows/docker-e2e.yml   # AFTER
+  1. Check out the repository
+  2. Set up Node.js
+  3. Stage the packed bundle the acceptance rows grade
+  4. Docker real-machine acceptance (source mode, no API key, no browser)
+  5. Upload the acceptance stamp directory
+  6. Print the stamp path and the row summary
+ADDED step index=[3] run=['node scripts/pack-mpd.ts'] ; lane step index=[4] ; new immediately precedes the lane: True
+step count before=5 after=6 (delta=+1)

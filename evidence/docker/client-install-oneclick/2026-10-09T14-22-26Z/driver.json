@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-10-09T14:22:26.356Z",
+  "finishedAt": "2026-10-09T14:28:00.665Z",
+  "docker": "Docker version 29.8.2, build 7fc2dff",
+  "compose": "Docker Compose version v5.6.0",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 438,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-2s9Cxr",
+  "liveRequested": false,
+  "browserEnabled": false,
+  "requiredPrefixes": [],
+  "unmeasured": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick mpd-oneclick",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=72 failed=4 null=42 FAILED=[pack.staticCoherence,boot.mcpToolNaming,qa.readonlyDeny,boot.mcpTools] NULL=[build.bunInstall,build.dists,pack.distFreshRebuild,pack.rebuildToolchain,pack.distFreshRebuildControl,qa.mcpCall,live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns,live.web.noMalformedToolJson,live.web.toolCallsParsed,live.web.mpdToolCalled,live.web.assistantReplied,live.tui.turnStarted,live.tui.turnCompleted,live.tui.noErrorTurns,live.tui.noMalformedToolJson,live.tui.toolCallsParsed,live.tui.mpdToolCalled,live.tui.assistantReplied,live.headless.turnStarted,live.headless.turnCompleted,live.headless.noErrorTurns,live.headless.noMalformedToolJson,live.headless.toolCallsParsed,live.headless.mpdToolCalled,live.headless.assistantReplied,live.teamRecord,live.nativeExecutor,live.headlessPresetRow,boot.llmTurn,ui.loads,ui.workspaceSelected,ui.composerPresent,ui.promptSent,ui.replyRendered,ui.mpdSettingsSection,ui.teamPanel,ui.noConsoleErrors]",
+  "exitCode": 1
+}

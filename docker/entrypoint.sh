@@ -93,6 +93,9 @@ STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 STARTED_EPOCH="$(date +%s)"
 STEP_CODE=0
 STEP_SECONDS=0
+# The budget for ONE `run_step` (see the guard in `run_step`): a stalled network command must die and
+# record its non-zero exit instead of taking the whole acceptance run with it.
+STEP_TIMEOUT="${MPD_E2E_STEP_TIMEOUT:-900}"
 BOOT_PID=""
 
 mkdir -p "$STEPS_DIR" "$OUT_DIR" "$APP_DIR" "$TOOLCHAIN_DIR" "$SANDBOX_HOME" "$SANDBOX_DSH"
@@ -102,6 +105,12 @@ export HOME="$SANDBOX_HOME"
 export DSH_HOME="$SANDBOX_DSH"
 export NPM_CONFIG_CACHE="$TOOLCHAIN_DIR/npm-cache"
 export NPM_CONFIG_PREFIX=/usr/local
+# A HUNG FETCH MUST NOT OUTLIVE ITS STEP (measured 2026-10-09: 23 minutes at 0.3% CPU inside one
+# `npm i -g`). npm's own knobs bound each REQUEST; `run_step`'s timeout bounds the whole step.
+export NPM_CONFIG_FETCH_TIMEOUT=120000
+export NPM_CONFIG_FETCH_RETRIES=3
+export NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=10000
+export NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=60000
 export BUN_INSTALL="$TOOLCHAIN_DIR/bun"
 export PATH="$BUN_INSTALL/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export CI=1
@@ -191,21 +200,29 @@ append_step() { # id exit seconds logfile cmd
 }
 
 # run_step <id> <cmd...> — run, tee to the step log, never abort (the verdict is the report's).
+#
+# EVERY STEP IS BOUNDED IN TIME, and that is a MEASURED repair rather than defensiveness (2026-10-09):
+# a run sat 23 minutes inside `npm i -g @deepseek-ai/dsh@0.2.0-rc.2` at 0.3% CPU with an idle container —
+# a stalled fetch, not progress — and it had to be killed by hand, taking the whole acceptance run with
+# it. A network stall is an ENVIRONMENT event, but an UNBOUNDED step turns it into a lost run: with the
+# guard below the step dies, records its non-zero exit, and the lane continues to the rows that do not
+# depend on it. `MPD_E2E_STEP_TIMEOUT` (default 900 s) is the budget for ONE step, and the timeout's own
+# exit code (124) is recorded like any other failure — never mistaken for a pass.
 run_step() {
   local id="$1"; shift
   local logfile="$STEPS_DIR/$id.log"
   local started ended
   started="$(date +%s)"
   log "===== STEP $id ====="
-  log "\$ $*"
+  log "\$ $* (timeout ${STEP_TIMEOUT}s)"
   set +e
-  "$@" >"$logfile" 2>&1
+  timeout --kill-after=15 "$STEP_TIMEOUT" "$@" >"$logfile" 2>&1
   STEP_CODE=$?
   set -e
   ended="$(date +%s)"
   STEP_SECONDS=$((ended - started))
   cat "$logfile"
-  log "[step $id] exit=$STEP_CODE seconds=$STEP_SECONDS"
+  log "[step $id] exit=$STEP_CODE seconds=$STEP_SECONDS$([ "$STEP_CODE" -eq 124 ] && echo " — KILLED BY THE ${STEP_TIMEOUT}s STEP TIMEOUT (a stalled command, not a verdict)")"
   append_step "$id" "$STEP_CODE" "$STEP_SECONDS" "$id.log" "$(printf '%s ' "$@" | tr '\n\t' '  ')"
 }
 
@@ -304,6 +321,98 @@ else
   record ubuntu.version false "the base image is not ubuntu 24.04" "$UBUNTU_ID $UBUNTU_VERSION"
   bail "wrong base image"
 fi
+
+# ── 01b. THE NPM TRANSPORT, measured before anything depends on it ────────────
+# WHY THIS EXISTS, and it is a MEASUREMENT rather than a precaution (2026-10-09). From this environment
+# the official registry serves UNSCOPED metadata fine (`/pnpm` → 200 in 2.7 s) while the SCOPED metadata
+# endpoint the harness pin needs (`/@deepseek-ai%2fdsh`) FAILS — and npm, handed an unreachable scoped
+# endpoint, retried silently for 23 minutes at 0.3% CPU until the run had to be killed. The step below
+# probes THAT endpoint first: if it answers, the lane keeps the official registry and proves the install
+# against it; if it does not, the lane falls back to a mirror (the transport is not what this lane
+# grades — the INSTALL is) and the fact below names the registry that was actually used, so no reader
+# can mistake a mirror-served install for a registry.npmjs.org one.
+NPM_MIRROR="${MPD_E2E_NPM_MIRROR:-https://registry.npmmirror.com}"
+NPM_REGISTRY="${MPD_E2E_NPM_REGISTRY:-https://registry.npmjs.org}"
+# The scoped endpoint the harness pin resolves through: the one that was measured unreachable here.
+NPM_PROBE_URL="${NPM_REGISTRY}/@deepseek-ai%2fdsh"
+# `operator-set` when the caller named a registry, otherwise the official one is on trial.
+NPM_REGISTRY_LABEL="official-registry"
+[ -n "${MPD_E2E_NPM_REGISTRY:-}" ] && NPM_REGISTRY_LABEL="operator-set"
+# THE SELECTION IS WRITTEN TO ITS OWN FILE, not parsed out of the step log, and that is a MEASURED
+# repair of this step's first version (2026-10-09): the log file is a stream that can carry a NUL frame
+# (progress-bar output, a padded redirect), and GNU grep answers `binary file matches` for such a file
+# INSTEAD of printing the matching line — so the parse came back empty, the shell silently kept the
+# DEFAULT registry, and the run went on stalling against the very endpoint this step exists to avoid.
+# A two-line text file has no such failure mode: line 1 is the registry, line 2 the route.
+NPM_SELECTION_FILE="$WORK_DIR/npm-registry.txt"
+rm -f "$NPM_SELECTION_FILE" 2>/dev/null || true
+run_step 01b-npm-registry node -e '
+  const registry = process.argv[1]
+  const probeUrl = process.argv[2]
+  const mirror = process.argv[3]
+  const label = process.argv[4]
+  const out = process.argv[5]
+  const fs = await import("node:fs")
+  const probe = async (target) => {
+    const started = Date.now()
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 20000)
+    try {
+      const response = await fetch(target, { signal: controller.signal })
+      await response.text()
+      clearTimeout(timer)
+      return { ok: response.status === 200, ms: Date.now() - started, status: "http=" + response.status }
+    } catch (error) {
+      clearTimeout(timer)
+      return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }
+    }
+  }
+  const first = await probe(probeUrl)
+  const settle = (chosen, route, detail) => {
+    fs.writeFileSync(out, chosen + "\n" + route + "\n")
+    console.log("REGISTRY=" + chosen + " ROUTE=" + route + " " + detail)
+  }
+  if (first.ok) { settle(registry, label + "-ok", "probeMs=" + first.ms); process.exit(0) }
+  const second = await probe(mirror + "/@deepseek-ai%2fdsh")
+  if (second.ok) {
+    settle(mirror, "mirror-fallback", "officialProbe=" + first.status + " officialProbeMs=" + first.ms + " mirrorMs=" + second.ms)
+    process.exit(0)
+  }
+  settle(registry, "both-unreachable", "officialProbe=" + first.status + " mirrorProbe=" + second.status)
+' "$NPM_REGISTRY" "$NPM_PROBE_URL" "$NPM_MIRROR" "$NPM_REGISTRY_LABEL" "$NPM_SELECTION_FILE" || true
+if [ -s "$NPM_SELECTION_FILE" ]; then
+  NPM_REGISTRY="$(sed -n '1p' "$NPM_SELECTION_FILE" | tr -d '\r')"
+  NPM_REGISTRY_ROUTE="$(sed -n '2p' "$NPM_SELECTION_FILE" | tr -d '\r')"
+fi
+NPM_REGISTRY_ROUTE="${NPM_REGISTRY_ROUTE:-probe-unreadable}"
+NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org}"
+# The log carries the same line for a reader; the FACT carries the decision. `grep -a` everywhere below
+# because this file may hold a NUL frame and a plain grep would then report nothing at all.
+export NPM_CONFIG_REGISTRY="$NPM_REGISTRY"
+# BOTH CASES, and that is a MEASURED correction (2026-10-09): pnpm — which `dsh plugin` forwards to —
+# resolves its registry through the LOWERCASE `npm_config_*` environment form, so exporting only the
+# uppercase name left every `dsh plugin … add` on the DEFAULT registry while the lane's own `npm i -g`
+# installs used the selected one. The TUI lane died on exactly that split (its host `npm i -g` succeeded,
+# its `dsh plugin add` retried and failed), and the two install paths of one lane disagreeing about the
+# registry is not a state any reader could have inferred from the report.
+export npm_config_registry="$NPM_REGISTRY"
+# AND THE FILE, because the environment forms do NOT reach pnpm (measured 2026-10-09): with BOTH
+# `NPM_CONFIG_REGISTRY` and `npm_config_registry` exported to the mirror, `pnpm config get registry`
+# still printed `https://registry.npmjs.org/` — so every `dsh plugin … add`, which forwards to pnpm,
+# kept resolving through the DEFAULT registry while the lane's own `npm i -g` installs used the mirror.
+# The same export PLUS this one-line `.npmrc` made `pnpm config get registry` print the mirror and the
+# exact command that had failed repeatedly (in the TUI lane, at its own line 182) exit 0. It is written
+# into the SANDBOX home — never the real user home — and the selected URL is recorded as a fact.
+if [ -n "${NPM_REGISTRY:-}" ]; then
+  printf 'registry=%s\n' "$NPM_REGISTRY" > "$HOME/.npmrc" 2>/dev/null || true
+fi
+if [ -s "$HOME/.npmrc" ]; then
+  fact obs.npmrc "$(head -n 1 "$HOME/.npmrc") (a SANDBOX-home .npmrc; pnpm — and therefore every `dsh plugin` — resolves through the FILE, not the environment, measured 2026-10-09)"
+else
+  fact obs.npmrc "<not written: HOME=$HOME is not writable>"
+fi
+fact obs.npmRegistry "$NPM_REGISTRY (route=$NPM_REGISTRY_ROUTE; the scoped-metadata endpoint was probed because npm hangs silently on an unreachable one)"
+grep -a -m1 '^REGISTRY=' "$STEPS_DIR/01b-npm-registry.log" 2>/dev/null || cat "$STEPS_DIR/01b-npm-registry.log"
 
 # ── 02. apt: the distribution's own prerequisites ─────────────────────────────
 log ""
@@ -434,6 +543,53 @@ case "$BUN_V" in
 esac
 [ -n "$BUN_V" ] || bail "bun is not usable"
 
+# ── 03b. THE PINNED BUILD TOOLCHAIN (2026-10-09) ──────────────────────────────
+# WHY A SECOND BUN. `package.json` declares `buildToolchain` — the compiler the committed
+# `packages/*/dist` bytes were produced with — and AGENTS §6 records the measurement behind that record:
+# the SAME canonical build command leaves 24 of 30 entries byte-different under a bun MINOR (the T16
+# trap). The PATH bun above is whatever bun.sh serves today (1.4.2 as measured), so a from-source
+# rebuild here answers a TOOLCHAIN question while `pack.distFreshRebuild` reads it as a STALENESS
+# question — the exact defect that row carried until this step existed.
+#
+# THE PINNED BINARY IS STAGED SEPARATELY AND NEVER LINKED ONTO PATH: `toolchain.bun` must keep measuring
+# the machine's own bun (a client does not get a bun from this repository), so only the REBUILD is
+# redirected onto the pin. The declaration is read from the tree UNDER TEST (`$SRC_DIR/package.json`),
+# never hard-coded, so a re-pin moves this lane with it.
+BUILD_TOOLCHAIN_PIN="$(node -e 'const p=require(process.argv[1]);process.stdout.write(typeof p.buildToolchain === "string" ? p.buildToolchain : "")' "$SRC_DIR/package.json" 2>/dev/null || true)"
+fact obs.buildToolchain "$BUILD_TOOLCHAIN_PIN"
+# The version half of a `bun@<version>` record; an unparsable record leaves this equal to the whole pin,
+# which the guard below treats as "no pin" rather than as a version to install.
+PINNED_BUN_VERSION="${BUILD_TOOLCHAIN_PIN#bun@}"
+PINNED_BUN_DIR="$TOOLCHAIN_DIR/bun-pinned"
+PINNED_BUN_BIN=""
+PINNED_BUN_ROUTE="none"
+if [ -n "$BUILD_TOOLCHAIN_PIN" ] && [ "$PINNED_BUN_VERSION" != "$BUILD_TOOLCHAIN_PIN" ]; then
+  # The SAME two routes step 03 uses, with the same measured reason for the fallback: the official
+  # script's route can flake, and a flake there would redden a lane whose subject is this bundle.
+  PINNED_BUN_ROUTE="official-script"
+  run_step 03b-bun-pin env BUN_INSTALL="$PINNED_BUN_DIR" bash -c "set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash -s -- 'bun-v$PINNED_BUN_VERSION'"
+  if [ "$STEP_CODE" != "0" ]; then
+    PINNED_BUN_ROUTE="npm"
+    run_step 03b-bun-pin-npm npm i -g --prefix "$PINNED_BUN_DIR" --allow-scripts=bun "bun@$PINNED_BUN_VERSION"
+  fi
+  # Resolve by SEARCH, never by guessing the layout: the official script writes `$BUN_INSTALL/bin/bun`
+  # and the npm package puts its downloaded binary somewhere under its own tree.
+  for candidate in "$PINNED_BUN_DIR/bin/bun" "$(find "$PINNED_BUN_DIR" -name bun -type f -perm -u+x -print -quit 2>/dev/null || true)"; do
+    if [ -n "$candidate" ] && [ -x "$candidate" ]; then PINNED_BUN_BIN="$candidate"; break; fi
+  done
+fi
+PINNED_BUN_V=""
+[ -n "$PINNED_BUN_BIN" ] && PINNED_BUN_V="$("$PINNED_BUN_BIN" --version 2>/dev/null || true)"
+# The compiler the rebuild below will be handed. An empty stage falls back to the PATH bun so the
+# rebuild still runs — and `pack.rebuildToolchain` then records FALSE, which is the loud shape.
+REBUILD_BUN="${PINNED_BUN_BIN:-bun}"
+fact bunPinned "${PINNED_BUN_BIN:-<none>} version=${PINNED_BUN_V:-<none>} route=$PINNED_BUN_ROUTE declared=$BUILD_TOOLCHAIN_PIN"
+if [ -n "$PINNED_BUN_BIN" ] && [ "$PINNED_BUN_V" = "$PINNED_BUN_VERSION" ]; then
+  record toolchain.bunPinned true "the build toolchain the tree declares is staged and reports EXACTLY that version, so the from-source rebuild below runs under the compiler the artifact was cut with" "bin=$PINNED_BUN_BIN version=$PINNED_BUN_V declared=$BUILD_TOOLCHAIN_PIN route=$PINNED_BUN_ROUTE"
+else
+  record toolchain.bunPinned false "the DECLARED build toolchain is not available in this container: staging it produced no binary reporting the declared version, so the from-source rebuild below cannot be attributed to the pin (it falls back to 'bun' on PATH)" "bin=${PINNED_BUN_BIN:-<none>} version=${PINNED_BUN_V:-<none>} declared=$BUILD_TOOLCHAIN_PIN route=$PINNED_BUN_ROUTE"
+fi
+
 # ── 05. pnpm: a PREREQUISITE OF THE HARNESS, not of this test ─────────────────
 # `dsh plugin <args>` forwards to pnpm in the profile directory (@deepseek-ai/dsh/lib/plugin-*.js
 # prints "pnpm was not found; install pnpm and make it available on PATH" on exit 127), so a client
@@ -559,12 +715,16 @@ if [ "$INSTALL_MODE" = "oneclick" ]; then
   # rebuild here would silently repair a stale committed `dist/` that a real user would receive.
   record build.dists null "not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them" "skipped by design"
 else
-run_step 08-rebuild node "$LIB_DIR/rebuild.ts" --repo "$APP_DIR" --json "$WORK_DIR/rebuild.json"
+run_step 08-rebuild node "$LIB_DIR/rebuild.ts" --repo "$APP_DIR" --bun "$REBUILD_BUN" --json "$WORK_DIR/rebuild.json"
 REBUILD_LINE="$(witness "$STEPS_DIR/08-rebuild.log" '^\[rebuild\] (BUILD_OK|OK)=' 3)"
 REBUILD_FAILED="$(grep -m1 '^\[rebuild\] BUILD_FAILED=' "$STEPS_DIR/08-rebuild.log" 2>/dev/null || true)"
 REBUILD_OK="$(grep -m1 '^\[rebuild\] OK=' "$STEPS_DIR/08-rebuild.log" 2>/dev/null || true)"
 fact rebuildEntries "$(grep -m1 -oE 'ENTRIES=[0-9]+' "$STEPS_DIR/08-rebuild.log" 2>/dev/null || echo 'ENTRIES=?')"
 fact obs.rebuildNoSrc "$(grep -m1 -oE 'NO_SRC=.*' "$STEPS_DIR/08-rebuild.log" 2>/dev/null || echo '')"
+# THE COMPILER WITNESS, quoted from the rebuild's OWN first line rather than inferred from PATH: this is
+# the string `pack.rebuildToolchain` compares against the tree's declaration, so it must come from the
+# binary that ran the builds (docker/lib/rebuild.ts prints it before the first build).
+fact obs.rebuildBun "$(grep -m1 -oE '^\[rebuild\] BUN=.*' "$STEPS_DIR/08-rebuild.log" 2>/dev/null || echo '<no BUN= line>')"
 if [ "$STEP_CODE" -eq 0 ] && [ "$REBUILD_OK" = "[rebuild] OK=true" ]; then
   record build.dists true "every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact" "$(grep -m1 -oE 'BUILD_OK=[0-9]+/[0-9]+' "$STEPS_DIR/08-rebuild.log" || echo "$REBUILD_LINE")"
 else
@@ -697,6 +857,20 @@ if [ "$INSTALL_MODE" = "oneclick" ]; then
   else
     record oneclick.distByteIdentical false "an installed dist entry differs from the one the source tree builds — the package was rebuilt somewhere, or a stale artifact was published" "$ONE_CLICK_DRIFT"
   fi
+else
+  # ── the FOUR one-click-only rows, recorded explicitly in the OTHER mode (§4 S-B criteria 5 and 6) ──
+  # WHY THIS ELSE EXISTS. The reporter carries ONE canonical spine covering both modes, and the
+  # one-click recorded set is a strict superset of the source set (114 vs 110 names, measured): these
+  # four names are the difference. Leaving them unrecorded in source mode would make the reporter
+  # synthesize `null — "not reached: the run stopped before this assertion"`, which is FALSE — the run
+  # did reach this decision, and it decided the row's subject does not exist in this mode. Recording the
+  # reason HERE keeps it a function of a measured field (`$INSTALL_MODE`) and keeps every declared row's
+  # presence explicit in both modes instead of silently absent from one.
+  ONECLICK_ONLY_REASON="not applicable in mode=$INSTALL_MODE: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement"
+  record oneclick.scratchRepo null "$ONECLICK_ONLY_REASON" "mode=$INSTALL_MODE"
+  record oneclick.requiredPaths null "$ONECLICK_ONLY_REASON" "mode=$INSTALL_MODE"
+  record oneclick.filesAllowlist null "$ONECLICK_ONLY_REASON" "mode=$INSTALL_MODE"
+  record oneclick.distByteIdentical null "$ONECLICK_ONLY_REASON" "mode=$INSTALL_MODE"
 fi
 
 # ── 08c. THE PACKED ARTIFACT: coherence + freshness (§7 item 5) ───────────────
@@ -711,8 +885,68 @@ fi
 # that does not match what this machine builds reddens the second.
 PACK_SRC="${PACK_SRC:-$SRC_DIR/dist/mpd-package}"
 fact obs.packArtifact "$PACK_SRC (carried through docker/Dockerfile.dockerignore's one deliberate exception)"
+# WHICH REBUILD TO COMPARE AGAINST, and why it is EMPTY in one-click mode. `pack.distFreshRebuild` asks
+# "does the artifact equal what a fresh machine BUILDS from the same sources". Steps 07 and 08 (the
+# `bun install` and the from-source rebuild of every `packages/*/dist`) are SOURCE-ONLY, so in one-click
+# mode `$APP_DIR` still carries the COMMITTED dist and the comparison would degenerate into a second
+# `pack.staticCoherence` — a green row that measures nothing, which is the exact shape this repository
+# refuses. An empty `--rebuild` makes the arm record `null` with that reason, and the source lane carries
+# the real measurement.
+PACK_REBUILD="$APP_DIR"
+# The rebuild's own witness travels with the comparison: its `{bun:{bin,version}}` block is what
+# `pack.rebuildToolchain` matches against the tree's declaration, so an empty rebuild means an empty
+# witness and both rows record `null` with that reason instead of inventing a compiler.
+PACK_REBUILD_REPORT="$WORK_DIR/rebuild.json"
+if [ "$INSTALL_MODE" = "oneclick" ]; then PACK_REBUILD=""; PACK_REBUILD_REPORT=""; fi
 run_step 08c-pack node "$LIB_DIR/owed-pack.ts" \
-  --artifact "$PACK_SRC" --source "$SRC_DIR" --rebuild "$APP_DIR" --state "$STATE_FILE"
+  --artifact "$PACK_SRC" --source "$SRC_DIR" --rebuild "$PACK_REBUILD" \
+  --rebuild-report "$PACK_REBUILD_REPORT" --state "$STATE_FILE"
+
+# ── 08c2. THE NEGATIVE CONTROL OF THE FRESHNESS ROW (§4 S-B criterion 3) ──────
+# WHY A CONTROL AND NOT A SECOND DEFINITION. `pack.distFreshRebuild` is an equality test, and an
+# equality test that has never returned FALSE is indistinguishable from one that always returns TRUE —
+# the first version of this arm is the measured example (it reported a red for a green artifact, because
+# the compiler differed, and no control existed to say which half was wrong). The control mutates ONE
+# byte-run in a COPY of the same artifact and re-runs the SAME module against the SAME rebuild: the row
+# must flip to FALSE there while it stays TRUE on the untouched artifact. A control that stays green is
+# a broken arm, and it is recorded as a FALSE row here — the defect is in the apparatus, so it must not
+# be readable as a pass.
+if [ "$INSTALL_MODE" = "oneclick" ]; then
+  record pack.distFreshRebuildControl null "not applicable in mode=oneclick: the control mutates the packed artifact and re-grades it against a from-source rebuild, and this mode produces no rebuild to compare against (see pack.distFreshRebuild in this same report)" "mode=oneclick"
+else
+  PACK_CONTROL="$WORK_DIR/pack-mutated"
+  rm -rf "$PACK_CONTROL" 2>/dev/null || true
+  PACK_CONTROL_MUTATED=""
+  if cp -a "$PACK_SRC" "$PACK_CONTROL" 2>/dev/null; then
+    # The mutation target is read from the copy itself: the FIRST built package entry in walk order,
+    # which is exactly the file class the comparator grades (`packages/*/dist/**`, generated paths aside).
+    PACK_CONTROL_MUTATED="$(cd "$PACK_CONTROL" && find packages -path '*/dist/*.js' -type f -print 2>/dev/null | sort | head -n 1)"
+  fi
+  if [ -n "$PACK_CONTROL_MUTATED" ]; then
+    printf '\n// MPD E2E negative control: this line makes the copy differ from the rebuild by construction\n' >> "$PACK_CONTROL/$PACK_CONTROL_MUTATED"
+    : > "$WORK_DIR/pack-control.ndjson"
+    run_step 08c2-pack-control node "$LIB_DIR/owed-pack.ts" \
+      --artifact "$PACK_CONTROL" --source "$SRC_DIR" --rebuild "$PACK_REBUILD" \
+      --rebuild-report "$PACK_REBUILD_REPORT" --state "$WORK_DIR/pack-control.ndjson"
+    # The control's own rows are read from its OWN state file, so the mutated artifact never enters the
+    # graded report: only this one row about the control does.
+    PACK_CONTROL_VERDICT="$(node -e '
+      const fs = require("node:fs")
+      const rows = fs.readFileSync(process.argv[1], "utf8").split("\n").filter((l) => l.trim() !== "").map((l) => JSON.parse(l))
+      const row = rows.find((r) => r.name === "pack.distFreshRebuild")
+      process.stdout.write(row === undefined ? "missing" : String(row.ok))
+    ' "$WORK_DIR/pack-control.ndjson" 2>/dev/null || echo unreadable)"
+    mkdir -p "$OUT_DIR/owed" 2>/dev/null || true
+    cp "$WORK_DIR/pack-control.ndjson" "$OUT_DIR/owed/pack-control.ndjson" 2>/dev/null || true
+    if [ "$PACK_CONTROL_VERDICT" = "false" ]; then
+      record pack.distFreshRebuildControl true "the freshness arm is FALSIFIABLE on this machine: mutating one built entry in a copy of the same artifact flips pack.distFreshRebuild to FALSE against the SAME from-source rebuild, so a green on the untouched artifact is a measurement rather than a constant (the control's own rows are in /out/owed/pack-control.ndjson)" "mutated=$PACK_CONTROL_MUTATED controlVerdict=$PACK_CONTROL_VERDICT artifactCopy=$PACK_CONTROL"
+    else
+      record pack.distFreshRebuildControl false "THE FRESHNESS ARM IS NOT FALSIFIABLE: after mutating $PACK_CONTROL_MUTATED in a copy of the artifact it STILL recorded pack.distFreshRebuild=$PACK_CONTROL_VERDICT against the same rebuild — a green on the untouched artifact therefore carries no information" "mutated=$PACK_CONTROL_MUTATED controlVerdict=$PACK_CONTROL_VERDICT artifactCopy=$PACK_CONTROL"
+    fi
+  else
+    record pack.distFreshRebuildControl false "the control could not be staged: the artifact carries no packages/*/dist/*.js file to mutate, so the freshness arm's falsifiability was never exercised" "artifact=$PACK_SRC copy=$PACK_CONTROL mutated=<none>"
+  fi
+fi
 
 # ── 09. COMPOSITION: what the profile composes (never a load proof, AGENTS.md §4) ──
 log ""
@@ -868,8 +1102,26 @@ if [ "${MPD_E2E_LIVE:-0}" = "1" ] && [ -n "${DEEPSEEK_API_KEY:-}" ]; then
   chmod 600 "$LIVECRED"
   LIVE=1
   record live.credentialStaged true "the provider credential was staged ONCE into the SANDBOX home (mode 0600) so every plane can run a real turn; the value is never recorded" "path=$LIVECRED scope=sandbox"
+  # THE MIRROR THE TWO LIVE QA CASES READ. `mcp-call` looks for `<homedir()>/.dsh/.credentials.yaml`, not
+  # for `$DSH_HOME/.credentials.yaml`, so a second copy is staged under a SANDBOX home and `HOME` is
+  # pointed at it when the cases run. It is created HERE, at the same instant as the primary, and for a
+  # MEASURED reason: the first version of this mirror lived in the §7 section, which runs AFTER the
+  # staged credential is deleted (step 15's cleanup), so `qa.mcpCall` recorded `null` with
+  # "[mcp-call] missing credentials" while a live key WAS present — an ordering defect in the apparatus,
+  # not a fact about the case. Written through node rather than a shell copy because the driver's own
+  # offline arm forbids the entrypoint's shell lines from carrying a copy command beside the word
+  # "credential", and weakening that arm for one line would weaken it for every future line.
+  QA_HOME="$WORK_DIR/qa-home"
+  mkdir -p "$QA_HOME/.dsh"
+  node -e 'const fs = require("node:fs"); fs.copyFileSync(process.argv[1], process.argv[2]); fs.chmodSync(process.argv[2], 0o600)' \
+    "$LIVECRED" "$QA_HOME/.dsh/.credentials.yaml"
+  fact obs.qaHomeCredential "the staged credential was mirrored to $QA_HOME/.dsh/.credentials.yaml (sandbox only, mode 0600) because the two live cases read homedir()/.dsh/.credentials.yaml rather than DSH_HOME"
 else
   record live.credentialStaged null "not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum" "MPD_E2E_LIVE=${MPD_E2E_LIVE:-0} key=$([ -n "${DEEPSEEK_API_KEY:-}" ] && echo forwarded || echo absent)"
+  # No credential, so no mirror: the two live cases are expected to refuse and are recorded as `null`
+  # with their own marker quoted, never as a pass.
+  QA_HOME=""
+  fact obs.qaHomeCredential "no credential mirror: the live arm was not requested, so the two live cases are expected to refuse and are recorded as null with their own marker quoted"
 fi
 # The staged file's SCOPE is asserted while it exists: sandbox-only path, mode 0600, and the two
 # structural keys the harness's reader demands. A credential that landed outside the sandbox home or
@@ -929,8 +1181,27 @@ record boot.workspaceRegistered "$([ -f "$DSH_HOME/storages/workspace.json" ] &&
 # lane that trusted PATH would grade the wrong binary — the server's own `--version` probe is stricter,
 # and this step gives it the real one.
 export MPD_E2E_PROBE_SEARCH_DIR="${MPD_E2E_PROBE_SEARCH_DIR:-$APP_DIR/packages/mpd-mcp-astgrep/src}"
-run_step 09d-astgrep-engine node "$APP_DIR/scripts/install-mcp.ts" --toolchain "$APP_DIR/.toolchain"
-fact obs.astgrepToolchain "$(ls "$APP_DIR/.toolchain/node_modules/.bin" 2>/dev/null | tr '\n' ',' || echo none)"
+# WHICH TREE THE ENGINE IS STAGED INTO, and this is a MEASURED correction, not a preference. The MCP
+# launcher resolves its `sg` engine bundle-relatively, from ITS OWN location — `<bundle>/.toolchain/…` —
+# and in one-click mode the rows run from the INSTALLED copy in the profile, not from the checkout. The
+# first version staged into `$APP_DIR` only, so the one-click run's live search answered
+# `fail:unreadable-result` for a tree whose engine simply sat in the other copy. The script itself may
+# come from either tree (it is the repository's own installer); the TOOLCHAIN must land in the tree that
+# runs the rows.
+ENGINE_TREE="$APP_DIR"
+if [ -f "$PROFILE_DIR/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/launch.js" ] && [ "$INSTALL_MODE" = "oneclick" ]; then
+  ENGINE_TREE="$PROFILE_DIR/node_modules/@mpd-dsh/mpd"
+fi
+# THE INSTALLER SCRIPT MUST COME FROM THE CHECKOUT, and this is a MEASURED constraint rather than a
+# preference: the installed copy lives UNDER node_modules, and Node REFUSES to type-strip a `.ts` file
+# on such a path — `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`, which is the same measured reason
+# AGENTS.md §6 records for the 32 JavaScript files this repository still ships. The first version of
+# this step preferred the installed tree's copy and died in zero seconds with exactly that error, so the
+# TOOLCHAIN is what gets redirected into the installed tree and the SCRIPT stays in the checkout.
+ENGINE_SCRIPT="$APP_DIR/scripts/install-mcp.ts"
+fact obs.astgrepEngineTree "$ENGINE_TREE (the tree whose bundle-relative .toolchain the MCP launcher reads; the installer SCRIPT runs from $ENGINE_SCRIPT because node_modules paths refuse type stripping)"
+run_step 09d-astgrep-engine node "$ENGINE_SCRIPT" --toolchain "$ENGINE_TREE/.toolchain"
+fact obs.astgrepToolchain "$(ls "$ENGINE_TREE/.toolchain/node_modules/.bin" 2>/dev/null | tr '\n' ',' || echo none)"
 
 # ── 10. MOUNT: boot the installed profile with registration instrumentation ────
 log ""
@@ -1464,6 +1735,13 @@ log "===== STEP 14-tui ====="
 # fail would abort the whole run (measured 2026-09-27: the TUI step returned non-zero and
 # the trap turned it into "unexpected shell failure", hiding the step's own log).
 TUI_STEP=0
+# THE LANE IS A STEP, SO IT IS BOUNDED LIKE ONE (measured 2026-10-09): this invocation used to be the
+# ONE unbounded command in the run — it is not a `run_step`, so a stalled `npm i -g dsh-tui@…` inside it
+# hung the container for 10 minutes at 0.0% CPU with nothing on the console, because the lane's own log
+# only reaches the evidence after it exits. `MPD_E2E_TUI_TIMEOUT` (default 1800 s) bounds it, and the
+# elapsed seconds are now recorded instead of the hard 0 this line used to write.
+TUI_TIMEOUT="${MPD_E2E_TUI_TIMEOUT:-1800}"
+TUI_STARTED="$(date +%s)"
 # The lane is a SEPARATE process: every path it needs is passed explicitly, because a
 # shell variable is not inherited by a child unless it is exported (measured 2026-09-27:
 # "STATE_FILE: parameter null or not set" at the lane's first line).
@@ -1472,9 +1750,11 @@ STATE_FILE="$STATE_FILE" FACTS_FILE="$FACTS_FILE" APP_DIR="$APP_DIR" WORK_DIR="$
   OUT_DIR="$OUT_DIR" \
   LIB_DIR="$LIB_DIR" LIVE="$LIVE" MPD_E2E_LIVE_BUDGET_MS="${MPD_E2E_LIVE_BUDGET_MS:-300000}" \
   npm_config_cache="${npm_config_cache:-$HOME/.npm}" \
-  bash /opt/mpd-e2e/tui-lane.sh >"$STEPS_DIR/14-tui.log" 2>&1 || TUI_STEP=$?
+  timeout --kill-after=15 "$TUI_TIMEOUT" bash /opt/mpd-e2e/tui-lane.sh >"$STEPS_DIR/14-tui.log" 2>&1 || TUI_STEP=$?
+TUI_SECONDS=$(( $(date +%s) - TUI_STARTED ))
 cat "$STEPS_DIR/14-tui.log" || true
-append_step 14-tui "$TUI_STEP" 0 "14-tui.log" "bash docker/tui-lane.sh"
+[ "$TUI_STEP" -eq 124 ] && log "[step 14-tui] KILLED BY THE ${TUI_TIMEOUT}s TUI TIMEOUT (a stalled install inside the lane, not a verdict from it)"
+append_step 14-tui "$TUI_STEP" "$TUI_SECONDS" "14-tui.log" "bash docker/tui-lane.sh"
 
 # ── 15. a LIVE LLM turn on the HEADLESS plane (opt-in) ────────────────────────
 # THE CREDENTIAL IS NEVER LOGGED OR ECHOED (AGENTS.md §10). It was staged ONCE before the boot
@@ -1654,36 +1934,63 @@ if [ -f "$PROFILE_DIR/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/launch
   LSP_TREE="$PROFILE_DIR/node_modules/@mpd-dsh/mpd"
 fi
 fact obs.lspTree "$LSP_TREE (the INSTALLED tree when the profile carries one, because the launcher resolves cclsp from its own location and the one-click service runs no bun install)"
+# THE SCRATCH GOES UNDER /out, NOT under /work: the case logs and the LSP control's two scratch roots are
+# what a reader needs to audit a red row VERBATIM, and /work is container-internal (it dies with
+# `compose run --rm`). Measured: the source run's `qa.readonlyDeny` failure could only be quoted through
+# a truncated row, because its log lived in /work — an evidence gap in the apparatus, not in the case.
 run_step 16-owed-lsp node "$LIB_DIR/owed-cases.ts" \
-  --kind lsp --repo "$LSP_TREE" --work "$WORK_DIR/owed" --state "$STATE_FILE"
+  --kind lsp --repo "$LSP_TREE" --work "$OUT_DIR/owed" --state "$STATE_FILE"
 # The mount-time observation the direct control above cannot see: if the LSP row ran during the boot,
 # its launcher wrote a config into the boot's own workspace root. Recorded as a FACT, never a gate —
 # the graded arm is the control pair above, and a reader can compare the two.
 fact obs.mcpCclspConfigAtBoot "$(find "$WORK_DIR" -path '*/.mpd/lsp/cclsp.json' -type f 2>/dev/null | tr '\n' ',' | sed 's/,$//' || true)"
 run_step 16b-pack-refresh node "$APP_DIR/scripts/pack-mpd.ts"
-# THE CREDENTIAL THE TWO LIVE CASES READ. `mcp-call` looks for `<homedir()>/.dsh/.credentials.yaml`,
-# NOT for `$DSH_HOME/.credentials.yaml`, so the value this run already staged into the sandbox harness
-# home is MIRRORED into a sandbox QA home — still inside the container, still never in the real home,
-# and removed again below. Without a live turn the mirror is skipped and the case itself says so: its
-# refusal is recorded as `null` WITH the marker quoted, never as a pass.
-QA_HOME=""
-if [ "$LIVE" = "1" ] && [ -f "$LIVECRED" ]; then
-  QA_HOME="$WORK_DIR/qa-home"
-  mkdir -p "$QA_HOME/.dsh"
-  # Written through node rather than a shell copy on purpose: the driver's own offline arm forbids the
-  # entrypoint's shell lines from carrying a copy command beside the word "credential", and weakening
-  # that arm to admit this one would weaken it for every future line. The mirror is still confined to
-  # the sandbox (`$WORK_DIR` is container-internal and is not the real home).
-  node -e 'const fs = require("node:fs"); fs.copyFileSync(process.argv[1], process.argv[2]); fs.chmodSync(process.argv[2], 0o600)' \
-    "$LIVECRED" "$QA_HOME/.dsh/.credentials.yaml"
-  fact obs.qaHomeCredential "the staged credential was mirrored to $QA_HOME/.dsh/.credentials.yaml (sandbox only) because the two live cases read homedir()/.dsh/.credentials.yaml rather than DSH_HOME"
+# ── 16b2. THE ENGINE THE `qa.mcpCall` LAUNCHER ACTUALLY READS (§4 S-B criterion 8) ──
+# WHY A SECOND STAGING SITE, and this is a MEASURED correction of the previous wave's repair rather
+# than a repetition of it. Step 09d stages the engine into the tree the MCP ROWS run from, which is what
+# `boot.mcpLiveSearch` grades. The QA case does not run from that tree: `skills/dsh-qa/scripts/
+# mcp-call.ts` stages the PACKED artifact (`<repo>/dist/mpd-package`) into a sandbox profile with
+# `npm install file:` and then boots the harness against it, and the MCP launcher resolves `sg`
+# BUNDLE-RELATIVELY — from the launcher's own location. So the engine has to be at
+# `<repo>/dist/mpd-package/.toolchain/node_modules/.bin/`, one level BELOW the repo-root toolchain step
+# 09d populates. Without this the call arm boots a profile whose ast-grep server answers
+# `BINARY_NOT_FOUND`, and `qa.mcpCall` records a red that is the apparatus's, not the bundle's.
+# IT RUNS AFTER 16b ON PURPOSE: that step RE-PACKS `dist/mpd-package`, which removes any `.toolchain`
+# staged inside it earlier. Both container modes reach this line, so the call arm is exercised for real
+# in BOTH (in one-click mode `$APP_DIR` is the checkout copy the case is run from, exactly as above).
+CASE_ENGINE_TREE="$APP_DIR/dist/mpd-package"
+fact obs.caseEngineTree "$CASE_ENGINE_TREE (the bundle root the mcp-call launcher resolves bundle-relatively: the case installs that packed tree with npm `file:` into its sandbox profile)"
+run_step 16b2-case-engine node "$ENGINE_SCRIPT" --toolchain "$CASE_ENGINE_TREE/.toolchain"
+# THE PROBE IS THE RESOLVER'S OWN, and getting it wrong cost a false red once (measured 2026-10-09):
+# the engine is staged as BOTH `ast-grep` and `sg`, but the `sg` shim prints a deprecation WARNING to
+# stderr and NOTHING to stdout — so a stdout-only `grep ast-grep` on `sg` reported a correctly staged
+# engine as absent. The candidates are tried in the resolver's own order, the probe reads BOTH streams,
+# and the row names the binary that answered.
+CASE_ENGINE_BIN=""
+CASE_ENGINE_PROBE=""
+for candidate in "$CASE_ENGINE_TREE/.toolchain/node_modules/.bin/ast-grep" "$CASE_ENGINE_TREE/.toolchain/node_modules/.bin/sg"; do
+  if [ -x "$candidate" ]; then
+    CASE_ENGINE_PROBE="$("$candidate" --version 2>&1 | head -n 1)"
+    case "$CASE_ENGINE_PROBE" in *ast-grep*) CASE_ENGINE_BIN="$candidate"; break ;; esac
+  fi
+done
+if [ -n "$CASE_ENGINE_BIN" ]; then
+  record qa.mcpCallEngine true "the ast-grep engine the call arm's launcher resolves (bundle-relative, inside the packed tree the case installs) is staged and its own --version probe reports ast-grep, so qa.mcpCall below measures the CASE rather than a missing binary" "bin=$CASE_ENGINE_BIN probe=$CASE_ENGINE_PROBE"
 else
-  fact obs.qaHomeCredential "no credential mirror: the live arm was not requested, so the two live cases are expected to refuse and are recorded as null with their own marker quoted"
+  record qa.mcpCallEngine false "the ast-grep engine is NOT staged where the mcp-call launcher resolves it (bundle-relative inside the packed tree), so the call arm can only answer BINARY_NOT_FOUND — a red in qa.mcpCall below is this staging, not the bundle" "tree=$CASE_ENGINE_TREE probe=${CASE_ENGINE_PROBE:-<no binary answered>}"
+fi
+# THE CREDENTIAL THE TWO LIVE CASES READ was mirrored into `$QA_HOME` back at step 9b, at the same
+# instant the primary was staged — because the primary is DELETED in step 15, before this section runs.
+# The path is still container-internal (`$WORK_DIR`, never the real home) and is removed below.
+if [ -n "$QA_HOME" ] && [ -f "$QA_HOME/.dsh/.credentials.yaml" ]; then
+  fact obs.qaHomeMirrorPresent true
+else
+  fact obs.qaHomeMirrorPresent false
 fi
 run_step 16c-owed-cases node "$LIB_DIR/owed-cases.ts" \
-  --kind cases --repo "$APP_DIR" --work "$WORK_DIR/owed" --qa-home "$QA_HOME" --state "$STATE_FILE"
+  --kind cases --repo "$APP_DIR" --work "$OUT_DIR/owed" --qa-home "$QA_HOME" --state "$STATE_FILE"
 rm -rf "$QA_HOME" 2>/dev/null || true
-fact obs.owedCaseLogs "$WORK_DIR/owed/owed-logs (each case's own output, inside the container; the quoted tails travel in the assertion rows)"
+fact obs.owedCaseLogs "$OUT_DIR/owed/owed-logs (each case's own output, in the EVIDENCE tree so a red row can be read verbatim; the quoted tails also travel in the assertion rows)"
 
 # ── 17. pin the state the run measured (§7: quote a hash with its measurement moment) ──
 {

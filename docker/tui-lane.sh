@@ -908,20 +908,13 @@ else
   PANEL_SEAM="absent"
 fi
 if [ "$PANEL_SEAM" = "present" ]; then
-  # NOT MEASURABLE IN A PANE, recorded as such rather than as a pass. On this host the merged view is
-  # the SIDEBAR panel (`alt+a` / `/mpd subagents` / `/mpd panel` all route through `tuiPanels.open()`),
-  # and this lane's evidence channel is a tmux capture. MEASURED 2026-10-06 across four container runs
-  # (`evidence/docker/client-install/`): a host-ACCEPTED `open()` changes ZERO bytes of the capture, and
-  # the routed command's own printed line does not reach the pane either — the transcript stays empty
-  # while the same command's `command/run` + `command/done` records ARE written to the session store.
-  # The dashboard asks for a VERDICT, not for a hopeful grep, so this arm declares the bound and names
-  # the assertion that does carry the proof on the SAME host version: `skills/dsh-qa/scripts/
-  # tui-panels.ts` + `tui-deps-ctrla.ts` read the store and assert the host's own `list()` read-back id
-  # (`act1:team`) plus an accepted open (both PASS on 0.13.0, evidence/tui/lanes/).
-  record tui.mergedPanelOpens null \
-    "the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above" \
-    "panelSeam=$PANEL_SEAM rowHits=${TUI_PANEL_ROW:-0} module=${TUI_PANEL_MODULE:+present} proofOwner=skills/dsh-qa/scripts/tui-panels.ts,tui-deps-ctrla.ts"
-  # Give the composer focus back before the next arms, in case an interactive opened earlier.
+  # The 0.13.0+ branch records NOTHING here any more: it used to write `tui.mergedPanelOpens` as NULL on
+  # the ground that "a host-ACCEPTED open() changes zero bytes of a tmux capture", which the
+  # authoritative run's own `pane-merged.txt` REFUTES (see the classifier block below). The
+  # discriminator still matters, because it selects the marker FAMILY the classifier uses — the sidebar
+  # panel body on `present`, the pre-0.13 full-screen scene's strings on `absent`.
+  # Focus is given back to the composer before the combo is sent, because the host's own shortcut
+  # registry matches shortcuts only in the plain chat state.
   tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
   sleep 2
 fi
@@ -930,55 +923,66 @@ sleep 5
 capture_pane merged
 MERGED_PANE="$TUI_DIR/pane-merged.txt"
 
-# (1) THE PANEL OPENED — and it is the MERGED one, not the team scene it came from: its own title
-# line, the subagent section this scene exists to add (the section header always renders; without a
-# host subagent row the panel also carries the host's own empty-state line), and the team body's
-# record markers `tui.teamGraphContent` above already proves are drawn.
-MERGED_TITLE_HITS="$(pane_hits 'MPD subagents \+ team' "$MERGED_PANE")"
-MERGED_SUB_HITS="$(pane_hits 'subagents +[0-9]+ total|No subagents in the current session' "$MERGED_PANE")"
-MERGED_TEAM_HITS="$(pane_hits 'build the graph|task dependency graph' "$MERGED_PANE")"
-if [ "$PANEL_SEAM" != "present" ] && [ "$MERGED_TITLE_HITS" -gt 0 ] && [ "$MERGED_SUB_HITS" -gt 0 ] && [ "$MERGED_TEAM_HITS" -gt 0 ]; then
+# (1) THE PANEL OPENED — and it is the MERGED one, not the team scene it came from.
+#
+# WHAT CHANGED AND WHY (2026-10-09, §4 S-B criterion 4). This block used to record BOTH rows as NULL on
+# any host offering the panel seam, on the recorded ground that "a host-ACCEPTED open() changes zero
+# bytes of a tmux capture". That ground was measured on the PRE-0.13 full-screen scene and never
+# re-measured after dsh-tui moved the merged view into a SIDEBAR PANEL: the authoritative run's own
+# `tui-panes/pane-merged.txt` carries the entire panel body (the tab bar with MPD's tab active, the
+# `┌MPD` border, the host's `subagents  0 total` summary, `No subagents in the current session`, MPD's
+# `team … phase active  tasks 1/3  members 2` header, the T1/T2/T3 DAG and `view boxes · 3 tasks · ranks
+# derived`) on a 218-column pane, while the PRE-KEY capture `pane-teamClosed.txt` carries none of it.
+# The rows were structurally unmeasurable, not physically so, and a null there was reading as a bound.
+#
+# THE CLASSIFIER IS SHARED WITH THE OFFLINE FALSIFIER (`docker/lib/tui-panel-body.ts`, exercised by
+# `scripts/docker-e2e.ts --self-test` on planted panes) so the two can never drift: the shell keeps no
+# marker of its own, it only reads the module's verdict. THE PRE-KEY CAPTURE IS THE CONTROL — if that
+# pane already carries the panel body, the post-key pane proves nothing and the module says FALSE, which
+# is exactly how this row REDDENS when the capture order or the keypress is broken.
+#
+# The marker FAMILY is chosen by the SAME seam discriminator the sandbox lanes use (`PANEL_SEAM`, read
+# from the composed host row AND the shipped module): `present` is the 0.13.0+ sidebar panel body, and
+# `absent` is the pre-0.13 full-screen scene's strings, so a host without the seam keeps its old meaning.
+MERGED_PANE="$TUI_DIR/pane-merged.txt"
+MERGED_TEAMCLOSED_PANE="$TUI_DIR/pane-teamClosed.txt"
+MERGED_PANEL_JSON="$TUI_DIR/merged-panel.json"
+node "$LIB_DIR/tui-panel-body.ts" \
+  --pane "$MERGED_PANE" --control "$MERGED_TEAMCLOSED_PANE" --shape "$PANEL_SEAM" \
+  --json "$MERGED_PANEL_JSON" > "$TUI_DIR/merged-panel.log" 2>&1 || true
+# The classifier's own artifacts travel with the panes, so a reader re-reads the exact measurement and
+# its control out of the EVIDENCE tree rather than out of a container-internal path.
+cp "$MERGED_PANEL_JSON" "$PANE_DIR/merged-panel.json" 2>/dev/null || true
+cp "$TUI_DIR/merged-panel.log" "$PANE_DIR/merged-panel.log" 2>/dev/null || true
+MERGED_PANEL_LOG="$(cat "$TUI_DIR/merged-panel.log" 2>/dev/null || true)"
+# The verdicts and their witnesses come ONLY from the module's printed contract, never from a re-grep:
+# one classifier, one truth, and the offline falsifier grades the same code path.
+MERGED_PANEL_OPENS="$(printf '%s\n' "$MERGED_PANEL_LOG" | grep -m1 -oE '^\[tui-panel\] OPENS=(true|false)$' | sed 's/.*=//' || true)"
+MERGED_PANEL_ORDER="$(printf '%s\n' "$MERGED_PANEL_LOG" | grep -m1 -oE '^\[tui-panel\] ORDER=(true|false)$' | sed 's/.*=//' || true)"
+MERGED_PANEL_REASON="$(printf '%s\n' "$MERGED_PANEL_LOG" | grep -m1 -oE '^\[tui-panel\] REASON=.*' | sed 's/^\[tui-panel\] REASON=//' || true)"
+MERGED_PANEL_HITS="$(printf '%s\n' "$MERGED_PANEL_LOG" | grep -m1 -oE '^\[tui-panel\] TITLE_HITS=.*' | sed 's/^\[tui-panel\] //' || true)"
+MERGED_PANEL_LINES="$(printf '%s\n' "$MERGED_PANEL_LOG" | grep -m1 -oE '^\[tui-panel\] SUB_LINE=.*' | sed 's/^\[tui-panel\] //' || true)"
+MERGED_ORDER_RAW="panelSeam=$PANEL_SEAM driver=docker/lib/tui-panel-body.ts $MERGED_PANEL_HITS $MERGED_PANEL_LINES pane=pane-merged.txt control=pane-teamClosed.txt chars=$(wc -c <"$MERGED_PANE" 2>/dev/null || echo 0) controlChars=$(wc -c <"$MERGED_TEAMCLOSED_PANE" 2>/dev/null || echo 0)"
+if [ "$MERGED_PANEL_OPENS" = "true" ]; then
   record tui.mergedPanelOpens true \
-    "the MPD combo (alt+a, sent as tmux M-a from the plain chat state) opened the MERGED panel on a real terminal: the pane carries the scene's own title, its subagent section, and the team body the /mpd team arm proves is drawn" \
-    "title=\"MPD subagents + team\" titleHits=$MERGED_TITLE_HITS subagentSectionHits=$MERGED_SUB_HITS teamBodyHits=$MERGED_TEAM_HITS pane=pane-merged.txt chars=$(wc -c <"$MERGED_PANE" 2>/dev/null || echo 0)"
-elif [ "$PANEL_SEAM" != "present" ]; then
+    "the MPD combo (alt+a, sent as tmux M-a from the plain chat state) opened the MERGED panel on a real terminal, and the PRE-KEY capture proves the combo is what opened it: ${MERGED_PANEL_REASON}" \
+    "$MERGED_ORDER_RAW"
+else
   record tui.mergedPanelOpens false \
-    "the MPD combo did NOT open the merged panel: titleHits=$MERGED_TITLE_HITS subagentSectionHits=$MERGED_SUB_HITS teamBodyHits=$MERGED_TEAM_HITS (each must be > 0) — the pane is the screen alt+a produced after Escape closed the team scene" \
-    "pane=pane-merged.txt chars=$(wc -c <"$MERGED_PANE" 2>/dev/null || echo 0) head=$(head -c 200 "$MERGED_PANE" 2>/dev/null | tr '\n' ' ' | tr -d '"\\')"
+    "the MPD combo did NOT open the merged panel on the captured pane, or the capture cannot attribute the panel to the combo: ${MERGED_PANEL_REASON}" \
+    "$MERGED_ORDER_RAW log=$(printf '%s' "$MERGED_PANEL_LOG" | tr '\n' ' ' | tr -d '"\\')"
 fi
 
 # (2) THE ROW ORDER on the CAPTURED pane: the subagent section above the team section. The branch
-# actually measured is stated in the record, because the two are different screens: a session with no
-# host subagent row renders the host's own EMPTY-STATE line, and one with a row renders the row.
-# Whichever branch it is, the marker's line index must be > 0 and BELOW the team body's first marker.
-MERGED_SUB_HEAD_LINE="$(pane_line_of 'subagents +[0-9]+ total' "$MERGED_PANE")"
-MERGED_SUB_EMPTY_LINE="$(pane_line_of 'No subagents in the current session' "$MERGED_PANE")"
-MERGED_TEAM_LINE="$(pane_line_of 'task dependency graph|build the graph' "$MERGED_PANE")"
-if [ "$MERGED_SUB_EMPTY_LINE" -gt 0 ]; then
-  MERGED_SUB_LINE="$MERGED_SUB_EMPTY_LINE"
-  MERGED_SUB_BRANCH="the host's own empty-state line (this session carries NO host subagent row)"
-else
-  MERGED_SUB_LINE="$MERGED_SUB_HEAD_LINE"
-  MERGED_SUB_BRANCH="the subagent section header (this session carries at least one host subagent row)"
-fi
-MERGED_ORDER_RAW="subagentMarker=line ${MERGED_SUB_LINE:-0} [${MERGED_SUB_BRANCH}] teamMarker=line ${MERGED_TEAM_LINE:-0} header=line ${MERGED_SUB_HEAD_LINE:-0} emptyState=line ${MERGED_SUB_EMPTY_LINE:-0} pane=pane-merged.txt"
-if [ "$PANEL_SEAM" = "present" ]; then
-  # NOT MEASURABLE HERE, and recorded as such rather than as a pass: on this host the merged body
-  # lives in a SIDEBAR panel whose rows a tmux capture does not carry (measured: a byte-identical
-  # capture around a host-ACCEPTED open). The order is asserted by the unit arms instead
-  # (`packages/mpd-tui-plugin/test/panel.test.ts` renders the panel through a host double and checks
-  # the two sections' order), and the pre-0.13.0 branch below keeps the pane-level assertion alive for
-  # a host that still renders the merged view full-screen.
-  record tui.mergedPanelOrder null \
-    "the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry" \
-    "panelSeam=$PANEL_SEAM orderCoveredBy=packages/mpd-tui-plugin/test/panel.test.ts $MERGED_ORDER_RAW"
-elif [ "${MERGED_SUB_LINE:-0}" -gt 0 ] && [ "${MERGED_TEAM_LINE:-0}" -gt 0 ] && [ "${MERGED_SUB_LINE:-0}" -lt "${MERGED_TEAM_LINE:-0}" ]; then
+# actually measured is stated in the module's own reason (this session carries no host subagent ROW, so
+# the host's EMPTY-STATE line is the marker; a session with a row uses the section header instead).
+if [ "$MERGED_PANEL_ORDER" = "true" ]; then
   record tui.mergedPanelOrder true \
-    "the captured pane holds the subagent section ABOVE the team section — measured marker: ${MERGED_SUB_BRANCH}, at line ${MERGED_SUB_LINE}, above the team body's first marker at line ${MERGED_TEAM_LINE}" \
+    "the captured pane holds the subagent section ABOVE the team body — measured on the same pane the open row reads: ${MERGED_PANEL_REASON}" \
     "$MERGED_ORDER_RAW"
 else
   record tui.mergedPanelOrder false \
-    "the subagent section is NOT above the team section on the captured pane (or a marker is missing, which compares as line 0): ${MERGED_ORDER_RAW}" \
+    "the subagent section is NOT above the team body on the captured pane (or a marker is missing, or the panel did not open — an order claim about a panel that is not on screen is not a measurement): ${MERGED_PANEL_REASON}" \
     "$MERGED_ORDER_RAW"
 fi
 

@@ -1,0 +1,105 @@
+{
+  "stream": "S-D",
+  "title": "the Security Policy removal — SECURITY.md + SECURITY.zh-CN.md deleted, every reference removed",
+  "writer": "docs-writer (Junior Engineer)",
+  "contract": ".mpd/plans/restore-acceptance-fix.md §4 S-D",
+  "verificationLoop": "loop-20261009T115806-6f91f7",
+  "boardTask": "T4 — CLAIMED on the row by this session (agent_teams_task {action:\"claim\"} answered `attempt 1 of T4 by 5041bdac-0aaf-4e50-abc0-0e06fe4afdfd`). The T3 completion call was REFUSED for this same session (`task T3 is owned by \"docs-writer\" and this caller is neither that owner nor this team's lead` — recorded platform defect F1 in .mpd/plans/restore-acceptance-findings.md), so T4's terminal row is left for the lead to close.",
+  "revision": {
+    "branch": "fix/restore-wave-acceptance",
+    "headSha": "477baa5bebe6499b0c586fe2b3135020748f7d77",
+    "readAt": "2026-10-09T12:02:07Z",
+    "endReadAt": "2026-10-09T12:03:05Z",
+    "settleWindowSeconds": 58,
+    "sandwich": "hash → (packet written) → re-hash; HEAD and all seven path hashes are IDENTICAL at both reads, so the pinned state did not move while this packet was written. Every write and every gate run recorded in output.log happened BEFORE the start pin.",
+    "command": "date -u +%Y-%m-%dT%H:%M:%SZ ; git rev-parse HEAD ; git rev-parse --abbrev-ref HEAD ; sha256sum <the changed paths>"
+  },
+  "artifacts": [
+    { "path": "SECURITY.md", "state": "DELETED", "sha256": null, "proof": "git status --short → ` D SECURITY.md`; sha256sum SECURITY.md → `No such file or directory` (exit 1)" },
+    { "path": "SECURITY.zh-CN.md", "state": "DELETED", "sha256": null, "proof": "git status --short → ` D SECURITY.zh-CN.md`; sha256sum SECURITY.zh-CN.md → `No such file or directory` (exit 1)" },
+    { "path": "package.json", "state": "MODIFIED", "sha256": "fee35b7f6fd99c93775922dd98d348efd60a4cca8da679aa1adbfdf8adf5bd98", "change": "the two entries removed from the `files` array" },
+    { "path": "scripts/pack-mpd.ts", "state": "MODIFIED", "sha256": "f69c177837cb9a1aaea3f2fcb8a50b332ef93f66b141a216557f5fcb5aa90c0e", "change": "the two entries removed from ROOT_FILES" },
+    { "path": "CONTRIBUTING.md", "state": "MODIFIED", "sha256": "a7492e1a027621addc3b1ae6d5cd3bfb7b337b745178d0571fccc5975b66a71a", "change": "the SECURITY.md sentence dropped; the Security-tab guidance kept" },
+    { "path": "docs/index.md", "state": "MODIFIED", "sha256": "90b8912d0e63b90bab02292fd539102cd40e4ed03deb9126cab344b2bfe24840", "change": "reading-path item 6 removed + the Documentation-index row removed (2 deletions)" },
+    { "path": "docs/index.zh-CN.md", "state": "MODIFIED", "sha256": "0247a4a40d9823a20d0a7109d31eb37b77a846db0aab8ef7f7057e8a1c20f41c", "change": "the SAME two edits, in the same commit — item 6 removed + the index row removed (2 deletions)" }
+  ],
+  "criteria": [
+    {
+      "id": 1,
+      "requirement": "Both policy files are gone (git status shows exactly two deletions)",
+      "status": "met",
+      "evidence": "log §'git status --short -- SECURITY.md SECURITY.zh-CN.md' → ` D SECURITY.md` / ` D SECURITY.zh-CN.md` (exit 0). `sha256sum SECURITY.md SECURITY.zh-CN.md` → two `No such file or directory` lines (exit 1)."
+    },
+    {
+      "id": 2,
+      "requirement": "No dangling reference survives: a case-insensitive tree scan for SECURITY finds no path, link or URL naming either deleted file; a historical CHANGELOG.md line may remain and the packet DECLARES it",
+      "status": "met, with the historical mentions DECLARED rather than silently left",
+      "evidence": "LIVE/SHIPPED SURFACE — ZERO mentions. `git grep -c -i -e 'SECURITY' -- package.json scripts/pack-mpd.ts docs/index.md docs/index.zh-CN.md CONTRIBUTING.md` returns NO line for package.json, scripts/pack-mpd.ts, docs/index.md or docs/index.zh-CN.md (git grep omits zero-match files) and `CONTRIBUTING.md:3` — whose three hits are the RETAINED Security-tab guidance, required by criterion 5. `git grep -n -i -e 'SECURITY\\.md' -e 'SECURITY\\.zh-CN\\.md' -- .` lists every surviving mention of the two FILE NAMES; outside evidence/ exactly ONE exists: `CHANGELOG.md:560`.",
+      "declaredHistoricalMentions": [
+        "CHANGELOG.md:560 — `gates, the git model) and \\`SECURITY.md\\` (how to report privately) join the root set, each with its` — a RELEASE NOTE describing a past release; retained by the contract's own allowance for a historical CHANGELOG line.",
+        "evidence/** — every remaining hit is inside the immutable QA/provenance records (evidence/docs/github-doc-overhaul/…, evidence/docs/readme-0.12.0/pull-request.md, evidence/verify/pre-upload/result.json, the evidence/de-omo seed tree.json files that name THIRD-PARTY repositories' SECURITY.md). NONE is a live path, link or manifest entry: at the moments those records describe the files really existed, so rewriting the records would falsify them. They record the PAST, and are outside the shipped surface (package.json excludes evidence/ from the allowlist, asserted by verify:manifest's `evidence-excluded` arm)."
+      ]
+    },
+    {
+      "id": 3,
+      "requirement": "package.json's `files` array and scripts/pack-mpd.ts's root list no longer name either file (a listed-but-missing file is a manifest red)",
+      "status": "met for the REMOVAL; the parenthetical is MEASURABLY FALSE and is reported as a finding (F-SD-1)",
+      "evidence": "`git grep -c -i 'SECURITY' -- package.json scripts/pack-mpd.ts` → NO output line for either file (git grep c prints nothing for a zero-match file), i.e. 0 mentions each; the diff shows exactly the four removed lines (2 from each file). The falsifier the contract names — naming a missing file in the `files` allowlist reddens `verify:manifest` — was RUN and did NOT redden: see F-SD-1 below."
+    },
+    {
+      "id": 4,
+      "requirement": "docs/index.md and docs/index.zh-CN.md move TOGETHER (bilingual pair, same commit) with their heading tree and item numbering still coherent",
+      "status": "met",
+      "evidence": "BEFORE → AFTER, item 6 in both files: `6. [../SECURITY.md](../SECURITY.md) — how to report a vulnerability privately.` → removed, leaving the 1..5 list intact (CHANGELOG.md is now the last item, number 5). The zh-CN twin: `6. [../SECURITY.zh-CN.md](../SECURITY.zh-CN.md) —— 如何私密地报告漏洞。` → removed, same 1..5 list. The Documentation-index table loses ONE row in each file, between the CONTRIBUTING row and the CHANGELOG row, in both. Both files appear in ONE `git diff` invocation and in the same `git status` output (` M docs/index.md` / ` M docs/index.zh-CN.md`), i.e. one working change set; the captain's single commit carries both (contract §2/§5). `bun run verify:docs` → exit 0, `pairs=47 failed=0`, so the pair and the heading tree are still accepted by the gate.",
+      "utf8Note": "the zh-CN twin's removed lines are byte-for-byte the ones recorded in the log's `git diff` block (the em-dash `——` and the tool's `\\u`-escaped rendering agree on the same bytes on disk)."
+    },
+    {
+      "id": 5,
+      "requirement": "The private-reporting guidance in .github/ISSUE_TEMPLATE/config.yml, bug_report.yml and CONTRIBUTING.md POINTS AT GITHUB'S SECURITY TAB, not at the deleted file — it STAYS; only the file reference goes",
+      "status": "met — .github/** is UNTOUCHED (it never named the file), CONTRIBUTING.md keeps the guidance",
+      "evidence": "`cat .github/ISSUE_TEMPLATE/config.yml` → contact link `name: Security report`, `url: https://github.com/HaroldZ32/My-Power-Dsh/security/advisories/new`, `about: Report a vulnerability privately. Never disclose one in a public issue.` — a GitHub Security-tab URL, no file reference. `sed -n '9,14p' .github/ISSUE_TEMPLATE/bug_report.yml` → `For a security problem, do **not** open a public issue — use the Security tab instead.` — no file reference. `grep -n -A3 'Security reports' CONTRIBUTING.md` → lines 205-207 keep `Use GitHub's private vulnerability reporting / from the repository's **Security** tab; if it is unavailable, open a short issue stating that you / have a security report and ask for a private channel, without disclosing the details.` — the sentence naming `SECURITY.md` is the ONLY thing removed. Both .github files are absent from `git status`, i.e. byte-unchanged."
+    },
+    {
+      "id": 6,
+      "requirement": "bun run verify:docs green, bun run verify:manifest green, node scripts/verify-pack-closure.ts --self-test green — each with its observed exit code recorded",
+      "status": "met — all three exit 0",
+      "evidence": "`bun run verify:docs` → exit 0, `[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=430 dead=0 — PASS` (links fell 434 → 430: the four removed links, two per index file). `bun run verify:manifest` → exit 0, `ok files-allowlist: 26 pattern(s); 0 required path(s) not admitted`, `ok packed-content: npm pack --dry-run lists 945 file(s); 0 required path(s) absent`, `VERDICT: PASS — the install-time rules and the packaging contract hold.` `node scripts/verify-pack-closure.ts --self-test` → exit 0, `[verify-pack-closure] self-test PASS: 34/34 arms`."
+    }
+  ],
+  "commands": [
+    { "command": "bun run verify:docs", "exitCode": 0, "reading": "pairs=47 failed=0 violations=0 exempt=24 derived=3 links=430 dead=0 — PASS" },
+    { "command": "bun run verify:manifest", "exitCode": 0, "reading": "files-allowlist: 26 pattern(s); 0 required path(s) not admitted · packed-content: npm pack --dry-run lists 945 file(s); 0 required path(s) absent · VERDICT: PASS" },
+    { "command": "node scripts/verify-pack-closure.ts --self-test", "exitCode": 0, "reading": "self-test PASS: 34/34 arms — including `negative-control (files pattern listed but absent, exit 1) :: FAIL - 1 closure violation(s)`" },
+    { "command": "git status --short -- SECURITY.md SECURITY.zh-CN.md", "exitCode": 0, "reading": " D SECURITY.md / D SECURITY.zh-CN.md" },
+    { "command": "sha256sum SECURITY.md SECURITY.zh-CN.md", "exitCode": 1, "reading": "sha256sum: SECURITY.md: No such file or directory / sha256sum: SECURITY.zh-CN.md: No such file or directory" },
+    { "command": "git grep -n -i -e 'SECURITY\\.md' -e 'SECURITY\\.zh-CN\\.md' -- .", "exitCode": 0, "reading": "one non-evidence hit (CHANGELOG.md:560) plus the evidence/** historical records; NOTHING in the live shipped surface" },
+    { "command": "git grep -c -i -e 'SECURITY' -- package.json scripts/pack-mpd.ts docs/index.md docs/index.zh-CN.md CONTRIBUTING.md", "exitCode": 0, "reading": "`CONTRIBUTING.md:3` only — the four other files produce NO line, i.e. zero mentions of the file name" },
+    { "command": "bun run verify:docs   # FALSIFIER 1: dead link to the deleted file planted", "exitCode": 1, "reading": "FAIL link-missing:docs/index.md:../SECURITY.md — docs/index.md:153 links \"../SECURITY.md\" but neither a file nor a directory exists at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/SECURITY.md ; pairs=47 failed=1 violations=1 links=431 dead=1 — FAIL" },
+    { "command": "bun run verify:manifest   # FALSIFIER 2: files[] names a file that does not exist", "exitCode": 0, "reading": "26 pattern(s); 0 required path(s) not admitted … VERDICT: PASS — the planted entry does NOT redden this gate (finding F-SD-1)" }
+  ],
+  "falsifiers": [
+    {
+      "id": "F1",
+      "claim": "re-adding a docs/index.md link to a deleted path reddens verify:docs",
+      "result": "SHOWN — exit 1, `FAIL link-missing:docs/index.md:../SECURITY.md … dead=1`",
+      "method": "the deleted line was appended back to docs/index.md, the gate was run, and the file was restored from a pre-plant copy; `git diff --stat -- docs/index.md` after the restore reads `1 file changed, 2 deletions(-)`, i.e. exactly the intended S-D edit and no residue"
+    },
+    {
+      "id": "F2",
+      "claim": "naming a missing file in the `files` allowlist reddens verify:manifest",
+      "result": "NOT SHOWN — exit 0. This is FINDING F-SD-1, not a defect of the S-D change and not something this writer may fix (scripts/verify-plugin-manifest.ts is outside §4 S-D's write scope).",
+      "reading": "with `\"SECURITY.md\"` planted back into `files[]` and the file absent from disk, `bun run verify:manifest` exits 0: `ok files-allowlist: 26 pattern(s); 0 required path(s) not admitted` / `ok packed-content: npm pack --dry-run lists 946 file(s); 0 required path(s) absent` / `VERDICT: PASS`. package.json was then restored; `git diff --stat -- package.json` reads `1 file changed, 2 deletions(-)`.",
+      "mechanism": "scripts/verify-plugin-manifest.ts computes the arm in ONE direction only: `mustShip = requiredPathsOf(patches, referenced)` (the paths the mounted rows need) then `notAdmitted = mustShip.filter((path) => !admittedByAllowlist(path, allowlist))` — a SUPERSET test. A pattern that is LISTED but names nothing is never a `mustShip` member, so it cannot fail. The `packed-content` arm grades npm's own `npm pack --dry-run` list, and npm simply omits a path that does not exist.",
+      "whereTheProtectionActuallyIs": "scripts/verify-pack-closure.ts, against the PACKED manifest: `findings.push({ kind: \"MANIFEST\", …, detail: \"the packed manifest lists `\" + pattern + \"` but <packed>/\" + top + \" is absent — listed but absent is a closure failure\" })`, evaluated over the packed tree's own package.json. It therefore fires only AFTER a re-pack — i.e. at §7's re-pack, not at `verify:manifest` time. Its self-test arm `negative-control (files pattern listed but absent, exit 1)` is exercised in the recorded run (34/34 arms).",
+      "consequenceForTheWave": "the S-D REMOVAL is still the correct edit (leaving either entry in package.json would redden verify-pack-closure at the §7 re-pack); the contract's criterion-3 parenthetical and the F2 falsifier sentence are mis-specified and should be re-pointed at `verify-pack-closure`."
+    }
+  ],
+  "declaredBounds": [
+    "dist/mpd-package/SECURITY.md and dist/mpd-package/SECURITY.zh-CN.md STILL EXIST on disk (1791 B, mtime 2026-10-09 08:07) — the regenerated, gitignored artifact. Contract §4 S-D's Note says they disappear at the §7 re-pack; no writer may hand-edit the artifact. Recorded, not hidden: `ls -la dist/mpd-package/SECURITY*.md` in the log.",
+    "The case-insensitive scan's residual hits all live under evidence/** (immutable historical records) and CHANGELOG.md:560 (release note). Declared above, one by one; NOT rewritten by this writer.",
+    "verify:docs does not discover agent-references/** (AGENTS.md §3), so it cannot police the S-C row; for S-D it DOES cover both index files and the pair, and its exit code is the operative evidence.",
+    "AGENTS.md was NOT edited in either stream: §12 line 592 already lists `agent-teams dispatch defects` among the topics troubleshooting.md covers, so no manual sentence is contradicted and §4 S-C criterion 3's instruction-budget re-measure is not owed. Recorded so the absence reads as a judgement, not an omission.",
+    "No FIXED-COUNT claim is made anywhere in this packet that is not a gate's own printed total (pairs=47, links=430, 26 patterns, 945 files, 34/34 arms) with the command that printed it.",
+    "No git write command was run by this writer (AGENTS.md §5: the captain is the only git writer). `git status`, `git diff`, `git grep`, `git rev-parse` are reads."
+  ]
+}

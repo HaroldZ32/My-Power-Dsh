@@ -1,0 +1,5 @@
+=== COMMAND: node skills/dsh-qa/scripts/codegraph-smoke.ts
+=== STARTED: 2026-10-09T12:12:56Z
+[codegraph-smoke] missing toolchain codegraph; run npm install --prefix .toolchain first
+EXIT=1
+=== ENDED: 2026-10-09T12:12:56Z

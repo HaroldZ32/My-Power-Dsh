@@ -353,8 +353,6 @@ const ROOT_FILES: readonly string[] = [
   "CONTRIBUTING.md",
   "CONTRIBUTING.zh-CN.md",
   "CHANGELOG.md",
-  "SECURITY.md",
-  "SECURITY.zh-CN.md",
   "EXTENSIONS-FOR-AGENTS.md",
 ]
 

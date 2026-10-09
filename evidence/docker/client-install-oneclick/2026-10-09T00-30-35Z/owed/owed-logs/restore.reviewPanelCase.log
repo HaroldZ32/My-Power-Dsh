@@ -1,0 +1,19 @@
+[review-panel] panel declaration audit
+checks: 15  failed: 0
+  ok   prose-lane-count — prose declares 4 lane(s)
+  ok   panel-lane-table — 1 table(s) carry both 'Roster role' and 'Lane discipline'
+  ok   panel-table-count-equals-prose — panel table rows=4 prose=4
+  ok   lane-roles-in-ROLES — Architect=in-ROLES Reviewer=in-ROLES Explorer=in-ROLES
+  ok   read-only-lanes — 3 lane(s) carry 'read-only findings'
+  ok   roster-readonly-per-lane — Architect=roster-readonly Reviewer=findings-only-by-description Explorer=roster-readonly
+  ok   merge-table-single — 1 table(s) carry both 'Lane' and 'Verdict'
+  ok   merge-table-lanes-match — merge=[Manual QA, Quality & architecture, Correctness & risk, Missed context] panel=[Manual QA, Quality & architecture, Correctness & risk, Missed context]
+  ok   merge-table-count-equals-prose — merge rows=4 prose=4
+  ok   verdict-tokens — PASS FAIL INCONCLUSIVE all declared
+  ok   degrade-matrix — mpd_role_spawn panel=advisory INCONCLUSIVE all written down
+  ok   no-stale-all-N-verdict — no hard-coded lane/agent count
+  ok   no-retired-spelling — no retired spelling
+  ok   tree-no-retired-spelling — 2 file(s) scanned; no retired spelling
+  ok   tree-no-stale-all-N-verdict — 2 file(s) scanned; no hard-coded lane/agent count
+[review-panel] PASS
+[review-panel] evidence -> evidence/restore/s1/2026-10-09T00-35-47-950Z

@@ -1,0 +1,20 @@
+[verify-vendor] SELF-TEST PASS - intact-fixture-PASS
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor] SELF-TEST PASS - one-byte-edit-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/corpus treeSha mismatch
+[verify-vendor] SELF-TEST PASS - added-file-count-drift-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/corpus count drifted: 3 vs 2
+[verify-vendor] SELF-TEST PASS - zero-subject-REFUSED
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - zero-subject run: VENDOR_LOCK.json declares no vendored assets to fingerprint - refusing to report PASS
+[verify-vendor] SELF-TEST PASS - corrupted-single-file-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - asset assets/blob.js sha256 mismatch
+[verify-vendor] SELF-TEST PASS - require-upstream-REFUSED
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] REFUSED - --require-upstream: this gate has NO upstream subject any more.
+[verify-vendor] SELF-TEST PASS - unknown-flag-FAILS
+[verify-vendor]   exit 1 (want 1); quoted: [verify-vendor] FAIL - unknown argument: --frobnicate
+[verify-vendor] SELF-TEST PASS - restored-fixture-PASS
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor] SELF-TEST PASS - non-git-fallback-walks
+[verify-vendor]   exit 0 (want 0); quoted: [verify-vendor] note: assets/corpus enumerated by filesystem walk - not inside a git work tree (2 file(s))
+[verify-vendor] SELF-TEST PASS - 9/9 arm(s) passed
+EXIT=0

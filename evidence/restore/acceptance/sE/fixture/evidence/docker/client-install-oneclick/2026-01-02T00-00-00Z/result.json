@@ -1,0 +1,4 @@
+{"ok":true,"complete":false,"summary":{"passed":2,"failed":0,"null":1},"assertions":[
+ {"name":"pack.distFreshRebuild","ok":true,"reason":"rebuilt byte-identically"},
+ {"name":"ui.replyRendered","ok":null,"reason":"--no-browser was passed, so the browser lane did not run"},
+ {"name":"boot.mcpToolNaming","ok":false,"reason":"pretend failure"}]}

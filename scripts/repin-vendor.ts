@@ -6,16 +6,21 @@
 // time. This helper DERIVES that value from the working tree, prints the delta, and applies it only
 // when explicitly asked. It defaults to DRY RUN.
 //
-// AUTHORITY: scripts/verify-vendor.ts owns the algorithm. It exports nothing (it is a top-level
-// gate that reads the lock, shells out to git and exits), so this file MIRRORS it rather than
-// importing it, and `assertAuthorityShape()` re-reads the authority's source on every run to prove
-// the mirror still has the same decisive tokens - a divergence cannot land silently. The mirrored
-// pieces, in the authority's own words:
-//   readBytes(p)  - text (no NUL byte) normalized CRLF/CR -> LF; binary hashed raw
+// AUTHORITY: scripts/verify-vendor.ts owns the fingerprint. The TREE FOLD is mirrored here (that
+// file exports nothing - it is a top-level gate that reads the lock, shells out to git and exits),
+// and `assertAuthorityShape()` re-checks the shape on every run, so a divergence cannot land
+// silently. The pieces:
+//   file list     - NOT mirrored any more: BOTH sides import the ONE shared rule
+//                   scripts/lib/asset-files.ts (`listAssetFiles`) - inside a git work tree the TRACKED
+//                   files (`git ls-files`, so a gitignored file sitting in a developer's tree can no
+//                   longer move the lock), outside one the filesystem walk (a packed copy still
+//                   fingerprints); the skip set node_modules / __pycache__ / *.pyc / *.pyo applies on
+//                   both paths. Mirrored copies are what let the two sides drift (measured
+//                   2026-10-09: the working-tree walk pinned 373 corpus files, CI counts 371).
+//   readAssetBytes(p) - shared too: text (no NUL byte) normalized CRLF/CR -> LF; binary hashed raw
 //                   (`.gitattributes` declares eol=lf, so a tree hash must be computed on
 //                    LF-normalized bytes; a CRLF working copy would otherwise drift the lock)
-//   listFiles(d)  - recursive walk skipping node_modules, __pycache__, *.pyc, *.pyo
-//   tree fold     - sorted relpaths, sha256(relpath + "\n" + sha256(fileBytes) + "\n") folded
+//   tree fold     - mirrored: sorted relpaths, sha256(relpath + "\n" + sha256(fileBytes) + "\n") folded
 //
 // USAGE: node scripts/repin-vendor.ts [--lock <path>] [--check] [--write] [--json] [--self-test]
 //   (default)  dry run: print the delta it WOULD write, mutate nothing, exit 0
@@ -27,10 +32,11 @@
 //   --self-test  run every arm in temp fixtures; exits non-zero if any arm fails
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { listAssetFiles, readAssetBytes, type AssetEnumeration } from "./lib/asset-files.ts"
 import { readJson } from "./lib/repo.ts"
 
 /** This helper's own absolute path: the anchor every path below is derived from. */
@@ -71,9 +77,9 @@ interface RepinValues {
   treeSha: string
 }
 
-/** The four values one tree fold derives from an asset directory. */
+/** The values one tree fold derives from an asset directory, plus the file-list basis it read. */
 interface TreeFingerprint {
-  /** Number of files the walk collected after the skip rules. */
+  /** Number of files the asset SHIPS after the skip rules (the count the lock pins). */
   fileCount: number
   /** The LF-normalized fold: the value the vendor gate compares against the lock. */
   treeSha: string
@@ -81,6 +87,10 @@ interface TreeFingerprint {
   rawTreeSha: string
   /** How many files the LF normalization changed (0 means the tree is pure LF or binary). */
   normalizedFiles: number
+  /** Asset-relative paths the index tracks and this tree lacks; any one blocks the re-pin. */
+  missing: string[]
+  /** How the file list was produced (git index vs filesystem walk), reported per asset. */
+  enumeratedFrom: string
 }
 
 /** One treeSha-bearing asset the working tree can be re-pinned from. */
@@ -189,6 +199,8 @@ interface AssetRecord {
   rawBytesVariant: string
   /** How many files the LF normalization changed inside this asset. */
   normalizedFiles: number
+  /** How the file list was produced (git index vs filesystem walk) - the re-pin's declared basis. */
+  enumeratedFrom: string
   /** Whether the lock and the working tree disagree about this asset. */
   drifted: boolean
   /** What this run did or would do: `unchanged`, `repinned` or `would-repin`. */
@@ -237,66 +249,77 @@ interface RunResult {
 // The mirrored algorithm (authority: scripts/verify-vendor.ts)
 // ---------------------------------------------------------------------------------------------
 
-/** Marker line the mirror re-checks; see assertAuthorityShape(). */
+/** The shared file-list rule this helper and the gate both import; its tokens are checked below. */
+const SHARED_PATH: string = join(REPO_ROOT, "scripts", "lib", "asset-files.ts")
+
+/**
+ * The THREE markers the authority must carry: it has to keep IMPORTING the shared rule and keep
+ * CALLING both of its exports. They are checked against the authority's SOURCE, where no literal of
+ * this file appears, so this check cannot be satisfied by the token list itself.
+ */
+const AUTHORITY_MARKERS: readonly string[] = ['from "./lib/asset-files.ts"', "listAssetFiles(", "readAssetBytes("]
+
+/** Decisive tokens of the SHARED rule, which scripts/lib/asset-files.ts must still carry. */
+const SHARED_TOKENS: readonly string[] = [
+  '"-C", dir, "rev-parse", "--is-inside-work-tree"',
+  '"-C", dir, "ls-files", "-z", "--", "."',
+  'rel.split("/")',
+  'SKIPPED_DIR_NAMES.includes(s)',
+  'if (!buf.includes(0)) return Buffer.from(buf.toString("utf8").replace(/\\r\\n?/g, "\\n"))',
+]
+
+/** Decisive tokens of the TREE FOLD, which the authority scripts/verify-vendor.ts must still carry. */
 const AUTHORITY_TOKENS: readonly string[] = [
-  '.replace(/\\r\\n?/g, "\\n")',
-  'if (!buf.includes(0)) return Buffer.from(buf.toString("utf8")',
-  'if (entry === "node_modules") continue',
-  'if (entry === "__pycache__" || entry.endsWith(".pyc") || entry.endsWith(".pyo")) continue',
   'h.update(f + "\\n" + fh + "\\n")',
-  '.update(readBytes(join(dir, f))).digest("hex")',
+  '.update(readAssetBytes(join(dir, f))).digest("hex")',
   '.split(sep).join("/")',
 ]
 
-/** Fail loudly when scripts/verify-vendor.ts no longer carries the algorithm this file mirrors. */
+/**
+ * Fail loudly when the fingerprint derived here is no longer the one the gate checks.
+ *
+ * Three things are proved on every run: scripts/verify-vendor.ts still calls the shared file-list
+ * rule AND the shared reader, scripts/lib/asset-files.ts still carries the rule's decisive tokens,
+ * and this helper really holds the shared rule as an imported binding. The helper side is checked at
+ * RUN TIME rather than by text, because a text token for this file could be satisfied by the token
+ * list itself - a guard that cannot fail is worse than no guard.
+ *
+ * @returns The one-line proof the run prints, naming what held in each of the two files.
+ */
 function assertAuthorityShape(): string {
   if (!existsSync(AUTHORITY_PATH)) throw new Refusal(`authority missing: ${AUTHORITY_PATH}`)
+  if (!existsSync(SHARED_PATH)) throw new Refusal(`shared file-list rule missing: ${SHARED_PATH}`)
+  if (typeof listAssetFiles !== "function" || typeof readAssetBytes !== "function") {
+    throw new Refusal(`this helper no longer imports the shared file-list rule from ${SHARED_PATH}`)
+  }
   /** The authority's full source, re-read on every run so a divergence cannot land silently. */
-  const src: string = readFileSync(AUTHORITY_PATH, "utf8")
-  /** The decisive tokens the mirror needs but the authority no longer carries. */
-  const missing: string[] = AUTHORITY_TOKENS.filter((t: string): boolean => !src.includes(t))
+  const authoritySrc: string = readFileSync(AUTHORITY_PATH, "utf8")
+  /** The shared rule's source: the one file list both sides of the fingerprint consume. */
+  const sharedSrc: string = readFileSync(SHARED_PATH, "utf8")
+  /** Every required marker that is missing, each named with the file that lost it. */
+  const missing: string[] = [
+    ...AUTHORITY_MARKERS.filter((t: string): boolean => !authoritySrc.includes(t)).map((t: string): string => `scripts/verify-vendor.ts lost its shared-rule marker ${t}`),
+    ...SHARED_TOKENS.filter((t: string): boolean => !sharedSrc.includes(t)).map((t: string): string => `scripts/lib/asset-files.ts: ${t}`),
+    ...AUTHORITY_TOKENS.filter((t: string): boolean => !authoritySrc.includes(t)).map((t: string): string => `scripts/verify-vendor.ts: ${t}`),
+  ]
   if (missing.length > 0) {
     throw new Refusal(
-      `scripts/verify-vendor.ts changed shape - re-mirror the algorithm here before using this helper; missing token(s): ${missing.join(" | ")}`,
+      `the corpus fingerprint changed shape - re-mirror the algorithm here before using this helper; missing token(s): ${missing.join(" | ")}`,
     )
   }
-  return `mirror matches all ${AUTHORITY_TOKENS.length} decisive token(s) of scripts/verify-vendor.ts`
+  return `one shared file-list rule (${AUTHORITY_MARKERS.length} marker(s) in scripts/verify-vendor.ts, ${SHARED_TOKENS.length} token(s) in scripts/lib/asset-files.ts, binding held here) + ${AUTHORITY_TOKENS.length} mirrored fold token(s)`
 }
 
-/** Mirror of the authority's readBytes: text -> LF, binary (NUL present) -> raw bytes. */
-function readBytes(p: string): Buffer {
-  /** The file's raw bytes, read once for both the NUL test and the hash. */
-  const buf: Buffer = readFileSync(p)
-  if (!buf.includes(0)) return Buffer.from(buf.toString("utf8").replace(/\r\n?/g, "\n"))
-  return buf
-}
+// `readAssetBytes` and `listAssetFiles` are NOT mirrored here any more: both sides of the
+// fingerprint import them from scripts/lib/asset-files.ts, so there is exactly one file list and one
+// byte reader. Only the tree fold below stays mirrored, and assertAuthorityShape() pins it.
 
-/** Mirror of the authority's listFiles (node_modules / __pycache__ / *.pyc / *.pyo are not corpus). */
-function listFiles(dir: string): string[] {
-  if (statSync(dir).isFile()) return [dir]
-  /** The collected absolute paths, in walk order. */
-  const out: string[] = []
-  /** Recursive walker over one directory of the asset. */
-  const walk = (d: string): void => {
-    for (const entry of readdirSync(d)) {
-      /** Absolute path of the current entry. */
-      const p: string = join(d, entry)
-      if (entry === "node_modules") continue
-      if (entry === "__pycache__" || entry.endsWith(".pyc") || entry.endsWith(".pyo")) continue
-      if (statSync(p).isDirectory()) walk(p)
-      else out.push(p)
-    }
-  }
-  walk(dir)
-  return out
-}
-
-/** Mirror of the authority's tree fold, for the LF-normalized value AND the raw-bytes variant. */
+/** The tree fold, mirrored from the authority, over the file list the shared rule returns. */
 function fingerprint(dir: string): TreeFingerprint {
-  /** Every file the walk collected, before the relpaths are sorted. */
-  const files: string[] = listFiles(dir)
+  /** The asset's SHIPPED files, by the one shared rule both sides import. */
+  const enumerated: AssetEnumeration = listAssetFiles(dir)
   /** The sorted POSIX-spelled relpaths: the fold's input order, platform-independent. */
-  const rels: string[] = files.map((f: string): string => f.slice(dir.length + 1).split(sep).join("/")).sort()
+  const rels: string[] = enumerated.files.map((f: string): string => f.slice(dir.length + 1).split(sep).join("/")).sort()
   /** Running hash over the LF-normalized per-file hashes: the value the lock pins. */
   const lf = createHash("sha256")
   /** Running hash over the RAW per-file hashes: printed for contrast, never written. */
@@ -307,14 +330,21 @@ function fingerprint(dir: string): TreeFingerprint {
     /** Absolute path of the file behind `rel`. */
     const p: string = join(dir, rel)
     /** That file's LF-normalized bytes. */
-    const lfBytes: Buffer = readBytes(p)
+    const lfBytes: Buffer = readAssetBytes(p)
     /** That file's untouched bytes. */
     const rawBytes: Buffer = readFileSync(p)
     if (!lfBytes.equals(rawBytes)) normalizedFiles += 1
     lf.update(rel + "\n" + createHash("sha256").update(lfBytes).digest("hex") + "\n")
     raw.update(rel + "\n" + createHash("sha256").update(rawBytes).digest("hex") + "\n")
   }
-  return { fileCount: files.length, treeSha: lf.digest("hex"), rawTreeSha: raw.digest("hex"), normalizedFiles }
+  return {
+    fileCount: enumerated.fileCount,
+    treeSha: lf.digest("hex"),
+    rawTreeSha: raw.digest("hex"),
+    normalizedFiles,
+    missing: enumerated.missing.map((p: string): string => p.slice(dir.length + 1)),
+    enumeratedFrom: enumerated.detail,
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -375,6 +405,16 @@ function planAssets(lock: RepinLock): AssetPlan {
     }
     /** The fingerprint this asset's directory produces right now. */
     const computed: TreeFingerprint = fingerprint(path)
+    // An index that names files this tree does not have makes the derivation INCOMPLETE: writing the
+    // lock from it would bake in a count and a treeSha a clean checkout cannot reproduce (the exact
+    // defect this rule repairs), so the asset is refused instead of re-pinned.
+    if (computed.missing.length > 0) {
+      problems.push({
+        asset,
+        reason: `the index tracks ${computed.missing.length} file(s) this tree does not have - restore them, and never re-pin over an incomplete tree: ${computed.missing.join(", ")}`,
+      })
+      continue
+    }
     repins.push({
       asset,
       path,
@@ -533,7 +573,7 @@ function parseArgs(argv: string[]): CliOptions {
 /** The four-line banner naming the mirrored algorithm, the normalization and the raw-bytes warning. */
 function algorithmBanner(assetCount: number): string[] {
   return [
-    `${TAG} algorithm : MIRROR of scripts/verify-vendor.ts (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror`,
+    `${TAG} algorithm : shared rule scripts/lib/asset-files.ts (TRACKED files via \`git ls-files\` inside a work tree, filesystem walk outside one; LF-normalizing reader), imported by BOTH sides + the sorted-relpath tree fold mirrored from scripts/verify-vendor.ts`,
     `${TAG} normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW`,
     `${TAG} WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail \`bun run verify:vendor\` on any corpus containing CRLF/CR bytes - both values are printed per asset below.`,
     `${TAG} assets    : ${assetCount} treeSha-bearing asset(s) derived from the working tree`,
@@ -570,6 +610,7 @@ function runCli(opts: CliOptions): number {
     lfNormalized: r.computed.treeSha,
     rawBytesVariant: r.computed.rawTreeSha,
     normalizedFiles: r.computed.normalizedFiles,
+    enumeratedFrom: r.computed.enumeratedFrom,
     drifted: r.drifted,
     action: r.drifted ? (opts.write ? "repinned" : "would-repin") : "unchanged",
   }))
@@ -597,7 +638,7 @@ function runCli(opts: CliOptions): number {
     process.stdout.write(`${JSON.stringify({
       mode: opts.check ? "check" : opts.write ? "write" : "dry-run",
       lock: lockPath,
-      algorithm: "MIRROR of scripts/verify-vendor.ts (LF-normalized tree fold)",
+      algorithm: "shared file-list rule scripts/lib/asset-files.ts (tracked files inside a git work tree, filesystem walk outside one) + the LF-normalized tree fold mirrored from scripts/verify-vendor.ts",
       normalization: "text (no NUL) CRLF/CR -> LF; binary raw",
       warning: "the vendor gate compares the LF-normalized value only; a raw-bytes reading would silently fail `bun run verify:vendor`",
       authority: authorityProof,
@@ -622,6 +663,7 @@ function runCli(opts: CliOptions): number {
   for (const r of records) {
     out(`${TAG} asset          : ${r.asset}`)
     out(`${TAG}   locked       : treeSha=${r.locked.treeSha} fileCount=${r.locked.fileCount}`)
+    out(`${TAG}   file list    : ${r.enumeratedFrom} (${r.computed.fileCount} shipped file(s))`)
     out(`${TAG}   computed (LF) : treeSha=${r.computed.treeSha} fileCount=${r.computed.fileCount} (${r.normalizedFiles} file(s) LF-normalized)`)
     out(`${TAG}   raw-bytes    : ${r.rawBytesVariant}   <- NEVER write this one`)
     if (r.drifted) {
@@ -741,6 +783,9 @@ function selfTest(): number {
     // own `./lib/repo.ts` relative to the staged file, and strips types there exactly as here.
     mkdirSync(join(fixture, "scripts", "lib"))
     copyFileSync(join(dirname(SELF), "lib", "repo.ts"), join(fixture, "scripts", "lib", "repo.ts"))
+    // The shared file-list rule has to travel too: the fixture authority imports it, and the mirror
+    // guard re-reads it there, so a fixture missing it would fail for a reason no arm is about.
+    copyFileSync(join(dirname(SELF), "lib", "asset-files.ts"), join(fixture, "scripts", "lib", "asset-files.ts"))
     /** The staged copy of this helper, executed by every CLI arm below. */
     const fixtureScript = join(fixture, "scripts", "repin-vendor.ts")
     /** The staged authority the tamper arm rewrites and then restores. */
@@ -875,9 +920,11 @@ function selfTest(): number {
       /** The real authority's digest, which the tamper must leave untouched. */
       const realBefore = sha(AUTHORITY_PATH)
       try {
-        writeFileSync(fixtureAuthority, original.replace('if (entry === "node_modules") continue', "if (false) continue"))
+        // EVERY call site has to go: the guard is a tripwire for "the authority stopped calling the
+        // shared rule at all", and String.replace() would leave the second call site in place.
+        writeFileSync(fixtureAuthority, original.replaceAll("listAssetFiles(", "legacyWalkFiles("))
         expect(readFileSync(fixtureAuthority, "utf8") !== original, "tamper did not change the fixture authority")
-        /** The `--check` run against the authority with one mirror token removed. */
+        /** The `--check` run against the authority whose calls to the shared rule were removed. */
         const r = run(fixtureScript, ["--check", "--lock", good])
         expect(r.code === 1, `tampered authority still exited ${r.code} - the guard is inert`)
         expect(r.err.includes("changed shape"), `no shape-refusal message: ${r.err.trim()}`)
