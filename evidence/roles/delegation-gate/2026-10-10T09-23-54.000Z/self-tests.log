@@ -1,0 +1,10 @@
+# post-repair QA self-test artifact (repair of rec-20261010T092259-b07c99 clause b)
+# 2026-10-10T09:23:54Z on c19efdcb
+
+$ node skills/dsh-qa/scripts/readonly-deny.ts --self-test
+[readonly-deny self-test] ok: 39 checks
+exit=0
+
+$ node skills/dsh-qa/scripts/delegation-gate.ts --self-test
+[delegation-gate self-test] ok: decision table 3 tools x 3 modes x 4 session classes; refusal steering; knob spellings; seeded-fork classification; restrictToolsTolerant parse/prune/retry cap
+exit=0
