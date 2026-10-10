@@ -49,6 +49,27 @@ here for the full body; where the two differ, the manual wins.
   proof of runtime registration, and `dsh --dump-config` composes rows without mounting them). Do not
   filter the list with `dsh.hasTool` either: it reads the global tool view, where `write`/`edit`/`bash`
   answer false, so filtering would silently DROP the entries that are the guarantee.
+  **Since 2026-10-10 the harness's own validation is TOLERATED, not fatal (the F2 repair):** the list stays
+  canonical and is still never pre-filtered, but a spawn applies it through the adapter's
+  `restrictToolsTolerant` (`packages/mpd-dsh-adapter-plugin/src/index.ts`), which lets `tools.restrict()`
+  prune the names it reports as unknown (`names unknown global tools "…"`), retries EXACTLY ONCE with the
+  survivors and rethrows any second failure. Measured 2026-10-10 before the repair: the two
+  `mcp__lsp__*` entries made the harness reject the WHOLE list on a profile without `cclsp`, so every
+  read-only `mpd_role_spawn` died and the captain fell back to the official `subagent` tool — which the
+  new delegation gate (below, `delegation.gate`) now refuses. The one-shot path hands the CHILD the
+  PRUNED list as `toolFilter.deny`; a pruned name is reported once on the row's log.
+- delegation gate: the `tools.guard` rule that makes §5 rule 2's delegation discipline MECHANICAL —
+  `packages/mpd-roles-plugin/src/delegation-gate.ts` refuses a call to `subagent`, `subagent_fork` or
+  `workflow` and names the sanctioned routes (`mpd_role_spawn`, `mpd_workmate_match` +
+  `mpd_workmate_spawn`, Agent Teams, `send_message`). The knob is `delegation.gate` in `mpd.jsonc`:
+  `"deny"` (DEFAULT — the captain AND every member session), `"captain"` (the top-level session only) or
+  `"allow"`; anything else reads as `deny`, and the mode is read PER CALL. It is keyed on §5's preset-free
+  `sessionRank`, so it holds for any session in a workspace that mounts this bundle — the live top-level
+  session on this deployment runs a preset the bundle does not own (`cordis`), which is why preset-plane
+  omission is NOT the mechanism. Boot line: `delegationGate=<mode>` (or `delegationGate=absent reason=…`).
+  **Honest bound:** the guard reads the tool CALL at dispatch; it cannot stop a model from TRYING another
+  tool, and a profile without this bundle has no gate at all. Live evidence:
+  `evidence/roles/delegation-gate/`.
 - team-model slot: one of the four configurable default model routes of the ROSTER members —
   `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings
   namespace, whose defaults are `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high`, plus

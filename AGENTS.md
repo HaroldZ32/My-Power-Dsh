@@ -280,9 +280,11 @@ lands (§9/§11).
      integration — and does so without framing it as "working solo". RECONNAISSANCE is not in that set:
      `read`/`grep`/`glob` on a SOURCE path are REFUSED for the top-level session (while the documentation
      band `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**` and the root `*.md` stays readable),
-     so finding files and reading code are DELEGATED. **Long form — the reserved set, the readable band
-     and the `captain.investigation` knob: `agent-references/verification-flow.md`, "§5 rule 2 — the
-     captain's reserved set".**
+     so finding files and reading code are DELEGATED. **The sanctioned delegation is MECHANICAL too:** the
+     row refuses `subagent` / `subagent_fork` / `workflow` for every session the `delegation.gate` knob
+     covers (`deny` default — captain AND members; `captain`; `allow`). **Long form — the reserved set, the
+     readable band and the `captain.investigation` knob: `agent-references/verification-flow.md`, "§5 rule 2 —
+     the captain's reserved set".**
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement
      task (the frozen acceptance contract), a work task and a review task rather than one lumped
      implementation task; finding-driven work uses `kind=repair` + `sourceTaskId`/
@@ -311,7 +313,10 @@ lands (§9/§11).
      `apply`, `am`, `update-index`, `worktree`, `init`, `clone`) is denied for any session that is NOT
      the top-level captain — rule 1 above is now MECHANICAL for member sessions too, with the same
      honest bound: the matcher reads a command STRING, so an obfuscated invocation can evade it. It is
-     a speed bump that makes the rule real for ordinary use, not a sandbox.
+     a speed bump that makes the rule real for ordinary use, not a sandbox. **The captain predicate
+     recognises the SEEDED FORK:** a session is a child only when the harness RECORDED a subagent origin
+     or a delegation depth ≥ 1, so the user's own session (`parentSession` + `isSeeded`, depth `0`, no
+     `origin: "subagent"`) is the CAPTAIN and its rules apply to it.
 
 ---
 
@@ -628,7 +633,10 @@ slot, workmate) stay here.
   `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`,
   `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict` (cclsp's own names, wave B2).
   **Do NOT re-add `str_replace_editor` / `apply_patch`, and do not filter the list with `dsh.hasTool`** —
-  the harness validates the WHOLE list at spawn time, so one dead entry breaks every read-only spawn.
+  the harness validates the WHOLE list at spawn time, so one dead entry breaks every read-only spawn;
+  since 2026-10-10 that validation is TOLERATED instead of fatal (`restrictToolsTolerant` prunes the
+  names the harness itself reports as unknown, with exactly ONE logged retry — the canonical list is
+  unchanged and is still never pre-filtered).
   Full form, including the two enforcement surfaces: `agent-references/glossary.md`.
 - **team-model slot**: one of the FOUR configurable default model routes of the ROSTER members —
   `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings

@@ -65,6 +65,22 @@
 
 这修掉了已退役、由 profile 携带 `toolDeny` 的实测缺陷：以 "Explorer" 身份 stage 却未带过滤器的 teammate 会保留 `write`/`edit`/`bash`。
 
+**拒绝清单由 Harness 自己在 spawn 之前裁定一次。** 只要其中一个名字未在本 profile 注册，`tools.restrict()` 就会拒绝**整份**清单，因此一个未注册条目（无 `cclsp` 主机上的两个 `mcp__lsp__*` 名称）会让名册与 workmate 库的**每一次**只读 spawn 全部失败 —— 2026-10-10 实测，而正是这扇被砖死的正门把 captain 推向了 Harness 自带的 `subagent` 工具。适配器的 `restrictToolsTolerant` 把**规范**清单应用到调用方自己的 scope 并在同一同步轮次内释放，因此唯一裁定者是 Harness 自己：它报告为未知的名字会被剪除，**只允许一次**重试，第二次失败一律抛出。`READONLY_DENY` 本身未变，两个包的清单保持完全一致（由 `roles.test.ts` 断言），且该清单**绝不**用 `hasTool` 预过滤（AGENTS.md §13）。被剪除的名字会在该行日志中报告一次。
+
+### 委派闸门（官方 spawn 工具不是本 bundle 的委派路径）
+
+`delegation-gate.ts` 经适配器注册**一道** `tools.guard` 回调：对 `subagent`、`subagent_fork`、`workflow` 的调用会被**拒绝**，拒绝文本点名获准路径（`mpd_role_spawn`、`mpd_workmate_match` + `mpd_workmate_spawn`、Agent Teams、`send_message`）。开关是 `mpd.jsonc` 的 `delegation.gate`：
+
+- **deny**（默认）—— captain **与**所有 member session 一律被拒：成员仍能使用的逃生门不构成纪律；
+- **captain** —— 只拒本工作区的**顶层** session；
+- **allow** —— 完全释放该闸门。
+
+闸门以 §5 的**与 preset 无关**的 session 等级为键，因此在任何挂载本 bundle 的工作区里，无论 profile 给 session 指派了哪个 preset，它都生效。这里**刻意不用**"不在 preset 平面组合该行"的做法：本部署的实时顶层 session 运行的是本 bundle 并不拥有的 preset（`cordis`），所以 guard 才是可移植的拒绝，挂载本 bundle 即是 opt-in。该行的 boot 行会报告 `delegationGate=<mode>`（Harness 没有 `tools.guard` seam 时报告 `delegationGate=absent reason=…`）。
+
+**诚实边界：** 该 guard 在派发时读取**工具调用**，因此名册从不发布的工具天然被覆盖，而未挂载本 bundle 的 profile 上的 session 根本没有闸门；它也拦不住模型去**尝试**别的工具。
+
+`mpd` preset 的 persona 携带一段简短的 STANDING WORKING DISCIPLINE 清单（同一假设重复两次即关闭、用检视工具代替猜测、只想下一步具体操作、一轮内并发发出相互独立的调用、shell 调用是短暂的、以真实输出而非预期校验、YAGNI/PDCA），改编自 `dsh-liangshen`（Apache-2.0）—— 仅取理念，不携带上游任何字节。
+
 ### session 启动复杂度闸门（默认机械执行）
 
 在 session 的第一个 pre-step，本行求值冻结谓词
