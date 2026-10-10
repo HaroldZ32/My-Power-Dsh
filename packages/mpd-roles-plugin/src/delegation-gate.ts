@@ -75,29 +75,31 @@ export interface DelegationGateInput {
 /**
  * Decide one call for the delegation rule.
  *
- * THE ORDER IS THE CONTRACT:
- *  1. a non-`deny` mode passes everything except the `captain` mode's own top-level calls;
- *  2. a tool outside {@link DELEGATION_TOOLS} is somebody else's rule;
- *  3. under `deny` the captain, a member child AND a headerless session are all refused (fail-closed:
- *     an unreadable header is never a free pass); under `captain` only the top-level session is;
- *  4. the refusal sentence teaches the sanctioned routes.
+ * THE CONTRACT IS ONE PREDICATE: the tool must be one of {@link DELEGATION_TOOLS}, and the caller must
+ * be COVERED by the mode — `deny` covers every session (the captain, a member child AND a headerless
+ * session alike: fail-closed, an unreadable header is never a free pass), `captain` covers only the
+ * workspace's top-level session, `allow` covers none. A call that is not covered is released; a covered
+ * one gets the refusal sentence, which teaches the sanctioned routes.
  *
  * @param input - the call, the session class of its caller and the mode in force.
  * @returns the refusal the harness turns into a denied tool result, or `undefined` to allow the call.
  */
 export function delegationGateDecision(input: DelegationGateInput): string | undefined {
-  // THE MODE COMES FIRST: `allow` releases the gate for every session, and `captain` covers every
-  // session except the workspace's top-level one.
-  if (input.mode !== "deny" && !(input.mode === "captain" && input.rank === "captain")) return undefined
   /** The tool name, read defensively so an unexpected shape is a pass-through. */
   const toolName = String(input.toolName ?? "")
   if (!DELEGATION_TOOLS.includes(toolName)) return undefined
-  // Under `deny` the captain, a member child and a headerless session are ALL refused; under
-  // `captain` the mode guard above already narrowed the callers to the top-level session.
-  if (input.mode === "deny" && (input.rank === "captain" || input.rank === "child" || input.rank === "headerless")) {
-    return delegationRefusal(toolName)
-  }
-  if (input.mode === "captain" && input.rank === "captain") return delegationRefusal(toolName)
+  // ONE COVERAGE TEST, because a mode covers ONE set of callers:
+  //   mode \ rank | captain | child | headerless
+  //   deny        | REFUSE  | REFUSE| REFUSE
+  //   captain     | REFUSE  | allow | allow
+  //   allow       | allow   | allow | allow
+  // `SessionRank` has exactly these three values, so under `deny` a rank test can never exclude a caller
+  // (the earlier form's `rank === "captain" || rank === "child" || rank === "headerless"` was a
+  // tautology), and the `captain`+`captain` caller is the ONLY one that survives the earlier pass-through
+  // — which is what made its later branch unconditionally true. CodeRabbit #1 named that redundancy; the
+  // single predicate below keeps every cell of the table identical (pinned by the D1 table arm in
+  // test/delegation-gate.test.ts) while saying it once.
+  if (input.mode === "deny" || (input.mode === "captain" && input.rank === "captain")) return delegationRefusal(toolName)
   return undefined
 }
 

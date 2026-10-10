@@ -924,15 +924,10 @@ function resolveDelegationGateMode(raw) {
   return "deny";
 }
 function delegationGateDecision(input) {
-  if (input.mode !== "deny" && !(input.mode === "captain" && input.rank === "captain"))
-    return;
   const toolName = String(input.toolName ?? "");
   if (!DELEGATION_TOOLS.includes(toolName))
     return;
-  if (input.mode === "deny" && (input.rank === "captain" || input.rank === "child" || input.rank === "headerless")) {
-    return delegationRefusal(toolName);
-  }
-  if (input.mode === "captain" && input.rank === "captain")
+  if (input.mode === "deny" || input.mode === "captain" && input.rank === "captain")
     return delegationRefusal(toolName);
   return;
 }

@@ -22,6 +22,7 @@ import {
 } from "../src/delegation-gate.ts"
 import type { DelegationGateMode } from "../src/delegation-gate.ts"
 import { sessionRank } from "../src/complexity-gate.ts"
+import type { SessionRank } from "../src/complexity-gate.ts"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /**
@@ -93,6 +94,30 @@ describe("D1 — the decision table: mode × session class × tool", () => {
     for (const mode of ["deny", "captain", "allow"] as const) {
       for (const agent of [CAPTAIN, SEEDED_FORK, CHILD, HEADERLESS]) {
         expect(decide(BYSTANDER, mode, agent)).toBeUndefined()
+      }
+    }
+  })
+
+  test("the whole 3×3 table, cell by cell: every mode covers exactly one set of ranks", () => {
+    /** The truth table: per mode, each rank's expected verdict — REFUSE (`true`) or release (`false`). */
+    const table: ReadonlyArray<readonly [DelegationGateMode, ReadonlyArray<readonly [SessionRank, boolean]>]> = [
+      ["deny", [["captain", true], ["child", true], ["headerless", true]]],
+      ["captain", [["captain", true], ["child", false], ["headerless", false]]],
+      ["allow", [["captain", false], ["child", false], ["headerless", false]]],
+    ]
+    /** One agent double per rank key, so each cell is driven through the REAL classification. */
+    const byRank: Readonly<Record<SessionRank, unknown>> = { captain: CAPTAIN, child: CHILD, headerless: HEADERLESS }
+    for (const [mode, rows] of table) {
+      for (const [rank, refused] of rows) {
+        /** The double this cell is about; the rank assertion below proves the key is honest. */
+        const agent = byRank[rank]
+        expect(sessionRank(agent)).toBe(rank)
+        for (const tool of DELEGATION_TOOLS) {
+          /** This cell's real decision, from the shipped function. */
+          const decision = decide(tool, mode, agent)
+          if (refused) expect(String(decision ?? "")).toContain("delegation gate")
+          else expect(decision).toBeUndefined()
+        }
       }
     }
   })
