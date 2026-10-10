@@ -92,11 +92,21 @@ type ShippedTolerant = (restrict: RestrictAttempt, names: readonly string[]) => 
  * The BUILT adapter module, imported DYNAMICALLY: `dist/index.js` ships no declaration file (the build
  * strips types), so a static import would be a type error while the value is exactly what the live lane
  * mounts. The shift specifier is deliberate — the module is loaded at a path, never resolved as a package.
+ *
+ * The import is WRAPPED because it evaluates at module load, BEFORE the `--self-test` dispatch below:
+ * with the dist absent it threw `ERR_MODULE_NOT_FOUND` and the SKIP/FAIL marker grammar never engaged
+ * (CodeRabbit #4, valid). A failed import leaves this `undefined`, which is precisely the stale-dist arm
+ * the self-test already reports by name, carrying the adapter's rebuild command.
  */
-// @ts-expect-error — the prebuilt adapter has no .d.ts; the export's shape is declared by ShippedTolerant.
-const adapterDist = await import("../../../packages/mpd-dsh-adapter-plugin/dist/index.js") as { restrictToolsTolerant?: ShippedTolerant }
-/** The BUILT helper, or `undefined` when the adapter dist predates this wave (reported, never assumed). */
-const shippedTolerant: ShippedTolerant | undefined = adapterDist.restrictToolsTolerant
+let adapterDist: { restrictToolsTolerant?: ShippedTolerant } | undefined
+try {
+  // @ts-expect-error — the prebuilt adapter has no .d.ts; the export's shape is declared by ShippedTolerant.
+  adapterDist = await import("../../../packages/mpd-dsh-adapter-plugin/dist/index.js") as { restrictToolsTolerant?: ShippedTolerant }
+} catch {
+  adapterDist = undefined
+}
+/** The BUILT helper, or `undefined` when the adapter dist is missing or predates this wave (reported, never assumed). */
+const shippedTolerant: ShippedTolerant | undefined = adapterDist?.restrictToolsTolerant
 
 /** A lane prerequisite: absent means SKIP, or FAIL under either strict spelling. */
 interface Prereq {

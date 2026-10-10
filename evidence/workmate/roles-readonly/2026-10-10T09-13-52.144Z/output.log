@@ -1,0 +1,4 @@
+{
+  "positiveFullOutput": "dsh: warning: 1 entry did not activate\npreset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)\n[ADAPTER-PROBE] toolFilter={\"deny\":[\"write\",\"edit\",\"mpd_hashline_edit\",\"bash\",\"mcp__ast_grep__rewrite\",\"mcp__ast_grep__scan\",\"mcp__lsp__rename_symbol\",\"mcp__lsp__rename_symbol_strict\"]}\nprobe-child-answered\n",
+  "reinjectionFullOutput": "dsh: warning: 1 entry did not activate\npreset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)\n[ADAPTER-PROBE] toolFilter={\"deny\":[\"write\",\"edit\",\"mpd_hashline_edit\",\"bash\",\"mcp__ast_grep__rewrite\",\"mcp__ast_grep__scan\",\"mcp__lsp__rename_symbol\",\"mcp__lsp__rename_symbol_strict\"]}\nprobe-child-answered\n"
+}
