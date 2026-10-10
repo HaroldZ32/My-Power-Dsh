@@ -292,10 +292,14 @@ repository and none of it is redistributed here — the package the installer re
   --accept-risk` — because its peers require `@deepseek-ai/dsh-* >=0.1.2-alpha.2 <0.1.3` while the
   baseline is the host's `0.2.0-rc.2` line. The exemption is recorded in the profile owner's own
   `compatibility.json`: an explicit risk decision about someone's profile, which no bundle may ship.
-  Declaring the adapter in a dependency field is not a neutral alternative — the install-time
-  post-validation walks `devDependencies ++ dependencies ++ optionalDependencies` and compat-checks
-  every installed package, so the declaration makes `dsh plugin add` hard-reject and roll back the
-  whole bundle. `docs/user-guide.md` §14 carries the same attribution and the commands for users.
+  Shipping it is not a neutral alternative — the plugin manager checks compatibility twice at
+  install time: a preflight over the explicitly named install specs before `pnpm` runs, then a
+  post-install pass over the profile's installed direct dependencies plus the component manifests the
+  changed bundle's patch rows name — never a recursive scan of the transitive closure. A measured v1
+  variant of this change (the adapter declared as a dependency and named by a patch row) was caught by
+  that second pass: `dsh plugin add` hard-rejected and rolled back the whole bundle install
+  (`evidence/docker/client-install/2026-10-10T13-24-44Z/`). `docs/user-guide.md` §14 carries the same
+  attribution and the commands for users.
 
 ## DeepSeek Harness 创造模式 skills (MIT) — adapted into `skills/cordis-dev`
 

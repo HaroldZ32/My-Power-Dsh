@@ -933,6 +933,10 @@ dsh plugin --profile web add @dsh-std/adapter-dsh
 
 This bundle does not ship it because the adapter's peers pin the `@deepseek-ai/dsh-*` `0.1.2-alpha` host
 line while this bundle's baseline is dsh `0.2.0-rc.2`, so the exemption is the profile owner's explicit
-risk decision about their own profile — and declaring the adapter in a dependency field is not a
-neutral alternative: the install-time post-validation walks every dependency field and compat-checks
-each installed package, which makes `dsh plugin add` hard-reject and roll back the whole bundle.
+risk decision about their own profile — and shipping it is not a neutral alternative either: the
+plugin manager checks compatibility twice at install time, with a preflight over the explicitly named
+install specs before `pnpm` runs, then a post-install pass over the profile's installed direct
+dependencies plus the component manifests the changed bundle's patch rows name — never a recursive
+scan of the transitive closure. A measured v1 variant of this change (the adapter declared as a
+dependency and named by a patch row) was caught by that second pass: `dsh plugin add` hard-rejected
+and rolled back the whole bundle install.

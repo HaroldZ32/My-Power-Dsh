@@ -852,5 +852,8 @@ dsh plugin --profile web add @dsh-std/adapter-dsh
 
 本 bundle 之所以不随包提供它：adapter 的 peer 把宿主 `@deepseek-ai/dsh-*` 盯在 `0.1.2-alpha` 线上，
 而本 bundle 的基线是 dsh `0.2.0-rc.2`，于是豁免只能是 profile 拥有者对自己 profile 的显式风险决定；
-而把 adapter 声明进任何依赖字段并不是中立的替代方案 —— 安装后的校验会走遍每个依赖字段并对每个已装包
-做兼容检查，那会让 `dsh plugin add` 直接硬拒绝并回滚整个 bundle。
+而把它随包提供也不是中立的替代方案：插件管理器在安装时做两次兼容检查 —— 先在 `pnpm` 运行之前，
+对显式指定的安装规格做预检；再在安装之后，对 profile 里已直接安装的依赖、以及被改动 bundle 的
+patch 行所点名的组件清单做后验 —— 从不递归扫描整个传递闭包。我们在本改动的一个 v1 变体上实测过
+后验（adapter 同时被声明为依赖并被 patch 行点名）：`dsh plugin add` 直接硬拒绝并回滚了整个
+bundle 的安装。
