@@ -1,0 +1,1172 @@
+{
+  "case": "docker-client-install",
+  "title": "a clean ubuntu:24.04 container installs and boots @mpd-dsh/mpd from a copy of this checkout",
+  "ok": false,
+  "complete": false,
+  "image": "mpd-docker-e2e:local",
+  "startedAt": "2026-10-10T13:24:48.000Z",
+  "finishedAt": "2026-10-10T13:26:25.188Z",
+  "durationSeconds": 97,
+  "harness": {
+    "installed": "0.2.0-rc.2",
+    "expected": "0.2.0-rc.2",
+    "assertion": "harness.version",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bun": "1.4.3 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "ubuntu": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)"
+  },
+  "proves": [
+    "node 24 + bun + pnpm + @deepseek-ai/dsh install inside a bare ubuntu:24.04 container",
+    "the bundle installs with ONE command from a copy of the checkout (dsh plugin --profile web add .)",
+    "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
+    "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
+    "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition) — read from the row's own file log, <workspace>/.mpd/logs/mpd-roles.log (R5)",
+    "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd",
+    "the TUI session resolves `mpd` through the DOCUMENTED USER-level preference (dsh-tui's own <HOME>/.dsh-tui/agent-preset.json), while the host preset-registry row stays untouched by the bundle"
+  ],
+  "provesCompositionOnly": [
+    "the composed profile carries the mpd rows, the preset-mpd row and the three official agent-team rows",
+    "the bundle is ADDITIVE-ONLY: both shipped patch layers carry zero column-0 id-targets, so no host row is overridden (the retired `default: mpd` id-targets are the class this catches)"
+  ],
+  "doesNotProve": [
+    "any live LLM turn or model routing: no credentials are staged (AGENTS.md §10)",
+    "that mpd is the deployment default for a user who never set the preference: the bundle ships the preset but selects nothing (strict zero-override)",
+    "`--dump-config` output is COMPOSITION evidence and is never cited here as a plugin load",
+    "a packed/tarball install from dist/mpd-package",
+    "a machine without network access: apt, nodejs.org, bun.sh, npm and the registry are all used"
+  ],
+  "summary": {
+    "total": 118,
+    "passed": 11,
+    "failed": 2,
+    "null": 105,
+    "failedNames": [
+      "install.exit",
+      "install.buildScripts"
+    ],
+    "nullNames": [
+      "install.profileDep",
+      "install.installedTree",
+      "pack.present",
+      "pack.licenceCoherence",
+      "pack.declarationCoherence",
+      "pack.staticCoherence",
+      "pack.distFreshRebuild",
+      "pack.rebuildToolchain",
+      "pack.distFreshRebuildControl",
+      "boot.mcpToolNaming",
+      "boot.mcpLiveSearch",
+      "restore.reviewPanelSelfTest",
+      "restore.reviewPanelCase",
+      "restore.lspBootstrap",
+      "restore.hashlineRepair",
+      "qa.mcpCall",
+      "qa.readonlyDeny",
+      "qa.mcpCallEngine",
+      "oneclick.scratchRepo",
+      "oneclick.requiredPaths",
+      "oneclick.filesAllowlist",
+      "oneclick.distByteIdentical",
+      "compose.dumpExit",
+      "compose.mpdRows",
+      "compose.presetRow",
+      "compose.agentTeamRows",
+      "boot.probeApplied",
+      "boot.adapterService",
+      "boot.adapterToolCall",
+      "boot.mpdTools",
+      "boot.mcpTools",
+      "boot.agentTeamTools",
+      "boot.sessionGateListener",
+      "boot.agentTeamService",
+      "boot.servesHttp",
+      "boot.presetMount",
+      "boot.noFatalSignatures",
+      "isolation.home",
+      "isolation.realHome",
+      "isolation.noCredentials",
+      "tui.hostInstall",
+      "tui.pluginAddHost",
+      "tui.pluginAddBundle",
+      "tui.compose",
+      "tui.presetPreference",
+      "tui.presetRow",
+      "tui.mpdTuiRow",
+      "tui.agentTeamRows",
+      "tui.mergedPanelOpens",
+      "tui.mergedPanelOrder",
+      "tui.hostDashboardKeyIntact",
+      "tui.noDirectTuiSeam",
+      "tui.boot",
+      "tui.noFatalSignatures",
+      "tui.sessionPreset",
+      "team.route.state",
+      "team.route.plan",
+      "team.route.task",
+      "team.route.mail",
+      "team.routesAll",
+      "team.planLookup",
+      "tui.teamSceneOtherSessionInvisible",
+      "tui.teamFixtureBound",
+      "tui.teamSceneOpened",
+      "tui.teamGraphDrawn",
+      "tui.teamGraphEdges",
+      "tui.teamGraphContent",
+      "tui.laneExit",
+      "live.credentialStaged",
+      "live.credentialScoped",
+      "live.credentialRemoved",
+      "live.web.turnStarted",
+      "live.web.turnCompleted",
+      "live.web.noErrorTurns",
+      "live.web.noMalformedToolJson",
+      "live.web.toolCallsParsed",
+      "live.web.mpdToolCalled",
+      "live.web.assistantReplied",
+      "live.tui.turnStarted",
+      "live.tui.turnCompleted",
+      "live.tui.noErrorTurns",
+      "live.tui.noMalformedToolJson",
+      "live.tui.toolCallsParsed",
+      "live.tui.mpdToolCalled",
+      "live.tui.assistantReplied",
+      "live.headless.turnStarted",
+      "live.headless.turnCompleted",
+      "live.headless.noErrorTurns",
+      "live.headless.noMalformedToolJson",
+      "live.headless.toolCallsParsed",
+      "live.headless.mpdToolCalled",
+      "live.headless.assistantReplied",
+      "live.teamRecord",
+      "live.nativeExecutor",
+      "live.headlessPresetRow",
+      "boot.llmTurn",
+      "boot.workspaceRegistered",
+      "ui.loads",
+      "ui.workspaceSelected",
+      "ui.composerPresent",
+      "ui.promptSent",
+      "ui.replyRendered",
+      "ui.mpdSettingsSection",
+      "ui.teamPanel",
+      "ui.noConsoleErrors"
+    ]
+  },
+  "assertions": [
+    {
+      "name": "ubuntu.version",
+      "ok": true,
+      "reason": "the base image is ubuntu:24.04",
+      "raw": "ubuntu 24.04"
+    },
+    {
+      "name": "toolchain.apt",
+      "ok": true,
+      "reason": "apt-get update + install curl git ca-certificates unzip xz-utils tmux",
+      "raw": "exit=0/0"
+    },
+    {
+      "name": "toolchain.node",
+      "ok": true,
+      "reason": "node v24.21.0 and npm 11.19.0 come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org",
+      "raw": "v24.21.0 npm=11.19.0"
+    },
+    {
+      "name": "toolchain.bun",
+      "ok": true,
+      "reason": "bun 1.4.3 on PATH, installed via official-script",
+      "raw": "1.4.3"
+    },
+    {
+      "name": "toolchain.bunPinned",
+      "ok": true,
+      "reason": "the build toolchain the tree declares is staged and reports EXACTLY that version, so the from-source rebuild below runs under the compiler the artifact was cut with",
+      "raw": "bin=/opt/toolchain/bun-pinned/bin/bun version=1.4.0 declared=bun@1.4.0 route=official-script"
+    },
+    {
+      "name": "toolchain.pnpm",
+      "ok": true,
+      "reason": "required by 'dsh plugin' (it forwards to pnpm), available on PATH",
+      "raw": "11.23.0"
+    },
+    {
+      "name": "harness.version",
+      "ok": true,
+      "reason": "npm i -g then 'dsh --version' printed the pin exactly",
+      "raw": "0.2.0-rc.2"
+    },
+    {
+      "name": "copy.contextFiltered",
+      "ok": true,
+      "reason": "the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed; the ONLY packed output it carries is dist/mpd-package, which is the subject of the pack assertions",
+      "raw": "absent: node_modules .git evidence .toolchain pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs; present by design: dist/mpd-package"
+    },
+    {
+      "name": "copy.repo",
+      "ok": true,
+      "reason": "package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present",
+      "raw": "name=@mpd-dsh/mpd"
+    },
+    {
+      "name": "build.bunInstall",
+      "ok": true,
+      "reason": "bun install resolved the workspace and the dev/optional dependencies",
+      "raw": "exit=0"
+    },
+    {
+      "name": "build.dists",
+      "ok": true,
+      "reason": "every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact",
+      "raw": "BUILD_OK=31/31"
+    },
+    {
+      "name": "install.exit",
+      "ok": false,
+      "reason": "'dsh plugin --profile web add .' exited 1",
+      "raw": ""
+    },
+    {
+      "name": "install.profileDep",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "install.installedTree",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "install.buildScripts",
+      "ok": false,
+      "reason": "the install closure clause did not hold: exit=1 ERR_PNPM_IGNORED_BUILDS lines=0 ignored-build-script warnings=0 declared-build-script manifests=0",
+      "raw": "ERROR_CLASS_LINES=none WARN_LINES=none INVENTORY=none"
+    },
+    {
+      "name": "pack.present",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "pack.licenceCoherence",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "pack.declarationCoherence",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "pack.staticCoherence",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "pack.distFreshRebuild",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "pack.rebuildToolchain",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "pack.distFreshRebuildControl",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.mcpToolNaming",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.mcpLiveSearch",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "restore.reviewPanelSelfTest",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "restore.reviewPanelCase",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "restore.lspBootstrap",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "restore.hashlineRepair",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "qa.mcpCall",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "qa.readonlyDeny",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "qa.mcpCallEngine",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "oneclick.scratchRepo",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "oneclick.requiredPaths",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "oneclick.filesAllowlist",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "oneclick.distByteIdentical",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.dumpExit",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.mpdRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.presetRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.agentTeamRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.probeApplied",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.adapterService",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.adapterToolCall",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.mpdTools",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.mcpTools",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.agentTeamTools",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.sessionGateListener",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.agentTeamService",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.servesHttp",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.presetMount",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.noFatalSignatures",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "isolation.home",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "isolation.realHome",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "isolation.noCredentials",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.hostInstall",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.pluginAddHost",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.pluginAddBundle",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.compose",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.presetPreference",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.presetRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mpdTuiRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.agentTeamRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mergedPanelOpens",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mergedPanelOrder",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.hostDashboardKeyIntact",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.noDirectTuiSeam",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.boot",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.noFatalSignatures",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.sessionPreset",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "team.route.state",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "team.route.plan",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "team.route.task",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "team.route.mail",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "team.routesAll",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "team.planLookup",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamSceneOtherSessionInvisible",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamFixtureBound",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamSceneOpened",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamGraphDrawn",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamGraphEdges",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamGraphContent",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.laneExit",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.credentialStaged",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.credentialScoped",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.credentialRemoved",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.turnStarted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.turnCompleted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.noErrorTurns",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.noMalformedToolJson",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.toolCallsParsed",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.mpdToolCalled",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.web.assistantReplied",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.turnStarted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.turnCompleted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.noErrorTurns",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.noMalformedToolJson",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.toolCallsParsed",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.mpdToolCalled",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.assistantReplied",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.turnStarted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.turnCompleted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.noErrorTurns",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.noMalformedToolJson",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.toolCallsParsed",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.mpdToolCalled",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.assistantReplied",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.teamRecord",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.nativeExecutor",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headlessPresetRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.llmTurn",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.workspaceRegistered",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.loads",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.workspaceSelected",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.composerPresent",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.promptSent",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.replyRendered",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.mpdSettingsSection",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.teamPanel",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "ui.noConsoleErrors",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    }
+  ],
+  "observations": {
+    "npmrc": "registry=https://registry.npmmirror.com (a SANDBOX-home .npmrc; pnpm — and therefore every  — resolves through the FILE, not the environment, measured 2026-10-09)",
+    "npmRegistry": "https://registry.npmmirror.com (route=mirror-fallback; the scoped-metadata endpoint was probed because npm hangs silently on an unreachable one)",
+    "buildToolchain": "bun@1.4.0",
+    "rebuildNoSrc": "NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built by the package itself (bun build src/launch.ts -> dist/launch.js) or a sha-pinned prebuilt — no offline snapshot build any more,mpd-schemastery=package has no src/ directory (dist is the only committed artifact)",
+    "rebuildBun": "[rebuild] BUN=/opt/toolchain/bun-pinned/bin/bun VERSION=1.4.0",
+    "installSpec": ".",
+    "installTail": "dsh: installation rejected: Plugin @dsh-std/adapter-dsh@0.1.1-rc.2 is incompatible with dsh 0.2.0-rc.2: peerDependencies {\"@deepseek-ai/dsh-commands\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-attachment\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-llm\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-session\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-tools\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-typert-protocol\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-api-gateway\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-api-session-controller\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-client-modules\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-client-ui-settings\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-client-ui-tool\":\">=0.1.2-alpha.2 <0.1.3\"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for @dsh-std/adapter-dsh@0.1.1-rc.2 on dsh 0.2.0-rc.2 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active. dsh: restored package.json, pnpm-lock.yaml, and node_modules. dsh: to accept the risk, run: dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.0-rc.2 --accept-risk dsh: plugin command failed; diagnostics: /root/sandbox-dsh/profiles/web/.plugin-manager/logs/operation-qqmr6G/pnpm.log "
+  },
+  "facts": {
+    "stamp": "2026-10-10T13:24:48Z",
+    "entrypoint": "docker/entrypoint.sh",
+    "image": "mpd-docker-e2e:local",
+    "ubuntuImage": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)",
+    "pins": "nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0",
+    "home": "/root/sandbox-home",
+    "dshHome": "/root/sandbox-dsh",
+    "aptSeconds": "23",
+    "nodeArch": "amd64 -> linux-x64",
+    "nodeSource": "image (node:24-bookworm /usr/local)",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bunPath": "/opt/toolchain/bun/bin/bun",
+    "bun": "1.4.3 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "bunPinned": "/opt/toolchain/bun-pinned/bin/bun version=1.4.0 route=official-script declared=bun@1.4.0",
+    "pnpm": "11.23.0",
+    "dsh": "0.2.0-rc.2 (/usr/local/bin/dsh)",
+    "harnessVersion": "0.2.0-rc.2",
+    "harnessVersionExpected": "0.2.0-rc.2",
+    "copyManifest": "@mpd-dsh/mpd",
+    "rebuildEntries": "ENTRIES=31",
+    "abort": "the client install failed — nothing downstream can be asserted",
+    "finishedAt": "2026-10-10T13:26:25Z"
+  },
+  "hashes": [],
+  "steps": [
+    {
+      "id": "01b-npm-registry",
+      "exit": 0,
+      "seconds": 11,
+      "cmd": "node -e    const registry = process.argv[1]   const probeUrl = process.argv[2]   const mirror = process.argv[3]   const label = process.argv[4]   const out = process.argv[5]   const fs = await import(\"node:fs\")   const probe = async (target) => {     const started = Date.now()     const controller = new AbortController()     const timer = setTimeout(() => controller.abort(), 20000)     try {       const response = await fetch(target, { signal: controller.signal })       await response.text()       clearTimeout(timer)       return { ok: response.status === 200, ms: Date.now() - started, status: \"http=\" + response.status }     } catch (error) {       clearTimeout(timer)       return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }     }   }   const first = await probe(probeUrl)   const settle = (chosen, route, detail) => {     fs.writeFileSync(out, chosen + \"\\n\" + route + \"\\n\")     console.log(\"REGISTRY=\" + chosen + \" ROUTE=\" + route + \" \" + detail)   }   if (first.ok) { settle(registry, label + \"-ok\", \"probeMs=\" + first.ms); process.exit(0) }   const second = await probe(mirror + \"/@deepseek-ai%2fdsh\")   if (second.ok) {     settle(mirror, \"mirror-fallback\", \"officialProbe=\" + first.status + \" officialProbeMs=\" + first.ms + \" mirrorMs=\" + second.ms)     process.exit(0)   }   settle(registry, \"both-unreachable\", \"officialProbe=\" + first.status + \" mirrorProbe=\" + second.status)  https://registry.npmjs.org https://registry.npmjs.org/@deepseek-ai%2fdsh https://registry.npmmirror.com official-registry /work/npm-registry.txt ",
+      "logFile": "01b-npm-registry.log",
+      "logBytes": 134,
+      "tail": [
+        "REGISTRY=https://registry.npmmirror.com ROUTE=mirror-fallback officialProbe=TypeError: fetch failed officialProbeMs=10534 mirrorMs=93",
+        ""
+      ]
+    },
+    {
+      "id": "01-apt-update",
+      "exit": 0,
+      "seconds": 11,
+      "cmd": "apt-get update ",
+      "logFile": "01-apt-update.log",
+      "logBytes": 1635,
+      "tail": [
+        "Get:1 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]",
+        "Get:2 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]",
+        "Get:3 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [61.4 kB]",
+        "Get:4 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1546 kB]",
+        "Get:5 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]",
+        "Get:6 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1381 kB]",
+        "Get:7 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [2069 kB]",
+        "Get:8 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]",
+        "Get:9 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]",
+        "Get:10 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]",
+        "Get:11 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]",
+        "Get:12 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]",
+        "Get:13 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [67.4 kB]",
+        "Get:14 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1702 kB]",
+        "Get:15 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2166 kB]",
+        "Get:16 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2177 kB]",
+        "Get:17 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]",
+        "Get:18 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]",
+        "Get:19 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]",
+        "Fetched 33.5 MB in 11s (3021 kB/s)",
+        "Reading package lists...",
+        ""
+      ]
+    },
+    {
+      "id": "01-apt-install",
+      "exit": 0,
+      "seconds": 12,
+      "cmd": "env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux ",
+      "logFile": "01-apt-install.log",
+      "logBytes": 16425,
+      "tail": [
+        "Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...\r",
+        "Setting up libutempter0:amd64 (1.2.1-3build1) ...\r",
+        "Setting up git-man (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...\r",
+        "Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up openssl (3.0.13-0ubuntu3.16) ...\r",
+        "Setting up tmux (3.4-1ubuntu0.1) ...\r",
+        "Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...\r",
+        "Setting up ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "121 added, 0 removed; done.\r",
+        "Setting up perl (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...\r",
+        "Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up liberror-perl (0.17029-2) ...\r",
+        "Setting up git (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up curl (8.5.0-2ubuntu10.15) ...\r",
+        "Processing triggers for debianutils (5.17build1) ...\r",
+        "Processing triggers for libc-bin (2.39-0ubuntu8.9) ...\r",
+        "Processing triggers for ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "0 added, 0 removed; done.\r",
+        "Running hooks in /etc/ca-certificates/update.d...\r",
+        "done.\r",
+        ""
+      ]
+    },
+    {
+      "id": "03-bun",
+      "exit": 0,
+      "seconds": 12,
+      "cmd": "bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash ",
+      "logFile": "03-bun.log",
+      "logBytes": 4815,
+      "tail": [
+        "#=#=#                                                                          \r##O#-#                                                                         \r##O=#  #                                                                       \r#=#=-#  #                                                                      \r-#O#- #   #                                                                    \r-=#=#   #   #                                                                  \r-=O#-#   #   #                                                                 \r-=O=#  #   #   #                                                               \r-=O=-#  #    #   #                                                             \r-=O=- #   #   #    #                                                           \r-=O=-   #   #   #     #                                                        \r-=O=-    #   #    #     #                                                      \r-=O=-      #   #     #    #                                                    \r-=O=-        #   #     #    #                                                  \r\r                                                                           0.0%\r                                                                           0.1%\r                                                                           0.2%\r                                                                           0.4%\r                                                                           0.5%\r                                                                           0.7%\r                                                                           0.9%\r                                                                           1.3%\r#                                                                          1.8%\r#                                                                          2.5%\r##                                                                         3.6%\r###                                                                        4.9%\r####                                                                       6.7%\r######                                                                     9.3%\r#######                                                                   10.7%\r##########                                                                14.3%\r############                                                              17.2%\r##############                                                            19.6%\r#################                                                         24.9%\r##################                                                        25.2%\r####################                                                      27.9%\r########################                                                  34.6%\r##########################                                                37.3%\r############################                                              40.0%\r##############################                                            42.6%\r################################                                          45.3%\r##################################                                        47.3%\r####################################                                      50.9%\r######################################                                    53.5%\r########################################                                  56.7%\r##########################################                                58.8%\r############################################                              61.5%\r##############################################                            64.2%\r################################################                          67.0%\r##################################################                        69.7%\r####################################################                      72.5%\r######################################################                    75.2%\r########################################################                  77.9%\r##########################################################                80.6%\r############################################################              83.4%\r#############################################################             85.8%\r##################################################################        92.7%\r####################################################################      95.5%\r######################################################################    98.2%\r######################################################################## 100.0%",
+        "bun was installed successfully to /opt/toolchain/bun/bin/bun ",
+        "Run 'bun --help' to get started",
+        ""
+      ]
+    },
+    {
+      "id": "03b-bun-pin",
+      "exit": 0,
+      "seconds": 9,
+      "cmd": "env BUN_INSTALL=/opt/toolchain/bun-pinned bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash -s -- 'bun-v1.4.0' ",
+      "logFile": "03b-bun-pin.log",
+      "logBytes": 3862,
+      "tail": [
+        "#=#=#                                                                          \r##O#-#                                                                         \r##O=#  #                                                                       \r#=#=-#  #                                                                      \r-#O#- #   #                                                                    \r\r                                                                           0.0%\r                                                                           0.1%\r                                                                           0.2%\r                                                                           0.3%\r                                                                           0.5%\r                                                                           0.7%\r                                                                           1.0%\r#                                                                          1.4%\r#                                                                          1.9%\r#                                                                          2.7%\r##                                                                         3.7%\r###                                                                        5.1%\r#####                                                                      7.0%\r######                                                                     9.6%\r########                                                                  12.3%\r##############                                                            19.7%\r################                                                          22.2%\r###################                                                       26.8%\r###################                                                       27.7%\r######################                                                    31.6%\r#########################                                                 35.0%\r############################                                              40.1%\r##############################                                            42.6%\r################################                                          45.8%\r###################################                                       49.0%\r#####################################                                     52.1%\r#######################################                                   55.2%\r#########################################                                 58.3%\r############################################                              61.4%\r##############################################                            64.6%\r################################################                          67.7%\r##################################################                        70.8%\r####################################################                      72.8%\r#######################################################                   76.8%\r#########################################################                 79.8%\r############################################################              83.6%\r#############################################################             86.0%\r################################################################          89.1%\r##################################################################        92.2%\r####################################################################      95.4%\r######################################################################    98.4%\r######################################################################## 100.0%",
+        "bun was installed successfully to /opt/toolchain/bun-pinned/bin/bun ",
+        "Run 'bun --help' to get started",
+        ""
+      ]
+    },
+    {
+      "id": "04-pnpm",
+      "exit": 0,
+      "seconds": 1,
+      "cmd": "npm i -g pnpm@11.23.0 ",
+      "logFile": "04-pnpm.log",
+      "logBytes": 86,
+      "tail": [
+        "",
+        "added 1 package in 1s",
+        "",
+        "1 package is looking for funding",
+        "  run `npm fund` for details",
+        ""
+      ]
+    },
+    {
+      "id": "05-dsh",
+      "exit": 0,
+      "seconds": 19,
+      "cmd": "npm i -g @deepseek-ai/dsh@0.2.0-rc.2 ",
+      "logFile": "05-dsh.log",
+      "logBytes": 1179,
+      "tail": [
+        "npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead",
+        "",
+        "added 538 packages in 19s",
+        "",
+        "63 packages are looking for funding",
+        "  run `npm fund` for details",
+        "npm warn install-scripts 5 packages have install scripts not yet covered by allowScripts:",
+        "npm warn install-scripts   @deepseek-ai/dsh-subprocess-local@0.2.0-rc.2 (postinstall: node scripts/ensure-spawn-helper.mjs)",
+        "npm warn install-scripts   koffi@3.1.1 (install: node ./cnoke.cjs -P . -D src/koffi --prebuild --release)",
+        "npm warn install-scripts   node-pty@1.2.0-beta.15 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)",
+        "npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')",
+        "npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)",
+        "npm warn install-scripts",
+        "npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.",
+        ""
+      ]
+    },
+    {
+      "id": "06-copy",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "cp -a /src/. /opt/mpd/ ",
+      "logFile": "06-copy.log",
+      "logBytes": 0,
+      "tail": [
+        ""
+      ]
+    },
+    {
+      "id": "07-bun-install",
+      "exit": 0,
+      "seconds": 19,
+      "cmd": "bash -c cd '/opt/mpd' && bun install ",
+      "logFile": "07-bun-install.log",
+      "logBytes": 527,
+      "tail": [
+        "bun install v1.4.3 (c6da4a4d3)",
+        "",
+        "+ @typescript/native-preview@7.0.0-dev.20260707.2",
+        "+ bun-types@1.4.0",
+        "+ dsh-better-sidebar@0.24.1",
+        "+ typescript5@5.9.3",
+        "+ @colbymchenry/codegraph@1.5.0",
+        "+ @cyanheads/git-mcp-server@2.15.3",
+        "+ cclsp@0.7.0",
+        "+ mcp-server-commands@0.8.2",
+        "+ @deepseek-ai/dsh-experimental-agent-team@0.2.0-rc.2",
+        "+ @deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.0-rc.2",
+        "+ @deepseek-ai/dsh-experimental-tool-agent-team@0.2.0-rc.2",
+        "+ @dsh-std/adapter-dsh@0.1.1-rc.2",
+        "+ @dsh-std/sdk@0.1.1-rc.2",
+        "",
+        "453 packages installed [19.72s]",
+        ""
+      ]
+    },
+    {
+      "id": "08-rebuild",
+      "exit": 0,
+      "seconds": 1,
+      "cmd": "node /opt/mpd-e2e/lib/rebuild.ts --repo /opt/mpd --bun /opt/toolchain/bun-pinned/bin/bun --json /work/rebuild.json ",
+      "logFile": "08-rebuild.log",
+      "logBytes": 4309,
+      "tail": [
+        "[rebuild] OK   packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js (exit=0 bytes=197283)",
+        "[rebuild] OK   packages/mpd-ext-plugin/src/sdk.ts -> packages/mpd-ext-plugin/dist/sdk.js (exit=0 bytes=1708)",
+        "[rebuild] OK   packages/mpd-goal-plugin/src/index.ts -> packages/mpd-goal-plugin/dist/index.js (exit=0 bytes=75619)",
+        "[rebuild] OK   packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js (exit=0 bytes=100224)",
+        "[rebuild] OK   packages/mpd-mcp-astgrep/src/cli.ts -> packages/mpd-mcp-astgrep/dist/cli.js (exit=0 bytes=76468)",
+        "[rebuild] OK   packages/mpd-mcp-astgrep/src/launch.ts -> packages/mpd-mcp-astgrep/dist/launch.js (exit=0 bytes=11231)",
+        "[rebuild] OK   packages/mpd-mcp-codegraph/src/launch.ts -> packages/mpd-mcp-codegraph/dist/launch.js (exit=0 bytes=15956)",
+        "[rebuild] OK   packages/mpd-mcp-gitbash/src/launch.ts -> packages/mpd-mcp-gitbash/dist/launch.js (exit=0 bytes=12800)",
+        "[rebuild] OK   packages/mpd-mcp-lsp/src/launch.ts -> packages/mpd-mcp-lsp/dist/launch.js (exit=0 bytes=61753)",
+        "[rebuild] OK   packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js (exit=0 bytes=78219)",
+        "[rebuild] OK   packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js (exit=0 bytes=70589)",
+        "[rebuild] OK   packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js (exit=0 bytes=71640)",
+        "[rebuild] OK   packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js (exit=0 bytes=143335)",
+        "[rebuild] OK   packages/mpd-roster-provider-plugin/src/index.ts -> packages/mpd-roster-provider-plugin/dist/index.js (exit=0 bytes=111525)",
+        "[rebuild] OK   packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js (exit=0 bytes=82940)",
+        "[rebuild] OK   packages/mpd-team-core-plugin/src/index.ts -> packages/mpd-team-core-plugin/dist/index.js (exit=0 bytes=153106)",
+        "[rebuild] OK   packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js (exit=0 bytes=194746)",
+        "[rebuild] OK   packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js (exit=0 bytes=66339)",
+        "[rebuild] OK   packages/mpd-tui-adapter-plugin/src/index.ts -> packages/mpd-tui-adapter-plugin/dist/index.js (exit=0 bytes=44232)",
+        "[rebuild] OK   packages/mpd-tui-plugin/src/index.ts -> packages/mpd-tui-plugin/dist/index.js (exit=0 bytes=388142)",
+        "[rebuild] OK   packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js (exit=0 bytes=107185)",
+        "[rebuild] OK   packages/mpd-verify-plugin/src/index.ts -> packages/mpd-verify-plugin/dist/index.js (exit=0 bytes=119154)",
+        "[rebuild] OK   packages/mpd-workmate-plugin/src/index.ts -> packages/mpd-workmate-plugin/dist/index.js (exit=0 bytes=106463)",
+        "[rebuild] ENTRIES=31",
+        "[rebuild] BUILD_OK=31/31",
+        "[rebuild] BUILD_FAILED=",
+        "[rebuild] NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built by the package itself (bun build src/launch.ts -> dist/launch.js) or a sha-pinned prebuilt — no offline snapshot build any more,mpd-schemastery=package has no src/ directory (dist is the only committed artifact)",
+        "[rebuild] SKIPPED_SRC=",
+        "[rebuild] OK=true",
+        ""
+      ]
+    },
+    {
+      "id": "09-install",
+      "exit": 1,
+      "seconds": 1,
+      "cmd": "bash -c cd '/opt/mpd' && dsh plugin --profile web add '.' ",
+      "logFile": "09-install.log",
+      "logBytes": 1608,
+      "tail": [
+        "dsh: initialized profile web at /root/sandbox-dsh/profiles/web",
+        "",
+        "dependencies:",
+        "+ @mpd-dsh/mpd link:/opt/mpd",
+        "",
+        "Already up to date",
+        "Done in 324ms using pnpm v11.23.0",
+        "",
+        "dsh: installation rejected: Plugin @dsh-std/adapter-dsh@0.1.1-rc.2 is incompatible with dsh 0.2.0-rc.2: peerDependencies {\"@deepseek-ai/dsh-commands\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-attachment\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-llm\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-session\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-tools\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-typert-protocol\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-api-gateway\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-api-session-controller\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-client-modules\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-client-ui-settings\":\">=0.1.2-alpha.2 <0.1.3\",\"@deepseek-ai/dsh-client-ui-tool\":\">=0.1.2-alpha.2 <0.1.3\"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for @dsh-std/adapter-dsh@0.1.1-rc.2 on dsh 0.2.0-rc.2 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active.",
+        "dsh: restored package.json, pnpm-lock.yaml, and node_modules.",
+        "dsh: to accept the risk, run: dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.0-rc.2 --accept-risk",
+        "dsh: plugin command failed; diagnostics: /root/sandbox-dsh/profiles/web/.plugin-manager/logs/operation-qqmr6G/pnpm.log",
+        ""
+      ]
+    },
+    {
+      "id": "09a-install-closure",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd-e2e/lib/owed-install.ts --install-log /work/steps/09-install.log --exit 1 --roots /root/sandbox-dsh/profiles/web,/opt/mpd --state /work/assertions.ndjson ",
+      "logFile": "09a-install-closure.log",
+      "logBytes": 192,
+      "tail": [
+        "[owed-install] install.buildScripts=false — the install closure clause did not hold: exit=1 ERR_PNPM_IGNORED_BUILDS lines=0 ignored-build-script warnings=0 declared-build-script manifests=0",
+        ""
+      ]
+    }
+  ],
+  "outputLog": "output.log",
+  "evidenceScrubbed": true
+}

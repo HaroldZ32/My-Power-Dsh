@@ -1,0 +1,21 @@
+# CMD: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:manifest
+# bun: 1.4.0 @ /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun
+# node: v24.21.0
+# UTC: 2026-10-10T13:47:22Z
+# cwd: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+---
+$ node scripts/verify-plugin-manifest.ts --pack
+# verify-plugin-manifest — repository manifest
+
+ok    cordis-dependency: 9 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+ok    cordis-devDependency-note: devDependencies declare no cordis package
+ok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare
+ok    version:dsh-plugin.json: version = 0.12.0
+ok    version:dsh-distribution.json: distribution.version = 0.12.0
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 25 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 952 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.

@@ -1,0 +1,78 @@
+# bun.lock audit — 2026-10-10T13:48:48Z
+# bun: 1.4.0 @ /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun
+
+## 1. root manifest pin in the lock (workspace root block)
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "@mpd-dsh/mpd",
+      "dependencies": {
+        "@deepseek-ai/dsh-experimental-agent-team": "0.2.0-rc.2",
+        "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.0-rc.2",
+        "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.0-rc.2",
+        "@dsh-std/sdk": "0.1.1-rc.2",
+      },
+      "devDependencies": {
+        "@typescript/native-preview": "^7.0.0-dev.20260707.2",
+        "bun-types": "^1.4.0",
+        "dsh-better-sidebar": "0.24.1",
+        "typescript5": "npm:typescript@5.9.3",
+      },
+      "optionalDependencies": {
+        "@colbymchenry/codegraph": "1.5.0",
+        "@cyanheads/git-mcp-server": "2.15.3",
+        "cclsp": "0.7.0",
+        "mcp-server-commands": "0.8.2",
+      },
+      "peerDependencies": {
+
+## 2. adapter occurrences anywhere in bun.lock
+0
+
+## 3. forbidden @dsh-std family keys (command|connection|messages|model|storage|ui|ui-browser|tool|session|workspace|presentation)
+
+## 4. every @dsh-std key present
+"@dsh-std/composition"
+"@dsh-std/core"
+"@dsh-std/lifecycle"
+"@dsh-std/manifest"
+"@dsh-std/sdk"
+
+## 5. zod: resolved package ENTRY (4-space indent key) — current vs dev baseline
+current: 1072:    "zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
+dev HEAD: 1061:    "zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
+zod as a DEPENDENCY-OF rows (informational, harness packages): 21
+zod referenced BY @dsh-std/* rows: 0
+
+## 6. full diff of bun.lock vs dev baseline (every hunk)
+diff --git a/bun.lock b/bun.lock
+index 29a03072..70978518 100644
+--- a/bun.lock
++++ b/bun.lock
+@@ -8,6 +8,7 @@
+         "@deepseek-ai/dsh-experimental-agent-team": "0.2.0-rc.2",
+         "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.0-rc.2",
+         "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.0-rc.2",
++        "@dsh-std/sdk": "0.1.1-rc.2",
+       },
+       "devDependencies": {
+         "@typescript/native-preview": "^7.0.0-dev.20260707.2",
+@@ -364,6 +365,16 @@
+ 
+     "@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.18.4", "", { "dependencies": { "@deepseek-ai/cosmokit": "~1.8.5", "@standard-schema/spec": "^1.1.0" } }, "sha512-SSXO6tYuyrIqKVbmOnIq0s+riUywYzouFMcnBluHF9n4KMo2G8HvEzhCYj6pj2617/glOjbJuVInJ9hfONsjkg=="],
+ 
++    "@dsh-std/composition": ["@dsh-std/composition@0.1.1-rc.1", "", { "dependencies": { "@dsh-std/core": "^0.1.1-rc.1", "@dsh-std/manifest": "^0.1.1-rc.1" } }, "sha512-1pW2ZarnX4lS089y0rR6Myg77FX21j++GxodTSb4WE7uUwLr9IPM1EXsP7o112gH3LkImVxqQt1G8Q20bqtCUg=="],
++
++    "@dsh-std/core": ["@dsh-std/core@0.1.1-rc.2", "", {}, "sha512-Z5DEu+wuNunaw/8Y8dGGIuGfrpOYd2gyBXGDzHrh5HYNZbJdBjLnuEGFJkMaBqan2rPxp7KL4OalXZzM6w5rYg=="],
++
++    "@dsh-std/lifecycle": ["@dsh-std/lifecycle@0.1.1-rc.2", "", { "dependencies": { "@dsh-std/composition": "^0.1.1-rc.1", "@dsh-std/core": "^0.1.1-rc.1", "@dsh-std/manifest": "^0.1.1-rc.2" } }, "sha512-6IYTwGTG4Ce0fO84dieyH4VK7LA+uGuN7MixtY61+V508FyZA/Bf3rgDmNn2GXp5B4u2vZ0Gm3WAAzQxsfs/iw=="],
++
++    "@dsh-std/manifest": ["@dsh-std/manifest@0.1.1-rc.2", "", { "dependencies": { "@dsh-std/core": "^0.1.1-rc.1" } }, "sha512-PsAvpxkRx7yA+DiHkTTxFxVYpLGRfGRQCzy0VGf4da0lEHTtgvFk9l13MKsazPyzBClt6lywI+cAyTDaa8WQvw=="],
++
++    "@dsh-std/sdk": ["@dsh-std/sdk@0.1.1-rc.2", "", { "dependencies": { "@dsh-std/core": "^0.1.1-rc.1", "@dsh-std/lifecycle": "^0.1.1-rc.2" } }, "sha512-2b9Bp9Q4cJlkr5kfXrwaLoDys/yMFHoOolnXgl+ouqdUxPMGi/dYhSZdXpg3oxHd3D3uc5bL9PMPtWW/6yugiQ=="],
++
+     "@eslint-community/regexpp": ["@eslint-community/regexpp@4.12.2", "", {}, "sha512-EriSTlt5OC9/7SXkRSCAhfSxxoSUgBm33OH+IkwbdpgoqsSsUg7y3uh+IICI/Qg4BBWr3U2i39RpmycbxMq4ew=="],
+ 
+     "@hono/node-server": ["@hono/node-server@2.1.4", "", { "peerDependencies": { "hono": "^4 || ^5.0.0-0" } }, "sha512-2g1qeHl4BduwDn6L8nkAvDrPUWPMlkQ//a5NhP/zIyaXKMjZNRV+cG9Csu+BiJFf6+68pqzjf4Hi5sJGKHuS1g=="],

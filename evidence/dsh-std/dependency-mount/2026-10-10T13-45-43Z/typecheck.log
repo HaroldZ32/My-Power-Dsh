@@ -1,0 +1,7 @@
+# CMD: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run typecheck
+# bun: 1.4.0 @ /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun
+# node: v24.21.0
+# UTC: 2026-10-10T13:47:27Z
+# cwd: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+---
+$ tsgo --noEmit

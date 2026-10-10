@@ -906,6 +906,7 @@ other people's. The authoritative record, with the full licence texts, is
 | `mcp__ast_grep__*` | **ast-grep** — the optional dependency `@ast-grep/cli` | MIT; `0.45.2`; resolved at runtime, not redistributed | `package.json` `optionalDependencies`; `MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` and the `mpd-codegraph` row | **codegraph** by Yeongyu Kim — the optional dependency `@colbymchenry/codegraph` | MIT; `1.5.0`; the prebuilt server is vendored and sha256-pinned | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`; `VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; `0.8.0`; **not** redistributed — installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
+| The DSH-STD protocol family — `@dsh-std/sdk` `0.1.1-rc.2`, the one DSH-STD **dependency** of this bundle (the adapter is an optional self-install, below) | **dsh-std** (https://github.com/T-Auto/dsh-std) — a declared npm dependency, never a vendored body | MIT — `Copyright (c) 2026 DSH Standard contributors`; resolved at install time, not redistributed | `package.json` `dependencies`; `LICENSE-NOTICES.md` |
 | The plugin system, the tool / skill / preset / agent seams, the model providers, the Web shell | DeepSeek Harness — the **`@deepseek-ai/*`** packages | MIT; referenced as dependencies only | `LICENSE-NOTICES.md` |
 | The Agent Teams Web panel | the official `@deepseek-ai/dsh-experimental-client-ui-agent-team` client plugin | MIT (harness package set) | §8 above; patch row `mpd-ui-agent-team` |
 | The Workmates sidebar tab | hosted by the community bundle **`dsh-better-sidebar`**, an **optional peer** of this bundle (+ a `devDependency`): the bundle never installs it, and the guarded `mpd-better-sidebar` row mounts it when it is resolvable | — | §8 above; `package.json` `peerDependencies` / `peerDependenciesMeta`; patch row `mpd-better-sidebar` |
@@ -916,3 +917,26 @@ Two consequences worth carrying away: a component keeps its **own** licence even
 nothing here
 configures your provider credentials — a `MISSING_CREDENTIAL` error belongs to your DSH credential
 store, not to these docs.
+
+### 14.1 The optional DSH-STD adapter (a self-install, not part of this bundle)
+
+`@dsh-std/adapter-dsh` is the DSH-STD family's own adapter plugin. It is **not** a dependency of this
+bundle and carries **no** row in `cordis.patch.yml`, so this bundle never mounts it. A profile owner
+who wants it installs it into their own profile:
+
+```bash
+# On the dsh 0.2.0-rc.2 baseline, grant the exact-version exemption first:
+dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.0-rc.2 --accept-risk
+# Then the adapter's own designed one-command install:
+dsh plugin --profile web add @dsh-std/adapter-dsh
+```
+
+This bundle does not ship it because the adapter's peers pin the `@deepseek-ai/dsh-*` `0.1.2-alpha` host
+line while this bundle's baseline is dsh `0.2.0-rc.2`, so the exemption is the profile owner's explicit
+risk decision about their own profile — and shipping it is not a neutral alternative either: the
+plugin manager checks compatibility twice at install time, with a preflight over the explicitly named
+install specs before `pnpm` runs, then a post-install pass over the profile's installed direct
+dependencies plus the component manifests the changed bundle's patch rows name — never a recursive
+scan of the transitive closure. A measured v1 variant of this change (the adapter declared as a
+dependency and named by a patch row) was caught by that second pass: `dsh plugin add` hard-rejected
+and rolled back the whole bundle install.

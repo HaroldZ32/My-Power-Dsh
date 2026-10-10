@@ -1,0 +1,61 @@
+# Peer auto-install observation — @dsh-std/adapter-dsh on dsh 0.2.0-rc.2
+# measured 2026-10-10T13:24:51Z ; HEAD d76d3bec83213fde6aebb7e218dcba3c6aaf44c8
+
+## 1. Did a SECOND 0.1.2-alpha copy of host libraries appear?
+occurrences of '0.1.2-alpha' in HEAD bun.lock : 0
+occurrences of '0.1.2-alpha' in POST bun.lock : 1
+    ^ that ONE occurrence is the RANGE TEXT ">=0.1.2-alpha.2 <0.1.3" recorded inside the new
+      @dsh-std/adapter-dsh entry's peerDependencies block -- NOT a resolved version.
+packages INSTALLED at version 0.1.2-alpha* under node_modules : 0
+  => ANSWER: NO second 0.1.2-alpha copy exists anywhere, in the lockfile or on disk.
+  => What DID happen: bun auto-resolved the adapter's 7 non-optional @deepseek-ai/dsh-* peers
+     against versions ALREADY in its store (the 0.1.5-rc.2 / 0.1.7-rc.2 lines, mtime 2026-10-02),
+     which sit OUTSIDE the declared <0.1.3 range => the 7 "incorrect peer dependency" warnings.
+     Those copies live ONLY inside bun's isolated store (node_modules/.bun/), reachable from the
+     adapter's own store entry; nothing was hoisted to the top-level band (see section 4).
+
+## 2. Host-library version lines actually present under node_modules
+     84 0.1.7-rc.2
+     74 0.2.0-rc.2
+     43 0.1.5-rc.2
+
+## 3. Which store entries did THIS install create? (mtime > install start)
+new .bun entries: 20  (18 @dsh-std/* + 1 harness pkg + 2 dirs)
+--- the ONE harness package entry created by this install ---
+@deepseek-ai+dsh-commands@0.1.7-rc.2+ea9f3f61408fac66
+--- the other 6 named peers reused PRE-EXISTING store entries: ---
+@deepseek-ai+dsh-commands@0.1.7-rc.2+52d9b4decde364b0 2026-10-02 21:14:59
+@deepseek-ai+dsh-commands@0.1.7-rc.2+5d2d9405f047d622 2026-10-02 21:14:59
+@deepseek-ai+dsh-commands@0.1.7-rc.2+c0fc1e00dd571691 2026-10-02 21:14:59
+@deepseek-ai+dsh-commands@0.1.7-rc.2+c648f290a4017a64 2026-10-02 21:14:59
+@deepseek-ai+dsh-commands@0.1.7-rc.2+ea9f3f61408fac66 2026-10-10 21:07:30
+@deepseek-ai+dsh-llm@0.1.5-rc.2+756175052b6dd59f 2026-10-02 21:14:58
+@deepseek-ai+dsh-llm@0.1.7-rc.2+756175052b6dd59f 2026-10-02 21:14:59
+@deepseek-ai+dsh-llm@0.1.7-rc.2+f3754dacc163b890 2026-10-02 21:27:09
+@deepseek-ai+dsh-tools@0.1.5-rc.2+0109b5a1095dd3f1 2026-10-02 21:14:58
+@deepseek-ai+dsh-tools@0.1.5-rc.2+72ebb74034fc3a19 2026-10-02 21:14:58
+@deepseek-ai+dsh-tools@0.1.5-rc.2+a1f2414ee89b0602 2026-10-02 21:14:58
+@deepseek-ai+dsh-session@0.1.5-rc.2+dc739aaae42c2f31 2026-10-02 21:14:58
+@deepseek-ai+dsh-attachment@0.1.5-rc.2+824c07d8127c7263 2026-10-02 21:14:58
+@deepseek-ai+dsh-attachment@0.1.5-rc.2+bdc6be0fd9214be6 2026-10-02 21:14:58
+@deepseek-ai+dsh-typert-protocol@0.1.5-rc.2+756175052b6dd59f 2026-10-02 21:14:58
+@deepseek-ai+dsh-typert-protocol@0.1.7-rc.2+756175052b6dd59f 2026-10-02 21:14:59
+@deepseek-ai+dsh-typert-protocol@0.1.7-rc.2+f3754dacc163b890 2026-10-02 21:27:09
+@deepseek-ai+dsh-api-session-controller@0.1.7-rc.2+e78472b81f12ccc3 2026-10-02 21:15:00
+
+## 4. Top-level node_modules/@deepseek-ai — the harness-visible band
+dsh-experimental-agent-team
+dsh-experimental-client-ui-agent-team
+dsh-experimental-tool-agent-team
+  => unchanged: ONLY the three declared 0.2.0-rc.2 experimental packages.
+
+## 5. bun.lock diff — is it purely additive?
+added lines:   27
+removed lines: 10
+0.2.0-rc.2 lines touched by the diff: 0  (0 = host line untouched)
+--- what moved: ---
+      7 "@deepseek-ai/dsh-typert-protocol@0.1.5-rc.2"
+      8 "@deepseek-ai/dsh-typert-protocol@0.1.7-rc.2"
+
+## 6. bun install stdout (pinned 1.4.0)
+exit 0 ; 18 packages installed ; 7 'incorrect peer dependency' warnings (dsh-commands/dsh-llm/dsh-typert-protocol @0.1.7-rc.2, dsh-attachment/dsh-tools/dsh-session @0.1.5-rc.2, dsh-api-session-controller @0.1.7-rc.2)

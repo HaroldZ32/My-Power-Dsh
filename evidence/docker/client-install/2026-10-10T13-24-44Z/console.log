@@ -1,0 +1,647 @@
+ Image mpd-docker-e2e:local Building 
+ Image mpd-docker-e2e:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.05kB done
+#1 DONE 0.0s
+
+#2 [mpd-client internal] load build definition from Dockerfile
+#2 transferring dockerfile: 6.95kB done
+#2 DONE 0.0s
+
+#3 [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm
+#3 DONE 0.0s
+
+#4 [mpd-client internal] load metadata for docker.io/library/ubuntu:24.04
+#4 DONE 0.0s
+
+#5 [mpd-oneclick node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
+#5 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
+#5 DONE 0.0s
+
+#6 [mpd-oneclick stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
+#6 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
+#6 DONE 0.0s
+
+#7 [mpd-client internal] load build context
+#7 transferring context:
+#7 transferring context: 42.60MB 0.2s done
+#7 DONE 0.2s
+
+#8 [mpd-oneclick stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
+#8 CACHED
+
+#9 [mpd-oneclick stage-1  3/12] COPY . /src/
+#9 DONE 0.2s
+
+#10 [mpd-oneclick stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
+#10 DONE 0.1s
+
+#11 [mpd-client stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
+#11 DONE 0.1s
+
+#12 [mpd-oneclick stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
+#12 DONE 0.1s
+
+#13 [mpd-oneclick stage-1  7/12] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
+#13 DONE 0.0s
+
+#14 [mpd-oneclick stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+#14 DONE 0.1s
+
+#15 [mpd-client stage-1  9/12] COPY docker/ui/capture.mts /opt/mpd-e2e/capture.mts
+#15 DONE 0.1s
+
+#16 [mpd-client stage-1 10/12] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
+#16 DONE 0.1s
+
+#17 [mpd-oneclick stage-1 11/12] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mts /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src
+#17 DONE 0.3s
+
+#18 [mpd-client stage-1 12/12] WORKDIR /work
+#18 DONE 0.1s
+
+#19 [mpd-oneclick] exporting to image
+#19 exporting layers
+#19 exporting layers 1.3s done
+#19 exporting manifest sha256:1388ad32723eeabbfca2e11cb4f4bf5936f1cc1c73f3fed9d3db14d2032103ed 0.0s done
+#19 exporting config sha256:c576cad37537868d9a8a7019413d5935b39c5b3a4199a890d3e7d10933712e41 0.0s done
+#19 exporting attestation manifest sha256:becb1ba0191302f19ce45cff27f9a38aca6fc7550210ae7ff9f6eeb4de6d96b8
+#19 exporting attestation manifest sha256:becb1ba0191302f19ce45cff27f9a38aca6fc7550210ae7ff9f6eeb4de6d96b8 0.0s done
+#19 exporting manifest list sha256:6f408492212aa42a32549712f11f2627272358e6f2f727fb8790983d9598ca9a 0.0s done
+#19 naming to docker.io/library/mpd-docker-e2e:local done
+#19 unpacking to docker.io/library/mpd-docker-e2e:local
+#19 unpacking to docker.io/library/mpd-docker-e2e:local 0.6s done
+#19 DONE 2.1s
+
+#20 [mpd-client] exporting to image
+#20 exporting layers 1.3s done
+#20 exporting manifest sha256:15a27bbd45512d0d5601a24876968e2321819b20181f009b1825fd0bdb8047e9 0.0s done
+#20 exporting config sha256:e23fe58b8f12b62f62c66153beb9bab2940e73a022f7cd6e9763f353adb8c6f5 0.0s done
+#20 exporting attestation manifest sha256:55dfe605a86d5526852075181936d52ce8fbc7d96f77d3eed17c0075fbf53d40 0.0s done
+#20 exporting manifest list sha256:d964e6f271923c2a3c140d4308e4c5dd4f08f718ff6bf1891cda68be78916553 0.0s done
+#20 naming to docker.io/library/mpd-docker-e2e:local done
+#20 unpacking to docker.io/library/mpd-docker-e2e:local 0.6s done
+#20 DONE 2.1s
+
+#21 [mpd-client] resolving provenance for metadata file
+#21 DONE 0.0s
+
+#22 [mpd-oneclick] resolving provenance for metadata file
+#22 DONE 0.0s
+ Image mpd-docker-e2e:local Built 
+ Image mpd-docker-e2e:local Built 
+ Container docker-mpd-client-run-b3bb48a370e4 Creating 
+ Container docker-mpd-client-run-b3bb48a370e4 Created 
+===== Docker client-install E2E — 2026-10-10T13:24:48Z =====
+ubuntu image : ubuntu 24.04
+app dir      : /opt/mpd   (copy of /src)
+HOME         : /root/sandbox-home
+DSH_HOME     : /root/sandbox-dsh
+pins         : nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0
+[record] ubuntu.version=true — the base image is ubuntu:24.04
+===== STEP 01b-npm-registry =====
+$ node -e 
+  const registry = process.argv[1]
+  const probeUrl = process.argv[2]
+  const mirror = process.argv[3]
+  const label = process.argv[4]
+  const out = process.argv[5]
+  const fs = await import("node:fs")
+  const probe = async (target) => {
+    const started = Date.now()
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 20000)
+    try {
+      const response = await fetch(target, { signal: controller.signal })
+      await response.text()
+      clearTimeout(timer)
+      return { ok: response.status === 200, ms: Date.now() - started, status: "http=" + response.status }
+    } catch (error) {
+      clearTimeout(timer)
+      return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }
+    }
+  }
+  const first = await probe(probeUrl)
+  const settle = (chosen, route, detail) => {
+    fs.writeFileSync(out, chosen + "\n" + route + "\n")
+    console.log("REGISTRY=" + chosen + " ROUTE=" + route + " " + detail)
+  }
+  if (first.ok) { settle(registry, label + "-ok", "probeMs=" + first.ms); process.exit(0) }
+  const second = await probe(mirror + "/@deepseek-ai%2fdsh")
+  if (second.ok) {
+    settle(mirror, "mirror-fallback", "officialProbe=" + first.status + " officialProbeMs=" + first.ms + " mirrorMs=" + second.ms)
+    process.exit(0)
+  }
+  settle(registry, "both-unreachable", "officialProbe=" + first.status + " mirrorProbe=" + second.status)
+ https://registry.npmjs.org https://registry.npmjs.org/@deepseek-ai%2fdsh https://registry.npmmirror.com official-registry /work/npm-registry.txt (timeout 900s)
+REGISTRY=https://registry.npmmirror.com ROUTE=mirror-fallback officialProbe=TypeError: fetch failed officialProbeMs=10534 mirrorMs=93
+[step 01b-npm-registry] exit=0 seconds=11
+/opt/mpd-e2e/entrypoint.sh: line 410: dsh: command not found
+REGISTRY=https://registry.npmmirror.com ROUTE=mirror-fallback officialProbe=TypeError: fetch failed officialProbeMs=10534 mirrorMs=93
+
+----- apt: curl git ca-certificates unzip xz-utils -----
+===== STEP 01-apt-update =====
+$ apt-get update (timeout 900s)
+Get:1 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]
+Get:3 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [61.4 kB]
+Get:4 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1546 kB]
+Get:5 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:6 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1381 kB]
+Get:7 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [2069 kB]
+Get:8 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:9 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]
+Get:10 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]
+Get:11 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]
+Get:12 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]
+Get:13 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [67.4 kB]
+Get:14 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1702 kB]
+Get:15 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2166 kB]
+Get:16 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2177 kB]
+Get:17 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]
+Get:18 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]
+Get:19 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]
+Fetched 33.5 MB in 11s (3021 kB/s)
+Reading package lists...
+[step 01-apt-update] exit=0 seconds=11
+===== STEP 01-apt-install =====
+$ env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux (timeout 900s)
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  git-man libbrotli1 libcurl3t64-gnutls libcurl4t64 liberror-perl
+  libevent-core-2.1-7t64 libexpat1 libgdbm-compat4t64 libgdbm6t64
+  libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0
+  libldap2 libnghttp2-14 libperl5.38t64 libpsl5t64 librtmp1 libsasl2-2
+  libsasl2-modules-db libssh-4 libssl3t64 libutempter0 openssl perl
+  perl-modules-5.38
+Suggested packages:
+  gettext-base git-daemon-run | git-daemon-sysvinit git-doc git-email git-gui
+  gitk gitweb git-cvs git-mediawiki git-svn gdbm-l10n krb5-doc krb5-user
+  perl-doc libterm-readline-gnu-perl | libterm-readline-perl-perl make
+  libtap-harness-archive-perl zip
+Recommended packages:
+  patch less ssh-client krb5-locales libldap-common publicsuffix
+  libsasl2-modules netbase
+The following NEW packages will be installed:
+  ca-certificates curl git git-man libbrotli1 libcurl3t64-gnutls libcurl4t64
+  liberror-perl libevent-core-2.1-7t64 libexpat1 libgdbm-compat4t64
+  libgdbm6t64 libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3
+  libkrb5support0 libldap2 libnghttp2-14 libperl5.38t64 libpsl5t64 librtmp1
+  libsasl2-2 libsasl2-modules-db libssh-4 libutempter0 openssl perl
+  perl-modules-5.38 tmux unzip xz-utils
+The following packages will be upgraded:
+  libssl3t64
+1 upgraded, 32 newly installed, 0 to remove and 2 not upgraded.
+Need to get 19.8 MB of archives.
+After this operation, 87.3 MB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 perl-modules-5.38 all 5.38.2-3.2ubuntu0.6 [3110 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble/main amd64 libgdbm6t64 amd64 1.23-5.1build1 [34.4 kB]
+Get:3 http://archive.ubuntu.com/ubuntu noble/main amd64 libgdbm-compat4t64 amd64 1.23-5.1build1 [6710 B]
+Get:4 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libperl5.38t64 amd64 5.38.2-3.2ubuntu0.6 [4864 kB]
+Get:5 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 perl amd64 5.38.2-3.2ubuntu0.6 [231 kB]
+Get:6 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libssl3t64 amd64 3.0.13-0ubuntu3.16 [1945 kB]
+Get:7 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 openssl amd64 3.0.13-0ubuntu3.16 [1004 kB]
+Get:8 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 ca-certificates all 20260601~24.04.1 [139 kB]
+Get:9 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libexpat1 amd64 2.6.1-2ubuntu0.6 [98.9 kB]
+Get:10 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libkrb5support0 amd64 1.20.1-6ubuntu2.10 [34.9 kB]
+Get:11 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libk5crypto3 amd64 1.20.1-6ubuntu2.10 [81.9 kB]
+Get:12 http://archive.ubuntu.com/ubuntu noble/main amd64 libkeyutils1 amd64 1.6.3-3build1 [9490 B]
+Get:13 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libkrb5-3 amd64 1.20.1-6ubuntu2.10 [348 kB]
+Get:14 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libgssapi-krb5-2 amd64 1.20.1-6ubuntu2.10 [143 kB]
+Get:15 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libnghttp2-14 amd64 1.59.0-1ubuntu0.4 [74.6 kB]
+Get:16 http://archive.ubuntu.com/ubuntu noble/main amd64 libpsl5t64 amd64 0.21.2-1.1build1 [57.1 kB]
+Get:17 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 xz-utils amd64 5.6.1+really5.4.5-1ubuntu0.3 [267 kB]
+Get:18 http://archive.ubuntu.com/ubuntu noble/main amd64 libbrotli1 amd64 1.1.0-2build2 [331 kB]
+Get:19 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg1-5ubuntu3.1 [20.4 kB]
+Get:20 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libsasl2-2 amd64 2.1.28+dfsg1-5ubuntu3.1 [53.2 kB]
+Get:21 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libldap2 amd64 2.6.10+dfsg-0ubuntu0.24.04.1 [198 kB]
+Get:22 http://archive.ubuntu.com/ubuntu noble/main amd64 librtmp1 amd64 2.4+20151223.gitfa8646d.1-2build7 [56.3 kB]
+Get:23 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libssh-4 amd64 0.10.6-2ubuntu0.5 [191 kB]
+Get:24 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libcurl4t64 amd64 8.5.0-2ubuntu10.15 [343 kB]
+Get:25 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 curl amd64 8.5.0-2ubuntu10.15 [227 kB]
+Get:26 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libcurl3t64-gnutls amd64 8.5.0-2ubuntu10.15 [336 kB]
+Get:27 http://archive.ubuntu.com/ubuntu noble/main amd64 liberror-perl all 0.17029-2 [25.6 kB]
+Get:28 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 git-man all 1:2.43.0-1ubuntu7.3 [1100 kB]
+Get:29 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 git amd64 1:2.43.0-1ubuntu7.3 [3680 kB]
+Get:30 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libevent-core-2.1-7t64 amd64 2.1.12-stable-9ubuntu2.2 [91.9 kB]
+Get:31 http://archive.ubuntu.com/ubuntu noble/main amd64 libutempter0 amd64 1.2.1-3build1 [9606 B]
+Get:32 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 tmux amd64 3.4-1ubuntu0.1 [480 kB]
+Get:33 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 unzip amd64 6.0-28ubuntu4.1 [174 kB]
+debconf: delaying package configuration, since apt-utils is not installed
+Fetched 19.8 MB in 6s (3201 kB/s)
+Selecting previously unselected package perl-modules-5.38.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 4381 files and directories currently installed.)
+Preparing to unpack .../0-perl-modules-5.38_5.38.2-3.2ubuntu0.6_all.deb ...
+Unpacking perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...
+Selecting previously unselected package libgdbm6t64:amd64.
+Preparing to unpack .../1-libgdbm6t64_1.23-5.1build1_amd64.deb ...
+Unpacking libgdbm6t64:amd64 (1.23-5.1build1) ...
+Selecting previously unselected package libgdbm-compat4t64:amd64.
+Preparing to unpack .../2-libgdbm-compat4t64_1.23-5.1build1_amd64.deb ...
+Unpacking libgdbm-compat4t64:amd64 (1.23-5.1build1) ...
+Selecting previously unselected package libperl5.38t64:amd64.
+Preparing to unpack .../3-libperl5.38t64_5.38.2-3.2ubuntu0.6_amd64.deb ...
+Unpacking libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...
+Selecting previously unselected package perl.
+Preparing to unpack .../4-perl_5.38.2-3.2ubuntu0.6_amd64.deb ...
+Unpacking perl (5.38.2-3.2ubuntu0.6) ...
+Preparing to unpack .../5-libssl3t64_3.0.13-0ubuntu3.16_amd64.deb ...
+Unpacking libssl3t64:amd64 (3.0.13-0ubuntu3.16) over (3.0.13-0ubuntu3.15) ...
+Setting up libssl3t64:amd64 (3.0.13-0ubuntu3.16) ...
+Selecting previously unselected package openssl.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6393 files and directories currently installed.)
+Preparing to unpack .../00-openssl_3.0.13-0ubuntu3.16_amd64.deb ...
+Unpacking openssl (3.0.13-0ubuntu3.16) ...
+Selecting previously unselected package ca-certificates.
+Preparing to unpack .../01-ca-certificates_20260601~24.04.1_all.deb ...
+Unpacking ca-certificates (20260601~24.04.1) ...
+Selecting previously unselected package libexpat1:amd64.
+Preparing to unpack .../02-libexpat1_2.6.1-2ubuntu0.6_amd64.deb ...
+Unpacking libexpat1:amd64 (2.6.1-2ubuntu0.6) ...
+Selecting previously unselected package libkrb5support0:amd64.
+Preparing to unpack .../03-libkrb5support0_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libkrb5support0:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libk5crypto3:amd64.
+Preparing to unpack .../04-libk5crypto3_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libkeyutils1:amd64.
+Preparing to unpack .../05-libkeyutils1_1.6.3-3build1_amd64.deb ...
+Unpacking libkeyutils1:amd64 (1.6.3-3build1) ...
+Selecting previously unselected package libkrb5-3:amd64.
+Preparing to unpack .../06-libkrb5-3_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libgssapi-krb5-2:amd64.
+Preparing to unpack .../07-libgssapi-krb5-2_1.20.1-6ubuntu2.10_amd64.deb ...
+Unpacking libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...
+Selecting previously unselected package libnghttp2-14:amd64.
+Preparing to unpack .../08-libnghttp2-14_1.59.0-1ubuntu0.4_amd64.deb ...
+Unpacking libnghttp2-14:amd64 (1.59.0-1ubuntu0.4) ...
+Selecting previously unselected package libpsl5t64:amd64.
+Preparing to unpack .../09-libpsl5t64_0.21.2-1.1build1_amd64.deb ...
+Unpacking libpsl5t64:amd64 (0.21.2-1.1build1) ...
+Selecting previously unselected package xz-utils.
+Preparing to unpack .../10-xz-utils_5.6.1+really5.4.5-1ubuntu0.3_amd64.deb ...
+Unpacking xz-utils (5.6.1+really5.4.5-1ubuntu0.3) ...
+Selecting previously unselected package libbrotli1:amd64.
+Preparing to unpack .../11-libbrotli1_1.1.0-2build2_amd64.deb ...
+Unpacking libbrotli1:amd64 (1.1.0-2build2) ...
+Selecting previously unselected package libsasl2-modules-db:amd64.
+Preparing to unpack .../12-libsasl2-modules-db_2.1.28+dfsg1-5ubuntu3.1_amd64.deb ...
+Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Selecting previously unselected package libsasl2-2:amd64.
+Preparing to unpack .../13-libsasl2-2_2.1.28+dfsg1-5ubuntu3.1_amd64.deb ...
+Unpacking libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Selecting previously unselected package libldap2:amd64.
+Preparing to unpack .../14-libldap2_2.6.10+dfsg-0ubuntu0.24.04.1_amd64.deb ...
+Unpacking libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...
+Selecting previously unselected package librtmp1:amd64.
+Preparing to unpack .../15-librtmp1_2.4+20151223.gitfa8646d.1-2build7_amd64.deb ...
+Unpacking librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2build7) ...
+Selecting previously unselected package libssh-4:amd64.
+Preparing to unpack .../16-libssh-4_0.10.6-2ubuntu0.5_amd64.deb ...
+Unpacking libssh-4:amd64 (0.10.6-2ubuntu0.5) ...
+Selecting previously unselected package libcurl4t64:amd64.
+Preparing to unpack .../17-libcurl4t64_8.5.0-2ubuntu10.15_amd64.deb ...
+Unpacking libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...
+Selecting previously unselected package curl.
+Preparing to unpack .../18-curl_8.5.0-2ubuntu10.15_amd64.deb ...
+Unpacking curl (8.5.0-2ubuntu10.15) ...
+Selecting previously unselected package libcurl3t64-gnutls:amd64.
+Preparing to unpack .../19-libcurl3t64-gnutls_8.5.0-2ubuntu10.15_amd64.deb ...
+Unpacking libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...
+Selecting previously unselected package liberror-perl.
+Preparing to unpack .../20-liberror-perl_0.17029-2_all.deb ...
+Unpacking liberror-perl (0.17029-2) ...
+Selecting previously unselected package git-man.
+Preparing to unpack .../21-git-man_1%3a2.43.0-1ubuntu7.3_all.deb ...
+Unpacking git-man (1:2.43.0-1ubuntu7.3) ...
+Selecting previously unselected package git.
+Preparing to unpack .../22-git_1%3a2.43.0-1ubuntu7.3_amd64.deb ...
+Unpacking git (1:2.43.0-1ubuntu7.3) ...
+Selecting previously unselected package libevent-core-2.1-7t64:amd64.
+Preparing to unpack .../23-libevent-core-2.1-7t64_2.1.12-stable-9ubuntu2.2_amd64.deb ...
+Unpacking libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...
+Selecting previously unselected package libutempter0:amd64.
+Preparing to unpack .../24-libutempter0_1.2.1-3build1_amd64.deb ...
+Unpacking libutempter0:amd64 (1.2.1-3build1) ...
+Selecting previously unselected package tmux.
+Preparing to unpack .../25-tmux_3.4-1ubuntu0.1_amd64.deb ...
+Unpacking tmux (3.4-1ubuntu0.1) ...
+Selecting previously unselected package unzip.
+Preparing to unpack .../26-unzip_6.0-28ubuntu4.1_amd64.deb ...
+Unpacking unzip (6.0-28ubuntu4.1) ...
+Setting up libexpat1:amd64 (2.6.1-2ubuntu0.6) ...
+Setting up libkeyutils1:amd64 (1.6.3-3build1) ...
+Setting up libgdbm6t64:amd64 (1.23-5.1build1) ...
+Setting up libgdbm-compat4t64:amd64 (1.23-5.1build1) ...
+Setting up unzip (6.0-28ubuntu4.1) ...
+Setting up libbrotli1:amd64 (1.1.0-2build2) ...
+Setting up libpsl5t64:amd64 (0.21.2-1.1build1) ...
+Setting up libnghttp2-14:amd64 (1.59.0-1ubuntu0.4) ...
+Setting up libkrb5support0:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Setting up librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2build7) ...
+Setting up xz-utils (5.6.1+really5.4.5-1ubuntu0.3) ...
+update-alternatives: using /usr/bin/xz to provide /usr/bin/lzma (lzma) in auto mode
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzma.1.gz because associated file /usr/share/man/man1/xz.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/unlzma.1.gz because associated file /usr/share/man/man1/unxz.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzcat.1.gz because associated file /usr/share/man/man1/xzcat.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzmore.1.gz because associated file /usr/share/man/man1/xzmore.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzless.1.gz because associated file /usr/share/man/man1/xzless.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzdiff.1.gz because associated file /usr/share/man/man1/xzdiff.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzcmp.1.gz because associated file /usr/share/man/man1/xzcmp.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzgrep.1.gz because associated file /usr/share/man/man1/xzgrep.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzegrep.1.gz because associated file /usr/share/man/man1/xzegrep.1.gz (of link group lzma) doesn't exist
+update-alternatives: warning: skip creation of /usr/share/man/man1/lzfgrep.1.gz because associated file /usr/share/man/man1/xzfgrep.1.gz (of link group lzma) doesn't exist
+Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...
+Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...
+Setting up libutempter0:amd64 (1.2.1-3build1) ...
+Setting up git-man (1:2.43.0-1ubuntu7.3) ...
+Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...
+Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...
+Setting up openssl (3.0.13-0ubuntu3.16) ...
+Setting up tmux (3.4-1ubuntu0.1) ...
+Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...
+Setting up ca-certificates (20260601~24.04.1) ...
+Updating certificates in /etc/ssl/certs...
+121 added, 0 removed; done.
+Setting up perl (5.38.2-3.2ubuntu0.6) ...
+Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...
+Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...
+Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...
+Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...
+Setting up liberror-perl (0.17029-2) ...
+Setting up git (1:2.43.0-1ubuntu7.3) ...
+Setting up curl (8.5.0-2ubuntu10.15) ...
+Processing triggers for debianutils (5.17build1) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+Processing triggers for ca-certificates (20260601~24.04.1) ...
+Updating certificates in /etc/ssl/certs...
+0 added, 0 removed; done.
+Running hooks in /etc/ca-certificates/update.d...
+done.
+[step 01-apt-install] exit=0 seconds=12
+[record] toolchain.apt=true — apt-get update + install curl git ca-certificates unzip xz-utils tmux
+curl: curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10
+
+----- Node.js 24.19.0 -----
+[record] toolchain.node=true — node v24.21.0 and npm 11.19.0 come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org
+
+----- bun (official install script) -----
+===== STEP 03-bun =====
+$ bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash (timeout 900s)
+#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                    -=#=#   #   #                                                                  -=O#-#   #   #                                                                 -=O=#  #   #   #                                                               -=O=-#  #    #   #                                                             -=O=- #   #   #    #                                                           -=O=-   #   #   #     #                                                        -=O=-    #   #    #     #                                                      -=O=-      #   #     #    #                                                    -=O=-        #   #     #    #                                                                                                                             0.0%                                                                           0.1%                                                                           0.2%                                                                           0.4%                                                                           0.5%                                                                           0.7%                                                                           0.9%                                                                           1.3%#                                                                          1.8%#                                                                          2.5%##                                                                         3.6%###                                                                        4.9%####                                                                       6.7%######                                                                     9.3%#######                                                                   10.7%##########                                                                14.3%############                                                              17.2%##############                                                            19.6%#################                                                         24.9%##################                                                        25.2%####################                                                      27.9%########################                                                  34.6%##########################                                                37.3%############################                                              40.0%##############################                                            42.6%################################                                          45.3%##################################                                        47.3%####################################                                      50.9%######################################                                    53.5%########################################                                  56.7%##########################################                                58.8%############################################                              61.5%##############################################                            64.2%################################################                          67.0%##################################################                        69.7%####################################################                      72.5%######################################################                    75.2%########################################################                  77.9%##########################################################                80.6%############################################################              83.4%#############################################################             85.8%##################################################################        92.7%####################################################################      95.5%######################################################################    98.2%######################################################################## 100.0%
+bun was installed successfully to /opt/toolchain/bun/bin/bun 
+Run 'bun --help' to get started
+[step 03-bun] exit=0 seconds=12
+[record] toolchain.bun=true — bun 1.4.3 on PATH, installed via official-script
+===== STEP 03b-bun-pin =====
+$ env BUN_INSTALL=/opt/toolchain/bun-pinned bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash -s -- 'bun-v1.4.0' (timeout 900s)
+#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                                                                                               0.0%                                                                           0.1%                                                                           0.2%                                                                           0.3%                                                                           0.5%                                                                           0.7%                                                                           1.0%#                                                                          1.4%#                                                                          1.9%#                                                                          2.7%##                                                                         3.7%###                                                                        5.1%#####                                                                      7.0%######                                                                     9.6%########                                                                  12.3%##############                                                            19.7%################                                                          22.2%###################                                                       26.8%###################                                                       27.7%######################                                                    31.6%#########################                                                 35.0%############################                                              40.1%##############################                                            42.6%################################                                          45.8%###################################                                       49.0%#####################################                                     52.1%#######################################                                   55.2%#########################################                                 58.3%############################################                              61.4%##############################################                            64.6%################################################                          67.7%##################################################                        70.8%####################################################                      72.8%#######################################################                   76.8%#########################################################                 79.8%############################################################              83.6%#############################################################             86.0%################################################################          89.1%##################################################################        92.2%####################################################################      95.4%######################################################################    98.4%######################################################################## 100.0%
+bun was installed successfully to /opt/toolchain/bun-pinned/bin/bun 
+Run 'bun --help' to get started
+[step 03b-bun-pin] exit=0 seconds=9
+[record] toolchain.bunPinned=true — the build toolchain the tree declares is staged and reports EXACTLY that version, so the from-source rebuild below runs under the compiler the artifact was cut with
+
+----- pnpm 11.23.0 (required by 'dsh plugin') -----
+===== STEP 04-pnpm =====
+$ npm i -g pnpm@11.23.0 (timeout 900s)
+
+added 1 package in 1s
+
+1 package is looking for funding
+  run `npm fund` for details
+[step 04-pnpm] exit=0 seconds=1
+[record] toolchain.pnpm=true — required by 'dsh plugin' (it forwards to pnpm), available on PATH
+
+----- @deepseek-ai/dsh@0.2.0-rc.2 -----
+===== STEP 05-dsh =====
+$ npm i -g @deepseek-ai/dsh@0.2.0-rc.2 (timeout 900s)
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 538 packages in 19s
+
+63 packages are looking for funding
+  run `npm fund` for details
+npm warn install-scripts 5 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @deepseek-ai/dsh-subprocess-local@0.2.0-rc.2 (postinstall: node scripts/ensure-spawn-helper.mjs)
+npm warn install-scripts   koffi@3.1.1 (install: node ./cnoke.cjs -P . -D src/koffi --prebuild --release)
+npm warn install-scripts   node-pty@1.2.0-beta.15 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)
+npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.
+[step 05-dsh] exit=0 seconds=19
+[record] harness.version=true — npm i -g then 'dsh --version' printed the pin exactly
+
+----- build-context filter (did the image carry host state?) -----
+[record] copy.contextFiltered=true — the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed; the ONLY packed output it carries is dist/mpd-package, which is the subject of the pack assertions
+
+----- copy the checkout to /opt/mpd -----
+===== STEP 06-copy =====
+$ cp -a /src/. /opt/mpd/ (timeout 900s)
+[step 06-copy] exit=0 seconds=0
+[record] copy.repo=true — package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present
+
+----- bun install -----
+===== STEP 07-bun-install =====
+$ bash -c cd '/opt/mpd' && bun install (timeout 900s)
+bun install v1.4.3 (c6da4a4d3)
+
++ @typescript/native-preview@7.0.0-dev.20260707.2
++ bun-types@1.4.0
++ dsh-better-sidebar@0.24.1
++ typescript5@5.9.3
++ @colbymchenry/codegraph@1.5.0
++ @cyanheads/git-mcp-server@2.15.3
++ cclsp@0.7.0
++ mcp-server-commands@0.8.2
++ @deepseek-ai/dsh-experimental-agent-team@0.2.0-rc.2
++ @deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.0-rc.2
++ @deepseek-ai/dsh-experimental-tool-agent-team@0.2.0-rc.2
++ @dsh-std/adapter-dsh@0.1.1-rc.2
++ @dsh-std/sdk@0.1.1-rc.2
+
+453 packages installed [19.72s]
+[step 07-bun-install] exit=0 seconds=19
+[record] build.bunInstall=true — bun install resolved the workspace and the dev/optional dependencies
+
+----- rebuild every packages/*/dist from source (canonical repo-root bun build) -----
+===== STEP 08-rebuild =====
+$ node /opt/mpd-e2e/lib/rebuild.ts --repo /opt/mpd --bun /opt/toolchain/bun-pinned/bin/bun --json /work/rebuild.json (timeout 900s)
+[rebuild] BUN=/opt/toolchain/bun-pinned/bin/bun VERSION=1.4.0
+[rebuild] OK   packages/mpd-better-sidebar-host/src/index.ts -> packages/mpd-better-sidebar-host/dist/index.js (exit=0 bytes=1652)
+[rebuild] OK   packages/mpd-bootstrap-plugin/src/index.ts -> packages/mpd-bootstrap-plugin/dist/index.js (exit=0 bytes=77496)
+[rebuild] OK   packages/mpd-boulder-plugin/src/index.ts -> packages/mpd-boulder-plugin/dist/index.js (exit=0 bytes=97245)
+[rebuild] OK   packages/mpd-bundle-plugin/src/index.ts -> packages/mpd-bundle-plugin/dist/index.js (exit=0 bytes=75582)
+[rebuild] OK   packages/mpd-codegraph-plugin/src/index.ts -> packages/mpd-codegraph-plugin/dist/index.js (exit=0 bytes=68837)
+[rebuild] OK   packages/mpd-comment-checker-plugin/src/index.ts -> packages/mpd-comment-checker-plugin/dist/index.js (exit=0 bytes=70837)
+[rebuild] OK   packages/mpd-config-plugin/src/index.ts -> packages/mpd-config-plugin/dist/index.js (exit=0 bytes=151481)
+[rebuild] OK   packages/mpd-dsh-adapter-plugin/src/index.ts -> packages/mpd-dsh-adapter-plugin/dist/index.js (exit=0 bytes=68061)
+[rebuild] OK   packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js (exit=0 bytes=197283)
+[rebuild] OK   packages/mpd-ext-plugin/src/sdk.ts -> packages/mpd-ext-plugin/dist/sdk.js (exit=0 bytes=1708)
+[rebuild] OK   packages/mpd-goal-plugin/src/index.ts -> packages/mpd-goal-plugin/dist/index.js (exit=0 bytes=75619)
+[rebuild] OK   packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js (exit=0 bytes=100224)
+[rebuild] OK   packages/mpd-mcp-astgrep/src/cli.ts -> packages/mpd-mcp-astgrep/dist/cli.js (exit=0 bytes=76468)
+[rebuild] OK   packages/mpd-mcp-astgrep/src/launch.ts -> packages/mpd-mcp-astgrep/dist/launch.js (exit=0 bytes=11231)
+[rebuild] OK   packages/mpd-mcp-codegraph/src/launch.ts -> packages/mpd-mcp-codegraph/dist/launch.js (exit=0 bytes=15956)
+[rebuild] OK   packages/mpd-mcp-gitbash/src/launch.ts -> packages/mpd-mcp-gitbash/dist/launch.js (exit=0 bytes=12800)
+[rebuild] OK   packages/mpd-mcp-lsp/src/launch.ts -> packages/mpd-mcp-lsp/dist/launch.js (exit=0 bytes=61753)
+[rebuild] OK   packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js (exit=0 bytes=78219)
+[rebuild] OK   packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js (exit=0 bytes=70589)
+[rebuild] OK   packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js (exit=0 bytes=71640)
+[rebuild] OK   packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js (exit=0 bytes=143335)
+[rebuild] OK   packages/mpd-roster-provider-plugin/src/index.ts -> packages/mpd-roster-provider-plugin/dist/index.js (exit=0 bytes=111525)
+[rebuild] OK   packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js (exit=0 bytes=82940)
+[rebuild] OK   packages/mpd-team-core-plugin/src/index.ts -> packages/mpd-team-core-plugin/dist/index.js (exit=0 bytes=153106)
+[rebuild] OK   packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js (exit=0 bytes=194746)
+[rebuild] OK   packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js (exit=0 bytes=66339)
+[rebuild] OK   packages/mpd-tui-adapter-plugin/src/index.ts -> packages/mpd-tui-adapter-plugin/dist/index.js (exit=0 bytes=44232)
+[rebuild] OK   packages/mpd-tui-plugin/src/index.ts -> packages/mpd-tui-plugin/dist/index.js (exit=0 bytes=388142)
+[rebuild] OK   packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js (exit=0 bytes=107185)
+[rebuild] OK   packages/mpd-verify-plugin/src/index.ts -> packages/mpd-verify-plugin/dist/index.js (exit=0 bytes=119154)
+[rebuild] OK   packages/mpd-workmate-plugin/src/index.ts -> packages/mpd-workmate-plugin/dist/index.js (exit=0 bytes=106463)
+[rebuild] ENTRIES=31
+[rebuild] BUILD_OK=31/31
+[rebuild] BUILD_FAILED=
+[rebuild] NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built by the package itself (bun build src/launch.ts -> dist/launch.js) or a sha-pinned prebuilt — no offline snapshot build any more,mpd-schemastery=package has no src/ directory (dist is the only committed artifact)
+[rebuild] SKIPPED_SRC=
+[rebuild] OK=true
+[step 08-rebuild] exit=0 seconds=1
+[record] build.dists=true — every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact
+
+----- dsh plugin --profile web add . (the whole install, mode=source) -----
+===== STEP 09-install =====
+$ bash -c cd '/opt/mpd' && dsh plugin --profile web add '.' (timeout 900s)
+dsh: initialized profile web at /root/sandbox-dsh/profiles/web
+
+dependencies:
++ @mpd-dsh/mpd link:/opt/mpd
+
+Already up to date
+Done in 324ms using pnpm v11.23.0
+
+dsh: installation rejected: Plugin @dsh-std/adapter-dsh@0.1.1-rc.2 is incompatible with dsh 0.2.0-rc.2: peerDependencies {"@deepseek-ai/dsh-commands":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-attachment":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-llm":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-session":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-tools":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-typert-protocol":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-api-gateway":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-api-session-controller":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-client-modules":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-client-ui-settings":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-client-ui-tool":">=0.1.2-alpha.2 <0.1.3"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for @dsh-std/adapter-dsh@0.1.1-rc.2 on dsh 0.2.0-rc.2 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active.
+dsh: restored package.json, pnpm-lock.yaml, and node_modules.
+dsh: to accept the risk, run: dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.0-rc.2 --accept-risk
+dsh: plugin command failed; diagnostics: /root/sandbox-dsh/profiles/web/.plugin-manager/logs/operation-qqmr6G/pnpm.log
+[step 09-install] exit=1 seconds=1
+===== STEP 09a-install-closure =====
+$ node /opt/mpd-e2e/lib/owed-install.ts --install-log /work/steps/09-install.log --exit 1 --roots /root/sandbox-dsh/profiles/web,/opt/mpd --state /work/assertions.ndjson (timeout 900s)
+[owed-install] install.buildScripts=false — the install closure clause did not hold: exit=1 ERR_PNPM_IGNORED_BUILDS lines=0 ignored-build-script warnings=0 declared-build-script manifests=0
+[step 09a-install-closure] exit=0 seconds=0
+[record] install.exit=false — 'dsh plugin --profile web add .' exited 1
+[bail] the client install failed — nothing downstream can be asserted — remaining assertions are reported as null+"not reached"
+[report] ok=false complete=false passed=11 failed=2 null=105 scrubbed=true -> /out/result.json
+[report] FAIL install.exit — 'dsh plugin --profile web add .' exited 1
+[report] FAIL install.buildScripts — the install closure clause did not hold: exit=1 ERR_PNPM_IGNORED_BUILDS lines=0 ignored-build-script warnings=0 declared-build-script manifests=0 | raw: ERROR_CLASS_LINES=none WARN_LINES=none INVENTORY=none
+[report] NULL install.profileDep — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL install.installedTree — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL pack.present — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL pack.licenceCoherence — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL pack.declarationCoherence — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL pack.staticCoherence — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL pack.distFreshRebuild — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL pack.rebuildToolchain — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL pack.distFreshRebuildControl — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.mcpToolNaming — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.mcpLiveSearch — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL restore.reviewPanelSelfTest — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL restore.reviewPanelCase — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL restore.lspBootstrap — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL restore.hashlineRepair — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL qa.mcpCall — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL qa.readonlyDeny — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL qa.mcpCallEngine — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL oneclick.scratchRepo — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL oneclick.requiredPaths — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL oneclick.filesAllowlist — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL oneclick.distByteIdentical — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL compose.dumpExit — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL compose.mpdRows — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL compose.presetRow — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL compose.agentTeamRows — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.probeApplied — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.adapterService — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.adapterToolCall — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.mpdTools — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.mcpTools — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.agentTeamTools — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.sessionGateListener — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.agentTeamService — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.servesHttp — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.presetMount — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.noFatalSignatures — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL isolation.home — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL isolation.realHome — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL isolation.noCredentials — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.hostInstall — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.pluginAddHost — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.pluginAddBundle — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.compose — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.presetPreference — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.presetRow — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.mpdTuiRow — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.agentTeamRows — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.mergedPanelOpens — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.mergedPanelOrder — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.hostDashboardKeyIntact — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.noDirectTuiSeam — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.boot — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.noFatalSignatures — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.sessionPreset — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL team.route.state — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL team.route.plan — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL team.route.task — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL team.route.mail — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL team.routesAll — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL team.planLookup — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.teamSceneOtherSessionInvisible — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.teamFixtureBound — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.teamSceneOpened — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.teamGraphDrawn — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.teamGraphEdges — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.teamGraphContent — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL tui.laneExit — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.credentialStaged — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.credentialScoped — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.credentialRemoved — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.web.turnStarted — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.web.turnCompleted — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.web.noErrorTurns — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.web.noMalformedToolJson — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.web.toolCallsParsed — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.web.mpdToolCalled — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.web.assistantReplied — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.tui.turnStarted — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.tui.turnCompleted — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.tui.noErrorTurns — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.tui.noMalformedToolJson — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.tui.toolCallsParsed — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.tui.mpdToolCalled — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.tui.assistantReplied — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.headless.turnStarted — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.headless.turnCompleted — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.headless.noErrorTurns — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.headless.noMalformedToolJson — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.headless.toolCallsParsed — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.headless.mpdToolCalled — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.headless.assistantReplied — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.teamRecord — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.nativeExecutor — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL live.headlessPresetRow — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.llmTurn — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL boot.workspaceRegistered — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL ui.loads — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL ui.workspaceSelected — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL ui.composerPresent — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL ui.promptSent — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL ui.replyRendered — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL ui.mpdSettingsSection — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL ui.teamPanel — not reached: the run stopped before this assertion (see the steps in output.log)
+[report] NULL ui.noConsoleErrors — not reached: the run stopped before this assertion (see the steps in output.log)
+

@@ -1,0 +1,36 @@
+# Docker lane (rootless, --mode source) — the ONE-COMMAND INSTALL IS HARD-REJECTED
+# driver evidence: evidence/docker/client-install/2026-10-10T13-24-44Z/{driver.json,output.log,console.log}
+
+## driver verdict
+"verdict": "ok=false complete=false passed=11 failed=2 null=105 FAILED=[install.exit,install.buildScripts] NULL=[install.profileDep,install.installedTree,pack.present,pack.licenceCoherence,pack.declarationCoherence,pack.staticCoherence,pack.distFreshRebuild,pack.rebuildToolchain,pack.distFreshRebuil
+exitCode: "exitCode": 3
+
+## the failing step, verbatim from evidence/docker/client-install/2026-10-10T13-24-44Z/output.log
+----- STEP 09-install (exit=1, 1s) -----
+----- STEP 09-install (exit=1, 1s) -----
+$ bash -c cd '/opt/mpd' && dsh plugin --profile web add '.' 
+dsh: initialized profile web at /root/sandbox-dsh/profiles/web
+
+dependencies:
++ @mpd-dsh/mpd link:/opt/mpd
+
+Already up to date
+Done in 324ms using pnpm v11.23.0
+
+dsh: installation rejected: Plugin @dsh-std/adapter-dsh@0.1.1-rc.2 is incompatible with dsh 0.2.0-rc.2: peerDependencies {"@deepseek-ai/dsh-commands":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-attachment":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-llm":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-session":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-tools":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-typert-protocol":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-api-gateway":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-api-session-controller":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-client-modules":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-client-ui-settings":">=0.1.2-alpha.2 <0.1.3","@deepseek-ai/dsh-client-ui-tool":">=0.1.2-alpha.2 <0.1.3"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for @dsh-std/adapter-dsh@0.1.1-rc.2 on dsh 0.2.0-rc.2 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active.
+dsh: restored package.json, pnpm-lock.yaml, and node_modules.
+dsh: to accept the risk, run: dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.0-rc.2 --accept-risk
+dsh: plugin command failed; diagnostics: /root/sandbox-dsh/profiles/web/.plugin-manager/logs/operation-qqmr6G/pnpm.log
+
+## why the docker runner then reported exit 3
+[driver] UNMEASURED ui.* — every UI arm is a MISSING PREREQUISITE because the run stopped at the install step.
+
+## WHAT THIS MEANS (in-scope finding, NOT environmental)
+The contract's documented expectation was: 'the row COMPOSES and is preflight-DISABLED'.
+That is TRUE for BOOT of an already-installed profile (proven by boot-web.log line 1).
+It is NOT sufficient for INSTALL: `dsh plugin --profile web add .` EXITS 1 and ROLLS BACK.
+Trigger: dsh-app-boot's profileDependencyNames() = Object.keys(dependencies) ++ Object.keys(peerDependencies),
+so the wave's own package.json pin of @dsh-std/adapter-dsh puts the incompatible peer ranges into the
+profile dependency inventory that the plugin command validates. The patch row is NOT required for this.
+The two sanctioned remedies (dsh plugin allow-version / a profile compatibility.json) are EXPLICITLY
+forbidden by the contract, and dropping the dependency reverses the wave. => STOP AND REPORT.
