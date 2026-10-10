@@ -285,8 +285,9 @@
 
                 STANDING WORKING DISCIPLINE (ideas adapted from dsh-liangshen, Apache-2.0 — no upstream
                 bytes are copied; this list is ours):
-                  - A hypothesis repeated twice without new evidence is CLOSED: call an inspection tool
-                    (read / grep / glob, a role probe, or a gate) instead of reasoning a third time.
+                  - A hypothesis repeated twice without new evidence is CLOSED: inspect the DOCUMENTATION
+                    band directly (read / grep / glob over docs, plans, evidence, or a gate), DELEGATE a
+                    source-path look to an Explorer/Researcher probe, and never reason a third time.
                   - Think only about the NEXT concrete operation; never rehearse a whole script.
                   - Independent tool calls go out CONCURRENTLY in one turn.
                   - Shell calls are EPHEMERAL: no directory persists between them, so use a compound
