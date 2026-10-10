@@ -273,6 +273,30 @@ may embed a Node.js runtime plus vendored JavaScript and WASM payloads whose tex
 `packages/mpd-mcp-codegraph/NODE-RUNTIME-LICENSES.md` and inside the selected platform package under
 `lib/node_modules/`.
 
+## @dsh-std/* (MIT) — `@dsh-std/sdk` declared; the adapter is an optional self-install
+
+The DSH-STD protocol family is consumed as a **declared npm dependency, not a vendored body**:
+`@dsh-std/sdk` is pinned to the exact version `0.1.1-rc.2` in this package's `dependencies` and
+resolved at install time by the package manager. No source from that project is copied into this
+repository and none of it is redistributed here — the package the installer resolves is what runs.
+
+- **dsh-std** — https://github.com/T-Auto/dsh-std, distributed under the **MIT License**,
+  `Copyright (c) 2026 DSH Standard contributors`; the 0.1.1-rc.2 tarball carries that same MIT text in
+  its own `LICENSE`. It is a pnpm monorepo publishing the `@dsh-std/*` protocol packages; the
+  `@dsh-std/sdk` declared here pulls its closure from the same family.
+- **`@dsh-std/adapter-dsh` is NOT a dependency of this bundle and carries no row in
+  `cordis.patch.yml`.** It is an optional sibling a profile owner installs for their own profile with
+  `dsh plugin --profile web add @dsh-std/adapter-dsh`. On this bundle's baseline (dsh `0.2.0-rc.2`) that
+  install needs the exact-version exemption first —
+  `dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.0-rc.2
+  --accept-risk` — because its peers require `@deepseek-ai/dsh-* >=0.1.2-alpha.2 <0.1.3` while the
+  baseline is the host's `0.2.0-rc.2` line. The exemption is recorded in the profile owner's own
+  `compatibility.json`: an explicit risk decision about someone's profile, which no bundle may ship.
+  Declaring the adapter in a dependency field is not a neutral alternative — the install-time
+  post-validation walks `devDependencies ++ dependencies ++ optionalDependencies` and compat-checks
+  every installed package, so the declaration makes `dsh plugin add` hard-reject and roll back the
+  whole bundle. `docs/user-guide.md` §14 carries the same attribution and the commands for users.
+
 ## DeepSeek Harness 创造模式 skills (MIT) — adapted into `skills/cordis-dev`
 
 The `cordis-dev` skill shipped in this repository's served skill corpus is an

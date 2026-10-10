@@ -1,0 +1,9 @@
+# frozen-tree hashes, 2026-10-10T13:10:15Z
+# HEAD d76d3bec83213fde6aebb7e218dcba3c6aaf44c8 on feature/dsh-std-dependency
+c4745ed1372b344e8ef3182f29939b174c4074e0b294462fcb80ef286ff9e324  package.json
+958856c9bb8b9e72ed7dfcfd559e919b85eeb362e197f4f79c937b467c1a7690  bun.lock
+c984e08238f814398b3640f23c81f70f4af3233e1f589fec8fcada58c6f7a622  cordis.patch.yml
+57f1188c434d1bf01130559e5ac1357e4bc117bf708c24886450967308f16fbf  LICENSE-NOTICES.md
+e9dff7fb36485aa286fb85e06de0036d9c515faeb9fb653128e44c5ba010ae19  docs/user-guide.md
+b1f637e38eb334bf9f5ce9e3619b91307488df69ba1af3040792538013ee7fad  docs/user-guide.zh-CN.md
+ae63dad11327615731b6786735007d57a6785e326befa301772b259d7f8fe7cd  scripts/install-profile.ts

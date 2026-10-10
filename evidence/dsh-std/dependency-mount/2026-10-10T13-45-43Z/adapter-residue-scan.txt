@@ -1,0 +1,19 @@
+# git grep 'dsh-std' across the TRACKED tree — 2026-10-10T13:49:11Z
+# (bun.lock and the doc prose are expected; package.json / cordis.patch.yml must carry NO adapter)
+
+## adapter-dsh in tracked NON-doc files
+NONE
+
+## dsh-std-adapter anywhere in the tracked tree
+NONE
+
+## package.json dsh-std pins
+package.json:115:    "@dsh-std/sdk": "0.1.1-rc.2"
+
+## cordis.patch.yml dsh-std references
+NONE
+
+## every tracked file mentioning adapter-dsh
+LICENSE-NOTICES.md
+docs/user-guide.md
+docs/user-guide.zh-CN.md

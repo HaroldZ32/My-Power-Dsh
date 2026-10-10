@@ -827,6 +827,7 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 | `mcp__ast_grep__*` | **ast-grep** —— 可选依赖 `@ast-grep/cli` | MIT；`0.45.2`；运行时解析，不再分发 | `package.json` 的 `optionalDependencies`；`MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim —— 可选依赖 `@colbymchenry/codegraph` | MIT；`1.5.0`；预构建服务器已搬运并做 sha256 固定 | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；`0.8.0`；**不**随包分发 —— 按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |
+| DSH-STD 协议族 —— `@dsh-std/sdk` `0.1.1-rc.2`，本 bundle 唯一一个 DSH-STD **依赖**（adapter 属于可选的自装插件，见下文） | **dsh-std**（https://github.com/T-Auto/dsh-std）—— 声明式 npm 依赖，绝非搬运进来的代码 | MIT —— `Copyright (c) 2026 DSH Standard contributors`；安装时解析，不再分发 | `package.json` 的 `dependencies`；`LICENSE-NOTICES.md` |
 | 插件系统、工具 / 技能 / preset / agent 接缝、模型 provider、Web 外壳 | DeepSeek Harness —— **`@deepseek-ai/*`** 包 | MIT；仅作为依赖引用 | `LICENSE-NOTICES.md` |
 | Agent Teams Web 面板 | 官方客户端插件 `@deepseek-ai/dsh-experimental-client-ui-agent-team` | MIT（harness 包组） | 见上文 §8；patch 行 `mpd-ui-agent-team` |
 | Workmates 侧边栏标签页 | 由社区 bundle **`dsh-better-sidebar`** 承载，它是本 bundle 的**可选 peer**（外加一个 `devDependency`）：bundle 从不安装它，带守卫的 `mpd-better-sidebar` 行在它可解析时挂载它 | — | 见上文 §8；`package.json` 的 `peerDependencies` / `peerDependenciesMeta`；patch 行 `mpd-better-sidebar` |
@@ -835,3 +836,21 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 有两条值得记住的结论：组件即使在 bundle 内也各自保留**自己的**许可证（采纳的浏览器 bundle 与迁移过来
 的 schemastery 校验器是 MIT，本仓库自身也是 MIT）；本 bundle 也从不配置你的 provider 凭据 ——
 `MISSING_CREDENTIAL` 属于你的 DSH 凭据存储，而不是这些文档该负责的事。
+
+### 14.1 可选的 DSH-STD adapter（自行安装，不属于本 bundle）
+
+`@dsh-std/adapter-dsh` 是 DSH-STD 协议族自己的 adapter 插件。它**不是**本 bundle 的依赖，
+`cordis.patch.yml` 里也**没有**它的行，本 bundle 从不挂载它。需要它的 profile 拥有者，
+把它装进自己的 profile：
+
+```bash
+# 在 dsh 0.2.0-rc.2 基线上，先授予精确版本豁免：
+dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.0-rc.2 --accept-risk
+# 再执行 adapter 自己设计的这一条安装命令：
+dsh plugin --profile web add @dsh-std/adapter-dsh
+```
+
+本 bundle 之所以不随包提供它：adapter 的 peer 把宿主 `@deepseek-ai/dsh-*` 盯在 `0.1.2-alpha` 线上，
+而本 bundle 的基线是 dsh `0.2.0-rc.2`，于是豁免只能是 profile 拥有者对自己 profile 的显式风险决定；
+而把 adapter 声明进任何依赖字段并不是中立的替代方案 —— 安装后的校验会走遍每个依赖字段并对每个已装包
+做兼容检查，那会让 `dsh plugin add` 直接硬拒绝并回滚整个 bundle。

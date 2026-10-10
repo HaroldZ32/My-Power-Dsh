@@ -1,0 +1,23 @@
+# dist/mpd-package vs the COMMITTED tree (HEAD) — pack staleness audit
+# UTC: 2026-10-10T14:21:53.773Z
+# method: git blob hash (sha1 of "blob <len>\0<content>") of each packed file vs the blob HEAD records
+
+packed files compared      : 608
+identical to HEAD          : 593
+DIFFERENT from HEAD        : 12   <- staleness that predates any working-tree edit
+  of those, this wave edited: 1   ["package.json"]
+packed paths not tracked   : 3   (generated at pack time, no HEAD twin)
+
+## the 12 files where the PACK disagrees with committed HEAD:
+  - agent-references/glossary.md
+  - agent-references/verification-flow.md
+  - package.json
+  - packages/mpd-bundle-plugin/client.js
+  - packages/mpd-dsh-adapter-plugin/dist/index.js
+  - packages/mpd-roles-plugin/README.md
+  - packages/mpd-roles-plugin/README.zh-CN.md
+  - packages/mpd-roles-plugin/dist/index.js
+  - packages/mpd-workmate-plugin/dist/index.js
+  - presets/mpd.patch.yml
+  - skills/dsh-qa/SKILL.md
+  - skills/dsh-qa/scripts/readonly-deny.ts

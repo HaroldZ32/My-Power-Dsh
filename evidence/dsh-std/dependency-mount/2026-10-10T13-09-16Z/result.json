@@ -1,0 +1,238 @@
+{
+  "wave": "dsh-std-dependency",
+  "contract": ".mpd/plans/dsh-std-dependency.md",
+  "contract_is_frozen_acceptance_spec": true,
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "feature/dsh-std-dependency",
+  "head": "d76d3bec83213fde6aebb7e218dcba3c6aaf44c8",
+  "tree": "DIRTY by design - the wave's edits are uncommitted; the captain owns git",
+  "measured_utc": "2026-10-10T13:09:16Z .. 2026-10-10T13:25Z",
+  "toolchain": {
+    "node": "v24.21.0",
+    "bun_pinned": "1.4.0 (.toolchain/node_modules/.bin/bun)",
+    "bun_on_PATH": "1.4.2 (deliberately NOT used)",
+    "dsh": "0.2.0-rc.2",
+    "docker": "29.8.2 rootless (name=rootless)"
+  },
+  "frozen_hashes_file": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/frozen-hashes.txt",
+  "changed_files": [
+    {
+      "file": "package.json",
+      "sha256": "c4745ed1372b344e8ef3182f29939b174c4074e0b294462fcb80ef286ff9e324",
+      "change": "+2 exact pins in dependencies"
+    },
+    {
+      "file": "bun.lock",
+      "sha256": "958856c9bb8b9e72ed7dfcfd559e919b85eeb362e197f4f79c937b467c1a7690",
+      "change": "regenerated with pinned bun 1.4.0 (+27/-10 lines)"
+    },
+    {
+      "file": "cordis.patch.yml",
+      "sha256": "c984e08238f814398b3640f23c81f70f4af3233e1f589fec8fcada58c6f7a622",
+      "change": "+36 lines: one host-plane insert row + documented comment"
+    },
+    {
+      "file": "LICENSE-NOTICES.md",
+      "sha256": "57f1188c434d1bf01130559e5ac1357e4bc117bf708c24886450967308f16fbf",
+      "change": "+21 lines: ## @dsh-std/* (MIT) section"
+    },
+    {
+      "file": "docs/user-guide.md",
+      "sha256": "e9dff7fb36485aa286fb85e06de0036d9c515faeb9fb653128e44c5ba010ae19",
+      "change": "+1 row in the section-14 attribution table"
+    },
+    {
+      "file": "docs/user-guide.zh-CN.md",
+      "sha256": "b1f637e38eb334bf9f5ce9e3619b91307488df69ba1af3040792538013ee7fad",
+      "change": "+1 matching row (bilingual policy)"
+    },
+    {
+      "file": "scripts/install-profile.ts",
+      "sha256": "ae63dad11327615731b6786735007d57a6785e326befa301772b259d7f8fe7cd",
+      "change": "DEVIATION - +12 lines: the row set verify:rows pins"
+    }
+  ],
+  "gates": [
+    {
+      "name": "verify:manifest",
+      "command": "bun run verify:manifest",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/verify-manifest.log",
+      "verdict": "PASS - 27 row module paths 0 missing; npm pack lists 952 files, 0 required absent"
+    },
+    {
+      "name": "verify:rows",
+      "command": "bun run verify:rows",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/verify-rows.log",
+      "verdict": "PASS - 36 row ids match the 2-file bundle patch layer"
+    },
+    {
+      "name": "verify:docs",
+      "command": "bun run verify:docs",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/verify-docs.log",
+      "verdict": "PASS - pairs=47 failed=0 violations=0 links=430 dead=0"
+    },
+    {
+      "name": "verify:comments (EXTRA, standing gate for any source edit)",
+      "command": "bun run verify:comments",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/verify-comments.log",
+      "verdict": "PASS - 382 TS files, 33784 declarations"
+    },
+    {
+      "name": "no-host-override",
+      "command": "node scripts/verify-no-host-override.ts",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/no-host-override.log",
+      "verdict": "PASS - 205 host-declared row ids, 0 collisions, 0 exemptions => 'dsh-std-adapter' is a genuinely fresh id"
+    },
+    {
+      "name": "preset-conformance --self-test",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/preset-conformance-selftest.log",
+      "verdict": "PASS - 32 harness rows conform; negative controls 4/4 reddened"
+    },
+    {
+      "name": "dist freshness",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/dist-fresh.log",
+      "verdict": "PASS - 31/31 targets fresh; 1 pre-existing NOT COVERED vendored file"
+    },
+    {
+      "name": "install-profile --self-test (EXTRA, file touched by the deviation)",
+      "command": "node scripts/install-profile.ts --self-test",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/install-profile-selftest.log",
+      "verdict": "PASS"
+    },
+    {
+      "name": "bun run test (documented scoped gate = `bun test packages`)",
+      "command": "bun run test",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/bun-test-packages.log",
+      "verdict": "PASS - 1767 pass / 3 skip / 0 fail across 111 files"
+    },
+    {
+      "name": "bun test (BARE, unscoped - NOT the documented scope)",
+      "command": "bun test",
+      "exit_code": 1,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/tests-and-typecheck.log",
+      "verdict": "FAIL - see out_of_scope_findings; every (fail) lies OUTSIDE packages/, scripts/ and the real skills/"
+    },
+    {
+      "name": "typecheck",
+      "command": "bun run typecheck",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/tests-and-typecheck.log",
+      "verdict": "PASS - tsgo --noEmit, exit 0"
+    },
+    {
+      "name": "docker real-machine lane (rootless)",
+      "command": "node scripts/docker-e2e.ts --mode source",
+      "exit_code": 3,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/docker-e2e-source.log",
+      "driver_evidence": "evidence/docker/client-install/2026-10-10T13-24-44Z/",
+      "verdict": "FAIL — exit 3 (MISSING PREREQUISITE). failed=[install.exit,install.buildScripts], 105 arms NULL because the run stopped at the install step. ROOT CAUSE IS THIS WAVE."
+    }
+  ],
+  "mount_proof": {
+    "composition": {
+      "command": "node scripts/dump-config.ts --profile web (isolated DSH_HOME)",
+      "exit_code": 0,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/dump-config-web.log",
+      "observed": "the dsh-std-adapter row APPEARS composed with name '@dsh-std/adapter-dsh' and config.profileBaseUrl: !!js ctx.baseUrl (log lines 1978-1981)"
+    },
+    "boot": {
+      "command": "dsh --profile web (isolated DSH_HOME+HOME, bounded 75s)",
+      "exit_code": 1,
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/boot-web.log",
+      "observed_expected_state": "line 1: 'dsh: disabling profile plugin row \"dsh-std-adapter\": Plugin @dsh-std/adapter-dsh@0.1.1-rc.2 is incompatible with dsh 0.2.0-rc.2: peerDependencies {...11 peers...} ... grant the exact-version exemption ... with `dsh plugin allow-version` ... Exact-version exemption: not active.' -- this IS the contract's expected composed-then-DISABLED outcome",
+      "exit_1_cause": "UNRELATED to this wave: 'client-modules: package @mpd-dsh/mpd resolves from multiple active Loader sources' (legacy-installer artifact)"
+    },
+    "negative_control": {
+      "command": "same boot with the dsh-std-adapter row removed from the SANDBOX home patch",
+      "log": "evidence/dsh-std/dependency-mount/2026-10-10T13-09-16Z/boot-web.NEGATIVE-CONTROL-no-dsh-std-row.log",
+      "observed": "occurrences of 'disabling profile plugin row \"dsh-std-adapter\"' = 0 (the assertion is falsifiable), while the SAME client-modules failure persists => the boot exit-1 is independent of this wave"
+    },
+    "third_party_corroboration": "the identical client-modules error appears in 19 PRE-EXISTING evidence files predating this wave (evidence/wave2/adopted-tooling/, evidence/llm-pi-ai/, evidence/plan-c/ ...)"
+  },
+  "observations": {
+    "peer_auto_install": "see peer-auto-install-observation.txt -- NO 0.1.2-alpha copy was installed; bun resolved the adapter's 7 non-optional @deepseek-ai/dsh-* peers to the PRE-EXISTING 0.1.5-rc.2/0.1.7-rc.2 store lines (outside the declared <0.1.3 range => 7 warnings); exactly ONE new store entry materialized (@deepseek-ai+dsh-commands@0.1.7-rc.2+ea9f3f61408fac66); the top-level node_modules/@deepseek-ai band is unchanged (only the three 0.2.0-rc.2 experimental packages); the lockfile diff touches ZERO 0.2.0-rc.2 lines",
+    "upstream_url_discrepancy": "the contract and the task name https://github.com/T-Auto/dsh-std; the published @dsh-std/adapter-dsh manifest's repository field says https://github.com/Yan-Zero/dsh-std. Both spellings are recorded in LICENSE-NOTICES.md; the contract's spelling is the primary.",
+    "license": "MIT, Copyright (c) 2026 DSH Standard contributors -- read from the tarball's own LICENSE at .mpd/tmp-cache/dsh-std/package/LICENSE"
+  },
+  "out_of_scope_findings": [
+    {
+      "id": "F1",
+      "subject": "bare `bun test` (unscoped) exits 1",
+      "detail": "it globs the WHOLE repo, collecting frozen test copies under evidence/**, dist/mpd-package/** and .mpd/**. Every (fail) and 13 of the errors sit in those copies; NONE in packages/, scripts/ or the real skills/. The documented scoped gate `bun run test` (= bun test packages) is 1767 pass / 0 fail / exit 0.",
+      "caused_by_this_wave": false
+    },
+    {
+      "id": "F2",
+      "subject": "skills/programming/scripts/typescript/check-no-excuse-rules.test.ts errors under bun",
+      "detail": "it resolves \"typescript/package.json\" by its real name, but this repo aliases it (typescript5: npm:typescript@5.9.3). node_modules/typescript is absent and pnpm's hoist dir node_modules/.pnpm/node_modules/typescript is not consulted by bun's resolver. The lockfile's typescript@5.9.3 entry is byte-identical at HEAD and POST and its line is NOT in the bun.lock diff; the only .bun store entry for it is dated 2026-10-02. The file is referenced by NO gate. NOT PROVEN to have passed before this wave (no pre-change run available) - stated as a bounded uncertainty.",
+      "caused_by_this_wave": "not proven; evidence points to no"
+    },
+    {
+      "id": "F3",
+      "subject": "the one-command isolated install (`dsh plugin --profile web add`) cannot run in this sandbox",
+      "detail": "pnpm fails with ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK / EROFS on 'pnpm-store-operation-locks', and corepack later hit a network connect-timeout. Pre-existing runs of bundle-lifecycle on 2026-10-04/10-06 failed identically. bundle-lifecycle.ts therefore exits 1 AT ITS INSTALL STEP and produced no boot evidence.",
+      "caused_by_this_wave": false
+    },
+    {
+      "id": "F4",
+      "subject": "credential exposure in the environment (reported, NOT reproduced)",
+      "detail": "the real ~/.npmrc holds a live registry authToken. I did not copy it into any evidence file. AGENTS.md section 10 forbids echoing credentials; flagging the environment, not acting on it."
+    }
+  ],
+  "deviations": [
+    {
+      "id": "D1",
+      "files": [
+        "scripts/install-profile.ts"
+      ],
+      "contract_clause": "Scope: 'Nothing else. No packages/*/src change, no new plugin package, no preset change.' vs Acceptance criterion 4: 'Gates green: ... bun run verify:rows ...'",
+      "why": "verify-rows-parity.ts demands bidirectional SET EQUALITY between the bundle patch's row ids and the ids scripts/install-profile.ts renders, and offers NO exemption hook. Adding the row to cordis.patch.yml therefore reddens verify:rows unless the installer's row set mirrors it. Acceptance criterion 4 is only satisfiable with this edit.",
+      "how": "12 lines following the file's own precedent: extract the row VERBATIM from cordis.patch.yml at load time (as sidebarGuardFromPatch already does) via the existing extractRowBlock + the Row.rawRow form (as preset-mpd already does), because config.profileBaseUrl is a !!js expression the JSON renderer cannot carry. Pre-fix failure is preserved as verify-rows.PRE-INSTALLER-FIX.log (exit 1).",
+      "reported_for_verifier_attention": true
+    }
+  ],
+  "not_proven": [
+    "the rootless Docker lane FAILED at its install step; every downstream arm (pack/unpack/boot/tui/team/live/ui) is UNMEASURED, so nothing about the packed or one-click install path is covered by this wave's evidence",
+    "the real one-command install could not be exercised outside Docker either: pnpm fails in this sandbox with ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK/EROFS. The mount proof therefore ran through the sanctioned LEGACY isolated-install flow (AGENTS.md section 8) — which proves COMPOSITION and BOOT but NOT the packed/oneclick install path",
+    "F2 (the skills check-no-excuse-rules test) was not proven to have been green before this wave",
+    "whether the boot-time disable alone (without the install-time rejection) would have been acceptable — that is a product decision, not a measurement"
+  ],
+  "critical_findings": [
+    {
+      "id": "C1",
+      "severity": "blocker",
+      "subject": "The wave's own change makes the one-command install HARD-FAIL on the dsh 0.2.0-rc.2 baseline",
+      "measured": "docker-e2e STEP 09-install: `dsh plugin --profile web add .` exited 1 -> 'dsh: installation rejected: Plugin @dsh-std/adapter-dsh@0.1.1-rc.2 is incompatible with dsh 0.2.0-rc.2: peerDependencies {...11 peers...}' -> 'dsh: restored package.json, pnpm-lock.yaml, and node_modules.'",
+      "why_it_matters": "AGENTS.md section 8 makes the one-command install the PRIMARY user path and the whole mounting contract rests on it; the Docker lane exists to prove it. It now fails, so acceptance criterion 6 FAILS and the bundle is not installable on its own declared baseline.",
+      "contract_premise_that_was_incomplete": "The contract says the expected state is 'the row COMPOSES and is preflight-DISABLED ... that is the intended, documented behavior.' That is TRUE for BOOT of an already-installed profile (proven: boot-web.log line 1) but INCOMPLETE for INSTALL, which is rejected outright rather than degraded.",
+      "trigger": "dsh-app-boot's profileDependencyNames(manifest) = [...Object.keys(manifest.dependencies), ...Object.keys(manifest.peerDependencies)] — the install-time scan walks the bundle's DECLARED DEPENDENCIES. So the wave's package.json pin alone puts the incompatible peer ranges into the profile inventory; the cordis.patch.yml row is not required to trigger it.",
+      "remedies_all_out_of_scope": [
+        "`dsh plugin allow-version` — explicitly forbidden by the contract and by AGENTS.md (profile owner's risk decision)",
+        "writing a profile compatibility.json — explicitly forbidden",
+        "dropping the @dsh-std dependencies — reverses the wave's stated intent"
+      ],
+      "action_taken": "STOPPED and REPORTED, per the contract. Nothing was 'fixed', no exemption was granted, no workaround was shipped.",
+      "what_the_captain_must_decide": "accept the broken install path, or amend the contract (e.g. ship the dependency without a host-plane row, or move the mount behind a profile-owner opt-in), or obtain an explicit decision to allow-version."
+    }
+  ],
+  "acceptance_assessment": {
+    "1_package_json_pins_and_lockfile_coherent": "MET (pins exact; bun.lock regenerated with the pinned toolchain, exit 0)",
+    "2_patch_row_plus_no_host_override": "MET (row composes; verify-no-host-override PASS with 0 exemptions, so the id is genuinely fresh)",
+    "3_attribution_in_all_three_docs_plus_verify_docs": "MET (LICENSE-NOTICES.md + both user guides; verify:docs PASS pairs=47 failed=0)",
+    "4_gates_green": "MET for every gate the contract lists, on the documented scoped commands",
+    "5_mount_proof_isolated_boot_shows_expected_disabled_verdict": "MET (boot-web.log line 1 + a falsifiable negative control)",
+    "6_docker_lane": "FAILED — see C1; the failure is caused by this wave, not by the environment",
+    "7_evidence_under_the_named_path_no_credentials": "MET (no credential value was written to any evidence file)"
+  }
+}

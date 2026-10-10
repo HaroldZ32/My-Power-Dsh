@@ -1,0 +1,3 @@
+$ node scripts/install-profile.ts --self-test
+# bun 1.4.0 / node v24.21.0 / 2026-10-10T13:10:23Z
+[install-profile self-test] ok: path model + row set + official agent-team rows + preset row (verbatim) + zero-override row policy (negative control reddens on a seeded id-target) + web-compat entry + id-target render verified
