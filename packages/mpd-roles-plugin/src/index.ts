@@ -23,11 +23,12 @@ import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
 import { installVerifyGuard, type VerifyLawAccess } from "./verify-guard.ts"
 import { INVESTIGATION_CONFIG_KEY, installCaptainInvestigationGuard } from "./captain-investigation.ts"
+import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
 import { VERIFY_SERVICE } from "../../mpd-verify-plugin/src/service.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
 import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY } from "./complexity-gate.ts"
-import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, textBlock, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, restrictToolsTolerant, textBlock, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -37,13 +38,13 @@ export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 /** The slice of a cordis context this row uses: the two seams, the `mpdRoles` provision and a logger. */
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string, strict?: boolean) => any; [k: string]: any }
 /**
- * The row config: the persona directory plus the three keys this row reads itself.
+ * The row config: the persona directory plus the four keys this row reads itself.
  *
- * `team.gate` (mechanical | advisory | off), `boulder.dir` and `captain.investigation`
- * (deny | allow) mirror their `.mpd/mpd.jsonc` spellings, so a composition without the config
- * row mounted can still pin them in the patch.
+ * `team.gate` (mechanical | advisory | off), `boulder.dir`, `captain.investigation`
+ * (deny | allow) and `delegation.gate` (deny | captain | allow) mirror their `.mpd/mpd.jsonc`
+ * spellings, so a composition without the config row mounted can still pin them in the patch.
  */
-type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown } }
+type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown } }
 
 // Every entry must be a tool this profile actually registers: the harness
 // validates the WHOLE deny list at spawn time and rejects the child when any
@@ -499,6 +500,35 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     warn(line)
   }
 
+  /**
+   * The read-only deny list ONE spawn really sends, validated by the harness itself.
+   *
+   * WHY (measured defect F2, 2026-10-10): `tools.restrict()` rejects the WHOLE list when a single name
+   * is not registered in this profile, so the two `mcp__lsp__*` entries killed EVERY read-only spawn of
+   * the roster on a host without `cclsp` — which is what pushed the captain onto the official `subagent`
+   * tool this gate now refuses. The canonical `READONLY_DENY` is NOT changed and never pre-filtered with
+   * a `hasTool` probe (AGENTS.md §13): the restriction is applied to THIS agent's own scope and released
+   * in the same synchronous turn, so the harness's own verdict is the only pruner, and the pruned names
+   * are reported ONCE through this row's logger.
+   *
+   * @param agent - the spawning session's own agent handle, whose scope is the harness's validation site.
+   * @returns the list to hand the child as `toolFilter.deny`.
+   */
+  const validatedReadonlyDeny = (agent: unknown): string[] => {
+    /** The caller's own scope; without it the harness validates the list while composing the child. */
+    const scope = dsh.agentScope(agent)
+    if (scope === undefined) {
+      warnOnce("readonly-deny:no-scope", "read-only spawn: this agent exposes no scoped context, so the canonical deny list is sent unvalidated")
+      return [...READONLY_DENY]
+    }
+    /** The harness's verdict on the canonical list, with the contract's one permitted pruning round. */
+    const outcome = restrictToolsTolerant((names) => scope.tools.restrict({ deny: names }), READONLY_DENY)
+    if (outcome.pruned.length > 0) {
+      warnOnce("readonly-deny:pruned", "read-only spawn: pruned tool name(s) this profile does not register: " + outcome.pruned.join(", "))
+    }
+    return [...outcome.applied]
+  }
+
   /** The roster as THIS call sees it. Resolved per call (never an apply-time cache). */
   const roleSurface = (exec?: unknown): RoleSurface => {
     /** The base roster projected for THIS call, each persona already read. */
@@ -607,7 +637,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
-        ...(spec.readonly ? { toolFilter: { deny: READONLY_DENY } } : {})
+        ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
       })
       /** The structured report, or an empty object when the subagent answered none. */
       const st = result.structured ?? {}
@@ -672,6 +702,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (key === GATE_CONFIG_KEY) return config.team?.gate
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
     if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
+    if (key === DELEGATION_CONFIG_KEY) return config.delegation?.gate
     return undefined
   }
   // The TEAM PLANE's boot signature: ONE line naming the three restored contracts and their
@@ -703,9 +734,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
     /** The guard's install outcome, reported on the team-plane boot signature below. */
     const verifyGuard = installVerifyGuard(dsh, {
-      // NO PRESET SCOPE: §5's captain is the workspace's TOP-LEVEL session (no parent session,
-      // delegation depth 0), never a preset name — the `presets: ["mpd"]` that used to sit here made
-      // the captain branch unreachable on this deployment's `cordis`-preset top-level session (T-92).
+      // NO PRESET SCOPE: §5's captain is the workspace's TOP-LEVEL session (not a delegated child —
+      // `origin: "subagent"` or depth `1`+ — and never a preset name) — the `presets: ["mpd"]` that
+      // used to sit here made the captain branch unreachable on this deployment's `cordis`-preset
+      // top-level session (T-92), and the parent-session half did the same to the SEEDED FORK the
+      // user's own working session is (F0, 2026-10-10).
       law: lawAccess,
       workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
       configValue,
@@ -734,6 +767,25 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } catch (error) {
     guardOutcome.push("captainInvestigation=absent reason=threw")
     warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")")
+  }
+  // THE DELEGATION GATE, installed at this same site: the harness's generic spawn tools (`subagent`,
+  // `subagent_fork`, `workflow`) are NOT this bundle's delegation path — §5 rule 2 names
+  // `mpd_role_spawn`, the workmate library and Agent Teams — so a call to one of them is refused for
+  // every session `delegation.gate` covers (default `deny`: the captain AND every member, because an
+  // escape hatch a member can still use is not a discipline). It is keyed on §5's PRESET-FREE session
+  // rank, so it holds whatever preset the profile assigned to the session.
+  try {
+    /** The gate's install outcome, whose MODE the team-plane boot signature reports below. */
+    const delegation = installDelegationGate(dsh, {
+      configValue,
+      warn: (line) => warnOnce("delegation-gate:" + line, line),
+    })
+    guardOutcome.push(delegation.installed
+      ? "delegationGate=" + delegation.mode
+      : "delegationGate=absent reason=" + String(delegation.reason))
+  } catch (error) {
+    guardOutcome.push("delegationGate=absent reason=threw")
+    warnOnce("delegation-gate:threw", "the delegation gate could not be installed (" + errText(error) + ")")
   }
   try {
     installRosterSection(dsh, {

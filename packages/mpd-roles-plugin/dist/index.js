@@ -444,10 +444,10 @@ function sessionRank(agent) {
   const header = agent?.session?.header;
   if (header === undefined || header === null)
     return "headerless";
-  if (header.parentSession !== undefined)
+  if (header.origin === "subagent")
     return "child";
-  const depth = header.delegationDepth;
-  return depth === undefined || depth === 0 ? "captain" : "child";
+  const depth = Number(header.delegationDepth);
+  return depth >= 1 ? "child" : "captain";
 }
 function sessionIsTopLevel(agent) {
   return sessionRank(agent) === "captain";
@@ -913,6 +913,57 @@ function installCaptainInvestigationGuard(dsh, options) {
   }
 }
 
+// packages/mpd-roles-plugin/src/delegation-gate.ts
+var DELEGATION_CONFIG_KEY = "delegation.gate";
+var DELEGATION_TOOLS = ["subagent", "subagent_fork", "workflow"];
+function resolveDelegationGateMode(raw) {
+  if (raw === "captain")
+    return "captain";
+  if (raw === "allow")
+    return "allow";
+  return "deny";
+}
+function delegationGateDecision(input) {
+  if (input.mode !== "deny" && !(input.mode === "captain" && input.rank === "captain"))
+    return;
+  const toolName = String(input.toolName ?? "");
+  if (!DELEGATION_TOOLS.includes(toolName))
+    return;
+  if (input.mode === "deny" && (input.rank === "captain" || input.rank === "child" || input.rank === "headerless")) {
+    return delegationRefusal(toolName);
+  }
+  if (input.mode === "captain" && input.rank === "captain")
+    return delegationRefusal(toolName);
+  return;
+}
+function delegationRefusal(toolName) {
+  return "delegation gate: `" + toolName + "` is refused — the official spawn tools are not the delegation" + " path under the MPD discipline. Delegate instead: `mpd_role_spawn` (one-shot roster specialist)," + " `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work" + " (`agent_teams_plan`, persona from `mpd_role_persona`); `send_message` continues an existing" + " continuable child. The gate covers the captain and every member session. `delegation.gate` in" + ' mpd.jsonc: "captain" limits it to the top-level session, "allow" releases it entirely.';
+}
+function installDelegationGate(dsh, options) {
+  const mode2 = resolveDelegationGateMode(options.configValue(DELEGATION_CONFIG_KEY));
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the delegation gate is NOT installed " + "(the official spawn tools stay available; the rule lives in the instruction text only; " + "`delegation.gate` in mpd.jsonc selects the mode once the seam exists)");
+      return { installed: false, mode: mode2, reason: "no-guard-seam" };
+    }
+    const dispose = dsh.guardTool((exec) => {
+      try {
+        return delegationGateDecision({
+          toolName: String(exec?.name ?? ""),
+          mode: resolveDelegationGateMode(options.configValue(DELEGATION_CONFIG_KEY)),
+          rank: sessionRank(exec?.agent)
+        });
+      } catch {
+        return;
+      }
+    });
+    return { installed: true, mode: mode2, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the delegation gate failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, mode: mode2, reason: "install-failed" };
+  }
+}
+
 // packages/mpd-verify-plugin/src/service.ts
 var VERIFY_SERVICE = "mpdVerify";
 
@@ -1245,6 +1296,37 @@ function rowLogLine(name, line) {
     }
     entry.sink.write(line);
   } catch {}
+}
+function unknownRestrictedNames(error) {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  if (!/names unknown global tool/.test(message))
+    return;
+  const head = message.split("; known global tools:")[0] ?? "";
+  const names = [...head.matchAll(/"([^"]+)"/g)].map((match) => String(match[1] ?? "")).filter((name) => name !== "");
+  return names.length > 0 ? names : undefined;
+}
+function restrictToolsTolerant(restrict, names) {
+  let candidate = [...names];
+  const pruned = [];
+  for (let attempt = 0;; attempt += 1) {
+    try {
+      const release = restrict(candidate);
+      if (typeof release === "function")
+        release();
+      return { applied: candidate, pruned };
+    } catch (error) {
+      if (attempt >= 1)
+        throw error;
+      const unknown = unknownRestrictedNames(error);
+      if (unknown === undefined)
+        throw error;
+      const next = candidate.filter((name) => !unknown.includes(name));
+      if (next.length === candidate.length)
+        throw error;
+      pruned.push(...candidate.filter((name) => unknown.includes(name)));
+      candidate = next;
+    }
+  }
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -3026,6 +3108,18 @@ function apply(ctx, config = {}) {
     warned.add(key);
     warn(line);
   };
+  const validatedReadonlyDeny = (agent) => {
+    const scope = dsh.agentScope(agent);
+    if (scope === undefined) {
+      warnOnce("readonly-deny:no-scope", "read-only spawn: this agent exposes no scoped context, so the canonical deny list is sent unvalidated");
+      return [...READONLY_DENY];
+    }
+    const outcome = restrictToolsTolerant((names) => scope.tools.restrict({ deny: names }), READONLY_DENY);
+    if (outcome.pruned.length > 0) {
+      warnOnce("readonly-deny:pruned", "read-only spawn: pruned tool name(s) this profile does not register: " + outcome.pruned.join(", "));
+    }
+    return [...outcome.applied];
+  };
   const roleSurface = (exec) => {
     const base = ROLES.map((r) => ({
       id: r.id,
@@ -3123,7 +3217,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
-        ...spec.readonly ? { toolFilter: { deny: READONLY_DENY } } : {}
+        ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
       });
       const st = result.structured ?? {};
       return { role: spec.name, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };
@@ -3167,6 +3261,8 @@ Work with the tools your role requires (read-only roles must never modify anythi
       return config.boulder?.dir;
     if (key === INVESTIGATION_CONFIG_KEY)
       return config.captain?.investigation;
+    if (key === DELEGATION_CONFIG_KEY)
+      return config.delegation?.gate;
     return;
   };
   const guardOutcome = [];
@@ -3210,6 +3306,16 @@ Work with the tools your role requires (read-only roles must never modify anythi
   } catch (error) {
     guardOutcome.push("captainInvestigation=absent reason=threw");
     warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")");
+  }
+  try {
+    const delegation = installDelegationGate(dsh, {
+      configValue,
+      warn: (line) => warnOnce("delegation-gate:" + line, line)
+    });
+    guardOutcome.push(delegation.installed ? "delegationGate=" + delegation.mode : "delegationGate=absent reason=" + String(delegation.reason));
+  } catch (error) {
+    guardOutcome.push("delegationGate=absent reason=threw");
+    warnOnce("delegation-gate:threw", "the delegation gate could not be installed (" + errText(error) + ")");
   }
   try {
     installRosterSection(dsh, {
