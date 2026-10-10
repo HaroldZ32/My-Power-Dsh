@@ -260,7 +260,8 @@ describe("the mpd-verify row", () => {
     // THE OTHER DIRECTION, on the SAME guard: a documentation write is never gated.
     expect(guard?.({ name: "write", arguments: { file_path: "docs/index.md" }, agent })).toBeUndefined()
     // A CHILD session is never the captain.
-    expect(guard?.({ name: "write", arguments: { file_path: "packages/a/src/index.ts" }, agent: { session: { id: "member", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session" } } } })).toBeUndefined()
+    // A child is a RECORDED delegation fact — `origin: "subagent"` or depth >= 1 — so a seeded fork with only a parent link stays the captain.
+    expect(guard?.({ name: "write", arguments: { file_path: "packages/a/src/index.ts" }, agent: { session: { id: "member", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session", origin: "subagent", delegationDepth: 1 } } } })).toBeUndefined()
     // ARM A LOOP through the tool the row registered, then the SAME write is allowed.
     /** The `mpd_verify_open` tool. */
     const open = h.tools.find((tool) => tool.name === "mpd_verify_open")
@@ -285,7 +286,8 @@ describe("the mpd-verify row", () => {
     /** The installed guard. */
     const guard = h.guards.at(-1)
     // A MEMBER is a child session (`parentSession` set), so it is not the captain.
-    const member = { session: { id: "member-session", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session" } } }
+    // A child is a RECORDED delegation fact — `origin: "subagent"` or depth >= 1 — so a seeded fork with only a parent link stays the captain.
+    const member = { session: { id: "member-session", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session", origin: "subagent", delegationDepth: 1 } } }
     expect(String(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: member }) ?? "")).toContain("one-git-writer rule")
     // READ-ONLY GIT STAYS OPEN — the other direction on the same tool.
     expect(guard?.({ name: "bash", arguments: { command: "git status --short" }, agent: member })).toBeUndefined()

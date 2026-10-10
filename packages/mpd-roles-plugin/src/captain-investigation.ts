@@ -7,8 +7,8 @@
 // the REPORT.
 //
 // WHAT IT DENIES: `read`, `grep` and `glob` on a SOURCE path, for a session where `sessionIsTopLevel` is
-// true — §5's ONE predicate for the captain (no parent session, delegation depth 0, NEVER a preset name:
-// T-92), the same predicate the captain write rule beside it uses.
+// true — §5's ONE predicate for the captain (not a delegated child — `origin: "subagent"` or depth
+// `1`+ — and NEVER a preset name: T-92), the same predicate the captain write rule beside it uses.
 //
 // WHAT STAYS OPEN — THE DOCUMENTATION BAND: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`
 // and the root files `AGENTS.md` / `AGENT.md` / `CLAUDE.md` / `README.md` / `README.zh-CN.md` /

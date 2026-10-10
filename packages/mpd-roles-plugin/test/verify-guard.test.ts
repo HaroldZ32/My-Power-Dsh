@@ -82,12 +82,20 @@ describe("F1 — sessionIsTopLevel: the workspace's top-level session, never a p
     expect(sessionIsTopLevel(agentDouble({ agentPreset: undefined }))).toBe(true)
   })
 
-  test("a parent session or a non-zero delegation depth is a CHILD, even under the `mpd` preset", () => {
-    expect(sessionIsTopLevel(agentDouble({ parentSession: "parent-session" }))).toBe(false)
+  test("a SUBAGENT ORIGIN or a recorded depth of 1+ is a CHILD — a parent link alone is NOT (the seeded-fork repair)", () => {
+    expect(sessionIsTopLevel(agentDouble({ origin: "subagent" }))).toBe(false)
     expect(sessionIsTopLevel(agentDouble({ delegationDepth: 1 }))).toBe(false)
     expect(sessionIsTopLevel(agentDouble({ agentPreset: "mpd", delegationDepth: 1 }))).toBe(false)
-    // BOTH marks at once, and the preset still does not rescue it.
-    expect(sessionIsTopLevel(agentDouble({ agentPreset: "mpd", parentSession: "p", delegationDepth: 0 }))).toBe(false)
+    // BOTH delegation facts at once, and the preset still does not rescue it.
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: "mpd", origin: "subagent", delegationDepth: 1 }))).toBe(false)
+    // THE SEEDED FORK (F0, measured 2026-10-10): the user's own top-level session records
+    // `parentSession` + `isSeeded: true` + `delegationDepth: 0` and NO subagent origin. The old
+    // parent-link test classified THAT session as a child, which disarmed every captain-scoped rule
+    // (the write rule, the investigation guard, the one-git-writer rule) on the one session they gate.
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: "cordis", parentSession: "seed-root", isSeeded: true, delegationDepth: 0 }))).toBe(true)
+    // A parent link with NO recorded depth is the captain too — the conservative direction: captain
+    // rules apply, while the delegation gate's default mode refuses captains AND children alike.
+    expect(sessionIsTopLevel(agentDouble({ parentSession: "parent-session" }))).toBe(true)
   })
 
   test("NO header is refused (fail-closed), and the class is reported", () => {
@@ -96,7 +104,10 @@ describe("F1 — sessionIsTopLevel: the workspace's top-level session, never a p
     expect(sessionIsTopLevel(undefined)).toBe(false)
     expect(sessionRank({ id: "no-session" })).toBe("headerless")
     expect(sessionRank(agentDouble({ delegationDepth: 2 }))).toBe("child")
+    expect(sessionRank(agentDouble({ origin: "subagent" }))).toBe("child")
     expect(sessionRank(agentDouble({ agentPreset: "cordis" }))).toBe("captain")
+    // The seeded fork, in the rank vocabulary the delegation gate reads.
+    expect(sessionRank(agentDouble({ parentSession: "seed-root", isSeeded: true, delegationDepth: 0 }))).toBe("captain")
   })
 
   test("F3 — the session-start gate keeps its preset scope: it is NOT the captain test", () => {
@@ -129,8 +140,8 @@ describe("F2/F5 — the guard's two rules read that ONE predicate", () => {
   })
 
   test("F5-3: a CHILD session is STILL DENIED the git write under either preset — the rule survives", () => {
-    /** A teammate/subagent of this workspace, carrying the bundle preset. */
-    const mpdChild = agentDouble({ cwd: WORKSPACE, agentPreset: "mpd", parentSession: "captain-session" }, "member-mpd")
+    /** A teammate/subagent of this workspace, carrying the bundle preset and the recorded origin. */
+    const mpdChild = agentDouble({ cwd: WORKSPACE, agentPreset: "mpd", origin: "subagent", parentSession: "captain-session", delegationDepth: 1 }, "member-mpd")
     /** The same shape of child, carrying this deployment's top-level preset. */
     const cordisChild = agentDouble({ cwd: WORKSPACE, agentPreset: "cordis", delegationDepth: 1 }, "member-cordis")
     expect(String(decide({ ...GIT_WRITE, agent: mpdChild }) ?? "")).toContain("one-git-writer rule")
@@ -150,8 +161,8 @@ describe("F2/F5 — the guard's two rules read that ONE predicate", () => {
   })
 
   test("F5-5: the denial states the class decided and names the route — with NO claim about top-levelness", () => {
-    /** The denial a child session receives. */
-    const childDenial = String(decide({ ...GIT_WRITE, agent: agentDouble({ agentPreset: "mpd", parentSession: "p" }) }) ?? "")
+    /** The denial a child session receives (the harness recorded its subagent origin). */
+    const childDenial = String(decide({ ...GIT_WRITE, agent: agentDouble({ agentPreset: "mpd", origin: "subagent", parentSession: "p" }) }) ?? "")
     expect(childDenial).toContain("member/child session of this workspace")
     expect(childDenial).toContain("parent session")
     // THE LEGITIMATE ROUTE, named: the user's own shell.
