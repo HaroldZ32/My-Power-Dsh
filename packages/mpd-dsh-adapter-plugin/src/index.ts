@@ -1972,6 +1972,91 @@ export function rowLogLine(name: string, line: string): void {
 }
 
 /**
+ * One attempt at applying a tool-name list through the harness's OWN validation.
+ *
+ * The callback is handed the CURRENT candidate list and either applies it (returning the restriction's
+ * disposer, which the helper releases before it returns) or throws the harness's own error.
+ */
+export type RestrictAttempt = (names: readonly string[]) => (() => void) | undefined
+
+/** What one tolerant restriction produced: the list the harness ACCEPTED and the names it rejected. */
+export interface RestrictToolsOutcome {
+  /** The names that survived the harness's validation — the list a caller may really pass on. */
+  applied: readonly string[]
+  /** The names the harness reported as unknown, pruned in the order it named them. */
+  pruned: readonly string[]
+}
+
+/**
+ * Extract the tool names a `tools.restrict()` rejection named as unknown.
+ *
+ * The message shape is the harness's own (`dsh-tools`):
+ * `tools.restrict() names unknown global tool[s] "a", "b"; known global tools: …` — the QUOTED names
+ * are the unknown ones, so parsing stops at `; known global tools:` and never reads the known list as
+ * a verdict. A message that carries no quoted name is not a parsable rejection.
+ *
+ * @param error - the thrown value from one restrict attempt.
+ * @returns the unknown names, or `undefined` when this is not the unknown-names rejection.
+ */
+function unknownRestrictedNames(error: unknown): string[] | undefined {
+  /** The thrown message, read defensively: a non-Error rejection carries no `.message`. */
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : ""
+  if (!/names unknown global tool/.test(message)) return undefined
+  /** Everything before the known-tools tail, which is the only part that names the rejections. */
+  const head = message.split("; known global tools:")[0] ?? ""
+  /** Every quoted token in that head, in the order the harness printed them. */
+  const names = [...head.matchAll(/"([^"]+)"/g)].map((match) => String(match[1] ?? "")).filter((name) => name !== "")
+  return names.length > 0 ? names : undefined
+}
+
+/**
+ * Apply a canonical tool-name list through the harness's own validation, pruning what it rejects.
+ *
+ * WHY THIS EXISTS (measured defect F2, 2026-10-10): a read-only spawn's deny list must name tools the
+ * PROFILE really registers, because `tools.restrict()` rejects the WHOLE list when one name is unknown
+ * (`names unknown global tools …`) and the harness offers no ignore-unknown option — so one unregistered
+ * name (the two `mcp__lsp__*` names on a profile without `cclsp`) killed EVERY read-only spawn of both
+ * the roster and the workmate library, which is exactly what pushed the captain onto the official
+ * `subagent` tool. The harness's own validation stays the ONLY pruner: this helper never probes the
+ * registry with `hasTool` (the glossary rule — the canonical list is never pre-filtered), it calls the
+ * real `restrict` and reads the verdict out of the rejection.
+ *
+ * EXACTLY ONE RETRY: the second failure — whatever it is — is rethrown, so a harness that rejects the
+ * pruned list too, or that fails for another reason, still reddens loudly instead of silently dropping
+ * the read-only guarantee.
+ *
+ * @param restrict - one attempt at applying a list (the harness's own `tools.restrict`, bound).
+ * @param names - the CANONICAL list, which is never mutated.
+ * @returns the accepted list and the pruned names.
+ */
+export function restrictToolsTolerant(restrict: RestrictAttempt, names: readonly string[]): RestrictToolsOutcome {
+  /** The candidate list, narrowed by at most one pruning round. */
+  let candidate: readonly string[] = [...names]
+  /** The names the harness rejected, in the order it named them. */
+  const pruned: string[] = []
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      /** The restriction this attempt applied, released at once: a probe must not linger. */
+      const release = restrict(candidate)
+      if (typeof release === "function") release()
+      return { applied: candidate, pruned }
+    } catch (error) {
+      // The cap is the contract: a second failure of ANY kind is rethrown, never retried again.
+      if (attempt >= 1) throw error
+      /** The names the harness itself reported as unknown, or `undefined` for any other failure. */
+      const unknown = unknownRestrictedNames(error)
+      if (unknown === undefined) throw error
+      /** The candidate minus the rejected names, keeping the canonical order of the survivors. */
+      const next = candidate.filter((name) => !unknown.includes(name))
+      // Nothing to prune means the retry would repeat the same call; the rejection stands.
+      if (next.length === candidate.length) throw error
+      pruned.push(...candidate.filter((name) => unknown.includes(name)))
+      candidate = next
+    }
+  }
+}
+
+/**
  * Workspace roots of every live session, deduplicated, registration order.
  * `[]` when the agent registry is absent — the caller then falls back to the
  * exec-less {@link workspaceRootOf}.

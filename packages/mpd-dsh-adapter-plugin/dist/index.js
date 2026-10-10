@@ -283,6 +283,37 @@ function rowLogLine(name2, line) {
     entry.sink.write(line);
   } catch {}
 }
+function unknownRestrictedNames(error) {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  if (!/names unknown global tool/.test(message))
+    return;
+  const head = message.split("; known global tools:")[0] ?? "";
+  const names = [...head.matchAll(/"([^"]+)"/g)].map((match) => String(match[1] ?? "")).filter((name2) => name2 !== "");
+  return names.length > 0 ? names : undefined;
+}
+function restrictToolsTolerant(restrict, names) {
+  let candidate = [...names];
+  const pruned = [];
+  for (let attempt = 0;; attempt += 1) {
+    try {
+      const release = restrict(candidate);
+      if (typeof release === "function")
+        release();
+      return { applied: candidate, pruned };
+    } catch (error) {
+      if (attempt >= 1)
+        throw error;
+      const unknown = unknownRestrictedNames(error);
+      if (unknown === undefined)
+        throw error;
+      const next = candidate.filter((name2) => !unknown.includes(name2));
+      if (next.length === candidate.length)
+        throw error;
+      pruned.push(...candidate.filter((name2) => unknown.includes(name2)));
+      candidate = next;
+    }
+  }
+}
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
     return [];
@@ -1666,6 +1697,7 @@ export {
   isRecord,
   name,
   resolveDshAdapter,
+  restrictToolsTolerant,
   rowLogLine,
   textBlock,
   userMessage,

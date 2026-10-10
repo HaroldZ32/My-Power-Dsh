@@ -14,7 +14,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, userInfo } from "node:os"
 import { join, resolve, sep } from "node:path"
-import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, restrictToolsTolerant, rowLogLine, workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-workmate"
@@ -737,6 +737,46 @@ export function apply(ctx: Ctx): void {
     return ctx.get ? ctx.get("mpdRoles") : undefined
   }
 
+  /**
+   * The read-only deny list ONE workmate spawn really sends, validated by the harness itself.
+   *
+   * WHY (measured defect F2, 2026-10-10): `tools.restrict()` rejects the WHOLE list when a single name
+   * is not registered in this profile, so the two `mcp__lsp__*` entries killed EVERY read-only spawn —
+   * including a read-only workmate — on a host without `cclsp`. The canonical `READONLY_DENY` is NOT
+   * changed and never pre-filtered with a `hasTool` probe (AGENTS.md §13): the restriction is applied to
+   * THIS agent's own scope and released in the same synchronous turn, so the harness's own verdict is the
+   * only pruner, and the pruned names are reported ONCE on this row's log.
+   *
+   * @param agent - the spawning session's own agent handle, whose scope is the harness's validation site.
+   * @returns the list to hand the child as `toolFilter.deny`.
+   */
+  function validatedReadonlyDeny(agent: unknown): string[] {
+    /** The caller's own scope; without it the harness validates the list while composing the child. */
+    const scope = dsh.agentScope(agent)
+    if (scope === undefined) {
+      reportPrunedNames("read-only workmate spawn: this agent exposes no scoped context, so the canonical deny list is sent unvalidated")
+      return [...READONLY_DENY]
+    }
+    /** The harness's verdict on the canonical list, with the contract's one permitted pruning round. */
+    const outcome = restrictToolsTolerant((names) => scope.tools.restrict({ deny: names }), READONLY_DENY)
+    if (outcome.pruned.length > 0) {
+      reportPrunedNames("read-only workmate spawn: pruned tool name(s) this profile does not register: " + outcome.pruned.join(", "))
+    }
+    return [...outcome.applied]
+  }
+
+  /** The validation lines already reported, so a repeated spawn cannot spam the row's log. */
+  const reportedValidationLines = new Set<string>()
+
+  /** Report one validation line on this row's log, ONCE per line: a repeated spawn must not spam it. */
+  function reportPrunedNames(line: string): void {
+    if (reportedValidationLines.has(line)) return
+    reportedValidationLines.add(line)
+    try {
+      rowLogLine("mpd-workmate", "[mpd-workmate] " + line)
+    } catch { /* logging must never take a spawn down */ }
+  }
+
   /** Normalize a base KEY: case/space/hyphen insensitive, so "Deep Worker", "deep worker" and
    * "deep-worker" all name the same specialist. */
   function normalizeBaseKey(s: string): string {
@@ -895,7 +935,7 @@ export function apply(ctx: Ctx): void {
           model: meta.model,
           persona,
           outputSchema: REPORT_SCHEMA,
-          ...(meta.readonly ? { toolFilter: { deny: READONLY_DENY } } : {})
+          ...(meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
         })
         /** The structured report, or an empty object when the subagent answered none. */
         const st = result.structured ?? {}
