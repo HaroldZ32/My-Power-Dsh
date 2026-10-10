@@ -125,6 +125,45 @@ The seven-name deny list is enforced on BOTH paths, from ONE exported constant
 This closes the measured defect of the retired profile-carried `toolDeny`: a teammate staged
 as "Explorer" without the filter kept `write`/`edit`/`bash`.
 
+**The deny list is pruned by the HARNESS, once, before the spawn.** `tools.restrict()` rejects the
+WHOLE list when a single name is not registered in the profile, so one unregistered entry (the two
+`mcp__lsp__*` names on a host without `cclsp`) killed EVERY read-only spawn of both the roster and the
+workmate library — measured 2026-10-10, and that broken front door is what pushed the captain onto the
+harness's generic `subagent` tool. The adapter's `restrictToolsTolerant` applies the CANONICAL list to
+the calling agent's own scope and releases it in the same synchronous turn, so the harness's own
+verdict is the only pruner: the names it reports as unknown are pruned, exactly ONE retry is allowed,
+and any second failure is rethrown. `READONLY_DENY` itself is unchanged, the two packages' lists stay
+identical (asserted by `roles.test.ts`), and the list is still NEVER pre-filtered with a `hasTool`
+probe (AGENTS.md §13). A pruned name is reported once on the row's log.
+
+### The delegation gate (the official spawn tools are not the delegation path)
+
+`delegation-gate.ts` registers ONE `tools.guard` callback through the adapter: a call to `subagent`,
+`subagent_fork` or `workflow` is REFUSED with a sentence that names the sanctioned routes
+(`mpd_role_spawn`, `mpd_workmate_match` + `mpd_workmate_spawn`, Agent Teams, `send_message`). The knob
+is `delegation.gate` in `mpd.jsonc`:
+
+- **deny** (default) — the captain AND every member session are refused, because an escape hatch a
+  member can still use is not a discipline;
+- **captain** — only the workspace's TOP-LEVEL session is refused;
+- **allow** — the gate is released entirely.
+
+The gate is keyed on §5's PRESET-FREE session rank, so it holds for every session in a workspace that
+mounts this bundle, whatever preset the profile assigned. Preset-plane omission is deliberately NOT
+used: the live top-level session on this deployment runs a preset this bundle does not own (`cordis`),
+so a guard is the portable denial and mounting the bundle is the opt-in. The row's boot line reports
+`delegationGate=<mode>` (or `delegationGate=absent reason=…` when the harness exposes no `tools.guard`
+seam).
+
+**Honest bound:** the guard reads the TOOL CALL at dispatch, so a tool the roster never publishes is
+trivially covered, while a session on a profile WITHOUT this bundle mounted has no gate at all — and it
+cannot stop a model from TRYING another tool.
+
+The `mpd` preset's persona carries a short STANDING WORKING DISCIPLINE list (close a hypothesis
+repeated twice, inspection tool over speculation, next operation only, concurrent independent calls,
+ephemeral shell calls, verify against actual output, YAGNI/PDCA) adapted from `dsh-liangshen`
+(Apache-2.0) — ideas only, no upstream bytes ship.
+
 ### The session-start complexity gate (mechanical by default)
 
 At a session's first pre-step the row evaluates the frozen predicate

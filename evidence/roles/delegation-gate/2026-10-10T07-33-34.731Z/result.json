@@ -1,0 +1,94 @@
+{
+  "ok": true,
+  "slug": "delegation-gate",
+  "startedAt": "2026-10-10T07-33-34.731Z",
+  "sandbox": "/tmp/mpd-delegation-gate-XcXkIq",
+  "credential": {
+    "provider": "deepseek",
+    "keyName": "DEEPSEEK_API_KEY",
+    "present": true,
+    "source": "shell-profile",
+    "file": "/root/.bashrc",
+    "line": 129,
+    "length": 35,
+    "reason": null,
+    "tried": [
+      {
+        "tier": "environment",
+        "detail": "DEEPSEEK_API_KEY",
+        "outcome": "unset"
+      },
+      {
+        "tier": "credentials-file",
+        "detail": "/root/.dsh/.credentials.yaml",
+        "outcome": "present but carries no DEEPSEEK_API_KEY entry"
+      },
+      {
+        "tier": "shell-profile",
+        "detail": "/root/.bashrc:129",
+        "outcome": "hit"
+      }
+    ]
+  },
+  "toolsOffered": {
+    "deny": 95,
+    "allow": 95,
+    "roles": 95
+  },
+  "rows": [
+    {
+      "name": "R5-dist-carries-the-gate",
+      "ok": true,
+      "reason": "the built roles row carries the gate's install and refusal text",
+      "raw": "needles=[\"installDelegationGate\",\"delegation gate\",\"delegationGate\"] missing=[]"
+    },
+    {
+      "name": "R5-a-subagent-refused",
+      "ok": true,
+      "reason": "the `subagent` call was refused with the delegation-gate sentence",
+      "raw": "side=deny exit=0 bootLine=\"[2026-10-10T07:33:37.733Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny delegationGate=deny rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=true subagentSucceeded=false roleSpawnCalled=false roleSpawnSucceeded=false subagentResult=\"Error: delegation gate: `subagent` is refused — the official spawn tools are not the delegation path under the MPD discipline. Delegate instead: `mpd_role_spawn` (one-shot roster specialist), `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work (`agent_teams_plan`, persona from `mpd_role_persona`); `send_message` continues an existing continuable chi\" roleSpawnResult=\"Error: delegation gate: `subagent` is refused — the official spawn tools are not the delegation path under the MPD discipline. Delegate instead: `mpd_role_spawn` (one-shot roster specialist), `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work (`agent_teams_plan`, persona from `mpd_role_persona`); `send_message` continues an existing continuable chi\""
+    },
+    {
+      "name": "R5-b-allow-releases",
+      "ok": true,
+      "reason": "the same call carries no refusal text under `delegation.gate: \"allow\"`",
+      "raw": "side=allow exit=0 bootLine=\"[2026-10-10T07:33:47.712Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny delegationGate=allow rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=true subagentSucceeded=true roleSpawnCalled=false roleSpawnSucceeded=false subagentResult=\"ok\" roleSpawnResult=\"ok\""
+    },
+    {
+      "name": "R5-c-readonly-role-spawn-succeeds",
+      "ok": true,
+      "reason": "the read-only Explorer spawn completed without the unknown-names rejection",
+      "raw": "side=roles exit=0 bootLine=\"[2026-10-10T07:34:05.931Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny delegationGate=deny rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=false subagentSucceeded=false roleSpawnCalled=true roleSpawnSucceeded=true subagentResult=\"role Explorer (complete)\\nsummary: The working directory /tmp/mpd-delegation-gate-XcXkIq/ws-roles contains NO top-level regular files. Its only top-level entries are two hidden directories: .mpd/ and .codegraph/. Everything present is runtime state (logs, watchdog heartbeats, a verify boot record, a codegraph index); there is no source file of any language at the root or anywhere in the tree.\\nrecom\" roleSpawnResult=\"role Explorer (complete)\\nsummary: The working directory /tmp/mpd-delegation-gate-XcXkIq/ws-roles contains NO top-level regular files. Its only top-level entries are two hidden directories: .mpd/ and .codegraph/. Everything present is runtime state (logs, watchdog heartbeats, a verify boot record, a codegraph index); there is no source file of any language at the root or anywhere in the tree.\\nrecom\""
+    },
+    {
+      "name": "R5-bootline-deny",
+      "ok": true,
+      "reason": "the row log reports the gate's install and mode",
+      "raw": "side=deny exit=0 bootLine=\"[2026-10-10T07:33:37.733Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny delegationGate=deny rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=true subagentSucceeded=false roleSpawnCalled=false roleSpawnSucceeded=false subagentResult=\"Error: delegation gate: `subagent` is refused — the official spawn tools are not the delegation path under the MPD discipline. Delegate instead: `mpd_role_spawn` (one-shot roster specialist), `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work (`agent_teams_plan`, persona from `mpd_role_persona`); `send_message` continues an existing continuable chi\" roleSpawnResult=\"Error: delegation gate: `subagent` is refused — the official spawn tools are not the delegation path under the MPD discipline. Delegate instead: `mpd_role_spawn` (one-shot roster specialist), `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work (`agent_teams_plan`, persona from `mpd_role_persona`); `send_message` continues an existing continuable chi\""
+    },
+    {
+      "name": "R5-bootline-allow",
+      "ok": true,
+      "reason": "the row log reports the gate's install and mode",
+      "raw": "side=allow exit=0 bootLine=\"[2026-10-10T07:33:47.712Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny delegationGate=allow rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=true subagentSucceeded=true roleSpawnCalled=false roleSpawnSucceeded=false subagentResult=\"ok\" roleSpawnResult=\"ok\""
+    },
+    {
+      "name": "R5-bootline-roles",
+      "ok": true,
+      "reason": "the row log reports the gate's install and mode",
+      "raw": "side=roles exit=0 bootLine=\"[2026-10-10T07:34:05.931Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny delegationGate=deny rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=false subagentSucceeded=false roleSpawnCalled=true roleSpawnSucceeded=true subagentResult=\"role Explorer (complete)\\nsummary: The working directory /tmp/mpd-delegation-gate-XcXkIq/ws-roles contains NO top-level regular files. Its only top-level entries are two hidden directories: .mpd/ and .codegraph/. Everything present is runtime state (logs, watchdog heartbeats, a verify boot record, a codegraph index); there is no source file of any language at the root or anywhere in the tree.\\nrecom\" roleSpawnResult=\"role Explorer (complete)\\nsummary: The working directory /tmp/mpd-delegation-gate-XcXkIq/ws-roles contains NO top-level regular files. Its only top-level entries are two hidden directories: .mpd/ and .codegraph/. Everything present is runtime state (logs, watchdog heartbeats, a verify boot record, a codegraph index); there is no source file of any language at the root or anywhere in the tree.\\nrecom\""
+    },
+    {
+      "name": "R5-isolation",
+      "ok": true,
+      "reason": "ok: 3 session-store key(s), all under the sandbox",
+      "raw": "{\"ok\":true,\"checked\":3,\"keys\":[\"--tmp-mpd-delegation-gate-XcXkIq-ws-allow--\",\"--tmp-mpd-delegation-gate-XcXkIq-ws-deny--\",\"--tmp-mpd-delegation-gate-XcXkIq-ws-roles--\"]}"
+    },
+    {
+      "name": "R5-real-checkout-untouched",
+      "ok": true,
+      "reason": "the real checkout's row log is byte-identical across the run",
+      "raw": "before=fd4910d44b84b1d065d4ef7f6e7b3ae67698785606e4426a94deff50e64c3778 after=fd4910d44b84b1d065d4ef7f6e7b3ae67698785606e4426a94deff50e64c3778"
+    }
+  ]
+}

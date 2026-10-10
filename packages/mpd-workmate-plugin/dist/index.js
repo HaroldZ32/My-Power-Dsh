@@ -255,6 +255,37 @@ function rowLogLine(name, line) {
     entry.sink.write(line);
   } catch {}
 }
+function unknownRestrictedNames(error) {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  if (!/names unknown global tool/.test(message))
+    return;
+  const head = message.split("; known global tools:")[0] ?? "";
+  const names = [...head.matchAll(/"([^"]+)"/g)].map((match) => String(match[1] ?? "")).filter((name) => name !== "");
+  return names.length > 0 ? names : undefined;
+}
+function restrictToolsTolerant(restrict, names) {
+  let candidate = [...names];
+  const pruned = [];
+  for (let attempt = 0;; attempt += 1) {
+    try {
+      const release = restrict(candidate);
+      if (typeof release === "function")
+        release();
+      return { applied: candidate, pruned };
+    } catch (error) {
+      if (attempt >= 1)
+        throw error;
+      const unknown = unknownRestrictedNames(error);
+      if (unknown === undefined)
+        throw error;
+      const next = candidate.filter((name) => !unknown.includes(name));
+      if (next.length === candidate.length)
+        throw error;
+      pruned.push(...candidate.filter((name) => unknown.includes(name)));
+      candidate = next;
+    }
+  }
+}
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
     return [];
@@ -2051,6 +2082,27 @@ function apply(ctx) {
   function rolesService() {
     return ctx.get ? ctx.get("mpdRoles") : undefined;
   }
+  function validatedReadonlyDeny(agent) {
+    const scope = dsh.agentScope(agent);
+    if (scope === undefined) {
+      reportPrunedNames("read-only workmate spawn: this agent exposes no scoped context, so the canonical deny list is sent unvalidated");
+      return [...READONLY_DENY];
+    }
+    const outcome = restrictToolsTolerant((names) => scope.tools.restrict({ deny: names }), READONLY_DENY);
+    if (outcome.pruned.length > 0) {
+      reportPrunedNames("read-only workmate spawn: pruned tool name(s) this profile does not register: " + outcome.pruned.join(", "));
+    }
+    return [...outcome.applied];
+  }
+  const reportedValidationLines = new Set;
+  function reportPrunedNames(line) {
+    if (reportedValidationLines.has(line))
+      return;
+    reportedValidationLines.add(line);
+    try {
+      rowLogLine("mpd-workmate", "[mpd-workmate] " + line);
+    } catch {}
+  }
   function normalizeBaseKey(s) {
     return String(s ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
   }
@@ -2182,7 +2234,7 @@ Work with the tools your role requires (read-only workmates must never modify an
           model: meta.model,
           persona,
           outputSchema: REPORT_SCHEMA,
-          ...meta.readonly ? { toolFilter: { deny: READONLY_DENY } } : {}
+          ...meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
         });
         const st = result.structured ?? {};
         return { name: key, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };

@@ -234,6 +234,41 @@ SPELLING; a symlink is never resolved. (3) A composition with no `tools.guard` s
 SAYS so (the boot line carries `captainInvestigation=absent reason=…`). Mount evidence:
 `evidence/roles/captain-investigation/`.
 
+**The sanctioned delegation is MECHANICAL too — the delegation gate (2026-10-10).** Rule 2 names the
+sanctioned delegation surfaces (`mpd_role_spawn`, the workmate library, Agent Teams), but the harness's
+generic spawn tools `subagent` / `subagent_fork` / `workflow` were undefended, so the discipline was advice
+and the escape cost nothing. `packages/mpd-roles-plugin/src/delegation-gate.ts` installs ONE `guardTool`
+callback beside the investigation guard; it refuses those three names and its sentence names the routes
+out. The knob is `delegation.gate` in `mpd.jsonc`: `"deny"` (DEFAULT — the captain AND every member
+session, because a hatch a member can still use is not a discipline) | `"captain"` (the top-level session
+only) | `"allow"`; anything else reads as `deny`, and the knob is read PER CALL. Keyed on §5's PRESET-FREE
+`sessionRank`, so it covers every session in a workspace that mounts the bundle, whatever preset the
+profile assigned — and preset-plane omission is deliberately NOT the mechanism, because the live top-level
+session runs a preset this bundle does not own (`cordis`). The boot line carries `delegationGate=<mode>`
+(or `delegationGate=absent reason=…` without the guard seam). **Honest bound:** the guard reads the TOOL
+CALL at dispatch, so it cannot stop a model from TRYING another tool, and a profile without this bundle
+has no gate at all. Live evidence: `evidence/roles/delegation-gate/`.
+
+**The captain predicate and the SEEDED FORK (F0, 2026-10-10).** `sessionRank` in the same package decides
+`captain` / `child` / `headerless` from the session HEADER alone: a session is a CHILD iff the harness
+recorded `origin === "subagent"` OR a `delegationDepth` of `1` or more; every other header is the CAPTAIN.
+The parent link is deliberately NOT the test — the user's real working session is a SEEDED FORK
+(`parentSession` + `isSeeded: true` + depth `0`, no subagent origin), and the old "any parent session is a
+child" rule classified THAT session as a member, which silently disarmed the captain write rule, the
+investigation guard and the one-git-writer rule on the one session they gate. An absent header still fails
+CLOSED (`headerless`, never the captain). `sessionQualifies` — the session-start gate's preset-scoped
+question — is untouched and must never be substituted here (T-92).
+
+**A read-only spawn survives an unregistered deny-list name (F2, 2026-10-10).** `tools.restrict()` rejects
+the WHOLE list when one name is not registered in the profile and offers no ignore-unknown option, so the
+two `mcp__lsp__*` deny entries killed EVERY read-only spawn on a host without `cclsp` — the broken front
+door that pushed the captain onto the generic `subagent` tool the delegation gate now refuses. The
+adapter's `restrictToolsTolerant` (`packages/mpd-dsh-adapter-plugin/src/index.ts`) applies the CANONICAL
+list to the calling agent's own scope and releases it in the same synchronous turn, so the harness's own
+verdict is the only pruner: the names it reports as unknown are pruned, exactly ONE retry is allowed, and
+any second failure is rethrown. The lists themselves are unchanged, still identical across the roles and
+workmate packages, and still never pre-filtered with a `hasTool` probe (the glossary rule).
+
 **The tool surface, and the two sentences rule 4 REPLACES** (moved here verbatim with the same MOVE-FIRST
 split). The verification law's tool surface is ONE row, `mpd-verify-plugin`: `mpd_verify_open` /
 `_escape` / `_seat` / `_evidence` / `_record`, and the verifier's envelope denies a bound seat the shell,

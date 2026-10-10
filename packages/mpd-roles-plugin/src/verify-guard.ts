@@ -8,8 +8,9 @@
 // would duplicate by inlining).
 //
 // TWO RULES, ONE HOOK:
-//   1. the CAPTAIN's write rule — the workspace's TOP-LEVEL session (no parent session, delegation
-//      depth 0, and NOT a preset name: see `sessionIsTopLevel` in `./complexity-gate.ts`) may not write
+//   1. the CAPTAIN's write rule — the workspace's TOP-LEVEL session (not a delegated child:
+//      `origin: "subagent"` or a recorded depth of `1`+, and NOT a preset name: see `sessionIsTopLevel`
+//      in `./complexity-gate.ts`) may not write
 //      a code path without an armed loop, a counted escape, or a delegation;
 //   2. the VERIFIER's envelope — a bound verifier seat may not reach the implementation, the shell or the
 //      board before it has recorded a verdict.
@@ -56,7 +57,7 @@ export interface VerifyLawAccess {
  * What installing the guard needs.
  *
  * THERE IS NO PRESET KNOB — deliberately, and it must not come back: §5's captain is the workspace's
- * TOP-LEVEL session (no parent session, delegation depth 0), never a preset name, so no default here
+ * TOP-LEVEL session (not a delegated child, and never a preset name), so no default here
  * may silently narrow the captain test. Both rules below read that ONE predicate (T-92).
  */
 export interface VerifyGuardOptions {
@@ -144,7 +145,7 @@ export function verifyGuardDecision(
     // RULE 3 — §5's ONE-GIT-WRITER RULE. A member/child session may not run a git WRITE command; the
     // captain may, and read-only git stays open to everyone. Checked for `bash` ONLY, because that is
     // the one tool that can carry a command string at all. THE CAPTAIN IS THE WORKSPACE'S TOP-LEVEL
-    // SESSION — a header, no parent session, delegation depth 0 — and never a preset name (T-92).
+    // SESSION — not a delegated child, and never a preset name (T-92).
     if (toolName === "bash" || toolName === "powershell" || toolName === "pwsh") {
       /** Whether this caller is the workspace's top-level session: §5's one git writer. */
       const isCaptain = sessionIsTopLevel(agent)
@@ -158,11 +159,12 @@ export function verifyGuardDecision(
       })
       if (gitDeny !== undefined) return advisoryOr(mode(options.mode), gitDeny, options.warn)
     }
-    // RULE 1 — THE CAPTAIN'S WRITE RULE. Only the workspace's TOP-LEVEL session is the captain — no
-    // parent session, delegation depth 0, NOT a preset name: a member, a subagent, a workflow worker
-    // and a ralph round are children, and they are precisely who the captain is supposed to hand code
-    // to. The classification is the session gate's own predicate (`sessionIsTopLevel`), reused rather
-    // than re-derived, so rules 1, 3 and the manual can never disagree about who is top-level.
+    // RULE 1 — THE CAPTAIN'S WRITE RULE. Only the workspace's TOP-LEVEL session is the captain — not a
+    // delegated child (`origin: "subagent"` or depth `1`+), NOT a preset name: a member, a subagent, a
+    // workflow worker and a ralph round are children, and they are precisely who the captain is supposed
+    // to hand code to. The classification is the session gate's own predicate (`sessionIsTopLevel`),
+    // reused rather than re-derived, so rules 1, 3 and the manual can never disagree about who is
+    // top-level.
     /** The decision for this call. */
     const decision = captainWriteDecision({
       toolName,

@@ -6,17 +6,30 @@
 // the whole restriction list while composing the child, so EVERY read-only spawn died with
 // `tools.restrict() names unknown global tools "..."` and no child was ever created.
 //
-// THE TWO ROUTES, and which one this case MEASURES (re-derived from measurement 2026-10-09, replacing
-// the earlier "the control reproduces silent un-guarding" reading, which the control never evidenced):
-// `@deepseek-ai/dsh-subagent` applies the filter only when `composition.toolFilter` is defined, while
-// `@deepseek-ai/dsh-tools` THROWS (`tools.restrict() names unknown global tool…`) for a name outside
-// `view(scope).restrictableNames` and accepts a name that is stale but still KNOWN to that set. So an
-// UNREGISTERED name takes the LOUD route — a throw, an errored tool result, no child — while only a
-// registered-but-stale name could take the silent one. The two names injected here are unregistered,
-// so the control lane below MEASURES the loud route: refusalSeen comes from the harness's OWN session
-// store (the `mpd_role_spawn` tool result carrying `isError: true` and the unknown-name message), read
-// with lib/session-evidence.ts — never from stderr, which cannot tell a refusal apart from a run that
-// never reached the spawn. The silent route stays a DECLARED classifier for a different input.
+// THE TWO ROUTES, and which one this case MEASURES (re-derived 2026-10-10, when the tolerant-restriction
+// contract replaced the pre-fix loud refusal): `@deepseek-ai/dsh-tools` still THROWS
+// (`tools.restrict() names unknown global tool…`) for a name outside `view(scope).restrictableNames`,
+// while `@deepseek-ai/dsh-subagent` applies the filter only when `composition.toolFilter` is defined.
+// The wave's IMPLANT changed what the throw COSTS: `restrictToolsTolerant`
+// (packages/mpd-dsh-adapter-plugin) catches that rejection, prunes exactly the names the harness
+// reported as unknown, retries ONCE with the survivors and rethrows a second failure — so the row
+// now EMITS A PRUNE RECORD and the child is created, restricted, instead of the spawn dying. The
+// silent route (a restriction that never applies) stays a DECLARED classifier for a different input.
+//
+// THE CONTROL LANE below therefore asserts the NEW loud degradation, not a refusal: (a) PROVENANCE —
+// the injected unregistered names really reached the adapter, which the prune record proves, because
+// the record can only name names the harness itself rejected (a mutation that never loaded emits no
+// record); (b) the record is the VERBATIM line the roles row logged; (c) the restriction handed to the
+// harness is the pruned canonical eight, the single retry's outcome; and (d) the child EXISTS and
+// stays restricted — zero write-capable names in its own requests. A lane that silently un-guarded
+// (the child sees write tools) and a lane whose mutation never loaded both go RED.
+//
+// WHERE THE RECORD IS OBSERVED (measured 2026-10-10): the row calls `ctx.logger.warn`, and the harness's
+// logger service keeps only an in-memory ring (app-boot adds a startup collector, printed on a STARTUP
+// FAILURE, never on a good boot) while R5's `<ws>/.mpd/logs/mpd-roles.log` receives `rowLogLine` calls
+// only. So this case mounts a tiny LOGGER PROBE ROW in the SANDBOX whose exporter mirrors every harness
+// log record into a file — the shipped line is asserted verbatim there, and the row log and the boot's
+// captured output are searched as well, so the record is found on whichever surface really carried it.
 //
 // HOW THIS CASE PROVES ALL OF THAT WITHOUT A PROVIDER CREDENTIAL (t5, captain decision):
 // A local stub answers the PARENT model step with a tool call for mpd_role_spawn, so the child-composition
@@ -31,8 +44,9 @@
 //      carries the composed role persona ("deployment:persona") and never the parent-only delegation
 //      section ("subagent:delegation") — so the case can assert the child's VISIBLE TOOLSET excludes all
 //      eight write-capable names while the parent's includes them. Assertion 2 is the one that can fail:
-//      with the pre-fix names re-injected the restricted spawn is REFUSED and the control lane asserts
-//      exactly that (zero child requests, a recorded refusal).
+//      with the pre-fix names re-injected the control lane proves the mutation loaded (the prune record)
+//      and then asserts the child is still created AND still restricted — while a lane that silently
+//      un-guarded shows a child carrying the write-capable names and goes RED.
 //   WHAT DOES NOT CARRY PROOF: the mere ABSENCE of the restrict error proves nothing, because a run
 //   that never reaches the spawn (no parent credential, or a plugin tree that fails to apply) produces
 //   the same silence; a non-zero exit or a missing filterSent fails this case for that reason. Likewise
@@ -80,6 +94,16 @@ const DEAD_NAMES: readonly string[] = ["str_replace" + "_editor", "apply" + "_pa
 // for one unknown name, so matching the plural form makes a detector blind to the very error it looks
 // for (measured: a single injected name slipped past a "global tools" pattern).
 const DEFECT_SIGNATURE: string = "names unknown global tool"
+// The VERBATIM record the roles row emits when the harness's validator prunes an unknown deny name
+// (`validatedReadonlyDeny` in packages/mpd-roles-plugin). The control lane asserts THIS line, so a
+// silent prune (no record) and a mutation that never loaded (also no record) both redden.
+const PRUNE_RECORD: string = "read-only spawn: pruned tool name(s) this profile does not register: " + DEAD_NAMES.join(", ")
+/** The R5 row log the roles row writes its `rowLogLine` diagnostics into, relative to a booting workspace. */
+const ROW_LOG_REL: string = join(".mpd", "logs", "mpd-roles.log")
+/** The sandbox file the case's logger probe mirrors every harness log record into. */
+const LOGGER_PROBE_FILE: string = "qa-logger-probe.jsonl"
+/** The prefix each mirrored record carries, so a line is attributable to the probe sink. */
+const LOGGER_PROBE_PREFIX: string = "[LOGGER-PROBE] "
 
 /** Report one failed case assertion and end the run with exit 1; never returns. */
 function fail(msg: string): never { console.error("[" + SLUG + "] FAIL: " + msg); process.exit(1) }
@@ -116,6 +140,24 @@ interface RawProbeLine {
 
 /** What the adapter's probe line carried: the parsed filter, or the raw line when it was not JSON. */
 type AdapterFilterReport = AdapterFilter | RawProbeLine
+
+/** Where a lane's loud pruning record was found: the verbatim line, its surface, and what was searched. */
+interface PruneRecord {
+  /** Whether any searched surface carried {@link PRUNE_RECORD}. */
+  readonly seen: boolean
+  /** The surface that carried it — `logger-probe`, `boot-output`, `row-log`, or `none` when none did. */
+  readonly source: string
+  /** The verbatim line the record was read from, or `""` when no surface carried it. */
+  readonly line: string
+  /** How many harness log records the probe mirrored, so a dead sink is told apart from a silent row. */
+  readonly probedRecords: number
+  /** Whether the sink's own mount-check record was mirrored: `false` means the OBSERVER never ran. */
+  readonly probeMountCheck: boolean
+  /** Every surface that was searched, in precedence order, so a miss names what it looked at. */
+  readonly searched: readonly string[]
+  /** The R5 row log's tail, so an absent record names the bytes that were read instead. */
+  readonly rowLogTail: string
+}
 
 /** What the harness's OWN session store says about this lane's spawn attempt. */
 interface SpawnRecord {
@@ -155,6 +197,8 @@ interface ProbeRun {
   readonly rejectedName: string | null
   /** The restriction the instrumented adapter handed over, or `null` when none was seen. */
   readonly filterSent: AdapterFilterReport | null
+  /** The row's loud pruning record, searched on every surface a boot can carry it to. */
+  readonly pruneRecord: PruneRecord
   /** The child output's tail, kept whole so a misbehaving lane stays diagnosable. */
   readonly fullOutput: string
   /** Why the lane could not be prepared, absent on a completed run. */
@@ -284,6 +328,49 @@ function fpTree(root: string): Record<string, string> | null {
     return out
   }
   return walk(root, "")
+}
+
+/**
+ * Find the roles row's pruning record on every surface a boot can carry it to.
+ *
+ * The row emits it through `ctx.logger.warn`, whose only default exporter is the harness's in-memory
+ * ring — a successful headless boot prints nothing, and R5's row log receives `rowLogLine` calls only —
+ * so `probe()` mounts a logger probe row in the SANDBOX that mirrors every harness log record into a
+ * file. The boot's captured output and R5's `<ws>/.mpd/logs/mpd-roles.log` are searched as well,
+ * because either would be a legitimate surface if a host routed the line there. The FIRST surface
+ * carrying the record wins, and `probedRecords`/`rowLogTail` keep an absent record diagnosable
+ * instead of turning it into a bare `false`.
+ *
+ * @param ws The lane's sandbox workspace, under which the R5 row log lives.
+ * @param dshHome The lane's sandbox DSH_HOME, where the logger probe mirrors its records.
+ * @param out The boot's captured stdout+stderr, joined.
+ * @returns The surface that carried the record, the verbatim line, and what was searched.
+ */
+function findPruneRecord(ws: string, dshHome: string, out: string): PruneRecord {
+  /** The logger probe's mirror, empty when the mounted sink never opened its file. */
+  const probeText = ((): string => {
+    try { return readFileSync(join(dshHome, LOGGER_PROBE_FILE), "utf8") } catch { return "" }
+  })()
+  /** The R5 row log's bytes, empty when the row wrote none. */
+  const rowLog = ((): string => {
+    try { return readFileSync(join(ws, ROW_LOG_REL), "utf8") } catch { return "" }
+  })()
+  /** How many records the probe mirrored: 0 means the sink never ran, which a miss must not be blamed on. */
+  const probedRecords = probeText.split("\n").filter((line) => line.startsWith(LOGGER_PROBE_PREFIX)).length
+  /** The sink's own mount-check line, which proves the mirror works even when no row logged anything. */
+  const probeMountCheck = probeText.includes(LOGGER_PROBE_PREFIX + "mount-check")
+  /** The row log's tail, kept for diagnosis when no surface carried the record. */
+  const rowLogTail = rowLog.slice(-4000)
+  /** The surfaces to search, in precedence order, each named for the evidence. */
+  const surfaces: ReadonlyArray<readonly [string, string]> = [["logger-probe", probeText], ["boot-output", out], ["row-log", rowLog]]
+  /** Their names alone, recorded so a MISS says exactly what was read instead of only `false`. */
+  const searched = surfaces.map(([name]) => name)
+  for (const [source, text] of surfaces) {
+    /** The whole line carrying the record, so the evidence quotes the emitted text. */
+    const line = text.split("\n").find((candidate) => candidate.includes(PRUNE_RECORD))
+    if (line !== undefined) return { seen: true, source, line: line.trim(), probedRecords, probeMountCheck, searched, rowLogTail }
+  }
+  return { seen: false, source: "none", line: "", probedRecords, probeMountCheck, searched, rowLogTail }
 }
 
 /** The offline arm: the deny lists, the two dead names and the composed-plane reasoning. */
@@ -427,6 +514,16 @@ function selfTest(): void {
   // source was green with that request at call#2 and RED with it at call#1), which is a flake in the
   // apparatus rather than a fact about read-only authority.
   checks.push(["the stub keys on the REQUEST SHAPE, never on arrival order", ownSource.includes("wire.toolNames.length > 0 && wire.toolResults.length === 0") && !ownSource.includes("if (calls === " + "1)")])
+  // The RECALIBRATED control lane's own shape (tolerant-restriction contract, 2026-10-10). The case must
+  // assert the prune record the row really emits — never the retired pre-fix loud refusal, whose
+  // expectation made this lane red on the new, intended behaviour — and it must keep every clause that
+  // makes the control falsifiable. The forbidden literal is assembled from fragments so its absence
+  // assertion cannot pass vacuously (the same trap the OpenAI needle above documents).
+  checks.push(["the control asserts the tolerant PRUNE record, not the retired loud refusal", ownSource.includes("const pruneRecorded = diagPrune.seen") && !ownSource.includes("const refusal" + "Seen =")])
+  checks.push(["the prune record is asserted verbatim, and the row's emitted sentence is pinned", ownSource.includes("read-only spawn: pruned tool name(s) this profile does not register: ") && ownSource.includes("pruneRecordLine: diagPrune.line")])
+  checks.push(["the logger probe is mounted, because the harness logger prints nothing headless", ownSource.includes("qa-logger-probe") && ownSource.includes("LOGGER_PROBE_PREFIX")])
+  checks.push(["the control requires a child that was CREATED and stayed RESTRICTED", ownSource.includes("diagChildCreatedRestricted") && ownSource.includes("childLeaksWriteCapable")])
+  checks.push(["the control requires the pruned eight-name list the retry applied", ownSource.includes("const diagSentIsTheEight =")])
 
   // The matrix that must stay green: the roles suite carries the coverage + dead-name + parity guards.
   // The roles package's own unit suite, whose guard names this case pins.
@@ -626,6 +723,43 @@ function runReal(): Promise<void> {
       // The patch's adapter row, which is repointed at the instrumented copy.
       const adapterRow = patch.match(/^ {2}- id: mpd-dsh-adapter\n(?: {4,}[^\n]*\n)*/m)
       if (adapterRow) patch = patch.replace(adapterRow[0], adapterRow[0].replace(/^( {4}name:).*$/m, `$1 "${adapterCopy}"`))
+      // THE LOGGER PROBE (see the header). The row's prune record goes through `ctx.logger.warn`, whose
+      // only default exporter is the harness's in-memory ring: a successful headless boot prints nothing,
+      // so this sandbox mounts ONE extra row that mirrors every harness log record into a file. It only
+      // OBSERVES — no shipped row is replaced — and it never throws, so it cannot take a lane down.
+      // It must land INSIDE the profile patch's `- insert:` list (2-space indent, the indent every real
+      // row in this file uses) and BEFORE the column-0 `llm-deepseek` overlay appended below: a row
+      // outside that list is dropped silently, and a 2-space entry AFTER a column-0 one is a YAML error
+      // (`bad indentation of a sequence entry`) — both measured in this case's own laboratory.
+      /** The probe's own directory inside the lane's sandbox. */
+      const probeDir = join(dshHome, "logger-probe")
+      mkdirSync(probeDir, { recursive: true })
+      /** The file the probe mirrors records into, embedded in the generated module as a literal. */
+      const probeLog = join(dshHome, LOGGER_PROBE_FILE)
+      /** The probe module's source: one exporter, one append per record, never a throw. */
+      const probeSource = [
+        'import { appendFileSync } from "node:fs"',
+        'export const name = "qa-logger-probe"',
+        "export function apply(ctx) {",
+        "  ctx.logger.exporter({",
+        "    levels: { default: 3 },",
+        "    export: (message) => {",
+        "      try {",
+        "        appendFileSync(" + JSON.stringify(probeLog) + ", " + JSON.stringify(LOGGER_PROBE_PREFIX) + ' + JSON.stringify({ type: message.type, name: message.name, args: message.args }) + "\\n")',
+        "      } catch { /* an observer must never take the boot down */ }",
+        "    },",
+        "  })",
+        "  // The sink's OWN positive control: one warn-level record through the very call the roles row",
+        "  // uses, so a captured line proves the mirror works and a MISSING prune record can then be",
+        "  // blamed on the row instead of on the observation apparatus.",
+        '  ctx.logger.warn(' + JSON.stringify(LOGGER_PROBE_PREFIX + "mount-check") + ")",
+        "}",
+        "",
+      ].join("\n")
+      /** The probe module's path, which the generated row mounts by absolute `name`. */
+      const probeEntry = join(probeDir, "index.js")
+      writeFileSync(probeEntry, probeSource)
+      patch += "\n  - id: qa-logger-probe\n    name: " + JSON.stringify(probeEntry) + "\n"
       // The local stub that answers the parent model step with the spawn tool call.
       const stub = makeStub()
       // The stub's ephemeral loopback port, which the patched row points at.
@@ -698,6 +832,9 @@ function runReal(): Promise<void> {
           return { called: false, errored: false, text: "session store unreadable: " + (error instanceof Error ? error.message : String(error)) }
         }
       })()
+      // The row's loud pruning record, harvested from the logger probe, the boot's captured output and
+      // the R5 row log — the provenance guard and the control lane's verdict both read it.
+      const pruneRecord = findPruneRecord(ws, dshHome, out)
       // The lane's measurements, in the exact shape the evidence JSON records.
       const res: ProbeRun = {
         exit: run.status,
@@ -712,6 +849,7 @@ function runReal(): Promise<void> {
         spawnDriven: filterSent !== null,
         rejectedName: (out.match(/names unknown global tools? [^\n;]*/) || [null])[0],
         filterSent,
+        pruneRecord,
         // The harness's session-store verdict, which the control lane asserts on.
         spawnCalled: spawnRecord.called,
         spawnErrored: spawnRecord.errored,
@@ -782,13 +920,16 @@ function runReal(): Promise<void> {
 
     steps.positiveOk = {
       // The exact eight-name list reached the harness, the child was created and answered, the harness
-      // never reported an unknown tool, AND the enforcement assertion above holds. A create() that
-      // throws inside tools.restrict() means NO child exists, so a created, answering child is the
-      // precondition; the enforcement lane is what proves the child is actually restricted.
+      // never reported an unknown tool, the canonical list needed NO pruning (the shipped names must all
+      // be registered — a prune here would mean the row silently dropped a guarantee), AND the
+      // enforcement assertion above holds. A create() that throws inside tools.restrict() means NO child
+      // exists, so a created, answering child is the precondition; the enforcement lane is what proves
+      // the child is actually restricted.
       ok: steps.positive.exit === 0
         && !steps.positive.restrictError
         && steps.positive.spawnDriven
         && !steps.positive.missingCredential
+        && !steps.positive.pruneRecord.seen
         && JSON.stringify(steps.positive.filterSent?.deny) === JSON.stringify(EXPECTED_DENY),
       // A FUNCTION of the measurements above, never a fixed sentence: the previous static wording
       // ("the child was created and answered") read as a measurement in the wave's own review while the
@@ -798,64 +939,94 @@ function runReal(): Promise<void> {
         + ", spawnDriven=" + positiveRun.spawnDriven
         + ", restrictError=" + positiveRun.restrictError
         + ", missingCredential=" + positiveRun.missingCredential
+        + ", pruneRecordSeen=" + positiveRun.pruneRecord.seen
         + ", childRequests=" + childReqs.length
         + ", childLeaksWriteCapable=" + JSON.stringify(childSpy.flatMap((c) => c.writeCapableVisible)),
     }
-    // CONTROL (t13 / t9 F1): the re-injection lane is where read-only authority must degrade LOUDLY.
-    // The two re-injected names are NOT registered in this profile, so `tools.restrict()` refuses the
-    // composition by throwing (see the header's two routes): the child is never created and the refusal
-    // lands in the harness's OWN session store as an ERRORED `mpd_role_spawn` result. Asserting that
-    // recorded refusal — plus ZERO restricted-child requests next to it — is what makes the enforcement
-    // assertion above falsifiable instead of decorative: a lane that silently un-guarded would show
-    // children and no refusal, and one that never reached the spawn would show neither.
+    // CONTROL (t13 / t9 F1; recalibrated 2026-10-10 to the TOLERANT-restriction contract): the
+    // re-injection lane is where read-only authority must degrade LOUDLY, and the loud route is now the
+    // PRUNE, not a refusal. The two re-injected names are NOT registered in this profile, so the harness
+    // still rejects the list — but the adapter's `restrictToolsTolerant` catches that rejection, prunes
+    // exactly the names the harness reported, retries ONCE with the survivors, and the roles row EMITS
+    // the pruning record. So this control asserts the new degradation on four independent clauses: the
+    // record (provenance AND the verbatim emitted line), the pruned eight-name list really handed to the
+    // harness (the single retry's outcome), and a child that EXISTS and STAYS restricted. A lane that
+    // silently un-guarded shows a child carrying the write-capable names; a lane whose mutation never
+    // loaded emits no record at all — both go RED.
     steps.reinjectionDiagnostic = await probe("neg", { reInjectDeadNames: true }) as ProbeRun
     // The control lane's own trace, which the mutation assertions read.
     const diagTrace = steps.reinjectionDiagnostic.stubTrace
     // The control lane's parent request: the first one that carries tools at all.
     const diagParent = diagTrace.find((c) => c.toolCount > 0)
-    // The control lane's restricted-child requests, which the mutation must make disappear.
-    const diagChild = diagTrace.filter((c) => c !== diagParent && c.toolCount > 0 && c.writeCapableVisible.length === 0 && c._toolNames.includes("structured_output"))
-    // PROVENANCE GUARD — without this the control cannot distinguish "the degradation happened" from
-    // "the mutation never ran": a lane whose injected names never reached the harness would ALSO show
-    // zero restricted-child requests, and the control would report a meaningless green. So the control
-    // must first prove the MUTATION LOADED, by finding the injected names in the restriction the
-    // adapter actually handed over. (t9 hit exactly this trap through a different route: an id-target
-    // OVERLAY cannot rebind a row's `name:`, so their mutation lane silently ran the fixed build and
-    // reported a clean lane that proved nothing.)
-    // The deny list the control lane's adapter actually handed over.
+    // Every request that is NOT the parent and carries the read-only child's own signature (a toolset
+    // with `structured_output`), whether or not it stayed restricted: the LOOSE set is what makes "the
+    // child was created" and "the child stayed restricted" two separate, falsifiable readings.
+    const diagChildCandidates = diagTrace.filter((c) => c !== diagParent && c.toolCount > 0 && c._toolNames.includes("structured_output"))
+    // The child candidates that expose none of the eight — the requests a restricted child issues.
+    const diagChild = diagChildCandidates.filter((c) => c.writeCapableVisible.length === 0)
+    // Every write-capable name a child candidate leaked; empty exactly when the restriction held.
+    const diagChildLeaks = diagChildCandidates.flatMap((c) => c.writeCapableVisible)
+    // PROVENANCE GUARD — without this the control cannot distinguish "the prune really happened" from
+    // "the mutation never ran": a lane whose injected names never reached the adapter would show a
+    // created, restricted child TOO (the unmutated canonical list needs no pruning at all), and the
+    // control would report a meaningless green. The pruning record is the ONE trace a mutated canonical
+    // list can produce — it can name a name only because the HARNESS itself rejected it. (t9 hit this
+    // trap through a different route: an id-target OVERLAY cannot rebind a row's `name:`, so their
+    // mutation lane silently ran the fixed build and reported a clean lane that proved nothing.)
+    const diagPrune = steps.reinjectionDiagnostic.pruneRecord
+    // Whether both injected names really reached the adapter's pruner, which is what proves the mutation loaded.
+    const mutationLoaded = DEAD_NAMES.every((n) => diagPrune.line.includes(n))
+    // The loud degradation itself: the roles row's OWN record, found on a surface that really carried it.
+    const pruneRecorded = diagPrune.seen
+    // The deny list the control lane's roles row handed the harness, AFTER the one permitted prune+retry.
     const diagSent = steps.reinjectionDiagnostic.filterSent?.deny ?? []
-    // Whether both injected names really reached the harness, which is what proves the mutation loaded.
-    const mutationLoaded = DEAD_NAMES.every((n) => diagSent.includes(n))
-    // The refusal as the HARNESS recorded it — the spawn tool's own errored result carrying the
-    // unknown-name message. Read from the session store, because stderr cannot tell a refusal apart
-    // from a run that never reached the spawn (the trap this control lane was rebuilt to close).
-    const refusalSeen = steps.reinjectionDiagnostic.spawnCalled
-      && steps.reinjectionDiagnostic.spawnErrored
-      && steps.reinjectionDiagnostic.spawnResultText.includes(DEFECT_SIGNATURE)
+    // The single retry's outcome: the eight live names in canonical order, with no pruned name left in.
+    const diagSentIsTheEight = JSON.stringify(diagSent) === JSON.stringify(EXPECTED_DENY)
+    // The parent's own toolset, which must still expose all eight or "the child lacks them" is vacuous.
+    const diagParentSeesAll = (diagParent?.writeCapableVisible.length ?? 0) === WRITE_CAPABLE.length
+    // The child must exist AND expose none of the eight; either half alone is not the guarantee.
+    const diagChildCreatedRestricted = diagChild.length > 0 && diagChildLeaks.length === 0
     steps.reinjectionControl = {
-      // Falsifiable by construction: a lane that silently un-guarded would show child requests and no
-      // recorded refusal, so this conjunction reddens on either half.
-      ok: mutationLoaded && refusalSeen && diagChild.length === 0 && (diagParent?.writeCapableVisible.length ?? 0) === WRITE_CAPABLE.length,
+      // Falsifiable on every clause: an unloaded mutation emits no record, a silent un-guard leaks a
+      // write-capable name into the child, and a spawn that died leaves no child request at all.
+      ok: mutationLoaded && pruneRecorded && diagSentIsTheEight && diagChildCreatedRestricted && diagParentSeesAll,
       mutationLoaded,
-      injectedNamesSeenByAdapter: DEAD_NAMES.filter((n) => diagSent.includes(n)),
-      // ZERO restricted-child requests: composition threw before any child existed. A count of CHILD
-      // REQUESTS, never of tools — the live registry's size varies between identical lanes.
+      injectedNamesSeenByAdapter: DEAD_NAMES.filter((n) => diagPrune.line.includes(n)),
+      pruneRecorded,
+      // The record VERBATIM, so a reader checks the emitted sentence instead of trusting `pruneRecorded`.
+      pruneRecordLine: diagPrune.line,
+      // WHICH surface carried it — the probe mirrors the harness logger's records, and a future host
+      // that routes the row's warnings elsewhere is reported here instead of silently failing.
+      pruneRecordSource: diagPrune.source,
+      loggerProbeRecords: diagPrune.probedRecords,
+      // The OBSERVER's own control: `false` means the mirror never ran, so a missing record is the
+      // apparatus's failure, not the row's — the two must never be confused.
+      loggerProbeMountCheck: diagPrune.probeMountCheck,
+      // What a MISS would have read: the surfaces searched and the R5 row log's tail, so an absent
+      // record is diagnosable from the evidence alone rather than being a bare `false`.
+      pruneRecordSearched: diagPrune.searched,
+      rowLogTail: diagPrune.rowLogTail,
+      // The deny list the pruner really produced, which the harness then accepted.
+      appliedDenyList: diagSent,
+      // A count of CHILD REQUESTS, never of tools — the live registry's size varies between lanes.
       childRequestsUnderRestriction: diagChild.length,
+      childCandidates: diagChildCandidates.length,
+      childLeaksWriteCapable: diagChildLeaks,
       parentSeesWriteCapable: diagParent?.writeCapableVisible ?? [],
-      refusalSeen,
-      refusalReadFrom: "the harness session store: the mpd_role_spawn tool result with isError:true",
       recordedSpawnCalled: steps.reinjectionDiagnostic.spawnCalled,
       recordedSpawnErrored: steps.reinjectionDiagnostic.spawnErrored,
       recordedSpawnText: steps.reinjectionDiagnostic.spawnResultText.slice(0, 300),
+      // Informational: under the tolerant contract this must be FALSE (the rejection was caught by the
+      // adapter, not surfaced), and it is recorded so a regression that lets it escape is visible.
       refusalInStdout: steps.reinjectionDiagnostic.restrictError,
-      note: "control: the mutation provably loaded (the adapter received the injected names) and the harness then REFUSED the restricted spawn — refusalSeen=" + refusalSeen + " read from the session store, childRequests=" + diagChild.length + ", parentSeesWriteCapable=" + (diagParent?.writeCapableVisible.length ?? 0) + "/" + WRITE_CAPABLE.length,
+      note: "control: the mutation provably loaded (the adapter PRUNED the injected names and logged " + JSON.stringify(diagPrune.line) + " from the " + diagPrune.source + "), the single retry handed the harness the pruned eight-name list (appliedDenyListIsTheEight=" + diagSentIsTheEight + "), and the child was CREATED and stayed restricted — childRequests=" + diagChild.length + ", childLeaksWriteCapable=" + JSON.stringify(diagChildLeaks) + ", parentSeesWriteCapable=" + (diagParent?.writeCapableVisible.length ?? 0) + "/" + WRITE_CAPABLE.length,
     }
     steps.reinjectionNote = ((): string => {
       // The control lane's own result, which the note explains in one line.
       const neg = steps.reinjectionDiagnostic
       return neg.reason
         ? "diagnostic lane could not be prepared: " + neg.reason
-        : "with the unregistered names re-injected, the sandbox boot REFUSED the restricted spawn (recorded spawnErrored=" + neg.spawnErrored + ", stdout refusal=" + neg.restrictError + ") and made zero child requests — the loud route for a name outside the scope's restrictable set"
+        : "with the unregistered names re-injected, the adapter PRUNED them and emitted the record " + JSON.stringify(neg.pruneRecord.line) + " (read from the " + neg.pruneRecord.source + "), the harness then accepted the pruned eight-name list on the single retry, and the child was created and stayed restricted with zero write-capable tools — the loud degradation the tolerant-restriction contract specifies, not a refusal"
     })()
     steps.isolation = {
       ok: JSON.stringify(fpTree(realWm)) === JSON.stringify(realFpBefore),

@@ -77,6 +77,10 @@
           # The preset's own persona, shadowing the deployment default for this agent.
           # `{{model}}` and `{{cwd}}` resolve from the agent's own route and workspace.
           #
+          # The STANDING WORKING DISCIPLINE list at the end of `prefix` is adapted from the
+          # dsh-liangshen package (https://github.com/zhu1090093659/dsh-web, Apache-2.0, consulted
+          # 2026-10-10) — IDEAS only, no upstream bytes ship and no LICENSE-NOTICES entry is owed.
+          #
           # HARNESS CONTRACT: `dsh-persona` takes `prefix` (+ optional `suffix`), NOT the
           # single `text` key this row used through harness 0.1.2-rc.1 — that generation
           # registered one persona section. From 0.1.3-alpha.2 on the row is split into
@@ -278,6 +282,18 @@
                 by DELEGATING the write and ACCEPTING a different agent's recorded verdict — never by
                 writing the code and re-reading it yourself. Your own reading of a result is
                 INTEGRATION, which is not verification.
+
+                STANDING WORKING DISCIPLINE (ideas adapted from dsh-liangshen, Apache-2.0 — no upstream
+                bytes are copied; this list is ours):
+                  - A hypothesis repeated twice without new evidence is CLOSED: inspect the DOCUMENTATION
+                    band directly (read / grep / glob over docs, plans, evidence, or a gate), DELEGATE a
+                    source-path look to an Explorer/Researcher probe, and never reason a third time.
+                  - Think only about the NEXT concrete operation; never rehearse a whole script.
+                  - Independent tool calls go out CONCURRENTLY in one turn.
+                  - Shell calls are EPHEMERAL: no directory persists between them, so use a compound
+                    command or an explicit workdir.
+                  - Verify against ACTUAL tool output, never against intended behaviour.
+                  - YAGNI: build exactly what the acceptance criterion asks. PDCA: plan, do, check, act.
 
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
