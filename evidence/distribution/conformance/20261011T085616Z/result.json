@@ -1,0 +1,12 @@
+{
+  "gate": "dsh-distribution official conformance CLI",
+  "subject": "dsh-distribution.json (unchanged this session; version 0.12.0)",
+  "protocolRepo": "https://github.com/T-Auto/dsh-distribution",
+  "protocolRevision": "7749488ae4b30e346d79e3b6484903f37cd5b1eb",
+  "measuredAt": "20261011T085616Z",
+  "environment": { "node": "v24.21.0", "pnpm": "11.21.0 (corepack, packageManager-pinned)", "registry": "https://registry.npmmirror.com" },
+  "command": "node packages/conformance/lib/cli.js /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dsh-distribution.json",
+  "exitCode": 0,
+  "report": { "valid": true, "complete": true, "issues": [], "unchecked": [] },
+  "bound": "format/consistency only; never data-safety certification (protocol SECURITY.md)"
+}
