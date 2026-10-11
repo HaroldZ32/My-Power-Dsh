@@ -22,10 +22,11 @@
 //
 // Usage:
 //   node skills/dsh-qa/scripts/ask-user-question-audit.ts <session-log.jsonl|session-log.jsonl.zstd>
-//   node skills/dsh-qa/scripts/ask-user-question-audit.ts --self-test
+//   node skills/dsh-qa/scripts/ask-user-question-audit.ts --self-test      (the SOLE argument)
 //
-// Exit codes: 0 the report printed (a broken occurrence is a FINDING, not a failure) · 2 usage error
-// (no path, an unknown flag, or a path that is not a file) · 1 the log exists but cannot be decoded.
+// Exit codes: 0 the report printed (a broken occurrence is a FINDING, not a failure) · 2 usage error (no
+// path, an unknown flag, a path that is not a file, or `--self-test` mixed with another argument) · 1 the
+// log exists but cannot be decoded.
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -118,7 +119,7 @@ interface AuditReport {
   readonly records: number
   /** Byte offset of an incomplete final frame, or `undefined` when the container is complete. */
   readonly tornStart: number | undefined
-  /** Non-empty lines that were not a JSON object (reported, never silently dropped). */
+  /** Non-empty lines that were not a JSON object — an array or a scalar counts here; never dropped. */
   readonly undecodableLines: number
   /** `tool/result` records whose call id could not be read, so no occurrence can ever pair with them. */
   readonly idlessResults: number
@@ -215,6 +216,19 @@ function shapeOf(value: unknown): string {
 }
 
 /**
+ * The detail for a required text field, built from the RAW value so a violation distinguishes a MISSING
+ * field (`absent`) from one PRESENT with the wrong type (its shape is named): a pre-filtered
+ * `stringFieldOf` result reads `undefined` for both and would report a wrong-type field as absent.
+ * @param raw The field's raw value, read with `fieldOf`.
+ * @returns `absent`, `'' (empty)` for an empty string, or the raw value's shape name.
+ */
+function textFieldDetail(raw: unknown): string {
+  if (raw === undefined) return "absent"
+  if (typeof raw === "string" && raw.length === 0) return "'' (empty)"
+  return shapeOf(raw)
+}
+
+/**
  * The JSON decode step of the rule set, mirroring the harness's own `parseArguments`: a non-empty
  * string is the RAW model text and must parse, empty or absent input was dispatched as `{}`, and a
  * value that is already a decoded object (an older/other writer) is taken as it is.
@@ -278,15 +292,16 @@ function classifyArguments(raw: unknown): Classification {
       options.push(0)
       continue
     }
-    // The item's `id`, which the host schema requires and the panel keys its card by.
-    const id = stringFieldOf(item, "id")
-    if (id === undefined || id.length === 0) {
-      violations.push({ rule: "question-id-missing", path: itemPath + ".id", detail: id === undefined ? "absent" : "'' (empty)" })
+    // The item's `id`, which the host schema requires and the panel keys its card by; the RAW value is
+    // what lets the detail below name a wrong type instead of reporting it as absent.
+    const rawId = fieldOf(item, "id")
+    if (typeof rawId !== "string" || rawId.length === 0) {
+      violations.push({ rule: "question-id-missing", path: itemPath + ".id", detail: textFieldDetail(rawId) })
     }
     // The item's `question` text, whose absence is what rendered a card with no prompt.
-    const text = stringFieldOf(item, "question")
-    if (text === undefined || text.length === 0) {
-      violations.push({ rule: "question-text-missing", path: itemPath + ".question", detail: text === undefined ? "absent" : "'' (empty)" })
+    const rawText = fieldOf(item, "question")
+    if (typeof rawText !== "string" || rawText.length === 0) {
+      violations.push({ rule: "question-text-missing", path: itemPath + ".question", detail: textFieldDetail(rawText) })
     }
     // The item's optional `options`; absent means a free-text question, which stays legal.
     const itemOptions = fieldOf(item, "options")
@@ -313,10 +328,11 @@ function classifyArguments(raw: unknown): Classification {
         violations.push({ rule: "option-label-missing", path: optionPath, detail: shapeOf(option) })
         continue
       }
-      // The option's label, which must be a non-empty string to render.
-      const label = stringFieldOf(option, "label")
-      if (label === undefined || label.length === 0) {
-        violations.push({ rule: "option-label-missing", path: optionPath + ".label", detail: label === undefined ? "absent" : "'' (empty)" })
+      // The option's label, which must be a non-empty string to render; the RAW value keeps a
+      // wrong-type label distinguishable from a missing one in the detail.
+      const rawLabel = fieldOf(option, "label")
+      if (typeof rawLabel !== "string" || rawLabel.length === 0) {
+        violations.push({ rule: "option-label-missing", path: optionPath + ".label", detail: textFieldDetail(rawLabel) })
       }
     }
   }
@@ -457,7 +473,8 @@ function pairAnswer(records: readonly SessionRecord[], callIndex: number, callId
 /**
  * Parse one decoded session text into records.
  * @param text The concatenated decoded text of every frame.
- * @returns The records that parsed as JSON objects, plus the count of non-empty lines that did not.
+ * @returns The records that parsed as JSON objects, plus the count of non-empty lines that did not —
+ * an array line counts there, because `typeof [] === "object"` but an array is never a record.
  */
 function parseRecords(text: string): { readonly records: readonly SessionRecord[]; readonly undecodableLines: number } {
   // Every record parsed from the text, in file order.
@@ -471,7 +488,9 @@ function parseRecords(text: string): { readonly records: readonly SessionRecord[
     try {
       // The parsed line; `JSON.parse` is untyped, so the record shape is asserted after the object test.
       const parsed: unknown = JSON.parse(trimmed)
-      if (typeof parsed === "object" && parsed !== null) records.push(parsed as SessionRecord)
+      // The record test excludes arrays: a JSONL line holding an array decodes to `object` but is not a
+      // record, so it must be reported as an undecodable line instead of inflating the record count.
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) records.push(parsed as SessionRecord)
       else undecodableLines += 1
     } catch {
       undecodableLines += 1
@@ -634,7 +653,9 @@ function printReport(report: AuditReport): void {
 }
 
 /**
- * Parse this script's arguments into the one action it should take.
+ * Parse this script's arguments into the one action it should take. `--self-test` takes effect ONLY as
+ * the SOLE argument: mixed with a path (or repeated) it is a usage error, so an operator who also named
+ * a log never has that log silently skipped.
  * @param argv Arguments without the node executable and the script path.
  * @returns The audit target, the self-test request, or the usage error to report.
  */
@@ -642,7 +663,11 @@ function parseArgs(argv: readonly string[]): Invocation {
   for (const flag of argv.filter((arg) => arg.startsWith("--"))) {
     if (flag !== "--self-test") return { kind: "usage", message: "unknown flag " + flag }
   }
-  if (argv.includes("--self-test")) return { kind: "self-test" }
+  if (argv.includes("--self-test")) {
+    // The sole-argument rule: anything beside the flag is a usage error, never a silent self-test run.
+    if (argv.length !== 1) return { kind: "usage", message: "--self-test must be the sole argument, got " + String(argv.length) + " argument(s)" }
+    return { kind: "self-test" }
+  }
   // The positional arguments, which must be exactly one session-log path.
   const paths = argv.filter((arg) => !arg.startsWith("--"))
   if (paths.length === 0) return { kind: "usage", message: "missing the <session-log> path" }
@@ -669,7 +694,9 @@ function writeFixtureFrames(file: string, frames: readonly (readonly SessionReco
  * The offline self-test: synthetic CONCATENATED-zstd frames through the real decoder, one assertion per
  * rule of the local restatement, both answer pairings (v4 and v3 result shapes, and the continued
  * question's user-message answer), a negative control that must NOT be enumerated, and the CLI's own
- * exit codes (0 after reporting, 2 on a usage error) exercised by spawning this very script.
+ * exit codes (0 after reporting, 2 on a usage error) exercised by spawning this very script. The repair
+ * arms cover a wrong-type required field, a JSON-array line counted as undecodable, and `--self-test`
+ * mixed with another argument.
  * @returns Nothing; a failed assertion ends the process with exit 1.
  */
 function selfTest(): void {
@@ -750,6 +777,32 @@ function selfTest(): void {
   check("a missing id and an empty options array both fire", rulesOf("call-id-missing").join(",") === "question-id-missing,options-empty")
   check("an option without a label is option-label-missing", rulesOf("call-label-missing").join(",") === "option-label-missing")
 
+  // R2 (repair): a required text field PRESENT with the wrong type must be reported by its raw shape,
+  // never as absent — while an absent field and an empty string keep their own details.
+  /** The classification of one directly built arguments string, for the R2 arms below. */
+  const byDetail = (questions: unknown): Classification => classifyArguments(JSON.stringify({ questions }))
+  // The wrong-type `id`, whose detail must name its shape instead of reading `absent`.
+  const wrongTypeId = byDetail([{ id: 5, question: "pick" }])
+  check("a wrong-type id still fires question-id-missing, got " + (wrongTypeId.violations[0]?.rule ?? "no rule"), wrongTypeId.violations[0]?.rule === "question-id-missing")
+  check("a wrong-type id names its shape, got " + String(wrongTypeId.violations[0]?.detail), wrongTypeId.violations[0]?.detail === "number")
+  // The wrong-type `question` text and option `label`, which must name their shapes too.
+  check("a wrong-type question names its shape, got " + String(byDetail([{ id: "q1", question: null }]).violations[0]?.detail), byDetail([{ id: "q1", question: null }]).violations[0]?.detail === "null")
+  check("a wrong-type option label names its shape, got " + String(byDetail([{ id: "q1", question: "pick", options: [{ label: 7 }] }]).violations[0]?.detail), byDetail([{ id: "q1", question: "pick", options: [{ label: 7 }] }]).violations[0]?.detail === "number")
+  // The empty-string and absent cases keep the reporting they always had.
+  check("an empty question keeps the empty-string detail", byDetail([{ id: "q1", question: "" }]).violations[0]?.detail === "'' (empty)")
+  check("an absent id still reads absent, got " + String(byCall("call-id-missing")?.classification.violations[0]?.detail), byCall("call-id-missing")?.classification.violations[0]?.detail === "absent")
+
+  // R3 (repair): a JSONL line that decodes to an ARRAY is not a record — it counts as undecodable.
+  /** The plain (non-zstd) JSONL fixture for the array-line arm: one record, one array, one scalar. */
+  const mixedLog = join(root, "mixed.jsonl")
+  writeFileSync(mixedLog, [JSON.stringify({ type: "session", data: { id: "plain-log" } }), "[]", "\"scalar\""].join("\n") + "\n")
+  // The audit of that plain log, driven through the same entry point the real report uses.
+  const mixed = auditSessionLog(mixedLog)
+  check("a plain JSONL log decodes as 0 zstd frames, got " + String(mixed.frames), mixed.frames === 0)
+  check("a JSON array line must not count as a record, got " + String(mixed.records) + " record(s)", mixed.records === 1)
+  check("the array line and the scalar line are both undecodable, got " + String(mixed.undecodableLines), mixed.undecodableLines === 2)
+  check("the array line is not enumerated as a record", mixed.records === 1 && mixed.occurrences.length === 0)
+
   check("a continued question pairs with its user-message answer, not with a result", byCall("call-user-answered")?.answer.hasResult === false && byCall("call-user-answered")?.answer.hasUserAnswer === true && (byCall("call-user-answered")?.answer.answerChars ?? 0) > 0)
   check("a call with no closing record reports no pairing", byCall("call-missing-questions")?.answer.hasResult === false && byCall("call-missing-questions")?.answer.hasUserAnswer === false)
 
@@ -773,13 +826,23 @@ function selfTest(): void {
   check("an unknown flag must be a usage error (exit 2)", runCli(["--nope"]).status === 2)
   check("a path that is not a file must be a usage error (exit 2)", runCli([join(root, "absent.jsonl")]).status === 2)
   check("an unknown flag reports the usage line", runCli(["--nope"]).out.includes("usage: node skills/dsh-qa/scripts/ask-user-question-audit.ts"))
+  // R4 (repair): `--self-test` takes effect ONLY as the sole argument, so a mixed invocation (in either
+  // order) is a usage error instead of a self-test that silently skips the named log.
+  /** The mixed invocation `--self-test <log>`, whose only legal answer is the usage error. */
+  const mixedArgs = runCli(["--self-test", fixture])
+  check("--self-test mixed with a log path must be a usage error (exit 2), got " + String(mixedArgs.status), mixedArgs.status === 2)
+  check("a mixed invocation reports the usage line", mixedArgs.out.includes("usage: node skills/dsh-qa/scripts/ask-user-question-audit.ts"))
+  check("a mixed invocation names the sole-argument rule", mixedArgs.out.includes("--self-test must be the sole argument"))
+  check("the reversed mixed invocation is a usage error too (exit 2)", runCli([fixture, "--self-test"]).status === 2)
+  check("a repeated --self-test is a usage error too (exit 2)", runCli(["--self-test", "--self-test"]).status === 2)
   // The real CLI arm over the fixture: exit 0 after reporting, with the summary on stdout.
   const live = runCli([fixture])
   check("the report run must exit 0, got " + String(live.status), live.status === REPORT_EXIT)
   check("the report run must print the summary line", live.out.includes("summary: 11 call(s) — ok 2, structurally-broken 8, unparseable-arguments 1"))
   rmSync(root, { recursive: true, force: true })
   console.log("[ask-user-question-audit self-test] ok: " + String(frameCount) + " concatenated zstd frame(s), " + String(recordCount)
-    + " record(s), 11 occurrence(s), every rule of the local restatement, both answer pairings and the CLI exit codes are verified offline")
+    + " record(s), 11 occurrence(s), every rule of the local restatement, both answer pairings, the CLI exit codes and the"
+    + " repair arms (R2 wrong-type detail, R3 array line, R4 mixed-arg usage) are verified offline")
 }
 
 /** This process's arguments, without the node executable and the script path. */

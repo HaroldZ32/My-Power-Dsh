@@ -1,0 +1,12 @@
+{
+  "gate": "audit-selftest-mutant-r3",
+  "command": "bash -c \n    set -u\n    REPO=\"$1\"; EXPR=\"$2\"\n    tmp=\"$(mktemp -d)\"\n    trap \"rm -rf \\\"$tmp\\\"\" EXIT\n    cp \"$REPO/skills/dsh-qa/scripts/ask-user-question-audit.ts\" \"$tmp/\"\n    cp -r \"$REPO/skills/dsh-qa/scripts/lib\" \"$tmp/lib\"\n    sed -i \"$EXPR\" \"$tmp/ask-user-question-audit.ts\"\n    echo \"[mutant] mutation applied: $EXPR\"\n    node \"$tmp/ask-user-question-audit.ts\" --self-test\n    code=$?\n    echo \"[mutant] the mutated copy exited $code (1 = the new assertion really fired, as intended)\"\n    if [ \"$code\" -eq 1 ]; then exit 0; fi\n    echo \"[mutant] FAIL: the mutation did NOT redden the self-test\"\n    exit 1\n   bash /home/haroldzhao/MyProj/DshProj/My-Power-Dsh s|!Array.isArray(parsed)|true|",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T10:07:18Z",
+  "endedAtUtc": "2026-10-11T10:07:18Z",
+  "logPath": "output.log",
+  "logBytes": 247,
+  "logSha256": "f1d3da109bb1fa73a14c50418777887db24331bf69186d830089015685c1f895",
+  "headline": "[mutant] the mutated copy exited 1 (1 = the new assertion really fired, as intended)"
+}
