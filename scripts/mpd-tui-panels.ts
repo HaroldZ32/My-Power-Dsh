@@ -41,12 +41,16 @@
 // provable record.
 //
 // SAFETY: dry-run is the DEFAULT and prints the resolved absolute path and the exact block it would
-// write; a write needs `--apply`. The write is atomic and keeps a `.bak-<stamp>` copy beside the
-// document. Existing tokens are never removed and never reordered — the script only APPENDS ids the
-// list is missing — so a user's own panel choices survive untouched. Adding an entry for a row the
-// user layer does not carry yet REPLACES that row's whole config, so the script restates the
-// inherited config VERBATIM from the composing bundle patch (including any `!!js` tags) rather than
-// inventing a partial one.
+// write; a write needs `--apply`. The write is atomic, keeps a `.bak-<stamp>` copy beside the document,
+// and READS THE DOCUMENT BACK afterwards — a write whose leaf does not come back as intended exits 1 and
+// names the backup, rather than announcing a success the file does not carry. Tokens are never reordered
+// and never removed except for ONE class: this bundle's OWN panel ids from an EARLIER boot (the host
+// renumbers the `<pluginId>` half of a row-registered panel on every boot, so `act1:team`, `act7:team`, …
+// accumulate and each dead id draws a sidebar tab and dot with no panel behind it). A token that is not
+// ours — a host builtin, another plugin's panel, even an `act<N>:<their-slug>` id — is preserved
+// byte-for-byte. Adding an entry for a row the user layer does not carry yet REPLACES that row's whole
+// config, so the script restates the inherited config VERBATIM from the composing bundle patch
+// (including any `!!js` tags) rather than inventing a partial one.
 //
 // Usage:
 //   node scripts/mpd-tui-panels.ts [--dsh-home <dir>] [--profile <name>] [--workspace <dir>]
@@ -91,19 +95,64 @@ export interface PanelMerge {
   present: readonly string[]
   /** The tokens the document carried, before the merge. */
   existing: readonly string[]
+  /** The tokens this merge KEEPS, in their original order — {@link csv} minus {@link added}. */
+  kept: readonly string[]
+  /**
+   * The tokens dropped because they name one of OUR panels from an EARLIER boot.
+   *
+   * The host renumbers the `<pluginId>` half of a row-registered panel on every boot, so the user layer
+   * accumulates `act1:team`, `act7:team`, … and the sidebar draws a tab and a dot for each dead one. The
+   * remedy script is the surface that cleans them up, so it prunes exactly these and nothing else.
+   */
+  pruned: readonly string[]
 }
 
 /**
- * Merge the discovered panel ids into an enable CSV.
+ * The `<slug>` half of one composed panel id: everything after the FIRST colon.
+ * @param id - one normalized panel id.
+ * @returns the slug half; an id with no colon is its own slug (the host's builtins are spelled that way).
+ */
+export function panelSlugOf(id: string): string {
+  /** Where the activation half ends; -1 when the id carries none. */
+  const at = id.indexOf(":")
+  return at < 0 ? id : id.slice(at + 1)
+}
+
+/**
+ * Whether one token is a panel of OURS from an EARLIER boot — the only kind of token this script prunes.
  *
- * THE INVARIANTS: never removes a token, never reorders one, and appends our ids after the user's
- * list in registration order. Tokens are trimmed and lowercased the way the host's own
+ * The three conditions are the adapter's own (`panelTokenIsStaleMine` in
+ * `packages/mpd-tui-adapter-plugin/src/index.ts`), restated here because this script is a standalone
+ * Node entry point and cannot import a bundled package's source: the token must have the host's
+ * fallback-activation shape `act<N>:<slug>`, its SLUG must be one of the ids this run is enabling, and
+ * the full id must not be one of them. A foreign plugin's `act<N>:<its-slug>` therefore survives, which
+ * is what keeps the remedy from removing a working panel it does not own.
+ * @param token - one normalized token from the document's list.
+ * @param ids - the ids this run enables, in registration order.
+ * @param slugs - the slugs of {@link ids}, computed once per merge.
+ * @returns true when the token is ours, stale, and therefore prunable.
+ */
+export function panelTokenIsStaleMine(token: string, ids: readonly string[], slugs: ReadonlySet<string>): boolean {
+  if (!/^act\d+:/u.test(token)) return false
+  if (ids.includes(token)) return false
+  return slugs.has(panelSlugOf(token))
+}
+
+/**
+ * Merge the discovered panel ids into an enable CSV, pruning OUR OWN stale ids.
+ *
+ * THE INVARIANTS: never reorders a token and never removes one it does not own — the user's list,
+ * including other plugins' panels and the host's builtins, comes back in its original order — and our
+ * ids are APPENDED after it. Tokens are trimmed and lowercased the way the host's own
  * `normalizeSidePanelPanels` does, so the merge cannot fight the host's normalizer into a second,
- * different list. This is the document-side counterpart of the adapter's `mergePanelEnableIds`
- * (`packages/mpd-tui-adapter-plugin/src/index.ts`), which holds the same two invariants at runtime.
+ * different list. The ONE removal is an id of ours from an earlier boot ({@link panelTokenIsStaleMine}),
+ * which no panel can answer any more and which the host's sidebar still draws a tab and a dot for.
+ *
+ * This is the document-side counterpart of the adapter's `mergePanelEnableIds`
+ * (`packages/mpd-tui-adapter-plugin/src/index.ts`), which holds the same invariants at runtime.
  * @param existing - the CSV the document carries, or `undefined` when the key is absent.
  * @param ids - the panel ids to enable, in registration order.
- * @returns the CSV to write plus what was added and what was already there.
+ * @returns the CSV to write plus what was added, what was already there and what was pruned.
  */
 export function mergePanelIds(existing: string | undefined, ids: readonly string[]): PanelMerge {
   /** The user's tokens, normalized and deduped in first-seen order. */
@@ -113,9 +162,39 @@ export function mergePanelIds(existing: string | undefined, ids: readonly string
     const id = token.trim().toLowerCase()
     if (id !== "" && !tokens.includes(id)) tokens.push(id)
   }
-  /** The requested ids the document does not carry yet, in the order they were discovered. */
-  const added = ids.map((id) => id.trim().toLowerCase()).filter((id) => id !== "" && !tokens.includes(id))
-  return { csv: [...tokens, ...added].join(","), added, present: ids.filter((id) => tokens.includes(id)), existing: tokens }
+  /** The ids this run enables, normalized the same way. */
+  const wanted = ids.map((id) => id.trim().toLowerCase()).filter((id) => id !== "")
+  /** The slugs this run owns, taken from the ids it is about to enable. */
+  const slugs = new Set(wanted.map(panelSlugOf))
+  /** Our tokens from an earlier boot; see {@link panelTokenIsStaleMine} for why only these may go. */
+  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, wanted, slugs))
+  /** The user's list with only those tokens removed, in its original order. */
+  const kept = tokens.filter((token) => !pruned.includes(token))
+  /** The requested ids the kept list does not carry yet, in the order they were discovered. */
+  const added = wanted.filter((id) => !kept.includes(id))
+  return { csv: [...kept, ...added].join(","), added, present: wanted.filter((id) => kept.includes(id)), existing: tokens, kept, pruned }
+}
+
+/**
+ * Read the enable CSV one row block of a patch document carries.
+ *
+ * ONE reader for the merge's input AND for the post-write read-back, so the two can never disagree about
+ * which line is the value: the leaf is the FIRST line of the block whose trimmed text starts with
+ * `panels:`, and everything after that first colon is the value, unquoted.
+ * @param text - the patch document's text.
+ * @param rowId - the loader entry id whose block is read.
+ * @returns the CSV the block carries, or `undefined` when the block or the leaf is absent.
+ */
+export function blockPanelCsv(text: string, rowId: string): string | undefined {
+  /** The block to read, when the document declares the row. */
+  const block = findRowBlock(text, rowId)
+  if (block === undefined) return undefined
+  /** The block's own lines. */
+  const lines = text.split("\n").map((line) => line.replace(/\r$/u, "")).slice(block.start, block.end)
+  /** The leaf's value, or undefined when the block carries no `panels:` line. */
+  const line = lines.find((candidate) => candidate.trim().startsWith(`${PANELS_KEY}:`))
+  if (line === undefined) return undefined
+  return line.split(":").slice(1).join(":").trim().replace(/^["']|["']$/gu, "")
 }
 
 /** A row block inside a patch document: where it starts, and the lines it owns. */
@@ -693,14 +772,15 @@ function main(argv: readonly string[]): number {
       return 1
     }
   }
-  /** The block's own lines, the window every reading below is taken from. */
-  const blockLines = text.split("\n").slice(block.start, block.end)
   /** The CSV the block carries now, `undefined` when the leaf is absent. */
-  const current = blockLines.find((line) => line.trim().startsWith(`${PANELS_KEY}:`))?.split(":").slice(1).join(":").trim().replace(/^["']|["']$/gu, "")
+  const current = blockPanelCsv(text, location.rowId)
   /** The merge this run would write. */
   const merge = mergePanelIds(current, record.ids)
-  if (merge.added.length === 0) {
-    console.log(`${TAG} already enabled: ${merge.csv}`)
+  // A PRUNE ALONE IS A REASON TO RUN (contract D1): the current ids may already be enabled while an
+  // earlier boot's `act<N>:<slug>` tokens still sit in the list — that is precisely the accumulation the
+  // remedy exists to clear, and an `added.length === 0` guard would print "already enabled" and stop.
+  if (merge.added.length === 0 && merge.pruned.length === 0) {
+    console.log(`${TAG} already enabled, and no stale id of ours to prune: ${merge.csv}`)
     return 0
   }
   /** The edited document. */
@@ -711,7 +791,7 @@ function main(argv: readonly string[]): number {
   }
   console.log(`${TAG} ${PANELS_KEY} (before): ${current === undefined || current === "" ? "(unset)" : current}`)
   console.log(`${TAG} ${PANELS_KEY} (after):  ${merge.csv}`)
-  console.log(`${TAG} added: ${merge.added.join(",")}; kept: ${merge.existing.join(",") || "(none)"}`)
+  console.log(`${TAG} added: ${merge.added.join(",") || "(none)"}; pruned: ${merge.pruned.join(",") || "(none)"}; kept: ${merge.kept.join(",") || "(none)"}`)
   if (!options.apply) {
     console.log(`${TAG} DRY RUN — nothing written. Re-run with --apply to write ${location.document}`)
     return 0
@@ -723,7 +803,18 @@ function main(argv: readonly string[]): number {
   const staged = `${location.document}.tmp-${String(process.pid)}`
   writeFileSync(staged, edited.text)
   renameSync(staged, location.document)
-  console.log(`${TAG} WROTE ${location.document} (backup: ${backup})`)
+  // THE POST-WRITE READ-BACK (contract D1). The file on disk is read AGAIN and the leaf is compared with
+  // the CSV this run intended, so a document that did not take the edit — a second `panels:` leaf the
+  // editor wrote elsewhere, a rename that landed on a different inode — is reported instead of being
+  // announced as a successful write. The backup taken above is named in the refusal, because the file
+  // HAS been replaced and the user needs the way back.
+  /** What the document on disk carries after the write. */
+  const landed = blockPanelCsv(readFileSync(location.document, "utf8"), location.rowId)
+  if ((landed ?? "").trim().replace(/^["']|["']$/gu, "") !== merge.csv) {
+    console.error(`${TAG} REFUSED: the document read back "${landed ?? "(no panels leaf)"}" instead of the "${merge.csv}" just written. Restore ${backup} over ${location.document} to undo this run.`)
+    return 1
+  }
+  console.log(`${TAG} WROTE ${location.document} (backup: ${backup}); read back: ${landed}`)
   console.log(`${TAG} restart dsh-tui for the new list to compose`)
   return 0
 }
@@ -752,6 +843,25 @@ function selfTest(): number {
   check("(a) a second pass is a no-op", mergePanelIds(merged.csv, ["act1:team", "act1:dag", "act1:workmate"]).added.length === 0)
   check("(a) the merge never drops an unknown id the user added", mergePanelIds("todo,jobs,agents,someone:else", ["act1:team"]).csv.includes("someone:else"))
   check("(a) duplicates collapse the way the host collapses them", mergePanelIds("todo, jobs ,todo", ["todo"]).csv === "todo,jobs")
+  // (a) D1/D3 — the prune, and the bound it must not cross. The eight host builtins are the host's own
+  // declared default CSV (`DEFAULT_SIDE_PANEL_IDS` in the installed `tuiDisplayPrefs`), spelled here so
+  // the arm reads as the user clause "the original menus were swallowed".
+  /** The host's eight builtin panel ids, in the host's own order. */
+  const BUILTINS = "todo,jobs,agents,info,trajectory,workspace,btw,companion"
+  /** A list one earlier boot left behind: every builtin, a foreign panel, and our dead ids. */
+  const stale = mergePanelIds(`${BUILTINS},someone:else,act7:team,act7:dag`, ["act1:team", "act1:dag"])
+  check("(a) D1 our STALE act ids are pruned and the current ones take their place", stale.csv === `${BUILTINS},someone:else,act1:team,act1:dag`)
+  check("(a) D1 the prune is REPORTED, not silent", stale.pruned.join(",") === "act7:team,act7:dag")
+  check("(a) D3 every one of the eight builtins survives", BUILTINS.split(",").every((id) => stale.csv.split(",").includes(id)))
+  check("(a) D3 a FOREIGN id shaped like an act id is never dropped", mergePanelIds("todo,act9:somebodyelse", ["act1:team"]).csv === "todo,act9:somebodyelse,act1:team")
+  check("(a) D1 a prune with nothing to append still changes the list", mergePanelIds("todo,act1:team,act7:team", ["act1:team"]).csv === "todo,act1:team")
+  /** A document whose sidebar row already carries its section, with a stale id in the leaf. */
+  const staleDoc = ["[]", "- id: dsh-tui", "  config:", "    sidePanel:", `      panels: "${BUILTINS},act7:team"`, ""].join("\n")
+  check("(a) D1 the document reader answers the leaf the merge consumes", blockPanelCsv(staleDoc, "dsh-tui") === `${BUILTINS},act7:team`)
+  /** That document after the prune + append. */
+  const staleEdited = writePanelsIntoDocument(staleDoc, "dsh-tui", mergePanelIds(blockPanelCsv(staleDoc, "dsh-tui"), ["act1:team"]).csv)
+  check("(a) D1 the READ-BACK of an edited document equals the CSV that was written", blockPanelCsv(staleEdited.text, "dsh-tui") === `${BUILTINS},act1:team`)
+  check("(a) D1 the read-back names its own failure on an unedited document", blockPanelCsv(staleDoc, "dsh-tui") !== `${BUILTINS},act1:team`)
   /** A document with the sidebar row already carrying its section. */
   const doc = ["[]", "- id: dsh-tui", "  config:", "    provider: deepseek-official", "    sidePanel:", "      open: true", ""].join("\n")
   /** That document after one edit. */

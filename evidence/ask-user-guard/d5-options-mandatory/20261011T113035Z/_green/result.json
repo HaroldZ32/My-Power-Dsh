@@ -1,0 +1,10 @@
+{
+  "arm": "D5 green arm — the same suite after the minimal guard fix",
+  "command": ".toolchain/node_modules/.bin/bun test ./packages/mpd-roles-plugin/test/ask-user-guard.test.ts",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "observed": "25 pass / 0 fail / 75 expect() calls",
+  "logPath": "_green/output.log",
+  "logBytes": 4006,
+  "logSha256": "2598833d03dfd8ed6a1af6ae0603599d48c964926665058aa9f876a1010de4aa"
+}

@@ -2815,15 +2815,33 @@ async function probeHostPrefs(candidates) {
   }
   return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_PREFS_MODULE} (${candidates.length} probed)` };
 }
-function mergePanelEnableIds(existing, ours) {
+function panelSlugOf(id) {
+  const at = id.indexOf(":");
+  return at < 0 ? id : id.slice(at + 1);
+}
+function panelTokenIsStaleMine(token, ours, ourSlugs) {
+  if (!/^act\d+:/u.test(token))
+    return false;
+  if (ours.includes(token))
+    return false;
+  return ourSlugs.has(panelSlugOf(token));
+}
+function normalizePanelCsv(value) {
   const tokens = [];
-  for (const token of (typeof existing === "string" ? existing : "").split(",")) {
+  for (const token of (typeof value === "string" ? value : "").split(",")) {
     const id = token.trim().toLowerCase();
     if (id !== "" && !tokens.includes(id))
       tokens.push(id);
   }
-  const added = ours.filter((id) => !tokens.includes(id));
-  return { csv: [...tokens, ...added].join(","), added, present: ours.filter((id) => tokens.includes(id)) };
+  return tokens.join(",");
+}
+function mergePanelEnableIds(existing, ours) {
+  const tokens = normalizePanelCsv(existing).split(",").filter((id) => id !== "");
+  const ourSlugs = new Set(ours.map(panelSlugOf));
+  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, ours, ourSlugs));
+  const kept = tokens.filter((token) => !pruned.includes(token));
+  const added = ours.filter((id) => !kept.includes(id));
+  return { csv: [...kept, ...added].join(","), added, present: ours.filter((id) => kept.includes(id)), kept, pruned };
 }
 var PANEL_KEEPER_LADDER_MS = [1000, 2500, 5500, 9000, 16000, 25000];
 function createPanelEnableKeeper(options) {
@@ -2886,7 +2904,7 @@ function createPanelEnableKeeper(options) {
         standDown();
         return;
       }
-      if (merge2.added.length === 0) {
+      if (merge2.added.length === 0 && merge2.pruned.length === 0) {
         settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
         return;
       }
@@ -2897,7 +2915,12 @@ function createPanelEnableKeeper(options) {
         writing = false;
       }
       reasserted += 1;
-      settle("confirmed", `re-asserted ${merge2.added.join(",")} (the list named none of our ids)`);
+      const landed = normalizePanelCsv(prefs.getSidePanelPanels());
+      if (landed !== normalizePanelCsv(merge2.csv)) {
+        settle("refused", `the enable list read back as ${landed === "" ? "(empty)" : landed} instead of the ${merge2.csv} just written`);
+        return;
+      }
+      settle("confirmed", `re-asserted ${merge2.added.join(",")} (the list named none of our ids${merge2.pruned.length === 0 ? "" : `; pruned the stale ${merge2.pruned.join(",")}`})`);
     } catch (error) {
       settle("refused", String(error?.message ?? error));
     }
@@ -4823,6 +4846,22 @@ function panelContentWidth(measuredColumns) {
   return Math.max(1, columns - 2);
 }
 var PANEL_CHROME_ROWS = 2;
+function normalizeWheelDelta(delta, invert) {
+  if (delta === 0)
+    return 0;
+  return invert ? -delta : delta;
+}
+var wheelInvertRead = () => false;
+function setWheelInvertRead(read) {
+  wheelInvertRead = read;
+}
+function wheelInvertOn() {
+  try {
+    return wheelInvertRead() === true;
+  } catch {
+    return false;
+  }
+}
 function clampScroll(offset, contentRows, viewportRows) {
   const viewport = Math.max(1, Math.floor(Number.isFinite(viewportRows) ? viewportRows : 1));
   const content = Math.max(0, Math.floor(Number.isFinite(contentRows) ? contentRows : 0));
@@ -4830,7 +4869,7 @@ function clampScroll(offset, contentRows, viewportRows) {
   const wanted = Math.floor(Number.isFinite(offset) ? offset : 0);
   return { offset: Math.min(max, Math.max(0, wanted)), max, overflow: max > 0 };
 }
-function scrollByWheel(event, offset, contentRows, viewportRows) {
+function scrollByWheel(event, offset, contentRows, viewportRows, invert = wheelInvertOn()) {
   const band = clampScroll(offset, contentRows, viewportRows);
   if (!band.overflow)
     return band.offset;
@@ -4839,7 +4878,18 @@ function scrollByWheel(event, offset, contentRows, viewportRows) {
   const raw = event;
   if (typeof raw.deltaY !== "number" || !Number.isFinite(raw.deltaY))
     return band.offset;
-  return clampScroll(band.offset + raw.deltaY, contentRows, viewportRows).offset;
+  return clampScroll(band.offset + normalizeWheelDelta(raw.deltaY, invert), contentRows, viewportRows).offset;
+}
+function scrollByWheelX(event, offset, contentCols, viewportCols, invert = wheelInvertOn()) {
+  const band = clampScroll(offset, contentCols, viewportCols);
+  if (!band.overflow)
+    return band.offset;
+  if (event === null || event === undefined || typeof event !== "object")
+    return band.offset;
+  const raw = event;
+  if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX))
+    return band.offset;
+  return clampScroll(band.offset + normalizeWheelDelta(raw.deltaX, invert), contentCols, viewportCols).offset;
 }
 function gutterCells(offset, contentRows, viewportRows) {
   const band = clampScroll(offset, contentRows, viewportRows);
@@ -4991,10 +5041,7 @@ function usePanelViewport(kit, read, initialOffset = 0) {
       const value = facts?.current;
       if (value?.contentCols === undefined || value?.viewportCols === undefined)
         return;
-      const raw = event ?? {};
-      if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX))
-        return;
-      commitCol(colPosition() + raw.deltaX);
+      commitCol(scrollByWheelX(event, colPosition(), value.contentCols, value.viewportCols));
     },
     sync() {
       return handle;
@@ -6987,6 +7034,11 @@ function declaredField(knob) {
   };
 }
 var DASHBOARD_TAKEOVER_KNOB = "tui.dashboardKey";
+function wheelInvertFrom(config, floor) {
+  const tui = typeof config === "object" && config !== null ? config.tui : undefined;
+  const leaf = typeof tui === "object" && tui !== null ? tui.wheelInvert : undefined;
+  return typeof leaf === "boolean" ? leaf : floor;
+}
 var SETTINGS_FIELDS = SETTINGS_KNOBS.map(declaredField);
 function settingsFields(lists) {
   return SETTINGS_KNOBS.map((knob) => {
@@ -8377,10 +8429,10 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           setHover(under);
         },
         onWheel: (event) => {
-          const deltaY = Number(event?.deltaY ?? 0);
+          const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn());
           if (deltaY !== 0)
             setScroll(Math.max(0, scroll + (deltaY > 0 ? 1 : -1)));
-          const deltaX = Number(event?.deltaX ?? 0);
+          const deltaX = normalizeWheelDelta(Number(event?.deltaX ?? 0), wheelInvertOn());
           if (deltaX !== 0)
             setScrollX(Math.max(0, Math.min(scrollXMax, scrollXAt + (deltaX > 0 ? 1 : -1))));
         }
@@ -9354,6 +9406,7 @@ var Config = Schema.object({
   dialogs: Schema.boolean().default(true),
   panel: Schema.boolean().default(true),
   dashboardKey: Schema.boolean().default(true),
+  wheelInvert: Schema.boolean().default(false),
   sessionEvents: Schema.boolean().default(true),
   decisionEvents: Schema.boolean().default(true),
   logPrefix: Schema.string().default("mpd-tui")
@@ -9373,6 +9426,7 @@ function resolveConfig(config = {}) {
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
     dashboardKey: bool(config.dashboardKey, true),
+    wheelInvert: bool(config.wheelInvert, false),
     sessionEvents: bool(config.sessionEvents, true),
     decisionEvents: bool(config.decisionEvents, true),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix.length > 0 ? config.logPrefix : "mpd-tui"
@@ -9533,6 +9587,7 @@ function apply(ctx, config = {}) {
   onService(ctx, "mpdConfig", (_scoped, service) => {
     configHandle = service;
   });
+  setWheelInvertRead(() => wheelInvertFrom(configHandle?.get?.(), resolved.wheelInvert));
   const dialogs = createDialogs(tui, log);
   let status = {
     ...tui.skipped("status", "not wired yet"),

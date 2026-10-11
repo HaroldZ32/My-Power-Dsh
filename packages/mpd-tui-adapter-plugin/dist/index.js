@@ -235,15 +235,33 @@ async function probeHostPrefs(candidates) {
   }
   return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_PREFS_MODULE} (${candidates.length} probed)` };
 }
-function mergePanelEnableIds(existing, ours) {
+function panelSlugOf(id) {
+  const at = id.indexOf(":");
+  return at < 0 ? id : id.slice(at + 1);
+}
+function panelTokenIsStaleMine(token, ours, ourSlugs) {
+  if (!/^act\d+:/u.test(token))
+    return false;
+  if (ours.includes(token))
+    return false;
+  return ourSlugs.has(panelSlugOf(token));
+}
+function normalizePanelCsv(value) {
   const tokens = [];
-  for (const token of (typeof existing === "string" ? existing : "").split(",")) {
+  for (const token of (typeof value === "string" ? value : "").split(",")) {
     const id = token.trim().toLowerCase();
     if (id !== "" && !tokens.includes(id))
       tokens.push(id);
   }
-  const added = ours.filter((id) => !tokens.includes(id));
-  return { csv: [...tokens, ...added].join(","), added, present: ours.filter((id) => tokens.includes(id)) };
+  return tokens.join(",");
+}
+function mergePanelEnableIds(existing, ours) {
+  const tokens = normalizePanelCsv(existing).split(",").filter((id) => id !== "");
+  const ourSlugs = new Set(ours.map(panelSlugOf));
+  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, ours, ourSlugs));
+  const kept = tokens.filter((token) => !pruned.includes(token));
+  const added = ours.filter((id) => !kept.includes(id));
+  return { csv: [...kept, ...added].join(","), added, present: ours.filter((id) => kept.includes(id)), kept, pruned };
 }
 var PANEL_KEEPER_LADDER_MS = [1000, 2500, 5500, 9000, 16000, 25000];
 function createPanelEnableKeeper(options) {
@@ -306,7 +324,7 @@ function createPanelEnableKeeper(options) {
         standDown();
         return;
       }
-      if (merge.added.length === 0) {
+      if (merge.added.length === 0 && merge.pruned.length === 0) {
         settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
         return;
       }
@@ -317,7 +335,12 @@ function createPanelEnableKeeper(options) {
         writing = false;
       }
       reasserted += 1;
-      settle("confirmed", `re-asserted ${merge.added.join(",")} (the list named none of our ids)`);
+      const landed = normalizePanelCsv(prefs.getSidePanelPanels());
+      if (landed !== normalizePanelCsv(merge.csv)) {
+        settle("refused", `the enable list read back as ${landed === "" ? "(empty)" : landed} instead of the ${merge.csv} just written`);
+        return;
+      }
+      settle("confirmed", `re-asserted ${merge.added.join(",")} (the list named none of our ids${merge.pruned.length === 0 ? "" : `; pruned the stale ${merge.pruned.join(",")}`})`);
     } catch (error) {
       settle("refused", String(error?.message ?? error));
     }
@@ -1196,8 +1219,11 @@ export {
   inject,
   mergePanelEnableIds,
   name,
+  normalizePanelCsv,
   onService,
   panelRecordProvenance,
+  panelSlugOf,
+  panelTokenIsStaleMine,
   probeHostInput,
   probeHostPrefs,
   readHostPackageVersion,

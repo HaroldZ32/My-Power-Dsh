@@ -1,0 +1,37 @@
+# audit-resync — SKILL.md rule-id enumeration resync (D5 follow-up)
+
+Note
+- Subject: `skills/dsh-qa/SKILL.md`, the `ask-user-question-audit` case-table row.
+- Intent: the row's enumeration of `structurally-broken` rule ids was INCOMPLETE after the D5 wave
+  added `options-missing` to `skills/dsh-qa/scripts/ask-user-question-audit.ts`
+  (`classifyArguments`: an item whose `options` field is absent is denied exactly like `options: []`).
+- Edit: one token, inserted in the guard's own check order (missing is checked BEFORE not-array and
+  empty — script lines `options-missing` -> `options-not-array` -> `options-empty` -> `option-label-missing`).
+  No other file touched; surrounding table row and sentence kept intact.
+
+Before (the clause only):
+  `question-text-missing`, `options-not-array`, `options-empty`, `option-label-missing`)
+
+After (the clause only):
+  `question-text-missing`, `options-missing`, `options-not-array`, `options-empty`, `option-label-missing`)
+
+Verification (run once from the repo root)
+
+1) `node skills/dsh-qa/scripts/ask-user-question-audit.ts --self-test` -> exit 0
+[ask-user-question-audit self-test] ok: 4 concatenated zstd frame(s), 19 record(s), 12 occurrence(s), every rule of the local restatement, both answer pairings, the CLI exit codes and the repair arms (R2 wrong-type detail, R3 array line, R4 mixed-arg usage, D5 options MANDATORY) are verified offline
+
+2) `grep -o 'every broken clause NAMED: [^)]*)' skills/dsh-qa/SKILL.md` -> exit 0
+every broken clause NAMED: `arguments-not-object`, `questions-missing` / `-not-array` / `-empty`, `question-item-not-object`, `question-id-missing`, `question-text-missing`, `options-missing`, `options-not-array`, `options-empty`, `option-label-missing`)
+
+=> all four `options-*` rule ids are named, and `options-missing` precedes `options-not-array` as in the guard.
+
+Not touched / noticed
+- The same row's `--self-test` prose still says "4 frames / 18 records / 11 occurrences" while the
+  script now reports 19 records / 12 occurrences (the D5 arm added one record and one occurrence).
+  Pre-existing staleness, outside this one-token task — NOT changed here.
+- Human-facing `docs/development.md` / `docs/development.zh-CN.md` name the audit's rules only as
+  "e.g." examples (no full enumeration), so they are not part of this resync; no zh-CN twin exists in
+  the skills corpus (agent-facing, English-only).
+- Bounds: NO git commands run. `VENDOR_LOCK.json` re-pin for this `skills/**` edit is the captain's
+  step (single-skills-writer rule). File-level evidence only; no mounting boot was needed for an
+  enumeration line.

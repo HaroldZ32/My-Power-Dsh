@@ -678,38 +678,113 @@ export async function probeHostPrefs(candidates: readonly string[]): Promise<Hos
 export interface PanelEnableMerge {
   /** The CSV to apply: the user's list in its ORIGINAL order, then every missing id, in OUR order. */
   csv: string
-  /** The ids that were missing and are therefore appended; empty means "nothing to write". */
+  /** The ids that were missing and are therefore appended; empty means "nothing to append". */
   added: readonly string[]
   /** The ids that were already enabled. */
   present: readonly string[]
+  /** The user's tokens this merge KEEPS, in their original order — {@link csv} minus {@link added}. */
+  kept: readonly string[]
+  /**
+   * The tokens dropped because they name one of OUR panels from an EARLIER boot.
+   *
+   * The host renumbers the `<pluginId>` half of a row-registered panel on every boot (`act1:team` this
+   * boot, `act7:team` the next), so a list left behind by an earlier session names ids nothing can
+   * answer — and the host's `SidePanelColumn` still builds a tab and draws a dot for each one. These are
+   * the ONLY tokens this merge ever removes.
+   */
+  pruned: readonly string[]
 }
 
 /**
- * Merge this activation's panel ids into the host's live enable CSV.
+ * The `<slug>` half of one composed panel id: everything after the FIRST colon.
  *
- * THE INVARIANTS THIS PURE FUNCTION EXISTS TO HOLD. It NEVER removes a token and NEVER reorders one:
- * the user's list — including panels of other plugins and ids this bundle does not own — comes back
- * in its original order, and our ids are APPENDED after it. Duplicates collapse the way the host's
- * own `normalizeSidePanelPanels` collapses them (trim + lowercase + first-wins), so a merge never
- * fights the host's normalizer into a second, different list. Removal is deliberately NOT offered:
- * a user who turns one of our panels off in `/settings` loses nothing to this function, because the
- * merge only ever finds the id missing and appends it — which is what lets the caller's bounded
- * ladder end without ever having to undo a removal.
- * @param existing - the host's current CSV; anything at all (a non-string reads as the empty list).
- * @param ours - the ids this activation registered, in registration order.
- * @returns the CSV to apply, plus what was added and what was already there.
+ * The host composes a loader row's panel id as `<pluginId>:<slug>` and validates it against its own
+ * grammar (`/^[a-z][a-z0-9_-]*(:[a-z][a-z0-9_-]*)*$/`), so the slug is what identifies OUR page while
+ * the activation half is the host's to renumber. An id with no colon is its own slug — the host's
+ * builtins are spelled that way.
+ * @param id - one normalized panel id.
+ * @returns the slug half.
  */
-export function mergePanelEnableIds(existing: unknown, ours: readonly string[]): PanelEnableMerge {
-  /** The user's tokens, normalized and deduped exactly as the host normalizes them. */
+export function panelSlugOf(id: string): string {
+  /** Where the activation half ends; -1 when the id carries none. */
+  const at = id.indexOf(":")
+  return at < 0 ? id : id.slice(at + 1)
+}
+
+/**
+ * Whether one token is a panel of OURS from an EARLIER boot — the only kind of token we may prune.
+ *
+ * THE THREE CONDITIONS, and every one of them is load-bearing:
+ *   * `^act<N>:<slug>$` — the shape of the host's own fallback activation, which is what a loader ROW
+ *     gets because a patch row has no Component identity. Our panels are always spelled this way.
+ *   * its SLUG is one of the slugs this activation just registered. This is what keeps the rule from
+ *     touching another plugin's panel: a foreign activation can land on `act<N>` too (the counter is the
+ *     host's, not ours), and dropping ITS id would remove a working panel from the user's sidebar —
+ *     the very harm this wave exists to fix, in a different costume.
+ *   * the full id is not one of ours RIGHT NOW. A current id is a live panel and is never removed.
+ * @param token - one normalized token from the host's CSV.
+ * @param ours - the ids this activation registered, in registration order.
+ * @param ourSlugs - the slugs of {@link ours}, computed once per merge.
+ * @returns true when the token is ours, stale, and therefore prunable.
+ */
+export function panelTokenIsStaleMine(token: string, ours: readonly string[], ourSlugs: ReadonlySet<string>): boolean {
+  if (!/^act\d+:/u.test(token)) return false
+  if (ours.includes(token)) return false
+  return ourSlugs.has(panelSlugOf(token))
+}
+
+/**
+ * Normalize one CSV the way the host's own `normalizeSidePanelPanels` does for the parts this bundle
+ * depends on: trim, lowercase and first-wins dedupe. Used by {@link mergePanelEnableIds} for its input
+ * AND by the keeper for its post-write read-back, so the two sides of that comparison can never
+ * disagree about what "the same list" means.
+ * @param value - the CSV, or anything else at all (a non-string reads as the empty list).
+ * @returns the normalized comma-joined list.
+ */
+export function normalizePanelCsv(value: unknown): string {
+  /** The tokens, in first-seen order. */
   const tokens: string[] = []
-  for (const token of (typeof existing === "string" ? existing : "").split(",")) {
+  for (const token of (typeof value === "string" ? value : "").split(",")) {
     /** One normalized token; the empty string is dropped so a trailing comma adds no slot. */
     const id = token.trim().toLowerCase()
     if (id !== "" && !tokens.includes(id)) tokens.push(id)
   }
-  /** The registered ids the CSV does not carry yet, in registration order. */
-  const added = ours.filter((id) => !tokens.includes(id))
-  return { csv: [...tokens, ...added].join(","), added, present: ours.filter((id) => tokens.includes(id)) }
+  return tokens.join(",")
+}
+
+/**
+ * Merge this activation's panel ids into the host's live enable CSV, pruning OUR OWN stale ids.
+ *
+ * THE INVARIANTS THIS PURE FUNCTION EXISTS TO HOLD. It NEVER reorders a token and NEVER removes one it
+ * does not own: the user's list — panels of other plugins, the host's builtins, and ids this bundle has
+ * never heard of — comes back in its original order, and our ids are APPENDED after it. The ONE removal
+ * is a token that satisfies every condition of {@link panelTokenIsStaleMine}: an id of OURS that an
+ * earlier boot composed under a different host activation, which no panel can answer any more, and which
+ * the host's sidebar nevertheless draws a tab and a dot for (the reported mismatch, D1). Duplicates
+ * collapse the way the host's own `normalizeSidePanelPanels` collapses them (trim + lowercase +
+ * first-wins), so a merge never fights the host's normalizer into a second, different list.
+ *
+ * WHY THE PRUNE IS PART OF THE MERGE RATHER THAN A SECOND PASS: the keeper writes at most a handful of
+ * times, and a repair that appended the current ids without removing the stale ones would leave the list
+ * strictly WORSE — two ids per page, one of them dead. Removal is otherwise still not offered: a user who
+ * turns one of our panels off in `/settings` loses nothing here, because the merge only ever finds the
+ * id missing and appends it.
+ * @param existing - the host's current CSV; anything at all (a non-string reads as the empty list).
+ * @param ours - the ids this activation registered, in registration order.
+ * @returns the CSV to apply, plus what was added, what was already there and what was pruned.
+ */
+export function mergePanelEnableIds(existing: unknown, ours: readonly string[]): PanelEnableMerge {
+  /** The user's tokens, normalized and deduped exactly as the host normalizes them. */
+  const tokens = normalizePanelCsv(existing).split(",").filter((id) => id !== "")
+  /** The slugs this activation owns, taken from the ids it just registered. */
+  const ourSlugs = new Set(ours.map(panelSlugOf))
+  /** Our tokens from an earlier boot; see {@link panelTokenIsStaleMine} for why only these may go. */
+  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, ours, ourSlugs))
+  /** The user's list with only those tokens removed, in its original order. */
+  const kept = tokens.filter((token) => !pruned.includes(token))
+  /** The registered ids the kept list does not carry yet, in registration order. */
+  const added = ours.filter((id) => !kept.includes(id))
+  return { csv: [...kept, ...added].join(","), added, present: ours.filter((id) => kept.includes(id)), kept, pruned }
 }
 
 /**
@@ -950,7 +1025,7 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
         standDown()
         return
       }
-      if (merge.added.length === 0) {
+      if (merge.added.length === 0 && merge.pruned.length === 0) {
         // No id of ours is registered yet: there is nothing this keeper may write.
         settle("confirmed", "no id of ours is registered, so there is nothing to re-assert")
         return
@@ -965,7 +1040,18 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
         writing = false
       }
       reasserted += 1
-      settle("confirmed", `re-asserted ${merge.added.join(",")} (the list named none of our ids)`)
+      // THE POST-WRITE READ-BACK (contract D1). Until the host's OWN reader answers the list this keeper
+      // asked for, the write is a request and not a fact — and a keeper that reported success on a store
+      // which dropped it would leave the sidebar showing whatever it had before, silently. The comparison
+      // runs through the SAME normalizer the merge used, so a host that reorders or re-cases the tokens
+      // is not mistaken for a host that refused them.
+      /** What the host's reader answers AFTER the write, normalized the way the merge normalizes. */
+      const landed = normalizePanelCsv(prefs.getSidePanelPanels())
+      if (landed !== normalizePanelCsv(merge.csv)) {
+        settle("refused", `the enable list read back as ${landed === "" ? "(empty)" : landed} instead of the ${merge.csv} just written`)
+        return
+      }
+      settle("confirmed", `re-asserted ${merge.added.join(",")} (the list named none of our ids${merge.pruned.length === 0 ? "" : `; pruned the stale ${merge.pruned.join(",")}`})`)
     } catch (error) {
       settle("refused", String((error as Error)?.message ?? error))
     }

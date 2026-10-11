@@ -1,0 +1,14 @@
+[audit-resync] staleness token closed: the ask-user-question-audit case-table row in skills/dsh-qa/SKILL.md now carries the script's own current self-test counts.
+[audit-resync] before: `--self-test` is fully offline: synthetic CONCATENATED-zstd frames (4 frames / 18 records / 11 occurrences), one assertion per rule of the restatement
+[audit-resync] after:  `--self-test` is fully offline: synthetic CONCATENATED-zstd frames (4 frames / 19 records / 12 occurrences), one assertion per rule of the restatement
+[audit-resync] the counts moved when this wave added the options-missing (D5) fixture record and the R2/R3/R4 repair arms; the parenthetical was the only remaining stale token of the row.
+[audit-resync] scope: skills/dsh-qa/SKILL.md only; no other artifact in this directory was rewritten.
+
+$ node skills/dsh-qa/scripts/ask-user-question-audit.ts --self-test
+EXIT=0
+[ask-user-question-audit self-test] ok: 4 concatenated zstd frame(s), 19 record(s), 12 occurrence(s), every rule of the local restatement, both answer pairings, the CLI exit codes and the repair arms (R2 wrong-type detail, R3 array line, R4 mixed-arg usage, D5 options MANDATORY) are verified offline
+
+$ grep -o 'synthetic CONCATENATED-zstd frames ([^)]*)' skills/dsh-qa/SKILL.md
+synthetic CONCATENATED-zstd frames (4 frames / 19 records / 12 occurrences)
+
+[audit-resync] the row's (4 frames / 19 records / 12 occurrences) matches the script's own "4 concatenated zstd frame(s), 19 record(s), 12 occurrence(s)"; the token is resynced.

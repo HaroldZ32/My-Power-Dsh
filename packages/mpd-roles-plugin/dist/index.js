@@ -931,7 +931,7 @@ function isPlainObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function askUserQuestionRefusal(defect) {
-  return "ask_user_question is refused: " + defect + ". Re-issue the call with every question item carrying a" + " non-empty string `id`, the question text under `question`, and — whenever a choice is offered — a" + " non-empty `options` array whose entries each carry a non-empty string `label`, in exactly the JSON" + " structure the tool schema defines. A structurally broken call would render as an empty card, so it is" + " denied before dispatch and never reaches the user.";
+  return "ask_user_question is refused: " + defect + ". Re-issue the call with every question item carrying a" + " non-empty string `id`, the question text under `question`, and a non-empty `options` array whose" + " entries each carry a non-empty string `label`, in exactly the JSON structure the tool schema defines." + " Every question item must offer at least one option — a question without options is refused exactly" + " like an empty list. A structurally broken call would render as an empty card, so it is denied before" + " dispatch and never reaches the user.";
 }
 function askUserQuestionDenial(args) {
   try {
@@ -959,8 +959,9 @@ function askUserQuestionDenial(args) {
         return askUserQuestionRefusal(at + " lacks a non-empty string `question` (received " + describeShape(item.question) + ")");
       }
       const options = item.options;
-      if (options === undefined)
-        continue;
+      if (options === undefined) {
+        return askUserQuestionRefusal(at + " carries no `options` array — every question item must offer at least one option");
+      }
       if (!Array.isArray(options)) {
         return askUserQuestionRefusal(at + " carries `options` that is not an array (received " + describeShape(options) + ")");
       }

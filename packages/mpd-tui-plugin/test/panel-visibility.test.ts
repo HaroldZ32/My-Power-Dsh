@@ -36,6 +36,7 @@ import { createDagPanelComponent, DAG_PANEL_TITLE } from "../src/panel-dag"
 import { createWorkmatePanelComponent, WORKMATE_PANEL_DESCRIPTOR_FROZEN, WORKMATE_PANEL_ICON, WORKMATE_PANEL_ID, WORKMATE_PANEL_TITLE } from "../src/panel-workmate"
 import { cellWidth, clampCells } from "../src/sanitize"
 import { toneColor } from "../src/panel-core"
+import { mergePanelIds } from "../../../scripts/mpd-tui-panels"
 
 /**
  * The installed DSH-TUI package root, resolved from the launcher on `PATH`.
@@ -665,6 +666,122 @@ describe("R13d · the enable-list keeper's CHANGE FEED (the durable repair)", ()
     expect(throwingKeeper.outcome().detail).toContain("reshaped feed")
     // THE LADDER SURVIVES the refusal: no tick was cancelled, so the repair path is still armed.
     expect(throwingClock.cancelled).toBe(0)
+  })
+})
+
+// ── D1/D3 (fix/sidebar-defects): prune OUR stale ids, drop nothing else, and read the write back ──
+//
+// THE DEFECT (contract D1/D3, user mandate M1(a)): our panel ids are host-composed `act<N>:<slug>`
+// values whose `<N>` is renumbered on every boot, and the enable CSV is never pruned — so a list left
+// behind by an earlier boot names ids no panel can answer, and the host's `SidePanelColumn` draws a tab
+// and a dot for each one. The arms below are the contract's own: our stale tokens go, everything we do
+// not own (the host's builtins, a foreign id) survives BYTE-FOR-BYTE, and a write the host did not
+// actually take is LOUD instead of drifting.
+describe("D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back", () => {
+  /** The host's own eight builtin panel ids, read from the INSTALLED host's default CSV. */
+  const BUILTINS = prefs.DEFAULT_SIDE_PANEL_IDS.split(",")
+
+  test("a stale `act*` token of ours is pruned, and every id we do NOT own survives byte-for-byte", async () => {
+    /** Every CSV the keeper wrote, in order. */
+    const written: string[] = []
+    /** The list one earlier boot left behind: the builtins, a foreign panel, and OUR stale ids. */
+    let csv = [...BUILTINS, "someone:else", "act7:team", "act7:dag"].join(",")
+    /** A stand-in host store holding exactly that list; it CARRIES the write, as the real store does. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock the arm drives by hand. */
+    const clock = fakeClock()
+    /** The keeper under test; THIS boot's ids are renumbered, which is the whole defect. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+    keeper.observe("act1:team")
+    keeper.observe("act1:dag")
+    await clock.runNext()
+    // ONE pass: the stale ids are gone, the builtins and the foreign id are untouched, ours are present.
+    expect(written).toEqual([[...BUILTINS, "someone:else", "act1:team", "act1:dag"].join(",")])
+    expect(keeper.outcome().state).toBe("confirmed")
+    expect(keeper.outcome().detail).toContain("pruned the stale act7:team,act7:dag")
+  })
+
+  test("a FOREIGN id that also looks like `act<N>:<slug>` is NOT ours and is never dropped", async () => {
+    // THE BOUND THE PRUNE RULE MUST NOT CROSS (contract D3: "writers never drop what they don't own").
+    // Another plugin can register under the host's own `act<N>` fallback too, and its slug is not one of
+    // this bundle's — so the discriminator is OUR slug, never "looks like an act id".
+    /** Every CSV the keeper wrote. */
+    const written: string[] = []
+    /** The seeded list: a foreign act-shaped id and one of our stale ones. */
+    let csv = "todo,act9:somebodyelse,act7:team"
+    /** The stand-in store, carrying its writes as the real store does. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+    keeper.observe("act1:team")
+    await clock.runNext()
+    expect(written).toEqual(["todo,act9:somebodyelse,act1:team"])
+    expect(keeper.outcome().state).toBe("confirmed")
+  })
+
+  test("D3 · all eight host builtins survive a keeper pass", async () => {
+    /** Every CSV the keeper wrote. */
+    const written: string[] = []
+    /** The seeded list: the builtins plus one stale id of ours. */
+    let csv = [...BUILTINS, "act7:workmate"].join(",")
+    /** The stand-in store, carrying its writes as the real store does. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    expect(written).toEqual([[...BUILTINS, "act1:workmate"].join(",")])
+    expect(keeper.outcome().state).toBe("confirmed")
+    // EVERY builtin, named one by one, so a rule that dropped just one still reddens.
+    for (const id of BUILTINS) expect(written[0]?.split(",")).toContain(id)
+  })
+
+  test("D3 · the SAME rule holds in `scripts/mpd-tui-panels.ts --apply`: the eight builtins survive", () => {
+    // THE SECOND WRITER (contract D3 names both). It is driven through its OWN exported merge, which is
+    // the pure half of `--apply`; `--self-test` carries the rest of that script's arms.
+    /** The document-side merge over a list an earlier boot left behind. */
+    const merged = mergePanelIds([...BUILTINS, "act7:workmate"].join(","), ["act1:workmate"])
+    expect(merged.csv).toBe([...BUILTINS, "act1:workmate"].join(","))
+    expect(merged.pruned).toEqual(["act7:workmate"])
+    // A PRUNE ALONE IS A REASON TO WRITE: the current id is already there and the stale one still is not.
+    /** The merge that has nothing to append and one stale token to remove. */
+    const pruneOnly = mergePanelIds("todo,jobs,act1:team,act7:team", ["act1:team"])
+    expect(pruneOnly.added).toEqual([])
+    expect(pruneOnly.pruned).toEqual(["act7:team"])
+    expect(pruneOnly.csv).toBe("todo,jobs,act1:team")
+    // And the foreign id — including one shaped like an act id — is never touched.
+    expect(mergePanelIds("someone:else,act9:somebodyelse", ["act1:team"]).csv).toBe("someone:else,act9:somebodyelse,act1:team")
+  })
+
+  test("a write the host did not carry back is LOUD, never silent drift", async () => {
+    // THE READ-BACK (contract D1): the merge is only a request until the host's own reader agrees with it.
+    /** A store whose write is dropped: the reader keeps answering the pre-write list. */
+    const store = {
+      getSidePanelPanels: (): unknown => "todo,jobs,agents",
+      applySidePanelPanels: (value: unknown): unknown => value,
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+    keeper.observe("act1:team")
+    await clock.runNext()
+    expect(keeper.outcome().state).toBe("refused")
+    expect(keeper.outcome().detail).toContain("read back")
+    expect(keeper.outcome().detail).toContain("todo,jobs,agents")
   })
 })
 

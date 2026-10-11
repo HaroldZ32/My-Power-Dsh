@@ -49,7 +49,7 @@ import {
   type TeamSourceDeps,
 } from "./team-state.js"
 import { hitTest, layoutGraph, layoutGraphNatural, legendLines, sliceSpans, type GraphTask } from "./graph.js"
-import { gutterCellsX, legendLinesFor, toneColor, useTeamFeed, visualTone } from "./panel-core.js"
+import { gutterCellsX, legendLinesFor, normalizeWheelDelta, toneColor, useTeamFeed, visualTone, wheelInvertOn } from "./panel-core.js"
 import { statusMarker } from "./status.js"
 import {
   SUBAGENT_SCENE_ID,
@@ -929,14 +929,17 @@ function createTeamComponent(
           setHover(under)
         },
         onWheel: (event: { deltaY?: number; deltaX?: number } | undefined) => {
-          // EACH DELTA DRIVES ITS OWN AXIS (clause T5). The vertical one keeps the sign convention every
-          // terminal reports; the horizontal one moves the DRAWING's window, and only when there is
-          // something to pan to — a wheel that scrolled a fitting drawing would be motion with no cause.
-          /** The wheel's vertical direction; a positive delta scrolls down. */
-          const deltaY = Number(event?.deltaY ?? 0)
+          // EACH DELTA DRIVES ITS OWN AXIS (clause T5), and BOTH signs come from the ONE normalisation
+          // helper (contract D2): the raw terminal delta is machine-dependent, so a scene reading it
+          // directly scrolls the wrong way on exactly the installations the knob exists for. The vertical
+          // one moves the graph window; the horizontal one moves the DRAWING's window, and only when
+          // there is something to pan to — a wheel that scrolled a fitting drawing would be motion with
+          // no cause.
+          /** The wheel's vertical delta in this plugin's own convention; positive scrolls down. */
+          const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn())
           if (deltaY !== 0) setScroll(Math.max(0, scroll + (deltaY > 0 ? 1 : -1)))
-          /** The wheel's horizontal direction; a positive delta scrolls right. */
-          const deltaX = Number(event?.deltaX ?? 0)
+          /** The wheel's horizontal delta in the same convention; positive scrolls right. */
+          const deltaX = normalizeWheelDelta(Number(event?.deltaX ?? 0), wheelInvertOn())
           if (deltaX !== 0) setScrollX(Math.max(0, Math.min(scrollXMax, scrollXAt + (deltaX > 0 ? 1 : -1))))
         },
       }, graphRows))

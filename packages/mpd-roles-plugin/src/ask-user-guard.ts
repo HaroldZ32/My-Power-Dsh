@@ -15,11 +15,14 @@
 //   * `arguments` that is not a plain object;
 //   * `questions` that is missing, not an array, or empty;
 //   * any question item lacking a non-empty string `id` or a non-empty string `question`;
-//   * `options` present on a question and (not an array, OR empty, OR carrying an entry without a
-//     non-empty string `label`).
-// Everything else is ALLOWED, a question WITHOUT `options` included: free-text questions are a designed
-// use of the host tool. The rule set is DELIBERATELY shallow — it re-states only what the host schema
-// leaves optional, and never re-litigates a constraint the schema already enforces.
+//   * `options` that is MISSING from a question item, OR (not an array, OR empty, OR carrying an entry
+//     without a non-empty string `label`).
+// Everything else is ALLOWED. `options` is MANDATORY on every item (D5 of
+// `.mpd/plans/fix-sidebar-defects.md`, the user mandate that a question must always carry options): a
+// question WITHOUT `options` is denied EXACTLY like `options: []`, because the 2026-10-11 occurrence was
+// a call that simply omitted the field — schema-legal, and rendered as a card with no choices. The rule
+// set is DELIBERATELY shallow — it re-states only what the host schema leaves optional, and never
+// re-litigates a constraint the schema already enforces.
 //
 // MONOTONIC, NON-THROWING, READ-ONLY: it never mutates its input, and an unexpected shape is a
 // pass-through rather than an outage, because a guard that throws takes the whole tool tree down. The
@@ -32,9 +35,11 @@
 //     WHITESPACE-ONLY `question` or `label` is accepted, because the frozen contract allows everything
 //     the four rules above do not deny and a trimming rule would deviate from that semantics;
 //   * the guard cannot fix the host's RENDER layer — it only stops the shapes it names from dispatching;
-//   * a pre-dispatch denial does NOT guarantee that the denial sentence reaches the model (measured
-//     2026-10-07, `skills/dsh-qa/scripts/verify-law.ts`), which is why the `mpd` preset carries the
-//     construction rule independently of the relay (D2 of the same contract).
+//   * the guard is the BACKSTOP, not the rule: the construction rule in the `mpd` preset is what the
+//     model reads, and a pre-dispatch denial does NOT guarantee that the denial sentence reaches the
+//     model (measured 2026-10-07, `skills/dsh-qa/scripts/verify-law.ts`);
+//   * denying an omission makes EVERY ask_user_question call a multiple-choice call: a model that wants
+//     free-text input must offer a labelled option instead.
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The host tool this guard covers — matched by EXACT name, and the only name it ever inspects. */
@@ -88,10 +93,11 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  */
 function askUserQuestionRefusal(defect: string): string {
   return "ask_user_question is refused: " + defect + ". Re-issue the call with every question item carrying a"
-    + " non-empty string `id`, the question text under `question`, and — whenever a choice is offered — a"
-    + " non-empty `options` array whose entries each carry a non-empty string `label`, in exactly the JSON"
-    + " structure the tool schema defines. A structurally broken call would render as an empty card, so it is"
-    + " denied before dispatch and never reaches the user."
+    + " non-empty string `id`, the question text under `question`, and a non-empty `options` array whose"
+    + " entries each carry a non-empty string `label`, in exactly the JSON structure the tool schema defines."
+    + " Every question item must offer at least one option — a question without options is refused exactly"
+    + " like an empty list. A structurally broken call would render as an empty card, so it is denied before"
+    + " dispatch and never reaches the user."
 }
 
 /**
@@ -138,10 +144,13 @@ export function askUserQuestionDenial(args: unknown): string | undefined {
       if (!nonEmptyString(item.question)) {
         return askUserQuestionRefusal(at + " lacks a non-empty string `question` (received " + describeShape(item.question) + ")")
       }
-      /** The item's optional choice list; `undefined` means a free-text question and is legal. */
+      /** The item's choice list, MANDATORY since D5; `undefined` means the field was omitted. */
       const options = item.options
-      // RULE 4a — `options` ABSENT stays legal: free-text questions are a designed use of the host tool.
-      if (options === undefined) continue
+      // RULE 4a — `options` MISSING is denied exactly like `options: []`: the user mandate makes a
+      // question without options a broken card, and the 2026-10-11 occurrence was precisely this shape.
+      if (options === undefined) {
+        return askUserQuestionRefusal(at + " carries no `options` array — every question item must offer at least one option")
+      }
       // RULE 4b — present but malformed: a non-array, an empty array, or an entry without a label.
       if (!Array.isArray(options)) {
         return askUserQuestionRefusal(at + " carries `options` that is not an array (received " + describeShape(options) + ")")

@@ -262,7 +262,22 @@ settles WITH those ids and without the builtins.) Two independent routes now hol
 * **bounded, in the plugin, and since the 0.14.0 wave FOLLOWING the host's own change feed** —
   `packages/mpd-tui-adapter-plugin`'s settle keeper re-asserts only the ids the host's own `list()`
   read-back produced, and only when the list names **NONE** of them: it appends the whole set after the
-  user's list and never removes or reorders a token. A list naming **ANY** of ours is a configuration
+  user's list, never reorders a token, and **prunes exactly ONE class of token** — this bundle's OWN panel
+  ids from an EARLIER boot, i.e. an `act<N>:<slug>` whose slug is one of the slugs just registered and
+  which is not one of the ids just registered. The host renumbers the `<pluginId>` half on every boot, so
+  those dead ids accumulate in the list while the host's `SidePanelColumn` keeps building a tab and a dot
+  for each one with no panel behind it (the reported mismatch, D1); the prune is what removes them.
+  **Nothing else is ever removed**: a host builtin and any id this bundle has never heard of come back
+  byte-for-byte. The limit is named rather than hidden: ownership is recognised **by slug**, so a
+  **foreign** id shaped like `act<N>:<their-slug>` — which the host's own activation counter can produce
+  for a different row — is preserved exactly while its slug is not one of ours; a different plugin's
+  panel that SHARES one of our slugs (the host can produce `act9:team` beside our `act7:team`) matches
+  the stale class and would be pruned with it. The mirror limit holds as well: a stale token whose slug
+  this bundle no longer registers (a renamed or dropped page) is never pruned, so its dot can persist
+  until the user layer is edited directly. The write is then **READ BACK**
+  through the host's own reader and compared with the list the keeper intended; a store that did not carry
+  the write settles as `refused` and names both lists, instead of reporting a success the sidebar does not
+  have. A list naming **ANY** of ours is a configuration
   that has taken a position on the bundle — enabled in `/settings`, written by the script below, or a
   deliberate partial removal — and the keeper **stands down**, so it never puts back a page the user
   meant to drop. **The 0.14.0 wave replaced the bounded tick ladder with the host's OWN subscription**
@@ -282,7 +297,12 @@ settles WITH those ids and without the builtins.) Two independent routes now hol
   profile's patch file, which IS the settings user layer (`dsh-config-editor`'s `documentPath` returns
   `profileContext.patchPath`; `dsh-app-boot` builds it as `<profileDir>/cordis.patch.yml`). Both readings
   come from the installed sources and the script refuses to write when it cannot prove the path; dry run
-  by default, `--apply` to write, `.bak-<stamp>` kept, only missing ids added. It writes the USER's
+  by default, `--apply` to write, `.bak-<stamp>` kept, only missing ids added **and the same stale-id
+  prune applied** (one rule, restated in `scripts/mpd-tui-panels.ts` because a standalone Node entry point
+  cannot import a bundled package's source). A run whose only change is the prune is a run, not a no-op.
+  `--apply` also **reads the document back** after the atomic rename and compares the leaf with the CSV it
+  intended: a mismatch exits 1 and names the backup, so a write that did not land is never announced as a
+  success. It writes the USER's
   profile patch and nothing in this repository, so it is not part of any gate sweep — the wave that has
   to re-pin the vendored skill corpus is the one that edits `skills/**`, whose `treeSha` in
   `VENDOR_LOCK.json` lands with exactly ONE re-pin in the same commit (AGENTS.md §9); this command never
@@ -632,6 +652,27 @@ sentence on this page promises a live-refreshed base.
 - **Degenerate targets are loud** — missing (created with a header comment), read-only (`denied` + path +
   errno, the settings edit still succeeds), concurrent (retry ×3 then `conflict`, the human's file left
   untouched), unparsable (`unparsable`, never repaired).
+
+**One mpd.jsonc knob is read but NOT yet rendered in `/settings`: `tui.wheelInvert`.** It is a boolean,
+default `false` (= today's behaviour), and it flips the wheel's vertical sign on every panel and scene this
+bundle draws. The host derives a wheel event's `deltaY` from the terminal's own wheelup/wheeldown bits, so
+which direction a wheel reports is a property of the terminal / multiplexer / OS and arrives reversed on
+some installations; before this knob every wheel path applied the raw delta with its own fixed sign, and
+there was no single place to correct and no user-facing answer. The value is read through the **same
+`mpdConfig` service and the same layer stack** as every knob above: write
+`{ "tui": { "wheelInvert": true } }` into `<workspace>/.mpd/mpd.jsonc`, or set the `mpd-tui` row's own
+`wheelInvert: true`, which is the **floor** of the toggle (a saved leaf wins when it is a boolean; a junk
+value can never arm it). The **same restart caveat this section states for every knob applies verbatim**:
+a save through `/settings` takes effect after a restart, because the namespace base is fixed for the
+process lifetime. The plugin reads the leaf **per wheel gesture** rather than sampling it at mount, so a
+FILE edit is at least as fresh as the config layer's own state (the L1/L2 layers are re-read on every
+resolution, above) — a mount-time sample would have read `undefined` on any boot where the deferred
+`mpdConfig` binding lands after this row applies. **Honest bound:** unlike `tui.dashboardKey` this leaf is
+not yet carried by `SETTINGS_KNOBS` / `SettingsSchema` in
+`packages/mpd-config-plugin/src/settings-schema.ts`, so it has **no row in the `/settings` form**; the file
+layer works because `mpd-config`'s `loadConfig` returns the RAW merged layers and strips no undeclared key.
+Declaring the leaf in that shared schema is the follow-up that adds the row — the read path above does not
+change when it lands.
 
 **Evidence level:** `Observed` — two real boots in the sandbox (ok: true) at
 `evidence/mpd-bridge/implementation/20260915T080138Z/`, plus the lane

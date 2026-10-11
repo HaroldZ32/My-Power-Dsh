@@ -1,0 +1,69 @@
+[probe] host versions: {"dsh-tool-ask-user":"0.2.0-rc.2","dsh-user-questions":"0.2.0-rc.2","dsh-client-ui-user-questions":"0.2.0-rc.2"}
+[probe] A — real session store (decoded by skills/dsh-qa/scripts/lib/session-evidence.ts)
+{
+ "file": "/home/haroldzhao/.dsh/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh--/7072e2c7-1257-4420-a933-6e414b20eab2/session.v4.jsonl.zstd",
+ "frames": 280,
+ "records": 509,
+ "undecodableLines": 0,
+ "tornStart": "none",
+ "calls": [
+  {
+   "callId": "tool_AmPBssp2zdg3OFynmBuu4jph",
+   "argumentsKind": "raw-string",
+   "items": 5,
+   "options": [
+    "ABSENT",
+    "ABSENT",
+    "ABSENT",
+    "ABSENT",
+    "ABSENT"
+   ]
+  },
+  {
+   "callId": "tool_9FeQ0HNadiazkDl7qMaXjTjP",
+   "argumentsKind": "raw-string",
+   "items": 4,
+   "options": [
+    "array(2)",
+    "array(2)",
+    "array(3)",
+    "array(2)"
+   ]
+  },
+  {
+   "callId": "tool_0J9CGYKeNFnouSB2AMT4K4ft",
+   "argumentsKind": "raw-string",
+   "items": 1,
+   "options": [
+    "array(4)"
+   ]
+  }
+ ],
+ "declaredSchemas": [
+  "[\"questions\"]"
+ ]
+}
+[probe] B — installed host module executed under both modes
+{
+ "timedWaitParameter": "timeout",
+ "arms": [
+  {
+   "applied": "{} (row default)",
+   "declaredParameters": [
+    "questions"
+   ],
+   "timeoutProperty": "ABSENT",
+   "foldWouldTrackAskUserCalls": false
+  },
+  {
+   "applied": "{ mode: \"timed\" }",
+   "declaredParameters": [
+    "questions",
+    "timeout"
+   ],
+   "timeoutProperty": "present",
+   "foldWouldTrackAskUserCalls": true
+  }
+ ]
+}
+[probe] A bytes: 943284 (container size)

@@ -54,7 +54,8 @@ import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } f
 import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
-import { DASHBOARD_TAKEOVER_KNOB } from "./settings.js"
+import { DASHBOARD_TAKEOVER_KNOB, wheelInvertFrom } from "./settings.js"
+import { setWheelInvertRead } from "./panel-core.js"
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
 import type { PanelOpenOutcome } from "./panel.js"
@@ -115,6 +116,16 @@ export type Config = {
    * row) outranks it per press.
    */
   dashboardKey?: boolean
+  /**
+   * Invert the wheel's vertical sign on every panel and scene this row draws.
+   *
+   * The host derives a wheel event's `deltaY` from the terminal's own wheelup/wheeldown bits, so which
+   * direction a wheel reports is a property of the terminal / multiplexer / OS and arrives reversed on
+   * some machines. This key is the FLOOR of the toggle: a saved `tui.wheelInvert` in the workspace's
+   * `.mpd/mpd.jsonc` outranks it, read through the same `mpdConfig` service the Ctrl+A toggle uses.
+   * `false` — today's behaviour — is the default, so an unconfigured composition is unchanged.
+   */
+  wheelInvert?: boolean
   /** Append the log-only board-opened session record (only when verified safe). */
   sessionEvents?: boolean
   /** Attempt the mediated DecisionEvents registration (expected: refused). */
@@ -140,6 +151,7 @@ export const Config: Schemastery<Config> = z.object({
   dialogs: z.boolean().default(true),
   panel: z.boolean().default(true),
   dashboardKey: z.boolean().default(true),
+  wheelInvert: z.boolean().default(false),
   sessionEvents: z.boolean().default(true),
   decisionEvents: z.boolean().default(true),
   logPrefix: z.string().default("mpd-tui"),
@@ -169,6 +181,8 @@ export interface ResolvedConfig {
   panel: boolean
   /** Whether the Ctrl+A takeover may intercept at all (the per-press floor of the toggle). */
   dashboardKey: boolean
+  /** Whether the wheel's sign is inverted (the floor of the `tui.wheelInvert` knob; false = today). */
+  wheelInvert: boolean
   /** Whether the log-only board-opened record may be appended. */
   sessionEvents: boolean
   /** Whether the mediated decision-event registration is attempted. */
@@ -199,6 +213,9 @@ export function resolveConfig(config: Config = {}): ResolvedConfig {
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
     dashboardKey: bool(config.dashboardKey, true),
+    // TODAY'S BEHAVIOUR IS THE DEFAULT: `false` means the raw host delta is used unchanged, which is what
+    // every wheel path did before this knob existed. Only a deliberate configuration inverts it.
+    wheelInvert: bool(config.wheelInvert, false),
     sessionEvents: bool(config.sessionEvents, true),
     decisionEvents: bool(config.decisionEvents, true),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix.length > 0 ? config.logPrefix : "mpd-tui",
@@ -560,6 +577,15 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   onService(ctx, "mpdConfig", (_scoped: PluginContextLike, service: unknown) => {
     configHandle = service as { states?: () => { writeback?: { skipped?: string } | null }; get?: (key?: string) => unknown }
   })
+
+  // THE WHEEL-DIRECTION READER (contract D2). Installed unconditionally, BEFORE any page can render, so
+  // every wheel path in `panel-core.ts` and `scenes.ts` resolves the SAME setting through the ONE
+  // normalisation helper. It is a READER rather than a sampled value because `mpdConfig` binds through a
+  // deferred inject and can land after this row applies — and it reads the RAW merged layer stack
+  // (`get()` with no key), which is where `<workspace>/.mpd/mpd.jsonc`'s `tui.wheelInvert` lands. A
+  // composition without `mpdConfig` therefore keeps the row config's own floor, whose default is today's
+  // behaviour; a row-private adapter used in a unit test also leaves the process default untouched.
+  setWheelInvertRead((): boolean => wheelInvertFrom(configHandle?.get?.(), resolved.wheelInvert))
 
   // The watchdog front door's notice is composed into the SAME status value as the bridge notice
   // (w6): a held team and an unread-incident replay are line content, not a constant nobody renders.

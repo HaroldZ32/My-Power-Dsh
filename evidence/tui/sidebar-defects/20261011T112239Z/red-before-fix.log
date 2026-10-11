@@ -1,0 +1,143 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/panel-visibility.test.ts:
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the default enabled CSV names BUILTINS ONLY and NOTHING of ours [28.88ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the id GRAMMAR is not the blocker: a composed plugin id round-trips [0.04ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the adapter DOES append a registered id to the CSV — so the mechanism exists and can be undone [0.12ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the host REWRITES the CSV from configuration, which is how a registered panel disappears [0.95ms]
+(pass) R13 · the width band in which the panel cannot be seen at all > a sidebar splits only at CHAT_MIN + PANEL_MIN + DIVIDER, and no lower [0.07ms]
+(pass) R13 · the width band in which the panel cannot be seen at all > AT the split threshold the panel column is exactly the host's own floor — so a wider floor is a trap [0.05ms]
+(pass) R13 · the width band in which the panel cannot be seen at all > the descriptor this bundle registers is the shape the host accepts [0.02ms]
+(pass) R13b · the composed panel id (read from the installed host) > the host composes `<pluginId>:<slug>`, and `<pluginId>` comes from the caller's identity [0.08ms]
+(pass) R13b · the composed panel id (read from the installed host) > a Component identity exists only for an ADMITTED Component, which a patch row never is [1.23ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > it appends ONLY its own registered ids, preserving the user's list exactly [0.46ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > it KEEPS sampling past the first clean read — the measured loss lands after it [0.14ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > it STANDS DOWN when the configuration already names ANY of ours [0.09ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > the whole set goes in at once, so a partial write can never make the next tick stand down mid-repair [0.08ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > the ladder is the WHOLE budget, and `stop()` releases every pending tick [0.04ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > NEGATIVE CONTROL: an ABSENT host store is reported as `absent`, never thrown, and writes nothing [0.05ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > NEGATIVE CONTROL: a store that throws is recorded as `refused` and takes no boot down [0.09ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > the CONTACT itself binds the installed host and refuses an absent one [0.39ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > the host's OWN append does NOT stand the keeper down, and the mirror's rewrite IS repaired [0.16ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > our OWN write cannot re-enter the decision — one rewrite, exactly one repair [0.08ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > a list that NAMES one of ours ends the keeper for good — and a later rewrite is left alone [0.10ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > `stop()` releases the host's feed with the scope — and a retired keeper never writes again [0.07ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > NEGATIVE CONTROL: a store with NO feed keeps the ladder, and a THROWING feed degrades to it [0.13ms]
+697 |     const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+698 |     keeper.observe("act1:team")
+699 |     keeper.observe("act1:dag")
+700 |     await clock.runNext()
+701 |     // ONE pass: the stale ids are gone, the builtins and the foreign id are untouched, ours are present.
+702 |     expect(written).toEqual([[...BUILTINS, "someone:else", "act1:team", "act1:dag"].join(",")])
+                          ^
+error: expect(received).toEqual(expected)
+
+  [
+-   "todo,jobs,agents,info,trajectory,workspace,btw,companion,someone:else,act1:team,act1:dag",
++   "todo,jobs,agents,info,trajectory,workspace,btw,companion,someone:else,act7:team,act7:dag,act1:team,act1:dag",
+  ]
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-visibility.test.ts:702:21)
+(fail) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a stale `act*` token of ours is pruned, and every id we do NOT own survives byte-for-byte [0.28ms]
+720 |     const clock = fakeClock()
+721 |     /** The keeper under test. */
+722 |     const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+723 |     keeper.observe("act1:team")
+724 |     await clock.runNext()
+725 |     expect(written).toEqual(["todo,act9:somebodyelse,act1:team"])
+                          ^
+error: expect(received).toEqual(expected)
+
+  [
+-   "todo,act9:somebodyelse,act1:team",
++   "todo,act9:somebodyelse,act7:team,act1:team",
+  ]
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-visibility.test.ts:725:21)
+(fail) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a FOREIGN id that also looks like `act<N>:<slug>` is NOT ours and is never dropped [0.15ms]
+737 |     const clock = fakeClock()
+738 |     /** The keeper under test. */
+739 |     const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+740 |     keeper.observe("act1:workmate")
+741 |     await clock.runNext()
+742 |     expect(written).toEqual([[...BUILTINS, "act1:workmate"].join(",")])
+                          ^
+error: expect(received).toEqual(expected)
+
+  [
+-   "todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:workmate",
++   "todo,jobs,agents,info,trajectory,workspace,btw,companion,act7:workmate,act1:workmate",
+  ]
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-visibility.test.ts:742:21)
+(fail) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > D3 · all eight host builtins survive a keeper pass [0.17ms]
+747 |   test("D3 · the SAME rule holds in `scripts/mpd-tui-panels.ts --apply`: the eight builtins survive", () => {
+748 |     // THE SECOND WRITER (contract D3 names both). It is driven through its OWN exported merge, which is
+749 |     // the pure half of `--apply`; `--self-test` carries the rest of that script's arms.
+750 |     /** The document-side merge over a list an earlier boot left behind. */
+751 |     const merged = mergePanelIds([...BUILTINS, "act7:workmate"].join(","), ["act1:workmate"])
+752 |     expect(merged.csv).toBe([...BUILTINS, "act1:workmate"].join(","))
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: "todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:workmate"
+Received: "todo,jobs,agents,info,trajectory,workspace,btw,companion,act7:workmate,act1:workmate"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-visibility.test.ts:752:24)
+(fail) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > D3 · the SAME rule holds in `scripts/mpd-tui-panels.ts --apply`: the eight builtins survive [0.15ms]
+772 |     const clock = fakeClock()
+773 |     /** The keeper under test. */
+774 |     const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+775 |     keeper.observe("act1:team")
+776 |     await clock.runNext()
+777 |     expect(keeper.outcome().state).toBe("refused")
+                                         ^
+error: expect(received).toBe(expected)
+
+Expected: "refused"
+Received: "confirmed"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-visibility.test.ts:777:36)
+(fail) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a write the host did not carry back is LOUD, never silent drift [0.16ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > the TWO surviving icons measure ONE cell under BOTH measures — ours and the host's own [5.70ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > the host's built-in icons are read from the host, and neither surviving MPD page wears one [0.13ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > BOTH surviving descriptors DECLARE their icon — neither falls back to its title's first letter [0.02ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > NO MPD descriptor declares `capabilities` — the host drops the field, so it would be a dead promise [0.07ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the merged page draws the control, and a click opens ITS full-screen scene [1.45ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the workmate page draws its own control, wired to the board scene [0.31ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the hover treatment is the host PanelBar's own: bold and accent over the pointer, dim at rest [0.71ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the title row is drawn ABOVE the body and outside the page's own window [0.13ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > AT THE 28-COLUMN FLOOR the `⤢` hint SURVIVES — measured, with the pre-fix ordering as the negative control [0.15ms]
+(pass) AC8b · the control OCCUPIES CELLS under the host's real layout engine > each SURVIVING MPD page draws `⤢` at the RIGHT EDGE of its title row — at 28 and at 40 columns [502.05ms]
+(pass) AC8b · the control OCCUPIES CELLS under the host's real layout engine > NEGATIVE CONTROL: the pre-fix row shape LOSES the glyph at the same width — this is what the double could not see [164.26ms]
+
+packages/mpd-tui-plugin/test/panel-dag.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+SyntaxError: Export named 'wheelInvertFrom' not found in module '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/src/settings.ts'.
+-------------------------------
+
+
+6 tests failed:
+(fail) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a stale `act*` token of ours is pruned, and every id we do NOT own survives byte-for-byte [0.28ms]
+(fail) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a FOREIGN id that also looks like `act<N>:<slug>` is NOT ours and is never dropped [0.15ms]
+(fail) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > D3 · all eight host builtins survive a keeper pass [0.17ms]
+(fail) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > D3 · the SAME rule holds in `scripts/mpd-tui-panels.ts --apply`: the eight builtins survive [0.15ms]
+(fail) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a write the host did not carry back is LOUD, never silent drift [0.16ms]
+
+ 33 pass
+ 6 fail
+ 1 error
+ 211 expect() calls
+Ran 39 tests across 2 files. [848.00ms]
+EXIT=1

@@ -335,6 +335,10 @@ describe("plugin contract", () => {
       // The Ctrl+A takeover's FLOOR: the row config default. A saved `tui.dashboardKey` (the /settings
       // row) outranks it per press, so this stays true for every composition that never saves one.
       dashboardKey: true,
+      // The wheel-direction FLOOR: TODAY'S BEHAVIOUR is the default, so a composition that never
+      // configures the knob scrolls exactly as it did before the knob existed. A saved
+      // `tui.wheelInvert` in `<workspace>/.mpd/mpd.jsonc` outranks this value.
+      wheelInvert: false,
       sessionEvents: true,
       decisionEvents: true,
       logPrefix: "mpd-tui",
