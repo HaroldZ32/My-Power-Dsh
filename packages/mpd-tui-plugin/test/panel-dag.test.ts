@@ -14,6 +14,11 @@
 // assertions are INVARIANT-shaped (every row inside the measured width, the mode a fact about the
 // width) and never byte-frozen grids.
 import { describe, expect, test } from "bun:test"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { loadConfig } from "../../mpd-config-plugin/src/index.js"
+import { wheelInvertFrom } from "../src/settings"
 import {
   DAG_ANIM,
   DAG_CHARS,
@@ -38,7 +43,7 @@ import {
   pinnedDetailLines,
   type DagPanelTask,
 } from "../src/panel-dag"
-import { clampScroll, gutterCells, legendLinesFor, PANEL_CHROME_ROWS, panelContentWidth, panelKeysArmed, panelScrollKey, runningGlyph, scrollByWheel, usePanelViewport } from "../src/panel-core"
+import { clampScroll, gutterCells, legendLinesFor, normalizeWheelDelta, PANEL_CHROME_ROWS, panelContentWidth, panelKeysArmed, panelScrollKey, runningGlyph, scrollByWheel, scrollByWheelX, usePanelViewport } from "../src/panel-core"
 import {
   createWorkmatePanelComponent,
   readWorkmateLibrary,
@@ -1963,6 +1968,73 @@ describe("the scrollbar and the self-windowed viewport", () => {
 // WHY THE ASSERTION IS ABOUT SHAPE: 327 passing tests did not catch it because they asserted the prop was
 // PRESENT. Presence is satisfied by the wrong VALUE, so the check must reject a bare string explicitly —
 // the negative control below is the point of the arm, not a courtesy.
+// ── D2 (fix/sidebar-defects): ONE wheel-sign normalisation point and the `tui.wheelInvert` knob ──
+//
+// THE DEFECT (contract D2, user mandate M1(b)): every wheel path applied `offset + deltaY` with a FIXED
+// sign, and the host derives `deltaY` from the terminal's own wheelup/wheeldown bits — so the direction
+// a machine reports is machine-dependent (measured reversed on some installations) while this bundle
+// offered neither a normalisation point nor a user knob. The arms below are the contract's own: with the
+// knob OFF the behaviour is EXACTLY today's, with it ON both directions invert, and the value is read
+// from the merged `<workspace>/.mpd/mpd.jsonc` layer through the same layer the other mpd knobs use.
+describe("D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob", () => {
+  test("the knob OFF is today's behaviour on BOTH directions, and it is the default", () => {
+    expect(scrollByWheel({ deltaY: 3 }, 10, 400, 20, false)).toBe(13)
+    expect(scrollByWheel({ deltaY: -3 }, 10, 400, 20, false)).toBe(7)
+    // The FOUR-argument form every existing caller uses keeps the same answer: default = today's behaviour.
+    expect(scrollByWheel({ deltaY: 3 }, 10, 400, 20)).toBe(13)
+    expect(scrollByWheel({ deltaY: -3 }, 10, 400, 20)).toBe(7)
+  })
+
+  test("the knob ON inverts BOTH directions", () => {
+    expect(scrollByWheel({ deltaY: 3 }, 10, 400, 20, true)).toBe(7)
+    expect(scrollByWheel({ deltaY: -3 }, 10, 400, 20, true)).toBe(13)
+  })
+
+  test("the HORIZONTAL axis consumes the same helper, and only the axis it names", () => {
+    expect(scrollByWheelX({ deltaX: 3 }, 10, 400, 20, false)).toBe(13)
+    expect(scrollByWheelX({ deltaX: 3 }, 10, 400, 20, true)).toBe(7)
+    // A VERTICAL wheel is not a horizontal gesture, on either setting: the axis split this pair exists for.
+    expect(scrollByWheelX({ deltaY: 9 }, 10, 400, 20, true)).toBe(10)
+    expect(scrollByWheelX({ deltaX: -9 }, 10, 400, 20, true)).toBe(19)
+  })
+
+  test("`normalizeWheelDelta` is the ONE sign decision, and a zero delta stays a zero", () => {
+    expect(normalizeWheelDelta(3, false)).toBe(3)
+    expect(normalizeWheelDelta(3, true)).toBe(-3)
+    expect(normalizeWheelDelta(-3, true)).toBe(3)
+    // A ZERO DELTA STAYS A PLAIN ZERO. `-0` is `===` to `0` but not `Object.is`-equal to it, so a caller
+    // reading "did this gesture change anything?" off a strict comparison would see motion that never
+    // happened — which is exactly the class of invisible bug `clampScroll`'s no-op rule exists to stop.
+    expect(normalizeWheelDelta(0, true)).toBe(0)
+  })
+
+  test("the knob resolves from `<workspace>/.mpd/mpd.jsonc` through the REAL mpd-config layer", () => {
+    /** A throwaway workspace whose project layer is the only file this arm writes. */
+    const root = mkdtempSync(join(tmpdir(), "mpd-wheel-knob-"))
+    try {
+      /** The project layer path the plugin's own resolution reads. */
+      const projectFile = join(root, ".mpd", "mpd.jsonc")
+      mkdirSync(join(root, ".mpd"), { recursive: true })
+      // The USER layer is pointed at a file that does not exist, so this arm can never read the real home
+      // layer of the machine it runs on — an unisolated read would make the arm pass or fail by accident.
+      /** The row config the resolution is driven with: an explicit, absent user layer. */
+      const rowConfig = { userFile: join(root, "no-such-user-layer.jsonc") }
+      writeFileSync(projectFile, '{ "tui": { "wheelInvert": true } }')
+      expect(wheelInvertFrom(loadConfig(rowConfig, root).config, false)).toBe(true)
+      // A file that says nothing about the knob keeps the row config's own floor — today's behaviour.
+      writeFileSync(projectFile, '{ "tui": { "dashboardKey": false } }')
+      expect(wheelInvertFrom(loadConfig(rowConfig, root).config, false)).toBe(false)
+      expect(wheelInvertFrom(loadConfig(rowConfig, root).config, true)).toBe(true)
+      // A non-boolean value can never arm it, and neither can an absent config layer at all.
+      writeFileSync(projectFile, '{ "tui": { "wheelInvert": "yes" } }')
+      expect(wheelInvertFrom(loadConfig(rowConfig, root).config, false)).toBe(false)
+      expect(wheelInvertFrom(undefined, false)).toBe(false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
+
 describe("R6: the frame's border title is a structured value, not a string", () => {
   /** The frame element of one rendered page. */
   function frameOf(page: (props: unknown) => unknown, kit: ReturnType<typeof makeKit>): Element | undefined {

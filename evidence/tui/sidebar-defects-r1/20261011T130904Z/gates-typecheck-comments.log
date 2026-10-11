@@ -1,0 +1,16 @@
+## GATES — R2 test-only addendum (no dist rebuild needed): bun run typecheck + bun run verify:comments
+## exit codes via PIPESTATUS[0] (the gate's own status, not tail's)
+## 2026-10-11T13:59:01Z
+
+=== bun run typecheck ===
+$ tsgo --noEmit
+typecheck exit=0
+
+=== bun run verify:comments ===
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 385 TypeScript file(s) of 385 in the source set; inspected 34134 declaration(s); skipped 15246 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+verify:comments exit=0

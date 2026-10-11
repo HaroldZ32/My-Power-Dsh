@@ -34,6 +34,7 @@ import { STATUS_KEY } from "../src/status"
 import { TEAM_SCENE_ID, registerScene } from "../src/scenes"
 import { SUBAGENT_SCENE_ID } from "../src/subagent-scene"
 import { DECISION_EVENTS } from "../src/decisions"
+import { setWheelInvertRead, wheelInvertOn } from "../src/panel-core"
 
 /** What a registration returns: a cleanup, or nothing at all. */
 type Disposer = () => void | undefined
@@ -335,6 +336,10 @@ describe("plugin contract", () => {
       // The Ctrl+A takeover's FLOOR: the row config default. A saved `tui.dashboardKey` (the /settings
       // row) outranks it per press, so this stays true for every composition that never saves one.
       dashboardKey: true,
+      // The wheel-direction FLOOR: TODAY'S BEHAVIOUR is the default, so a composition that never
+      // configures the knob scrolls exactly as it did before the knob existed. A saved
+      // `tui.wheelInvert` in `<workspace>/.mpd/mpd.jsonc` outranks this value.
+      wheelInvert: false,
       sessionEvents: true,
       decisionEvents: true,
       logPrefix: "mpd-tui",
@@ -1466,5 +1471,32 @@ describe("the §D.2 runtime notice (a save with no live session workspace)", () 
     /** The contributions published after a successful write-back. */
     const clearedPublished = cleared.calls.statusSet.filter((entry: any) => entry.key === STATUS_KEY)
     expect(String(clearedPublished.at(-1).text)).not.toContain("no live session")
+  })
+})
+
+// ── R1.5 (repair round R1, CodeRabbit PR #35): the reader keeps the ROW CONFIG when the layer throws ──
+//
+// THE DEFECT: the row installs ONE reader over the live config layer, and the reader's own value is the
+// FLOOR the row config declared. `wheelInvertOn()` contains a throw by clamping to `false` (today's
+// behaviour), so a config layer that throws on `get()` silently disabled a knob the row config — or a
+// saved `tui.wheelInvert` — had turned ON. The throw is therefore caught INSIDE the reader, where the
+// row's `resolved.wheelInvert` is in scope.
+describe("R1.5 · the wheel-invert reader falls back to the row config when the config layer throws", () => {
+  test("a throwing `mpdConfig.get()` + row config `wheelInvert: true` still scrolls inverted", () => {
+    /** Every service, with a config layer whose `get()` throws as a broken bridge does. */
+    const host = allServices({
+      mpdConfig: {
+        get: (): never => { throw new Error("config layer down") },
+      },
+    })
+    // The row is applied with the knob ON in its own config: that value is the floor the reader must keep.
+    mod.apply(hostDouble(host.services).ctx as never, { wheelInvert: true })
+    try {
+      expect(wheelInvertOn()).toBe(true)
+    } finally {
+      // THE READER IS PROCESS STATE, so this arm puts the shipped default back rather than leaving a
+      // throwing layer installed for whatever runs after it.
+      setWheelInvertRead((): boolean => false)
+    }
   })
 })

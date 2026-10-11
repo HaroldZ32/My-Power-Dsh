@@ -1,0 +1,19 @@
+{
+  "arm": "D5.3 — legacy vs timed, settled on shipped host bytes and one REAL operator session",
+  "command": "node evidence/.../mode-probe/probe.ts /home/haroldzhao/.dsh/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh--/7072e2c7-1257-4420-a933-6e414b20eab2/session.v4.jsonl.zstd",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "hostUnderTest": {
+    "package": "@deepseek-ai/dsh-tool-ask-user",
+    "version": "0.2.0-rc.2",
+    "closure": "/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai"
+  },
+  "observed": [
+    "PART A: the real 2026-10-11 session recorded ask_user_question with parameters [\"questions\"] only (legacy on the wire) and carried a 5-item call whose EVERY item had options ABSENT (the reported occurrence).",
+    "PART B: executing the installed module with {} registers parameters [\"questions\"] and the host fold predicate returns false; with {mode:\"timed\"} it registers [\"questions\",\"timeout\"] and returns true."
+  ],
+  "verdict": "The row is LEFT UNTOUCHED. The timed-gated projection is REAL, but it is not the web card s source: dsh-client-ui-user-questions/lib/client.js creates a card for a blocking request that carried no wait (callId undefined, dismissal cancel) from the forwarded user-questions/request waterfall, which dsh-user-questions emits in BOTH modes.",
+  "logPath": "mode-probe/output.log",
+  "logBytes": 1541,
+  "logSha256": "7d5fc3bdfbb8296553a76991a1f9100410f3fa82b482889648c4762b79fe9880"
+}

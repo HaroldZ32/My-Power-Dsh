@@ -519,6 +519,68 @@ export interface PanelWheelEvent {
 }
 
 /**
+ * The ONE wheel-sign normalisation point.
+ *
+ * WHY A NORMALISATION POINT HAS TO EXIST (frozen contract D2, user mandate M1(b)). The host derives a
+ * wheel event's `deltaY` from the terminal's own wheelup/wheeldown bits, and which bit a wheel-up
+ * produces is a property of the TERMINAL, the multiplexer and sometimes the OS — so the same gesture
+ * arrives positive on one machine and negative on another, and a page that adds the delta to its offset
+ * scrolls the wrong way on exactly those machines. Before this helper every wheel path here applied the
+ * raw delta with its own fixed sign, so there was no single place to correct and no user-facing answer.
+ *
+ * THE CONVENTION THIS FUNCTION PRODUCES is the one the rest of this file was written against: a POSITIVE
+ * result moves the window toward LATER rows (down), a negative one toward earlier rows (up).
+ * @param delta - the raw delta exactly as the host reported it.
+ * @param invert - the user's `tui.wheelInvert` setting; true flips the sign.
+ * @returns the delta in this plugin's own convention.
+ */
+export function normalizeWheelDelta(delta: number, invert: boolean): number {
+  // A ZERO DELTA STAYS A PLAIN `0`, never `-0`. The two are `===` but not `Object.is`-equal, so a
+  // negated zero would read as "this gesture changed something" to any caller using a strict comparison
+  // — motion with no cause, on a page whose whole point is that a gesture which cannot scroll does nothing.
+  if (delta === 0) return 0
+  return invert ? -delta : delta
+}
+
+/**
+ * The wheel-direction reader in force for this process, installed once by the mounted row.
+ *
+ * WHY A READER RATHER THAN A VALUE. The knob lives in `<workspace>/.mpd/mpd.jsonc`, which the
+ * `mpdConfig` service resolves; that service is injected through a DEFERRED binder, so it can bind
+ * after this row applies. A one-shot read at mount would therefore sample `undefined` on a perfectly
+ * normal boot and the knob would look broken. Reading per gesture removes that ordering entirely — and
+ * it is the same shape `tui.dashboardKey` already uses (a per-press read, with the row config as floor).
+ *
+ * THE DEFAULT IS TODAY'S BEHAVIOUR: an unmounted reader answers false, so an adapter-less unit arm and
+ * a composition without `mpd-config` both scroll exactly as they did before this knob existed.
+ */
+let wheelInvertRead: () => boolean = (): boolean => false
+
+/**
+ * Install the wheel-direction reader; called once by the mounted row, never by a page.
+ * @param read - resolves the `tui.wheelInvert` setting right now; must never throw.
+ */
+export function setWheelInvertRead(read: () => boolean): void {
+  wheelInvertRead = read
+}
+
+/**
+ * The wheel-direction setting right now, through the installed reader.
+ *
+ * A reader that throws is contained here rather than at each of the four wheel paths: a broken config
+ * layer costs the user the knob, never the ability to scroll.
+ * @returns true when the wheel's sign must be inverted.
+ */
+export function wheelInvertOn(): boolean {
+  try {
+    return wheelInvertRead() === true
+  } catch {
+    // An unreadable setting layer leaves the default (today's behaviour) in force.
+    return false
+  }
+}
+
+/**
  * Clamp a desired scroll offset into the only band that can render.
  *
  * This is the ONE place the band is computed, so no page can render a blank panel by driving the offset
@@ -544,17 +606,19 @@ export function clampScroll(offset: number, contentRows: number, viewportRows: n
 /**
  * Apply one wheel event to a scroll offset.
  *
- * The host routes wheel events to `onWheel` handlers by hit test, and the SIGN CONVENTION is the one a
- * terminal reports: `deltaY > 0` is a wheel toward the user, which scrolls the content DOWN (later rows
- * come into view). A board that fits is a NO-OP — an offset that drifted on a page with nothing to
- * scroll would be a bug the user cannot even see, which is the worst kind.
+ * The host routes wheel events to `onWheel` handlers by hit test, and the SIGN is decided by the ONE
+ * helper {@link normalizeWheelDelta} so the user's `tui.wheelInvert` setting reaches this path too:
+ * `deltaY > 0` is a wheel toward the user, which scrolls the content DOWN (later rows come into view).
+ * A board that fits is a NO-OP — an offset that drifted on a page with nothing to scroll would be a bug
+ * the user cannot even see, which is the worst kind.
  * @param event - the wheel event, as the host delivered it.
  * @param offset - the current offset.
  * @param contentRows - how many rows the page has in total.
  * @param viewportRows - how many rows the panel can show at once.
+ * @param invert - the wheel-direction setting; omitted reads the live one (see {@link wheelInvertOn}).
  * @returns the clamped next offset.
  */
-export function scrollByWheel(event: unknown, offset: number, contentRows: number, viewportRows: number): number {
+export function scrollByWheel(event: unknown, offset: number, contentRows: number, viewportRows: number, invert: boolean = wheelInvertOn()): number {
   /** The band this page is in right now. */
   const band = clampScroll(offset, contentRows, viewportRows)
   if (!band.overflow) return band.offset
@@ -564,14 +628,15 @@ export function scrollByWheel(event: unknown, offset: number, contentRows: numbe
   // NOT A NUMBER IS NOT A GESTURE: a host that reports no delta, or a non-numeric one, must leave the
   // offset exactly where it was rather than snapping the page to the top.
   if (typeof raw.deltaY !== "number" || !Number.isFinite(raw.deltaY)) return band.offset
-  return clampScroll(band.offset + raw.deltaY, contentRows, viewportRows).offset
+  return clampScroll(band.offset + normalizeWheelDelta(raw.deltaY, invert), contentRows, viewportRows).offset
 }
 
 /**
  * Apply one HORIZONTAL wheel event to a column offset.
  *
  * The same discipline as {@link scrollByWheel}, on the axis the user's trackpad names `deltaX`: a page
- * that fits is a no-op, a non-numeric delta is not a gesture, and the result is clamped into the band
+ * that fits is a no-op, a non-numeric delta is not a gesture, the sign comes from the SAME
+ * {@link normalizeWheelDelta} (one user setting, both axes), and the result is clamped into the band
  * `clampScroll` computes from the drawing's own width. The two functions exist separately because the
  * DELTA they read is the axis (reading `deltaY` here would make a vertical wheel pan the picture
  * sideways, which is precisely the T4 defect in a different costume).
@@ -579,9 +644,10 @@ export function scrollByWheel(event: unknown, offset: number, contentRows: numbe
  * @param offset - the current column offset.
  * @param contentCols - how many columns the drawing has in total.
  * @param viewportCols - how many columns the window shows at once.
+ * @param invert - the wheel-direction setting; omitted reads the live one (see {@link wheelInvertOn}).
  * @returns the clamped next column offset.
  */
-export function scrollByWheelX(event: unknown, offset: number, contentCols: number, viewportCols: number): number {
+export function scrollByWheelX(event: unknown, offset: number, contentCols: number, viewportCols: number, invert: boolean = wheelInvertOn()): number {
   /** The band this drawing is in right now. */
   const band = clampScroll(offset, contentCols, viewportCols)
   if (!band.overflow) return band.offset
@@ -589,7 +655,7 @@ export function scrollByWheelX(event: unknown, offset: number, contentCols: numb
   /** The event, before its delta is trusted. */
   const raw = event as PanelWheelEvent
   if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX)) return band.offset
-  return clampScroll(band.offset + raw.deltaX, contentCols, viewportCols).offset
+  return clampScroll(band.offset + normalizeWheelDelta(raw.deltaX, invert), contentCols, viewportCols).offset
 }
 
 /**
@@ -981,10 +1047,10 @@ export function usePanelViewport(
       /** The captured sizes, read once so the three numbers below belong to one generation. */
       const value = facts?.current
       if (value?.contentCols === undefined || value?.viewportCols === undefined) return
-      /** The delta this event carries on the horizontal axis; a non-numeric one is not a gesture. */
-      const raw = (event ?? {}) as PanelWheelEvent
-      if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX)) return
-      commitCol(colPosition() + raw.deltaX)
+      // THROUGH THE SAME FUNCTION the standalone callers use, so the horizontal wheel cannot keep a
+      // second, private copy of the delta arithmetic — which is exactly how its sign would drift away
+      // from the one the user's `tui.wheelInvert` setting corrects.
+      commitCol(scrollByWheelX(event, colPosition(), value.contentCols, value.viewportCols))
     },
     /**
      * Kept for API compatibility, and now a NO-OP: the hook reads the page's sizes through `read()`, so

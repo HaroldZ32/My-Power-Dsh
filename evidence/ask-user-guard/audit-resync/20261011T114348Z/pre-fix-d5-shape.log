@@ -1,0 +1,8 @@
+[ask-user-question-audit] file: evidence/ask-user-guard/audit-resync/20261011T114348Z/d5-shape.jsonl
+[ask-user-question-audit] decoded: 0 zstd frame(s), 2 record(s), 0 non-record line(s), torn tail: none
+[ask-user-question-audit] occurrences: 1 ask_user_question call(s)
+#    callId                  verdict                rule                      q   options       answer                  
+1    call-d5-missing-optio~  ok                     -                         1   0             -                       
+[ask-user-question-audit] summary: 1 call(s) — ok 1, structurally-broken 0, unparseable-arguments 0
+[ask-user-question-audit] rules: none fired
+[ask-user-question-audit] answers: paired 0/1 (tool-result 0, user-message 0, errors 0)

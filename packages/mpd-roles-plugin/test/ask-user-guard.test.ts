@@ -1,16 +1,19 @@
-// THE ask_user_question BOUNDARY GUARD'S ARMS (contract `.mpd/plans/ask-user-question-guard.md`, D1).
+// THE ask_user_question BOUNDARY GUARD'S ARMS — D1 of `.mpd/plans/ask-user-question-guard.md`, as
+// EXTENDED by D5 of `.mpd/plans/fix-sidebar-defects.md`: the user mandate that EVERY question item must
+// carry options, with no free-text exception.
 //
 // WHAT THESE LOCK OUT: a question call that is SCHEMA-LEGAL — the host requires only `id` and `question`
-// per item, and leaves `options` optional — but semantically broken, which the dsh-tui panel renders as a
-// card with neither text nor options (measured 2026-10-10). The rules are driven through the REAL
-// exported validator (`askUserQuestionDenial`) and, for the name test and the install, through the
-// callback the row really hands the adapter — so what is asserted is the shipped decision, never a
+// per item and leaves `options` optional, so a call that simply OMITS `options` is accepted by the
+// harness and rendered as a card with no choices (measured 2026-10-10 for the malformed shapes, and
+// 2026-10-11 for an omission) — but semantically broken. The rules are driven through the REAL exported
+// validator (`askUserQuestionDenial`) and, for the name test and the install, through the callback the
+// row really hands the adapter — so what is asserted is the shipped decision, never a
 // re-implementation of it.
 //
-// BOTH DIRECTIONS ARE PINNED, because this guard's risk is over-denial: every DENY shape the contract
-// lists has an arm, and the ALLOW shapes (a valid call, a valid call WITHOUT `options`, a non-target
-// tool) have arms of their own — a free-text question is a designed use of the host tool and must never
-// be refused by a boundary that only exists to protect the render layer.
+// BOTH DIRECTIONS ARE PINNED, because this guard's risk is over-denial: every DENY shape the rule set
+// lists has an arm (a MISSING `options` key included, denied exactly like `options: []`), and the ALLOW
+// shapes (a call whose every item carries a non-empty `options` list, a non-target tool) have arms of
+// their own.
 import { describe, expect, test } from "bun:test"
 
 import {
@@ -35,18 +38,14 @@ const VALID_WITH_OPTIONS: Record<string, unknown> = {
   ],
 }
 
-/** One well-formed FREE-TEXT question: no `options` at all, which the contract keeps legal. */
-const VALID_WITHOUT_OPTIONS: Record<string, unknown> = {
+/** One question with NO `options` key at all — the 2026-10-11 occurrence, denied exactly like `[]`. */
+const MISSING_OPTIONS: Record<string, unknown> = {
   questions: [{ id: "notes", question: "Anything else the plan should carry?" }],
 }
 
-describe("D1 — allow: every shape the contract does NOT deny stays dispatchable", () => {
+describe("D5 — allow: every shape the rule set does NOT deny stays dispatchable", () => {
   test("a fully-formed call with options is allowed", () => {
     expect(askUserQuestionDenial(VALID_WITH_OPTIONS)).toBeUndefined()
-  })
-
-  test("a call whose question carries NO options is allowed — free text is a designed use", () => {
-    expect(askUserQuestionDenial(VALID_WITHOUT_OPTIONS)).toBeUndefined()
   })
 
   test("an `options` entry may carry extra fields — only `label` is the rule's subject", () => {
@@ -55,11 +54,11 @@ describe("D1 — allow: every shape the contract does NOT deny stays dispatchabl
     })).toBeUndefined()
   })
 
-  test("a mixed call is allowed: one question with options, one free-text question", () => {
+  test("a multi-question call is allowed when EVERY item carries a non-empty options list", () => {
     expect(askUserQuestionDenial({
       questions: [
         { id: "a", question: "Choose", options: [{ label: "one" }] },
-        { id: "b", question: "Explain" },
+        { id: "b", question: "Explain", options: [{ label: "verbose" }, { label: "terse" }] },
       ],
     })).toBeUndefined()
   })
@@ -73,7 +72,35 @@ describe("D1 — allow: every shape the contract does NOT deny stays dispatchabl
   })
 })
 
-describe("D1 — deny: `arguments` is not an object", () => {
+describe("D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence)", () => {
+  test("a question with no `options` key at all is refused, naming the offending item", () => {
+    expect(String(askUserQuestionDenial(MISSING_OPTIONS)))
+      .toContain("question item 1 carries no `options` array")
+  })
+
+  test("`options: undefined` is refused exactly like a missing key", () => {
+    expect(String(askUserQuestionDenial({ questions: [{ id: "q1", question: "Q?", options: undefined }] })))
+      .toContain("question item 1 carries no `options` array")
+  })
+
+  test("a mixed call is refused at the FIRST item that lacks `options`, and the sentence names it", () => {
+    expect(String(askUserQuestionDenial({
+      questions: [
+        { id: "a", question: "Choose", options: [{ label: "one" }] },
+        { id: "b", question: "Explain" },
+      ],
+    }))).toContain("question item 2 carries no `options` array")
+  })
+
+  test("the refusal tells the model to re-issue with an options array on every item", () => {
+    /** The denial for the omission shape — the sentence the model reads back. */
+    const denial = String(askUserQuestionDenial(MISSING_OPTIONS))
+    expect(denial).toContain("ask_user_question is refused")
+    expect(denial).toContain("non-empty `options` array")
+  })
+})
+
+describe("D5 — deny: `arguments` is not an object", () => {
   test("a non-object call is refused, naming the received shape", () => {
     /** The non-object shapes the harness could hand a guard for a malformed call. */
     const shapes: unknown[] = [undefined, null, "questions", 7, true, ["x"]]
@@ -86,7 +113,7 @@ describe("D1 — deny: `arguments` is not an object", () => {
   })
 })
 
-describe("D1 — deny: `questions` missing, not an array, or empty", () => {
+describe("D5 — deny: `questions` missing, not an array, or empty", () => {
   test("a missing `questions` field is refused", () => {
     expect(String(askUserQuestionDenial({}))).toContain("`questions` must be a non-empty array (received undefined)")
   })
@@ -102,7 +129,7 @@ describe("D1 — deny: `questions` missing, not an array, or empty", () => {
   })
 })
 
-describe("D1 — deny: a question item lacks a non-empty string `id` or `question`", () => {
+describe("D5 — deny: a question item lacks a non-empty string `id` or `question`", () => {
   test("a non-object item is refused, naming its position", () => {
     expect(String(askUserQuestionDenial({ questions: ["scope"] }))).toContain("question item 1 must be an object")
     expect(String(askUserQuestionDenial({ questions: [null] }))).toContain("question item 1 must be an object")
@@ -132,12 +159,14 @@ describe("D1 — deny: a question item lacks a non-empty string `id` or `questio
   })
 
   test("the denial names the OFFENDING item, so a 4-item call points at item 4", () => {
-    /** A call whose first three items are valid and whose fourth lost its `question` — the measured shape. */
+    /** A call whose first three items are fully formed and whose fourth lost its `question` — the
+     * measured shape. Items 1-3 carry `options` because the D5 rule makes a missing list a denial of
+     * its own, which would otherwise stop the walk at item 1 and hide what this arm asserts. */
     const denial = askUserQuestionDenial({
       questions: [
-        { id: "q1", question: "One?" },
-        { id: "q2", question: "Two?" },
-        { id: "q3", question: "Three?" },
+        { id: "q1", question: "One?", options: [{ label: "a" }] },
+        { id: "q2", question: "Two?", options: [{ label: "b" }] },
+        { id: "q3", question: "Three?", options: [{ label: "c" }] },
         { id: "q4", options: [{ label: "mis-keyed" }] },
       ],
     })
@@ -145,7 +174,7 @@ describe("D1 — deny: a question item lacks a non-empty string `id` or `questio
   })
 })
 
-describe("D1 — deny: `options` present and malformed", () => {
+describe("D5 — deny: `options` present and malformed", () => {
   test("`options` that is not an array is refused", () => {
     expect(String(askUserQuestionDenial({ questions: [{ id: "q1", question: "Q?", options: "a" }] })))
       .toContain("carries `options` that is not an array (received a string)")
@@ -172,7 +201,7 @@ describe("D1 — deny: `options` present and malformed", () => {
   })
 })
 
-describe("D1 — the name test: only `ask_user_question` is this guard's subject", () => {
+describe("D5 — the name test: only `ask_user_question` is this guard's subject", () => {
   test("a non-target tool name passes untouched, whatever its arguments", () => {
     expect(askUserQuestionGuardDecision({ name: "read", arguments: { file_path: "x.ts" } })).toBeUndefined()
     // Even arguments this guard would refuse are NOT its business under another name.
@@ -198,7 +227,7 @@ describe("D1 — the name test: only `ask_user_question` is this guard's subject
   })
 })
 
-describe("D1 — the install reaches the seam and reports its outcome", () => {
+describe("D5 — the install reaches the seam and reports its outcome", () => {
   /**
    * One adapter double whose `guardTool` records the callback the row really installs.
    *
@@ -239,6 +268,9 @@ describe("D1 — the install reaches the seam and reports its outcome", () => {
     expect(guards).toHaveLength(1)
     // The callback the ROW installed decides: a broken call is denied, a good call and a foreign tool pass.
     expect(String(guards[0]?.({ name: "ask_user_question", arguments: { questions: [] } }) ?? ""))
+      .toContain("ask_user_question is refused")
+    // The 2026-10-11 shape travels the REAL seam too: a question item that omits `options` is denied.
+    expect(String(guards[0]?.({ name: "ask_user_question", arguments: MISSING_OPTIONS }) ?? ""))
       .toContain("ask_user_question is refused")
     expect(guards[0]?.({ name: "ask_user_question", arguments: VALID_WITH_OPTIONS })).toBeUndefined()
     expect(guards[0]?.({ name: "read", arguments: {} })).toBeUndefined()

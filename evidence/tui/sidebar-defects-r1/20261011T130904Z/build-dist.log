@@ -1,0 +1,14 @@
+# pinned build: .toolchain/node_modules/.bin/bun 1.4.0
+$ .toolchain/node_modules/.bin/bun build packages/mpd-tui-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-adapter-plugin/dist/index.js
+Bundled 1 module in 6ms
+
+  index.js  47.29 KB  (entry point)
+
+exit=0
+
+$ .toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+Bundled 34 modules in 9ms
+
+  index.js  0.39 MB  (entry point)
+
+exit=0

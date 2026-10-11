@@ -1,0 +1,124 @@
+{
+  "wave": "fix/sidebar-defects",
+  "lane": "D5 — ask_user_question options are mandatory (preset rule + boundary guard) + the legacy/timed investigation",
+  "contracts": [
+    ".mpd/plans/fix-sidebar-defects.md",
+    ".mpd/plans/ask-user-question-guard.md"
+  ],
+  "toolchain": ".toolchain/node_modules/.bin/bun (buildToolchain bun@1.4.0), first on PATH",
+  "gates": [
+    {
+      "gate": "audit-selftest",
+      "command": "node skills/dsh-qa/scripts/ask-user-question-audit.ts --self-test",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T11:34:11Z",
+      "endedAtUtc": "2026-10-11T11:34:12Z",
+      "logPath": "output.log",
+      "logBytes": 279,
+      "logSha256": "cdb653f8c2c6bdfa0727ac4ec8c1a0f9e48f4c284be19091346279c1782496c8",
+      "headline": "[ask-user-question-audit self-test] ok: 4 concatenated zstd frame(s), 18 record(s), 11 occurrence(s), every rule of the local restatement, both answer pairings, the CLI exit codes and the repair arms (R2 wrong-type detail, R3 array line, R4 mixed-arg usage) are verified offline"
+    },
+    {
+      "gate": "bun-test",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun test ./packages/mpd-roles-plugin",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T11:34:01Z",
+      "endedAtUtc": "2026-10-11T11:34:01Z",
+      "logPath": "output.log",
+      "logBytes": 22276,
+      "logSha256": "53f8c72765bbe2c261f739e0307cd0ce9d17f86a68ec7e960ae611f7218d1d19",
+      "headline": "Ran 147 tests across 8 files. [169.00ms]"
+    },
+    {
+      "gate": "preset-conformance-selftest",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T11:34:04Z",
+      "endedAtUtc": "2026-10-11T11:34:04Z",
+      "logPath": "output.log",
+      "logBytes": 1267,
+      "logSha256": "57b9d1fda5083f87371fb7d164d6b4adf444843e0b0edaca024332768776dd3e",
+      "headline": "[preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)"
+    },
+    {
+      "gate": "test-qa",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run test:qa",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T11:34:05Z",
+      "endedAtUtc": "2026-10-11T11:34:11Z",
+      "logPath": "output.log",
+      "logBytes": 27002,
+      "logSha256": "3552140782f9b8274247bb64a14bdd62cf722c7bb7efce1155c7fa0fa624568b",
+      "headline": "[test:qa] all self-tests passed"
+    },
+    {
+      "gate": "typecheck",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run typecheck",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T11:34:01Z",
+      "endedAtUtc": "2026-10-11T11:34:02Z",
+      "logPath": "output.log",
+      "logBytes": 16,
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87",
+      "headline": "$ tsgo --noEmit"
+    },
+    {
+      "gate": "verify-comments",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:comments",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T11:34:02Z",
+      "endedAtUtc": "2026-10-11T11:34:03Z",
+      "logPath": "output.log",
+      "logBytes": 307,
+      "logSha256": "000959a3b0e7951cbed8fabda173f57515006ef369a43bd12476a45ab3be4eef",
+      "headline": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+    },
+    {
+      "gate": "verify-dist-fresh",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T11:34:04Z",
+      "endedAtUtc": "2026-10-11T11:34:05Z",
+      "logPath": "output.log",
+      "logBytes": 4559,
+      "logSha256": "7bb36b06a696b939c917316b4453a931586cc065906b4a19f79e5d6e722dc828",
+      "headline": "[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 635ms"
+    },
+    {
+      "gate": "verify-docs",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:docs",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T11:34:12Z",
+      "endedAtUtc": "2026-10-11T11:34:12Z",
+      "logPath": "output.log",
+      "logBytes": 5512,
+      "logSha256": "d4440ad11880ad04c9983d2ab4573bf62a8e9d89190ae07533da6d257585ffe7",
+      "headline": "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS"
+    },
+    {
+      "gate": "verify-rows",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:rows",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T11:34:03Z",
+      "endedAtUtc": "2026-10-11T11:34:04Z",
+      "logPath": "output.log",
+      "logBytes": 608,
+      "logSha256": "4be1bcebab209813067ab4167cea4af06ae7a277d056bf388d94fe8e6016091f",
+      "headline": "[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)"
+    }
+  ],
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": []
+  }
+}

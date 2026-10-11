@@ -1,0 +1,34 @@
+## FALSIFIABILITY — MUTATION: scenes.ts graph-scene onWheel skips normalizeWheelDelta (raw Number(event.deltaY/deltaX), no wheelInvertOn())
+## command: cd packages/mpd-tui-plugin && bun test test/team-surface.test.ts -t wheelInvert  |  2026-10-11T13:58:12Z
+## EXPECTED: the new arm goes RED while every helper/panel-core arm stays green.
+
+test/team-surface.test.ts:
+1271 |       const atTop = render(chainMount.kit, chainScene)
+1272 |       // POSITIVE deltaY INVERTS TO "UP", and "up" from the top is the CLAMP — so the scene must not
+1273 |       // move at all. (Without the inversion this very gesture scrolls; the arm below is what proves the
+1274 |       // clamp is not simply a dead handler.)
+1275 |       expect(chainMount.kit.pointer("onWheel", { deltaY: 1 })).toBe(true)
+1276 |       expect(render(chainMount.kit, chainScene)).toBe(atTop)
+                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: "◐ MPD team — lead (focus-1) · 100x30scope      workspace-level (no session id on this surface)█████░░░░░░░░░░░ 1/3 · idle · 3 task(s) · 1 done · 1 running · 1 pending · 0 failed · 2 link(s)roster  (no members)task dependency graph╭────────╮                                                                                      │ ✓ a    │                                                                                      ╰───┬────╯                                                                                          │                                                                                               │                                                                                               ▼                                                                                           ╭───┴────╮                                                                                      │ ◐ b    │                                                                                      ╰───┬────╯                                                                                          │                                                                                               │                                                                                               ▼                                                                                           ╭───┴────╮                                                                                      │ ○ c    │                                                                                      ╰────────╯                                                                                      ▼/▸ blocker above → dependent below · ▶ focus lights its chain✓ completed · ◐ running · ○ open/blocked · ✗ failed · ⊘ cancelledesc/q close · ↑↓ focus · click pins · hover previews · ⇧↑↓ scroll · r refresh · a plan · p board"
+Received: "◐ MPD team — lead (focus-1) · 100x30scope      workspace-level (no session id on this surface)█████░░░░░░░░░░░ 1/3 · idle · 3 task(s) · 1 done · 1 running · 1 pending · 0 failed · 2 link(s)roster  (no members)task dependency graph│ ✓ a    │                                                                                      ╰───┬────╯                                                                                          │                                                                                               │                                                                                               ▼                                                                                           ╭───┴────╮                                                                                      │ ◐ b    │                                                                                      ╰───┬────╯                                                                                          │                                                                                               │                                                                                               ▼                                                                                           ╭───┴────╮                                                                                      │ ○ c    │                                                                                      ╰────────╯                                                                                      ▼/▸ blocker above → dependent below · ▶ focus lights its chain✓ completed · ◐ running · ○ open/blocked · ✗ failed · ⊘ cancelledesc/q close · ↑↓ focus · click pins · hover previews · ⇧↑↓ scroll · r refresh · a plan · p board"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:1276:50)
+(fail) the team scene's focus > with the `tui.wheelInvert` knob ON the SCENE's own wheel handler flips BOTH axes and still clamps [4.82ms]
+
+ 0 pass
+ 33 filtered out
+ 1 fail
+ 3 expect() calls
+Ran 1 test across 1 file. [20.00ms]
+
+## SAME MUTATION, WHOLE PACKAGE SUITE — proves the finding's premise: only the new SCENE-level arm reddens; every panel-core/helper arm stays green.
+## command: cd packages/mpd-tui-plugin && bun test  |  2026-10-11T13:58:16Z
+(fail) the team scene's focus > with the `tui.wheelInvert` knob ON the SCENE's own wheel handler flips BOTH axes and still clamps [0.80ms]
+(fail) the team scene's focus > with the `tui.wheelInvert` knob ON the SCENE's own wheel handler flips BOTH axes and still clamps [0.80ms]
+ 465 pass
+ 1 fail
+ 12771 expect() calls
+Ran 466 tests across 20 files. [8.29s]

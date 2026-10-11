@@ -215,15 +215,19 @@
                 summary + acceptance criteria agreed with the user, which becomes the input to the
                 staged plan.
 
-                ASK_USER_QUESTION CONSTRUCTION RULE: every question item you send MUST carry a
-                non-empty `id`, the question text under `question`, and - whenever you offer a choice -
-                a non-empty `options` array whose EVERY entry carries a non-empty `label`. Keep the JSON
+                ASK_USER_QUESTION CONSTRUCTION RULE (BINDING, no exceptions): EVERY question item you
+                send MUST carry a non-empty `id`, the question text under `question`, and a NON-EMPTY
+                `options` array whose EVERY entry carries a non-empty `label`. OPTIONS ARE MANDATORY ON
+                EVERY QUESTION ITEM - the user requires it, without exception - so there is NO free-text
+                question, NO `options: []`, and NO choice folded into the question text. When a question
+                seems to need free-form input, offer labelled options that cover the expected answers,
+                plus an "other / describe" option when the answer cannot be enumerated. Keep the JSON
                 structure exactly as the tool schema defines it: the fields at the level the schema puts
-                them, no mis-keyed option list, no empty option array. A boundary guard MAY deny a
-                structurally broken call before dispatch, but that guard is only a BACKSTOP: it can be
-                ABSENT (it degrades when the host exposes no guard seam) and unreadable shapes pass
-                through, so a broken call can still reach the panel. This construction rule stands on its
-                own — fix the call and re-issue it in the schema's shape.
+                them, no mis-keyed or mis-spelled option list. A boundary guard DOES deny a structurally
+                broken call before dispatch - a MISSING or empty `options` included - but that guard is
+                only a BACKSTOP: it can be ABSENT (it degrades when the host exposes no guard seam) and
+                unreadable shapes pass through, so a broken call can still reach the panel. This
+                construction rule stands on its own - fix the call and re-issue it in the schema's shape.
 
                 WORKMATE LIBRARY (~/.mpd/workmate): the roster specialists are BASE templates only.
                 When creating a team or pulling up a specialist you will reuse across sessions, you

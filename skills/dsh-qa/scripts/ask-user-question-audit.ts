@@ -10,7 +10,9 @@
 // (AGENTS.md §7). This script is the instrument that shows where an occurrence sits relative to the D1
 // boundary. It MUST NOT import the plugin package: the rule set below is a LOCAL prose restatement of
 // the D1 deny list, and the two must agree (D1 `askUserQuestionDenial` in
-// `packages/mpd-roles-plugin/src/ask-user-guard.ts` is the enforcement, this is the report).
+// `packages/mpd-roles-plugin/src/ask-user-guard.ts` is the enforcement, this is the report). D5's user
+// mandate — `options` is MANDATORY on every question item — is part of that list: a MISSING field is
+// reported exactly like `options: []`, because both render as a card with no choices.
 //
 // WHAT the harness records (measured 2026-10-11 against the installed harness, this workspace):
 // `appendToolCall` writes `data.arguments` as the RAW model string, so a normal call reads as a JSON
@@ -249,10 +251,10 @@ function decodeArguments(raw: unknown): { readonly value: unknown; readonly unpa
  * Apply the D1 rule set — restated here as local prose, because a QA case may not import plugin code.
  * DENY (i.e. `structurally-broken`) when, in this order: `arguments` is not an object; `questions` is
  * missing, not an array, or empty; an item is not an object, or its `id` is not a NON-EMPTY string, or
- * its `question` is not a NON-EMPTY string; `options` is present and is not an array, or is empty, or
- * an entry is not an object carrying a non-empty string `label`. A question WITHOUT `options` stays
- * legal — a free-text question is a designed use of the host tool. Invalid JSON text is its own
- * verdict, `unparseable-arguments`, because the model's raw text never became a shape to check.
+ * its `question` is not a NON-EMPTY string; `options` is MISSING (D5 — the field is MANDATORY, so an
+ * omission is denied exactly like an empty list), is present and not an array, or is empty, or an entry
+ * is not an object carrying a non-empty string `label`. Invalid JSON text is its own verdict,
+ * `unparseable-arguments`, because the model's raw text never became a shape to check.
  * @param raw The recorded `data.arguments` field.
  * @returns The verdict, every violation found (not just the first) and the question/option counts.
  */
@@ -303,9 +305,12 @@ function classifyArguments(raw: unknown): Classification {
     if (typeof rawText !== "string" || rawText.length === 0) {
       violations.push({ rule: "question-text-missing", path: itemPath + ".question", detail: textFieldDetail(rawText) })
     }
-    // The item's optional `options`; absent means a free-text question, which stays legal.
+    // The item's `options`, MANDATORY since D5: an OMITTED field is denied exactly like `options: []`,
+    // because the panel renders both as a card with no choices. The two keep distinct rule ids so the
+    // report still says WHICH shape was recorded.
     const itemOptions = fieldOf(item, "options")
     if (itemOptions === undefined) {
+      violations.push({ rule: "options-missing", path: itemPath + ".options", detail: "absent" })
       options.push(0)
       continue
     }
@@ -695,8 +700,8 @@ function writeFixtureFrames(file: string, frames: readonly (readonly SessionReco
  * rule of the local restatement, both answer pairings (v4 and v3 result shapes, and the continued
  * question's user-message answer), a negative control that must NOT be enumerated, and the CLI's own
  * exit codes (0 after reporting, 2 on a usage error) exercised by spawning this very script. The repair
- * arms cover a wrong-type required field, a JSON-array line counted as undecodable, and `--self-test`
- * mixed with another argument.
+ * arms cover a wrong-type required field, a JSON-array line counted as undecodable, `--self-test` mixed
+ * with another argument, and D5's MANDATORY `options` (a question item whose field is MISSING).
  * @returns Nothing; a failed assertion ends the process with exit 1.
  */
 function selfTest(): void {
@@ -709,7 +714,7 @@ function selfTest(): void {
     [
       { type: "session", data: { id: "fixture-session" } },
       { type: "request/header", data: { header: { tools: [{ name: TOOL_NAME }, { name: "read" }] } } },
-      { type: "tool/call", data: { callId: "call-valid", name: TOOL_NAME, arguments: JSON.stringify({ questions: [{ id: "q1", question: "Which mode?", options: [{ label: "fast" }, { label: "safe" }] }, { id: "q2", question: "Anything else?" }] }) } },
+      { type: "tool/call", data: { callId: "call-valid", name: TOOL_NAME, arguments: JSON.stringify({ questions: [{ id: "q1", question: "Which mode?", options: [{ label: "fast" }, { label: "safe" }] }, { id: "q2", question: "Anything else?", options: [{ label: "no" }] }] }) } },
       { type: "tool/result", data: { message: { role: "tool", toolCallId: "call-valid", isError: false, content: [{ type: "text", text: JSON.stringify({ answers: [{ id: "q1", selected: ["fast"] }, { id: "q2", selected: [] }] }) }] } } },
     ],
     [
@@ -727,8 +732,9 @@ function selfTest(): void {
     ],
     [
       { type: "tool/call", data: { callId: "call-id-missing", name: TOOL_NAME, arguments: JSON.stringify({ questions: [{ question: "no id?", options: [] }] }) } },
+      { type: "tool/call", data: { callId: "call-options-missing", name: TOOL_NAME, arguments: JSON.stringify({ questions: [{ id: "q1", question: "Describe the format?" }] }) } },
       { type: "tool/call", data: { callId: "call-label-missing", name: TOOL_NAME, arguments: JSON.stringify({ questions: [{ id: "q1", question: "pick", options: [{ description: "no label" }] }] }) } },
-      { type: "tool/call", data: { callId: "call-user-answered", name: TOOL_NAME, arguments: JSON.stringify({ questions: [{ id: "q1", question: "still there?" }] }) } },
+      { type: "tool/call", data: { callId: "call-user-answered", name: TOOL_NAME, arguments: JSON.stringify({ questions: [{ id: "q1", question: "still there?", options: [{ label: "yes" }] }] }) } },
       { type: "user/message", data: { role: "user", source: { kind: "user-question-reply", callId: "call-user-answered", outcome: "answered" }, content: [{ type: "text", text: JSON.stringify({ kind: "answer_to_pending_question", tool: TOOL_NAME, callId: "call-user-answered", questions: [{ id: "q1" }], answers: [{ id: "q1", selected: [] }] }) }] } },
       { type: "tool/call", data: { callId: "call-read", name: "read", arguments: JSON.stringify({ file_path: "/tmp/x" }) } },
     ],
@@ -752,12 +758,12 @@ function selfTest(): void {
   check("the fixture decoded as " + String(recordCount) + " records, got " + String(report.records), report.records === recordCount)
   check("no line of the fixture should be undecodable", report.undecodableLines === 0)
   check("every fixture result carries a call id, got " + String(report.idlessResults) + " idless", report.idlessResults === 0)
-  check("11 occurrences expected, got " + String(report.occurrences.length), report.occurrences.length === 11)
+  check("12 occurrences expected, got " + String(report.occurrences.length), report.occurrences.length === 12)
   check("the negative control (a `read` call) must NOT be enumerated", byCall("call-read") === undefined)
 
   check("a valid call must classify ok", byCall("call-valid")?.classification.verdict === "ok")
   check("a valid call reports both questions", byCall("call-valid")?.classification.questions === 2)
-  check("a question without options stays legal (2 then 0)", (byCall("call-valid")?.classification.options ?? []).join("/") === "2/0")
+  check("per-question option counts are reported (2 then 1)", (byCall("call-valid")?.classification.options ?? []).join("/") === "2/1")
   check("a valid call pairs with its v4 tool/result", byCall("call-valid")?.answer.hasResult === true && byCall("call-valid")?.answer.resultIsError === false && (byCall("call-valid")?.answer.resultChars ?? 0) > 0)
 
   check("a broken call must classify structurally-broken", byCall("call-broken")?.classification.verdict === "structurally-broken")
@@ -777,6 +783,12 @@ function selfTest(): void {
   check("a missing id and an empty options array both fire", rulesOf("call-id-missing").join(",") === "question-id-missing,options-empty")
   check("an option without a label is option-label-missing", rulesOf("call-label-missing").join(",") === "option-label-missing")
 
+  // D5 (repair): the guard denies a question item whose `options` field is MISSING, exactly like
+  // `options: []`, so this restatement must flag it too — these arms are RED against the pre-D5 rule set.
+  check("a call whose question omits `options` must classify structurally-broken, got " + String(byCall("call-options-missing")?.classification.verdict), byCall("call-options-missing")?.classification.verdict === "structurally-broken")
+  check("the omitted `options` field is named options-missing", rulesOf("call-options-missing").join(",") === "options-missing")
+  check("the omitted field is reported at questions[0].options as absent", byCall("call-options-missing")?.classification.violations[0]?.path === "questions[0].options" && byCall("call-options-missing")?.classification.violations[0]?.detail === "absent")
+
   // R2 (repair): a required text field PRESENT with the wrong type must be reported by its raw shape,
   // never as absent — while an absent field and an empty string keep their own details.
   /** The classification of one directly built arguments string, for the R2 arms below. */
@@ -791,6 +803,20 @@ function selfTest(): void {
   // The empty-string and absent cases keep the reporting they always had.
   check("an empty question keeps the empty-string detail", byDetail([{ id: "q1", question: "" }]).violations[0]?.detail === "'' (empty)")
   check("an absent id still reads absent, got " + String(byCall("call-id-missing")?.classification.violations[0]?.detail), byCall("call-id-missing")?.classification.violations[0]?.detail === "absent")
+
+  // D5 (repair): the item-level shape itself — a MISSING `options` field is denied exactly like an empty
+  // array, and the rule is per ITEM, so a mixed batch flags only the item that omitted the field.
+  /** The D5 shape that certified as `ok` before the fix: one question item with no `options` field. */
+  const optionsMissing = byDetail([{ id: "q1", question: "Describe the format?" }])
+  check("an item without `options` is options-missing, got " + (optionsMissing.violations[0]?.rule ?? "no rule"), optionsMissing.violations[0]?.rule === "options-missing")
+  check("an item without `options` counts as zero options", optionsMissing.options.join("/") === "0")
+  /** The `options: []` twin, whose verdict must MATCH the missing-field case while keeping its own rule. */
+  const optionsEmpty = byDetail([{ id: "q1", question: "Describe the format?", options: [] }])
+  check("a missing `options` field is as broken as `options: []`", optionsMissing.verdict === "structurally-broken" && optionsEmpty.verdict === optionsMissing.verdict)
+  check("the empty array keeps its own rule and detail", optionsEmpty.violations[0]?.rule === "options-empty" && optionsEmpty.violations[0]?.detail === "[] (empty)")
+  /** The mixed batch: one well-formed item and one item that omitted `options`, so the rule is per ITEM. */
+  const mixedItems = byDetail([{ id: "q1", question: "pick", options: [{ label: "a" }] }, { id: "q2", question: "free?" }])
+  check("only the item that omitted `options` is flagged, got " + String(mixedItems.violations.length) + " violation(s)", mixedItems.violations.length === 1 && mixedItems.violations[0]?.path === "questions[1].options")
 
   // R3 (repair): a JSONL line that decodes to an ARRAY is not a record — it counts as undecodable.
   /** The plain (non-zstd) JSONL fixture for the array-line arm: one record, one array, one scalar. */
@@ -808,9 +834,9 @@ function selfTest(): void {
 
   // The summary counts, asserted so a vacuous pass is impossible.
   const summary = summarize(report)
-  check("summary total 11, got " + String(summary.total), summary.total === 11)
+  check("summary total 12, got " + String(summary.total), summary.total === 12)
   check("summary ok 2, got " + String(summary.ok), summary.ok === 2)
-  check("summary structurally-broken 8, got " + String(summary.broken), summary.broken === 8)
+  check("summary structurally-broken 9, got " + String(summary.broken), summary.broken === 9)
   check("summary unparseable-arguments 1, got " + String(summary.unparseable), summary.unparseable === 1)
   check("summary paired 4 (3 results + 1 answer), got " + String(summary.paired), summary.paired === 4 && summary.results === 3 && summary.userAnswers === 1)
   check("summary errored results 2, got " + String(summary.erroredResults), summary.erroredResults === 2)
@@ -838,11 +864,11 @@ function selfTest(): void {
   // The real CLI arm over the fixture: exit 0 after reporting, with the summary on stdout.
   const live = runCli([fixture])
   check("the report run must exit 0, got " + String(live.status), live.status === REPORT_EXIT)
-  check("the report run must print the summary line", live.out.includes("summary: 11 call(s) — ok 2, structurally-broken 8, unparseable-arguments 1"))
+  check("the report run must print the summary line", live.out.includes("summary: 12 call(s) — ok 2, structurally-broken 9, unparseable-arguments 1"))
   rmSync(root, { recursive: true, force: true })
   console.log("[ask-user-question-audit self-test] ok: " + String(frameCount) + " concatenated zstd frame(s), " + String(recordCount)
-    + " record(s), 11 occurrence(s), every rule of the local restatement, both answer pairings, the CLI exit codes and the"
-    + " repair arms (R2 wrong-type detail, R3 array line, R4 mixed-arg usage) are verified offline")
+    + " record(s), 12 occurrence(s), every rule of the local restatement, both answer pairings, the CLI exit codes and the"
+    + " repair arms (R2 wrong-type detail, R3 array line, R4 mixed-arg usage, D5 options MANDATORY) are verified offline")
 }
 
 /** This process's arguments, without the node executable and the script path. */

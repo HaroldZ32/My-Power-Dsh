@@ -222,15 +222,31 @@ id 是**从宿主自身的 `list()` 回读中发现的**，绝不自行拼接：
 * **有界、在插件内，并且自 0.14.0 波次起改为跟随宿主自己的变更订阅** ——
   `packages/mpd-tui-adapter-plugin` 的沉降守卫只重新断言**宿主自己的 `list()` 回读
   产出的那些 id**，而且只在列表里**一个我们的 id 都没有**时才动作：它把整组一次性追加在用户列表之后，从不
-  删除也从不改变任何一个 token 的顺序。若列表里出现**任何一个**我们的 id，那就说明配置已经就本 bundle 表态
+  改变任何一个 token 的顺序，并且**只剪除唯一一类 token**——本 bundle **上一次启动**留下的自有面板 id。
+  **自修复轮 R1（CodeRabbit PR #35）起，这一类由「来源」（PROVENANCE）判定，绝不再看 slug**：一个 token 只有
+  在**完整 id** 落在记录所证明的、本 bundle 早前启动注册过的有界历史里，且它不是当前存活的 id（守卫这边即
+  `list()` 回读的结果）时才可剪除。宿主每次启动都会
+  重编 `<pluginId>` 前半段，这些死 id 于是不断堆积在列表里，而宿主的 `SidePanelColumn` 仍会为每一个画出标签页
+  与圆点、其后却没有任何面板（也就是上报的错位现象 D1）；剪除正是用来清掉它们的。**除此之外绝不删除任何
+   东西**：宿主内置面板与任何本 bundle 从未听说过的 id 都按字节原样保留。旧 slug 规则的两个限制都随它一起
+   消失：仅仅**撞上**我们某个 slug 的外部面板（宿主完全可能在我们的
+   `act7:team` 之外产出 `act9:team`）不在我们的记录历史里，因此永远不会被剪除；而页面**改名或下线**后留下的
+   token 就在那份历史里，它的孤儿标签页会像任何死 id 一样被清掉。只剩一条边界，且明码标出：一个**外部的死**
+   id 留在列表里不归我们清理，所以它会留下。写入之后还会经宿主自己的
+  读取器**回读**，并与守卫本打算写入的列表比对；若某个存储并未真正接受这次写入，状态就结算为 `refused` 并同时
+  点名两份列表，而不会报出一个侧栏并不具备的成功。若列表里出现**任何一个**我们的 id，那就说明配置已经就本 bundle 表态
   了 —— 在 `/settings` 里启用过、由下面的脚本写入过、或者用户故意只删掉了部分 —— 此时守卫**主动退让**，因此
-  它绝不会把用户本想丢掉的页面放回去。**0.14.0 波次把有界的 tick 阶梯换成了宿主自己的订阅**
+  它绝不会把用户本想丢掉的页面放回去。**退让不再保护死 token（R1.3）**：当这样一份列表同时还带着一个在记录
+  历史里、当前又不存活的 id 时，守卫会**先剪掉那个 id、且不追加任何东西**，然后才退让 —— 被尊重的是用户的
+  **选择**，而一个没有任何面板能应答的 token 从来不属于任何选择。**0.14.0 波次把有界的 tick 阶梯换成了宿主自己的订阅**
   （`subscribeSidePanelPanels`，即实时设置存储的变更订阅）：宿主一重新应用配置，守卫当场修复被抹掉的列表，
   而不是在约 25 秒后输掉这场竞跑；tick 阶梯只作为"宿主没有该订阅"时的降级路径保留。订阅随注入作用域一起
   释放（热重载不会留下监听），在没有该模块的宿主上永不抛错，退让规则不变：**我们自己的写入包含我们的 id，
   这正是循环的终点**。这是该适配器的**第二处**宿主
   内部接触，与 `Ctrl+A` 的 `useStdin` 触点并列（AGENTS.md §6 给这类接触计数，因此两处都在该文件里点名）；
-  它发现的 id 记录在 `<workspace>/.mpd/logs/mpd-tui-panels.json`。**残留风险明码标出**：若用户故意把我们
+  它发现的 id 记录在 `<workspace>/.mpd/logs/mpd-tui-panels.json`——**schema 3**，新增有界 `history` 字段
+  （最近 32 个历史注册 id，最新的在最后），来源判定的剪除正是读它；无法被证明的记录不贡献任何历史，因此被污染的
+  文件无法放宽可删除的范围。**残留风险明码标出**：若用户故意把我们
   **全部**移除，剩下的列表与全新配置无法区分，因此每个启动周期仍会把整组加回一次；要区分这两种情况必须读到
   配置里写的那个值本身，也就是第三处宿主内部接触 —— 那是 §6 的计数决策，本轮刻意不做；
 * **持久、一条命令** —— `node scripts/mpd-tui-panels.ts --apply` 把 `dsh-tui.sidePanel.panels` 写进
@@ -238,7 +254,12 @@ id 是**从宿主自身的 `list()` 回读中发现的**，绝不自行拼接：
   patch 文件，而它就是设置用户层（`dsh-config-editor` 的 `documentPath` 返回
   `profileContext.patchPath`；`dsh-app-boot` 把它拼成 `<profileDir>/cordis.patch.yml`）。这两个读法都取自
   已安装的源码，脚本在无法证明该路径时拒绝写入；默认试运行，`--apply` 才写，会留 `.bak-<stamp>`，只补缺失
-  的 id。它只写**用户**的 profile patch，不碰本仓库里的任何东西，因此不属于任何闸门扫描——需要重新钉定
+  的 id，**并施加同一条陈旧 id 剪除规则**（同一条规则，在 `scripts/mpd-tui-panels.ts` 里重述一次，因为独立
+  运行的 Node 入口无法 import 一个已打包产物的源码；自修复轮 R1 起那条规则就是**来源**规则：脚本只在记录的
+  `history` 证明本 bundle 注册过、且本次运行未启用它时才剪除该 token，因此外部的 `act9:team` 绝不会被删）。
+  只有剪除、没有新增的那一次运行同样算一次运行，而不是
+  空操作。`--apply` 在原子改名之后还会**回读文档**，把该叶子与它打算写入的 CSV 比对：不一致即以退出码 1 拒绝
+  并点名备份文件，因此没有真正落盘的写入绝不会被宣告为成功。它只写**用户**的 profile patch，不碰本仓库里的任何东西，因此不属于任何闸门扫描——需要重新钉定
   内置技能语料的是那个改动了 `skills/**` 的波次：它的 `treeSha` 必须与**恰好一次**重新钉定落在同一个
   提交里（AGENTS.md §9）；本命令两样都不涉及。
 
@@ -249,14 +270,14 @@ id 是**从宿主自身的 `list()` 回读中发现的**，绝不自行拼接：
 而补救脚本正是读这个文件来提议写入用户设置层——于是一次测试运行就能让补救命令写出任何启动都无法提供的
 面板 id。0.14.0 波次修好了**写入**侧：记录现在带 `provenance {hostRoot, hostVersion, readBack,
 activation}`，记录器**拒绝**生成任何无法追溯到已安装宿主包与宿主回读的记录（实测：完整跑一遍
-`bun test ./packages/mpd-tui-plugin ./packages/mpd-tui-adapter-plugin` 之后，该文件的 sha256 不变）。
+`bun test ./packages/mpd-tui-plugin ./packages/mpd-tui-adapter-plugin` 之后，该文件的 sha256 不变）。**修复轮 R1（CodeRabbit PR #35）让这份来源证明同时成为剪除的依据，并把记录升到 schema 3**：除 `panelIds` 之外新增 `history` —— 本 bundle 早前启动所证明注册过的有界 id 列表（最近 32 个，最新的在最后），两个写入方都按它判定归属；这份历史的折叠同样在读取侧设防，被污染的文件贡献**零**历史，两侧都把「空白」当作「缺失」。
 **同一份证明在**读取**侧也被守住，因此被污染的记录再也到不了用户的 profile patch：**
 `scripts/mpd-tui-panels.ts` 会**拒绝**（试运行与 `--apply` 一视同仁，退出码 1）任何不带 `provenance`、
-`provenance.hostVersion` 为空、缺 `provenance.readBack`，或 `provenance.activation === "act0"` 的记录，
-并点名失败的字段、同时提示 `--ids <a,b,c>`。实测（针对被污染的 version-1 记录）：打印
+`provenance.hostRoot` 为空、`provenance.hostVersion` 为空、缺 `provenance.readBack`，或 `provenance.activation === "act0"` 的记录，
+并点名失败的字段、同时提示 `--ids <a,b,c>`；被拒绝的记录同样不贡献任何历史 id，因此无法放宽剪除范围。实测（针对被污染的 version-1 记录）：打印
 ``REFUSED: … it carries no `provenance` block (a version-1 record, whose ids cannot be traced to a boot)``
 并退出 1；该次运行不改变记录 sha256；`--ids act1:team,act1:workmate` 被接受（逃生口仍然可用）；脚本自带的
-`--self-test` 全绿——每种拒绝形状各一条臂，外加"格式良好的 version-2 记录被接受"。试运行仍会打印它读到的 id
+`--self-test` 全绿——每种拒绝形状各一条臂，外加"格式良好的记录被接受"。试运行仍会打印它读到的 id、其文件以及剪除将要使用的历史 id
 及其文件，所以用户在 `--apply` 真的写入之前就能看到会被写什么。**磁盘上的文件仍然是那份被污染的 version-1
 记录，直到宿主的真机启动把它重写**——这正是补救命令今天会拒绝它的原因，也正是 `--ids` 被记录为逃生口的原因。
 
@@ -531,6 +552,22 @@ L1/L2 文件层在每次解析时都会被重新读取，因此即便 base 被�
   **在重启后对这些插件生效**；界面提示就是这么写的。
 - **退化目标会大声报错** —— 文件缺失（创建并带头部注释）、只读（`denied` + 路径 + errno，settings 编辑
   仍然成功）、并发（重试 ×3 后 `conflict`，人的文件保持原样）、无法解析（`unparsable`，绝不"修复"）。
+
+**有一个 mpd.jsonc 可调项会被读取，但**尚未**渲染进 `/settings`：`tui.wheelInvert`。** 它是布尔值，默认
+`false`（＝今天的行为），用来翻转本 bundle 所画的每一个面板与场景的滚轮纵向符号。宿主是从终端自己的
+wheelup/wheeldown 位推导出滚轮事件的 `deltaY` 的，因此滚轮上报的方向是终端／多路复用器／操作系统的属性，
+在某些安装上会反过来；在这个可调项之前，每一条滚轮路径都各自按固定符号套用原始 delta，既没有统一的矫正点，
+也没有面向用户的开关。该值与上面每一个可调项一样，经**同一个 `mpdConfig` 服务、同一套层级栈**读取：在
+`<workspace>/.mpd/mpd.jsonc` 里写 `{ "tui": { "wheelInvert": true } }`，或把 `mpd-tui` 行自己的
+`wheelInvert` 设为 `true`，后者是该开关的**下限**（已保存的叶子只要是布尔值就优先；垃圾值永远无法把它打开）。
+**本节对每个可调项声明的那条重启注意事项原样适用**：经 `/settings` 保存的编辑在重启后生效，因为命名空间的
+base 在整个进程生命周期内固定。插件是**每次滚轮手势**读取该叶子，而不是在挂载时采样，因此对**文件**的编辑
+至少与配置层自身状态一样新（L1/L2 层在每次解析时都会重读，见上文）——挂载时采样会在任何"延迟的 `mpdConfig`
+绑定晚于本行 apply"的启动上读到 `undefined`。**诚实边界：** 与 `tui.dashboardKey` 不同，该叶子尚未被
+`packages/mpd-config-plugin/src/settings-schema.ts` 的 `SETTINGS_KNOBS` / `SettingsSchema` 收录，因此它在
+`/settings` 表单里**没有对应的行**；文件层之所以可用，是因为 `mpd-config` 的 `loadConfig` 返回的是**原始**
+合并层级、不会剥掉未声明的键。把该叶子声明进那份共享 schema，就是补上这一行的后续工作——它落地时上面的读取
+路径不需要任何改动。
 
 **证据级别：** `Observed` —— 沙箱内两次真实启动（ok: true），见
 `evidence/mpd-bridge/implementation/20260915T080138Z/`；另有通道
@@ -915,22 +952,23 @@ CSS 省略号、`overflow:auto`、原生 tooltip、DOM 读取与 `fetch` 轮询�
 停止）已被宿主自己的 `subscribeSidePanelPanels`（实时设置存储上的订阅）取代：宿主一重新应用配置，被抹掉的
 列表就当场被修复，而不是在阶梯结束后彻底丢失——这才是用户那句「侧边栏挂掉了」的持久解法。tick 阶梯**只**作为
 "宿主不提供该订阅"时的降级路径保留；订阅随注入作用域释放、在没有该模块的宿主上永不抛错，而**退让**规则
-不变（**列表一旦出现我们的任何一个 id，就说明配置已经就本 bundle 表态，守卫永久停止**，因此用户故意删掉的
-页面绝不会被放回；而我们自己的写入包含我们的 id，所以循环也就此结束）。
+成立（**列表一旦出现我们的任何一个 id，就说明配置已经就本 bundle 表态，守卫永久停止**，因此用户故意删掉的
+页面绝不会被放回；而我们自己的写入包含我们的 id，所以循环也就此结束）——修复轮 R1 在此基础上补了一条：同一次列表里
+若还留着一个可证明已死的历史 id，守卫会先做一次**只剪不增**的写入把它清掉，然后才退让。
 
 **记录的 id 集合现在带来源信息（provenance），因为一次测试运行污染过它（实测）。**
 `.mpd/logs/mpd-tui-panels.json` 在 2026-10-08 被覆写成 `act0:team,act0:dag,act0:workmate`——这些 id
 已安装宿主无法拼出，因为它的 `pluginIdFor` 兜底计数器先自增、第一个裸激活是 `act1`——而元凶是一次**单元
-测试**运行，它的面板接缝替身把注册标成 `act0`。记录现在是 schema 版本 2，并带
+测试**运行，它的面板接缝替身把注册标成 `act0`。记录现在是 schema 版本 3（版本 2 加入 `provenance`，版本 3 加入有界的 `history`），并带
 `provenance {hostRoot, hostVersion, readBack, activation}`；记录器**拒绝**写入任何无法追溯到已安装宿主包与
 宿主回读的记录，`act0` 这一形状被点名拒绝。实测：完整跑一遍
 `bun test ./packages/mpd-tui-plugin ./packages/mpd-tui-adapter-plugin` 之后，该记录的 sha256 不变。
 **同一份证明在**读取**侧也被守住**，因此被污染的记录再也到不了用户的 profile patch：
 `scripts/mpd-tui-panels.ts` 会**拒绝**（试运行与 `--apply` 一视同仁，退出码 1）不带 `provenance`、
-`hostVersion` 为空、缺 `readBack` 或 `activation === "act0"` 的记录，点名失败的字段并指向
+`hostRoot`/`hostVersion` 为空、缺 `readBack` 或 `activation === "act0"` 的记录，点名失败的字段并指向
 `--ids <a,b,c>`——实测（针对被污染的 version-1 记录）：``REFUSED: … it carries no `provenance` block …``、
 退出 1、记录 sha256 不变、`--ids act1:team,act1:workmate` 被接受、脚本 `--self-test` 全绿（每种拒绝形状
-一条臂，外加格式良好的 version-2 记录被接受）。
+一条臂，外加格式良好的记录被接受）。它同时也是**剪除**所依据的那道闸：被拒绝的记录不贡献任何历史 id（修复轮 R1）。
 
 **0.14.0 的 `PanelBar` 不再绘制插件的图标，这是**宿主**的事实，而不是本 bundle 的改动。**
 `components/sidePanel/PanelBar.js` 现在是一个**轮播**：当前标签页的标题居中绘制（`ActiveTitle`——

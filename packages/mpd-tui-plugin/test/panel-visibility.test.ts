@@ -36,6 +36,7 @@ import { createDagPanelComponent, DAG_PANEL_TITLE } from "../src/panel-dag"
 import { createWorkmatePanelComponent, WORKMATE_PANEL_DESCRIPTOR_FROZEN, WORKMATE_PANEL_ICON, WORKMATE_PANEL_ID, WORKMATE_PANEL_TITLE } from "../src/panel-workmate"
 import { cellWidth, clampCells } from "../src/sanitize"
 import { toneColor } from "../src/panel-core"
+import { mergePanelIds } from "../../../scripts/mpd-tui-panels"
 
 /**
  * The installed DSH-TUI package root, resolved from the launcher on `PATH`.
@@ -318,7 +319,7 @@ describe("R13c · the enable-list keeper (this bundle's bounded re-assert)", () 
     /** The controllable clock the arm drives by hand. */
     const clock = fakeClock()
     /** The keeper under test, with only the ladder's own LENGTH exercised here. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     keeper.observe("act1:dag")
     // A duplicate registration cannot arm a second ladder, and cannot add a second token either.
@@ -346,7 +347,7 @@ describe("R13c · the enable-list keeper (this bundle's bounded re-assert)", () 
     /** The controllable clock. */
     const clock = fakeClock()
     /** The keeper under test. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     await clock.runNext()
     expect(csv).toBe("todo,jobs,agents,act1:team")
@@ -377,7 +378,7 @@ describe("R13c · the enable-list keeper (this bundle's bounded re-assert)", () 
     /** The controllable clock. */
     const clock = fakeClock()
     /** The keeper under test, holding all three ids this bundle registers. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     keeper.observe("act1:dag")
     keeper.observe("act1:workmate")
@@ -405,7 +406,7 @@ describe("R13c · the enable-list keeper (this bundle's bounded re-assert)", () 
     /** The controllable clock. */
     const clock = fakeClock()
     /** The keeper under test. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     keeper.observe("act1:dag")
     keeper.observe("act1:workmate")
@@ -423,7 +424,7 @@ describe("R13c · the enable-list keeper (this bundle's bounded re-assert)", () 
     /** The controllable clock. */
     const clock = fakeClock()
     /** The keeper under test. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     // BOUNDED: exactly the ladder, never a recurring timer.
     expect(clock.delays).toEqual([...PANEL_KEEPER_LADDER_MS])
@@ -440,6 +441,7 @@ describe("R13c · the enable-list keeper (this bundle's bounded re-assert)", () 
     const keeper = createPanelEnableKeeper({
       loadPrefs: async () => ({ detail: "no candidate carried a readable lib/types/tuiDisplayPrefs.js" }),
       schedule: clock.schedule,
+      pastIds: () => [],
     })
     keeper.observe("act1:team")
     await clock.runNext()
@@ -454,7 +456,7 @@ describe("R13c · the enable-list keeper (this bundle's bounded re-assert)", () 
     /** The controllable clock. */
     const clock = fakeClock()
     /** The keeper under test. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     await clock.runNext()
     expect(keeper.outcome().state).toBe("refused")
@@ -543,7 +545,7 @@ describe("R13d · the enable-list keeper's CHANGE FEED (the durable repair)", ()
     /** The controllable clock. */
     const clock = fakeClock()
     /** The keeper under test. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     keeper.observe("act1:dag")
     keeper.observe("act1:workmate")
@@ -570,7 +572,7 @@ describe("R13d · the enable-list keeper's CHANGE FEED (the durable repair)", ()
     /** The controllable clock. */
     const clock = fakeClock()
     /** The keeper under test. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     keeper.observe("act1:dag")
     await clock.runNext()
@@ -594,7 +596,7 @@ describe("R13d · the enable-list keeper's CHANGE FEED (the durable repair)", ()
     /** The controllable clock. */
     const clock = fakeClock()
     /** The keeper under test. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     keeper.observe("act1:dag")
     await clock.runNext()
@@ -617,7 +619,7 @@ describe("R13d · the enable-list keeper's CHANGE FEED (the durable repair)", ()
     /** The controllable clock. */
     const clock = fakeClock()
     /** The keeper under test. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     await clock.runNext()
     expect(fake.listeners()).toBe(1)
@@ -642,7 +644,7 @@ describe("R13d · the enable-list keeper's CHANGE FEED (the durable repair)", ()
     /** The controllable clock for the ladder path. */
     const clock = fakeClock()
     /** The keeper under test. */
-    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: bareStore }), schedule: clock.schedule })
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: bareStore }), schedule: clock.schedule, pastIds: () => [] })
     keeper.observe("act1:team")
     await clock.runNext()
     // THE LADDER IS STILL THE PATH: nothing was cancelled, and the tick repaired the list.
@@ -659,12 +661,266 @@ describe("R13d · the enable-list keeper's CHANGE FEED (the durable repair)", ()
     /** The controllable clock for the throwing-feed path. */
     const throwingClock = fakeClock()
     /** The keeper under test. */
-    const throwingKeeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: throwingFeed }), schedule: throwingClock.schedule })
+    const throwingKeeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: throwingFeed }), schedule: throwingClock.schedule, pastIds: () => [] })
     throwingKeeper.observe("act1:team")
     await throwingClock.runNext()
     expect(throwingKeeper.outcome().detail).toContain("reshaped feed")
     // THE LADDER SURVIVES the refusal: no tick was cancelled, so the repair path is still armed.
     expect(throwingClock.cancelled).toBe(0)
+  })
+})
+
+// ── D1/D3 (fix/sidebar-defects): prune OUR stale ids, drop nothing else, and read the write back ──
+//
+// THE DEFECT (contract D1/D3, user mandate M1(a)): our panel ids are host-composed `act<N>:<slug>`
+// values whose `<N>` is renumbered on every boot, and the enable CSV is never pruned — so a list left
+// behind by an earlier boot names ids no panel can answer, and the host's `SidePanelColumn` draws a tab
+// and a dot for each one. The arms below are the contract's own: our stale tokens go, everything we do
+// not own (the host's builtins, a foreign id) survives BYTE-FOR-BYTE, and a write the host did not
+// actually take is LOUD instead of drifting.
+describe("D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back", () => {
+  /** The host's own eight builtin panel ids, read from the INSTALLED host's default CSV. */
+  const BUILTINS = prefs.DEFAULT_SIDE_PANEL_IDS.split(",")
+
+  test("a stale `act*` token of ours is pruned, and every id we do NOT own survives byte-for-byte", async () => {
+    /** Every CSV the keeper wrote, in order. */
+    const written: string[] = []
+    /** The list one earlier boot left behind: the builtins, a foreign panel, and OUR stale ids. */
+    let csv = [...BUILTINS, "someone:else", "act7:team", "act7:dag"].join(",")
+    /** A stand-in host store holding exactly that list; it CARRIES the write, as the real store does. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock the arm drives by hand. */
+    const clock = fakeClock()
+    /** The keeper under test; THIS boot's ids are renumbered, which is the whole defect. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => ["act7:team", "act7:dag"] })
+    keeper.observe("act1:team")
+    keeper.observe("act1:dag")
+    await clock.runNext()
+    // ONE pass: the stale ids are gone, the builtins and the foreign id are untouched, ours are present.
+    expect(written).toEqual([[...BUILTINS, "someone:else", "act1:team", "act1:dag"].join(",")])
+    expect(keeper.outcome().state).toBe("confirmed")
+    expect(keeper.outcome().detail).toContain("pruned the stale act7:team,act7:dag")
+  })
+
+  test("a FOREIGN id that also looks like `act<N>:<slug>` is NOT ours and is never dropped", async () => {
+    // THE BOUND THE PRUNE RULE MUST NOT CROSS (contract D3: "writers never drop what they don't own").
+    // Another plugin can register under the host's own `act<N>` fallback too, and its FULL id is not in
+    // this bundle's recorded past — so the discriminator is PROVENANCE, never "looks like an act id" and
+    // never a shared slug.
+    /** Every CSV the keeper wrote. */
+    const written: string[] = []
+    /** The seeded list: a foreign act-shaped id and one of our stale ones. */
+    let csv = "todo,act9:somebodyelse,act7:team"
+    /** The stand-in store, carrying its writes as the real store does. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test: only `act7:team` is in the record's past; `act9:somebodyelse` is not ours. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => ["act7:team"] })
+    keeper.observe("act1:team")
+    await clock.runNext()
+    expect(written).toEqual(["todo,act9:somebodyelse,act1:team"])
+    expect(keeper.outcome().state).toBe("confirmed")
+  })
+
+  test("D3 · all eight host builtins survive a keeper pass", async () => {
+    /** Every CSV the keeper wrote. */
+    const written: string[] = []
+    /** The seeded list: the builtins plus one stale id of ours. */
+    let csv = [...BUILTINS, "act7:workmate"].join(",")
+    /** The stand-in store, carrying its writes as the real store does. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test: `act7:workmate` is the id the record proves this bundle registered before. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => ["act7:workmate"] })
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    expect(written).toEqual([[...BUILTINS, "act1:workmate"].join(",")])
+    expect(keeper.outcome().state).toBe("confirmed")
+    // EVERY builtin, named one by one, so a rule that dropped just one still reddens.
+    for (const id of BUILTINS) expect(written[0]?.split(",")).toContain(id)
+  })
+
+  test("D3 · the SAME rule holds in `scripts/mpd-tui-panels.ts --apply`: the eight builtins survive", () => {
+    // THE SECOND WRITER (contract D3 names both). It is driven through its OWN exported merge, which is
+    // the pure half of `--apply`; `--self-test` carries the rest of that script's arms.
+    /** The document-side merge over a list an earlier boot left behind. */
+    const merged = mergePanelIds([...BUILTINS, "act7:workmate"].join(","), ["act1:workmate"], ["act7:workmate"])
+    expect(merged.csv).toBe([...BUILTINS, "act1:workmate"].join(","))
+    expect(merged.pruned).toEqual(["act7:workmate"])
+    // A PRUNE ALONE IS A REASON TO WRITE: the current id is already there and the stale one still is not.
+    /** The merge that has nothing to append and one stale token to remove. */
+    const pruneOnly = mergePanelIds("todo,jobs,act1:team,act7:team", ["act1:team"], ["act7:team"])
+    expect(pruneOnly.added).toEqual([])
+    expect(pruneOnly.pruned).toEqual(["act7:team"])
+    expect(pruneOnly.csv).toBe("todo,jobs,act1:team")
+    // And the foreign id — including one shaped like an act id — is never touched.
+    expect(mergePanelIds("someone:else,act9:somebodyelse", ["act1:team"], []).csv).toBe("someone:else,act9:somebodyelse,act1:team")
+  })
+
+  test("a write the host did not carry back is LOUD, never silent drift", async () => {
+    // THE READ-BACK (contract D1): the merge is only a request until the host's own reader agrees with it.
+    /** A store whose write is dropped: the reader keeps answering the pre-write list. */
+    const store = {
+      getSidePanelPanels: (): unknown => "todo,jobs,agents",
+      applySidePanelPanels: (value: unknown): unknown => value,
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => [] })
+    keeper.observe("act1:team")
+    await clock.runNext()
+    expect(keeper.outcome().state).toBe("refused")
+    expect(keeper.outcome().detail).toContain("read back")
+    expect(keeper.outcome().detail).toContain("todo,jobs,agents")
+  })
+})
+
+// ── R1 (repair round R1, CodeRabbit PR #35): ownership by PROVENANCE, never by slug ──────────────
+//
+// THE DEFECT THE ARMS BELOW PIN (findings R1.1–R1.3). Ownership by SLUG is both too wide and too
+// narrow at once: a foreign plugin's LIVE `act9:team` matches our `team` slug, so a keeper pass would
+// delete a working panel out of the user's sidebar; and OUR OWN dead id whose slug this activation no
+// longer registers (a retired or renamed page) matches nothing, so its orphaned tab is never removed.
+// Ownership is therefore PROVENANCE: the panel-id record keeps a bounded history of the ids THIS bundle
+// registered in earlier boots, and the one token a writer may remove is an id in that history that is
+// NOT live now. A token that was never ours — however act-shaped, whatever its slug — is never pruned.
+describe("R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug", () => {
+  test("R1.1 a LIVE FOREIGN `act9:team` is not pruned on the keeper's WRITE path", async () => {
+    // THE HARM R1.1 NAMES, on the path where it actually happens: a write. `act9:team` belongs to
+    // another plugin and merely shares our slug; the old rule read the slug and deleted it.
+    /** Every CSV the keeper wrote. */
+    const written: string[] = []
+    /** The seeded list: a foreign live panel that SHARES our slug; none of ours is in it yet. */
+    let csv = "todo,jobs,act9:team"
+    /** The stand-in store, carrying its writes the way the real store does. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test: `act1:team` is a RECORDED past id of ours, `act9:team` is NOT ours. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => ["act1:team"] })
+    keeper.observe("act7:team")
+    await clock.runNext()
+    // THE FOREIGN PANEL IS STILL THERE, byte-for-byte, and ours is appended after it.
+    expect(written).toEqual(["todo,jobs,act9:team,act7:team"])
+    expect(keeper.outcome().detail).toContain("re-asserted act7:team")
+  })
+
+  test("R1.1/R1.3 · a LIVE FOREIGN `act9:team` survives the STAND-DOWN prune path too", async () => {
+    // The same list, but naming one of OUR CURRENT ids: R1.3 makes this branch WRITE (a prune-only
+    // write), which is a second place a slug-shaped rule could delete the foreign panel.
+    /** Every CSV the keeper wrote. */
+    const written: string[] = []
+    /** The seeded list: a foreign panel that SHARES our slug, beside one of our live ids. */
+    let csv = "todo,jobs,act9:team,act7:team"
+    /** The stand-in store, carrying its writes the way the real store does. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => ["act1:team"] })
+    keeper.observe("act7:team")
+    await clock.runNext()
+    // Nothing is prunable here, so NOTHING is written and the keeper stands down as it always did.
+    expect(csv).toBe("todo,jobs,act9:team,act7:team")
+    expect(written).toEqual([])
+    expect(keeper.outcome().detail).toContain("standing down")
+  })
+
+  test("R1.1/R1.2 · the DOCUMENT-side writer applies the same provenance rule", () => {
+    // The script is the SECOND writer (finding R1.1 names both), so its pure merge is driven here with
+    // the same three-way input: a foreign id sharing our slug, one of our dead ids, one of our live ids.
+    /** The merge over a list an earlier boot left behind. */
+    const merged = mergePanelIds("todo,act9:team,act1:team,act7:team", ["act7:team"], ["act1:team"])
+    expect(merged.csv).toBe("todo,act9:team,act7:team")
+    expect(merged.pruned).toEqual(["act1:team"])
+    // A NEVER-OURS act-shaped token is never pruned either, even in a pass that prunes OURS.
+    expect(mergePanelIds("todo,act5:somebodyelse", ["act1:team"], ["act1:team"]).csv).toBe("todo,act5:somebodyelse,act1:team")
+    // THE FINDING'S OWN ARM (R1.2): the retired page's id is in the history and is no longer live.
+    expect(mergePanelIds("todo,act7:dag", ["act1:team"], ["act7:dag"]).csv).toBe("todo,act1:team")
+  })
+
+  test("R1.2 · a RETIRED page's id (in the record's history, slug no longer registered) is pruned", async () => {
+    /** Every CSV the keeper wrote. */
+    const written: string[] = []
+    /** The seeded list: the `dag` page was retired, so its id is dead while its slug was once ours. */
+    let csv = "todo,act7:dag"
+    /** The stand-in store. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test: only `team` registers now; `act7:dag` is a RECORDED past registration. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => ["act7:dag"] })
+    keeper.observe("act1:team")
+    await clock.runNext()
+    expect(written).toEqual(["todo,act1:team"])
+    expect(keeper.outcome().detail).toContain("pruned the stale act7:dag")
+  })
+
+  test("R1.3 · a CURRENT id of ours no longer protects a provably-dead past id", async () => {
+    /** Every CSV the keeper wrote. */
+    const written: string[] = []
+    /** The seeded list: our current id AND one of our dead ids. */
+    let csv = "todo,act7:team,act1:team"
+    /** The stand-in store. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => ["act1:team"] })
+    keeper.observe("act7:team")
+    keeper.observe("act7:dag")
+    await clock.runNext()
+    // THE DEAD TOKEN GOES, THE LIVE ONE STAYS, AND NOTHING IS APPENDED: `dag` was removed on purpose, so
+    // a write that re-added it would overrule the user — the stand-down rule's own reason, kept.
+    expect(written).toEqual(["todo,act7:team"])
+    expect(keeper.outcome().detail).toContain("pruned the stale act1:team")
+    expect(keeper.outcome().detail).toContain("standing down")
+  })
+
+  test("R1.3 · a list of CURRENT ids only still stands down with NOTHING written and NOTHING pruned", async () => {
+    /** Every CSV the keeper wrote. */
+    const written: string[] = []
+    /** The seeded list: the user kept `team` and removed `dag`; no dead id of ours is left in it. */
+    let csv = "todo,act7:team"
+    /** The stand-in store. */
+    const store = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => { csv = String(value); written.push(csv); return csv },
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => ["act1:team"] })
+    keeper.observe("act7:team")
+    keeper.observe("act7:dag")
+    await clock.runNext()
+    expect(written).toEqual([])
+    expect(csv).toBe("todo,act7:team")
+    expect(keeper.outcome().detail).toContain("standing down")
   })
 })
 

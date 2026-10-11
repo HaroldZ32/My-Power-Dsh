@@ -311,6 +311,49 @@ function declaredField(knob: (typeof SETTINGS_KNOBS)[number]): TuiSettingsFieldL
 /** The mpd.jsonc key of the Ctrl+A takeover toggle, in its dotted form (the shared knob's own path). */
 export const DASHBOARD_TAKEOVER_KNOB = "tui.dashboardKey"
 
+// ── the wheel-direction knob (contract D2, wave fix/sidebar-defects) ─────────────────────────────
+//
+// THE KNOB IS READ THROUGH THE SAME `mpdConfig` SERVICE the Ctrl+A toggle above uses, from the SAME
+// resolved layer stack — the USER layer `$DSH_HOME/mpd.jsonc` under the PROJECT layer
+// `<workspace>/.mpd/mpd.jsonc` — so an edit in the workspace file is what turns it on, exactly like
+// every other mpd.jsonc knob.
+//
+// DECLARED SHAPE: unlike `tui.dashboardKey` this leaf is NOT yet carried by `SETTINGS_KNOBS` /
+// `SettingsSchema` in `mpd-config-plugin/src/settings-schema.ts` — that package is OUTSIDE this lane's
+// write scope (contract §"Lanes and scopes") — so the knob has no row in the `/settings` form and the
+// bound is stated in `docs/tui.md` §6.2 rather than papered over. It is still a real mpd.jsonc knob: the
+// resolution that matters (`mpd-config-plugin`'s `loadConfig`) returns the RAW merged layers and never
+// strips an undeclared key, so `{ "tui": { "wheelInvert": true } }` in the workspace file reaches this
+// reader and inverts the wheel. Declaring the leaf in the shared schema is the follow-up that adds the
+// settings row; nothing here has to change when it lands.
+
+/** The mpd.jsonc key of the wheel-direction toggle, in its dotted form (the layer path it is read at). */
+export const WHEEL_INVERT_KNOB = "tui.wheelInvert"
+
+/**
+ * Resolve the wheel-direction setting from one resolved mpd config value.
+ *
+ * THE RULE, and it is the same one the Ctrl+A toggle follows: the SAVED leaf wins when it is a boolean,
+ * and the row config's own value is the FLOOR when it is absent or not a boolean. A junk value (`"yes"`,
+ * `1`, an object) therefore leaves today's behaviour in force instead of arming the inversion by
+ * accident — the knob can only ever be turned on deliberately.
+ *
+ * WHY IT TAKES THE WHOLE CONFIG RATHER THAN THE LEAF: `mpdConfig.get()` with no key answers the RAW
+ * merged layer stack, which is the value this function can be handed in a test without a live service —
+ * so the arm that proves "the knob resolves from `<workspace>/.mpd/mpd.jsonc`" drives the REAL layer
+ * resolution instead of restating this function's own dotted walk.
+ * @param config - one resolved mpd config value, as `mpdConfig.get()` returns it.
+ * @param floor - the row config's own value, used when the file layer says nothing usable.
+ * @returns true when the wheel's sign must be inverted.
+ */
+export function wheelInvertFrom(config: unknown, floor: boolean): boolean {
+  /** The `tui` section of the resolved layers, when the value is a plain object. */
+  const tui = typeof config === "object" && config !== null ? (config as Record<string, unknown>).tui : undefined
+  /** The leaf itself, when the section is a plain object. */
+  const leaf = typeof tui === "object" && tui !== null ? (tui as Record<string, unknown>).wheelInvert : undefined
+  return typeof leaf === "boolean" ? leaf : floor
+}
+
 /** The declared field list: every knob with its declared options (the pre-catalog baseline). */
 export const SETTINGS_FIELDS: readonly TuiSettingsFieldLike[] = SETTINGS_KNOBS.map(declaredField)
 

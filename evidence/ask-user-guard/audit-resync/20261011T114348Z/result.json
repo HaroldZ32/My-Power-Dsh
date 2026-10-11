@@ -1,0 +1,121 @@
+{
+  "wave": "fix/sidebar-defects",
+  "deliverable": "D5 — ask_user_question audit resync + ulw-research wording",
+  "role": "Junior Engineer (the wave's single skills/** writer)",
+  "timestampUtc": "20261011T114348Z",
+  "branchNote": "No git command was run (captain owns all git writes); this evidence dir is written under the session workspace.",
+  "changes": [
+    {
+      "file": "skills/dsh-qa/scripts/ask-user-question-audit.ts",
+      "symbols": [
+        "classifyArguments (module docstring + rule body)",
+        "selfTest (fixture frames 1 and 4, assertion arms, summary counts, banner)"
+      ],
+      "intent": "A question item with a MISSING `options` field is now flagged exactly like `options: []`, mirroring the guard's RULE 4a.",
+      "diff": [
+        {
+          "section": "module header comment",
+          "before": "// `packages/mpd-roles-plugin/src/ask-user-guard.ts` is the enforcement, this is the report).",
+          "after": "// `packages/mpd-roles-plugin/src/ask-user-guard.ts` is the enforcement, this is the report). D5's user\n// mandate — `options` is MANDATORY on every question item — is part of that list: a MISSING field is\n// reported exactly like `options: []`, because both render as a card with no choices."
+        },
+        {
+          "section": "classifyArguments docstring",
+          "before": "its `question` is not a NON-EMPTY string; `options` is present and is not an array, or is empty, or\n * an entry is not an object carrying a non-empty string `label`. A question WITHOUT `options` stays\n * legal — a free-text question is a designed use of the host tool. Invalid JSON text is its own\n * verdict, `unparseable-arguments`, ...",
+          "after": "its `question` is not a NON-EMPTY string; `options` is MISSING (D5 — the field is MANDATORY, so an\n * omission is denied exactly like an empty list), is present and not an array, or is empty, or an entry\n * is not an object carrying a non-empty string `label`. Invalid JSON text is its own verdict,\n * `unparseable-arguments`, ..."
+        },
+        {
+          "section": "classifyArguments body — the item's options branch",
+          "before": "// The item's optional `options`; absent means a free-text question, which stays legal.\n    const itemOptions = fieldOf(item, \"options\")\n    if (itemOptions === undefined) {\n      options.push(0)\n      continue\n    }",
+          "after": "// The item's `options`, MANDATORY since D5: an OMITTED field is denied exactly like `options: []`,\n    // because the panel renders both as a card with no choices. The two keep distinct rule ids so the\n    // report still says WHICH shape was recorded.\n    const itemOptions = fieldOf(item, \"options\")\n    if (itemOptions === undefined) {\n      violations.push({ rule: \"options-missing\", path: itemPath + \".options\", detail: \"absent\" })\n      options.push(0)\n      continue\n    }"
+        },
+        {
+          "section": "selfTest fixture — the previously-option-less questions in `ok` calls now carry options",
+          "before": "call-valid q2 `{ id: \"q2\", question: \"Anything else?\" }`; call-user-answered `{ id: \"q1\", question: \"still there?\" }`",
+          "after": "call-valid q2 `{ id: \"q2\", question: \"Anything else?\", options: [{ label: \"no\" }] }`; call-user-answered `{ id: \"q1\", question: \"still there?\", options: [{ label: \"yes\" }] }` — so the `ok` arms and the pairing arm keep their semantics under the new rule"
+        },
+        {
+          "section": "selfTest fixture — the new D5 record (frame 4)",
+          "before": "(absent)",
+          "after": "{ type: \"tool/call\", data: { callId: \"call-options-missing\", name: TOOL_NAME, arguments: JSON.stringify({ questions: [{ id: \"q1\", question: \"Describe the format?\" }] }) } } — the exact 2026-10-11 shape: one question item with no `options` field"
+        },
+        {
+          "section": "selfTest arms — new D5 arms (the RED-first arms)",
+          "before": "(absent)",
+          "after": "fixture arms: the call classifies structurally-broken; the rule id is `options-missing`; the path is `questions[0].options` with detail `absent`. Direct arms over `classifyArguments`: an item without `options` is `options-missing` and counts 0 options; a missing field is as broken as `options: []` while the empty array keeps `options-empty` + `[] (empty)`; a mixed batch of two items flags ONLY the item that omitted the field."
+        },
+        {
+          "section": "selfTest arms — retargeted / count arms",
+          "before": "`11 occurrences`; `a question without options stays legal (2 then 0)`; summary `total 11 / broken 8`; CLI summary `11 call(s) — ok 2, structurally-broken 8`; banner `11 occurrence(s)`",
+          "after": "`12 occurrences`; `per-question option counts are reported (2 then 1)`; summary `total 12 / broken 9`; CLI summary `12 call(s) — ok 2, structurally-broken 9`; banner `12 occurrence(s)` — every shift is caused by the ONE added fixture record (ok 2, unparseable 1 and the pairing counts 4/3/1 are unchanged)"
+        }
+      ]
+    },
+    {
+      "file": "skills/ulw-research/SKILL.md",
+      "section": "Phase 0 item 3 — \"Ask only what is still missing\"",
+      "intent": "A free-text path is only legal as a LABELLED OPTION inside a non-empty options array, so the sentence can no longer be read as permitting a question item without options.",
+      "diff": [
+        {
+          "before": "each with its default first, a free-text \"describe the format\" path, and \"don't care, you decide\".",
+          "after": "each with its default first, a labelled \"other / describe the format\" option, and a \"don't care, you decide\" option."
+        }
+      ]
+    }
+  ],
+  "redGreen": {
+    "fixture": "d5-shape.jsonl — one `tool/call` whose `arguments` carry `{ questions: [{ id: \"q1\", question: \"Describe the format?\" }] }` (no `options` key at all)",
+    "preFixCli": {
+      "command": "node skills/dsh-qa/scripts/ask-user-question-audit.ts evidence/ask-user-guard/audit-resync/20261011T114348Z/d5-shape.jsonl",
+      "exit": 0,
+      "observed": "verdict `ok`, rule `-`, options 0, summary `ok 1, structurally-broken 0` — the audit certified as ok exactly the call shape the guard refuses (the divergence)",
+      "log": "pre-fix-d5-shape.log"
+    },
+    "red": {
+      "command": "node skills/dsh-qa/scripts/ask-user-question-audit.ts --self-test (with the new arms, before the classifier fix)",
+      "exit": 1,
+      "observed": "[ask-user-question-audit self-test] FAIL: a call whose question omits `options` must classify structurally-broken, got ok",
+      "log": "red-selftest.log"
+    },
+    "green": {
+      "command": "node skills/dsh-qa/scripts/ask-user-question-audit.ts --self-test",
+      "exit": 0,
+      "observed": "[ask-user-question-audit self-test] ok: 4 concatenated zstd frame(s), 19 record(s), 12 occurrence(s), every rule of the local restatement, both answer pairings, the CLI exit codes and the repair arms (R2 wrong-type detail, R3 array line, R4 mixed-arg usage, D5 options MANDATORY) are verified offline",
+      "log": "green-selftest.log"
+    },
+    "postFixCli": {
+      "command": "node skills/dsh-qa/scripts/ask-user-question-audit.ts evidence/ask-user-guard/audit-resync/20261011T114348Z/d5-shape.jsonl",
+      "exit": 0,
+      "observed": "verdict `structurally-broken`, rule `options-missing`, `- options-missing at questions[0].options: absent`, summary `ok 0, structurally-broken 1`",
+      "log": "post-fix-d5-shape.log"
+    }
+  },
+  "gates": [
+    {
+      "gate": "verify:comments",
+      "command": "node scripts/verify-comment-coverage.ts",
+      "exit": 0,
+      "observed": "scanned 385 TypeScript file(s) of 385 in the source set; inspected 34045 declaration(s); VERDICT: PASS",
+      "log": "verify-comments.log"
+    },
+    {
+      "gate": "test:qa",
+      "command": "bun run test:qa",
+      "exit": 0,
+      "observed": "[test:qa] all self-tests passed; case 1 is `[test:qa] ask-user-question-audit.ts` with the ok line quoted above (12 occurrences, D5 arm)",
+      "log": "test-qa.log"
+    }
+  ],
+  "bounds": [
+    "The restatement is PROSE, not an import: the audit may not import plugin code, so nothing here can mechanically prove the two rule sets stay equal. The new arms pin the D5 shape, but a FUTURE guard rule (and a future preset wording change) still needs a human/agent to mirror it here.",
+    "The audit reports a FINDING, never an enforcement: its exit code stays 0 on a broken occurrence, so this resync changes what the report SAYS, not what any call does.",
+    "The `options-missing` / `options-empty` rule ids differ on purpose (the guard's RULE 4a/4b are two checks): both deny, but the report still distinguishes an omitted field (`absent`) from an empty list (`[] (empty)`) — the guard's own denial sentences distinguish them too.",
+    "The `presets/mpd.patch.yml` construction rule was NOT read or changed by me (another writer's deliverable in this wave); the ulw-research wording change is my own minimal edit and was not diffed against that rule.",
+    "No git command was run, so no commit-level diff is produced here; the before/after excerpts above are the exact strings I replaced."
+  ],
+  "notTouched": [
+    "skills/dsh-qa/SKILL.md line ~128 enumerates the classification rule ids ('every broken clause NAMED: ... options-not-array, options-empty, option-label-missing') and is now INCOMPLETE — it lacks `options-missing`. It is a skills/** file (my writer scope) but was NOT named by this task, so I left it untouched; a one-token addition (`options-missing`) keeps it true. Flagged for the captain to route back if wanted before the wave's single re-pin.",
+    "skills/ulw-research/references/deliverable-phase.md line 59 already frames the same choices as 'Options in this order: ...', so it cannot be read as permitting an option-less item; lines 60-61 (Q2/Q3) list candidate values too. Left unchanged as out of the minimal-wording scope.",
+    "docs/development.md and docs/development.zh-CN.md describe the audit as a LOCAL restatement (no old rule stated) and are outside skills/** and outside this task's scope.",
+    "scripts/repin-vendor.ts was NOT run (captain's step); VENDOR_LOCK.json is untouched."
+  ]
+}

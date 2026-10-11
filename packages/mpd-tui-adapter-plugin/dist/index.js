@@ -235,15 +235,43 @@ async function probeHostPrefs(candidates) {
   }
   return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_PREFS_MODULE} (${candidates.length} probed)` };
 }
-function mergePanelEnableIds(existing, ours) {
+function panelSlugOf(id) {
+  const at = id.indexOf(":");
+  return at < 0 ? id : id.slice(at + 1);
+}
+var PANEL_ACT_ID_SHAPE = /^act\d+:/u;
+var PANEL_ID_HISTORY_LIMIT = 32;
+function panelHistoryAfter(current, past) {
+  const kept = [];
+  for (const id of past) {
+    if (!PANEL_ACT_ID_SHAPE.test(id) || current.includes(id) || kept.includes(id))
+      continue;
+    kept.push(id);
+  }
+  return kept.slice(-PANEL_ID_HISTORY_LIMIT);
+}
+function panelTokenIsStaleMine(token, ours, past) {
+  if (!PANEL_ACT_ID_SHAPE.test(token))
+    return false;
+  if (ours.includes(token))
+    return false;
+  return past.includes(token);
+}
+function normalizePanelCsv(value) {
   const tokens = [];
-  for (const token of (typeof existing === "string" ? existing : "").split(",")) {
+  for (const token of (typeof value === "string" ? value : "").split(",")) {
     const id = token.trim().toLowerCase();
     if (id !== "" && !tokens.includes(id))
       tokens.push(id);
   }
-  const added = ours.filter((id) => !tokens.includes(id));
-  return { csv: [...tokens, ...added].join(","), added, present: ours.filter((id) => tokens.includes(id)) };
+  return tokens.join(",");
+}
+function mergePanelEnableIds(existing, ours, past) {
+  const tokens = normalizePanelCsv(existing).split(",").filter((id) => id !== "");
+  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, ours, past));
+  const kept = tokens.filter((token) => !pruned.includes(token));
+  const added = ours.filter((id) => !kept.includes(id));
+  return { csv: [...kept, ...added].join(","), added, present: ours.filter((id) => kept.includes(id)), kept, pruned };
 }
 var PANEL_KEEPER_LADDER_MS = [1000, 2500, 5500, 9000, 16000, 25000];
 function createPanelEnableKeeper(options) {
@@ -291,33 +319,56 @@ function createPanelEnableKeeper(options) {
       release();
     } catch {}
   };
+  const writeList = (prefs, csv) => {
+    writing = true;
+    try {
+      prefs.applySidePanelPanels(csv);
+    } finally {
+      writing = false;
+    }
+    reasserted += 1;
+    const landed = normalizePanelCsv(prefs.getSidePanelPanels());
+    if (landed !== normalizePanelCsv(csv)) {
+      settle("refused", `the enable list read back as ${landed === "" ? "(empty)" : landed} instead of the ${csv} just written`);
+      return false;
+    }
+    return true;
+  };
   const decide = (prefs, atArm) => {
     if (writing)
       return;
     ticks += 1;
     try {
-      const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours);
+      let past = [];
+      try {
+        past = options.pastIds();
+      } catch {
+        past = [];
+      }
+      const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, past);
       if (merge.present.length > 0) {
+        let prunedNote = "";
+        if (merge.pruned.length > 0) {
+          const prunedCsv = merge.kept.join(",");
+          if (!writeList(prefs, prunedCsv))
+            return;
+          prunedNote = `pruned the stale ${merge.pruned.join(",")}, and appended nothing; `;
+        }
         if (atArm) {
-          settle("confirmed", `the enable list already names ${merge.present.join(",")}; the keeper now follows the host's own change feed instead of standing down on this read`);
+          settle("confirmed", `${prunedNote}the enable list already names ${merge.present.join(",")}; the keeper now follows the host's own change feed instead of standing down on this read`);
           return;
         }
-        settle("confirmed", `standing down: the enable list names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`);
+        settle("confirmed", `${prunedNote}standing down: the enable list names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`);
         standDown();
         return;
       }
-      if (merge.added.length === 0) {
+      if (merge.added.length === 0 && merge.pruned.length === 0) {
         settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
         return;
       }
-      writing = true;
-      try {
-        prefs.applySidePanelPanels(merge.csv);
-      } finally {
-        writing = false;
-      }
-      reasserted += 1;
-      settle("confirmed", `re-asserted ${merge.added.join(",")} (the list named none of our ids)`);
+      if (!writeList(prefs, merge.csv))
+        return;
+      settle("confirmed", `re-asserted ${merge.added.join(",")} (the list named none of our ids${merge.pruned.length === 0 ? "" : `; pruned the stale ${merge.pruned.join(",")}`})`);
     } catch (error) {
       settle("refused", String(error?.message ?? error));
     }
@@ -406,10 +457,10 @@ function readHostPackageVersion(root) {
   }
 }
 function panelRecordProvenance(host, readBack, ids) {
-  if (host === undefined || host.root === "" || host.version === "") {
+  if (host === undefined || host.root.trim() === "" || host.version.trim() === "") {
     return { refused: "no installed host package could be named (root and version), so the ids cannot be traced to a boot" };
   }
-  if (readBack === "" || ids.length === 0) {
+  if (readBack.trim() === "" || ids.length === 0) {
     return { refused: "the ids did not come from a host read-back, so the record would name panels nothing verified" };
   }
   const activation = ids[0].slice(0, ids[0].indexOf(":"));
@@ -423,6 +474,25 @@ function panelRecordProvenance(host, readBack, ids) {
   }
   return { provenance: { hostRoot: host.root, hostVersion: host.version, readBack, activation } };
 }
+function stringIdsOf(value) {
+  return Array.isArray(value) ? value.filter((entry) => typeof entry === "string" && entry.length > 0) : [];
+}
+function readPanelIdRecordPast(root = defaultLogRoot()) {
+  try {
+    const file = join(root, ".mpd", "logs", PANEL_IDS_RECORD_NAME);
+    const parsed = JSON.parse(readFileSync(file, "utf8"));
+    const ids = stringIdsOf(parsed.panelIds);
+    if (ids.length === 0)
+      return [];
+    const provenance = typeof parsed.provenance === "object" && parsed.provenance !== null ? parsed.provenance : {};
+    const proved = panelRecordProvenance(typeof provenance.hostRoot === "string" && typeof provenance.hostVersion === "string" ? { root: provenance.hostRoot, version: provenance.hostVersion } : undefined, typeof provenance.readBack === "string" ? provenance.readBack : "", ids);
+    if ("refused" in proved)
+      return [];
+    return panelHistoryAfter([], [...stringIdsOf(parsed.history), ...ids]);
+  } catch {
+    return [];
+  }
+}
 function recordPanelIds(outcome, host, readBack) {
   const proved = panelRecordProvenance(host, readBack, outcome.ids);
   if ("refused" in proved)
@@ -431,11 +501,12 @@ function recordPanelIds(outcome, host, readBack) {
     const file = join(defaultLogRoot(), ".mpd", "logs", PANEL_IDS_RECORD_NAME);
     mkdirSync(dirname(file), { recursive: true });
     const record = {
-      version: 2,
+      version: 3,
       panelIds: [...outcome.ids],
-      slugs: outcome.ids.map((id) => id.slice(id.indexOf(":") + 1)),
+      slugs: outcome.ids.map(panelSlugOf),
       updatedAt: new Date().toISOString(),
-      provenance: proved.provenance
+      provenance: proved.provenance,
+      history: panelHistoryAfter(outcome.ids, readPanelIdRecordPast(defaultLogRoot()))
     };
     writeFileSync(file, `${JSON.stringify(record, null, 2)}
 `);
@@ -551,6 +622,7 @@ function createTuiAdapter(ctx, options = {}) {
       return probe;
     },
     schedule: defaultPanelKeeperSchedule,
+    pastIds: () => readPanelIdRecordPast(),
     ...options.panelEnableLadder === undefined ? {} : { ladder: options.panelEnableLadder },
     log: options.panelEnableLog ?? options.hostInputLog ?? defaultHostInputLog,
     onChange: options.keepPanelEnable === true ? (outcome) => {
@@ -1180,6 +1252,7 @@ export {
   HOST_ROOT_ENV,
   HOST_UI_MODULE,
   PANEL_IDS_RECORD_NAME,
+  PANEL_ID_HISTORY_LIMIT,
   PANEL_KEEPER_LADDER_MS,
   SERVICE_NAME,
   TUI_SEAMS,
@@ -1196,12 +1269,17 @@ export {
   inject,
   mergePanelEnableIds,
   name,
+  normalizePanelCsv,
   onService,
+  panelHistoryAfter,
   panelRecordProvenance,
+  panelSlugOf,
+  panelTokenIsStaleMine,
   probeHostInput,
   probeHostPrefs,
   readHostPackageVersion,
   readHostStdinValue,
+  readPanelIdRecordPast,
   readableService,
   reportOutcomes,
   resolveTuiAdapter,

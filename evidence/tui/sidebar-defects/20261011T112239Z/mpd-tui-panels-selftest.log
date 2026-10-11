@@ -1,0 +1,33 @@
+  ok   (a) the merge appends in order without touching the user's tokens
+  ok   (a) a second pass is a no-op
+  ok   (a) the merge never drops an unknown id the user added
+  ok   (a) duplicates collapse the way the host collapses them
+  ok   (a) D1 our STALE act ids are pruned and the current ones take their place
+  ok   (a) D1 the prune is REPORTED, not silent
+  ok   (a) D3 every one of the eight builtins survives
+  ok   (a) D3 a FOREIGN id shaped like an act id is never dropped
+  ok   (a) D1 a prune with nothing to append still changes the list
+  ok   (a) D1 the document reader answers the leaf the merge consumes
+  ok   (a) D1 the READ-BACK of an edited document equals the CSV that was written
+  ok   (a) D1 the read-back names its own failure on an unedited document
+  ok   (b) the leaf is inserted under the existing section
+  ok   (b) every other line survives
+  ok   (c) a repeated edit is idempotent
+  ok   (c) the previous CSV is reported
+  ok   (b) a missing section is created beside config
+  ok   (negative) an absent row is refused, not invented
+  ok   (d) the installed host patch declares rows at all
+  ok   (d) the installed host patch declares dsh-tui with a config block
+  ok   (d) the restated block carries the host's own keys, not a guess
+  ok   (e) the proof names the installed sources
+  ok   (e) the proof predicts a file INSIDE the profile directory
+  ok   (e) NEGATIVE CONTROL: an unreadable source makes the proof fail
+  ok   (e) NEGATIVE CONTROL: the refusal names the file it could not read
+  ok   (e) the predicted document is the file the profile template creates
+  ok   (f) the MEASURED version-1 record with NO provenance is refused
+  ok   (f) a blank `provenance.hostVersion` is refused by name
+  ok   (f) an empty `provenance.readBack` is refused by name
+  ok   (f) the impossible `act0` activation is refused by name
+  ok   (f) a well-formed version-2 record IS accepted
+[mpd-tui-panels] SELF-TEST PASS (all arms held)
+mpd-tui-panels --self-test exit=0

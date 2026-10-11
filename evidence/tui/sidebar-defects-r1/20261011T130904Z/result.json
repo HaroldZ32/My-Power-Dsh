@@ -1,0 +1,109 @@
+{
+  "round": "fix/sidebar-defects R1 (CodeRabbit PR #35, six findings)",
+  "branch": "fix/sidebar-defects",
+  "writer": "Senior Engineer (repair-round R1 writer)",
+  "verified_at_utc": "2026-10-11T13:09:04Z..2026-10-11T13:40:00Z (evidence stamp 20261011T130904Z)",
+  "contract": ".mpd/plans/fix-sidebar-defects.md (§ Repair round R1, ll. 146-186)",
+  "findings_source": ".mpd/plans/pr35-comments.json (6 review comments, raw review data — verified against the code before fixing)",
+  "git_commands_run": "none (captain owns all git writes)",
+  "files_changed": [
+    "packages/mpd-tui-adapter-plugin/src/index.ts",
+    "packages/mpd-tui-adapter-plugin/dist/index.js",
+    "packages/mpd-tui-adapter-plugin/test/adapter-hosts.test.ts",
+    "packages/mpd-tui-plugin/src/index.ts",
+    "packages/mpd-tui-plugin/src/scenes.ts",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "packages/mpd-tui-plugin/test/panel-visibility.test.ts",
+    "packages/mpd-tui-plugin/test/plugin.test.ts",
+    "scripts/mpd-tui-panels.ts",
+    "docs/tui.md",
+    "docs/tui.zh-CN.md",
+    "evidence/tui/sidebar-defects-r1/20261011T130904Z/** (this evidence)"
+  ],
+  "disposition": {
+    "R1.1": {
+      "verdict": "VALID — FIXED",
+      "change": "Ownership moved from slug to PROVENANCE in both writers: the panel-id record gained schema v3 with a bounded `history` (last 32 ids, newest last) of this bundle's past registrations; a token is prunable only when its full id is in that history AND not live now (keeper: `ours` = the ids the host `list()` read-back produced; script: the record's current ids / `--ids`).",
+      "arms": [
+        "packages/mpd-tui-plugin/test/panel-visibility.test.ts: R1.1 a LIVE FOREIGN `act9:team` is not pruned on the keeper's WRITE path",
+        "packages/mpd-tui-plugin/test/panel-visibility.test.ts: R1.1/R1.3 a LIVE FOREIGN `act9:team` survives the STAND-DOWN prune path too",
+        "packages/mpd-tui-plugin/test/panel-visibility.test.ts: R1.1/R1.2 the DOCUMENT-side writer applies the same provenance rule",
+        "scripts/mpd-tui-panels.ts --self-test: (R1.1) x2 arms"
+      ],
+      "red": "red-keeper.log (1 failed arm on the write path), red-script-selftest.log (FAIL arm)",
+      "green": "green-tui-plugin-tests.log, green-script-selftest.log"
+    },
+    "R1.2": {
+      "verdict": "VALID — FIXED",
+      "change": "A retired/renamed page's past id now sits in the record's history, so both writers prune it once it is no longer live; the fold (`panelHistoryAfter`) carries the previous record's history + its own ids forward, filtered to the host's composed `act<N>:<slug>` shape and capped.",
+      "arms": [
+        "packages/mpd-tui-plugin/test/panel-visibility.test.ts: R1.2 a RETIRED page's id (in the record's history, slug no longer registered) is pruned",
+        "packages/mpd-tui-plugin/test/panel-visibility.test.ts: R1.1/R1.2 document-side retired-id arm",
+        "packages/mpd-tui-adapter-plugin/test/adapter-hosts.test.ts: panelHistoryAfter fold + bound arms; readPanelIdRecordPast arms",
+        "scripts/mpd-tui-panels.ts --self-test: (R1.2) x4 arms"
+      ],
+      "red": "red-keeper.log, red-script-selftest.log",
+      "green": "green-packages-tests.log, green-script-selftest.log"
+    },
+    "R1.3": {
+      "verdict": "VALID — FIXED",
+      "change": "The keeper's stand-down branch now performs a PRUNE-ONLY write (`merge.kept.join(\",\")`, never appending) when a provably-dead past id is present, then settles and stands down; the arm-time read prunes too but still never stands down. docs/tui.md + docs/tui.zh-CN.md stand-down paragraphs updated in BOTH languages.",
+      "arms": [
+        "packages/mpd-tui-plugin/test/panel-visibility.test.ts: R1.3 a CURRENT id of ours no longer protects a provably-dead past id",
+        "packages/mpd-tui-plugin/test/panel-visibility.test.ts: R1.3 a list of CURRENT ids only still stands down with NOTHING written and NOTHING pruned"
+      ],
+      "red": "red-keeper.log (1 failed arm; `written` was [] before the fix)",
+      "green": "green-tui-plugin-tests.log"
+    },
+    "R1.4": {
+      "verdict": "VALID — FIXED, with a measured conflict in the acceptance wording (reported, not hidden)",
+      "change": "`./panel-core.js` -> `./panel-core.ts` in packages/mpd-tui-plugin/src/index.ts:58 and scenes.ts:52; dist rebuilt with the pinned toolchain; verify-dist-fresh green (31/31).",
+      "measured_bound": "The finding asks for `.ts` and the contract's hard clause is that `./panel-core.js` must not survive; the OTHER relative imports in those two files are `.js` (158 `.js` / 0 `.ts` in the whole package source; repo-wide packages/*/src = 200 `.js` / 72 `.ts`), so `.ts` does NOT match this package's neighbours. AGENTS.md §6 states the binding rule as `every relative specifier carries the explicit .ts extension`, tsconfig enables allowImportingTsExtensions with Bundler resolution, and 72 `.ts` specifiers already ship under packages/*/src. The package's 158 `.js` imports are a PRE-EXISTING inconsistency reported as a finding — NOT widened or rewritten by this round.",
+      "arms": ["red-r14-import-form.log (before), final-gates-and-r14.log (after: grep finds no `./panel-core.js`)"],
+      "red": "red-r14-import-form.log",
+      "green": "final-gates-and-r14.log + build-dist.log + verify-dist-fresh.log"
+    },
+    "R1.5": {
+      "verdict": "VALID — FIXED",
+      "change": "The reader installed through setWheelInvertRead (packages/mpd-tui-plugin/src/index.ts) catches a `configHandle.get()` throw and returns `resolved.wheelInvert` (the row config floor) instead of letting `wheelInvertOn()` clamp to false.",
+      "arms": ["packages/mpd-tui-plugin/test/plugin.test.ts: R1.5 a throwing `mpdConfig.get()` + row config `wheelInvert: true` still scrolls inverted"],
+      "red": "red-plugin-test.log (1 failed arm)",
+      "green": "green-tui-plugin-tests.log"
+    },
+    "R1.6": {
+      "verdict": "VALID — FIXED",
+      "change": "`blockPanelCsv` and `writePanelsIntoDocument` now share ONE leaf walk (`panelsLeafSite`) that finds `config:` -> `sidePanel:` -> `panels:` at the block's own indents, stops where `sidePanel:` closes, and treats blank/comment lines as transparent; the read-back therefore reads the leaf the writer edits.",
+      "arms": [
+        "scripts/mpd-tui-panels.ts --self-test: (R1.6) decoy-before, not-already-enabled, write+read-back, decoy-after arms",
+        "evidence/tui/sidebar-defects-r1/20261011T130904Z/r16-real-document-probe.ts: the SAME functions over the REAL host-written `~/.dsh/profiles/dsh-tui/cordis.patch.yml` (in memory only)"
+      ],
+      "red": "red-script-selftest.log (3 failed arms)",
+      "green": "green-script-selftest.log, r16-real-document-probe.log (real leaf `todo,jobs,agents`, decoy skipped, read-back PASS)"
+    }
+  },
+  "gates": [
+    { "command": "bun test packages", "exit": 0, "observed": "1812 pass, 3 skip, 0 fail, 23753 expect() calls, 1815 tests across 112 files [20.56s]", "log": "final-sweep.log / bun-test.log" },
+    { "command": "bun run typecheck", "exit": 0, "observed": "tsgo --noEmit, no diagnostics", "log": "final-sweep.log" },
+    { "command": "bun run verify:comments", "exit": 0, "observed": "385/385 files, 34122 declarations, VERDICT: PASS", "log": "final-sweep.log" },
+    { "command": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-adapter-plugin/dist/index.js", "exit": 0, "observed": "Bundled 1 module; 47.29 KB", "log": "build-dist.log" },
+    { "command": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js", "exit": 0, "observed": "Bundled 34 modules; 0.39 MB", "log": "build-dist.log" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical); mpd-tui-adapter-plugin + mpd-tui-plugin both FRESH; 1 NOT COVERED file listed", "log": "verify-dist-fresh.log / final-sweep.log" },
+    { "command": "bun run verify:docs", "exit": 0, "observed": "pairs=47 failed=0 violations=0 links=436 dead=0 — PASS", "log": "verify-docs.log / final-sweep.log" },
+    { "command": "bun run verify:gates", "exit": 0, "observed": "8/8 member gate(s) green (vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, workflows)", "log": "final-gates-and-r14.log" },
+    { "command": "node scripts/mpd-tui-panels.ts --self-test", "exit": 0, "observed": "SELF-TEST PASS (43 ok arms, all arms held)", "log": "green-script-selftest.log" },
+    { "command": "node skills/dsh-qa/scripts/tui-panels.ts --self-test", "exit": 0, "observed": "ok: 8 surfaces asserted, negative controls fail as required", "log": "qa-lane-selftest.log" },
+    { "command": "node skills/dsh-qa/scripts/tui-panels.ts", "exit": 0, "observed": "DOCUMENTED SKIP: `[mpd-qa] SKIP case=tui-panels lane=real reason=absent-fixture prereq=tui profile in the sandbox root remedy=\"bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install\"` — the contract's 2026-10-11 amendment admits this marker; the M4 docker lane is the wave's live proof", "log": "qa-lane-real.log" }
+  ],
+  "not_proven_here": [
+    "No real TUI boot / mounted dsh-tui session in this lane: the keeper's arms use a store double and the QA lane's real case skipped with its documented marker. The M4 docker lane (captain) is the wave's live proof.",
+    "No live host `tuiPanels.list()` read-back was exercised in this round; the record's provenance/read-back path is the wave's, unchanged, and its existing arms still pass.",
+    "The workspace's real `.mpd/logs/mpd-tui-panels.json` was NOT rewritten (no boot ran): the v3 shape is proven by unit arms and the writer/reader pair, not by a real boot's bytes.",
+    "The prune only matches ids shaped `act<N>:<slug>` (the host's composed form for a loader row); a future host that composes our row id in another shape would stop pruning — a documented, unchanged bound.",
+    "A hand edit of the record's `history` can name ids this bundle never registered; the shape filter cannot tell, and the four/five provenance rules are the guard against the MEASURED pollution class, not against a deliberate local edit.",
+    "R1.4's form conflict (finding/manual say `.ts`, the two files' neighbours are `.js`) is a decision with evidence, not a provable equivalence; the package-wide `.js` majority is left as a reported finding."
+  ],
+  "extra_tightening_reported": [
+    "panelRecordProvenance now treats WHITESPACE-ONLY hostRoot/hostVersion/readBack as absent, matching the script's reader (both sides must agree on the same bytes).",
+    "The script's reader now also refuses a record with a blank `provenance.hostRoot`, making its own documented claim ('the same conditions the adapter refuses to WRITE a record under') true; both changes only tighten."
+  ]
+}

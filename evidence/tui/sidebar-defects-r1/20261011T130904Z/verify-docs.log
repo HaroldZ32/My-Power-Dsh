@@ -1,0 +1,5 @@
+$ bun run verify:docs
+[verify-docs-parity] links=436 checked=404 resolved=404 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=115
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS
+docs exit=0
