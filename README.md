@@ -226,6 +226,10 @@ library, which is HOME-scoped at `~/.mpd/workmate/`. See
 - **[Documentation hub](./docs/index.md)** — every document, with reading paths for users, extension
   authors, contributors and agents.
 - **[DSH-TUI edition](./docs/tui.md)** — admission, distribution and per-package compatibility.
+- **[Distribution descriptor](./dsh-distribution.json)** — this environment's identity, composition and
+  managed data locations in the [dsh-distribution](https://github.com/T-Auto/dsh-distribution)
+  meta-protocol format (Draft), readable by tools that support the protocol; detail in
+  [docs/tui.md](./docs/tui.md) §4.2.
 - **[TUI parity ledger](./docs/tui-parity.md)** — the Web surface against the TUI surface, row by row.
 - **[Design](./docs/design.md)** — how the bundle is assembled inside.
 - **[Extensions](./docs/extensions.md)** and the

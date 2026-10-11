@@ -204,6 +204,9 @@ Workmates 页签和设置里的 MPD 分区。
 - **[使用者指南](./docs/user-guide.zh-CN.md)** —— 安装、按用途划分的工具、团队、配方、命令参考。
 - **[文档中心](./docs/index.zh-CN.md)** —— 全部文档，并为使用者、扩展作者、贡献者和智能体分别给出阅读路径。
 - **[DSH-TUI 版](./docs/tui.zh-CN.md)** —— 准入、分发与逐包兼容性。
+- **[分发描述符](./dsh-distribution.json)** —— 本环境的身份、组成与受管数据位置，采用
+  [dsh-distribution](https://github.com/T-Auto/dsh-distribution) 元协议格式（Draft），供支持该协议的
+  工具读取；详见 [docs/tui.zh-CN.md](./docs/tui.zh-CN.md) §4.2。
 - **[TUI 对齐台账](./docs/tui-parity.zh-CN.md)** —— Web 端与 TUI 端逐行对照。
 - **[设计](./docs/design.zh-CN.md)** —— 套件内部是怎么拼起来的。
 - **[扩展](./docs/extensions.zh-CN.md)** 与
