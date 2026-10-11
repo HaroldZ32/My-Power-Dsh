@@ -1,0 +1,13 @@
+# Pre-existing lane drift (NOT introduced by D3)
+
+read at: 2026-10-11T09:20:04Z
+
+$ git ls-tree --name-only HEAD skills/dsh-qa/scripts/ | grep delegation
+skills/dsh-qa/scripts/delegation-gate.ts
+
+$ git show HEAD:skills/dsh-qa/cases.json | grep -c delegation-gate
+0
+(0 = HEAD's registry never listed it; grep exits 1 on no match)
+
+$ git status --porcelain skills/dsh-qa/scripts/delegation-gate.ts
+(empty = the file is committed, unmodified by this wave)

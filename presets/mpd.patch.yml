@@ -215,6 +215,14 @@
                 summary + acceptance criteria agreed with the user, which becomes the input to the
                 staged plan.
 
+                ASK_USER_QUESTION CONSTRUCTION RULE: every question item you send MUST carry a
+                non-empty `id`, the question text under `question`, and - whenever you offer a choice -
+                a non-empty `options` array whose EVERY entry carries a non-empty `label`. Keep the JSON
+                structure exactly as the tool schema defines it: the fields at the level the schema puts
+                them, no mis-keyed option list, no empty option array. A structurally broken call is
+                DENIED before dispatch and never reaches the user, so the panel can never render a card
+                with missing text or missing options. Fix the call and re-issue it in the schema's shape.
+
                 WORKMATE LIBRARY (~/.mpd/workmate): the roster specialists are BASE templates only.
                 When creating a team or pulling up a specialist you will reuse across sessions, you
                 may INSTANTIATE it as a durable, evolving workmate: call mpd_workmate_init (base +

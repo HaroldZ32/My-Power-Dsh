@@ -1,0 +1,12 @@
+{
+  "gate": "audit-selftest-mutant",
+  "command": "bash -c \n  set -u\n  REPO=\"$1\"\n  tmp=\"$(mktemp -d)\"\n  trap \"rm -rf \\\"$tmp\\\"\" EXIT\n  cp \"$REPO/skills/dsh-qa/scripts/ask-user-question-audit.ts\" \"$tmp/\"\n  cp -r \"$REPO/skills/dsh-qa/scripts/lib\" \"$tmp/lib\"\n  sed -i \"s|report.occurrences.length === 11|report.occurrences.length === 12|\" \"$tmp/ask-user-question-audit.ts\"\n  node \"$tmp/ask-user-question-audit.ts\" --self-test\n  code=$?\n  echo \"[mutant] the mutated copy exited $code (1 = the assertion really fired, as intended)\"\n  if [ \"$code\" -eq 1 ]; then exit 0; fi\n  echo \"[mutant] FAIL: a mutated assertion did NOT redden the self-test\"\n  exit 1\n bash /home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T09:20:06Z",
+  "endedAtUtc": "2026-10-11T09:20:06Z",
+  "logPath": "output.log",
+  "logBytes": 155,
+  "logSha256": "1e197886f3a0273c73ddb9103969d77ec2faffb137c84424b3a9ce3df7ff96e7",
+  "headline": "[mutant] the mutated copy exited 1 (1 = the assertion really fired, as intended)"
+}

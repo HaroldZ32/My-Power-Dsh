@@ -1,0 +1,12 @@
+{
+  "gate": "qa-lane-drift",
+  "command": "node scripts/run-qa-lanes.ts --check-drift",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 1,
+  "startedAtUtc": "2026-10-11T09:20:15Z",
+  "endedAtUtc": "2026-10-11T09:20:15Z",
+  "logPath": "output.log",
+  "logBytes": 466,
+  "logSha256": "5d1e32311c680735db3d7767fd0733ae848a424c70f8ef4c2810f3adbbaa5011",
+  "headline": "[run-qa-lanes] immutability required=8: team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=36"
+}

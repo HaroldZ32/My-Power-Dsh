@@ -1,0 +1,12 @@
+{
+  "gate": "verify-dist-fresh",
+  "command": "node scripts/verify-dist-fresh.ts",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T09:12:51Z",
+  "endedAtUtc": "2026-10-11T09:12:51Z",
+  "logPath": "output.log",
+  "logBytes": 4559,
+  "logSha256": "7481919a2095a831ce1c166a6d10600cc6bcfc0dd8562efb5c6bae202596ff5b",
+  "headline": "[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 648ms"
+}

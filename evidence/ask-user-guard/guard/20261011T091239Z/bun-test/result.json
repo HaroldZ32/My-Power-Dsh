@@ -1,0 +1,12 @@
+{
+  "gate": "bun-test",
+  "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T09:12:48Z",
+  "endedAtUtc": "2026-10-11T09:12:48Z",
+  "logPath": "output.log",
+  "logBytes": 21731,
+  "logSha256": "f22e5c0ff173fd0a84924a7aede842042abdc81896e356a0be2b61f0c19bc9dc",
+  "headline": "Ran 144 tests across 8 files. [299.00ms]"
+}
