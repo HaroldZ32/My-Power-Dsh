@@ -1,0 +1,91 @@
+{
+  "ok": false,
+  "slug": "software-smoke",
+  "sandbox": "/tmp/mpd-software-smoke-kqsExV",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0,
+      "tail": "ental-tool-agent-team\"\n    config:\n      freshProvider: \"spawn\"\n      forkProvider: \"fork\"\n  - id: mpd-ui-agent-team\n    name: \"@deepseek-ai/dsh-experimental-client-ui-agent-team\"\n[install-profile] wrote profile/ + home patch (35 rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd\n[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)\n"
+    },
+    "session": {
+      "ok": false,
+      "exit": 0,
+      "stubCalls": 4,
+      "writeToolOffered": true,
+      "bashToolOffered": true,
+      "writeResultOk": false,
+      "writeResultHead": "",
+      "toolResultHeads": [
+        "Error: verification law: `write` on the CODE path \"nim.mjs\" is refused for this session, which the law gates directly. Code written here must be verified by a DIFFERENT agent working from the docs, so take one of the three routes: (1) DELEGATE the write — give the scope to a write-capable member (a ",
+        "Error: verification law: `write` on the CODE path \"nim.mjs\" is refused for this session, which the law gates directly. Code written here must be verified by a DIFFERENT agent working from the docs, so take one of the three routes: (1) DELEGATE the write — give the scope to a write-capable member (a ",
+        "DETERMINISTIC\n--- play ---\nnode:internal/modules/cjs/loader:1568\n  throw err;\n  ^\n\nError: Cannot find module '/tmp/mpd-software-smoke-kqsExV/ws/nim.mjs'\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)\n    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)\n   "
+      ],
+      "missingCredential": false,
+      "authFailed": false
+    },
+    "artifact": {
+      "ok": false,
+      "exists": false,
+      "contentMatches": false,
+      "deterministic": true,
+      "optimal": false,
+      "oracle": {
+        "winner": null,
+        "plies": 0,
+        "problems": [
+          "unparsable transcript line: \"node:internal/modules/cjs/loader:1568\"",
+          "unparsable transcript line: \"throw err;\"",
+          "unparsable transcript line: \"^\"",
+          "unparsable transcript line: \"Error: Cannot find module '/tmp/mpd-software-smoke-kqsExV/ws/nim.mjs'\"",
+          "unparsable transcript line: \"at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)\"",
+          "unparsable transcript line: \"at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)\"",
+          "unparsable transcript line: \"at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)\"",
+          "unparsable transcript line: \"at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)\"",
+          "unparsable transcript line: \"at Module._load (node:internal/modules/cjs/loader:1341:5)\"",
+          "unparsable transcript line: \"at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\"",
+          "unparsable transcript line: \"at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\"",
+          "unparsable transcript line: \"at node:internal/main/run_main_module:33:47 {\"",
+          "unparsable transcript line: \"code: 'MODULE_NOT_FOUND',\"",
+          "unparsable transcript line: \"requireStack: []\"",
+          "unparsable transcript line: \"}\"",
+          "unparsable transcript line: \"Node.js v24.21.0\"",
+          "implausible ply count: 0"
+        ],
+        "probes": {
+          "3,4,5": {
+            "output": "",
+            "problems": [
+              "declared no move in a non-terminal position 3,4,5"
+            ]
+          },
+          "1,2,3": {
+            "output": "",
+            "problems": [
+              "declared no move in a non-terminal position 1,2,3"
+            ]
+          },
+          "7,5,3": {
+            "output": "",
+            "problems": [
+              "declared no move in a non-terminal position 7,5,3"
+            ]
+          },
+          "2,2,0": {
+            "output": "[stderr]",
+            "problems": [
+              "declared no move in a non-terminal position 2,2,0"
+            ]
+          }
+        }
+      }
+    },
+    "isolation": {
+      "ok": true,
+      "checked": 1,
+      "keys": [
+        "--tmp-mpd-software-smoke-kqsExV-ws--"
+      ]
+    }
+  }
+}
