@@ -215,6 +215,13 @@
       "outsideSuites": "the verification law's boot-level falsifier (AGENTS.md §4/§5): a mounted `mpd-verify` row in an isolated DSH_HOME + sandbox HOME + sandbox workspace, heavier than the standing self-test sweep (which the glob already runs) — run it explicitly: node skills/dsh-qa/scripts/verify-law.ts"
     },
     {
+      "case": "ask-user-question-audit",
+      "script": "skills/dsh-qa/scripts/ask-user-question-audit.ts",
+      "suites": [],
+      "immutabilityGuard": "exempt: no caller-supplied output target — the script only READS a caller-supplied session log and prints its report to stdout, so there is no caller-supplied path for it to write (the evidence under evidence/ask-user-guard/audit/ is written by the wave's own capture.sh, never by this script)",
+      "outsideSuites": "a REPORTING tool, not a case: it has no lane mode (without an argument it prints the usage line and exits 2), and its only offline proof is its own `--self-test`, which the selfTest glob already runs — run it explicitly: node skills/dsh-qa/scripts/ask-user-question-audit.ts <session-log.jsonl.zstd>"
+    },
+    {
       "case": "skill-catalog-probe",
       "script": "skills/dsh-qa/scripts/skill-catalog-probe.ts",
       "suites": [

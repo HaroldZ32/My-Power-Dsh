@@ -1,0 +1,12 @@
+{
+  "gate": "audit-selftest",
+  "command": "node skills/dsh-qa/scripts/ask-user-question-audit.ts --self-test",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T09:20:06Z",
+  "endedAtUtc": "2026-10-11T09:20:06Z",
+  "logPath": "output.log",
+  "logBytes": 204,
+  "logSha256": "fcfb7c165260f64ac1ceb46a2659973f506867d0851ba743b11729ecac388dc5",
+  "headline": "[ask-user-question-audit self-test] ok: 4 concatenated zstd frame(s), 18 record(s), 11 occurrence(s), every rule of the local restatement, both answer pairings and the CLI exit codes are verified offline"
+}

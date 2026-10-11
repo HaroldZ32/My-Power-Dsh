@@ -1,0 +1,12 @@
+{
+  "gate": "audit-selftest-mutant-r2",
+  "command": "bash -c \n    set -u\n    REPO=\"$1\"; EXPR=\"$2\"\n    tmp=\"$(mktemp -d)\"\n    trap \"rm -rf \\\"$tmp\\\"\" EXIT\n    cp \"$REPO/skills/dsh-qa/scripts/ask-user-question-audit.ts\" \"$tmp/\"\n    cp -r \"$REPO/skills/dsh-qa/scripts/lib\" \"$tmp/lib\"\n    sed -i \"$EXPR\" \"$tmp/ask-user-question-audit.ts\"\n    echo \"[mutant] mutation applied: $EXPR\"\n    node \"$tmp/ask-user-question-audit.ts\" --self-test\n    code=$?\n    echo \"[mutant] the mutated copy exited $code (1 = the new assertion really fired, as intended)\"\n    if [ \"$code\" -eq 1 ]; then exit 0; fi\n    echo \"[mutant] FAIL: the mutation did NOT redden the self-test\"\n    exit 1\n   bash /home/haroldzhao/MyProj/DshProj/My-Power-Dsh s|if (raw === undefined) return \"absent\"|if (typeof raw !== \"string\") return \"absent\"|",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T10:07:18Z",
+  "endedAtUtc": "2026-10-11T10:07:18Z",
+  "logPath": "output.log",
+  "logBytes": 285,
+  "logSha256": "8488279bfc35f3319dc84a970c4c4dd1226c1d5ba599685ac4e14ad2127d8df5",
+  "headline": "[mutant] the mutated copy exited 1 (1 = the new assertion really fired, as intended)"
+}

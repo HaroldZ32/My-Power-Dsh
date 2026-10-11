@@ -1,0 +1,2 @@
+[ask-user-question-audit self-test] FAIL: 11 occurrences expected, got 11
+[mutant] the mutated copy exited 1 (1 = the assertion really fired, as intended)

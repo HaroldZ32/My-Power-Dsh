@@ -23,6 +23,7 @@ import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
 import { installVerifyGuard, type VerifyLawAccess } from "./verify-guard.ts"
 import { INVESTIGATION_CONFIG_KEY, installCaptainInvestigationGuard } from "./captain-investigation.ts"
+import { installAskUserQuestionGuard } from "./ask-user-guard.ts"
 import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
 import { VERIFY_SERVICE } from "../../mpd-verify-plugin/src/service.ts"
 import { installRosterSection } from "./roster-section.ts"
@@ -767,6 +768,25 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } catch (error) {
     guardOutcome.push("captainInvestigation=absent reason=threw")
     warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")")
+  }
+  // THE ask_user_question BOUNDARY GUARD, installed at this same site: the HOST tool's schema marks
+  // `options` OPTIONAL per question, so a SCHEMA-LEGAL but semantically broken call (a question item with
+  // no `question`, a mis-keyed option list) reaches the TUI's question panel and renders as a card with
+  // neither text nor options (measured 2026-10-10). The render path is host-owned end to end — no bundle
+  // code participates and a same-name wrapper is impossible (the host registry refuses duplicate ids) — so
+  // PRE-DISPATCH is the only point this bundle can act on. Deny-only and always on: a broken question card
+  // is never a desired outcome, so there is no knob to turn it off.
+  try {
+    /** The guard's install outcome, reported on the team-plane boot signature below. */
+    const askUserGuard = installAskUserQuestionGuard(dsh, {
+      warn: (line) => warnOnce("ask-user-guard:" + line, line),
+    })
+    guardOutcome.push(askUserGuard.installed
+      ? "askUserQuestion=installed"
+      : "askUserQuestion=absent reason=" + String(askUserGuard.reason))
+  } catch (error) {
+    guardOutcome.push("askUserQuestion=absent reason=threw")
+    warnOnce("ask-user-guard:threw", "the ask_user_question boundary guard could not be installed (" + errText(error) + ")")
   }
   // THE DELEGATION GATE, installed at this same site: the harness's generic spawn tools (`subagent`,
   // `subagent_fork`, `workflow`) are NOT this bundle's delegation path — §5 rule 2 names

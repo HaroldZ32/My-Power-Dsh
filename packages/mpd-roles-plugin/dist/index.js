@@ -913,6 +913,95 @@ function installCaptainInvestigationGuard(dsh, options) {
   }
 }
 
+// packages/mpd-roles-plugin/src/ask-user-guard.ts
+var ASK_USER_QUESTION_TOOL = "ask_user_question";
+function nonEmptyString(value) {
+  return typeof value === "string" && value.length > 0;
+}
+function describeShape(value) {
+  if (value === null)
+    return "null";
+  if (value === undefined)
+    return "undefined";
+  if (Array.isArray(value))
+    return "an array";
+  return typeof value === "object" ? "an object" : "a " + typeof value;
+}
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function askUserQuestionRefusal(defect) {
+  return "ask_user_question is refused: " + defect + ". Re-issue the call with every question item carrying a" + " non-empty string `id`, the question text under `question`, and — whenever a choice is offered — a" + " non-empty `options` array whose entries each carry a non-empty string `label`, in exactly the JSON" + " structure the tool schema defines. A structurally broken call would render as an empty card, so it is" + " denied before dispatch and never reaches the user.";
+}
+function askUserQuestionDenial(args) {
+  try {
+    if (!isPlainObject(args)) {
+      return askUserQuestionRefusal("`arguments` must be a JSON object (received " + describeShape(args) + ")");
+    }
+    const call = args;
+    const questions = call.questions;
+    if (!Array.isArray(questions)) {
+      return askUserQuestionRefusal("`questions` must be a non-empty array (received " + describeShape(questions) + ")");
+    }
+    if (questions.length === 0) {
+      return askUserQuestionRefusal("`questions` must not be empty — a call carrying no question renders nothing");
+    }
+    for (let index = 0;index < questions.length; index += 1) {
+      const item = questions[index];
+      const at = "question item " + String(index + 1);
+      if (!isPlainObject(item)) {
+        return askUserQuestionRefusal(at + " must be an object carrying `id` and `question` (received " + describeShape(item) + ")");
+      }
+      if (!nonEmptyString(item.id)) {
+        return askUserQuestionRefusal(at + " lacks a non-empty string `id` (received " + describeShape(item.id) + ")");
+      }
+      if (!nonEmptyString(item.question)) {
+        return askUserQuestionRefusal(at + " lacks a non-empty string `question` (received " + describeShape(item.question) + ")");
+      }
+      const options = item.options;
+      if (options === undefined)
+        continue;
+      if (!Array.isArray(options)) {
+        return askUserQuestionRefusal(at + " carries `options` that is not an array (received " + describeShape(options) + ")");
+      }
+      if (options.length === 0) {
+        return askUserQuestionRefusal(at + " carries an empty `options` array — a choice needs at least one option");
+      }
+      for (let optionIndex = 0;optionIndex < options.length; optionIndex += 1) {
+        const option = options[optionIndex];
+        if (!isPlainObject(option) || !nonEmptyString(option.label)) {
+          return askUserQuestionRefusal(at + " option " + String(optionIndex + 1) + " lacks a non-empty string `label`");
+        }
+      }
+    }
+    return;
+  } catch {
+    return;
+  }
+}
+function askUserQuestionGuardDecision(exec) {
+  try {
+    if (String(exec?.name ?? "") !== ASK_USER_QUESTION_TOOL)
+      return;
+    return askUserQuestionDenial(exec?.arguments);
+  } catch {
+    return;
+  }
+}
+function installAskUserQuestionGuard(dsh, options) {
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the ask_user_question boundary guard is NOT installed " + "(a structurally broken question call would reach the user's panel unchanged; the construction rule in the " + "preset prompt is then the only protection)");
+      return { installed: false, reason: "no-guard-seam" };
+    }
+    const dispose = dsh.guardTool((exec) => askUserQuestionGuardDecision(exec));
+    return { installed: true, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the ask_user_question boundary guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, reason: "install-failed" };
+  }
+}
+
 // packages/mpd-roles-plugin/src/delegation-gate.ts
 var DELEGATION_CONFIG_KEY = "delegation.gate";
 var DELEGATION_TOOLS = ["subagent", "subagent_fork", "workflow"];
@@ -3301,6 +3390,15 @@ Work with the tools your role requires (read-only roles must never modify anythi
   } catch (error) {
     guardOutcome.push("captainInvestigation=absent reason=threw");
     warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")");
+  }
+  try {
+    const askUserGuard = installAskUserQuestionGuard(dsh, {
+      warn: (line) => warnOnce("ask-user-guard:" + line, line)
+    });
+    guardOutcome.push(askUserGuard.installed ? "askUserQuestion=installed" : "askUserQuestion=absent reason=" + String(askUserGuard.reason));
+  } catch (error) {
+    guardOutcome.push("askUserQuestion=absent reason=threw");
+    warnOnce("ask-user-guard:threw", "the ask_user_question boundary guard could not be installed (" + errText(error) + ")");
   }
   try {
     const delegation = installDelegationGate(dsh, {

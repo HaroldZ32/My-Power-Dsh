@@ -1,0 +1,124 @@
+{
+  "wave": "ask-user-guard",
+  "phase": "repair (CodeRabbit R1-R5 on PR #34)",
+  "contract": ".mpd/plans/ask-user-guard-repair.md",
+  "branch": "feature/ask-user-question-guard",
+  "head": "f684ec10",
+  "toolchain": ".toolchain/node_modules/.bin/bun first on PATH (buildToolchain bun@1.4.0)",
+  "notes": "NOTES.md carries the R5 decision (SkillSpector PE3 anchors SKILL.md:86/:125, out of scope, justified) and the DECLINED pairAnswer refactor.",
+  "gates": [
+    {
+      "gate": "audit-selftest",
+      "command": "node skills/dsh-qa/scripts/ask-user-question-audit.ts --self-test",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T10:07:17Z",
+      "endedAtUtc": "2026-10-11T10:07:18Z",
+      "logPath": "output.log",
+      "logBytes": 279,
+      "logSha256": "cdb653f8c2c6bdfa0727ac4ec8c1a0f9e48f4c284be19091346279c1782496c8",
+      "headline": "[ask-user-question-audit self-test] ok: 4 concatenated zstd frame(s), 18 record(s), 11 occurrence(s), every rule of the local restatement, both answer pairings, the CLI exit codes and the repair arms (R2 wrong-type detail, R3 array line, R4 mixed-arg usage) are verified offline"
+    },
+    {
+      "gate": "audit-selftest-mutant-r2",
+      "command": "bash -c \n    set -u\n    REPO=\"$1\"; EXPR=\"$2\"\n    tmp=\"$(mktemp -d)\"\n    trap \"rm -rf \\\"$tmp\\\"\" EXIT\n    cp \"$REPO/skills/dsh-qa/scripts/ask-user-question-audit.ts\" \"$tmp/\"\n    cp -r \"$REPO/skills/dsh-qa/scripts/lib\" \"$tmp/lib\"\n    sed -i \"$EXPR\" \"$tmp/ask-user-question-audit.ts\"\n    echo \"[mutant] mutation applied: $EXPR\"\n    node \"$tmp/ask-user-question-audit.ts\" --self-test\n    code=$?\n    echo \"[mutant] the mutated copy exited $code (1 = the new assertion really fired, as intended)\"\n    if [ \"$code\" -eq 1 ]; then exit 0; fi\n    echo \"[mutant] FAIL: the mutation did NOT redden the self-test\"\n    exit 1\n   bash /home/haroldzhao/MyProj/DshProj/My-Power-Dsh s|if (raw === undefined) return \"absent\"|if (typeof raw !== \"string\") return \"absent\"|",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T10:07:18Z",
+      "endedAtUtc": "2026-10-11T10:07:18Z",
+      "logPath": "output.log",
+      "logBytes": 285,
+      "logSha256": "8488279bfc35f3319dc84a970c4c4dd1226c1d5ba599685ac4e14ad2127d8df5",
+      "headline": "[mutant] the mutated copy exited 1 (1 = the new assertion really fired, as intended)"
+    },
+    {
+      "gate": "audit-selftest-mutant-r3",
+      "command": "bash -c \n    set -u\n    REPO=\"$1\"; EXPR=\"$2\"\n    tmp=\"$(mktemp -d)\"\n    trap \"rm -rf \\\"$tmp\\\"\" EXIT\n    cp \"$REPO/skills/dsh-qa/scripts/ask-user-question-audit.ts\" \"$tmp/\"\n    cp -r \"$REPO/skills/dsh-qa/scripts/lib\" \"$tmp/lib\"\n    sed -i \"$EXPR\" \"$tmp/ask-user-question-audit.ts\"\n    echo \"[mutant] mutation applied: $EXPR\"\n    node \"$tmp/ask-user-question-audit.ts\" --self-test\n    code=$?\n    echo \"[mutant] the mutated copy exited $code (1 = the new assertion really fired, as intended)\"\n    if [ \"$code\" -eq 1 ]; then exit 0; fi\n    echo \"[mutant] FAIL: the mutation did NOT redden the self-test\"\n    exit 1\n   bash /home/haroldzhao/MyProj/DshProj/My-Power-Dsh s|!Array.isArray(parsed)|true|",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T10:07:18Z",
+      "endedAtUtc": "2026-10-11T10:07:18Z",
+      "logPath": "output.log",
+      "logBytes": 247,
+      "logSha256": "f1d3da109bb1fa73a14c50418777887db24331bf69186d830089015685c1f895",
+      "headline": "[mutant] the mutated copy exited 1 (1 = the new assertion really fired, as intended)"
+    },
+    {
+      "gate": "audit-selftest-mutant-r4",
+      "command": "bash -c \n    set -u\n    REPO=\"$1\"; EXPR=\"$2\"\n    tmp=\"$(mktemp -d)\"\n    trap \"rm -rf \\\"$tmp\\\"\" EXIT\n    cp \"$REPO/skills/dsh-qa/scripts/ask-user-question-audit.ts\" \"$tmp/\"\n    cp -r \"$REPO/skills/dsh-qa/scripts/lib\" \"$tmp/lib\"\n    sed -i \"$EXPR\" \"$tmp/ask-user-question-audit.ts\"\n    echo \"[mutant] mutation applied: $EXPR\"\n    node \"$tmp/ask-user-question-audit.ts\" --self-test\n    code=$?\n    echo \"[mutant] the mutated copy exited $code (1 = the new assertion really fired, as intended)\"\n    if [ \"$code\" -eq 1 ]; then exit 0; fi\n    echo \"[mutant] FAIL: the mutation did NOT redden the self-test\"\n    exit 1\n   bash /home/haroldzhao/MyProj/DshProj/My-Power-Dsh s|mixedArgs.status === 2|mixedArgs.status === 0|",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T10:07:18Z",
+      "endedAtUtc": "2026-10-11T10:07:18Z",
+      "logPath": "output.log",
+      "logBytes": 275,
+      "logSha256": "8ea3a1c63aa389d8d9e8ac46f356f9001d721d3c0003ce91ffdf85f7ef9e98b0",
+      "headline": "[mutant] the mutated copy exited 1 (1 = the new assertion really fired, as intended)"
+    },
+    {
+      "gate": "preset-conformance-selftest",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T10:07:27Z",
+      "endedAtUtc": "2026-10-11T10:07:28Z",
+      "logPath": "output.log",
+      "logBytes": 1267,
+      "logSha256": "2ae31635eeb0afed94a96447c86928af09224507797bd9274b4078ffb5e18934",
+      "headline": "[preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)"
+    },
+    {
+      "gate": "test-qa",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run test:qa",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T10:07:18Z",
+      "endedAtUtc": "2026-10-11T10:07:25Z",
+      "logPath": "output.log",
+      "logBytes": 27002,
+      "logSha256": "1a384be968fad1805ebec48f2ba8ef860d5563a362e53eac47dc3848d5218db8",
+      "headline": "[test:qa] all self-tests passed"
+    },
+    {
+      "gate": "typecheck",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run typecheck",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T10:07:25Z",
+      "endedAtUtc": "2026-10-11T10:07:25Z",
+      "logPath": "output.log",
+      "logBytes": 16,
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87",
+      "headline": "$ tsgo --noEmit"
+    },
+    {
+      "gate": "verify-comments",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:comments",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T10:07:25Z",
+      "endedAtUtc": "2026-10-11T10:07:27Z",
+      "logPath": "output.log",
+      "logBytes": 307,
+      "logSha256": "f00e5d4cfd3dfbfe7e6d6e27547eceaeec4f3c0cd433c4ebdb40b11312fb6c52",
+      "headline": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+    },
+    {
+      "gate": "verify-rows",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:rows",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T10:07:27Z",
+      "endedAtUtc": "2026-10-11T10:07:27Z",
+      "logPath": "output.log",
+      "logBytes": 608,
+      "logSha256": "4be1bcebab209813067ab4167cea4af06ae7a277d056bf388d94fe8e6016091f",
+      "headline": "[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)"
+    }
+  ],
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": []
+  }
+}

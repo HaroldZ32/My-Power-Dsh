@@ -1,0 +1,12 @@
+{
+  "gate": "preset-conformance-selftest",
+  "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T10:07:27Z",
+  "endedAtUtc": "2026-10-11T10:07:28Z",
+  "logPath": "output.log",
+  "logBytes": 1267,
+  "logSha256": "2ae31635eeb0afed94a96447c86928af09224507797bd9274b4078ffb5e18934",
+  "headline": "[preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)"
+}
