@@ -19,6 +19,8 @@
 // by position, effects queued, and a row-aware flattening. It is carried verbatim rather than
 // re-invented so the two suites agree on what "one drawn row" means.
 import { describe, expect, test } from "bun:test"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import { createLog } from "../src/log"
 import { DAG_CHARS, DAG_CHROME, DAG_TONE_THEME } from "../src/dag-theme"
@@ -56,7 +58,7 @@ const DONE_ROW = {
  */
 function workflowFixture(): TeamWorkflow {
   return {
-    workspace: "/tmp/mpd-panel-fixture",
+    workspace: join(tmpdir(), "mpd-panel-fixture"),
     team: { id: "team-20261006152009", name: "wave-3", phase: "active", staged: false, runnable: true, links: 1 },
     members: [{ name: "Panel Engineer", role: "Senior Engineer", status: "running", done: 1, total: 2, progress: 50, unread: null }],
     tasks: [

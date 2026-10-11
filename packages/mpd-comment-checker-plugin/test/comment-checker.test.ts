@@ -20,14 +20,14 @@ test.skipIf(SKIP)("binary resolves from toolchain", () => {
 
 test.skipIf(SKIP)("comment file triggers detection (exit 2)", () => {
   /** The detector's verdict for a file whose only content is a line comment. */
-  const res = runCheck(BINARY!, hookInputFor("/tmp/a.js", "// hello comment\nlet x = 1\n"), 30000)
+  const res = runCheck(BINARY!, hookInputFor(join(tmpdir(), "a.js"), "// hello comment\nlet x = 1\n"), 30000)
   expect(res.hasComments).toBe(true)
   expect(res.message).toContain("COMMENT/DOCSTRING DETECTED")
 })
 
 test.skipIf(SKIP)("clean file passes (exit 0)", () => {
   /** The detector's verdict for a file with no comments at all. */
-  const res = runCheck(BINARY!, hookInputFor("/tmp/b.js", "let x = 1\nconst y = 2\n"), 30000)
+  const res = runCheck(BINARY!, hookInputFor(join(tmpdir(), "b.js"), "let x = 1\nconst y = 2\n"), 30000)
   expect(res.hasComments).toBe(false)
 })
 

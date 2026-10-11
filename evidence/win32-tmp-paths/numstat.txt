@@ -1,0 +1,12 @@
+2	2	packages/mpd-comment-checker-plugin/test/comment-checker.test.ts
+2	1	packages/mpd-roles-plugin/test/boulder-dir.test.ts
+1	1	packages/mpd-roles-plugin/test/team-plane.test.ts
+4	4	packages/mpd-team-compact-plugin/test/compaction.test.ts
+8	6	packages/mpd-tui-plugin/test/dashboard-key.test.ts
+4	4	packages/mpd-tui-plugin/test/panel-dag.test.ts
+3	2	packages/mpd-tui-plugin/test/panel-legend-mount.test.ts
+3	2	packages/mpd-tui-plugin/test/panel-visibility.test.ts
+3	1	packages/mpd-tui-plugin/test/panel.test.ts
+4	2	packages/mpd-tui-plugin/test/plugin.test.ts
+3	2	packages/mpd-tui-plugin/test/session-scope-and-push.test.ts
+2	1	packages/mpd-tui-plugin/test/subagent-scene.test.ts

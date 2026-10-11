@@ -113,7 +113,7 @@ function fanInTasks(): DagPanelTask[] {
  */
 function workflowFixture(): TeamWorkflow {
   return {
-    workspace: "/tmp/mpd-dag-panel-fixture",
+    workspace: join(tmpdir(), "mpd-dag-panel-fixture"),
     team: { id: "team-20261007120000", name: "dag-port", phase: "active", staged: false, runnable: true, links: 2 },
     members: [
       { name: "Panel Engineer", role: "Senior Engineer", status: "running", done: 1, total: 2, progress: 50, unread: null },
@@ -142,7 +142,7 @@ function workflowFixture(): TeamWorkflow {
 /** One workmate library read with a single instance, for the populated arm. */
 function libraryFixture(): WorkmateLibrary {
   return {
-    root: "/tmp/home/.mpd/workmate",
+    root: join(tmpdir(), "home", ".mpd", "workmate"),
     archived: 1,
     problems: [],
     entries: [
@@ -2210,7 +2210,7 @@ describe("the workmate page", () => {
     /** The host double. */
     const host = makeHost()
     /** The page, over an empty library (the normal state before the first init). */
-    const page = createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: "/tmp/home/.mpd/workmate", problems: [] })) as (props: unknown) => unknown
+    const page = createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: join(tmpdir(), "home", ".mpd", "workmate"), problems: [] })) as (props: unknown) => unknown
     /** The rendered text. */
     const text = kit.text(render(page, kit, host))
     expect(text).toContain("no workmates yet")
@@ -2247,7 +2247,7 @@ describe("the workmate page", () => {
 
   test("the reader tolerates a missing library and never throws", () => {
     /** A home whose library does not exist. */
-    const missing = readWorkmateLibrary("/tmp/mpd-workmate-fixture-does-not-exist")
+    const missing = readWorkmateLibrary(join(tmpdir(), "mpd-workmate-fixture-does-not-exist"))
     expect(missing.entries).toEqual([])
     expect(missing.archived).toBe(0)
     // The root is still reported, so the empty page can say WHERE it looked.

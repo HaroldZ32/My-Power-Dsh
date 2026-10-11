@@ -15,6 +15,7 @@
 // `team-record-source.test.ts` own the real `.mpd/team` reads.
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
   createSubagentSceneComponent,
@@ -91,7 +92,7 @@ const LIVE_DETAIL_ROW = {
  */
 function workflowFixture(): TeamWorkflow {
   return {
-    workspace: "/tmp/mpd-merged-fixture",
+    workspace: join(tmpdir(), "mpd-merged-fixture"),
     team: { id: "team-20261002152009", name: "wave-2", phase: "active", staged: false, runnable: true, links: 1 },
     members: [{ name: "TuiAdapter Engineer", role: "Senior Engineer", status: "running", done: 1, total: 2, progress: 50, unread: null }],
     tasks: [
