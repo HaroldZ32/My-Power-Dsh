@@ -19,11 +19,12 @@ difference dominates the session.
 1. **JavaScript kernel (Bun)**: run `scripts/ensure-js-deps.sh` once — or
    `pwsh scripts/ensure-js-deps.ps1` on Windows; it prints the absolute import path for
    `@duckdb/node-api`. Dynamic-import it, connect once, query across cells.
+   (Windows PowerShell 5.1: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ensure-js-deps.ps1`)
 2. **Python kernel**: the default surface for Python work. duckdb/numpy/matplotlib are
    typically resident; Polars and pyarrow come from `scripts/ensure-py-deps.sh` (Windows:
-   `pwsh scripts/ensure-py-deps.ps1`), which installs them once into a user cache keyed to
-   the kernel's interpreter — `sys.path.insert` the printed directory and import. The
-   interpreter itself is never mutated.
+   `pwsh scripts/ensure-py-deps.ps1 -PythonBin <kernel sys.executable>`), which installs
+   them once into a user cache keyed to the kernel's interpreter — `sys.path.insert` the
+   printed directory and import. The interpreter itself is never mutated.
 3. **uv lane** (`uv run --with ...`): isolation for a heavy or crash-prone one-shot that
    should not take the kernel down.
 4. **No kernel** (plain-shell harness): the same engines as one-shots — `bun -e` for
@@ -39,7 +40,7 @@ Per-surface patterns and pitfalls: read `references/execution-surfaces.md` befor
   past its memory limit, and reads remote files with the same syntax.
 - **Polars** when the pipeline is DataFrame-shaped: expression-chain transforms, reshapes,
   streaming datasets past RAM — resident in the Python kernel via `ensure-py-deps.sh`
-  (`pwsh scripts/ensure-py-deps.ps1` on Windows).
+  (`pwsh scripts/ensure-py-deps.ps1 -PythonBin <kernel sys.executable>` on Windows).
   Read `references/polars-lane.md` — the current 1.x API differs from widely-memorized
   older spellings.
 - **numpy** when numeric work goes beyond SQL/DataFrame aggregation: statistical tests,

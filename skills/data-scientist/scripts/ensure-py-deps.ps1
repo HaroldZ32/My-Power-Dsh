@@ -19,10 +19,11 @@
   $HOME\.cache\mpd-data-scientist - the same knob the bash twin reads.
 
 .PARAMETER PythonBin
-  The Python executable to install for. Default: python3.
+  The Python executable to install for. Default: python (python.exe on stock Windows).
 
 .EXAMPLE
-  $site = & scripts/ensure-py-deps.ps1 (Get-Command python).Source
+  # In the kernel: python -c "import sys; print(sys.executable)"
+  $site = & scripts/ensure-py-deps.ps1 -PythonBin <that path>
 
 .NOTES
   Requires uv on PATH - see references/uv-setup.md.
@@ -31,7 +32,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$PythonBin = 'python3'
+    [string]$PythonBin = 'python'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,7 +53,7 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 }
 
 if (-not (Test-PythonBin $PythonBin)) {
-    Write-Log "python executable not found: $PythonBin"
+    Write-Log "python executable not found: $PythonBin; on a python3-only host pass -PythonBin python3"
     exit 1
 }
 
