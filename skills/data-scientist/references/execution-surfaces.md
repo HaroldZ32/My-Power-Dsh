@@ -9,6 +9,7 @@ cache outside any repo and prints the absolute import path (its only stdout line
 
 ```bash
 bash scripts/ensure-js-deps.sh          # run from the skill directory
+# or: pwsh scripts/ensure-js-deps.ps1   # Windows; prints the same single import path
 ```
 
 In the kernel — top-level `require` may not exist, dynamic import always works:
@@ -40,6 +41,8 @@ skill directory; the script installs on first use, then just prints the path):
 import subprocess, sys
 site = subprocess.run(["bash", "scripts/ensure-py-deps.sh", sys.executable],
                       capture_output=True, text=True, check=True).stdout.strip()
+# Windows: run the PowerShell twin instead and use its printed path —
+#   $site = & scripts/ensure-py-deps.ps1 (Get-Command python).Source
 sys.path.insert(0, site)
 import polars as pl
 import pyarrow

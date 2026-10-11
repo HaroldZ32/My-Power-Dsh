@@ -10,6 +10,8 @@ the script's absolute path):
 import subprocess, sys
 site = subprocess.run(["bash", "scripts/ensure-py-deps.sh", sys.executable],
                       capture_output=True, text=True, check=True).stdout.strip()
+# Windows: run the PowerShell twin instead and use its printed path —
+#   $site = & scripts/ensure-py-deps.ps1 (Get-Command python).Source
 sys.path.insert(0, site)
 import polars as pl
 ```

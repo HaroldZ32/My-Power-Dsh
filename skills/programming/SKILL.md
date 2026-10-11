@@ -254,6 +254,10 @@ Or run the per-language checker the skill ships:
 uv run scripts/python/check-no-excuse-rules.py <changed paths>
 # Rust
 bash scripts/rust/check-no-excuse-rules.sh <changed paths>
+# or: pwsh scripts/rust/check-no-excuse-rules.ps1 <changed paths>
+# Go
+bash scripts/go/check-no-excuse-rules.sh <changed paths>
+# or: pwsh scripts/go/check-no-excuse-rules.ps1 <changed paths>
 # TypeScript
 bun run scripts/typescript/check-no-excuse-rules.ts <changed paths>
 ```
