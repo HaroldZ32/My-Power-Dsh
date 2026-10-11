@@ -26,10 +26,13 @@ import {
   HOST_PACKAGE_PATH,
   HOST_ROOT_ENV,
   HOST_UI_MODULE,
+  PANEL_ID_HISTORY_LIMIT,
   SERVICE_NAME,
   TUI_SEAMS,
+  panelHistoryAfter,
   panelRecordProvenance,
   readHostPackageVersion,
+  readPanelIdRecordPast,
   TUI_SEAM_KEYS,
   createFileSink,
   createLazyTuiAdapter,
@@ -1011,5 +1014,98 @@ describe("the panel-id record's provenance (a record the remedy can trust)", () 
     expect(version.length).toBeGreaterThan(0)
     // A dotted version string, which is what a reader comparing hosts will match on.
     expect(/^\d+\.\d+\.\d+/u.test(version)).toBe(true)
+  })
+})
+
+// ── R1 (repair round R1, CodeRabbit PR #35): the record's bounded PAST ids are the ownership evidence ──
+//
+// WHY THIS BLOCK EXISTS. Both writers (the keeper and `scripts/mpd-tui-panels.ts`) prune an earlier
+// boot's panel id, and ownership may never be inferred from a SLUG: a foreign plugin's live `act9:team`
+// shares our `team` slug, while one of our own dead ids whose page was retired matches no live slug. The
+// evidence is the record's `history` — the ids THIS bundle provably registered before — so the arms below
+// pin its BOUND, its fold, its shape filter, and the fact that a record the provenance rules refuse
+// contributes nothing to it. A polluted record must not be able to widen what the prune may delete.
+
+describe("the panel-id record's bounded history (the prune's ownership evidence)", () => {
+  test("panelHistoryAfter folds the previous boot's ids in, drops the live ones, and keeps the NEWEST", () => {
+    // The fold: the previous history plus the previous boot's own ids, minus everything live now.
+    expect(panelHistoryAfter(["act7:team"], ["act7:team", "act7:dag"])).toEqual(["act7:dag"])
+    expect(panelHistoryAfter(["act1:team"], ["act7:team", "act7:dag"])).toEqual(["act7:team", "act7:dag"])
+    // An id that is LIVE NOW never enters the history — it is not past, and the predicate would only have
+    // to discard it again.
+    expect(panelHistoryAfter(["act7:team"], ["act1:team", "act7:team"])).toEqual(["act1:team"])
+    // THE SHAPE FILTER: only ids the host composes for a loader row can ever be ours, so a foreign id or a
+    // hand edit cannot enter the evidence.
+    expect(panelHistoryAfter([], ["todo", "someone:else", "act7:team", ""])).toEqual(["act7:team"])
+    // THE BOUND: 40 candidates in, the newest PANEL_ID_HISTORY_LIMIT out, oldest evicted first.
+    /** Forty ids of one long-lived workspace, oldest first. */
+    const many = Array.from({ length: 40 }, (_, index) => `act${String(index + 1)}:team`)
+    /** The bounded history that fold produces. */
+    const bounded = panelHistoryAfter([], many)
+    expect(bounded).toHaveLength(PANEL_ID_HISTORY_LIMIT)
+    expect(bounded.at(-1)).toBe("act40:team")
+    expect(bounded[0]).toBe(`act${String(40 - PANEL_ID_HISTORY_LIMIT + 1)}:team`)
+  })
+
+  test("readPanelIdRecordPast answers the record's history PLUS its current ids, shape-filtered and deduped", () => {
+    /** A scratch workspace whose record this arm owns. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-panel-record-"))
+    try {
+      /** The record path the adapter writes and this reader reads. */
+      const file = join(workspace, ".mpd", "logs", "mpd-tui-panels.json")
+      mkdirSync(join(workspace, ".mpd", "logs"), { recursive: true })
+      writeFileSync(file, JSON.stringify({
+        version: 3,
+        panelIds: ["act7:team", "act7:dag"],
+        slugs: ["team", "dag"],
+        updatedAt: "2026-10-11T00:00:00.000Z",
+        provenance: { hostRoot: "/opt/dsh-tui", hostVersion: "0.14.0", readBack: "tuiPanels.list", activation: "act7" },
+        history: ["act1:team", "someone:else", "act1:team"],
+      }))
+      // BOTH FIELDS ARE EVIDENCE: the history is the bundle's past, and the record's current ids were a
+      // PREVIOUS boot's live set — the "not live now" half of the rule discards the ones still live.
+      expect(readPanelIdRecordPast(workspace)).toEqual(["act1:team", "act7:team", "act7:dag"])
+      // A version-2 record (no history) still contributes its own ids as past, so the repair reaches a
+      // workspace written by the release before this one instead of doing nothing until the next boot.
+      writeFileSync(file, JSON.stringify({
+        version: 2,
+        panelIds: ["act1:team"],
+        updatedAt: "2026-10-11T00:00:00.000Z",
+        provenance: { hostRoot: "/opt/dsh-tui", hostVersion: "0.14.0", readBack: "tuiPanels.list", activation: "act1" },
+      }))
+      expect(readPanelIdRecordPast(workspace)).toEqual(["act1:team"])
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("a record the provenance rules REFUSE contributes no past at all — and a missing one is not an error", () => {
+    /** A scratch workspace whose records this arm writes one at a time. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-panel-record-refused-"))
+    try {
+      /** The record path the reader under test probes. */
+      const file = join(workspace, ".mpd", "logs", "mpd-tui-panels.json")
+      mkdirSync(join(workspace, ".mpd", "logs"), { recursive: true })
+      /** The record the measured pollution produced: version 1, no provenance block at all. */
+      const polluted = { version: 1, panelIds: ["act0:team", "act0:dag"], slugs: ["team", "dag"], updatedAt: "2026-10-08T02:02:20.819Z" }
+      /** Writes one record and reports what the reader made of it. */
+      const pastOf = (record: unknown): string[] => {
+        writeFileSync(file, JSON.stringify(record))
+        return readPanelIdRecordPast(workspace)
+      }
+      // NO FILE is not an error: the prune is simply disabled, which is the pre-R1 behaviour.
+      expect(readPanelIdRecordPast(join(workspace, "no-such-root"))).toEqual([])
+      expect(pastOf(polluted)).toEqual([])
+      /** The provenance a real boot writes, so each case below differs in exactly ONE field. */
+      const proven = { hostRoot: "/opt/dsh-tui", hostVersion: "0.14.0", readBack: "tuiPanels.list", activation: "act1" }
+      expect(pastOf({ version: 3, panelIds: ["act1:team"], provenance: { ...proven, hostVersion: "  " }, history: ["act7:dag"] })).toEqual([])
+      expect(pastOf({ version: 3, panelIds: ["act1:team"], provenance: { ...proven, readBack: "" }, history: ["act7:dag"] })).toEqual([])
+      expect(pastOf({ version: 3, panelIds: ["act0:team"], provenance: { ...proven, activation: "act0" }, history: ["act7:dag"] })).toEqual([])
+      // NEGATIVE CONTROL: the same record with a provable provenance DOES answer, so the four refusals
+      // above cannot be a blanket refusal.
+      expect(pastOf({ version: 3, panelIds: ["act1:team"], provenance: proven, history: ["act7:dag"] })).toEqual(["act7:dag", "act1:team"])
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
   })
 })

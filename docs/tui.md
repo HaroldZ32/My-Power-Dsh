@@ -263,24 +263,29 @@ settles WITH those ids and without the builtins.) Two independent routes now hol
   `packages/mpd-tui-adapter-plugin`'s settle keeper re-asserts only the ids the host's own `list()`
   read-back produced, and only when the list names **NONE** of them: it appends the whole set after the
   user's list, never reorders a token, and **prunes exactly ONE class of token** — this bundle's OWN panel
-  ids from an EARLIER boot, i.e. an `act<N>:<slug>` whose slug is one of the slugs just registered and
-  which is not one of the ids just registered. The host renumbers the `<pluginId>` half on every boot, so
+  ids from an EARLIER boot. **Since repair round R1 (CodeRabbit PR #35) that class is recognised by
+  PROVENANCE, never by a slug**: a token is prunable only when its FULL id is in the bounded history of
+  registrations the panel-id record proves this bundle made in earlier boots, and it is not one of the ids
+  live now (the keeper's `list()` read-back). The host renumbers the `<pluginId>` half on every boot, so
   those dead ids accumulate in the list while the host's `SidePanelColumn` keeps building a tab and a dot
   for each one with no panel behind it (the reported mismatch, D1); the prune is what removes them.
   **Nothing else is ever removed**: a host builtin and any id this bundle has never heard of come back
-  byte-for-byte. The limit is named rather than hidden: ownership is recognised **by slug**, so a
-  **foreign** id shaped like `act<N>:<their-slug>` — which the host's own activation counter can produce
-  for a different row — is preserved exactly while its slug is not one of ours; a different plugin's
-  panel that SHARES one of our slugs (the host can produce `act9:team` beside our `act7:team`) matches
-  the stale class and would be pruned with it. The mirror limit holds as well: a stale token whose slug
-  this bundle no longer registers (a renamed or dropped page) is never pruned, so its dot can persist
-  until the user layer is edited directly. The write is then **READ BACK**
+  byte-for-byte. The two limits the old slug rule had are both gone with it: a **foreign** panel that
+  merely SHARES one of our slugs (the host can produce `act9:team` beside our `act7:team`) is not in our
+  recorded history and is therefore never pruned, and a token whose page was **retired or renamed** IS in
+  that history, so its orphaned tab is cleaned up like any other dead id. One bound remains and is named
+  rather than hidden: a **foreign DEAD** id lingering in the list is not ours to clean, so it stays. The
+  write is then **READ BACK**
   through the host's own reader and compared with the list the keeper intended; a store that did not carry
   the write settles as `refused` and names both lists, instead of reporting a success the sidebar does not
   have. A list naming **ANY** of ours is a configuration
   that has taken a position on the bundle — enabled in `/settings`, written by the script below, or a
   deliberate partial removal — and the keeper **stands down**, so it never puts back a page the user
-  meant to drop. **The 0.14.0 wave replaced the bounded tick ladder with the host's OWN subscription**
+  meant to drop. **Standing down does not protect a dead token (R1.3)**: when such a list also carries an
+  id from the recorded history that is not live, the keeper **prunes that id first and appends nothing**,
+  then stands down — the user's SELECTION is what is respected, and a token no panel can answer is not
+  part of any selection. **The 0.14.0 wave replaced the bounded tick ladder with the host's OWN
+  subscription**
   (`subscribeSidePanelPanels`, the live-setting store's change feed): the keeper now repairs a wipe the
   moment the host re-applies its config instead of losing the race after ~25 s, and the ladder survives
   only as the degrade path for a host that exposes no feed. The subscription is released with the
@@ -288,7 +293,10 @@ settles WITH those ids and without the builtins.) Two independent routes now hol
   stand-down rule is unchanged: **our own write contains our ids, which is what ends it**. That is the
   adapter's SECOND host-internals contact, alongside the `Ctrl+A` `useStdin` reach (AGENTS.md §6 counts
   this class, so both are named in that file), and the ids it discovered are recorded to
-  `<workspace>/.mpd/logs/mpd-tui-panels.json`. Residual, named rather than hidden: removing **ALL** of
+  `<workspace>/.mpd/logs/mpd-tui-panels.json` — schema **3**, which adds the bounded `history` field
+  (the last 32 past registration ids, newest last) that the provenance-owned prune reads; a record that
+  cannot be proved contributes no history at all, so a polluted file cannot widen what may be deleted.
+  Residual, named rather than hidden: removing **ALL** of
   ours on purpose leaves a list indistinguishable from a fresh profile's, so the set is re-added once per
   boot; separating those cases needs the configured value itself, i.e. a third host-internals contact,
   which is a §6 count decision this wave deliberately does not take;
@@ -299,7 +307,10 @@ settles WITH those ids and without the builtins.) Two independent routes now hol
   come from the installed sources and the script refuses to write when it cannot prove the path; dry run
   by default, `--apply` to write, `.bak-<stamp>` kept, only missing ids added **and the same stale-id
   prune applied** (one rule, restated in `scripts/mpd-tui-panels.ts` because a standalone Node entry point
-  cannot import a bundled package's source). A run whose only change is the prune is a run, not a no-op.
+  cannot import a bundled package's source — and since repair round R1 that rule is the PROVENANCE one:
+  the script prunes a token only when the record's `history` proves the bundle registered it and this run
+  does not enable it, so a foreign `act9:team` is never deleted). A run whose only change is the prune is
+  a run, not a no-op.
   `--apply` also **reads the document back** after the atomic rename and compares the leaf with the CSV it
   intended: a mismatch exits 1 and names the backup, so a write that did not land is never announced as a
   success. It writes the USER's
@@ -318,16 +329,24 @@ boot can ever serve. The 0.14.0 wave fixed the WRITE side: the record carries
 `provenance {hostRoot, hostVersion, readBack, activation}` and the recorder REFUSES to build one it
 cannot trace to an installed host package and a host read-back (measured: a full
 `bun test ./packages/mpd-tui-plugin ./packages/mpd-tui-adapter-plugin` run leaves the file's sha256
-unchanged). **The READER guards the same proof, so a polluted record cannot reach a user's profile
+unchanged). **Repair round R1 (CodeRabbit PR #35) made that provenance load-bearing for the PRUNE too, and
+grew the record to schema 3**: alongside `panelIds` it now carries `history` — the bounded list (last 32,
+newest last) of ids this bundle provably registered in earlier boots, which is the ownership evidence both
+writers prune by. The fold is read-side guarded as well: the previous record's history and its own ids are
+carried forward only when that record passes the provenance rules, so a polluted file contributes NO
+history instead of propagating ids a real boot cannot compose. A blank field counts as absent on BOTH
+sides of the file. **The READER guards the same proof, so a polluted record cannot reach a user's profile
 patch:** `scripts/mpd-tui-panels.ts` REFUSES — the dry run and `--apply` alike, exit 1 — a record that
-carries no `provenance`, a blank `provenance.hostVersion`, no `provenance.readBack`, or the impossible
+carries no `provenance`, a blank `provenance.hostRoot`, a blank `provenance.hostVersion`, no
+`provenance.readBack`, or the impossible
 `provenance.activation === "act0"`, naming the field that failed and telling the reader to boot the TUI
-once or to pass `--ids <a,b,c>`. Measured on the polluted version-1 record: the dry run prints
+once or to pass `--ids <a,b,c>`. A refused record contributes no past ids either, so it cannot widen the
+prune. Measured on the polluted version-1 record: the dry run prints
 ``REFUSED: … it carries no `provenance` block (a version-1 record, whose ids cannot be traced to a boot)``
 and exits 1, the record's sha256 is unchanged by the run, `--ids act1:team,act1:workmate` is accepted (the
 escape still works), and the script's own `--self-test` passes with one arm per refusal shape plus a
-well-formed version-2 record accepted. A dry run prints the ids it read and their file, so the user sees
-what would be written before `--apply` writes anything.
+well-formed record accepted. A dry run prints the ids it read, their file and the past ids the prune would
+use, so the user sees what would be written before `--apply` writes anything.
 
 Measured without them: the bar reads `‹ 待办 › ▸ ◆` and the host's live enable list is
 `toggle, focus, zoom, todo, jobs, agents`. Measured with them, at 120 columns, on the THREE-page set this
@@ -1122,25 +1141,29 @@ route's question is "which surface carries the host's rows" — the two are sepa
 re-applies its config instead of being lost after the ladder ends — which is the durable form of the
 user's 「侧边栏挂掉了」. The ladder survives ONLY as the degrade path for a host that exposes no feed;
 the subscription is released with the injected scope, never throws on a host without the module, and the
-STAND-DOWN rule is unchanged (**the moment the CSV names ANY of our ids, a configuration has taken a
-position on this bundle and the keeper stops for good**, so a page the user removed on purpose is never
-put back, and our own write ends the loop because it contains our ids).
+STAND-DOWN rule holds (**the moment the CSV names ANY of our ids, a configuration has taken a position on
+this bundle and the keeper stops for good**, so a page the user removed on purpose is never
+put back, and our own write ends the loop because it contains our ids) — with ONE addition from repair
+round R1: a provably-dead past id sitting in that same list is pruned in a prune-only write BEFORE the
+keeper stands down, and nothing is appended in that pass.
 
 **The recorded panel-id set now carries PROVENANCE, because a test run poisoned it (measured).**
 `.mpd/logs/mpd-tui-panels.json` was overwritten on 2026-10-08 with `act0:team,act0:dag,act0:workmate` —
 ids the installed host cannot compose, since its `pluginIdFor` fallback counter pre-increments and the
 first bare activation is `act1` — by a UNIT TEST run whose panel-seam double labels registrations `act0`.
-The record is now schema version 2 and carries `provenance {hostRoot, hostVersion, readBack, activation}`;
+The record is now schema version 3 (version 2 added `provenance`, version 3 the bounded `history`) and
+carries `provenance {hostRoot, hostVersion, readBack, activation}`;
 the recorder REFUSES to write a record it cannot trace to an installed host package and a host read-back,
 and the `act0` shape is refused by name. Measured: a full
 `bun test ./packages/mpd-tui-plugin ./packages/mpd-tui-adapter-plugin` run leaves the record's sha256
 unchanged. **The same proof is guarded on the READ side**, so a polluted record can no longer reach a
 user's profile patch: `scripts/mpd-tui-panels.ts` REFUSES (dry run and `--apply` alike, exit 1) a record
-with no `provenance`, a blank `provenance.hostVersion`, no `provenance.readBack`, or
-`provenance.activation === "act0"`, naming the failed field and pointing at `--ids <a,b,c>` — measured on
-the polluted version-1 record: ``REFUSED: … it carries no `provenance` block …``, exit 1, the record's
+with no `provenance`, a blank `provenance.hostRoot` or `provenance.hostVersion`, no `provenance.readBack`,
+or `provenance.activation === "act0"`, naming the failed field and pointing at `--ids <a,b,c>` — measured
+on the polluted version-1 record: ``REFUSED: … it carries no `provenance` block …``, exit 1, the record's
 sha256 unchanged, `--ids act1:team,act1:workmate` accepted, and the script's `--self-test` green with one
-arm per refusal shape plus a well-formed version-2 record accepted. **The file ON DISK is still the
+arm per refusal shape plus a well-formed record accepted. It is also the guard the PRUNE reads through, so
+a refused record contributes no past ids at all (repair round R1). **The file ON DISK is still the
 polluted version-1 record until a real boot of the host rewrites it** — which is precisely why the
 remedy refuses it today, and why `--ids` is the documented escape.
 

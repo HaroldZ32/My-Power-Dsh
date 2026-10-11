@@ -28,29 +28,32 @@
 // host's own registration read-back, which the adapter records on every boot to
 // `<workspace>/.mpd/logs/mpd-tui-panels.json`; this script reads that, and `--ids` overrides it.
 //
-// THE RECORD'S SHAPE, AND WHY AN UNPROVABLE ONE IS REFUSED. Version 2 of that file is
-// `{version, panelIds, slugs, updatedAt, provenance}` with
-// `provenance = {hostRoot, hostVersion, readBack, activation}`, and the adapter writes it ONLY when it
-// can prove that block (`panelRecordProvenance`). The file was MEASURED polluted once (2026-10-08: a
-// VERSION-1 record carrying `act0:team,act0:dag,act0:workmate` — ids no real boot can compose, because
-// the host's `pluginIdFor` PRE-INCREMENTS its fallback counter so the first bare activation is `act1`),
-// and this script's read side would have offered to `--apply` them into the user's settings layer. So a
-// record is REFUSED, naming the field that failed, when it carries no `provenance`, a blank/absent
-// `provenance.hostVersion`, no `provenance.readBack`, or `provenance.activation === "act0"`. `--ids
-// a,b,c` stays the documented escape when the user knows the ids, and a real TUI boot rewrites a
-// provable record.
+// THE RECORD'S SHAPE, AND WHY AN UNPROVABLE ONE IS REFUSED. Version 2 of that file added
+// `provenance = {hostRoot, hostVersion, readBack, activation}` to `{version, panelIds, slugs, updatedAt}`,
+// and version 3 adds `history` — the bounded list of ids THIS bundle registered in EARLIER boots, which
+// is the ownership evidence the prune below rests on. The adapter writes a record ONLY when it can prove
+// that block (`panelRecordProvenance`). The file was MEASURED polluted once (2026-10-08: a VERSION-1
+// record carrying `act0:team,act0:dag,act0:workmate` — ids no real boot can compose, because the host's
+// `pluginIdFor` PRE-INCREMENTS its fallback counter so the first bare activation is `act1`), and this
+// script's read side would have offered to `--apply` them into the user's settings layer. So a record is
+// REFUSED, naming the field that failed, when it carries no `provenance`, a blank/absent
+// `provenance.hostVersion`, no `provenance.readBack`, or `provenance.activation === "act0"`. The same
+// refusals gate the PAST ids this script prunes by, so a polluted record cannot make the remedy delete a
+// live panel. `--ids a,b,c` stays the documented escape when the user knows the ids, and a real TUI boot
+// rewrites a provable record.
 //
 // SAFETY: dry-run is the DEFAULT and prints the resolved absolute path and the exact block it would
 // write; a write needs `--apply`. The write is atomic, keeps a `.bak-<stamp>` copy beside the document,
 // and READS THE DOCUMENT BACK afterwards — a write whose leaf does not come back as intended exits 1 and
 // names the backup, rather than announcing a success the file does not carry. Tokens are never reordered
-// and never removed except for ONE class: this bundle's OWN panel ids from an EARLIER boot (the host
-// renumbers the `<pluginId>` half of a row-registered panel on every boot, so `act1:team`, `act7:team`, …
-// accumulate and each dead id draws a sidebar tab and dot with no panel behind it). A token that is not
-// ours — a host builtin, another plugin's panel, even an `act<N>:<their-slug>` id — is preserved
-// byte-for-byte. Adding an entry for a row the user layer does not carry yet REPLACES that row's whole
-// config, so the script restates the inherited config VERBATIM from the composing bundle patch
-// (including any `!!js` tags) rather than inventing a partial one.
+// and never removed except for ONE class: this bundle's OWN panel ids from an EARLIER boot, recognised by
+// PROVENANCE (the record's durable history of the ids it registered — never by a matching slug, which
+// both deleted a foreign plugin's live `act9:team` and failed to clean our own retired `act7:dag`). A
+// token that is not ours — a host builtin, another plugin's panel, even an `act<N>:<their-slug>` id — is
+// preserved byte-for-byte; a foreign DEAD id lingering in the list is the accepted bound of this rule,
+// because it is not ours to clean. Adding an entry for a row the user layer does not carry yet REPLACES
+// that row's whole config, so the script restates the inherited config VERBATIM from the composing bundle
+// patch (including any `!!js` tags) rather than inventing a partial one.
 //
 // Usage:
 //   node scripts/mpd-tui-panels.ts [--dsh-home <dir>] [--profile <name>] [--workspace <dir>]
@@ -102,40 +105,44 @@ export interface PanelMerge {
    *
    * The host renumbers the `<pluginId>` half of a row-registered panel on every boot, so the user layer
    * accumulates `act1:team`, `act7:team`, … and the sidebar draws a tab and a dot for each dead one. The
-   * remedy script is the surface that cleans them up, so it prunes exactly these and nothing else.
+   * remedy script is the surface that cleans them up, so it prunes exactly these and nothing else — and
+   * "these" are recognised by PROVENANCE ({@link panelTokenIsStaleMine}), never by a shared slug.
    */
   pruned: readonly string[]
 }
 
 /**
- * The `<slug>` half of one composed panel id: everything after the FIRST colon.
- * @param id - one normalized panel id.
- * @returns the slug half; an id with no colon is its own slug (the host's builtins are spelled that way).
+ * The id shape the host composes for a loader row's panel: `<pluginId>:<slug>` with its `act<N>` fallback.
+ *
+ * The same shape the adapter's own rule applies, restated here because this script is a standalone Node
+ * entry point and cannot import a bundled package's source.
  */
-export function panelSlugOf(id: string): string {
-  /** Where the activation half ends; -1 when the id carries none. */
-  const at = id.indexOf(":")
-  return at < 0 ? id : id.slice(at + 1)
-}
+const PANEL_ACT_ID_SHAPE = /^act\d+:/u
 
 /**
  * Whether one token is a panel of OURS from an EARLIER boot — the only kind of token this script prunes.
  *
- * The three conditions are the adapter's own (`panelTokenIsStaleMine` in
- * `packages/mpd-tui-adapter-plugin/src/index.ts`), restated here because this script is a standalone
- * Node entry point and cannot import a bundled package's source: the token must have the host's
- * fallback-activation shape `act<N>:<slug>`, its SLUG must be one of the ids this run is enabling, and
- * the full id must not be one of them. A foreign plugin's `act<N>:<its-slug>` therefore survives, which
- * is what keeps the remedy from removing a working panel it does not own.
+ * OWNERSHIP IS PROVENANCE, NEVER A SLUG (repair round R1, CodeRabbit PR #35), and it is the adapter's own
+ * rule (`panelTokenIsStaleMine` in `packages/mpd-tui-adapter-plugin/src/index.ts`), restated here for the
+ * reason above. The slug rule this replaced was wrong in BOTH directions at once: a foreign plugin's live
+ * `act9:team` shares our `team` slug and was pruned out of the user's sidebar, while one of our OWN dead
+ * ids whose page was retired or renamed matched no live slug and was never pruned at all. THE TWO
+ * CONDITIONS:
+ *   * the FULL id is among the record's PAST registrations (`record.past`), i.e. this bundle provably
+ *     registered it in an earlier boot — the record's provenance is what makes "provably" true;
+ *   * the full id is NOT one of the ids this run enables, i.e. it is not live now.
+ * A foreign id fails the first condition and is therefore never pruned — even one that shares our slug,
+ * and even one shaped like an `act<N>` id (the counter is the host's, not ours). ACCEPTED BOUND: a
+ * foreign DEAD id lingering in the list is not ours to clean, so it stays.
  * @param token - one normalized token from the document's list.
  * @param ids - the ids this run enables, in registration order.
- * @param slugs - the slugs of {@link ids}, computed once per merge.
+ * @param past - the record's bounded past registrations, oldest first.
  * @returns true when the token is ours, stale, and therefore prunable.
  */
-export function panelTokenIsStaleMine(token: string, ids: readonly string[], slugs: ReadonlySet<string>): boolean {
-  if (!/^act\d+:/u.test(token)) return false
+export function panelTokenIsStaleMine(token: string, ids: readonly string[], past: readonly string[]): boolean {
+  if (!PANEL_ACT_ID_SHAPE.test(token)) return false
   if (ids.includes(token)) return false
-  return slugs.has(panelSlugOf(token))
+  return past.includes(token)
 }
 
 /**
@@ -152,9 +159,10 @@ export function panelTokenIsStaleMine(token: string, ids: readonly string[], slu
  * (`packages/mpd-tui-adapter-plugin/src/index.ts`), which holds the same invariants at runtime.
  * @param existing - the CSV the document carries, or `undefined` when the key is absent.
  * @param ids - the panel ids to enable, in registration order.
+ * @param past - the record's bounded past registrations, oldest first; `[]` when none could be proved.
  * @returns the CSV to write plus what was added, what was already there and what was pruned.
  */
-export function mergePanelIds(existing: string | undefined, ids: readonly string[]): PanelMerge {
+export function mergePanelIds(existing: string | undefined, ids: readonly string[], past: readonly string[]): PanelMerge {
   /** The user's tokens, normalized and deduped in first-seen order. */
   const tokens: string[] = []
   for (const token of (existing ?? "").split(",")) {
@@ -164,10 +172,10 @@ export function mergePanelIds(existing: string | undefined, ids: readonly string
   }
   /** The ids this run enables, normalized the same way. */
   const wanted = ids.map((id) => id.trim().toLowerCase()).filter((id) => id !== "")
-  /** The slugs this run owns, taken from the ids it is about to enable. */
-  const slugs = new Set(wanted.map(panelSlugOf))
+  /** The recorded past ids, normalized the way the document's tokens are. */
+  const owned = past.map((id) => id.trim().toLowerCase()).filter((id) => id !== "")
   /** Our tokens from an earlier boot; see {@link panelTokenIsStaleMine} for why only these may go. */
-  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, wanted, slugs))
+  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, wanted, owned))
   /** The user's list with only those tokens removed, in its original order. */
   const kept = tokens.filter((token) => !pruned.includes(token))
   /** The requested ids the kept list does not carry yet, in the order they were discovered. */
@@ -179,8 +187,10 @@ export function mergePanelIds(existing: string | undefined, ids: readonly string
  * Read the enable CSV one row block of a patch document carries.
  *
  * ONE reader for the merge's input AND for the post-write read-back, so the two can never disagree about
- * which line is the value: the leaf is the FIRST line of the block whose trimmed text starts with
- * `panels:`, and everything after that first colon is the value, unquoted.
+ * which line is the value — AND it reads the SAME path `writePanelsIntoDocument` edits, which is the
+ * point rather than a coincidence (R1.6): a `panels:` key in another section of the same block is a
+ * different value, and answering with it made the script report "already enabled" while the real sidebar
+ * list was missing every current id. The leaf's value is everything after its first colon, unquoted.
  * @param text - the patch document's text.
  * @param rowId - the loader entry id whose block is read.
  * @returns the CSV the block carries, or `undefined` when the block or the leaf is absent.
@@ -190,11 +200,11 @@ export function blockPanelCsv(text: string, rowId: string): string | undefined {
   const block = findRowBlock(text, rowId)
   if (block === undefined) return undefined
   /** The block's own lines. */
-  const lines = text.split("\n").map((line) => line.replace(/\r$/u, "")).slice(block.start, block.end)
-  /** The leaf's value, or undefined when the block carries no `panels:` line. */
-  const line = lines.find((candidate) => candidate.trim().startsWith(`${PANELS_KEY}:`))
-  if (line === undefined) return undefined
-  return line.split(":").slice(1).join(":").trim().replace(/^["']|["']$/gu, "")
+  const body = text.split("\n").map((line) => line.replace(/\r$/u, "")).slice(block.start, block.end)
+  /** Where the sidebar leaf sits in that block, walked at the path the writer edits. */
+  const site = panelsLeafSite(body, block.indent)
+  if (site.leafAt < 0) return undefined
+  return panelCsvValue(body[site.leafAt] ?? "")
 }
 
 /** A row block inside a patch document: where it starts, and the lines it owns. */
@@ -205,6 +215,68 @@ export interface PatchRowBlock {
   readonly end: number
   /** The leading whitespace of the `- id:` line, as the block's own indentation. */
   readonly indent: string
+}
+
+/** Where the sidebar enable leaf sits inside one row block. */
+interface PanelsLeafSite {
+  /** The index of the `config:` key inside the block, or -1 when the block carries none. */
+  readonly configAt: number
+  /** The index of the `sidePanel:` key under that `config:`, or -1 when the block carries none. */
+  readonly sectionAt: number
+  /** The index of the `panels:` leaf under that `sidePanel:`, or -1 when the leaf is absent. */
+  readonly leafAt: number
+}
+
+/**
+ * Walk one row block to the leaf `writePanelsIntoDocument` edits: `config:` → `sidePanel:` → `panels:`.
+ *
+ * WHY THE PATH IS WALKED RATHER THAN SEARCHED. A block may carry another section's `panels:` key — the
+ * same leaf NAME in a different place — and the first match in the block is not the sidebar list: reading
+ * it made this script report "already enabled" while the real list was missing every current id (R1.6).
+ * The walk uses the block's OWN indents, so it serves a top-level entry and one nested inside an
+ * `insert:` list alike, and it STOPS where `sidePanel:` closes (a key at the section's indent or
+ * shallower), so a LATER section's `panels:` cannot be read either. Blank and comment lines are
+ * transparent: they close nothing.
+ * @param body - the block's lines, with the trailing newline already stripped.
+ * @param indent - the `- id:` header's own indentation.
+ * @returns the three indexes; `-1` for each level the block does not carry.
+ */
+function panelsLeafSite(body: readonly string[], indent: string): PanelsLeafSite {
+  /** The indent of a key directly under the `- id:` header. */
+  const keyIndent = `${indent}  `
+  /** The indent of a key under `config:`, which is one level deeper than the key itself. */
+  const sectionIndent = `${keyIndent}  `
+  /** The indent of a key under `sidePanel:`. */
+  const leafIndent = `${sectionIndent}  `
+  /** The `config:` key's index, which the two levels below are anchored to. */
+  const configAt = body.findIndex((line) => line === `${keyIndent}config:`)
+  if (configAt < 0) return { configAt: -1, sectionAt: -1, leafAt: -1 }
+  /** The `sidePanel:` key's index, when the block declares one under its own `config:`. */
+  const sectionAt = body.findIndex((line, at) => at > configAt && line === `${sectionIndent}${PANELS_SECTION}:`)
+  if (sectionAt < 0) return { configAt, sectionAt: -1, leafAt: -1 }
+  for (let at = sectionAt + 1; at < body.length; at += 1) {
+    /** The line under inspection. */
+    const line = body[at] ?? ""
+    /** That line's trimmed text, used to let blank and comment lines through. */
+    const trimmed = line.trim()
+    if (trimmed === "" || trimmed.startsWith("#")) continue
+    /** That line's own leading whitespace. */
+    const lead = /^(\s*)/u.exec(line)?.[1] ?? ""
+    // A KEY AT THE SECTION'S OWN INDENT (or shallower) CLOSES `sidePanel:`: past this point a `panels:`
+    // line belongs to a different section and is not the sidebar list.
+    if (lead.length <= sectionIndent.length) return { configAt, sectionAt, leafAt: -1 }
+    if (lead.length === leafIndent.length && line.startsWith(`${leafIndent}${PANELS_KEY}:`)) return { configAt, sectionAt, leafAt: at }
+  }
+  return { configAt, sectionAt, leafAt: -1 }
+}
+
+/**
+ * The value of one `panels:` leaf line: everything after its first colon, unquoted.
+ * @param line - the leaf's own line.
+ * @returns the CSV it carries.
+ */
+function panelCsvValue(line: string): string {
+  return line.split(":").slice(1).join(":").trim().replace(/^["']|["']$/gu, "")
 }
 
 /**
@@ -278,30 +350,26 @@ export function writePanelsIntoDocument(text: string, rowId: string, csv: string
   }
   /** The block's own lines. */
   const body = lines.slice(block.start, block.end)
-  /** The indent of a key directly under the `- id:` header. */
-  const keyIndent = `${block.indent}  `
   /** The indent of a key under `config:`, which is one level deeper than the key itself. */
-  const sectionIndent = `${keyIndent}  `
+  const sectionIndent = `${block.indent}    `
   /** The indent of a key under `sidePanel:`. */
   const leafIndent = `${sectionIndent}  `
-  /** The index (within `body`) of the `config:` key, when the block carries one. */
-  const configAt = body.findIndex((line) => line === `${keyIndent}config:`)
-  if (configAt < 0) {
+  // THE SAME WALK {@link blockPanelCsv} READS WITH, so the leaf this routine writes is provably the leaf
+  // the read-back compares against — a decoy `panels:` in another section is not the sidebar list (R1.6).
+  /** Where the sidebar leaf sits in this block, walked at the path above. */
+  const site = panelsLeafSite(body, block.indent)
+  if (site.configAt < 0) {
     return { text, detail: `the ${rowId} block carries no plain "config:" key this script can edit` }
   }
-  /** The index (within `body`) of the `sidePanel:` key, when the block carries one. */
-  const sectionAt = body.findIndex((line, at) => at > configAt && line === `${sectionIndent}${PANELS_SECTION}:`)
   /** The index (within `body`) of the existing leaf, when there is one. */
-  const leafAt = sectionAt < 0
-    ? -1
-    : body.findIndex((line, at) => at > sectionAt && line.startsWith(`${leafIndent}${PANELS_KEY}:`))
+  const leafAt = site.leafAt
   /** The CSV the block carried before the edit, `undefined` when the leaf was absent. */
   const previous = leafAt < 0 ? undefined : /^[^:]*:\s*(.*)$/u.exec(body[leafAt] ?? "")?.[1]?.trim().replace(/^["']|["']$/gu, "")
   /** The replacement text of the leaf line. */
   const leaf = `${leafIndent}${PANELS_KEY}: ${JSON.stringify(csv)}`
   if (leafAt >= 0) body[leafAt] = leaf
-  else if (sectionAt >= 0) body.splice(sectionAt + 1, 0, leaf)
-  else body.splice(configAt + 1, 0, `${sectionIndent}${PANELS_SECTION}:`, leaf)
+  else if (site.sectionAt >= 0) body.splice(site.sectionAt + 1, 0, leaf)
+  else body.splice(site.configAt + 1, 0, `${sectionIndent}${PANELS_SECTION}:`, leaf)
   // A block with no body edit at all would rewrite the document with identical bytes; reporting the
   // no-op keeps `--apply` from churning a file the user owns.
   /** The document with the edited block spliced back in. */
@@ -614,11 +682,20 @@ function resolveLocation(dshHomeArg: string | undefined, profileArg: string | un
 interface IdRecord {
   /** The ids, in registration order. */
   readonly ids: readonly string[]
+  /**
+   * The ids this bundle provably registered in EARLIER boots — the ownership evidence the prune rests on.
+   *
+   * Version 3 of the record carries it as `history`; the record's own `panelIds` are offered as past too,
+   * because they were a previous boot's live set, and the "not live now" half of the prune rule discards
+   * whichever of them this run still enables. Both are filtered to the host's composed id shape and
+   * deduped here, so a hand edit cannot widen what this remedy is allowed to delete.
+   */
+  readonly past: readonly string[]
   /** The record file that produced them. */
   readonly file: string
 }
 
-/** The version-2 `provenance` block of the adapter's record, as this reader narrows it. */
+/** The version-2/3 `provenance` block of the adapter's record, as this reader narrows it. */
 interface IdRecordProvenance {
   /** The installed dsh-tui package root the ids were read from. */
   readonly hostRoot?: unknown
@@ -639,7 +716,9 @@ interface IdRecordProvenance {
  * counter and the first bare activation is therefore `act1`; a unit test that drove the real recorder
  * had produced them, and this script then offered them for `--apply`. These are the same conditions
  * the adapter refuses to WRITE a record under (`panelRecordProvenance`), read back on the consumer
- * side, so a polluted file can no longer reach a user's profile patch.
+ * side, so a polluted file can no longer reach a user's profile patch — and since repair round R1 the
+ * very same check gates the PAST ids the prune rests on, so a record this refuses contributes no
+ * ownership evidence at all.
  * @param provenance - the record's `provenance` block, narrowed rather than trusted.
  * @returns the refusal reason, naming the field; `undefined` when the record may be written.
  */
@@ -649,6 +728,9 @@ function unprovableProvenance(provenance: unknown): string | undefined {
   }
   /** The block's fields, narrowed one by one below. */
   const block = provenance as IdRecordProvenance
+  if (typeof block.hostRoot !== "string" || block.hostRoot.trim() === "") {
+    return "its `provenance.hostRoot` is absent or blank, so the ids cannot be traced to an installed dsh-tui package"
+  }
   if (typeof block.hostVersion !== "string" || block.hostVersion.trim() === "") {
     return "its `provenance.hostVersion` is absent or blank, so the ids cannot be traced to an installed dsh-tui release"
   }
@@ -671,19 +753,37 @@ function readIdRecord(workspace: string): IdRecord | { detail: string } {
   const file = join(workspace, IDS_RECORD)
   try {
     /** The parsed record; the shape is narrowed rather than trusted. */
-    const parsed = JSON.parse(readFileSync(file, "utf8")) as { panelIds?: unknown; provenance?: unknown }
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as { panelIds?: unknown; history?: unknown; provenance?: unknown }
     /** The ids, kept only when they are a non-empty array of non-empty strings. */
-    const ids = Array.isArray(parsed.panelIds)
-      ? parsed.panelIds.filter((entry): entry is string => typeof entry === "string" && entry.length > 0)
-      : []
+    const ids = idStringsOf(parsed.panelIds)
     if (ids.length === 0) return { detail: `${file} carries no panel ids` }
     /** The ONE reason these ids may not be offered for a write, `undefined` when they may. */
     const unprovable = unprovableProvenance(parsed.provenance)
     if (unprovable !== undefined) return { detail: `${file}: ${unprovable}` }
-    return { ids, file }
+    // THE PAST SET IS BUILT HERE, from the SAME provable record: its `history` (version 3) plus its own
+    // current ids, filtered to the shape the host composes for a loader row and deduped. A record that
+    // failed the provenance check above never reaches this line, so a polluted file cannot widen the
+    // prune — it is refused outright, exactly as it is for the write.
+    /** The record's current ids, which were a previous boot's live set. */
+    const past: string[] = []
+    for (const id of [...idStringsOf(parsed.history), ...ids]) {
+      /** The normalized candidate, so the comparison against the document's tokens is like-for-like. */
+      const normalized = id.trim().toLowerCase()
+      if (PANEL_ACT_ID_SHAPE.test(normalized) && !past.includes(normalized)) past.push(normalized)
+    }
+    return { ids, past, file }
   } catch {
     return { detail: `${file} is missing or unreadable` }
   }
+}
+
+/**
+ * The non-empty strings of one unknown JSON field, in order.
+ * @param value - the parsed field.
+ * @returns its string entries, or the empty list for anything else.
+ */
+function idStringsOf(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && entry.length > 0) : []
 }
 
 /** The resolved command line of one run. */
@@ -741,15 +841,20 @@ function main(argv: readonly string[]): number {
   for (const line of location.proof) console.log(`${TAG} proof: ${line}`)
   console.log(`${TAG} settings document: ${location.document}`)
   console.log(`${TAG} row id: ${location.rowId} — ${location.rowIdSource}`)
+  /** The record as read, when it could be read at all: `--ids` overrides its ids but not its past. */
+  const fromRecord = readIdRecord(options.workspace)
   /** The discovered ids: the flag wins, the adapter's record is the default. */
   const record = options.ids !== undefined
-    ? { ids: options.ids.split(",").map((id) => id.trim()).filter((id) => id !== ""), file: "--ids" }
-    : readIdRecord(options.workspace)
+    ? { ids: options.ids.split(",").map((id) => id.trim()).filter((id) => id !== ""), past: "past" in fromRecord ? fromRecord.past : [], file: "--ids" }
+    : fromRecord
   if (!("ids" in record)) {
     console.error(`${TAG} REFUSED: ${record.detail}. Boot the TUI once (the adapter records the ids it registered) or pass --ids <a,b,c>.`)
     return 1
   }
   console.log(`${TAG} panel ids (${record.file}): ${record.ids.join(",")}`)
+  // THE OWNERSHIP EVIDENCE, PRINTED RATHER THAN IMPLIED: a run that prunes must be readable off the
+  // console, and `--ids` cannot supply it — the past comes from the record or there is none to prune by.
+  console.log(`${TAG} recorded past ids: ${record.past.join(",") || (options.ids === undefined ? "(none proved)" : "(none: the record could not be proved, so nothing is pruned)")}`)
   /** The document's text. */
   let text = readFileSync(location.document, "utf8")
   /** The block the document already carries for the row, `undefined` when the layer has none. */
@@ -774,8 +879,8 @@ function main(argv: readonly string[]): number {
   }
   /** The CSV the block carries now, `undefined` when the leaf is absent. */
   const current = blockPanelCsv(text, location.rowId)
-  /** The merge this run would write. */
-  const merge = mergePanelIds(current, record.ids)
+  /** The merge this run would write, pruning only ids the record proves are ours. */
+  const merge = mergePanelIds(current, record.ids, record.past)
   // A PRUNE ALONE IS A REASON TO RUN (contract D1): the current ids may already be enabled while an
   // earlier boot's `act<N>:<slug>` tokens still sit in the list — that is precisely the accumulation the
   // remedy exists to clear, and an `added.length === 0` guard would print "already enabled" and stop.
@@ -838,30 +943,58 @@ function selfTest(): number {
     if (!ok) problems.push(label)
   }
   /** The merge under test. */
-  const merged = mergePanelIds("todo,jobs,agents", ["act1:team", "act1:dag", "act1:workmate"])
+  const merged = mergePanelIds("todo,jobs,agents", ["act1:team", "act1:dag", "act1:workmate"], [])
   check("(a) the merge appends in order without touching the user's tokens", merged.csv === "todo,jobs,agents,act1:team,act1:dag,act1:workmate")
-  check("(a) a second pass is a no-op", mergePanelIds(merged.csv, ["act1:team", "act1:dag", "act1:workmate"]).added.length === 0)
-  check("(a) the merge never drops an unknown id the user added", mergePanelIds("todo,jobs,agents,someone:else", ["act1:team"]).csv.includes("someone:else"))
-  check("(a) duplicates collapse the way the host collapses them", mergePanelIds("todo, jobs ,todo", ["todo"]).csv === "todo,jobs")
+  check("(a) a second pass is a no-op", mergePanelIds(merged.csv, ["act1:team", "act1:dag", "act1:workmate"], []).added.length === 0)
+  check("(a) the merge never drops an unknown id the user added", mergePanelIds("todo,jobs,agents,someone:else", ["act1:team"], []).csv.includes("someone:else"))
+  check("(a) duplicates collapse the way the host collapses them", mergePanelIds("todo, jobs ,todo", ["todo"], []).csv === "todo,jobs")
   // (a) D1/D3 — the prune, and the bound it must not cross. The eight host builtins are the host's own
   // declared default CSV (`DEFAULT_SIDE_PANEL_IDS` in the installed `tuiDisplayPrefs`), spelled here so
   // the arm reads as the user clause "the original menus were swallowed".
   /** The host's eight builtin panel ids, in the host's own order. */
   const BUILTINS = "todo,jobs,agents,info,trajectory,workspace,btw,companion"
   /** A list one earlier boot left behind: every builtin, a foreign panel, and our dead ids. */
-  const stale = mergePanelIds(`${BUILTINS},someone:else,act7:team,act7:dag`, ["act1:team", "act1:dag"])
+  const stale = mergePanelIds(`${BUILTINS},someone:else,act7:team,act7:dag`, ["act1:team", "act1:dag"], ["act7:team", "act7:dag"])
   check("(a) D1 our STALE act ids are pruned and the current ones take their place", stale.csv === `${BUILTINS},someone:else,act1:team,act1:dag`)
   check("(a) D1 the prune is REPORTED, not silent", stale.pruned.join(",") === "act7:team,act7:dag")
   check("(a) D3 every one of the eight builtins survives", BUILTINS.split(",").every((id) => stale.csv.split(",").includes(id)))
-  check("(a) D3 a FOREIGN id shaped like an act id is never dropped", mergePanelIds("todo,act9:somebodyelse", ["act1:team"]).csv === "todo,act9:somebodyelse,act1:team")
-  check("(a) D1 a prune with nothing to append still changes the list", mergePanelIds("todo,act1:team,act7:team", ["act1:team"]).csv === "todo,act1:team")
+  check("(a) D3 a FOREIGN id shaped like an act id is never dropped", mergePanelIds("todo,act9:somebodyelse", ["act1:team"], []).csv === "todo,act9:somebodyelse,act1:team")
+  check("(a) D1 a prune with nothing to append still changes the list", mergePanelIds("todo,act1:team,act7:team", ["act1:team"], ["act7:team"]).csv === "todo,act1:team")
   /** A document whose sidebar row already carries its section, with a stale id in the leaf. */
   const staleDoc = ["[]", "- id: dsh-tui", "  config:", "    sidePanel:", `      panels: "${BUILTINS},act7:team"`, ""].join("\n")
   check("(a) D1 the document reader answers the leaf the merge consumes", blockPanelCsv(staleDoc, "dsh-tui") === `${BUILTINS},act7:team`)
   /** That document after the prune + append. */
-  const staleEdited = writePanelsIntoDocument(staleDoc, "dsh-tui", mergePanelIds(blockPanelCsv(staleDoc, "dsh-tui"), ["act1:team"]).csv)
+  const staleEdited = writePanelsIntoDocument(staleDoc, "dsh-tui", mergePanelIds(blockPanelCsv(staleDoc, "dsh-tui"), ["act1:team"], ["act7:team"]).csv)
   check("(a) D1 the READ-BACK of an edited document equals the CSV that was written", blockPanelCsv(staleEdited.text, "dsh-tui") === `${BUILTINS},act1:team`)
   check("(a) D1 the read-back names its own failure on an unedited document", blockPanelCsv(staleDoc, "dsh-tui") !== `${BUILTINS},act1:team`)
+  // ── R1.1/R1.2 (repair round R1): ownership by PROVENANCE, never by a slug ──
+  //
+  // The record's bounded PAST registrations are the ownership evidence; a token whose slug merely looks
+  // like ours is NOT ours, and one of our ids whose slug is no longer registered IS. Both directions are
+  // pinned here because the old rule got both wrong.
+  /** The record's past registrations, as `readIdRecord` hands them to the merge. */
+  const recordedPast = ["act1:team", "act7:dag"]
+  check("(R1.1) a LIVE foreign `act9:team` beside our `act7:team` is never pruned", mergePanelIds("todo,act9:team,act7:team", ["act7:team"], recordedPast).csv === "todo,act9:team,act7:team")
+  check("(R1.1) a never-ours act-shaped token is never pruned", mergePanelIds("todo,act5:somebodyelse", ["act1:team"], recordedPast).csv === "todo,act5:somebodyelse,act1:team")
+  /** The prune R1.2 is about: our dead id and a retired page's id, both in the record's past. */
+  const owned = mergePanelIds("todo,act1:team,act7:dag", ["act7:team"], recordedPast)
+  check("(R1.2) our DEAD recorded ids are pruned and the live one takes their place", owned.csv === "todo,act7:team")
+  check("(R1.2) the prune is REPORTED, not silent", owned.pruned.join(",") === "act1:team,act7:dag")
+  // ── R1.6: the reader answers the leaf `writePanelsIntoDocument` EDITS ──
+  //
+  // The leaf is `config.sidePanel.panels` and NOTHING else: another section's `panels:` key — before or
+  // after `sidePanel:`, at the same or a deeper indent — is a different value, and reading it made this
+  // script report "already enabled" while the real sidebar list was missing the current ids.
+  /** A document whose row carries ANOTHER section's `panels:` key BEFORE `sidePanel:`. */
+  const decoyDoc = ["[]", "- id: dsh-tui", "  config:", "    other:", "      panels: \"todo,jobs\"", "    sidePanel:", "      panels: \"todo,act1:team\"", ""].join("\n")
+  check("(R1.6) the reader skips another section's earlier `panels:` leaf", blockPanelCsv(decoyDoc, "dsh-tui") === "todo,act1:team")
+  check("(R1.6) ... so a missing current id is NOT reported as already enabled", mergePanelIds(blockPanelCsv(decoyDoc, "dsh-tui"), ["todo", "act1:team", "act9:team"], []).added.join(",") === "act9:team")
+  /** That decoy document after the merge this run would write. */
+  const decoyEdited = writePanelsIntoDocument(decoyDoc, "dsh-tui", "todo,act1:team,act9:team")
+  check("(R1.6) the write lands in the real leaf and the READ-BACK agrees", blockPanelCsv(decoyEdited.text, "dsh-tui") === "todo,act1:team,act9:team")
+  /** A document whose row carries a LATER section's `panels:` key after the real one. */
+  const trailerDoc = ["[]", "- id: dsh-tui", "  config:", "    sidePanel:", "      panels: \"todo,act1:team\"", "    trailer:", "      panels: \"todo,jobs\"", ""].join("\n")
+  check("(R1.6) a LATER section's `panels:` leaf is not read either", blockPanelCsv(trailerDoc, "dsh-tui") === "todo,act1:team")
   /** A document with the sidebar row already carrying its section. */
   const doc = ["[]", "- id: dsh-tui", "  config:", "    provider: deepseek-official", "    sidePanel:", "      open: true", ""].join("\n")
   /** That document after one edit. */
@@ -926,7 +1059,7 @@ function selfTest(): number {
   } catch (error) {
     check(`(e) the path-proof arm ran (${String((error as Error)?.message ?? error)})`, false)
   }
-  // ── arm (f): the reader refuses a record that cannot be PROVED, and accepts a version-2 one ──
+  // ── arm (f): the reader refuses a record that cannot be PROVED, and accepts a provable one ──
   try {
     /** A scratch workspace whose `.mpd/logs` carries one record at a time. */
     const scratch = mkdtempSync(join(tmpdir(), "mpd-tui-panels-record-"))
@@ -940,6 +1073,16 @@ function selfTest(): number {
       const outcome = readIdRecord(scratch)
       return "detail" in outcome ? `REFUSED: ${outcome.detail}` : `ACCEPTED: ${outcome.ids.join(",")}`
     }
+    /** Writes one record and reports the PAST set the very same reader hands the merge. */
+    const past = (record: unknown): string => {
+      /** The record's own path inside the scratch workspace. */
+      const file = join(scratch, IDS_RECORD)
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(file, JSON.stringify(record, undefined, 2))
+      /** What {@link readIdRecord} answered. */
+      const outcome = readIdRecord(scratch)
+      return "detail" in outcome ? "REFUSED" : outcome.past.join(",")
+    }
     /** The provenance a REAL boot writes, so each case below differs in exactly ONE field. */
     const proven = { hostRoot: "/opt/dsh-tui", hostVersion: "0.14.0", readBack: "tuiPanels.list", activation: "act1" }
     /** The ids that real boot registered. */
@@ -950,6 +1093,9 @@ function selfTest(): number {
     /** A version-2 record whose host version is whitespace. */
     const blank = read({ version: 2, panelIds: ids, provenance: { ...proven, hostVersion: "  " } })
     check("(f) a blank `provenance.hostVersion` is refused by name", blank.includes("REFUSED:") && blank.includes("provenance.hostVersion"))
+    /** A version-2 record with no host root, the one field the writer's own rule also refuses. */
+    const noRoot = read({ version: 2, panelIds: ids, provenance: { ...proven, hostRoot: " " } })
+    check("(f) a blank `provenance.hostRoot` is refused by name", noRoot.includes("REFUSED:") && noRoot.includes("provenance.hostRoot"))
     /** A version-2 record with no host read-back. */
     const noReadBack = read({ version: 2, panelIds: ids, provenance: { ...proven, readBack: "" } })
     check("(f) an empty `provenance.readBack` is refused by name", noReadBack.includes("REFUSED:") && noReadBack.includes("provenance.readBack"))
@@ -959,6 +1105,12 @@ function selfTest(): number {
     /** The one record that must be ACCEPTED, so the refusals cannot be a blanket refusal. */
     const good = read({ version: 2, panelIds: ids, slugs: ["team", "dag", "workmate"], updatedAt: "2026-10-08T03:00:00.000Z", provenance: proven })
     check("(f) a well-formed version-2 record IS accepted", good === `ACCEPTED: ${ids.join(",")}`)
+    // ── R1.2: the record's PAST set is the ownership evidence, and it is read through the same refusals ──
+    check("(R1.2) a version-3 record hands BOTH its history and its current ids to the prune", past({ version: 3, panelIds: ["act1:team"], provenance: proven, history: ["act7:dag", "someone:else", "act7:team"] }) === "act7:dag,act7:team,act1:team")
+    check("(R1.2) a version-2 record (no history) still offers its own ids as past", past({ version: 2, panelIds: ["act1:team"], provenance: proven }) === "act1:team")
+    // THE SAME REFUSALS GATE THE PRUNE, so a polluted record cannot make this script delete a live panel.
+    check("(R1.2) the MEASURED polluted record contributes NO past at all", past({ version: 1, panelIds: ["act0:team", "act0:dag"] }) === "REFUSED")
+    check("(R1.2) a blank `hostVersion` contributes no past either", past({ version: 3, panelIds: ["act1:team"], provenance: { ...proven, hostVersion: "" }, history: ["act7:dag"] }) === "REFUSED")
     rmSync(scratch, { recursive: true, force: true })
   } catch (error) {
     check(`(f) the record-proof arm ran (${String((error as Error)?.message ?? error)})`, false)

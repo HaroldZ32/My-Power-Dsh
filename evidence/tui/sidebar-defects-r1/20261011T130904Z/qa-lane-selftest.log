@@ -1,0 +1,3 @@
+$ node skills/dsh-qa/scripts/tui-panels.ts --self-test
+[tui-panels self-test] ok: 8 surfaces asserted, negative controls fail as required
+qa-lane-selftest exit=0

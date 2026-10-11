@@ -1,0 +1,69 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+(pass) plugin contract > exports name / Config (type + schema) / apply and NO default export [0.02ms]
+(pass) plugin contract > every config key has a default in the schema [0.28ms]
+(pass) plugin contract > the schema rejects a wrong type instead of silently dropping it [0.13ms]
+(pass) plugin contract > resolveConfig defaults every key and repairs an invalid interval [0.09ms]
+(pass) T4-INERT-1: activation requires the inject form > a ctx WITHOUT inject registers nothing, even when get() would answer [1.92ms]
+(pass) T4-INERT-1: activation requires the inject form > with inject supported but no service composed, nothing is registered and nothing throws [0.21ms]
+(pass) T4-INERT-1: activation requires the inject form > apply survives a throwing ctx.get and a ctx without effect() [0.20ms]
+(pass) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [5.84ms]
+(pass) full composition (every service injected) > cleanup runs on the injected scope: status cleared, registrations released [0.98ms]
+(pass) full composition (every service injected) > each seam can be disabled by config, and disabling keeps apply inert [0.16ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > derives provider / model / effort options from a two-provider catalog [2.76ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the three NEW slot-4 rows register as selects with non-empty options and the declared labels/zh [2.81ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a degraded catalog falls back to the declared option lists [3.04ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a mounted adapter WITHOUT the seam (an older build) degrades to the declared lists [2.80ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the REAL adapter seam (t2) feeds the same projection end to end [2.99ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the section registers EXACTLY once per ns, even when the activation fires twice [1.50ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a DEFERRED register through the injected scope keeps a live non-root caller (the cordis binding late registration relies on) [23.46ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the projection is TOTAL: no catalog, a degraded catalog or a malformed one never yields an empty list [0.31ms]
+(pass) the Ctrl+A takeover wiring (W2) > on a host WITH the panel seam the contact stays INERT (the version gate) [1.31ms]
+(pass) the Ctrl+A takeover wiring (W2) > on a host WITHOUT the panel seam the contact arms (the legacy path) [0.68ms]
+(pass) the Ctrl+A takeover wiring (W2) > with the row config off, the contact stays inert on BOTH host generations [0.45ms]
+(pass) the Ctrl+A takeover wiring (W2) > with the panel surface off, no panel is registered and both entry points keep the scene path [0.77ms]
+(pass) the Ctrl+A takeover wiring (W2) > every registered SCENE reports the host kit it received (the contact's arming path) [2.30ms]
+(pass) honest outcomes (no disposer-type inference) > a refused shortcut registration is reported refused, never confirmed [0.22ms]
+(pass) honest outcomes (no disposer-type inference) > a refused renderer registration is reported requested, never confirmed [0.14ms]
+(pass) honest outcomes (no disposer-type inference) > a panel host with no list() read-back is reported requested, never confirmed [0.16ms]
+(pass) honest outcomes (no disposer-type inference) > a refused panel registration is reported refused, never confirmed [0.25ms]
+(pass) honest outcomes (no disposer-type inference) > a refused panel OPEN falls back to the full-screen scene and prints the reason [0.54ms]
+(pass) honest outcomes (no disposer-type inference) > C5: `/mpd dag` reaches the RICH scene — the one that draws the pin — not the bare one [0.49ms]
+(pass) honest outcomes (no disposer-type inference) > an accepted panel OPEN prints the panel status line with the discovered id [0.45ms]
+(pass) honest outcomes (no disposer-type inference) > a missing decision grant with a no-op disposer is refused, and the disposer is not called as a probe [0.28ms]
+(pass) honest outcomes (no disposer-type inference) > a granted decision subscription is confirmed [0.16ms]
+(pass) honest outcomes (no disposer-type inference) > without tuiPluginHost the seam is absent and no refusal is claimed [0.24ms]
+(pass) honest outcomes (no disposer-type inference) > admin: the four intercept points are the only decision attempts [0.03ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd uses the picker, then applies the chosen action [0.64ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd falls back to the board when no dialog seam is composed [0.43ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > direct actions and the unknown-action error [0.65ms]
+(pass) settings section disclosure (t21) > every row names its mpd.jsonc key, and the SURFACE states the disclosure once [0.09ms]
+(pass) settings section disclosure (t21) > every slot hint LEADS with the knob's human sentence, then its key [0.34ms]
+(pass) settings section disclosure (t21) > R4: the localized pairs are the host's OWN shape — an `en` base, never a redundant `en` twin [0.15ms]
+(pass) settings section disclosure (t21) > the registered section's 22 rows mirror the declaration: labels, zh, and human-first hints [1.61ms]
+(pass) settings section disclosure (t21) > the marker itself says the save does not rewrite the config file [0.03ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the notice constant is the design's exact sentence and matches the exported one [0.13ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the status line publishes the notice only while the last write-back was skipped for no-live-session [1.10ms]
+1490 |       },
+1491 |     })
+1492 |     // The row is applied with the knob ON in its own config: that value is the floor the reader must keep.
+1493 |     mod.apply(hostDouble(host.services).ctx as never, { wheelInvert: true })
+1494 |     try {
+1495 |       expect(wheelInvertOn()).toBe(true)
+                                     ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/plugin.test.ts:1495:31)
+(fail) R1.5 · the wheel-invert reader falls back to the row config when the config layer throws > a throwing `mpdConfig.get()` + row config `wheelInvert: true` still scrolls inverted [0.55ms]
+
+1 tests failed:
+(fail) R1.5 · the wheel-invert reader falls back to the row config when the config layer throws > a throwing `mpdConfig.get()` + row config `wheelInvert: true` still scrolls inverted [0.55ms]
+
+ 44 pass
+ 1 fail
+ 1091 expect() calls
+Ran 45 tests across 1 file. [167.00ms]

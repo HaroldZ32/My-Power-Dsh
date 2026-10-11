@@ -49,7 +49,7 @@ import {
   type TeamSourceDeps,
 } from "./team-state.js"
 import { hitTest, layoutGraph, layoutGraphNatural, legendLines, sliceSpans, type GraphTask } from "./graph.js"
-import { gutterCellsX, legendLinesFor, normalizeWheelDelta, toneColor, useTeamFeed, visualTone, wheelInvertOn } from "./panel-core.js"
+import { gutterCellsX, legendLinesFor, normalizeWheelDelta, toneColor, useTeamFeed, visualTone, wheelInvertOn } from "./panel-core.ts"
 import { statusMarker } from "./status.js"
 import {
   SUBAGENT_SCENE_ID,

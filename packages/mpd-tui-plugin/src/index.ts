@@ -55,7 +55,7 @@ import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
 import { DASHBOARD_TAKEOVER_KNOB, wheelInvertFrom } from "./settings.js"
-import { setWheelInvertRead } from "./panel-core.js"
+import { setWheelInvertRead } from "./panel-core.ts"
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
 import type { PanelOpenOutcome } from "./panel.js"
@@ -585,7 +585,19 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // (`get()` with no key), which is where `<workspace>/.mpd/mpd.jsonc`'s `tui.wheelInvert` lands. A
   // composition without `mpdConfig` therefore keeps the row config's own floor, whose default is today's
   // behaviour; a row-private adapter used in a unit test also leaves the process default untouched.
-  setWheelInvertRead((): boolean => wheelInvertFrom(configHandle?.get?.(), resolved.wheelInvert))
+  //
+  // THE THROW IS CONTAINED HERE, WHERE THE FLOOR IS IN SCOPE (repair round R1, CodeRabbit PR #35).
+  // `wheelInvertOn()` catches a throwing reader and clamps to `false` (today's behaviour), so a config
+  // layer that throws on `get()` — a bridge whose workspace resolution blew up, a reshaped service —
+  // would silently disable a knob the ROW CONFIG (or a saved `tui.wheelInvert`) had turned ON. Catching it
+  // at this boundary keeps the debuggable part of the setting: the row's own `resolved.wheelInvert`.
+  setWheelInvertRead((): boolean => {
+    try {
+      return wheelInvertFrom(configHandle?.get?.(), resolved.wheelInvert)
+    } catch {
+      return resolved.wheelInvert
+    }
+  })
 
   // The watchdog front door's notice is composed into the SAME status value as the bridge notice
   // (w6): a held team and an unread-incident replay are line content, not a constant nobody renders.

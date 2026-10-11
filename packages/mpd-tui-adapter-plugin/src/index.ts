@@ -690,7 +690,8 @@ export interface PanelEnableMerge {
    * The host renumbers the `<pluginId>` half of a row-registered panel on every boot (`act1:team` this
    * boot, `act7:team` the next), so a list left behind by an earlier session names ids nothing can
    * answer — and the host's `SidePanelColumn` still builds a tab and draws a dot for each one. These are
-   * the ONLY tokens this merge ever removes.
+   * the ONLY tokens this merge ever removes, and since repair round R1 they are recognised by PROVENANCE
+   * ({@link panelTokenIsStaleMine}) rather than by a shared slug.
    */
   pruned: readonly string[]
 }
@@ -711,26 +712,66 @@ export function panelSlugOf(id: string): string {
   return at < 0 ? id : id.slice(at + 1)
 }
 
+/** The id shape the host composes for a loader row's panel: `<pluginId>:<slug>` with its `act<N>` fallback. */
+const PANEL_ACT_ID_SHAPE = /^act\d+:/u
+
+/**
+ * How many PAST registration ids the panel-id record keeps: the LAST N, the oldest evicted.
+ *
+ * WHY A CAP IS PART OF THE RULE. The history is the ownership evidence the prune rests on, and the record
+ * is rewritten on every boot, so an UNCAPPED list would grow for the life of the workspace while the ids
+ * it can still match are only ever the last few boots' worth: the host renumbers the activation half on
+ * EVERY boot, so a token from further back cannot be in a live CSV unless the file was hand-edited. 32
+ * entries is roughly ten boots of slack — a bound that is STATED here rather than left to grow.
+ */
+export const PANEL_ID_HISTORY_LIMIT = 32
+
+/**
+ * The bounded history a record written NOW must carry: the previous history plus the previous boot's own
+ * ids, minus everything live in this one, newest last.
+ *
+ * THE SHAPE FILTER IS LOAD-BEARING, and it is the same one {@link panelTokenIsStaleMine} applies: only an
+ * id the host composes for a loader row (`act<N>:<slug>`) can ever be ours, so neither a foreign id nor a
+ * value a hand edit put in the file can enter the history and make the prune delete a live panel.
+ * @param current - the ids THIS activation registered, in registration order.
+ * @param past - the previous record's history AND its current ids, oldest first.
+ * @returns the bounded past registrations, oldest first.
+ */
+export function panelHistoryAfter(current: readonly string[], past: readonly string[]): string[] {
+  /** The past ids that are ours, dead now, deduped and in the order they were first recorded. */
+  const kept: string[] = []
+  for (const id of past) {
+    if (!PANEL_ACT_ID_SHAPE.test(id) || current.includes(id) || kept.includes(id)) continue
+    kept.push(id)
+  }
+  return kept.slice(-PANEL_ID_HISTORY_LIMIT)
+}
+
 /**
  * Whether one token is a panel of OURS from an EARLIER boot — the only kind of token we may prune.
  *
- * THE THREE CONDITIONS, and every one of them is load-bearing:
- *   * `^act<N>:<slug>$` — the shape of the host's own fallback activation, which is what a loader ROW
- *     gets because a patch row has no Component identity. Our panels are always spelled this way.
- *   * its SLUG is one of the slugs this activation just registered. This is what keeps the rule from
- *     touching another plugin's panel: a foreign activation can land on `act<N>` too (the counter is the
- *     host's, not ours), and dropping ITS id would remove a working panel from the user's sidebar —
- *     the very harm this wave exists to fix, in a different costume.
- *   * the full id is not one of ours RIGHT NOW. A current id is a live panel and is never removed.
+ * OWNERSHIP IS PROVENANCE, NEVER A SLUG (repair round R1, CodeRabbit PR #35). The slug rule this
+ * replaced was wrong in BOTH directions at once: a foreign plugin's live `act9:team` shares our `team`
+ * slug and was pruned out of the user's sidebar, while one of our OWN dead ids whose page was retired or
+ * renamed matched no live slug and was never pruned at all. THE THREE CONDITIONS:
+ *   * the id has the shape the host composes for a loader row (`act<N>:<slug>`) — the only shape this
+ *     bundle's own panels ever take, because a patch row has no Component identity;
+ *   * the FULL id is in the record's bounded history ({@link panelHistoryAfter}), i.e. this bundle
+ *     provably registered it in an earlier boot — the record's provenance rules are what make
+ *     "provably" true;
+ *   * the full id is NOT live right now. A current id is a live panel and is never removed.
+ * A foreign id fails the second condition and is therefore never pruned — even one that shares our slug,
+ * and even one shaped like an `act<N>` id (the counter is the host's, not ours). ACCEPTED BOUND, stated
+ * rather than hidden: a foreign DEAD id lingering in the list is not ours to clean, so it stays.
  * @param token - one normalized token from the host's CSV.
  * @param ours - the ids this activation registered, in registration order.
- * @param ourSlugs - the slugs of {@link ours}, computed once per merge.
+ * @param past - the recorded past registrations, as {@link panelHistoryAfter} bounded them.
  * @returns true when the token is ours, stale, and therefore prunable.
  */
-export function panelTokenIsStaleMine(token: string, ours: readonly string[], ourSlugs: ReadonlySet<string>): boolean {
-  if (!/^act\d+:/u.test(token)) return false
+export function panelTokenIsStaleMine(token: string, ours: readonly string[], past: readonly string[]): boolean {
+  if (!PANEL_ACT_ID_SHAPE.test(token)) return false
   if (ours.includes(token)) return false
-  return ourSlugs.has(panelSlugOf(token))
+  return past.includes(token)
 }
 
 /**
@@ -771,15 +812,14 @@ export function normalizePanelCsv(value: unknown): string {
  * id missing and appends it.
  * @param existing - the host's current CSV; anything at all (a non-string reads as the empty list).
  * @param ours - the ids this activation registered, in registration order.
+ * @param past - the record's bounded past registrations, from {@link panelHistoryAfter}.
  * @returns the CSV to apply, plus what was added, what was already there and what was pruned.
  */
-export function mergePanelEnableIds(existing: unknown, ours: readonly string[]): PanelEnableMerge {
+export function mergePanelEnableIds(existing: unknown, ours: readonly string[], past: readonly string[]): PanelEnableMerge {
   /** The user's tokens, normalized and deduped exactly as the host normalizes them. */
   const tokens = normalizePanelCsv(existing).split(",").filter((id) => id !== "")
-  /** The slugs this activation owns, taken from the ids it just registered. */
-  const ourSlugs = new Set(ours.map(panelSlugOf))
   /** Our tokens from an earlier boot; see {@link panelTokenIsStaleMine} for why only these may go. */
-  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, ours, ourSlugs))
+  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, ours, past))
   /** The user's list with only those tokens removed, in its original order. */
   const kept = tokens.filter((token) => !pruned.includes(token))
   /** The registered ids the kept list does not carry yet, in registration order. */
@@ -825,12 +865,24 @@ export interface PanelEnableOutcome {
   ticks: number
 }
 
-/** Everything {@link createPanelEnableKeeper} needs, with the clock and the store injectable. */
+/** Everything {@link createPanelEnableKeeper} needs, with the clock, the store and the record injectable. */
 export interface PanelEnableKeeperOptions {
   /** Loads the host store; retried on every tick, because a host may expose it late. */
   loadPrefs: () => Promise<HostPrefsProbeResult>
   /** Schedules one tick and returns its canceller (injectable so a test owns the clock). */
   schedule: (run: () => void, delayMs: number) => () => void
+  /**
+   * The ids this bundle registered in EARLIER boots — the ownership evidence the prune rests on.
+   *
+   * REQUIRED rather than defaulted, and read PER DECISION rather than cached: the mounted row passes
+   * {@link readPanelIdRecordPast} (the record is rewritten on every boot, so a value sampled at
+   * construction could already be a boot stale), while a unit arm states its own past explicitly — a
+   * default would silently read the machine's real record and make an arm pass or fail by accident.
+   * Callers must never throw: the keeper contains a throwing reader as "no proven past", which disables
+   * the prune instead of guessing.
+   * @returns the bounded past registrations, oldest first.
+   */
+  pastIds: () => readonly string[]
   /** Receives the ONE settle line; omitted means the keeper is silent. */
   log?: (line: string) => void
   /** The ladder to walk; defaults to {@link PANEL_KEEPER_LADDER_MS}. */
@@ -873,8 +925,14 @@ export interface PanelEnableKeeper {
  * fresh profile's schema default looks like after the host re-applies it — and the ladder stops for
  * good after its last tick, so nothing here reopens a settled question later in the session.
  *
+ * STANDING DOWN NO LONGER PROTECTS A DEAD TOKEN (repair round R1, CodeRabbit PR #35): a list that names
+ * one of ours AND one of our provably-dead past ids is pruned of the dead id first, and only then the
+ * keeper stands down without appending anything. See {@link PanelEnableKeeperOptions.pastIds} for the
+ * ownership evidence that makes "provably dead" true, and {@link panelTokenIsStaleMine} for why a slug
+ * is not evidence.
+ *
  * Nothing here ever throws — a tick is contained, and a failure is recorded as the outcome.
- * @param options - the store loader, the clock and the ladder.
+ * @param options - the store loader, the clock, the ladder and the recorded past ids.
  * @returns the keeper.
  */
 export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): PanelEnableKeeper {
@@ -977,18 +1035,58 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
   }
 
   /**
+   * Write ONE CSV into the host's live enable list and prove it landed.
+   *
+   * THE POST-WRITE READ-BACK (contract D1). Until the host's OWN reader answers the list this keeper
+   * asked for, the write is a request and not a fact — and a keeper that reported success on a store
+   * which dropped it would leave the sidebar showing whatever it had before, silently. The comparison
+   * runs through the SAME normalizer the merge used, so a host that reorders or re-cases the tokens
+   * is not mistaken for a host that refused them.
+   *
+   * It is ONE function because repair round R1 gave the keeper a SECOND write shape (a prune-only write
+   * on the stand-down path): two copies of the echo guard and the read-back is how the two paths drift.
+   * A write that LANDS settles nothing here — the CALLER owns the one line that describes the decision,
+   * so a tick still announces exactly once (and the record is therefore written once per tick).
+   * @param prefs - the bound host store.
+   * @param csv - the exact list to apply.
+   * @returns true when the list came back exactly; false when it did not (already settled as refused).
+   */
+  const writeList = (prefs: TuiHostPrefsLike, csv: string): boolean => {
+    // THE GUARD IS WHAT MAKES THE ECHO FINITE: see {@link decide}'s own first line. The flag is set
+    // around the write so the store's synchronous notification is a non-event, not a second repair.
+    writing = true
+    try {
+      prefs.applySidePanelPanels(csv)
+    } finally {
+      writing = false
+    }
+    reasserted += 1
+    /** What the host's reader answers AFTER the write, normalized the way the merge normalizes. */
+    const landed = normalizePanelCsv(prefs.getSidePanelPanels())
+    if (landed !== normalizePanelCsv(csv)) {
+      settle("refused", `the enable list read back as ${landed === "" ? "(empty)" : landed} instead of the ${csv} just written`)
+      return false
+    }
+    return true
+  }
+
+  /**
    * Decide once, from ONE read of the host's CSV — the single place both the change feed and the ladder
    * take their decision, so the two paths cannot drift into two different rules.
    *
    * THE CONDITION IS THE WHOLE CONTRACT, and it is what keeps the keeper from overruling its user:
    *   * NONE of our ids present — the host's own config mirror has restored a list that does not
    *     mention us at all (`todo,jobs,agents,info,…` on a fresh profile). That is the reported defect,
-   *     and the whole set is appended in one write.
+   *     and the whole set is appended in one write (with any provably-dead id of ours pruned in the same
+   *     write).
    *   * ANY of our ids present, on a read the HOST asked for — the configuration NAMES US. Either the
    *     user enabled us through `/settings` or `scripts/mpd-tui-panels.ts`, or the user deliberately
    *     removed some of us and the rest survived the rewrite. Either way the user's position is READABLE
-   *     from the CSV, and the keeper STANDS DOWN for good. It therefore never re-adds an id a user
-   *     removed on purpose, WITHOUT a third host-internals contact to ask for the configured value.
+   *     from the CSV, so NOTHING IS APPENDED and the keeper STANDS DOWN for good. It therefore never
+   *     re-adds an id a user removed on purpose, WITHOUT a third host-internals contact to ask for the
+   *     configured value. A provably-dead past id in that same list IS still pruned first (repair round
+   *     R1): standing down protects the user's SELECTION, and a token no panel can answer is not part of
+   *     any selection — leaving it would keep drawing the orphaned tab this wave exists to remove.
    *   * A partial write is never performed: the ids go in as a set, so a half-applied list cannot make
    *     the next read say "the configuration names one of us" and stand down mid-repair.
    *
@@ -997,7 +1095,8 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
    * keeper arms, so a stand-down here is a stand-down on the host's own append — it would retire the
    * keeper about 4.3 s before the configuration mirror rewrites the CSV at about +5403 ms, which is
    * exactly how the panels left the sidebar and never returned (F5). At arm time the read may therefore
-   * only REPAIR a list that names none of us; a list that names us is simply the state we are watching.
+   * only REPAIR a list that names none of us (plus the same prune of provably-dead ids, which is not a
+   * statement about anyone's selection); a list that names us is simply the state we are watching.
    *
    * NAMED RESIDUAL, not papered over: a user who removes ALL of ours on purpose leaves a CSV that is
    * INDISTINGUISHABLE from a fresh profile's, so a rewrite is repaired once more. Only the CONFIGURED
@@ -1014,14 +1113,35 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
     if (writing) return
     ticks += 1
     try {
+      // THE OWNERSHIP EVIDENCE IS READ PER DECISION, never cached: the record is rewritten on every boot,
+      // and a value sampled at construction could already be a boot stale. A throwing reader is "no proven
+      // past", which disables the prune rather than guessing.
+      /** The ids this bundle provably registered in earlier boots. */
+      let past: readonly string[] = []
+      try {
+        past = options.pastIds()
+      } catch {
+        past = []
+      }
       /** What this read measured, before any decision is taken. */
-      const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours)
+      const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, past)
       if (merge.present.length > 0) {
+        // R1.3: THE DEAD TOKEN GOES FIRST. The list names one of ours, so nothing is ever APPENDED here —
+        // the deliberate partial selection stands — but a token in the record's history that is not live
+        // is provably dead, and the prune-only write below is the ONE write this branch may make.
+        /** What a prune did, for the ONE settle line below; empty when there was nothing to prune. */
+        let prunedNote = ""
+        if (merge.pruned.length > 0) {
+          /** The list a prune-only write lands: the user's kept tokens, with no id of ours appended. */
+          const prunedCsv = merge.kept.join(",")
+          if (!writeList(prefs, prunedCsv)) return
+          prunedNote = `pruned the stale ${merge.pruned.join(",")}, and appended nothing; `
+        }
         if (atArm) {
-          settle("confirmed", `the enable list already names ${merge.present.join(",")}; the keeper now follows the host's own change feed instead of standing down on this read`)
+          settle("confirmed", `${prunedNote}the enable list already names ${merge.present.join(",")}; the keeper now follows the host's own change feed instead of standing down on this read`)
           return
         }
-        settle("confirmed", `standing down: the enable list names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`)
+        settle("confirmed", `${prunedNote}standing down: the enable list names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`)
         standDown()
         return
       }
@@ -1030,27 +1150,7 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
         settle("confirmed", "no id of ours is registered, so there is nothing to re-assert")
         return
       }
-      // THE GUARD IS WHAT MAKES THE ECHO FINITE: see this function's own first line. The flag is set
-      // around the write so the store's synchronous notification is a non-event rather than a second
-      // repair.
-      writing = true
-      try {
-        prefs.applySidePanelPanels(merge.csv)
-      } finally {
-        writing = false
-      }
-      reasserted += 1
-      // THE POST-WRITE READ-BACK (contract D1). Until the host's OWN reader answers the list this keeper
-      // asked for, the write is a request and not a fact — and a keeper that reported success on a store
-      // which dropped it would leave the sidebar showing whatever it had before, silently. The comparison
-      // runs through the SAME normalizer the merge used, so a host that reorders or re-cases the tokens
-      // is not mistaken for a host that refused them.
-      /** What the host's reader answers AFTER the write, normalized the way the merge normalizes. */
-      const landed = normalizePanelCsv(prefs.getSidePanelPanels())
-      if (landed !== normalizePanelCsv(merge.csv)) {
-        settle("refused", `the enable list read back as ${landed === "" ? "(empty)" : landed} instead of the ${merge.csv} just written`)
-        return
-      }
+      if (!writeList(prefs, merge.csv)) return
       settle("confirmed", `re-asserted ${merge.added.join(",")} (the list named none of our ids${merge.pruned.length === 0 ? "" : `; pruned the stale ${merge.pruned.join(",")}`})`)
     } catch (error) {
       settle("refused", String((error as Error)?.message ?? error))
@@ -1208,7 +1308,7 @@ export interface PanelIdsRecordProvenance {
 
 /** The on-disk record of the panel ids this activation discovered, as the remedy script reads it. */
 export interface PanelIdsRecord {
-  /** The record's own schema version; 2 added {@link PanelIdsRecordProvenance}. */
+  /** The record's own schema version; 2 added {@link PanelIdsRecordProvenance}, 3 added {@link history}. */
   version: number
   /** The final host panel ids, in registration order. */
   panelIds: string[]
@@ -1218,6 +1318,15 @@ export interface PanelIdsRecord {
   updatedAt: string
   /** Where those ids were read from; the reader refuses a record it cannot prove is a real boot. */
   provenance: PanelIdsRecordProvenance
+  /**
+   * The ids this bundle registered in EARLIER boots — the ownership evidence both writers prune by.
+   *
+   * Bounded by construction ({@link PANEL_ID_HISTORY_LIMIT}, newest last) and never carrying a currently
+   * live id: the writer folds the previous record's history and its own `panelIds` forward through
+   * {@link panelHistoryAfter} on every boot. An absent field (a version-1/2 record) is simply "no proven
+   * past", which disables the prune rather than guessing.
+   */
+  history: string[]
 }
 
 /**
@@ -1245,7 +1354,10 @@ export function readHostPackageVersion(root: string): string {
  * THE TWO REFUSALS ARE BOTH MEASURED, and they are the whole reason this function exists rather than the
  * caller stamping fields by hand:
  *   * no host root or no host version — the ids cannot be traced to an installed package, so the record
- *     would be a claim a reader has no way to check;
+ *     would be a claim a reader has no way to check. A WHITESPACE-ONLY field counts as absent, which is
+ *     the rule the consumer side (`scripts/mpd-tui-panels.ts`) already applies: the two sides of this
+ *     file must agree on what a provable record is, or the writer and the reader disagree about the same
+ *     bytes;
  *   * an `act0` activation — the installed host's `pluginIdFor` PRE-INCREMENTS its fallback counter, so
  *     the first bare activation it can compose is `act1` and `act0` is impossible in a real boot. That
  *     is exactly the shape a test double produced while driving the real recorder.
@@ -1259,10 +1371,10 @@ export function panelRecordProvenance(
   readBack: string,
   ids: readonly string[],
 ): { provenance: PanelIdsRecordProvenance } | { refused: string } {
-  if (host === undefined || host.root === "" || host.version === "") {
+  if (host === undefined || host.root.trim() === "" || host.version.trim() === "") {
     return { refused: "no installed host package could be named (root and version), so the ids cannot be traced to a boot" }
   }
-  if (readBack === "" || ids.length === 0) {
+  if (readBack.trim() === "" || ids.length === 0) {
     return { refused: "the ids did not come from a host read-back, so the record would name panels nothing verified" }
   }
   /** The `<pluginId>` half of the FIRST id; every other id must agree with it. */
@@ -1281,12 +1393,71 @@ export function panelRecordProvenance(
 }
 
 /**
+ * The non-empty strings of one unknown JSON field, in order.
+ *
+ * A record is DATA: every field is narrowed at the boundary rather than trusted, so a hand edit or an
+ * older schema degrades to "nothing to read" instead of reaching a prune decision as a non-string.
+ * @param value - the parsed field.
+ * @returns its string entries, or the empty list for anything else.
+ */
+function stringIdsOf(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && entry.length > 0) : []
+}
+
+/**
+ * Read the panel-id record's PROVABLE past registrations for one workspace root.
+ *
+ * The ownership evidence the prune rests on, so this reader enforces the WRITER's own refusals instead of
+ * trusting the file: no `provenance` block, a blank `hostVersion`, no `readBack` or an `act0` activation
+ * is "no proven past" ({@link panelRecordProvenance} is run over the record's current ids, so the two
+ * sides of the file cannot disagree about what a provable record is). The record's CURRENT ids are
+ * offered as past too — they were a previous boot's live set — and the `not live now` half of the rule
+ * discards the ones that are still live. On top of that every candidate is filtered to the shape the host
+ * composes for a loader row and capped, so neither a foreign id nor a hand edit can widen the prune.
+ *
+ * Never throws: an absent, unreadable or unprovable record means "no proven past", which disables the
+ * prune rather than guessing — the keeper then behaves exactly as it did before this evidence existed.
+ * @param root - the workspace root the record lives under; defaults to {@link defaultLogRoot}.
+ * @returns the bounded past registrations, oldest first.
+ */
+export function readPanelIdRecordPast(root: string = defaultLogRoot()): string[] {
+  try {
+    /** The record's absolute path: the same `<root>/.mpd/logs/<name>` {@link recordPanelIds} writes. */
+    const file = join(root, ".mpd", "logs", PANEL_IDS_RECORD_NAME)
+    /** The parsed record; every field below is narrowed rather than trusted. */
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as { panelIds?: unknown; history?: unknown; provenance?: unknown }
+    /** The record's current ids, which are also the set the provenance rules are checked against. */
+    const ids = stringIdsOf(parsed.panelIds)
+    if (ids.length === 0) return []
+    /** The record's own provenance block, read as fields rather than as a typed object. */
+    const provenance = (typeof parsed.provenance === "object" && parsed.provenance !== null ? parsed.provenance : {}) as Partial<PanelIdsRecordProvenance>
+    /** The ONE reason these ids cannot be traced to a boot; a refusal means no proven past at all. */
+    const proved = panelRecordProvenance(
+      typeof provenance.hostRoot === "string" && typeof provenance.hostVersion === "string" ? { root: provenance.hostRoot, version: provenance.hostVersion } : undefined,
+      typeof provenance.readBack === "string" ? provenance.readBack : "",
+      ids,
+    )
+    if ("refused" in proved) return []
+    return panelHistoryAfter([], [...stringIdsOf(parsed.history), ...ids])
+  } catch {
+    return []
+  }
+}
+
+/**
  * Write the discovered panel ids under the workspace, for the remedy script to read.
  *
  * Never throws: a record that cannot be written is a missing convenience, never a failed boot, and the
  * keeper's outcome is what the boot line reports either way. A record it cannot PROVE is not written at
  * all — see {@link panelRecordProvenance} — because the file's only reader offers to write its ids into
  * the user's settings layer.
+ *
+ * WHAT THIS WRITE ADDS (repair round R1): the record now carries the bundle's bounded PAST registrations
+ * as well as its current ids, because that history is the only evidence that makes an earlier boot's
+ * token provably ours. The history is folded through {@link panelHistoryAfter} — the previous record's
+ * history plus its own current ids, minus everything live now, capped — and it is read back through
+ * {@link readPanelIdRecordPast}, so a polluted record contributes NOTHING to it instead of propagating
+ * ids a real boot cannot compose.
  * @param outcome - the keeper's state at the change.
  * @param host - the host package the enable store was bound from, or undefined when none bound.
  * @param readBack - the host read-back the ids came from; empty when none was used.
@@ -1301,11 +1472,12 @@ function recordPanelIds(outcome: PanelEnableOutcome, host: { root: string; versi
     mkdirSync(dirname(file), { recursive: true })
     /** The record, as ONE object so its shape and its writer cannot disagree. */
     const record: PanelIdsRecord = {
-      version: 2,
+      version: 3,
       panelIds: [...outcome.ids],
-      slugs: outcome.ids.map((id) => id.slice(id.indexOf(":") + 1)),
+      slugs: outcome.ids.map(panelSlugOf),
       updatedAt: new Date().toISOString(),
       provenance: proved.provenance,
+      history: panelHistoryAfter(outcome.ids, readPanelIdRecordPast(defaultLogRoot())),
     }
     writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`)
   } catch {
@@ -2294,6 +2466,11 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
       return probe
     },
     schedule: defaultPanelKeeperSchedule,
+    // THE OWNERSHIP EVIDENCE (repair round R1): the ids this bundle registered in earlier boots, read
+    // from the record ON EVERY DECISION — the record is rewritten by this same boot, and a value sampled
+    // once at construction could already be a boot stale. The reader never throws; a missing or
+    // unprovable record means "no proven past", so the keeper simply never prunes.
+    pastIds: (): readonly string[] => readPanelIdRecordPast(),
     ...(options.panelEnableLadder === undefined ? {} : { ladder: options.panelEnableLadder }),
     log: options.panelEnableLog ?? options.hostInputLog ?? defaultHostInputLog,
     // The DISCOVERED ids leave the host process through this record; the mounted row is the only

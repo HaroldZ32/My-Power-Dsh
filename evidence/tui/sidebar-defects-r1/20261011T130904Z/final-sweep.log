@@ -1,0 +1,49 @@
+# FINAL SWEEP on the repaired tree (after the last edit)
+
+$ bun test packages
+
+ 1812 pass
+ 3 skip
+ 0 fail
+ 23753 expect() calls
+Ran 1815 tests across 112 files. [20.34s]
+bun-test exit=0
+
+$ bun run typecheck
+$ tsgo --noEmit
+typecheck exit=0
+
+$ bun run verify:comments
+
+scanned 385 TypeScript file(s) of 385 in the source set; inspected 34122 declaration(s); skipped 15242 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+comments exit=0
+
+$ node scripts/verify-dist-fresh.ts
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 639ms
+dist exit=0
+
+$ bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS
+docs exit=0
+# post-evidence re-run (the evidence files are inert for the gates: evidence/** is outside the comment/doc bands)
+$ bun run verify:gates
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 62ms
+[verify-gates] PASS - 8/8 member gate(s) green
+gates exit=0
+
+$ bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS
+docs exit=0
+
+$ node scripts/verify-dist-fresh.ts
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 644ms
+dist exit=0
