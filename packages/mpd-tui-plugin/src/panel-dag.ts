@@ -41,8 +41,9 @@ import { DAG_CHROME, DAG_KIND_ABBREV, DAG_PANEL_MIN_COLUMNS, DAG_TONE_GLYPH } fr
 import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow } from "./panel-core.js"
 // THE HOST'S CURATED SUBAGENT ROWS ARE READ THROUGH THE SCENE'S OWN PROJECTION, never re-derived here:
 // `subagentSectionRows` owns the field reads, the empty state and the counts, and this page renders
-// its answer inside its own frame (frozen clause C3).
-import { subagentSectionRows, type SubagentSectionRow } from "./subagent-scene.js"
+// its answer inside its own frame (frozen clause C3). `surfaceRule` is the SAME titled rule the scene
+// draws between ITS sections: one divider primitive, so this page cannot invent a second-looking one.
+import { subagentSectionRows, surfaceRule, type SubagentSectionRow } from "./subagent-scene.js"
 import { hitTest, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
@@ -99,6 +100,27 @@ import * as core from "./panel-core.js"
  * the two spellings cannot drift into a page whose chrome says one thing and whose descriptor another.
  */
 export const DAG_PANEL_TITLE = "MPD"
+
+/**
+ * The English name of this page's HOST-SUBAGENT section, drawn in a titled rule above the host's rows.
+ *
+ * WHY THE PAGE NAMES IT AT ALL: the body carries two different facts — the host's curated subagents and
+ * MPD's own team DAG — and before this rule they ran into each other with nothing between them, so a
+ * reader could not tell where one ended and the other began (the reported defect). The host's own
+ * section header (`subagents  N total · …`) STAYS as the count line under this rule, so the section is
+ * named and counted rather than renamed. The label is ENGLISH, as the user approved for this page.
+ */
+export const DAG_SECTION_HOST_TITLE = "Host subagents"
+
+/**
+ * The English name of this page's MPD DRAWING section, drawn in the titled rule that separates it from
+ * the host's rows above.
+ *
+ * IT IS DRAWN UNCONDITIONALLY, so the drawing below is always named even when the host's own section is
+ * showing nothing but its empty state (the contract's empty-state clause) — which is why the two rules
+ * are pushed at different points rather than as one pair.
+ */
+export const DAG_SECTION_DAG_TITLE = "MPD team DAG"
 
 /** The tick this page re-reads its source on. A sidebar is passive, so the page owns its own clock. */
 export const DAG_PANEL_REFRESH_MS = 1000
@@ -908,6 +930,12 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       // An unreadable host snapshot costs the host's own rows, never the drawing this page exists for.
       section = []
     }
+    // THE SECTION'S OWN TITLE RULE. It is drawn UNCONDITIONALLY, and the reason is that `section` is
+    // never empty on a real host: `subagentSectionRows` answers its header plus the host's own EMPTY
+    // STATE when there are no subagents, so "no rows to name" is not a state this page can reach — a
+    // conditional rule here would be a branch no boot executes. The host's own empty state therefore
+    // reads as a named, ruled section that says it has none, which is the sensible empty state.
+    children.push(surfaceRule(kit, "section-host", DAG_SECTION_HOST_TITLE))
     for (let index = 0; index < section.length; index += 1) {
       /** This row's own draw instructions, as the host's projection decided them. */
       const row = section[index]
@@ -919,6 +947,11 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
         maxCells: contentCols,
       }))
     }
+    // THE DIVIDER THAT SEPARATES THE TWO SECTIONS (the reported defect: host rows and DAG rows ran into
+    // each other with nothing between them). It is the LAST row of the host section and the FIRST thing
+    // the drawing reads under, and it is the scene's own `surfaceRule` — never a second divider
+    // implementation — so this page and the scene cannot drift into two different-looking rules.
+    children.push(surfaceRule(kit, "section-dag", DAG_SECTION_DAG_TITLE))
     // (b) THE MPD DEPENDENCY DAG — the rich frame, the header, the legend, the pin body and the layouts
     // that are the reason this page is the MPD panel.
     // THE VIEWPORT IS CREATED AFTER THE ROWS ARE KNOWN, and it is created with the REAL content height.

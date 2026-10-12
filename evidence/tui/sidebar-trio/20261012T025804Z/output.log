@@ -1,0 +1,157 @@
+# fix/sidebar-panel-trio — T1 (keeper stale-default migration) + T2 (panel body section separation)
+# workspace: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh   branch: fix/sidebar-panel-trio
+# FINAL run (UTC): 2026-10-12T03:02:14Z — every command below ran against this frozen tree.
+# pinned toolchain: .toolchain/node_modules/.bin/bun 1.4.0
+
+=== GATE 1a: .toolchain/node_modules/.bin/bun test packages/mpd-tui-adapter-plugin ===
+ 69 pass
+ 0 fail
+Ran 69 tests across 3 files. [1.61s]
+GATE1a_EXIT=0
+
+=== GATE 1b: .toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin ===
+ 471 pass
+ 0 fail
+Ran 471 tests across 20 files. [8.73s]
+GATE1b_EXIT=0
+
+=== GATE 1c: the task's own command — both packages in ONE run ===
+ 540 pass
+ 0 fail
+Ran 540 tests across 23 files. [10.19s]
+GATE1c_EXIT=0
+
+=== GATE 2: .toolchain/node_modules/.bin/bun run typecheck ===
+$ tsgo --noEmit
+GATE2_EXIT=0
+
+=== GATE 3: .toolchain/node_modules/.bin/bun run verify:comments ===
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 387 TypeScript file(s) of 387 in the source set; inspected 34239 declaration(s); skipped 15332 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+GATE3_EXIT=0
+
+=== GATE 4a: import fan-out (which packages/*/src reach the adapter / the TUI plugin) ===
+--- src files importing packages/mpd-tui-adapter-plugin/src (direct fan-out) ---
+packages/mpd-tui-plugin/src/index.ts
+packages/mpd-tui-plugin/src/types.ts
+packages/mpd-tui-plugin/src/dashboard-key.ts
+packages/mpd-tui-plugin/src/watchdog.ts
+packages/mpd-tui-plugin/src/settings.ts
+--- src files importing packages/mpd-tui-plugin/src (transitive candidates) ---
+packages/mpd-bundle-plugin/src/team-view.ts
+packages/mpd-bundle-plugin/src/settings-card.ts
+packages/mpd-config-plugin/src/settings-schema.ts
+packages/mpd-team-core-plugin/src/team-web.ts
+packages/mpd-tui-adapter-plugin/src/index.ts
+
+=== GATE 4b: dist rebuilds — PINNED toolchain, REPO ROOT, path-qualified args ===
+Bundled 1 module in 6ms
+
+  index.js  49.24 KB  (entry point)
+
+BUILD_ADAPTER_EXIT=0
+Bundled 34 modules in 9ms
+
+  index.js  0.39 MB  (entry point)
+
+BUILD_TUI_EXIT=0
+
+=== GATE 5: node scripts/verify-dist-fresh.ts ===
+  FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 251ae4c4d210… 21ms  <- packages/mpd-better-sidebar-host/src/index.ts
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha df52fc4dfb8b… 22ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha a4b4a8f93530… 19ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha f8d222874b75… 24ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 456594271401… 23ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha ab353f7cb6d8… 23ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha ef1e1d06b960… 20ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha bba0c0eed97a… 19ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha 52890183af7d… 20ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 14ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-goal-plugin/dist/index.js  sha 6c9b0dbdf9e3… 22ms  <- packages/mpd-goal-plugin/src/index.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha c7c40d3524b6… 21ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha ddf7111ed8a8… 18ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 8ebf954663eb… 16ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+  FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha f2da0d34b049… 13ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+  FRESH   packages/mpd-mcp-gitbash/dist/launch.js  sha c0ed386abc2f… 14ms  <- packages/mpd-mcp-gitbash/src/launch.ts
+  FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha 048f009f8ef2… 15ms  <- packages/mpd-mcp-lsp/src/launch.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha e2cbb4f16dac… 21ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha b783ae2c8784… 20ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha d213a106bc5d… 21ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 5b7e840a0363… 20ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-roster-provider-plugin/dist/index.js  sha bc90875cb896… 20ms  <- packages/mpd-roster-provider-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 631bde7d805b… 23ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-core-plugin/dist/index.js  sha f1e744d10de6… 21ms  <- packages/mpd-team-core-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha d74198b51a1b… 18ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha a2949cdeeeaf… 19ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha bea550ab918a… 17ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 383f135e2247… 24ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha eeee5bbbd60a… 24ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-verify-plugin/dist/index.js  sha d5f36cd46def… 18ms  <- packages/mpd-verify-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha c9a34db6f029… 24ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 644ms
+GATE5_EXIT=0
+
+=== EXTRA (NOT a repository gate): the bare whole-repo '.toolchain/node_modules/.bin/bun test', recorded honestly ===
+# The documented gate is PER PACKAGE (AGENTS.md §4); a bare root run also discovers *.test.ts copies
+# under evidence/** and dist/mpd-package/**, which are historical scratch/packed trees.
+WHOLE_REPO_SWEEP_EXIT=1
+ 2242 pass
+ 18 fail
+Ran 2263 tests across 192 files. [21.37s]
+--- every file that carries a failing test (all of them under evidence/**) ---
+      1 evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/skills/visual-qa/scripts/cli.test.ts:
+      1 evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/skills/visual-qa/scripts/cli.test.ts:
+      1 evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/skills/visual-qa/scripts/cli.test.ts:
+      5 evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts:
+      1 evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/skills/visual-qa/scripts/cli.test.ts:
+      1 evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/skills/visual-qa/scripts/cli.test.ts:
+--- failing files under packages/ (the wave's own band) ---
+0
+--- the failure MESSAGES, so the class is visible ---
+error: Cannot find module '/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/src/index.ts' from '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/workmate/rename-delete-core/2026-09-10T13-49-39.352Z/failing-first.test.ts'
+error: Cannot find module './sanitize.js' from '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui-panel-merge/lane-c/20261002T152641Z/isolated-comment-gate/src/subagent-scene.ts'
+error: Cannot find module 'typescript/package.json' from '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts'
+
+=== the touched set (read-only git) and the sha256 of every touched file ===
+ M packages/mpd-tui-adapter-plugin/dist/index.js
+ M packages/mpd-tui-adapter-plugin/src/index.ts
+ M packages/mpd-tui-plugin/dist/index.js
+ M packages/mpd-tui-plugin/src/panel-dag.ts
+ M packages/mpd-tui-plugin/src/subagent-scene.ts
+ M packages/mpd-tui-plugin/test/panel-dag.test.ts
+?? evidence/tui/sidebar-trio/
+?? packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts
+2928048152870bf88b2cb4a40746c2c5551f5515281561198da4ddf6feb3e380  packages/mpd-tui-adapter-plugin/src/index.ts
+bea550ab918a59cbf91b4d8a38b1f28936b8f16082b9a50bd745ebea14e4d4bc  packages/mpd-tui-adapter-plugin/dist/index.js
+ba5c95320118fd4ceb4935be16cba3f52ea70d03e14a64e1514421b918ca330a  packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts
+0638433b07375cd9b177b27ca391897c4268b3b2272d4484033de1305eb93b88  packages/mpd-tui-plugin/src/panel-dag.ts
+218e5e99e50d237b7971ae06bc873ed8a215d4c81b5032aa7dabab1a67d6d7c4  packages/mpd-tui-plugin/src/subagent-scene.ts
+383f135e22472443431b487f59baec34635480db3555d8145545ac6d4d74a024  packages/mpd-tui-plugin/dist/index.js
+193fe9db9c88fa27f5b616d8f90481fee75127148356aa9e250804a91fbc7983  packages/mpd-tui-plugin/test/panel-dag.test.ts
+HASHES_READ_UTC=2026-10-12T03:03:03Z
+
+=== SETTLE RE-HASH (UTC 2026-10-12T03:03:58Z, 50 s after HASHES_READ_UTC) ===
+2928048152870bf88b2cb4a40746c2c5551f5515281561198da4ddf6feb3e380  packages/mpd-tui-adapter-plugin/src/index.ts
+bea550ab918a59cbf91b4d8a38b1f28936b8f16082b9a50bd745ebea14e4d4bc  packages/mpd-tui-adapter-plugin/dist/index.js
+ba5c95320118fd4ceb4935be16cba3f52ea70d03e14a64e1514421b918ca330a  packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts
+0638433b07375cd9b177b27ca391897c4268b3b2272d4484033de1305eb93b88  packages/mpd-tui-plugin/src/panel-dag.ts
+218e5e99e50d237b7971ae06bc873ed8a215d4c81b5032aa7dabab1a67d6d7c4  packages/mpd-tui-plugin/src/subagent-scene.ts
+383f135e22472443431b487f59baec34635480db3555d8145545ac6d4d74a024  packages/mpd-tui-plugin/dist/index.js
+193fe9db9c88fa27f5b616d8f90481fee75127148356aa9e250804a91fbc7983  packages/mpd-tui-plugin/test/panel-dag.test.ts
+--- git status at the re-hash ---
+ M packages/mpd-tui-adapter-plugin/dist/index.js
+ M packages/mpd-tui-adapter-plugin/src/index.ts
+ M packages/mpd-tui-plugin/dist/index.js
+ M packages/mpd-tui-plugin/src/panel-dag.ts
+ M packages/mpd-tui-plugin/src/subagent-scene.ts
+ M packages/mpd-tui-plugin/test/panel-dag.test.ts
+?? evidence/tui/sidebar-trio/
+?? packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts
