@@ -100,7 +100,7 @@
   },
 
   "ciReadings": {
-    "note": "The repository's own CI on PR #38 (branch fix/captain-preset-scope-and-win32-eol -> dev), read after the first push. These are the AUTHORITATIVE readings for the lane this Windows host cannot run.",
+    "note": "The repository's own CI on PR #38 (branch fix/captain-preset-scope-and-win32-eol -> dev). These are the AUTHORITATIVE readings for the lane this Windows host cannot run. TWO runs were read: the first push (f1ad49f4) and the review-fix head (04db53ea, the state this record describes); the second is the one that counts, and it REPRODUCED every reading below — 8/8 static gates and `rows: total=118 passed=77 failed=0 null=41` again.",
     "staticGates": "PASS — 8/8 member gate(s) green on ubuntu-latest (57s). The `workflows` member passed there WITHOUT the MPD_WORKFLOW_JS_YAML override this host needed, because CI installs the harness globally and resolves its own js-yaml — which confirms the local override was an environment workaround, not a code subject.",
     "dockerRealMachine": "PASS (3m37s). Job `Docker real-machine acceptance` ran `node scripts/docker-e2e.ts --mode source --require-docker --allow-rootful-docker --no-browser` on ubuntu-24.04 with the packed bundle staged first. The lane's own row summary: stamp `evidence/docker/client-install/2026-10-12T07-59-27Z/`, `rows: total=118 passed=77 failed=0 null=41`. Zero FAILURES, so the INSTALL and the MOUNT on a machine nobody configured is proven for source mode.",
     "coderabbit": "COMMENTED — one finding, addressed in this wave (see reviewFollowUp). It later reported `pass / Review completed`."
