@@ -99,8 +99,31 @@
     ]
   },
 
+  "ciReadings": {
+    "note": "The repository's own CI on PR #38 (branch fix/captain-preset-scope-and-win32-eol -> dev), read after the first push. These are the AUTHORITATIVE readings for the lane this Windows host cannot run.",
+    "staticGates": "PASS — 8/8 member gate(s) green on ubuntu-latest (57s). The `workflows` member passed there WITHOUT the MPD_WORKFLOW_JS_YAML override this host needed, because CI installs the harness globally and resolves its own js-yaml — which confirms the local override was an environment workaround, not a code subject.",
+    "dockerRealMachine": "PASS (3m37s). Job `Docker real-machine acceptance` ran `node scripts/docker-e2e.ts --mode source --require-docker --allow-rootful-docker --no-browser` on ubuntu-24.04 with the packed bundle staged first. The lane's own row summary: stamp `evidence/docker/client-install/2026-10-12T07-59-27Z/`, `rows: total=118 passed=77 failed=0 null=41`. Zero FAILURES, so the INSTALL and the MOUNT on a machine nobody configured is proven for source mode.",
+    "coderabbit": "COMMENTED — one finding, addressed in this wave (see reviewFollowUp). It later reported `pass / Review completed`."
+  },
+
+  "reviewFollowUp": {
+    "source": "CodeRabbit review on PR #38, packages/mpd-verify-plugin/src/ledger.ts (Data Integrity, Minor).",
+    "finding": "The win32 containment repair normalized BOTH sides with `.replace(/\\\\/g, \"/\")`, which is LOSSY on POSIX: a backslash is a legal FILENAME character there, so a document named `a\\b.md` was stored as `a/b.md` — a path that no longer identifies the file that was hashed.",
+    "verdict": "VALID, and it is a defect this wave INTRODUCED. Fixed rather than waived.",
+    "fix": [
+      "containment now uses the platform's own `relative(workspace, path)` plus `isAbsolute` (no prefix guessing at all), which also makes the comparison CASE-INSENSITIVE on win32 and collapses `.`/`..` the way the OS does",
+      "the separator translation moved into `toPosixRelative(rel, separator = sep)` and happens ONLY where a backslash is a separator"
+    ],
+    "whyTheSeparatorIsAParameter": "The invariant to falsify is \"a POSIX filename may contain a backslash and keeps it\". On win32 that filename cannot exist, so an arm written against the FILESYSTEM could only be skipped on the platform most development happens on — and a skipped arm proves nothing. Taking the separator as an argument makes both branches executable everywhere. (The CI `gates` job runs NO unit tests, so a skipped arm would not have been exercised by CI either.)",
+    "arms": [
+      "packages/mpd-verify-plugin/test/law.test.ts: a hashDoc arm asserts a document INSIDE the workspace is stored workspace-relative POSIX while one OUTSIDE keeps the caller's spelling (both halves, so the arm cannot pass by always answering a relative path)",
+      "packages/mpd-verify-plugin/test/law.test.ts: a toPosixRelative arm asserts `/` keeps a backslash in the filename while `\\` translates it, plus the nested/root/idempotent shapes and the platform default"
+    ],
+    "readings": "packages/mpd-verify-plugin 58 pass / 0 fail / 0 skip (AC-D2 still green); verify:gates 8/8; verify-dist-fresh 31/31; typecheck and verify:comments PASS."
+  },
+
   "honestBounds": [
-    "No Docker lane was run: this is a Windows host and the lane is Linux-only; the release sweep still owes `node scripts/docker-e2e.ts --mode source --require-docker` and `--mode oneclick --require-docker`.",
+    "The Docker lane ran in CI, NOT locally (this is a Windows host and the lane is Linux-only): the PR's `Docker real-machine acceptance` job ran source mode with `--require-docker --allow-rootful-docker --no-browser` and graded 118 rows with ZERO failures, which covers the INSTALL and the MOUNT this wave could not measure here. `--mode oneclick --require-docker` is STILL OWED: every `oneclick.*` row is null in a source run, and the lane says so itself (\"the one-click lane carries the measurement\"). The credential-shaped rows (`live.*`, `qa.mcpCall`, `boot.llmTurn`) are null because a credential-free run cannot drive them.",
     "The two guards are INSTALLED through `tools.guard`; in the desktop profile the harness reports no such seam (`verifyGate=absent reason=no-guard-seam`), so these rules were never mechanically active there. The preset scoping is nonetheless the correct contract for every composition that DOES expose the seam.",
     "`dsh-better-sidebar` being a devDependency means the sidebar host is present only after `bun install`; the packed install ships none. That bound is recorded above rather than silently changed.",
     "Pre-existing red subjects were NOT fixed by this wave and are listed so they are not mistaken for regressions: the environment-dependent unit arms (readBoulderGate, session-start signal D, C7), the two load-flaky mpd-config write-back arms, the two pre-existing test:qa cases, and the non-blocking `packed-content` sub-row of verify:manifest."
