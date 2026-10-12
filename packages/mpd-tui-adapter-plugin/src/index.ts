@@ -615,6 +615,14 @@ export interface HostPrefsProbeResult {
   prefs?: TuiHostPrefsLike
   /** The host root the store was loaded from. */
   root?: string
+  /**
+   * The host's CURRENT default enable list, read from the SAME module contact and normalized.
+   *
+   * It is the target the stale-default migration ({@link mergePanelEnableIds}) is defined against, so
+   * it is read live and never hardcoded. ABSENT means this host build exposes no usable
+   * `DEFAULT_SIDE_PANEL_IDS`; the migration is then inert and the plain merge path is unchanged.
+   */
+  defaultIds?: string
   /** The ONE reason no contact bound, when none did. */
   detail?: string
 }
@@ -645,7 +653,7 @@ export async function probeHostPrefs(candidates: readonly string[]): Promise<Hos
     }
     try {
       /** The host module namespace, loaded from this candidate by absolute file URL. */
-      const mod = (await import(pathToFileURL(file).href)) as { getSidePanelPanels?: unknown; applySidePanelPanels?: unknown; subscribeSidePanelPanels?: unknown }
+      const mod = (await import(pathToFileURL(file).href)) as { getSidePanelPanels?: unknown; applySidePanelPanels?: unknown; subscribeSidePanelPanels?: unknown; DEFAULT_SIDE_PANEL_IDS?: unknown }
       if (typeof mod.getSidePanelPanels !== "function" || typeof mod.applySidePanelPanels !== "function") {
         skew = `${file} carries no getSidePanelPanels/applySidePanelPanels pair`
         continue
@@ -656,6 +664,13 @@ export async function probeHostPrefs(candidates: readonly string[]): Promise<Hos
       const write = mod.applySidePanelPanels as (value: unknown) => unknown
       /** The host's change feed, when this build exports one. */
       const feed = typeof mod.subscribeSidePanelPanels === "function" ? (mod.subscribeSidePanelPanels as (listener: () => void) => unknown) : undefined
+      // THE HOST'S OWN CURRENT DEFAULT comes from the SAME module contact as the store, never from a
+      // constant in this bundle: it is the migration's target, so a host release that moves its default
+      // must move this rule with it or the rule would restore a list the host no longer ships. A build
+      // whose export is missing, of another type, or empty leaves the field ABSENT — the migration is
+      // then inert, which is the safe half of the pair (see {@link stalePanelDefaultResidue}).
+      /** The host's current default enable list, normalized and in the host's own order. */
+      const hostDefault = normalizePanelCsv(typeof mod.DEFAULT_SIDE_PANEL_IDS === "string" ? mod.DEFAULT_SIDE_PANEL_IDS : "")
       return {
         prefs: {
           getSidePanelPanels: (): unknown => read(),
@@ -666,6 +681,7 @@ export async function probeHostPrefs(candidates: readonly string[]): Promise<Hos
           ...(feed === undefined ? {} : { subscribeSidePanelPanels: (listener: () => void): unknown => feed(listener) }),
         },
         root,
+        ...(hostDefault === "" ? {} : { defaultIds: hostDefault }),
       }
     } catch (error) {
       skew = `${file}: ${String((error as Error)?.message ?? error)}`
@@ -676,7 +692,13 @@ export async function probeHostPrefs(candidates: readonly string[]): Promise<Hos
 
 /** One merge of the host's live enable CSV with the ids this activation registered. */
 export interface PanelEnableMerge {
-  /** The CSV to apply: the user's list in its ORIGINAL order, then every missing id, in OUR order. */
+  /**
+   * The CSV to apply: the user's list in its ORIGINAL order, then every missing id, in OUR order.
+   *
+   * ON A MIGRATION IT IS THE MIGRATION TARGET INSTEAD — the host's current default in the host's own
+   * order, then our ids in registration order — because the list it replaces is a stale schema default
+   * rather than a position anybody took; see {@link staleDefault}.
+   */
   csv: string
   /** The ids that were missing and are therefore appended; empty means "nothing to append". */
   added: readonly string[]
@@ -694,6 +716,14 @@ export interface PanelEnableMerge {
    * ({@link panelTokenIsStaleMine}) rather than by a shared slug.
    */
   pruned: readonly string[]
+  /**
+   * The stale historical default this list was EXACTLY the residue of, when the migration ran.
+   *
+   * Empty on every other merge, which is the common case: the write target is then the ordinary
+   * `kept ∪ added`. A non-empty value means {@link csv} is the host's current default ∪ our ids, and
+   * that the entry named here is the stale default the user's list consisted of.
+   */
+  staleDefault: string
 }
 
 /**
@@ -794,6 +824,44 @@ export function normalizePanelCsv(value: unknown): string {
 }
 
 /**
+ * The historical side-panel enable lists this bundle KNOWS to be a stale schema default.
+ *
+ * WHY A LIST AND NOT A SINGLE VALUE: the rule is "a residue that is EXACTLY a default an older host
+ * shipped", and an older host may have shipped more than one — so the constant is a set, and the ONLY
+ * entry is the one that was measured against a real profile. `todo,jobs,agents` is dsh-tui 0.13.0's
+ * default: a user layer that a 0.13.0-era `/settings` save materialized keeps those three and none of
+ * the five builtins 0.14.0 added, and a user layer BEATS the schema default, so those five vanish from
+ * the sidebar the moment any panel activity makes the list visible (the reported defect).
+ *
+ * EVERY ENTRY IS ALREADY NORMALIZED (see {@link normalizePanelCsv}): the comparison is against a
+ * normalized residue, so an entry with a space or a capital could never match and would be dead weight.
+ */
+export const KNOWN_STALE_PANEL_DEFAULTS: readonly string[] = ["todo,jobs,agents"]
+
+/**
+ * The known stale default one residue is EXACTLY, when the stale-default migration applies.
+ *
+ * THE PREDICATE, in full (T1 of the frozen contract): the caller passes the current CSV with OUR ids
+ * removed, and the answer is non-empty only when that residue is exactly a
+ * {@link KNOWN_STALE_PANEL_DEFAULTS} entry AND that entry differs from the host's own current
+ * {@link HostPrefsProbeResult.defaultIds}. The second half is what makes a 0.13.0 host — whose current
+ * default IS the stale entry — byte-identical to before this rule existed: there the residue is the
+ * host's own default and there is nothing to restore.
+ *
+ * AN UNREADABLE OR EMPTY HOST DEFAULT IS INERT, never a wildcard: without a target there is no list to
+ * migrate TO, and a rule that guessed one would rewrite a user's sidebar on the strength of a missing
+ * export. The keeper says so in ONE log line and otherwise behaves exactly as before.
+ * @param residue - the user's own enable tokens, normalized, with our ids removed.
+ * @param hostDefault - the host's current default, normalized; undefined when unreadable.
+ * @returns the stale default matched, or the empty string when the migration must not run.
+ */
+export function stalePanelDefaultResidue(residue: string, hostDefault: string | undefined): string {
+  if (hostDefault === undefined || hostDefault === "") return ""
+  if (residue === "" || residue === hostDefault) return ""
+  return KNOWN_STALE_PANEL_DEFAULTS.includes(residue) ? residue : ""
+}
+
+/**
  * Merge this activation's panel ids into the host's live enable CSV, pruning OUR OWN stale ids.
  *
  * THE INVARIANTS THIS PURE FUNCTION EXISTS TO HOLD. It NEVER reorders a token and NEVER removes one it
@@ -805,6 +873,19 @@ export function normalizePanelCsv(value: unknown): string {
  * collapse the way the host's own `normalizeSidePanelPanels` collapses them (trim + lowercase +
  * first-wins), so a merge never fights the host's normalizer into a second, different list.
  *
+ * THE ONE EXCEPTION TO "NEVER REORDERS": the stale-default migration below. A list that consists of a
+ * historical schema default (with or without our own ids in it) is not a position anybody took — a user
+ * layer carrying it outranks the schema default, so five builtins the CURRENT host ships are silently
+ * absent from the sidebar — and the merge answers it with the host's current default ∪ our ids, in the
+ * host's own order, which is the axis the sidebar's tab order and its dots are read along. Every other
+ * list, including a deliberate custom one, keeps its exact order and contents.
+ *
+ * A MIGRATION IS SELF-TERMINATING: once written, the residue IS the host's current default, so the very
+ * next decision finds no stale default and takes the ordinary path (for a list that names any of ours,
+ * that is the stand-down). It is deliberately NOT a one-shot latch: on a host whose configuration mirror
+ * rewrites the CSV from the user layer later in the boot, the rewrite re-presents the stale default and
+ * is migrated again — which is the whole repair, not a repeat of it.
+ *
  * WHY THE PRUNE IS PART OF THE MERGE RATHER THAN A SECOND PASS: the keeper writes at most a handful of
  * times, and a repair that appended the current ids without removing the stale ones would leave the list
  * strictly WORSE — two ids per page, one of them dead. Removal is otherwise still not offered: a user who
@@ -813,9 +894,11 @@ export function normalizePanelCsv(value: unknown): string {
  * @param existing - the host's current CSV; anything at all (a non-string reads as the empty list).
  * @param ours - the ids this activation registered, in registration order.
  * @param past - the record's bounded past registrations, from {@link panelHistoryAfter}.
+ * @param hostDefault - the host's current default, normalized, from {@link HostPrefsProbeResult}; omitted
+ *   or empty leaves the stale-default migration inert and the target is then `kept ∪ added` as before.
  * @returns the CSV to apply, plus what was added, what was already there and what was pruned.
  */
-export function mergePanelEnableIds(existing: unknown, ours: readonly string[], past: readonly string[]): PanelEnableMerge {
+export function mergePanelEnableIds(existing: unknown, ours: readonly string[], past: readonly string[], hostDefault?: string): PanelEnableMerge {
   /** The user's tokens, normalized and deduped exactly as the host normalizes them. */
   const tokens = normalizePanelCsv(existing).split(",").filter((id) => id !== "")
   /** Our tokens from an earlier boot; see {@link panelTokenIsStaleMine} for why only these may go. */
@@ -824,7 +907,25 @@ export function mergePanelEnableIds(existing: unknown, ours: readonly string[], 
   const kept = tokens.filter((token) => !pruned.includes(token))
   /** The registered ids the kept list does not carry yet, in registration order. */
   const added = ours.filter((id) => !kept.includes(id))
-  return { csv: [...kept, ...added].join(","), added, present: ours.filter((id) => kept.includes(id)), kept, pruned }
+  // THE MIGRATION PREDICATE reads the CURRENT list with OUR ids removed — the live ones and the
+  // provably-dead ones alike, because both are ours and neither is part of anybody's position on which
+  // builtins the sidebar should carry. What remains is the user's own list in the contract's words, and
+  // it is compared to the host's current default by {@link stalePanelDefaultResidue}.
+  /** The user's own list: the kept tokens that name none of our panels, normalized. */
+  const residue = normalizePanelCsv(kept.filter((token) => !ours.includes(token)).join(","))
+  // THE MIGRATION NEEDS SOMETHING OF OURS TO CARRY: its target is the host's default ∪ OUR ids, so with
+  // nothing registered it would rewrite the user's list for no charter at all. The keeper arms on its
+  // first registration and therefore never reaches this state, and the guard keeps that accident-proof:
+  // an empty registration set behaves exactly as it did before the migration existed.
+  /** The stale default this list consisted of, or the empty string when it is not a stale default. */
+  const staleDefault = ours.length === 0 ? "" : stalePanelDefaultResidue(residue, hostDefault)
+  /** The host's current default, as tokens; empty only when the migration did not run. */
+  const defaultTokens = staleDefault === "" ? [] : (hostDefault ?? "").split(",").filter((id) => id !== "")
+  /** The CSV this merge asks for: the host's default ∪ ours on a migration, `kept ∪ added` otherwise. */
+  const csv = staleDefault === ""
+    ? [...kept, ...added].join(",")
+    : [...defaultTokens, ...ours.filter((id) => !defaultTokens.includes(id))].join(",")
+  return { csv, added, present: ours.filter((id) => kept.includes(id)), kept, pruned, staleDefault }
 }
 
 /**
@@ -966,6 +1067,16 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
   let detail = "no panel registered yet"
   /** The ONE reason the host's change feed could not be installed, when it refused one. */
   let feedRefused = ""
+  /**
+   * Whether the ONE line about an unreadable host default has already been written.
+   *
+   * The stale-default migration needs the host's CURRENT default as its target, and a host build that
+   * exposes no usable `DEFAULT_SIDE_PANEL_IDS` leaves the migration inert. That is a degrade, not an
+   * event, so it is said ONCE per keeper — a ladder would otherwise repeat the same sentence on every
+   * tick, and the sink is a file a reader has to scan. It goes to the adapter's own sink and never to a
+   * terminal (requirement R5).
+   */
+  let defaultNoted = false
 
   /**
    * Record one tick's verdict and emit the ONE settle line when the ladder is exhausted.
@@ -1087,6 +1198,14 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
    *     configured value. A provably-dead past id in that same list IS still pruned first (repair round
    *     R1): standing down protects the user's SELECTION, and a token no panel can answer is not part of
    *     any selection — leaving it would keep drawing the orphaned tab this wave exists to remove.
+   *   * THE STALE-DEFAULT RESIDUE IS THE ONE EXCEPTION to both branches (T1 of the frozen contract), and
+   *     it is decided by {@link PanelEnableMerge.staleDefault}: when the list with our ids removed is
+   *     EXACTLY a historical schema default that differs from the host's current one, the write target is
+   *     the host's current default ∪ our ids instead of the list on the wire. That residue is not a
+   *     position — it is a default an older host materialized — so it is migrated whether or not it also
+   *     names us, and the migration does NOT retire the keeper: its own write leaves the host's default
+   *     as the residue, so the NEXT read stands down by the ordinary rule, while a configuration mirror
+   *     that rewrites the stale default later in the boot is migrated again rather than abandoned.
    *   * A partial write is never performed: the ids go in as a set, so a half-applied list cannot make
    *     the next read say "the configuration names one of us" and stand down mid-repair.
    *
@@ -1096,16 +1215,23 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
    * keeper about 4.3 s before the configuration mirror rewrites the CSV at about +5403 ms, which is
    * exactly how the panels left the sidebar and never returned (F5). At arm time the read may therefore
    * only REPAIR a list that names none of us (plus the same prune of provably-dead ids, which is not a
-   * statement about anyone's selection); a list that names us is simply the state we are watching.
+   * statement about anyone's selection); a list that names us is simply the state we are watching — and
+   * a stale-default residue is migrated here too, because that repair restores builtins the CURRENT host
+   * ships rather than overruling anything.
    *
    * NAMED RESIDUAL, not papered over: a user who removes ALL of ours on purpose leaves a CSV that is
    * INDISTINGUISHABLE from a fresh profile's, so a rewrite is repaired once more. Only the CONFIGURED
    * value can separate those two cases, and reading it would mean a third host-internals contact — a §6
-   * count decision deliberately NOT taken in this wave.
+   * count decision deliberately NOT taken in this wave. A user who deliberately configures EXACTLY a
+   * {@link KNOWN_STALE_PANEL_DEFAULTS} list on a host whose own default differs is the second, smaller
+   * residual: that state cannot be told from the stale pin, and the migration restores the host's
+   * builtins. Both bounds are stated rather than hidden.
    * @param prefs - the bound host store.
    * @param atArm - true for the single read taken when the feed is installed.
+   * @param hostDefault - the host's current default, normalized; undefined when the host build exposes
+   *   none, which leaves the migration inert and the decision byte-identical to before it existed.
    */
-  const decide = (prefs: TuiHostPrefsLike, atArm: boolean): void => {
+  const decide = (prefs: TuiHostPrefsLike, atArm: boolean, hostDefault: string | undefined): void => {
     // OUR OWN WRITE'S ECHO IS NOT A NEW FACT. The store notifies synchronously from inside
     // `applySidePanelPanels`, so this read would otherwise re-decide on the value this keeper had just
     // written — and the read would find our own ids and stand the keeper down. Dropping the echo is what
@@ -1123,9 +1249,24 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
       } catch {
         past = []
       }
+      // THE DEGRADE IS SAID ONCE. Without the host's own default there is no migration target, so the
+      // rule stays inert; one line records why, on the same file sink every other keeper line uses.
+      if ((hostDefault === undefined || hostDefault === "") && !defaultNoted) {
+        defaultNoted = true
+        options.log?.(`mpd-tui panel enable keeper: the host exposes no readable DEFAULT_SIDE_PANEL_IDS, so the stale-default migration stays inert and the enable list is merged as before`)
+      }
       /** What this read measured, before any decision is taken. */
-      const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, past)
+      const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, past, hostDefault)
       if (merge.present.length > 0) {
+        // THE STALE-DEFAULT RESIDUE OUTRANKS THE STAND-DOWN (T1). The list names us, but with our ids
+        // removed what is left is a schema default an older host shipped — the shape a 0.13.0-era user
+        // layer plus the host's own registration append produces — and nothing here is a position on this
+        // bundle. It is migrated and the keeper keeps watching.
+        if (merge.staleDefault !== "") {
+          if (!writeList(prefs, merge.csv)) return
+          settle("confirmed", `migrated the stale default ${merge.staleDefault} to ${merge.csv} (the list also named ${merge.present.join(",")}, so nothing else was appended)`)
+          return
+        }
         // R1.3: THE DEAD TOKEN GOES FIRST. The list names one of ours, so nothing is ever APPENDED here —
         // the deliberate partial selection stands — but a token in the record's history that is not live
         // is provably dead, and the prune-only write below is the ONE write this branch may make.
@@ -1151,7 +1292,9 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
         return
       }
       if (!writeList(prefs, merge.csv)) return
-      settle("confirmed", `re-asserted ${merge.added.join(",")} (the list named none of our ids${merge.pruned.length === 0 ? "" : `; pruned the stale ${merge.pruned.join(",")}`})`)
+      settle("confirmed", merge.staleDefault === ""
+        ? `re-asserted ${merge.added.join(",")} (the list named none of our ids${merge.pruned.length === 0 ? "" : `; pruned the stale ${merge.pruned.join(",")}`})`
+        : `migrated the stale default ${merge.staleDefault} to ${merge.csv} (the list named none of our ids, so the host's current default came back with ours)`)
     } catch (error) {
       settle("refused", String((error as Error)?.message ?? error))
     }
@@ -1174,16 +1317,19 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
    * Read again only when the store refuses the subscription: a store that throws here is a store whose
    * read cannot be trusted either, so the refusal is recorded and the ladder below stays the path.
    * @param prefs - the bound host store, proved to expose the feed.
+   * @param hostDefault - the host's current default the probe read from the SAME contact, held for every
+   *   later feed notification: the feed is the repair path that must migrate the stale default when the
+   *   configuration mirror rewrites the CSV, and the target cannot be re-derived from the store itself.
    * @returns true when the feed is in force.
    */
-  const enterFeed = (prefs: TuiHostPrefsLike): boolean => {
+  const enterFeed = (prefs: TuiHostPrefsLike, hostDefault: string | undefined): boolean => {
     /** The host's subscribe member, narrowed once. */
     const subscribe = prefs.subscribeSidePanelPanels
     if (typeof subscribe !== "function") return false
     /** The host's own unsubscribe, when it returned one. */
     let release: unknown
     try {
-      release = subscribe((): void => decide(prefs, false))
+      release = subscribe((): void => decide(prefs, false, hostDefault))
     } catch (error) {
       // RECORDED, NOT SWALLOWED, and the ladder keeps its ticks: a feed that refuses costs this keeper
       // the feed, never the repair.
@@ -1196,7 +1342,7 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
     // THE LADDER IS DONE the moment the feed is in force: two repair paths racing one CSV is how a
     // half-applied list appears, and the feed is the one that observes the rewrite.
     cancelLadder()
-    decide(prefs, true)
+    decide(prefs, true, hostDefault)
     return true
   }
 
@@ -1204,7 +1350,8 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
    * Run one LADDER tick — the degradation for a host whose live setting exposes no change feed.
    *
    * The first tick is also where the feed is detected, so a host that has one never spends a ladder:
-   * the probe is the same call either way.
+   * the probe is the same call either way. Every tick takes its host default from ITS OWN probe answer,
+   * which is what puts the migration on this path as well as on the feed's.
    */
   const runTick = (): void => {
     void options.loadPrefs().then((probe) => {
@@ -1215,8 +1362,8 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
       }
       // THE FEED OUTRANKS THE LADDER, and the hand-off is attempted on EVERY tick until it lands: a host
       // may expose the store late, and a store that gains the member later is still worth following.
-      if (!onFeed && enterFeed(probe.prefs)) return
-      decide(probe.prefs, false)
+      if (!onFeed && enterFeed(probe.prefs, probe.defaultIds)) return
+      decide(probe.prefs, false, probe.defaultIds)
     }, (error: unknown) => {
       ticks += 1
       settle("absent", `the host store could not be read: ${String((error as Error)?.message ?? error)}`)

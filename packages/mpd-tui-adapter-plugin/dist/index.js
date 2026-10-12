@@ -221,13 +221,15 @@ async function probeHostPrefs(candidates) {
       const read = mod.getSidePanelPanels;
       const write = mod.applySidePanelPanels;
       const feed = typeof mod.subscribeSidePanelPanels === "function" ? mod.subscribeSidePanelPanels : undefined;
+      const hostDefault = normalizePanelCsv(typeof mod.DEFAULT_SIDE_PANEL_IDS === "string" ? mod.DEFAULT_SIDE_PANEL_IDS : "");
       return {
         prefs: {
           getSidePanelPanels: () => read(),
           applySidePanelPanels: (value) => write(value),
           ...feed === undefined ? {} : { subscribeSidePanelPanels: (listener) => feed(listener) }
         },
-        root
+        root,
+        ...hostDefault === "" ? {} : { defaultIds: hostDefault }
       };
     } catch (error) {
       skew = `${file}: ${String(error?.message ?? error)}`;
@@ -266,12 +268,24 @@ function normalizePanelCsv(value) {
   }
   return tokens.join(",");
 }
-function mergePanelEnableIds(existing, ours, past) {
+var KNOWN_STALE_PANEL_DEFAULTS = ["todo,jobs,agents"];
+function stalePanelDefaultResidue(residue, hostDefault) {
+  if (hostDefault === undefined || hostDefault === "")
+    return "";
+  if (residue === "" || residue === hostDefault)
+    return "";
+  return KNOWN_STALE_PANEL_DEFAULTS.includes(residue) ? residue : "";
+}
+function mergePanelEnableIds(existing, ours, past, hostDefault) {
   const tokens = normalizePanelCsv(existing).split(",").filter((id) => id !== "");
   const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, ours, past));
   const kept = tokens.filter((token) => !pruned.includes(token));
   const added = ours.filter((id) => !kept.includes(id));
-  return { csv: [...kept, ...added].join(","), added, present: ours.filter((id) => kept.includes(id)), kept, pruned };
+  const residue = normalizePanelCsv(kept.filter((token) => !ours.includes(token)).join(","));
+  const staleDefault = ours.length === 0 ? "" : stalePanelDefaultResidue(residue, hostDefault);
+  const defaultTokens = staleDefault === "" ? [] : (hostDefault ?? "").split(",").filter((id) => id !== "");
+  const csv = staleDefault === "" ? [...kept, ...added].join(",") : [...defaultTokens, ...ours.filter((id) => !defaultTokens.includes(id))].join(",");
+  return { csv, added, present: ours.filter((id) => kept.includes(id)), kept, pruned, staleDefault };
 }
 var PANEL_KEEPER_LADDER_MS = [1000, 2500, 5500, 9000, 16000, 25000];
 function createPanelEnableKeeper(options) {
@@ -287,6 +301,7 @@ function createPanelEnableKeeper(options) {
   let state = "requested";
   let detail = "no panel registered yet";
   let feedRefused = "";
+  let defaultNoted = false;
   const announce = () => {
     if (options.onChange === undefined)
       return;
@@ -334,7 +349,7 @@ function createPanelEnableKeeper(options) {
     }
     return true;
   };
-  const decide = (prefs, atArm) => {
+  const decide = (prefs, atArm, hostDefault) => {
     if (writing)
       return;
     ticks += 1;
@@ -345,8 +360,18 @@ function createPanelEnableKeeper(options) {
       } catch {
         past = [];
       }
-      const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, past);
+      if ((hostDefault === undefined || hostDefault === "") && !defaultNoted) {
+        defaultNoted = true;
+        options.log?.(`mpd-tui panel enable keeper: the host exposes no readable DEFAULT_SIDE_PANEL_IDS, so the stale-default migration stays inert and the enable list is merged as before`);
+      }
+      const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, past, hostDefault);
       if (merge.present.length > 0) {
+        if (merge.staleDefault !== "") {
+          if (!writeList(prefs, merge.csv))
+            return;
+          settle("confirmed", `migrated the stale default ${merge.staleDefault} to ${merge.csv} (the list also named ${merge.present.join(",")}, so nothing else was appended)`);
+          return;
+        }
         let prunedNote = "";
         if (merge.pruned.length > 0) {
           const prunedCsv = merge.kept.join(",");
@@ -368,7 +393,7 @@ function createPanelEnableKeeper(options) {
       }
       if (!writeList(prefs, merge.csv))
         return;
-      settle("confirmed", `re-asserted ${merge.added.join(",")} (the list named none of our ids${merge.pruned.length === 0 ? "" : `; pruned the stale ${merge.pruned.join(",")}`})`);
+      settle("confirmed", merge.staleDefault === "" ? `re-asserted ${merge.added.join(",")} (the list named none of our ids${merge.pruned.length === 0 ? "" : `; pruned the stale ${merge.pruned.join(",")}`})` : `migrated the stale default ${merge.staleDefault} to ${merge.csv} (the list named none of our ids, so the host's current default came back with ours)`);
     } catch (error) {
       settle("refused", String(error?.message ?? error));
     }
@@ -377,13 +402,13 @@ function createPanelEnableKeeper(options) {
     cancelLadder();
     releaseFeedNow();
   };
-  const enterFeed = (prefs) => {
+  const enterFeed = (prefs, hostDefault) => {
     const subscribe = prefs.subscribeSidePanelPanels;
     if (typeof subscribe !== "function")
       return false;
     let release;
     try {
-      release = subscribe(() => decide(prefs, false));
+      release = subscribe(() => decide(prefs, false, hostDefault));
     } catch (error) {
       feedRefused = String(error?.message ?? error);
       settle("refused", "the host's change feed refused this keeper");
@@ -392,7 +417,7 @@ function createPanelEnableKeeper(options) {
     releaseFeed = typeof release === "function" ? release : undefined;
     onFeed = true;
     cancelLadder();
-    decide(prefs, true);
+    decide(prefs, true, hostDefault);
     return true;
   };
   const runTick = () => {
@@ -402,9 +427,9 @@ function createPanelEnableKeeper(options) {
         settle("absent", probe.detail ?? "the host exposes no side-panel enable store");
         return;
       }
-      if (!onFeed && enterFeed(probe.prefs))
+      if (!onFeed && enterFeed(probe.prefs, probe.defaultIds))
         return;
-      decide(probe.prefs, false);
+      decide(probe.prefs, false, probe.defaultIds);
     }, (error) => {
       ticks += 1;
       settle("absent", `the host store could not be read: ${String(error?.message ?? error)}`);
@@ -1251,6 +1276,7 @@ export {
   HOST_PREFS_MODULE,
   HOST_ROOT_ENV,
   HOST_UI_MODULE,
+  KNOWN_STALE_PANEL_DEFAULTS,
   PANEL_IDS_RECORD_NAME,
   PANEL_ID_HISTORY_LIMIT,
   PANEL_KEEPER_LADDER_MS,
@@ -1283,5 +1309,6 @@ export {
   readableService,
   reportOutcomes,
   resolveTuiAdapter,
-  serviceOf
+  serviceOf,
+  stalePanelDefaultResidue
 };

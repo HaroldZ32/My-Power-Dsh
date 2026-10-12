@@ -1,0 +1,84 @@
+{
+  "wave": "fix/sidebar-panel-trio",
+  "contract": ".mpd/plans/fix-sidebar-panel-trio.md",
+  "verifyLoop": "loop-20261012T024802-74e62b",
+  "writer": "Senior Engineer (delegated writer; the captain is the only git writer — no git write command was run by this session)",
+  "branch": "fix/sidebar-panel-trio",
+  "host": "dsh-tui 0.14.0 at /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui",
+  "run": {
+    "startedUtc": "2026-10-12T02:58:04Z",
+    "gatesRanUtc": "2026-10-12T03:02:0xZ..2026-10-12T03:03:03Z",
+    "hashesReadUtc": "2026-10-12T03:03:03Z",
+    "settleRehashUtc": "2026-10-12T03:03:58Z",
+    "toolchain": ".toolchain/node_modules/.bin/bun 1.4.0 (the repository pin; package.json buildToolchain bun@1.4.0)"
+  },
+  "tasks": {
+    "T1": {
+      "scope": "keeper stale-default migration, packages/mpd-tui-adapter-plugin/src/index.ts",
+      "symbolsTouched": [
+        "HostPrefsProbeResult.defaultIds (new field)",
+        "probeHostPrefs (reads DEFAULT_SIDE_PANEL_IDS from the already-contacted host prefs module; omits the field when the export is not a non-empty string)",
+        "KNOWN_STALE_PANEL_DEFAULTS (new const, exactly ['todo,jobs,agents'])",
+        "stalePanelDefaultResidue (new exported predicate)",
+        "PanelEnableMerge.staleDefault (new field; the csv contract comment amended for the migration target)",
+        "mergePanelEnableIds (new optional hostDefault param; migration target = host default order then our ids in registration order)",
+        "createPanelEnableKeeper: decide(prefs, atArm, hostDefault), enterFeed(prefs, hostDefault), runTick (passes probe.defaultIds), new local defaultNoted (the ONE log line)"
+      ],
+      "testsAdded": "packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts — 22 arms: (a) the stale pin migrates to host default UNION ours (pure merge, ladder path and feed path), (b) current default + ours stands down untouched, (c) a deliberate custom list ('todo,workspace') is never migrated and never rewritten (only the pre-existing append), (d) an unreadable host default degrades inert with exactly ONE log line, plus the 0.13.0-host regression arm, an arm against the INSTALLED host's own default export, and staged-host probe arms.",
+      "hostDefaultSource": "read live from lib/types/tuiDisplayPrefs.js export DEFAULT_SIDE_PANEL_IDS through the SAME module contact as the store (probeHostPrefs); never hardcoded — proven by a staged host whose default is 'Alpha, beta ,alpha,gamma' -> 'alpha,beta,gamma' and by the arm against the installed host's own export."
+    },
+    "T2": {
+      "scope": "panel body section separation, packages/mpd-tui-plugin/src/panel-dag.ts",
+      "symbolsTouched": [
+        "DAG_SECTION_HOST_TITLE (new const = 'Host subagents')",
+        "DAG_SECTION_DAG_TITLE (new const = 'MPD team DAG')",
+        "createDagPanelComponent body: a titled surfaceRule('section-host') above the host rows and a titled surfaceRule('section-dag') between them and the DAG drawing",
+        "subagent-scene.ts: SurfaceRuleKit (new exported interface) + surfaceRule's parameter narrowed from SurfaceKit to SurfaceRuleKit — a TYPE-ONLY change with no runtime effect, required because a PANEL kit's useAnimationTime answers unknown while the scene kit's answers number"
+      ],
+      "testsAdded": "packages/mpd-tui-plugin/test/panel-dag.test.ts — 5 arms: the English labels; the divider SHAPE (height 1, top border only, structured borderText {content, position: top, align: start}); the ORDER (every host row above the DAG rule, the drawing's header below it, both rules inside the scrolled window); the unreadable-snapshot empty state (both sections named); the empty-state page (both sections named, both empty states drawn)."
+    }
+  },
+  "gates": [
+    { "id": "1a", "command": ".toolchain/node_modules/.bin/bun test packages/mpd-tui-adapter-plugin", "observed": "69 pass / 0 fail across 3 files", "exit": 0 },
+    { "id": "1b", "command": ".toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin", "observed": "471 pass / 0 fail across 20 files", "exit": 0 },
+    { "id": "1c", "command": ".toolchain/node_modules/.bin/bun test packages/mpd-tui-adapter-plugin packages/mpd-tui-plugin", "observed": "540 pass / 0 fail across 23 files", "exit": 0 },
+    { "id": "2", "command": ".toolchain/node_modules/.bin/bun run typecheck", "observed": "tsgo --noEmit, no diagnostics", "exit": 0 },
+    { "id": "3", "command": ".toolchain/node_modules/.bin/bun run verify:comments", "observed": "VERDICT: PASS — 387 files, 34231 declarations, 0 violations", "exit": 0 },
+    { "id": "4", "command": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-adapter-plugin/dist/index.js", "observed": "Bundled 1 module, index.js 49.24 KB", "exit": 0 },
+    { "id": "4", "command": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js", "observed": "Bundled 34 modules, index.js 0.39 MB", "exit": 0 },
+    { "id": "5", "command": "node scripts/verify-dist-fresh.ts", "observed": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED file listed (packages/mpd-mcp-codegraph/dist/serve.js, documented prebuilt) — build toolchain bun 1.4.0 from the repository toolchain", "exit": 0 }
+  ],
+  "fanOutCheck": {
+    "command": "grep -rln 'mpd-tui-adapter-plugin/src' packages/*/src/",
+    "result": "only packages/mpd-tui-plugin/src (index.ts, types.ts, dashboard-key.ts, watchdog.ts, settings.ts) imports the adapter's src, so the adapter edit fans out to mpd-tui-plugin's dist alone. The transitive grep for importers of packages/mpd-tui-plugin/src (mpd-bundle-plugin, mpd-config-plugin, mpd-team-core-plugin, mpd-tui-adapter-plugin) shows no stale dist — the gate's 31/31 FRESH verdict is the authority on that."
+  },
+  "files": [
+    { "path": "packages/mpd-tui-adapter-plugin/src/index.ts", "sha256": "2928048152870bf88b2cb4a40746c2c5551f5515281561198da4ddf6feb3e380", "state": "modified" },
+    { "path": "packages/mpd-tui-adapter-plugin/dist/index.js", "sha256": "bea550ab918a59cbf91b4d8a38b1f28936b8f16082b9a50bd745ebea14e4d4bc", "state": "rebuilt (bytes unchanged by the last comment-only edit: bun strips comments)" },
+    { "path": "packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts", "sha256": "ba5c95320118fd4ceb4935be16cba3f52ea70d03e14a64e1514421b918ca330a", "state": "added" },
+    { "path": "packages/mpd-tui-plugin/src/panel-dag.ts", "sha256": "0638433b07375cd9b177b27ca391897c4268b3b2272d4484033de1305eb93b88", "state": "modified" },
+    { "path": "packages/mpd-tui-plugin/src/subagent-scene.ts", "sha256": "218e5e99e50d237b7971ae06bc873ed8a215d4c81b5032aa7dabab1a67d6d7c4", "state": "modified" },
+    { "path": "packages/mpd-tui-plugin/dist/index.js", "sha256": "383f135e22472443431b487f59baec34635480db3555d8145545ac6d4d74a024", "state": "rebuilt" },
+    { "path": "packages/mpd-tui-plugin/test/panel-dag.test.ts", "sha256": "193fe9db9c88fa27f5b616d8f90481fee75127148356aa9e250804a91fbc7983", "state": "modified" }
+  ],
+  "settled": "every sha256 above was re-read 55 s later (2026-10-12T03:03:58Z) and is byte-identical, with git status unchanged. The ONLY writes after that read are this result.json and output.log.",
+  "extraSweepNotAGate": {
+    "command": ".toolchain/node_modules/.bin/bun test  (bare, repo root)",
+    "observed": "2242 pass / 18 fail across 192 files",
+    "analysis": "all 18 failing tests live in *.test.ts copies under evidence/** (five evidence/extensions/extension-lifecycle/*/scratch-pack copies plus evidence/pack-closure/... packed copies, and evidence/tui-panel-merge/lane-c/**); every failure is a module-resolution error inside that copy's own tree (Cannot find module 'typescript/package.json', './sanitize.js', an absolute /root/dshProj path). ZERO failing files are under packages/. The documented gate is per package (AGENTS.md §4) and is green. NOT measured on a pristine checkout, so 'pre-existing' rests on this argument and on the fact that this wave touched nothing under evidence/."
+  },
+  "notProven": [
+    "No end-to-end boot of the adapter row against a real profile: A1's optional 'one runtime log line from the keeper' was NOT captured, because T3 (the profile data repair) is the captain's step and a real boot needs an isolated DSH_HOME carrying the pinned user layer. The migration is proven at the unit/keeper level only.",
+    "The stacked-layer interaction in a real boot: the keeper repairs the LIVE store, while the user profile layer still pins 'todo,jobs,agents' until T3 runs, so the host's configuration mirror may re-apply the stale pin after the keeper's write. The unit arms prove the keeper re-migrates on the feed when that happens; no real boot was run to observe it.",
+    "T2's dividers were not seen on a real terminal (no PTY capture): they are proven by the rendered-tree arms (shape, order, labels) and by reuse of the scene's already-shipped surfaceRule."
+  ],
+  "interpretations": [
+    "T1 predicate scope: the contract states the predicate over 'normalize(currentCsv minus our ids)', so it is evaluated on that residue in BOTH branches of the keeper's decision — the repair path (none of ours present: target = host default UNION ours) and the case where the list names ours AND the residue is a known stale default (migrated, and the keeper is NOT retired: its own write leaves the host default as the residue, so the NEXT read stands down by the ordinary rule, while a later mirror rewrite of the stale pin is migrated again rather than abandoned). A list naming ours whose residue is anything else still stands down untouched, byte-identical to before.",
+    "The migration is gated on at least one of our ids being registered, so it never opens a write path of its own on a keeper that registered nothing.",
+    "T2: subagentSectionRows always answers at least its header row, so 'no host section' is not a reachable state and BOTH rules are drawn unconditionally; a 'section.length > 0' guard was considered and dropped as a branch no boot executes."
+  ],
+  "outOfScopeFindings": [
+    "packages/mpd-tui-plugin/src/panel-dag.ts reaches the Core lane's viewportRail through a namespace-property bridge with a one-line fallback ('DELETE THIS ONE ARM once Core's export is integrated for good'). Untouched by this wave; noted only as dead-bridge debt inside a file this wave edited.",
+    "A bare root 'bun test' discovers *.test.ts under evidence/** and dist/mpd-package/**, so a green whole-repo claim needs a path filter."
+  ]
+}

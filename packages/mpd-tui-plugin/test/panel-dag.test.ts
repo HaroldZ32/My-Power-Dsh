@@ -40,6 +40,8 @@ import {
   dagPanelLayout,
   dagRowClick,
   DAG_PANEL_TITLE,
+  DAG_SECTION_DAG_TITLE,
+  DAG_SECTION_HOST_TITLE,
   pinnedDetailLines,
   type DagPanelTask,
 } from "../src/panel-dag"
@@ -2374,5 +2376,159 @@ describe("AC8b · the page draws its own `⤢`, and the dep the row received rea
     const control = elementByKey(tree, "title-fullscreen")
     expect(control).toBeDefined()
     expect(control?.props?.onClick).toBeUndefined()
+  })
+})
+
+// ── T2 (fix/sidebar-panel-trio): the TWO SECTIONS of the panel body, and the rule between them ─────
+//
+// THE DEFECT THIS LOCKS: the page pushed the host's curated subagent rows and then the DAG drawing into
+// ONE frame with nothing between them, so a reader could not tell where one section ended and the other
+// began. The fix is the scene's own `surfaceRule`, titled in English — no second divider primitive — and
+// these arms pin the SHAPE of that rule, the ORDER of the two sections around it, and the empty state.
+
+/**
+ * Every React key in a tree, in DEPTH-FIRST draw order.
+ *
+ * Read off the rendered tree rather than off the row texts because the divider's title lives in the
+ * host's `borderText` prop, which this suite's flattener does not print as a row: the keys are what a
+ * page controls, and their order is the draw order a reader sees.
+ * @param tree - the rendered tree.
+ * @returns the keys present, in the order the page emitted them.
+ */
+function keyOrder(tree: unknown): string[] {
+  /** The keys collected so far, in draw order. */
+  const keys: string[] = []
+  /** Walk one node, recording its key before descending into its children. */
+  const walk = (node: unknown): void => {
+    if (node === null || node === undefined || typeof node !== "object") return
+    if (Array.isArray(node)) {
+      for (const child of node) walk(child)
+      return
+    }
+    /** This node as an element. */
+    const element = node as Element
+    if (typeof element.props?.key === "string") keys.push(element.props.key)
+    walk(element.props?.children)
+    walk(element.children)
+  }
+  walk(tree)
+  return keys
+}
+
+/**
+ * The rows the page actually drew into its window, as `{ key, props }` pairs in draw order.
+ *
+ * The scroll column's children ARE the visible slice (see `panelViewportBody`), so this is the one
+ * window the reader sees rather than the page's whole content list.
+ * @param tree - the rendered tree.
+ * @returns the visible rows, in draw order.
+ */
+function drawnRows(tree: unknown): Element[] {
+  return childElements(elementByKey(tree, "scroll"))
+}
+
+describe("T2 · the panel body names both sections and draws a rule between them", () => {
+  test("the labels are the contract's own ENGLISH names", () => {
+    expect(DAG_SECTION_HOST_TITLE).toBe("Host subagents")
+    expect(DAG_SECTION_DAG_TITLE).toBe("MPD team DAG")
+  })
+
+  test("each rule is the host's own titled-divider shape, drawn by the SHARED `surfaceRule`", () => {
+    /** The page under test, with a board that draws. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    /** The host kit double. */
+    const kit = makeKit({ columns: 80, rows: 40 })
+    /** The host API double, carrying the subagent rows the section is about. */
+    const tree = render(page, kit, makeHost({ subagents: [{ id: "s1", description: "Panel Engineer", status: "running" }] }))
+    for (const [key, title] of [["section-host", DAG_SECTION_HOST_TITLE], ["section-dag", DAG_SECTION_DAG_TITLE]] as const) {
+      /** The rule element itself. */
+      const rule = elementByKey(tree, key)
+      expect(rule).toBeDefined()
+      // ONE ROW TALL, TOP BORDER ONLY: the host's own divider craft, which is what `surfaceRule` draws.
+      expect(rule?.props?.height).toBe(1)
+      expect(rule?.props?.borderTop).toBe(true)
+      expect(rule?.props?.borderBottom).toBe(false)
+      expect(rule?.props?.borderLeft).toBe(false)
+      expect(rule?.props?.borderRight).toBe(false)
+      // THE TITLE GOES IN THE STRUCTURED FORM the host's border renderer reads, never a bare string.
+      /** The rule's border title, as the host's renderer would read it. */
+      const borderText = rule?.props?.borderText as { content?: unknown; position?: unknown; align?: unknown } | undefined
+      expect(typeof borderText).toBe("object")
+      expect(borderText?.position).toBe("top")
+      expect(borderText?.align).toBe("start")
+      expect(borderText?.content).toBe(title)
+      expect(cellWidth(String(borderText?.content))).toBeLessThanOrEqual(80)
+    }
+  })
+
+  test("the rule sits BETWEEN the sections: host rows, then the DAG rule, then the drawing", () => {
+    /** The page under test. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    /** The host kit double, wide and tall enough that nothing here depends on scrolling. */
+    const kit = makeKit({ columns: 80, rows: 40 })
+    /** The rendered page, with one host subagent row for the section to carry. */
+    const tree = render(page, kit, makeHost({ subagents: [{ id: "s1", description: "Panel Engineer", status: "running" }] }))
+    /** Every key in draw order, which is what the ordering assertions below read. */
+    const order = keyOrder(tree)
+    /** The host section's title rule. */
+    const hostRule = order.indexOf("section-host")
+    /** The DAG section's title rule. */
+    const dagRule = order.indexOf("section-dag")
+    /** The host's own first row, the count line the section carries under its rule. */
+    const hostRow = order.indexOf("sub-0")
+    // THE DRAWING'S OWN FIRST ROW is the `graphRow`-keyed header (`graphRow` prefixes its own key with
+    // `t-`), which is the first row of the DAG section whatever layout the width selects.
+    /** The drawing's header row, the first row of the DAG section. */
+    const dagRow = order.indexOf("t-header")
+    /** Every host row's draw position, whatever count the section produced. */
+    const hostRows = order.map((key, at) => (key.startsWith("sub-") ? at : -1)).filter((at) => at >= 0)
+    expect(hostRule).toBeGreaterThanOrEqual(0)
+    expect(hostRow).toBeGreaterThan(hostRule)
+    // EVERY host row sits above the DAG rule, and the drawing opens below it: the separation itself.
+    expect(hostRows.length).toBeGreaterThan(0)
+    expect(Math.max(...hostRows)).toBeLessThan(dagRule)
+    expect(dagRow).toBeGreaterThan(dagRule)
+    // …and the two rules are IN the scrolled body, so they travel with the sections they name.
+    /** The keys of the rows the window actually draws. */
+    const visible = drawnRows(tree).map((row) => row.props?.key)
+    expect(visible).toContain("section-host")
+    expect(visible).toContain("section-dag")
+    // The drawing's own rows are the ones BELOW the divider, and its task ids are drawn there.
+    expect(kit.text(tree)).toContain("T1")
+  })
+
+  test("an UNREADABLE host snapshot still yields BOTH named sections, the DAG one included", () => {
+    // The contract's empty-state clause: "a missing host section still leaves the DAG section labelled".
+    // A host whose snapshot throws is that missing case — `panelSnapshot` contains the throw, so the
+    // section falls back to the host's OWN empty state — and both rules are still drawn, which is what
+    // keeps the two sections readable on a page with nothing to show for either of them.
+    /** The page under test. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    /** The host kit double. */
+    const kit = makeKit({ columns: 80, rows: 40 })
+    /** The rendered page, whose host snapshot throws. */
+    const tree = render(page, kit, makeHost({ snapshotThrows: true }))
+    expect(elementByKey(tree, "section-host")).toBeDefined()
+    expect(elementByKey(tree, "section-dag")).toBeDefined()
+    expect((elementByKey(tree, "section-dag")?.props?.borderText as { content?: string } | undefined)?.content).toBe(DAG_SECTION_DAG_TITLE)
+    // …and the host's OWN empty state sits between the two rules, so a reader is told why it is bare.
+    expect(kit.text(tree)).toContain("No subagents in the current se")
+  })
+
+  test("a host section that renders only its EMPTY STATE is still named and still separated", () => {
+    /** The page under test. */
+    const page = createDagPanelComponent(() => undefined) as (props: unknown) => unknown
+    /** The host kit double. */
+    const kit = makeKit({ columns: 80, rows: 40 })
+    /** The rendered page: no team, and no subagents in the host's snapshot. */
+    const tree = render(page, kit, makeHost())
+    expect(elementByKey(tree, "section-host")).toBeDefined()
+    /** Every key in draw order. */
+    const order = keyOrder(tree)
+    expect(order.indexOf("section-dag")).toBeGreaterThan(order.indexOf("section-host"))
+    expect(order.indexOf("empty")).toBeGreaterThan(order.indexOf("section-dag"))
+    // The TWO empty states are both drawn: the host's own sentence above the rule, the page's below it.
+    expect(kit.text(tree)).toContain("No subagents in the current se")
+    expect(kit.text(tree)).toContain("no team in this workspace")
   })
 })

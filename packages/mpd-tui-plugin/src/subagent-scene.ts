@@ -378,16 +378,33 @@ export function surfaceBodyRow(kit: SurfaceKit, key: string, line: string, overr
 }
 
 /**
+ * The host kit a titled rule reads — deliberately NARROWER than {@link SurfaceKit}.
+ *
+ * WHY IT IS NOT `SurfaceKit`: the rule is drawn by BOTH planes, and their kits are structurally equal
+ * except for one timer member (`SurfaceKit`'s `useAnimationTime` answers a number, a PANEL kit's answers
+ * `unknown` because the panel feature-detects it at its own use site), so a rule typed against the
+ * scene's whole kit would be uncallable from `panel-dag.ts` without a cast. What the rule actually reads
+ * is stated here instead: one React instance and the column box. Both kits satisfy that structurally, so
+ * ONE divider primitive serves both — which is the point of sharing it.
+ */
+export interface SurfaceRuleKit {
+  /** The host's React instance; the rule creates exactly ONE element through it. */
+  React: { createElement(type: unknown, props?: Record<string, unknown> | null, ...children: unknown[]): unknown }
+  /** The host's ui kit, of which the rule reads ONLY the column box it draws the border on. */
+  ui: { Box: unknown }
+}
+
+/**
  * A horizontal rule, in the host's own divider craft: a one-row box carrying ONLY its top border, with
  * an optional section title embedded in it (the host's `SidePanelColumn` draws its separator the same
  * way, and its frame titles go through `borderText`).
- * @param kit - the host kit.
+ * @param kit - the host kit, as {@link SurfaceRuleKit} narrows it.
  * @param key - the React key.
  * @param title - the section title; omitted draws a bare rule.
  * @param tone - the tone the rule and its title draw in.
  * @returns the host element.
  */
-export function surfaceRule(kit: SurfaceKit, key: string, title?: string, tone: DagTone = "dim"): unknown {
+export function surfaceRule(kit: SurfaceRuleKit, key: string, title?: string, tone: DagTone = "dim"): unknown {
   return kit.React.createElement(kit.ui.Box, {
     key,
     height: 1,
