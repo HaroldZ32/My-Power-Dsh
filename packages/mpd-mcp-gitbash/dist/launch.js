@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// packages/mpd-mcp-gitbash/src/launch.ts
+import { pathToFileURL } from "node:url";
+
 // packages/mpd-mcp-shared/dependency-entry.ts
 import { createRequire } from "node:module";
 import { existsSync, readFileSync } from "node:fs";
@@ -430,5 +433,5 @@ if (dependency === null) {
 } else {
   sink.write("[mpd-mcp-gitbash] starting " + spec.dependency + "@" + dependency.version + " (" + word + ") from " + dependency.entry);
   const entry = dependency.entry;
-  await import(entry);
+  await import(pathToFileURL(entry).href);
 }

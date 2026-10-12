@@ -1392,5 +1392,5 @@ if (dependency === null) {
   const root = resolveLogRoots()[0] ?? process.cwd();
   publishConfigPath(root, dependency.packageJson);
   const entry = dependency.entry;
-  await import(entry);
+  await import(pathToFileURL(entry).href);
 }

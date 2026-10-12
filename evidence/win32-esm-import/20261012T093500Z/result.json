@@ -1,0 +1,49 @@
+{
+  "wave": "fix/win32-esm-absolute-path-import (a third defect, found while answering the user's follow-up)",
+  "date": "2026-10-12",
+  "userReport": "ERR_UNSUPPORTED_ESM_URL_SCHEME: Only URLs with a scheme in: file, data, and node are supported by the default ESM loader. On Windows, absolute paths must be valid file:// URLs. Received protocol 'c:'",
+  "relatedToTheTwoEarlierFixes": false,
+  "whyNotMine": [
+    "My two commits touch only: packages/{mpd-config,mpd-roles}-plugin/src+dist, packages/mpd-dsh-adapter-plugin/src (type-only), four dsh-tui test files + one new test helper, scripts/mpd-tui-panels.ts, READMEs and evidence/**. None of them adds or changes a dynamic import.",
+    "The failing files were last changed by unrelated commits: `git log -2 -- packages/mpd-mcp-lsp packages/mpd-mcp-gitbash packages/mpd-mcp-astgrep packages/mpd-mcp-codegraph packages/mpd-better-sidebar-host` -> 44db0a0c `feat(mcp): restore the language-server bootstrap for ~40 languages`, c09e6f28 `feat(mcp): replace the last vendored MCP servers with declared npm dependencies`.",
+    "The defect is a Windows-vs-POSIX loader rule in a pre-existing production launcher; it reproduces against the PRISTINE tree (proved by `git stash`)."
+  ],
+  "rootCause": {
+    "site": "packages/mpd-mcp-lsp/src/launch.ts (dist launch.js:1395) — `await import(entry)`; the twin at packages/mpd-mcp-gitbash/src/launch.ts (dist launch.js:436) is identical.",
+    "why": "`resolveDependencyEntry` (packages/mpd-mcp-shared/dependency-entry.ts:155-156) answers an ABSOLUTE FILE PATH (`resolve(packageDir, manifest.bin)`). Node's ESM loader requires a `file://` URL on Windows: it parses the drive letter as a URL scheme and throws before a single MCP byte is exchanged. The two sibling launchers never hit this because their specifiers are RELATIVE (`mpd-mcp-astgrep`'s `./cli.js`, `mpd-mcp-codegraph`'s `./serve.js`), which resolve against the module URL.",
+    "impact": "The LSP MCP server (cclsp) was UNAVAILABLE on Windows; the host restarted the crashing child in a loop. Measured in .mpd/logs/mpd-mcp-lsp.log: six `[mpd-mcp-lsp] starting cclsp@0.7.0 from C:\\...` lines inside 35 s."
+  },
+  "reproductionBefore": {
+    "command": "node packages/mpd-mcp-lsp/dist/launch.js",
+    "observed": "exit code 1; stderr carried the user's exact stack: `Error [ERR_UNSUPPORTED_ESM_URL_SCHEME]: ... Received protocol 'c:'  at throwIfUnsupportedURLScheme (node:internal/modules/esm/load:193:11)`; the last log line was `starting cclsp@0.7.0 from C:\\MyDoc\\DshProj\\My-Power-Dsh\\node_modules\\.bun\\cclsp@0.7.0+5b6b5129650ecc67\\node_modules\\cclsp\\dist\\index.js`"
+  },
+  "fix": [
+    "packages/mpd-mcp-lsp/src/launch.ts: `await import(pathToFileURL(entry).href)` (`pathToFileURL` was already imported in this file).",
+    "packages/mpd-mcp-gitbash/src/launch.ts: same, plus the `import { pathToFileURL } from \"node:url\"` it was missing.",
+    "Both dists rebuilt with the pinned toolchain (bun 1.4.0) from the repo root."
+  ],
+  "reproductionAfter": {
+    "command": "node packages/mpd-mcp-lsp/dist/launch.js",
+    "observed": "STILL ALIVE after 8 s (a stdio MCP server waiting for input = healthy); stderr EMPTY; the log shows real work: `Preloading LSP server: node.exe .../typescript-language-server@4.4.1/.../cli.mjs --stdio`, then `Successfully preloaded LSP server for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts` / `LSP server preloading completed`."
+  },
+  "testEvidence": {
+    "arm": "packages/mpd-ext-plugin/test/mcp.test.ts :: `the client completes initialize -> initialized -> tools/list against the repo's own stdio MCP server` (it drives the REAL cclsp launcher through withRealLspServer and asserts restart_server / get_diagnostics / >=12 tools / protocol conformance)",
+    "pristine": "(fail) — 0 pass / 1 fail",
+    "withFix": "(pass) — 1 pass / 0 fail",
+    "method": "`bun test packages/mpd-ext-plugin/test/mcp.test.ts -t \"client completes initialize\"`, run twice around a `git stash push -u` / `git stash pop`"
+  },
+  "gates": [
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "ok: 31/31 targets fresh" },
+    { "command": "node scripts/verify-comment-coverage.ts", "exit": 0, "observed": "VERDICT: PASS" },
+    { "command": "bun run typecheck (tsgo --noEmit)", "exit": 0, "observed": "no diagnostics" },
+    { "command": "bun test packages (whole repo, with vs without the fix via git stash)", "exit": 1, "observed": "with fix 40 failure lines / pristine 42 (each failing arm prints twice => exactly ONE arm flipped, the MCP handshake arm above); NO arm regressed by this fix" }
+  ],
+  "sameClassSitesFoundNotYetFixed": [
+    "skills/dsh-qa/scripts/verify-law.ts:59,66,73,80 — `await import(join(QA_LIB, ...))` with absolute paths (node-run QA script; the AGENTS.md verificaton-law falsifier) => would throw the same error on Windows.",
+    "skills/dsh-qa/scripts/team-watchdog-boot.ts:759 — `await import(join(REPO, ...))`.",
+    "skills/dsh-qa/scripts/team-watchdog-notify.ts:512,550,645 — `await import(PATHS.<abs path>)`.",
+    "skills/dsh-qa/scripts/tui-spec-conformance.ts:420 — hand-built `\"file://\" + join(...)`, which on Windows yields an invalid `file://C:\\...` URL (the `pathToFileURL` contract is `file:///C:/...`).",
+    "scripts/mpd-bg.ts:155 — `await import(lib)`: needs a check whether `lib` is already a URL (its sibling at :312 correctly builds one with pathToFileURL)."
+  ],
+  "preExistingFailuresNote": "The whole-repo suite also fails on many arms that are unrelated to this fix and reproduce on the pristine tree (e.g. the POSIX-only `log-sink` descriptor-rebind and `probeExecutable`/root-writability arms in packages/mpd-mcp-shared, the S-b settings-feed windows, the .mpd-state-dependent boulder/C7 arms and a 20-37 s write-back timeout). They are NOT introduced by this wave."
+}

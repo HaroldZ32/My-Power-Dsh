@@ -22,6 +22,7 @@
 //
 // CAPABILITY DELTAS are stated in `packages/mpd-mcp-gitbash/README.md`: what the old server exposed,
 // which new tool covers it, and the two old tools that have no counterpart.
+import { pathToFileURL } from "node:url"
 import { resolveDependencyEntry } from "../../mpd-mcp-shared/dependency-entry.ts"
 import { installTerminalSilence } from "../../mpd-mcp-shared/log-sink.ts"
 import type { LogSink } from "../../mpd-mcp-shared/log-sink.ts"
@@ -83,5 +84,9 @@ if (dependency === null) {
   // third-party server into this launcher (measured on the ast-grep twin).
   /** The dependency's MCP server entry, resolved from the installed profile. */
   const entry: string = dependency.entry
-  await import(entry)
+  // A FILE URL, NOT THE BARE PATH (win32 defect, MEASURED 2026-10-12): `resolveDependencyEntry` answers
+  // an absolute PATH, and node's ESM loader parses a Windows drive letter as a URL scheme and dies with
+  // `ERR_UNSUPPORTED_ESM_URL_SCHEME … Received protocol 'c:'` before any MCP byte is exchanged — the
+  // same defect reproduced on the LSP twin (`node packages/mpd-mcp-lsp/dist/launch.js` → exit 1).
+  await import(pathToFileURL(entry).href)
 }

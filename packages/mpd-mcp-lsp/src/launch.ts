@@ -139,5 +139,14 @@ if (dependency === null) {
   // third-party server into this launcher (measured on the ast-grep twin).
   /** The dependency's MCP server entry, resolved from the installed profile. */
   const entry: string = dependency.entry
-  await import(entry)
+  // A FILE URL, NOT THE BARE PATH (win32 defect, MEASURED 2026-10-12). `resolveDependencyEntry` answers
+  // an absolute PATH, and node's ESM loader REFUSES a Windows path in `import()`: it parses the drive
+  // letter as a URL scheme and dies with `ERR_UNSUPPORTED_ESM_URL_SCHEME … Received protocol 'c:'`
+  // before a single MCP byte is exchanged. Measured on this machine: `node
+  // packages/mpd-mcp-lsp/dist/launch.js` exited 1 with that exact stack, and the row was restarted in a
+  // loop (six `starting cclsp@0.7.0 from C:\…` lines inside 35 s in `.mpd/logs/mpd-mcp-lsp.log`), so
+  // the LSP server was simply UNAVAILABLE on Windows. The two relative-specifier twins (ast-grep's
+  // `./cli.js`, codegraph's `./serve.js`) never needed this conversion; this one does, because its
+  // specifier is an absolute path.
+  await import(pathToFileURL(entry).href)
 }
