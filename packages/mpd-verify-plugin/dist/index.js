@@ -1872,7 +1872,9 @@ function hashDoc(workspace, path) {
   const digest = sha256File(path);
   if (digest === "")
     return;
-  const rel = path.startsWith(workspace + "/") ? path.slice(workspace.length + 1) : path;
+  const rootPosix = workspace.replace(/\\/g, "/").replace(/\/+$/, "");
+  const pathPosix = path.replace(/\\/g, "/");
+  const rel = rootPosix !== "" && pathPosix.startsWith(rootPosix + "/") ? pathPosix.slice(rootPosix.length + 1) : path;
   return { path: rel, sha256: digest };
 }
 function readLoops(workspace) {
@@ -2313,7 +2315,7 @@ function buildRecord(input, identity) {
 }
 
 // packages/mpd-verify-plugin/src/tools.ts
-import { join as join5 } from "node:path";
+import { isAbsolute as isAbsolute2, join as join5 } from "node:path";
 var DEFAULT_LOOP_TTL_MS = 24 * 60 * 60 * 1000;
 var DEFAULT_GATE_TIMEOUT_MS = 15 * 60 * 1000;
 var BOOT_MARKER_FILE = "boot.json";
@@ -2329,7 +2331,7 @@ function writeBootMarker(workspace, installedAt) {
   return writeJsonAtomic(join5(verifyRoot(workspace), BOOT_MARKER_FILE), { version: 1, installedAt });
 }
 function sourceDoc(workspace, path) {
-  return hashDoc(workspace, path.startsWith("/") ? path : join5(workspace, path));
+  return hashDoc(workspace, isAbsolute2(path) ? path : join5(workspace, path));
 }
 function registerVerifyTools(dsh, deps) {
   const definitions = [

@@ -295,11 +295,15 @@ describe("the mpd-verify row", () => {
     const captain = { session: { id: "captain-session", header: { cwd: workspace, agentPreset: "mpd" } } }
     expect(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: captain })).toBeUndefined()
     // THE MEASURED DEPLOYMENT (T-92): the user's own top-level session records `agentPreset: "cordis"`
-    // and depth 0, and the PRESET must not matter — this arm is the defect, asserted through the shipped
-    // install path. Its code write is still refused by rule 4 (no loop, no escape, no delegation).
+    // and depth 0. The ONE-GIT-WRITER rule is NOT preset-scoped, so that session may still commit — and
+    // the CAPTAIN'S WRITE RULE is scoped to the `mpd` preset, so it is NOT gated either: a user working
+    // in another preset must not be refused its own code writes by a contract that preset never asked
+    // for. (Before the preset scope landed, the write WAS refused here; that is the defect this pins.)
     const cordisCaptain = { session: { id: "user-session", header: { cwd: workspace, agentPreset: "cordis", delegationDepth: 0 } } }
     expect(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: cordisCaptain })).toBeUndefined()
-    expect(String(guard?.({ name: "write", arguments: { file_path: "packages/a/src/index.ts" }, agent: cordisCaptain }) ?? "")).toContain("verification law")
+    expect(guard?.({ name: "write", arguments: { file_path: "packages/a/src/index.ts" }, agent: cordisCaptain })).toBeUndefined()
+    // AND THE RULE STILL BITES AN `mpd` TOP-LEVEL SESSION: the scope narrowed, it did not disappear.
+    expect(String(guard?.({ name: "write", arguments: { file_path: "packages/a/src/index.ts" }, agent: captain }) ?? "")).toContain("verification law")
     // AND THE RULE STILL BITES A CHILD under that same preset: the classification is position, not name.
     const cordisChild = { session: { id: "child-session", header: { cwd: workspace, agentPreset: "cordis", delegationDepth: 1 } } }
     expect(String(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: cordisChild }) ?? "")).toContain("one-git-writer rule")

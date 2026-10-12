@@ -316,8 +316,21 @@ export function hashDoc(workspace: string, path: string): { path: string; sha256
   /** The digest, or `""` when the file is unreadable. */
   const digest = sha256File(path)
   if (digest === "") return undefined
+  // THE CONTAINMENT TEST IS SEPARATOR-AGNOSTIC (win32 defect, measured 2026-10-12). It compared the RAW
+  // path against `workspace + "/"`, so on win32 — where BOTH carry a backslash separator — the prefix
+  // never matched and a document INSIDE the workspace was stored with its absolute, machine-specific
+  // path (`C:\Users\...\.mpd\plans\wave.md`). The record's `basis.frozenContract.path` is the
+  // workspace-relative POSIX spelling, so on win32 the two halves of ONE record disagreed, and
+  // `packages/mpd-verify-plugin/test/row.test.ts` AC-D2 answered with the absolute form. Both sides are
+  // normalised to POSIX before the comparison, which is the spelling the ledger stores contract paths
+  // in (`normalizeContractPath`) — the same defect class the win32 waves fixed for the preset and MCP
+  // rows. Outside the workspace the caller's own spelling is returned unchanged, as before.
+  /** The workspace root in POSIX form, with any trailing separator trimmed. */
+  const rootPosix = workspace.replace(/\\/g, "/").replace(/\/+$/, "")
+  /** The document path in POSIX form. */
+  const pathPosix = path.replace(/\\/g, "/")
   /** The workspace-relative spelling when the document is inside the workspace. */
-  const rel = path.startsWith(workspace + "/") ? path.slice(workspace.length + 1) : path
+  const rel = rootPosix !== "" && pathPosix.startsWith(rootPosix + "/") ? pathPosix.slice(rootPosix.length + 1) : path
   return { path: rel, sha256: digest }
 }
 
