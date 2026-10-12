@@ -25,6 +25,7 @@
 import { describe, expect, test } from "bun:test"
 import { EventEmitter } from "node:events"
 import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
 import { legendLines } from "../src/graph"
@@ -248,7 +249,7 @@ const ROWS = 120
 /** The team projection the DAG page reads, a six-task chain with one failed and one running node. */
 function workflowFixture(): TeamWorkflow {
   return {
-    workspace: "/tmp/mpd-legend-mount",
+    workspace: join(tmpdir(), "mpd-legend-mount"),
     team: { id: "team-20261008020000", name: "legend-mount", phase: "active", staged: false, runnable: true, links: 0 },
     members: [],
     tasks: [1, 2, 3, 4, 5, 6].map((index) => ({
@@ -275,7 +276,7 @@ function collidingProblemsFixture(): WorkmateLibrary {
   // ONE ENTRY, because the page draws its problem list past the empty-state branch — an empty library
   // is a different page, and a fixture that took it would assert nothing about the problem rows.
   return {
-    root: "/tmp/home/.mpd/workmate",
+    root: join(tmpdir(), "home", ".mpd", "workmate"),
     archived: 0,
     problems: [`${shared}meta.json`, `${shared}note.md`],
     entries: [

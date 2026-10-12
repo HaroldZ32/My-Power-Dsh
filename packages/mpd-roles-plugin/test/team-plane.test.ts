@@ -47,7 +47,7 @@ import { installSessionGate } from "../src/session-gate.ts"
 import { installRosterSection, ROSTER_SECTION_NAME, rosterSectionText } from "../src/roster-section.ts"
 
 /** The sandbox workspace every fixture session reports as its cwd. */
-const WORKSPACE = "/tmp/mpd-team-plane-ws"
+const WORKSPACE = join(tmpdir(), "mpd-team-plane-ws")
 
 /** A qualifying mpd top-level session. */
 function mpdAgent(id: string = "lead-1", header: Record<string, unknown> = {}): {

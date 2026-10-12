@@ -10,6 +10,11 @@ the script's absolute path):
 import subprocess, sys
 site = subprocess.run(["bash", "scripts/ensure-py-deps.sh", sys.executable],
                       capture_output=True, text=True, check=True).stdout.strip()
+# Windows: run the PowerShell twin the same way, passing the KERNEL's interpreter as
+#   -PythonBin (`sys.executable`) — never `(Get-Command python).Source`, which can resolve a
+#   different install:
+#   site = subprocess.run(["pwsh", "scripts/ensure-py-deps.ps1", "-PythonBin", sys.executable],
+#                         capture_output=True, text=True, check=True).stdout.strip()
 sys.path.insert(0, site)
 import polars as pl
 ```

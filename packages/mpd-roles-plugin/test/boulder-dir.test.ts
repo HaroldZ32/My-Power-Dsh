@@ -9,11 +9,12 @@
 // default (or a consumer that forgets the shared normalization) reddens here instead of silently
 // making signal D unreachable again.
 import { describe, expect, test } from "bun:test"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { readBoulderGate, resolveBoulderDir, WORKSPACE_ROOT_SPELLINGS } from "../src/complexity-gate.ts"
 
 /** The session workspace every arm below reads from. */
-const WORKSPACE = "/tmp/mpd-boulder-dir-ws"
+const WORKSPACE = join(tmpdir(), "mpd-boulder-dir-ws")
 /** The ledger path the CONTRACT names, which is the only one signal D may read. */
 const CONTRACT_PATH = join(WORKSPACE, ".mpd", "boulder.json")
 

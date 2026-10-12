@@ -13,6 +13,8 @@ import { t } from "../src/i18n"
 //   * refusals return NO-OP disposers (renderers/shortcuts) exactly like the host,
 //     so a test can prove the plugin does not mistake one for a registration.
 import { describe, expect, test } from "bun:test"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import * as mod from "../src/index"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
@@ -1016,8 +1018,8 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
       {} as never,
       tui as never,
       log,
-      () => "/tmp/mpd-scenes",
-      () => "/tmp/mpd-home",
+      () => join(tmpdir(), "mpd-scenes"),
+      () => join(tmpdir(), "mpd-home"),
       () => [],
       undefined,
       undefined,

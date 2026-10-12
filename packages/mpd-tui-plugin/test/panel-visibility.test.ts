@@ -20,6 +20,7 @@ import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { EventEmitter } from "node:events"
 import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
 import { PANEL_KEEPER_LADDER_MS, createPanelEnableKeeper, probeHostPrefs, type TuiHostPrefsLike } from "../../mpd-tui-adapter-plugin/src/index.js"
@@ -1279,7 +1280,7 @@ describe("AC8b · MPD's own `⤢` control, drawn in each page's title row", () =
     /** How many times the page's own opener ran. */
     let opened = 0
     /** The page under test, over an empty shelf and wired as `registerWorkmatePanel` wires it. */
-    const component = createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: "/tmp/mpd-home/.mpd/workmate", problems: [] }), {
+    const component = createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: join(tmpdir(), "mpd-home", ".mpd", "workmate"), problems: [] }), {
       openFullscreen: () => { opened += 1; return true },
     }) as (props: unknown) => unknown
     /** The kit double. */
@@ -1484,7 +1485,7 @@ describe("AC8b · the control OCCUPIES CELLS under the host's real layout engine
       {
         label: "MPD workmate",
         title: WORKMATE_PANEL_TITLE,
-        component: createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: "/tmp/mpd-home/.mpd/workmate", problems: [] }), { openFullscreen: () => true }),
+        component: createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: join(tmpdir(), "mpd-home", ".mpd", "workmate"), problems: [] }), { openFullscreen: () => true }),
       },
     ]
     for (const columns of [28, 40]) {

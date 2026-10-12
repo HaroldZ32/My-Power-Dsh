@@ -1,0 +1,14 @@
+# Proves: the wave's .ps1 twin commands are documented in all five named doc surfaces (data-scientist SKILL + uv-setup/execution-surfaces/polars-lane references, programming SKILL).
+# command: grep -rn '\.ps1' skills/data-scientist/SKILL.md skills/data-scientist/references/uv-setup.md skills/data-scientist/references/execution-surfaces.md skills/data-scientist/references/polars-lane.md skills/programming/SKILL.md
+skills/data-scientist/SKILL.md:20:   `pwsh scripts/ensure-js-deps.ps1` on Windows; it prints the absolute import path for
+skills/data-scientist/SKILL.md:24:   `pwsh scripts/ensure-py-deps.ps1`), which installs them once into a user cache keyed to
+skills/data-scientist/SKILL.md:42:  (`pwsh scripts/ensure-py-deps.ps1` on Windows).
+skills/data-scientist/references/uv-setup.md:9:| macOS / Linux / WSL / Git Bash | `bash scripts/setup-uv.sh` # or: `pwsh scripts/setup-uv.ps1` |
+skills/data-scientist/references/uv-setup.md:10:| Windows (PowerShell) | `pwsh scripts/setup-uv.ps1` # or: `powershell -ExecutionPolicy Bypass -File scripts/setup-uv.ps1` |
+skills/data-scientist/references/uv-setup.md:35:powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+skills/data-scientist/references/execution-surfaces.md:12:# or: pwsh scripts/ensure-js-deps.ps1   # Windows; prints the same single import path
+skills/data-scientist/references/execution-surfaces.md:45:#   $site = & scripts/ensure-py-deps.ps1 (Get-Command python).Source
+skills/data-scientist/references/polars-lane.md:14:#   $site = & scripts/ensure-py-deps.ps1 (Get-Command python).Source
+skills/programming/SKILL.md:257:# or: pwsh scripts/rust/check-no-excuse-rules.ps1 <changed paths>
+skills/programming/SKILL.md:260:# or: pwsh scripts/go/check-no-excuse-rules.ps1 <changed paths>
+grep exit code: 0

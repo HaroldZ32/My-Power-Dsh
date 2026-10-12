@@ -1,0 +1,337 @@
+diff --git a/packages/mpd-comment-checker-plugin/test/comment-checker.test.ts b/packages/mpd-comment-checker-plugin/test/comment-checker.test.ts
+index a0e89687..abf6f81a 100644
+--- a/packages/mpd-comment-checker-plugin/test/comment-checker.test.ts
++++ b/packages/mpd-comment-checker-plugin/test/comment-checker.test.ts
+@@ -20,14 +20,14 @@ test.skipIf(SKIP)("binary resolves from toolchain", () => {
+ 
+ test.skipIf(SKIP)("comment file triggers detection (exit 2)", () => {
+   /** The detector's verdict for a file whose only content is a line comment. */
+-  const res = runCheck(BINARY!, hookInputFor("/tmp/a.js", "// hello comment\nlet x = 1\n"), 30000)
++  const res = runCheck(BINARY!, hookInputFor(join(tmpdir(), "a.js"), "// hello comment\nlet x = 1\n"), 30000)
+   expect(res.hasComments).toBe(true)
+   expect(res.message).toContain("COMMENT/DOCSTRING DETECTED")
+ })
+ 
+ test.skipIf(SKIP)("clean file passes (exit 0)", () => {
+   /** The detector's verdict for a file with no comments at all. */
+-  const res = runCheck(BINARY!, hookInputFor("/tmp/b.js", "let x = 1\nconst y = 2\n"), 30000)
++  const res = runCheck(BINARY!, hookInputFor(join(tmpdir(), "b.js"), "let x = 1\nconst y = 2\n"), 30000)
+   expect(res.hasComments).toBe(false)
+ })
+ 
+diff --git a/packages/mpd-roles-plugin/test/boulder-dir.test.ts b/packages/mpd-roles-plugin/test/boulder-dir.test.ts
+index df62ece2..d5c615e3 100644
+--- a/packages/mpd-roles-plugin/test/boulder-dir.test.ts
++++ b/packages/mpd-roles-plugin/test/boulder-dir.test.ts
+@@ -9,11 +9,12 @@
+ // default (or a consumer that forgets the shared normalization) reddens here instead of silently
+ // making signal D unreachable again.
+ import { describe, expect, test } from "bun:test"
++import { tmpdir } from "node:os"
+ import { join } from "node:path"
+ import { readBoulderGate, resolveBoulderDir, WORKSPACE_ROOT_SPELLINGS } from "../src/complexity-gate.ts"
+ 
+ /** The session workspace every arm below reads from. */
+-const WORKSPACE = "/tmp/mpd-boulder-dir-ws"
++const WORKSPACE = join(tmpdir(), "mpd-boulder-dir-ws")
+ /** The ledger path the CONTRACT names, which is the only one signal D may read. */
+ const CONTRACT_PATH = join(WORKSPACE, ".mpd", "boulder.json")
+ 
+diff --git a/packages/mpd-roles-plugin/test/team-plane.test.ts b/packages/mpd-roles-plugin/test/team-plane.test.ts
+index 0fd6bfb1..5a16c78e 100644
+--- a/packages/mpd-roles-plugin/test/team-plane.test.ts
++++ b/packages/mpd-roles-plugin/test/team-plane.test.ts
+@@ -47,7 +47,7 @@ import { installSessionGate } from "../src/session-gate.ts"
+ import { installRosterSection, ROSTER_SECTION_NAME, rosterSectionText } from "../src/roster-section.ts"
+ 
+ /** The sandbox workspace every fixture session reports as its cwd. */
+-const WORKSPACE = "/tmp/mpd-team-plane-ws"
++const WORKSPACE = join(tmpdir(), "mpd-team-plane-ws")
+ 
+ /** A qualifying mpd top-level session. */
+ function mpdAgent(id: string = "lead-1", header: Record<string, unknown> = {}): {
+diff --git a/packages/mpd-team-compact-plugin/test/compaction.test.ts b/packages/mpd-team-compact-plugin/test/compaction.test.ts
+index 1a8f91d7..9d819a27 100644
+--- a/packages/mpd-team-compact-plugin/test/compaction.test.ts
++++ b/packages/mpd-team-compact-plugin/test/compaction.test.ts
+@@ -598,7 +598,7 @@ test("t48 plugin: apply() registers both tools and subscribes to BOTH triggers",
+   const dsh: Partial<DshAdapter> = {
+     registerTool: (definition) => { registered.push(definition.name); return () => {} },
+     onEvent: (event) => { subscribed.push(event); return () => {} },
+-    workspaceRoot: () => "/tmp/none",
++    workspaceRoot: () => join(tmpdir(), "none"),
+   }
+   /** The cordis ctx `apply` receives; `logger` is a no-op and `on` only records. */
+   const ctx = { get: (key: string) => (key === "mpdDsh" ? dsh : undefined), logger: { warn: () => {}, info: () => {} }, on: (e: string) => { listeners.push(e) } }
+@@ -617,7 +617,7 @@ test("t48 TURN BOUNDARY: the serial-dispatch listener is non-bailing and non-thr
+   const dsh: Partial<DshAdapter> = {
+     registerTool: () => () => {},
+     onEvent: (event, handler) => { handlers.set(event, handler); return () => {} },
+-    workspaceRoot: () => "/tmp/none",
++    workspaceRoot: () => join(tmpdir(), "none"),
+     liveAgents: () => [{ id: "session-a" }],
+   }
+   /** The warning lines the row's logger produced (one hostile-payload report is expected). */
+@@ -631,7 +631,7 @@ test("t48 TURN BOUNDARY: the serial-dispatch listener is non-bailing and non-thr
+   // SERIAL dispatch: a returned value BAILS the chain and a returned promise is awaited, so the
+   // listener must answer `undefined` for EVERY payload — including a hostile one. Same rule the
+   // pre-step waterfall defect taught (AGENTS.md §12).
+-  expect(turnStopping({ agent: { session: { id: "not-a-member", header: { cwd: "/tmp/none" } } } })).toBeUndefined()
++  expect(turnStopping({ agent: { session: { id: "not-a-member", header: { cwd: join(tmpdir(), "none") } } } })).toBeUndefined()
+   expect(turnStopping({})).toBeUndefined()
+   expect(turnStopping({
+     /** A hostile payload whose `agent` read throws, so the listener must degrade, not bail. */
+@@ -656,7 +656,7 @@ test("t48 plugin: every registered tool declares an OBJECT-ROOTED parameters sch
+   const dsh: Partial<DshAdapter> = {
+     registerTool: (definition) => { registered.push(definition); return () => {} },
+     onEvent: () => () => {},
+-    workspaceRoot: () => "/tmp/none",
++    workspaceRoot: () => join(tmpdir(), "none"),
+   }
+   /** The cordis ctx `apply` receives; `logger` is a no-op and `on` records nothing. */
+   const ctx = { get: (key: string) => (key === "mpdDsh" ? dsh : undefined), logger: { warn: () => {}, info: () => {} }, on: () => () => {} }
+diff --git a/packages/mpd-tui-plugin/test/dashboard-key.test.ts b/packages/mpd-tui-plugin/test/dashboard-key.test.ts
+index c594400f..3e8bdaae 100644
+--- a/packages/mpd-tui-plugin/test/dashboard-key.test.ts
++++ b/packages/mpd-tui-plugin/test/dashboard-key.test.ts
+@@ -15,6 +15,8 @@
+ //     in one line, because a listener on that default's fresh emitter is a silent no-op.
+ import { describe, expect, test } from "bun:test"
+ import { EventEmitter } from "node:events"
++import { tmpdir } from "node:os"
++import { join } from "node:path"
+ import { createDashboardKeyComponent, DASHBOARD_KEY_MAX_ROWS, DASHBOARD_KEY_VIEW, interceptDashboardKey, readDashboardWorkflow, registerDashboardKey } from "../src/dashboard-key.js"
+ import type { DashboardKeyDeps, HostInputEmitter } from "../src/dashboard-key.js"
+ import type { Log } from "../src/log.js"
+@@ -53,7 +55,7 @@ function task(id: string): TeamTaskRow {
+ /** A team projection WITH a head and the given tasks — the takeover's positive case. */
+ function workflowWith(tasks: TeamTaskRow[]): TeamWorkflow {
+   return {
+-    workspace: "/tmp/mpd-dashboard-key",
++    workspace: join(tmpdir(), "mpd-dashboard-key"),
+     team: { id: "team-1", name: "lead", phase: "active", staged: false, runnable: true, links: 0 },
+     members: [],
+     tasks,
+@@ -67,7 +69,7 @@ function workflowWith(tasks: TeamTaskRow[]): TeamWorkflow {
+ /** A projection of a workspace that holds NO team: the empty workflow has no head. */
+ function workflowWithoutTeam(): TeamWorkflow {
+   return {
+-    workspace: "/tmp/mpd-dashboard-key",
++    workspace: join(tmpdir(), "mpd-dashboard-key"),
+     members: [],
+     tasks: [],
+     counts: { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 },
+@@ -539,19 +541,19 @@ describe("the team reader", () => {
+     const record = {
+       id: "team-1",
+       name: "lead",
+-      workspace: "/tmp/mpd-dashboard-key",
++      workspace: join(tmpdir(), "mpd-dashboard-key"),
+       createdAt: "2026-10-05T00:00:00.000Z",
+       tasks: [{ id: "R1", subject: "record task", status: "pending", kind: "work", owner: "member", blockedBy: [], attempt: 1, round: 1 }],
+       members: [],
+     }
+     /** The projection read from the RECORD, while the official readout would answer with another team. */
+-    const fromRecord = readDashboardWorkflow(() => "/tmp/mpd-dashboard-key", () => [], () => [], () => [record as never])
++    const fromRecord = readDashboardWorkflow(() => join(tmpdir(), "mpd-dashboard-key"), () => [], () => [], () => [record as never])
+     expect(fromRecord?.tasks.map((row) => row.id)).toEqual(["R1"])
+     /** The official fallback: no record at all, so the readout decides (and here it is empty). */
+-    const official = readDashboardWorkflow(() => "/tmp/mpd-dashboard-key", () => [], () => [], () => [])
++    const official = readDashboardWorkflow(() => join(tmpdir(), "mpd-dashboard-key"), () => [], () => [], () => [])
+     expect(official?.team).toBeUndefined()
+     /** A reader that throws is "no team", never a broken keypress. */
+-    const broken = readDashboardWorkflow(() => "/tmp/mpd-dashboard-key", () => [], undefined, () => {
++    const broken = readDashboardWorkflow(() => join(tmpdir(), "mpd-dashboard-key"), () => [], undefined, () => {
+       throw new Error("record read exploded")
+     })
+     expect(broken === undefined || broken.tasks.length === 0).toBe(true)
+diff --git a/packages/mpd-tui-plugin/test/panel-dag.test.ts b/packages/mpd-tui-plugin/test/panel-dag.test.ts
+index c9f17da6..4445b2da 100644
+--- a/packages/mpd-tui-plugin/test/panel-dag.test.ts
++++ b/packages/mpd-tui-plugin/test/panel-dag.test.ts
+@@ -113,7 +113,7 @@ function fanInTasks(): DagPanelTask[] {
+  */
+ function workflowFixture(): TeamWorkflow {
+   return {
+-    workspace: "/tmp/mpd-dag-panel-fixture",
++    workspace: join(tmpdir(), "mpd-dag-panel-fixture"),
+     team: { id: "team-20261007120000", name: "dag-port", phase: "active", staged: false, runnable: true, links: 2 },
+     members: [
+       { name: "Panel Engineer", role: "Senior Engineer", status: "running", done: 1, total: 2, progress: 50, unread: null },
+@@ -142,7 +142,7 @@ function workflowFixture(): TeamWorkflow {
+ /** One workmate library read with a single instance, for the populated arm. */
+ function libraryFixture(): WorkmateLibrary {
+   return {
+-    root: "/tmp/home/.mpd/workmate",
++    root: join(tmpdir(), "home", ".mpd", "workmate"),
+     archived: 1,
+     problems: [],
+     entries: [
+@@ -2210,7 +2210,7 @@ describe("the workmate page", () => {
+     /** The host double. */
+     const host = makeHost()
+     /** The page, over an empty library (the normal state before the first init). */
+-    const page = createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: "/tmp/home/.mpd/workmate", problems: [] })) as (props: unknown) => unknown
++    const page = createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: join(tmpdir(), "home", ".mpd", "workmate"), problems: [] })) as (props: unknown) => unknown
+     /** The rendered text. */
+     const text = kit.text(render(page, kit, host))
+     expect(text).toContain("no workmates yet")
+@@ -2247,7 +2247,7 @@ describe("the workmate page", () => {
+ 
+   test("the reader tolerates a missing library and never throws", () => {
+     /** A home whose library does not exist. */
+-    const missing = readWorkmateLibrary("/tmp/mpd-workmate-fixture-does-not-exist")
++    const missing = readWorkmateLibrary(join(tmpdir(), "mpd-workmate-fixture-does-not-exist"))
+     expect(missing.entries).toEqual([])
+     expect(missing.archived).toBe(0)
+     // The root is still reported, so the empty page can say WHERE it looked.
+diff --git a/packages/mpd-tui-plugin/test/panel-legend-mount.test.ts b/packages/mpd-tui-plugin/test/panel-legend-mount.test.ts
+index b244028b..cc8ee00d 100644
+--- a/packages/mpd-tui-plugin/test/panel-legend-mount.test.ts
++++ b/packages/mpd-tui-plugin/test/panel-legend-mount.test.ts
+@@ -25,6 +25,7 @@
+ import { describe, expect, test } from "bun:test"
+ import { EventEmitter } from "node:events"
+ import { createRequire } from "node:module"
++import { tmpdir } from "node:os"
+ import { dirname, join } from "node:path"
+ 
+ import { legendLines } from "../src/graph"
+@@ -248,7 +249,7 @@ const ROWS = 120
+ /** The team projection the DAG page reads, a six-task chain with one failed and one running node. */
+ function workflowFixture(): TeamWorkflow {
+   return {
+-    workspace: "/tmp/mpd-legend-mount",
++    workspace: join(tmpdir(), "mpd-legend-mount"),
+     team: { id: "team-20261008020000", name: "legend-mount", phase: "active", staged: false, runnable: true, links: 0 },
+     members: [],
+     tasks: [1, 2, 3, 4, 5, 6].map((index) => ({
+@@ -275,7 +276,7 @@ function collidingProblemsFixture(): WorkmateLibrary {
+   // ONE ENTRY, because the page draws its problem list past the empty-state branch — an empty library
+   // is a different page, and a fixture that took it would assert nothing about the problem rows.
+   return {
+-    root: "/tmp/home/.mpd/workmate",
++    root: join(tmpdir(), "home", ".mpd", "workmate"),
+     archived: 0,
+     problems: [`${shared}meta.json`, `${shared}note.md`],
+     entries: [
+diff --git a/packages/mpd-tui-plugin/test/panel-visibility.test.ts b/packages/mpd-tui-plugin/test/panel-visibility.test.ts
+index 8e175768..8f663779 100644
+--- a/packages/mpd-tui-plugin/test/panel-visibility.test.ts
++++ b/packages/mpd-tui-plugin/test/panel-visibility.test.ts
+@@ -20,6 +20,7 @@ import { describe, expect, test } from "bun:test"
+ import { readFileSync } from "node:fs"
+ import { EventEmitter } from "node:events"
+ import { createRequire } from "node:module"
++import { tmpdir } from "node:os"
+ import { dirname, join } from "node:path"
+ 
+ import { PANEL_KEEPER_LADDER_MS, createPanelEnableKeeper, probeHostPrefs, type TuiHostPrefsLike } from "../../mpd-tui-adapter-plugin/src/index.js"
+@@ -1279,7 +1280,7 @@ describe("AC8b · MPD's own `⤢` control, drawn in each page's title row", () =
+     /** How many times the page's own opener ran. */
+     let opened = 0
+     /** The page under test, over an empty shelf and wired as `registerWorkmatePanel` wires it. */
+-    const component = createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: "/tmp/mpd-home/.mpd/workmate", problems: [] }), {
++    const component = createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: join(tmpdir(), "mpd-home", ".mpd", "workmate"), problems: [] }), {
+       openFullscreen: () => { opened += 1; return true },
+     }) as (props: unknown) => unknown
+     /** The kit double. */
+@@ -1484,7 +1485,7 @@ describe("AC8b · the control OCCUPIES CELLS under the host's real layout engine
+       {
+         label: "MPD workmate",
+         title: WORKMATE_PANEL_TITLE,
+-        component: createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: "/tmp/mpd-home/.mpd/workmate", problems: [] }), { openFullscreen: () => true }),
++        component: createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: join(tmpdir(), "mpd-home", ".mpd", "workmate"), problems: [] }), { openFullscreen: () => true }),
+       },
+     ]
+     for (const columns of [28, 40]) {
+diff --git a/packages/mpd-tui-plugin/test/panel.test.ts b/packages/mpd-tui-plugin/test/panel.test.ts
+index 62513bc1..ff9908ed 100644
+--- a/packages/mpd-tui-plugin/test/panel.test.ts
++++ b/packages/mpd-tui-plugin/test/panel.test.ts
+@@ -19,6 +19,8 @@
+ // by position, effects queued, and a row-aware flattening. It is carried verbatim rather than
+ // re-invented so the two suites agree on what "one drawn row" means.
+ import { describe, expect, test } from "bun:test"
++import { tmpdir } from "node:os"
++import { join } from "node:path"
+ import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
+ import { createLog } from "../src/log"
+ import { DAG_CHARS, DAG_CHROME, DAG_TONE_THEME } from "../src/dag-theme"
+@@ -56,7 +58,7 @@ const DONE_ROW = {
+  */
+ function workflowFixture(): TeamWorkflow {
+   return {
+-    workspace: "/tmp/mpd-panel-fixture",
++    workspace: join(tmpdir(), "mpd-panel-fixture"),
+     team: { id: "team-20261006152009", name: "wave-3", phase: "active", staged: false, runnable: true, links: 1 },
+     members: [{ name: "Panel Engineer", role: "Senior Engineer", status: "running", done: 1, total: 2, progress: 50, unread: null }],
+     tasks: [
+diff --git a/packages/mpd-tui-plugin/test/plugin.test.ts b/packages/mpd-tui-plugin/test/plugin.test.ts
+index 37d97d00..43e0acef 100644
+--- a/packages/mpd-tui-plugin/test/plugin.test.ts
++++ b/packages/mpd-tui-plugin/test/plugin.test.ts
+@@ -13,6 +13,8 @@ import { t } from "../src/i18n"
+ //   * refusals return NO-OP disposers (renderers/shortcuts) exactly like the host,
+ //     so a test can prove the plugin does not mistake one for a registration.
+ import { describe, expect, test } from "bun:test"
++import { tmpdir } from "node:os"
++import { join } from "node:path"
+ import * as mod from "../src/index"
+ import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
+ import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
+@@ -1016,8 +1018,8 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
+       {} as never,
+       tui as never,
+       log,
+-      () => "/tmp/mpd-scenes",
+-      () => "/tmp/mpd-home",
++      () => join(tmpdir(), "mpd-scenes"),
++      () => join(tmpdir(), "mpd-home"),
+       () => [],
+       undefined,
+       undefined,
+diff --git a/packages/mpd-tui-plugin/test/session-scope-and-push.test.ts b/packages/mpd-tui-plugin/test/session-scope-and-push.test.ts
+index ae27e044..41b3643f 100644
+--- a/packages/mpd-tui-plugin/test/session-scope-and-push.test.ts
++++ b/packages/mpd-tui-plugin/test/session-scope-and-push.test.ts
+@@ -23,6 +23,7 @@
+ import { describe, expect, test } from "bun:test"
+ import { EventEmitter } from "node:events"
+ import { createRequire } from "node:module"
++import { tmpdir } from "node:os"
+ import { dirname, join } from "node:path"
+ 
+ import { createDagPanelComponent } from "../src/panel-dag"
+@@ -42,8 +43,8 @@ import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
+ /** The frozen instant every fixture in this file is stamped with, so no arm depends on the clock. */
+ const NOW = "2026-10-08T08:00:00.000Z"
+ 
+-/** The workspace every arm scopes to. Never a real path: nothing here touches the filesystem. */
+-const WORKSPACE = "/tmp/mpd-session-scope"
++/** The workspace every arm scopes to. A platform temp path, never dereferenced: nothing here touches the filesystem. */
++const WORKSPACE = join(tmpdir(), "mpd-session-scope")
+ 
+ /**
+  * One mpd team record bound to ONE session.
+diff --git a/packages/mpd-tui-plugin/test/subagent-scene.test.ts b/packages/mpd-tui-plugin/test/subagent-scene.test.ts
+index b0c4b249..9ea26080 100644
+--- a/packages/mpd-tui-plugin/test/subagent-scene.test.ts
++++ b/packages/mpd-tui-plugin/test/subagent-scene.test.ts
+@@ -15,6 +15,7 @@
+ // `team-record-source.test.ts` own the real `.mpd/team` reads.
+ import { describe, expect, test } from "bun:test"
+ import { readFileSync } from "node:fs"
++import { tmpdir } from "node:os"
+ import { join } from "node:path"
+ import {
+   createSubagentSceneComponent,
+@@ -91,7 +92,7 @@ const LIVE_DETAIL_ROW = {
+  */
+ function workflowFixture(): TeamWorkflow {
+   return {
+-    workspace: "/tmp/mpd-merged-fixture",
++    workspace: join(tmpdir(), "mpd-merged-fixture"),
+     team: { id: "team-20261002152009", name: "wave-2", phase: "active", staged: false, runnable: true, links: 1 },
+     members: [{ name: "TuiAdapter Engineer", role: "Senior Engineer", status: "running", done: 1, total: 2, progress: 50, unread: null }],
+     tasks: [

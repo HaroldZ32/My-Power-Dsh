@@ -23,6 +23,7 @@
 import { describe, expect, test } from "bun:test"
 import { EventEmitter } from "node:events"
 import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
 import { createDagPanelComponent } from "../src/panel-dag"
@@ -42,8 +43,8 @@ import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 /** The frozen instant every fixture in this file is stamped with, so no arm depends on the clock. */
 const NOW = "2026-10-08T08:00:00.000Z"
 
-/** The workspace every arm scopes to. Never a real path: nothing here touches the filesystem. */
-const WORKSPACE = "/tmp/mpd-session-scope"
+/** The workspace every arm scopes to. A platform temp path, never dereferenced: nothing here touches the filesystem. */
+const WORKSPACE = join(tmpdir(), "mpd-session-scope")
 
 /**
  * One mpd team record bound to ONE session.

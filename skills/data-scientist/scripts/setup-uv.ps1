@@ -1,3 +1,23 @@
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+  Install or upgrade uv on Windows.
+
+.DESCRIPTION
+  PowerShell twin of scripts/setup-uv.sh. Upgrades an existing uv (uv self update, then
+  winget), or installs it through the official installer with a winget fallback, makes
+  %USERPROFILE%\.local\bin resolvable for this session, and verifies with `uv --version`.
+
+  The bash twin refuses to run under Git Bash / MSYS / Cygwin and points here instead; on
+  macOS and Linux use `bash scripts/setup-uv.sh`.
+
+.EXAMPLE
+  powershell -ExecutionPolicy Bypass -File scripts/setup-uv.ps1
+
+.NOTES
+  Exit codes: 0 = uv is on PATH, 1 = uv could not be installed or found.
+#>
+
 [CmdletBinding()]
 param()
 Set-StrictMode -Version Latest
