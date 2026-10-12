@@ -36,7 +36,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rea
 import { homedir, tmpdir } from "node:os"
 import { createServer } from "node:net"
 import { dirname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { randomUUID } from "node:crypto"
 import { decodeSessionLog } from "./lib/session-evidence.ts"
 import { exitOnRefusal, refuseOverwrite } from "./lib/immutable-output.ts"
@@ -754,9 +754,12 @@ export async function selfTest(): Promise<boolean> {
   // the same implementation at `packages/mpd-schemastery/harness/cordis`. The control is not
   // disabled — it drives a real cordis `Context`, which is what makes the shape claim falsifiable.
   try {
-    // The RELOCATED cordis lib, loaded by ABSOLUTE PATH. The cast is unavoidable: the specifier
-    // is a runtime path static analysis cannot resolve, so its surface is asserted here instead.
-    const cordis = await import(join(REPO, "packages/mpd-schemastery/harness/cordis/lib/index.ts")) as CordisModule
+    // The RELOCATED cordis lib, loaded as a FILE URL. The cast is unavoidable: the specifier
+    // is a runtime value static analysis cannot resolve, so its surface is asserted here instead.
+    // `pathToFileURL` and NOT the bare path (win32 defect, MEASURED 2026-10-12): node's ESM loader
+    // parses an absolute Windows path's drive letter as a URL scheme and throws
+    // `ERR_UNSUPPORTED_ESM_URL_SCHEME … Received protocol 'c:'`.
+    const cordis = await import(pathToFileURL(join(REPO, "packages/mpd-schemastery/harness/cordis/lib/index.ts")).href) as CordisModule
     // The fallback decision a composed waterfall must produce when no listener vetoes.
     const FALLBACK = { kind: "enter", messages: ["claimed-user-message"] }
     /**
