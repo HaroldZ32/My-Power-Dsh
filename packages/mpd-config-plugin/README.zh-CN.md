@@ -50,7 +50,14 @@ Plan C / C7 —— 极简的 `mpd.jsonc` 运行时配置层。
 ## 服务 / 工具
 
 - 为其他 mpd 插件提供 `mpdConfig` 服务（`inject: ["mpdConfig"]`）：
-  `get(key?)`、`reload()`、`states()`。
+  `get(key?)`、`reload()`、`states()`、`teamModelRouteOf(member)`。
+- `teamModelRouteOf(member)` 是让**已保存**的 `teamModels` 槽位真正生效的那次读取：
+  它按成员解析其槽位（成员表来自两个设置入口共用的唯一声明），在物化默认值之上解析，
+  返回 `{ provider, model, reasoningEffort? }`；对该成员未被槽位路由的情况返回
+  `undefined`；当被槽位路由的成员其槽位缺少 provider 或 model 时**抛错**并点名成员与槽位。
+  花名册的一次性路径（`mpd_role_spawn`、`mpd_roles_list`、workmate 库与
+  `mpd_modelchain_resolve`）都经此服务读取，因此保存的槽位无需第二条跨包 import
+  即可抵达它们。
 - `mpd_config_get` / `mpd_config_reload` 工具。
 
 ## `/settings` 打通（回写）

@@ -9,7 +9,7 @@ import { existsSync, readFileSync, watch, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { rowLogLine, DSH_SEAM_TOOLS, dshSeamInject, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
-import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_DEFAULTS } from "./settings-schema"
+import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOT_DEFAULTS, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_GROUPS } from "./settings-schema"
 import { markVolatile } from "./settings-schema"
 import z from "../../mpd-schemastery"
 import {
@@ -256,6 +256,77 @@ export function withTeamModelsDefaults(config: any): any {
     teamModels[slot] = { ...TEAM_MODEL_SLOT_DEFAULTS[slot], ...(isPlainObject(declared[slot]) ? declared[slot] : {}) }
   }
   return { ...raw, teamModels }
+}
+
+/**
+ * The `teamModels` slot that routes one roster member, from the slots' OWN membership declaration.
+ *
+ * The membership is declared ONCE (`TEAM_MODEL_SLOT_GROUPS`) and shared by both settings front doors,
+ * the roster provider and this read, so the member a slot drives cannot drift between the surface that
+ * shows it and the surface that routes it. Matching is case- and separator-insensitive on the member's
+ * functional NAME, which is the vocabulary the roster, the tool schemas and the settings card all use.
+ *
+ * @param member - the roster member's functional name, as a tool argument spells it.
+ * @returns the slot id that routes it, or `undefined` when the roster does not slot-route that member.
+ */
+export function teamModelSlotOfMember(member: string): string | undefined {
+  /** The member name collapsed to its letters and digits, the same key the settings front doors use. */
+  const key = String(member ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "")
+  if (key === "") return undefined
+  for (const slot of TEAM_MODEL_SLOTS) {
+    if (TEAM_MODEL_SLOT_GROUPS[slot].members.some((name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "") === key)) return slot
+  }
+  return undefined
+}
+
+/** One member's resolved `teamModels` route: the provider, the model and the optional effort keyword. */
+export interface TeamModelRoute {
+  /** Provider id the member must run on, e.g. `deepseek-official` or a gateway id. */
+  readonly provider: string
+  /** Model id that provider must offer for this member. */
+  readonly model: string
+  /** The effort keyword the slot declares; ABSENT means the slot states none and no effort may be invented. */
+  readonly reasoningEffort?: string
+}
+
+/**
+ * The route one roster member is CONFIGURED to run on — the read that makes a saved slot take effect.
+ *
+ * WHY THIS IS A SERVICE METHOD. The four consumers of a roster route (the one-shot `mpd_role_spawn`,
+ * `mpd_roles_list`, the workmate library's base instance and `mpd_modelchain_resolve`) live in OTHER
+ * packages, and a cross-package relative import would be a NEW entry in the frozen coupling inventory
+ * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`, which may only
+ * shrink). They already resolve the `mpdConfig` service at runtime, so the ONE authoritative read of
+ * the slots belongs here, beside the declaration and the resolution it uses.
+ *
+ * The slots are read MATERIALISED over their schema defaults ({@link withTeamModelsDefaults}), which
+ * is what makes an unconfigured workspace behave exactly as the documented pre-slot default: a member
+ * a slot routes is routed by that slot, defaults included, never by a second copy of the route.
+ *
+ * @param member - the roster member's functional name.
+ * @param config - the resolved config to read; the caller passes the live one so the value is never cached.
+ * @returns the configured route, or `undefined` when the roster does not slot-route that member.
+ * @throws when the member IS slot-routed but its slot carries no provider or no model — the registered
+ *   contract every routing path follows: fail LOUDLY naming the member and the slot, never substitute.
+ */
+export function teamModelRouteOfMember(member: string, config: unknown): TeamModelRoute | undefined {
+  /** The slot that routes this member, or none. */
+  const slot = teamModelSlotOfMember(member)
+  if (slot === undefined) return undefined
+  /** The materialised slot block for this member's slot. */
+  const value = (withTeamModelsDefaults(config) as { teamModels?: Record<string, unknown> }).teamModels?.[slot] as Record<string, unknown> | undefined
+  /** The slot's provider id, trimmed; an empty string counts as unset, not as a route. */
+  const provider = typeof value?.provider === "string" ? value.provider.trim() : ""
+  /** The slot's model id, trimmed; an empty string counts as unset, not as a route. */
+  const model = typeof value?.model === "string" ? value.model.trim() : ""
+  /** The slot's optional effort keyword, trimmed; an empty string means the slot states no effort. */
+  const effort = typeof value?.reasoningEffort === "string" ? value.reasoningEffort.trim() : ""
+  if (provider === "" || model === "") {
+    throw new Error(
+      `mpd-config: ${member} is routed by ${slot}, but that slot is incomplete (provider=${provider === "" ? "unset" : provider}, model=${model === "" ? "unset" : model})`,
+    )
+  }
+  return { provider, model, ...(effort === "" ? {} : { reasoningEffort: effort }) }
 }
 
 /**
@@ -825,6 +896,17 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (key === undefined) return state.config
       return key.split(".").reduce((acc: any, part: string) => (acc == null ? undefined : acc[part]), withTeamModelsDefaults(state.config))
     },
+    /**
+     * The configured `teamModels` route of one roster member, resolved PER CALL from the live state.
+     *
+     * This is the read a routing consumer (the roster's one-shot spawns, the workmate library, the
+     * model-chain resolver) calls so that a saved slot actually takes effect; see
+     * {@link teamModelRouteOfMember} for why it lives on the service rather than in an import.
+     * @param member - the roster member's functional name.
+     * @returns the configured route, or `undefined` when the roster does not slot-route that member.
+     * @throws when the member is slot-routed and its slot is incomplete.
+     */
+    teamModelRouteOf: (member: string): TeamModelRoute | undefined => teamModelRouteOfMember(member, state.config),
     reload,
     states: () => ({
       files: state.files,

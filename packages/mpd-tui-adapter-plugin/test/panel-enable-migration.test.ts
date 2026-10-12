@@ -12,7 +12,7 @@
 // `probeHostPrefs` for the contact, `stalePanelDefaultResidue` / `mergePanelEnableIds` for the pure
 // decision, and `createPanelEnableKeeper` for both repair paths (the change feed and the ladder).
 import { describe, expect, test } from "bun:test"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -163,10 +163,30 @@ function installedHostRoot(): string {
   /** The launcher's path on `PATH`, or null when the host is not installed at all. */
   const launcher = Bun.which("dsh-tui")
   if (launcher === null) throw new Error("dsh-tui is not on PATH: the live host-default arm cannot be vacuous")
-  /** The launcher's real path, with the symlink the package manager installs behind it resolved. */
-  const real = Bun.spawnSync(["readlink", "-f", launcher]).stdout.toString().trim()
-  // `<root>/bin/dsh-tui.js` -> `<root>`: two directories up, the same shape every lane resolves.
-  return dirname(dirname(real))
+  // PORTABLE resolution (win32 shim vs POSIX symlink). The `dirname(dirname(readlink -f))` guess this
+  // replaced answered `%APPDATA%\Roaming` on win32 — MEASURED 2026-10-12: the whole file died with
+  // `Cannot find module '...\Roaming\lib\types\tuiDisplayPrefs.js'`, so this live arm could not run
+  // there at all. Each candidate is VALIDATED by the host files it must carry.
+  /** Every candidate root, in probe order: the symlink target first, then the upward walk. */
+  const candidates: string[] = []
+  try {
+    /** The launcher's real path, or an empty string when this platform cannot resolve one. */
+    const real = Bun.spawnSync(["readlink", "-f", launcher]).stdout.toString().trim()
+    if (real !== "") candidates.push(dirname(dirname(real)))
+  } catch {
+    // No `readlink` here: the upward walk below is the remaining resolution.
+  }
+  /** The directory this walk is at, moved one level up per iteration. */
+  let dir = dirname(launcher)
+  for (let level = 0; level < 8; level += 1) {
+    candidates.push(join(dir, "node_modules", "@deepseek-harness-tui", "dsh-tui"))
+    /** The parent directory; equal to `dir` at the filesystem root, which ends the walk. */
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  for (const candidate of candidates) if (existsSync(join(candidate, "lib", "types", "tuiDisplayPrefs.js"))) return candidate
+  throw new Error(`dsh-tui launcher ${launcher}: no installed host package found (tried ${candidates.join(", ")})`)
 }
 
 describe("T1 · the stale-default predicate, as a pure decision", () => {

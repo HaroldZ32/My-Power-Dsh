@@ -1,0 +1,108 @@
+# Raw observed output — fix/team-models-routing + win32-sidebar-lane (2026-10-12, win32)
+
+## D1 BEFORE the fix (the Windows defect, reproduced)
+$ .toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin/test/panel-visibility.test.ts
+bun test v1.4.0 (34cbb9a40)
+packages\mpd-tui-plugin\test\panel-visibility.test.ts:
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module 'C:\Users\zhao.yinan\AppData\Roaming\lib\types\tuiDisplayPrefs.js' from 'C:\MyDoc\DshProj\My-Power-Dsh\packages\mpd-tui-plugin\test\panel-visibility.test.ts'
+-------------------------------
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [3.68s]
+[exit code: 1]
+
+## D1 AFTER the fix
+$ .toolchain/node_modules/.bin/bun test packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts packages/mpd-tui-plugin/test/panel-visibility.test.ts
+(pass) T1 · the host's default is READ from the host module, never hardcoded > against the INSTALLED host: the migration target is the host's own default, in its own order [539.26ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the adapter DOES append a registered id to the CSV — so the mechanism exists and can be undone [2.06ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the host REWRITES the CSV from configuration, which is how a registered panel disappears [0.99ms]
+(pass) R13 · the width band in which the panel cannot be seen at all > a sidebar splits only at CHAT_MIN + PANEL_MIN + DIVIDER, and no lower [0.14ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > the host's OWN append does NOT stand the keeper down, and the mirror's rewrite IS repaired [0.64ms]
+ 66 pass
+ 0 fail
+ 314 expect() calls
+Ran 66 tests across 2 files. [9.43s]
+
+## D1 production probe on win32 (the prefs machinery works)
+$ node %TEMP%/mpd-invest/probe-prefs.mjs
+probe.root=C:\Users\zhao.yinan\.dsh\profiles\dsh-tui\node_modules\@deepseek-harness-tui\dsh-tui
+probe.defaultIds=todo,jobs,agents,info,trajectory,workspace,btw,companion
+live CSV = "todo,jobs,agents,info,trajectory,workspace,btw,companion"
+has feed = function
+apply -> "todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team"
+
+## D2 the save DID persist (live profiles)
+~/.dsh/profiles/dsh-tui/cordis.patch.yml
+- id: mpd-config
+  name: "@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js"
+  config:
+    teamModels:
+      slot1:
+        provider: company-api
+        model: deepseek-flash
+        reasoningEffort: max
+      ... (slot2/slot3/slot4 alike)
+
+~/.dsh/profiles/desktop/cordis.patch.yml
+    teamModels:
+      slot1:
+        provider: companyapi
+        model: deepseek-flash
+
+## D2 the one-shot spawn still used the STATIC route (child session 8281f350-8cc0-4e32-a07f-6a354f46b7bf)
+### subagent/descriptor :: {"version":3,"mode":"one-shot","provider":"spawn","label":"Deep Worker"}
+### request/context :: {"provider":"deepseek-official","model":"deepseek-v4-flash","contextWindow":1000000}
+### assistant/attempt :: {"turn":1,"step":1,"stream":[{"type":"chunk","time":1791794904221,"chunk":{"type":"finish","reason":{"kind":"error","failure":{"message":"llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment","code":"MISSING_CREDENTIAL"}}}}]}
+### turn/end :: {"turn":1,"reason":{"kind":"error","error":{"message":"... MISSING_CREDENTIAL"}}}
+(tool result) role Deep Worker (complete) summary: (empty)
+
+## D2 AFTER the fix — the new arms
+$ .toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin/test/team-models-routing.test.ts
+(pass) the slot membership is the ONE declaration the settings front doors already share [0.23ms]
+(pass) the config read resolves a configured slot over its schema defaults [0.24ms]
+(pass) a saved slot route BECOMES the roster's route for the member it drives [24.88ms]
+(pass) mpd_role_spawn runs the member on the configured provider, model AND effort [9.31ms]
+(pass) NEGATIVE CONTROL: with NO config service mounted the static roster chain stands [13.61ms]
+ 5 pass
+ 0 fail
+ 20 expect() calls
+Ran 5 tests across 1 file. [3.02s]
+
+## Standing gates
+$ node scripts/verify-comment-coverage.ts
+scanned 389 TypeScript file(s) of 389 in the source set; inspected 34293 declaration(s)
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+
+$ bun run typecheck
+$ tsgo --noEmit
+typecheck-exit=0
+
+$ node scripts/verify-dist-fresh.ts
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 12026ms
+exit=0
+
+$ node scripts/verify-rows-parity.ts
+[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer
+exit=0
+
+$ node scripts/verify-docs-parity.ts
+[verify-docs-parity] root=C:\MyDoc\DshProj\My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS
+exit=0
+
+$ bun test packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts packages/mpd-dsh-adapter-plugin/test/no-direct-tui-access.test.ts
+ 2 pass
+ 0 fail
+
+## Pre-existing failures (identical on the PRISTINE tree via git stash push -u / pop)
+$ bun test packages/mpd-roles-plugin/test/team-plane.test.ts   # WITH the wave
+ 46 pass / 5 fail
+$ ... same file, PRISTINE tree
+ 46 pass / 5 fail
+$ bun test packages/mpd-tui-plugin/test/panel-dag.test.ts      # WITH the wave
+ 64 pass / 1 fail
+$ ... same file, PRISTINE tree
+ 64 pass / 1 fail

@@ -24,7 +24,8 @@ import { describe, expect, test } from "bun:test"
 import { EventEmitter } from "node:events"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { join } from "node:path"
+import { installedHostRoot } from "./lib/host-root"
 
 import { createDagPanelComponent } from "../src/panel-dag"
 import { createSubagentSceneComponent } from "../src/subagent-scene"
@@ -170,9 +171,9 @@ function hostRoot(): string {
   /** The launcher's path on `PATH`, or null when the host is not installed at all. */
   const launcher = Bun.which("dsh-tui")
   if (launcher === null) throw new Error("dsh-tui is not on PATH: the mounted arms need the real host")
-  /** The launcher's real path, with the package manager's symlink resolved. */
-  const real = Bun.spawnSync(["readlink", "-f", launcher]).stdout.toString().trim()
-  return dirname(dirname(real))
+  // PORTABLE resolution (win32 shim vs POSIX symlink): the `dirname(dirname(readlink -f))` guess this
+  // replaced answered `%APPDATA%\Roaming` on win32; see `./lib/host-root` for that measured defect.
+  return installedHostRoot(launcher)
 }
 
 /** The installed host package root, read once for every arm below. */

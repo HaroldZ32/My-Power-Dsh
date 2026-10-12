@@ -3212,17 +3212,42 @@ function apply(ctx, config = {}) {
     }
     return [...outcome.applied];
   };
+  const teamModelRoute = (member) => {
+    const live = (() => {
+      try {
+        return ctx.get?.(CONFIG_SERVICE, false);
+      } catch {
+        return;
+      }
+    })();
+    if (typeof live?.teamModelRouteOf !== "function")
+      return;
+    const value = live.teamModelRouteOf(member);
+    if (value === undefined || value === null || typeof value !== "object")
+      return;
+    return {
+      provider: String(value.provider ?? ""),
+      model: String(value.model ?? ""),
+      ...typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}
+    };
+  };
   const roleSurface = (exec) => {
-    const base = ROLES.map((r) => ({
-      id: r.id,
-      name: r.name,
-      description: r.description,
-      readonly: r.readonly,
-      chain: r.chain.map((c) => ({ ...c })),
-      persona: readPersona(config, r),
-      personaFile: personaPath(config, r),
-      extension: null
-    }));
+    const base = ROLES.map((r) => {
+      const chain = r.chain.map((c) => ({ ...c }));
+      const route = teamModelRoute(r.name);
+      if (route !== undefined)
+        chain.splice(0, chain.length, { provider: route.provider, model: route.model });
+      return {
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        readonly: r.readonly,
+        chain,
+        persona: readPersona(config, r),
+        personaFile: personaPath(config, r),
+        extension: null
+      };
+    });
     const contributed = extensionRoles(ctx, exec, (line) => warnOnce("lookup:" + line, line));
     for (const refusal of contributed.refused) {
       warnOnce("refused:" + refusal.extension + ":" + refusal.name, 'extension role refused: "' + refusal.name + '" (' + refusal.extension + ") — " + refusal.reason);
@@ -3290,8 +3315,9 @@ evidence:
       if (!task)
         throw new Error("mpd_role_spawn: task required");
       const persona = spec.persona;
-      const provider = spec.chain[0]?.provider ?? "deepseek-official";
-      const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : spec.chain[0]?.model;
+      const slotRoute = teamModelRoute(spec.name);
+      const provider = slotRoute?.provider ?? spec.chain[0]?.provider ?? "deepseek-official";
+      const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : slotRoute?.model ?? spec.chain[0]?.model;
       const prompt = persona + `
 
 Task: ` + task + (args?.context ? `
@@ -3309,6 +3335,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
+        ...slotRoute?.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: slotRoute.reasoningEffort } },
         ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
       });
       const st = result.structured ?? {};
