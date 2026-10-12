@@ -667,7 +667,15 @@ function selfTest(): void {
   const launched = "[mpd-tui-adapter] host contact bound: " + join(profileDir, "node_modules", "@deepseek-harness-tui", "dsh-tui") + " (lib/types/ui.js)"
   check(hostContactVerdict(launched, profileDir).ok, "the launched profile copy must satisfy the contact verdict")
   check(!hostContactVerdict(undefined, profileDir).ok, "a missing contact line must fail the contact verdict")
-  check(!hostContactVerdict(launched.replace("/profiles/dsh-tui", "/profiles/other"), profileDir).ok, "a sibling install must fail the contact verdict")
+  // The sibling is built with THE SEPARATOR THE LAUNCHED PATH ITSELF USES (win32 defect, MEASURED
+  // 2026-10-12): `join` above emits `\` on win32, so a literal "/profiles/dsh-tui" replacement matched
+  // NOTHING and the "sibling" was the launched copy — the arm then judged the real install and failed
+  // on a CORRECT verdict.
+  /** The separator the launched path itself uses. */
+  const pathSep = launched.includes("\\") ? "\\" : "/"
+  /** The same install under a DIFFERENT profile directory: a stale sibling copy. */
+  const sibling = launched.replace(`profiles${pathSep}dsh-tui`, `profiles${pathSep}other`)
+  check(!hostContactVerdict(sibling, profileDir).ok, "a sibling install must fail the contact verdict")
 
   // THE ENGINE CONTROL: the factory's own expectation, re-run with one impossible requirement.
   check(!evaluatePanes(fixturePanes(), [CONTROL]).ok, "the negative control must fail on an expectation that cannot appear")

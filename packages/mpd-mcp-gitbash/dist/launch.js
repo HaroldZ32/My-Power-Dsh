@@ -96,7 +96,7 @@ function resolveDependencyEntry(from, packageName, binName) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join as join2, resolve as resolve2 } from "node:path";
+import { isAbsolute, join as join2, relative, resolve as resolve2, sep } from "node:path";
 import { format } from "node:util";
 var LOG_SUBDIR = join2(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
@@ -166,7 +166,10 @@ function rebindStderr(file) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;

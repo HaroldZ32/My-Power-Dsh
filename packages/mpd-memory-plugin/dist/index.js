@@ -1,7 +1,7 @@
 // packages/mpd-memory-plugin/src/index.ts
 import { existsSync, mkdirSync as mkdirSync2, readFileSync, writeFileSync, appendFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { basename, dirname, join as join2, resolve as resolve3, sep } from "node:path";
+import { basename, dirname, join as join2, resolve as resolve3, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -15,7 +15,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -63,7 +63,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -1678,7 +1681,7 @@ function normalizeLogEntry(meta, file, body) {
 function safeMemoryPath(memoryDir, name2) {
   const base = resolve3(memoryDir);
   const target = resolve3(base, name2);
-  if (!target.startsWith(base + sep))
+  if (!target.startsWith(base + sep2))
     throw new Error("mpd-memory: path escapes memory dir: " + name2);
   return target;
 }

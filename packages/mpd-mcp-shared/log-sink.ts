@@ -49,7 +49,7 @@
 // failure.
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { format } from "node:util"
 
 /** One env bag: a launcher's live `process.env`, or a fixture standing in for it. */
@@ -302,7 +302,16 @@ function rebindStderr(file: string): StderrRebind {
  */
 function owningRoot(roots: readonly string[], file: string): string | null {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`)) return root
+    if (file === root) return root
+    // PLATFORM-CORRECT CONTAINMENT (win32 defect, MEASURED 2026-10-12). This used to build the prefix
+    // as `${root}/` — a HARD-CODED forward slash — while `file` comes from `join`, so on win32 the
+    // comparison was `C:\…\probe.log`.startsWith(`C:\…/`) and NEVER matched: the sink opened and wrote
+    // the file correctly, yet reported `root: null` for every root, which is exactly what
+    // `log-sink.test.ts` caught. `relative` is the platform's own containment test and needs no
+    // separator at all: an empty, `..`-prefixed or absolute result means the file is NOT under this root.
+    /** The path from this candidate down to the file. */
+    const rel = relative(root, file)
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel)) return root
   }
   return null
 }

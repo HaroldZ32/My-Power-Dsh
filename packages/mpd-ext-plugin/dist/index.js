@@ -18,7 +18,7 @@ function bundleRootOf(moduleUrl) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -66,7 +66,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -1636,7 +1639,7 @@ var MPD_EXT_CONTRACT = {
 
 // packages/mpd-ext-plugin/src/registry.ts
 import { existsSync, readFileSync as readFileSync3, readdirSync as readdirSync2 } from "node:fs";
-import { isAbsolute, join as join3, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute2, join as join3, resolve as resolve3 } from "node:path";
 
 // packages/mpd-ext-plugin/src/skills.ts
 import { readFileSync } from "node:fs";
@@ -2337,7 +2340,7 @@ var DEFAULT_EXTENSION_CONFIG = {
 function isRelativeAssetPath(value) {
   if (typeof value !== "string" || value.trim() === "")
     return false;
-  if (isAbsolute(value))
+  if (isAbsolute2(value))
     return false;
   if (/^[A-Za-z]:[\\/]/.test(value))
     return false;

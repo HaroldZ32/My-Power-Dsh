@@ -37,7 +37,16 @@ test.skipIf(SKIP)("clean file passes (exit 0)", () => {
 // probed against the dsh process cwd and an honest miss was a SILENT skip. These arms need no real
 // detector: an explicit `binary` is first in the resolution order, and a stub that echoes its stdin
 // payload and exits 2 (the detector's "comments found" status) proves WHICH file the hook read.
-test("autoCheck: the hook resolves a relative file_path against the session workspace", async () => {
+// A POSIX SHELL STUB CANNOT BE SPAWNED ON WIN32 (declared instrument bound, MEASURED 2026-10-12). The
+// row executes the resolved `binary` DIRECTLY — `spawnSync(binary, ["check"], …)`, no shell — and win32
+// has no shebang mechanism, so `fake-detector.sh` fails with `Executable not found in $PATH` before the
+// hook can run (`spawn failed: … fake-detector.sh`). The two other stub shapes are equally unusable:
+// node >= 18.20 REFUSES to spawn a `.cmd`/`.bat` without `shell: true` (the CVE-2024-27980 guard), and
+// the bundle ships no native Windows stub. The arm's SUBJECT — a relative `file_path` resolved against
+// the SESSION workspace instead of process.cwd() — is platform-independent code, but its INSTRUMENT is
+// not, so win32 declares the bound here rather than asserting a mechanism it cannot build. The subject
+// stays covered on POSIX, where the stub is spawnable.
+test.skipIf(process.platform === "win32")("autoCheck: the hook resolves a relative file_path against the session workspace", async () => {
   /** One `tools/post-execute` listener as the adapter registers and calls it. */
   type PostExecuteListener = (exec: DshToolExec, result: DshPostResult, next: () => Promise<DshPostDecision>) => Promise<DshPostDecision>
   /** Captured `tools/post-execute` listeners, in registration order. */

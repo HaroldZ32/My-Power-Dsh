@@ -275,7 +275,17 @@ describe("probeExecutable", () => {
     writeFileSync(inert, "not a program\n")
     chmodSync(inert, 0o644)
 
-    expect(probeExecutable("mpd-probe-inert", root)).toBeNull()
+    // THE WIN32 ARM IS THE DOCUMENTED BOUND, asserted rather than skipped (see `isExecutableFile`):
+    // win32 has no mode bit, and the runnable form there is a `.cmd`/`.exe` shim whose name differs
+    // from the package's, so a mode-based test would reject EVERY real npm shim. The probe is
+    // therefore name-based there and accepts any regular file. MEASURED 2026-10-12: the literal
+    // `toBeNull()` was the only reason this arm was red on win32, while its sibling arm — an
+    // extensionless `chmod 0o755` file that must RESOLVE — passed, i.e. the two were unsatisfiable
+    // together. Asserting the bound keeps it falsifiable: a probe that became mode-based on win32
+    // would redden here instead of passing quietly.
+    if (process.platform === "win32") expect(probeExecutable("mpd-probe-inert", root)).toBe(inert)
+    else expect(probeExecutable("mpd-probe-inert", root)).toBeNull()
+    // The ABSENT case is platform-independent and stays exact on every host.
     expect(probeExecutable("mpd-probe-definitely-absent", root)).toBeNull()
   })
 

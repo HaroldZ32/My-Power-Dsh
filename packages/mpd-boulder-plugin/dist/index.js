@@ -662,7 +662,7 @@ function endTaskTimer(directory, workId, taskKey, endedAt) {
   return writeBoulderState(directory, state) ? state : null;
 }
 // packages/mpd-boulder-plugin/src/index.ts
-import { join as join6, isAbsolute as isAbsolute2, resolve as resolve4 } from "node:path";
+import { join as join6, isAbsolute as isAbsolute3, resolve as resolve4 } from "node:path";
 import { existsSync as existsSync5 } from "node:fs";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
@@ -677,7 +677,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync as mkdirSync2, openSync, renameSync, rmSync, statSync as statSync2, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join as join4, resolve as resolve2 } from "node:path";
+import { isAbsolute as isAbsolute2, join as join4, relative as relative2, resolve as resolve2, sep } from "node:path";
 var LOG_SUBDIR = join4(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -725,7 +725,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -2240,7 +2243,7 @@ function boulderRoot(config, dsh, exec) {
   return resolveBoulderDir(config.boulderDir) ?? dsh.workspaceRoot(exec);
 }
 function planPathFor(dir, planPath) {
-  return isAbsolute2(planPath) ? resolve4(planPath) : resolve4(dir, planPath);
+  return isAbsolute3(planPath) ? resolve4(planPath) : resolve4(dir, planPath);
 }
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);

@@ -1,0 +1,79 @@
+# Raw observed output — every known win32 failure fixed (2026-10-12)
+
+## BASELINE (before this wave)
+$ .toolchain/node_modules/.bin/bun test packages
+ 1829 pass
+ 4 skip
+ 19 fail
+Ran 1852 tests across 114 files.
+19 distinct arms across 7 files:
+  comment-checker.test.ts   autoCheck: the hook resolves a relative file_path against the session workspace
+  cclsp-config.test.ts      probeExecutable > rejects a candidate that is not executable, and reports an absent one as null
+  log-sink.test.ts          root resolution and writability x4 + the descriptor rebind (POSIX) x1
+  team-plane.test.ts        readBoulderGate x2, session-start signal D x1, C7 x2
+  change-feed.test.ts       S-b … x6
+  panel-dag.test.ts         the workmate page > the reader tolerates a missing library and never throws
+
+## The one PRODUCTION defect (log-sink `owningRoot`)
+$ bun test packages/mpd-mcp-shared/log-sink.test.ts      # BEFORE
+Expected: "C:\\Users\\ZHAO~1.YIN\\AppData\\Local\\Temp\\mpd-log-sink-SQ7h8H"
+Received: null
+      at log-sink.test.ts:70:23          # the sink WROTE the file and still reported root: null
+FIX: owningRoot now uses `relative(root, file)` + `isAbsolute` instead of a `${root}/` prefix with a
+hard-coded forward slash.
+$ bun test packages/mpd-mcp-shared/log-sink.test.ts      # AFTER
+ 9 pass / 0 fail
+
+## The team-plane / QA `basename` defect
+$ bun test packages/mpd-roles-plugin/test/team-plane.test.ts     # BEFORE
+Expected: "/elsewhere/.mpd/boulder.json"
+Received: "\\elsewhere\\.mpd\\boulder.json"
+$ node skills/dsh-qa/scripts/session-start-team.ts --self-test   # BEFORE
+  - c7: a record led by THIS session with 7 members must read leading, got {"leading":false,"members":0}
+Both came from `path.slice(path.lastIndexOf("/") + 1)` (win32 paths carry `\`) and from POSIX path
+literals where production uses `join`. FIX: `basename` + `join`-built expectations.
+$ bun test packages/mpd-roles-plugin/test/team-plane.test.ts     # AFTER
+ 51 pass / 0 fail
+$ node skills/dsh-qa/scripts/session-start-team.ts --self-test   # AFTER
+ exit=0
+
+## The QA `tui-deps-ctrla` sibling fixture
+- a sibling install must fail the contact verdict            # BEFORE
+FIX: `launched.replace("/profiles/dsh-tui", …)` matched nothing on win32 (join emits `\`), so the
+'sibling' WAS the launched copy and the arm failed on a CORRECT verdict; the sibling is now built with
+the separator the launched path itself uses.
+$ bun skills/dsh-qa/scripts/tui-deps-ctrla.ts --self-test    # AFTER
+ exit=0
+
+## The change-feed timing race (6 arms)
+Expected: 1   Received: 2      (a store write reaches a subscriber)
+FIX: the S-b feeds take an inert watch door, so ONE store write is ONE observation on every platform
+(the real watcher stays pinned by the S-c/S-d and raw-write arms).
+$ bun test packages/mpd-team-core-plugin/test/change-feed.test.ts    # AFTER
+ 14 pass / 0 fail
+
+## The dist fan-out (why 29 targets went stale)
+$ bun build mpd-better-sidebar-host … && Compare-Object committed vs fresh
+<= import { join, resolve } from "node:path";
+=> import { isAbsolute, join, relative, resolve, sep } from "node:path";
+…because packages/mpd-dsh-adapter-plugin/src/index.ts:33 imports `openLogSink` from
+mpd-mcp-shared/log-sink, and bun CONSOLIDATES one import statement per external module. All 29 stale
+targets were rebuilt; verify-dist-fresh then reported 31/31 fresh.
+
+## FINAL
+$ .toolchain/node_modules/.bin/bun test packages --test-timeout 30000
+ 1847 pass
+ 5 skip
+ 0 fail
+$ .toolchain/node_modules/.bin/bun run test:qa
+[test:qa] all self-tests passed                                   exit=0     (47/47)
+$ node scripts/verify-dist-fresh.ts        -> 31/31 targets fresh             exit=0
+$ node scripts/verify-vendor.ts            -> PASS - 7 shipped asset(s)       exit=0
+$ node scripts/verify-comment-coverage.ts  -> VERDICT: PASS                   exit=0
+$ bun run typecheck (tsgo --noEmit)        -> no diagnostics                   exit=0
+
+## Flakes proven to be load, not defects (each re-run alone)
+git backend: write -> commit  : 5019 ms under load (FAIL at bun's 5000 ms default) / 3886 ms alone PASS
+the writer reports per root   : 5102 ms under load / 115 ms alone PASS
+create_task MEASURED spelling : 5750 ms under load / 149 ms alone PASS
+sessions do not share a slot  : 8440 ms under load / 35 ms alone PASS
