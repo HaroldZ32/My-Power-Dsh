@@ -6,8 +6,9 @@
 // re-implementation of it.
 //
 // THE CLASSIFICATION IS REUSED, NOT RE-DERIVED: the `topLevel` flag these arms pass is exactly what
-// `sessionIsTopLevel` answers (§5's captain predicate, T-92), which is why the agent doubles below carry
-// real session headers rather than a boolean.
+// `sessionIsMpdCaptain` answers (the `mpd` preset's top-level session — §5's captain predicate AND the
+// preset that owns this rule), which is why the agent doubles below carry real session headers rather
+// than a boolean.
 import { describe, expect, test } from "bun:test"
 
 import {
@@ -20,7 +21,7 @@ import {
   resolveInvestigationMode,
 } from "../src/captain-investigation.ts"
 import type { CaptainInvestigationInput } from "../src/captain-investigation.ts"
-import { sessionIsTopLevel } from "../src/complexity-gate.ts"
+import { sessionIsMpdCaptain } from "../src/complexity-gate.ts"
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The workspace root every arm resolves against; classification never touches disk. */
@@ -37,8 +38,11 @@ function agentDouble(header: Record<string, unknown>, id: string = "captain-sess
   return { id, session: { id, header } }
 }
 
-/** The workspace's TOP-LEVEL session: §5's captain, preset ignored. */
-const CAPTAIN = agentDouble({ agentPreset: "cordis", delegationDepth: 0 })
+/** The workspace's TOP-LEVEL session OF THE `mpd` PRESET: the one session this rule is scoped to. */
+const CAPTAIN = agentDouble({ agentPreset: "mpd", delegationDepth: 0 })
+
+/** A top-level session of ANOTHER preset (`cordis` is the deployment default): NOT gated by this rule. */
+const OTHER_PRESET_CAPTAIN = agentDouble({ agentPreset: "cordis", delegationDepth: 0 })
 
 /** A member/child session: it keeps `read`/`grep`/`glob`, because the captain hands it the work. */
 const MEMBER = agentDouble({ agentPreset: "mpd", parentSession: "parent-session", delegationDepth: 1 })
@@ -56,7 +60,7 @@ function decide(toolName: string, args: Record<string, unknown> | undefined, age
     toolName,
     args,
     workspaceRoot: WORKSPACE,
-    topLevel: sessionIsTopLevel(agent),
+    topLevel: sessionIsMpdCaptain(agent),
     mode: DEFAULT_INVESTIGATION_MODE,
   })
 }
@@ -136,6 +140,20 @@ describe("L1 — the decision function's behaviour table, path by path", () => {
     // A session the guard cannot classify at all is NOT the captain either (fail-open for the rule:
     // only a positively-classified top-level session is restricted).
     expect(decide("read", { file_path: "packages/x/src/y.ts" }, { id: "headerless" })).toBeUndefined()
+  })
+
+  test("a TOP-LEVEL session of ANOTHER preset keeps its reconnaissance — the rule is scoped to `mpd`", () => {
+    // The deployment's default preset is `cordis`, and the user's own working session runs it. This rule
+    // is part of what the `mpd` preset MEANS, so it must not follow a session that never asked for it.
+    expect(decide("read", { file_path: "packages/x/src/y.ts" }, OTHER_PRESET_CAPTAIN)).toBeUndefined()
+    expect(decide("grep", { pattern: "x", path: "packages/x/src" }, OTHER_PRESET_CAPTAIN)).toBeUndefined()
+    expect(decide("glob", { pattern: "**/*.ts" }, OTHER_PRESET_CAPTAIN)).toBeUndefined()
+    // The SAME call IS refused for the `mpd` captain, so the arm above is not vacuous.
+    expect(String(decide("read", { file_path: "packages/x/src/y.ts" }, CAPTAIN) ?? "")).toContain("captain investigation rule")
+    // The predicate itself, in both directions.
+    expect(sessionIsMpdCaptain(CAPTAIN)).toBe(true)
+    expect(sessionIsMpdCaptain(OTHER_PRESET_CAPTAIN)).toBe(false)
+    expect(sessionIsMpdCaptain(MEMBER)).toBe(false)
   })
 
   test("the rule touches NO tool but the three reconnaissance tools", () => {

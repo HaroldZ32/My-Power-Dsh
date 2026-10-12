@@ -1,0 +1,66 @@
+=== captured 2026-10-12T15:43:29.1846902+08:00 on Microsoft Windows NT 10.0.19044.0 / node v24.21.0 ===
+=== bun on PATH: 1.4.2 ; pinned toolchain: 1.4.0 ===
+
+=== git status --short (the wave's changed paths) ===
+ M .gitattributes
+ M packages/mpd-roles-plugin/dist/index.js
+ M packages/mpd-roles-plugin/src/captain-investigation.ts
+ M packages/mpd-roles-plugin/src/complexity-gate.ts
+ M packages/mpd-roles-plugin/src/index.ts
+ M packages/mpd-roles-plugin/src/verify-guard.ts
+ M packages/mpd-roles-plugin/test/captain-investigation.test.ts
+ M packages/mpd-roles-plugin/test/verify-guard.test.ts
+ M packages/mpd-verify-plugin/dist/index.js
+ M packages/mpd-verify-plugin/src/ledger.ts
+ M packages/mpd-verify-plugin/src/tools.ts
+ M packages/mpd-verify-plugin/test/row.test.ts
+?? evidence/win32/
+
+=== node scripts/verify-dist-fresh.ts ===
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha c9a34db6f029… 430ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: C:\MyDoc\DshProj\My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (C:\MyDoc\DshProj\My-Power-Dsh\.toolchain\node_modules\.bin\bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 11395ms
+
+=== node scripts/verify-vendor.ts ===
+[verify-vendor] asset OK: packages/mpd-schemastery 19 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+
+=== node scripts/verify-comment-coverage.ts ===
+scanned 387 TypeScript file(s) of 387 in the source set; inspected 34246 declaration(s); skipped 15336 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+=== bun run verify:rows ===
+[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)
+
+=== bun run verify:docs ===
+[verify-docs-parity] root=C:\MyDoc\DshProj\My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS
+
+=== bun test packages/mpd-verify-plugin (tail) ===
+ 56 pass
+ 0 fail
+ 292 expect() calls
+Ran 56 tests across 2 files. [4.20s]
+
+=== bun test packages/mpd-roles-plugin (tail) ===
+ 144 pass
+ 5 fail
+ 1227 expect() calls
+Ran 149 tests across 8 files. [4.94s]
+
+=== bun run verify:gates (with MPD_WORKFLOW_JS_YAML) ===
+[verify-gates] running 8 member gate(s) (declared table)
+[verify-gates] member vendor: exit=0 PASS - 3592ms
+[verify-gates] member dist-fresh: exit=0 PASS - 11627ms
+[verify-gates] member rows-parity: exit=0 PASS - 530ms
+[verify-gates] member docs-parity: exit=0 PASS - 656ms
+[verify-gates] member preset-conformance: exit=0 PASS - 1688ms
+[verify-gates] member plugin-manifest: exit=0 PASS - 276ms
+[verify-gates] member comment-coverage: exit=0 PASS - 4628ms
+[verify-gates] member workflows: exit=0 PASS - 313ms
+[verify-gates] PASS - 8/8 member gate(s) green

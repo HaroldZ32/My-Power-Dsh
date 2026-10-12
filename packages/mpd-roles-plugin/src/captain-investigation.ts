@@ -1,4 +1,4 @@
-// THE CAPTAIN INVESTIGATION GUARD — the workspace's TOP-LEVEL session does not do reconnaissance.
+// THE CAPTAIN INVESTIGATION GUARD — the `mpd` preset's TOP-LEVEL session does not do reconnaissance.
 //
 // WHY THIS EXISTS (the user's requirement, 2026-10-08): the user-facing main agent must keep its context
 // small enough to drive very large projects, and RECONNAISSANCE — finding files, reading source, grepping
@@ -6,9 +6,11 @@
 // "find the file and the code", `Researcher` for evidence-based search, or a team member) and consumes
 // the REPORT.
 //
-// WHAT IT DENIES: `read`, `grep` and `glob` on a SOURCE path, for a session where `sessionIsTopLevel` is
-// true — §5's ONE predicate for the captain (not a delegated child — `origin: "subagent"` or depth
-// `1`+ — and NEVER a preset name: T-92), the same predicate the captain write rule beside it uses.
+// WHAT IT DENIES: `read`, `grep` and `glob` on a SOURCE path, for a session where `sessionIsMpdCaptain`
+// is true — §5's top-level session (not a delegated child — `origin: "subagent"` or depth `1`+ — and
+// never a preset name: T-92) AND a session whose `agentPreset` is `mpd`: this rule is part of what the
+// `mpd` preset means, so a user working in another preset (`cordis` is the deployment default) keeps its
+// own reconnaissance. The write rule beside it reads the SAME predicate.
 //
 // WHAT STAYS OPEN — THE DOCUMENTATION BAND: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`
 // and the root files `AGENTS.md` / `AGENT.md` / `CLAUDE.md` / `README.md` / `README.zh-CN.md` /
@@ -26,7 +28,7 @@
 // its SPELLING, so a symlink is never resolved.
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { readTargetPath } from "../../mpd-verify-plugin/src/law.ts"
-import { sessionIsTopLevel } from "./complexity-gate.ts"
+import { sessionIsMpdCaptain } from "./complexity-gate.ts"
 
 /** The `mpd.jsonc` key the modes are read from, through the config layer this bundle already uses. */
 export const INVESTIGATION_CONFIG_KEY = "captain.investigation"
@@ -64,7 +66,7 @@ export interface CaptainInvestigationInput {
   args: Record<string, unknown> | undefined
   /** The session workspace root, as the adapter resolved it. */
   workspaceRoot: string
-  /** Whether the calling session is the workspace's TOP-LEVEL session (§5's captain predicate). */
+  /** Whether the calling session is the `mpd` preset's TOP-LEVEL session — the captain this rule is scoped to (`sessionIsMpdCaptain`). */
   topLevel: boolean
   /** The mode in force. */
   mode: InvestigationMode
@@ -122,7 +124,7 @@ export function captainReadablePath(workspaceRoot: string, raw: string): boolean
  * Decide one call for the captain's investigation rule.
  *
  * Pure with respect to the harness, like `captainWriteDecision` beside it: the caller passes the tool
- * name, the arguments, the resolved root, the top-level classification and the mode, and gets back the
+ * name, the arguments, the resolved root, the `mpd`-captain classification and the mode, and gets back the
  * denial sentence to hand the harness or `undefined` to let the call through.
  *
  * @param input - the call, its target and the mode in force.
@@ -154,8 +156,8 @@ export function captainInvestigationDecision(input: CaptainInvestigationInput): 
  * @returns the denial sentence.
  */
 function investigationRefusal(toolName: string, target: string): string {
-  return "captain investigation rule: `" + toolName + "` on " + target + " is refused — the workspace's"
-    + " TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large"
+  return "captain investigation rule: `" + toolName + "` on " + target + " is refused — the `mpd`"
+    + " preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large"
     + " projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the"
     + " `Researcher` role (evidence-based search), or hand the search to a team member, and consume the"
     + " REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`,"
@@ -221,7 +223,7 @@ export function installCaptainInvestigationGuard(
       toolName: String(exec?.name ?? ""),
       args: exec?.arguments,
       workspaceRoot: ((): string => { try { return options.workspaceRootOf(exec) } catch { return "" } })(),
-      topLevel: sessionIsTopLevel(exec?.agent),
+      topLevel: sessionIsMpdCaptain(exec?.agent),
       mode: resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY)),
     }))
     return { installed: true, mode, ...(typeof dispose === "function" ? { dispose } : {}) }

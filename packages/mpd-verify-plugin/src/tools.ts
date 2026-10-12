@@ -27,7 +27,7 @@ import { GATE_TABLE, gateById, probeArtifacts, runGate } from "./gates.ts"
 import type { ArtifactProbe, GateEvidence, HashedDoc, VerificationRecord, VerifyFinding } from "./record.ts"
 import { buildRecord, validateVerificationRecord } from "./record.ts"
 import type { VerifyRuntime } from "./observe.ts"
-import { join } from "node:path"
+import { isAbsolute, join } from "node:path"
 
 /** The default loop lifetime: 24 hours, which is one working session and no longer. */
 export const DEFAULT_LOOP_TTL_MS = 24 * 60 * 60 * 1000
@@ -109,7 +109,11 @@ export function writeBootMarker(workspace: string, installedAt: string): boolean
  * @returns the hashed document, or `undefined` when the file cannot be read.
  */
 function sourceDoc(workspace: string, path: string): HashedDoc | undefined {
-  return hashDoc(workspace, path.startsWith("/") ? path : join(workspace, path))
+  // THE ABSOLUTE TEST IS THE PLATFORM'S OWN (win32 defect, measured 2026-10-12): it used to be
+  // `path.startsWith("/")`, a POSIX-shaped test, so on win32 an absolute `C:\...` spelling failed it and
+  // was JOINED onto the workspace — `<workspace>\C:\...`, a path that exists nowhere. `isAbsolute` is the
+  // platform's own answer, so a caller may spell a source either way on either OS.
+  return hashDoc(workspace, isAbsolute(path) ? path : join(workspace, path))
 }
 
 /**

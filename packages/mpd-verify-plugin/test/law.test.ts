@@ -26,7 +26,7 @@ import {
 import type { ArmedLoopView, EnvelopeDecision, VerifierSeatView } from "../src/law.ts"
 import { buildRecord, REFUSAL, validateVerificationRecord } from "../src/record.ts"
 import type { ValidationContext, VerificationRecord } from "../src/record.ts"
-import { appendEscape, readEscapes, readLoops, writeLoop, writeSeats, readSeats, mintId, sha256File, verifyRoot } from "../src/ledger.ts"
+import { appendEscape, hashDoc, readEscapes, readLoops, writeLoop, writeSeats, readSeats, mintId, sha256File, toPosixRelative, verifyRoot } from "../src/ledger.ts"
 import { GATE_TABLE, gateById, probeArtifacts } from "../src/gates.ts"
 import { DEFAULT_LOOP_TTL_MS, readBootMarker, writeBootMarker } from "../src/tools.ts"
 
@@ -524,6 +524,41 @@ describe("the ledger and the gates", () => {
     expect(JSON.stringify(readings)).not.toContain("do-not-return-me")
     expect(readings[1].exists).toBe(false)
     rmSync(ws, { recursive: true, force: true })
+  })
+  test("a hashed document INSIDE the workspace is spelled workspace-relative POSIX on every platform", () => {
+    // THE PROPERTY AC-D2 asserts end to end, pinned here per platform: `basis.docs[].path` must be the
+    // spelling `normalizeContractPath` writes, so a record's `frozenContract.path` and its
+    // `basis.docs[].path` agree. The win32 defect made the containment test answer with the ABSOLUTE,
+    // machine-specific path; `relative()` is the platform's own answer and needs no prefix guessing.
+    /** The sandbox workspace. */
+    const ws = sandbox()
+    mkdirSync(join(ws, ".mpd", "plans"), { recursive: true })
+    writeFileSync(join(ws, ".mpd/plans/wave.md"), "# contract\n", "utf8")
+    expect(hashDoc(ws, join(ws, ".mpd", "plans", "wave.md"))?.path).toBe(".mpd/plans/wave.md")
+    // THE NEGATIVE HALF, so this arm cannot pass by always answering a relative path: a document OUTSIDE
+    // the workspace keeps the caller's own spelling.
+    /** A document in a SIBLING directory, which is not inside the workspace. */
+    const outside = join(ws, "..", "mpd-verify-outside.md")
+    writeFileSync(outside, "# elsewhere\n", "utf8")
+    expect(hashDoc(ws, outside)?.path).toBe(outside)
+    rmSync(outside, { force: true })
+    rmSync(ws, { recursive: true, force: true })
+  })
+  test("the separator translation keeps a POSIX filename's backslash and translates only win32's (PR #38 review)", () => {
+    // THE INVARIANT A REVIEWER MUST BE ABLE TO FALSIFY: a backslash is a LEGAL FILENAME character on
+    // POSIX, so translating separators unconditionally would store a path that no longer identifies the
+    // file that was hashed. The separator is taken as an ARGUMENT, so BOTH branches are executable on
+    // every platform — an arm written against the filesystem could only be skipped on win32, and a
+    // skipped arm proves nothing.
+    expect(toPosixRelative("a\\b.md", "/")).toBe("a\\b.md")
+    expect(toPosixRelative("a\\b.md", "\\")).toBe("a/b.md")
+    // The ordinary shapes, both ways: a nested path, the root-level file, and the idempotent case.
+    expect(toPosixRelative(join("packages", "a", "src", "b.ts"), "\\")).toBe("packages/a/src/b.ts")
+    expect(toPosixRelative("a.ts", "\\")).toBe("a.ts")
+    expect(toPosixRelative("packages/a/b.ts", "/")).toBe("packages/a/b.ts")
+    // The DEFAULT is this platform's own separator, which is what `hashDoc` relies on — so the two
+    // explicitly-passed arms above cannot drift from the shipped call.
+    expect(toPosixRelative(join("x", "y"))).toBe("x/y")
   })
 })
 

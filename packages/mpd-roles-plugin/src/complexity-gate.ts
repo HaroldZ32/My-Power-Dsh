@@ -713,3 +713,39 @@ export function sessionRank(agent: unknown): SessionRank {
 export function sessionIsTopLevel(agent: unknown): boolean {
   return sessionRank(agent) === "captain"
 }
+
+/** The ONE preset whose top-level session carries the CAPTAIN's behavioural rules. */
+export const MPD_CAPTAIN_PRESET = "mpd"
+
+/**
+ * Whether one agent's session is the CAPTAIN OF THE `mpd` PRESET — the top-level session (§5), AND a
+ * session whose `agentPreset` really is {@link MPD_CAPTAIN_PRESET}.
+ *
+ * WHY THIS EXISTS, and why it is not {@link sessionIsTopLevel}. The captain's BEHAVIOURAL rules — the
+ * verification law's write rule (`./verify-guard.ts`) and the reconnaissance rule
+ * (`./captain-investigation.ts`) — are part of what the `mpd` preset MEANS. Both install through the
+ * ONE process-wide `tools.guard` seam, so a bare {@link sessionIsTopLevel} test made them bite EVERY
+ * top-level session of the deployment, whatever preset it was running: a user working in the DEFAULT
+ * preset (`cordis`) was refused its own code writes and its own reconnaissance by a captain contract
+ * that preset never asked for. This predicate scopes those two rules back to the preset that owns
+ * them.
+ *
+ * DIRECTION OF THE PRESET TEST: the gate opens ONLY on the exact preset name. A session with no
+ * `agentPreset` at all is therefore NOT gated. That is deliberate and is the OPPOSITE of
+ * {@link sessionQualifies}, which reads a preset-less session as covered: there the conservative
+ * direction protects a bundle-less deployment, while here it would re-impose the very rule this
+ * predicate exists to scope. `mpd` sessions always record the preset — the bundle's own integration
+ * boots assert `agentPreset=mpd` on the row's boot line.
+ *
+ * NOT FOR §5's ONE-GIT-WRITER RULE: that rule protects the single `.git/HEAD` of a shared checkout, so
+ * it stays keyed on {@link sessionIsTopLevel} alone and follows whichever preset the user runs.
+ *
+ * @param agent - the live agent handle whose session header is classified.
+ * @returns whether this session is the top-level session of the `mpd` preset.
+ */
+export function sessionIsMpdCaptain(agent: unknown): boolean {
+  if (!sessionIsTopLevel(agent)) return false
+  /** The agent's session header, which carries the preset this rule is scoped to. */
+  const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
+  return header?.agentPreset === MPD_CAPTAIN_PRESET
+}
