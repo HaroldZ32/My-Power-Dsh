@@ -1,0 +1,76 @@
+# Raw observed output — the win32 side-panel remedy (2026-10-12, win32)
+
+## BEFORE (the remedy could not run at all)
+$ node scripts/mpd-tui-panels.ts
+[mpd-tui-panels] DSH home: C:\Users\zhao.yinan\.dsh ($DSH_HOME)
+[mpd-tui-panels] launcher profile: (the installed dsh-tui launcher could not be read)
+[mpd-tui-panels] REFUSED: cannot find the installed `dsh` package (needed to prove the settings document path)
+exit=1
+
+$ node scripts/mpd-tui-panels.ts --self-test
+  SKIP (e) the installed `dsh` was not found: the path-proof arm cannot run
+  ok   (f) the MEASURED version-1 record with NO provenance is refused
+  ...
+[mpd-tui-panels] SELF-TEST PASS (all arms held)
+exit=0        <-- green while the tool was unusable: arm (d) and arm (e) never ran
+
+## The platform layout the fix had to handle
+$ where.exe dsh
+C:\Users\zhao.yinan\AppData\Roaming\npm\dsh
+C:\Users\zhao.yinan\AppData\Roaming\npm\dsh.cmd
+$ where.exe dsh-tui
+C:\Users\zhao.yinan\AppData\Roaming\npm\dsh-tui
+C:\Users\zhao.yinan\AppData\Roaming\npm\dsh-tui.cmd
+$ <global>/node_modules/@deepseek-ai/dsh/package.json -> version 0.2.0-rc.2
+   .../node_modules/@deepseek-ai/{dsh-app-boot,dsh-config-editor} present  (the proof modules)
+$ <hostRoot>/bin/dsh-tui.js -> const PROFILE = 'dsh-tui'
+
+## AFTER (dry run resolves everything and computes the merge)
+$ node scripts/mpd-tui-panels.ts
+[mpd-tui-panels] launcher profile: dsh-tui
+[mpd-tui-panels] installed dsh: C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh
+[mpd-tui-panels] dsh-app-boot declares PROFILE_PATCH_FILENAME="cordis.patch.yml" -> C:\Users\zhao.yinan\.dsh\profiles\dsh-tui\cordis.patch.yml
+[mpd-tui-panels] dsh-config-editor answers `documentPath` from `profileContext.patchPath`
+[mpd-tui-panels] settings document: C:\Users\zhao.yinan\.dsh\profiles\dsh-tui\cordis.patch.yml
+[mpd-tui-panels] panel ids (.mpd/logs/mpd-tui-panels.json): act1:team,act1:workmate
+[mpd-tui-panels] panels (before): (unset)
+[mpd-tui-panels] panels (after):  act1:team,act1:workmate
+[mpd-tui-panels] DRY RUN — nothing written. Re-run with --apply to write ...
+exit=0
+
+## AFTER — self-test: every arm now RUNS (no SKIP)
+  ok   (d) the installed host patch declares rows at all
+  ok   (d) the installed host patch declares dsh-tui with a config block
+  ok   (d) the restated block carries the host's own keys, not a guess
+  ok   (e) the proof names the installed sources
+  ok   (e) the proof predicts a file INSIDE the profile directory
+  ok   (e) NEGATIVE CONTROL: an unreadable source makes the proof fail
+  ok   (e) NEGATIVE CONTROL: the refusal names the file it could not read
+  ok   (e) the predicted document is the file the profile template creates
+[mpd-tui-panels] SELF-TEST PASS (all arms held)
+exit=0
+
+## APPLY (the user's machine repaired; atomic write + backup + read-back)
+$ node scripts/mpd-tui-panels.ts --apply
+[mpd-tui-panels] panels (after):  act1:team,act1:workmate
+[mpd-tui-panels] WROTE C:\Users\zhao.yinan\.dsh\profiles\dsh-tui\cordis.patch.yml (backup: C:\Users\zhao.yinan\.dsh\profiles\dsh-tui\cordis.patch.yml.bak-09435300); read back: act1:team,act1:workmate
+[mpd-tui-panels] restart dsh-tui for the new list to compose
+exit=0
+
+$ ~/.dsh/profiles/dsh-tui/cordis.patch.yml (94 lines, 4261 bytes)
+- id: dsh-tui
+  config:
+    sidePanel:
+      panels: "act1:team,act1:workmate"
+    provider: deepseek-official
+    ... (the host's own composed config, restated verbatim)
+(the `llm-pi-ai` and `mpd-config` rows are unchanged; backup cordis.patch.yml.bak-09435300 = 987 bytes)
+
+## Gates after the fix
+$ node scripts/verify-comment-coverage.ts
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+
+$ bun run typecheck
+$ tsgo --noEmit
+exit=0

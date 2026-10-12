@@ -1,0 +1,34 @@
+{
+  "wave": "fix/team-models-routing-and-win32-sidebar-lane (round 2 — the remedy script)",
+  "date": "2026-10-12",
+  "host": { "platform": "win32", "node": "v24.21.0", "repoRoot": "C:\\MyDoc\\DshProj\\My-Power-Dsh" },
+  "defect": {
+    "id": "D1b",
+    "reported": "修复在windows端dsh-TUI调用时侧边栏完全不显示问题 (the durable half: the user's own remedy must work)",
+    "rootCause": "`scripts/mpd-tui-panels.ts` — the ONE durable remedy the docs give a user whose sidebar shows only the host builtins (`docs/tui.md` §'durable, one command' → `node scripts/mpd-tui-panels.ts --apply`) — could not run on win32 at all. `whichReal()` shelled out to the POSIX `which` COMMAND, which this platform does not carry, so both `dsh-tui` and `dsh` were unresolvable; and `installedDshRoot()` assumed the POSIX `<root>/bin/dsh.js` shape, while `launcherProfile()` read `const PROFILE = …` out of the launcher FILE, which on win32 is the npm shim (`%APPDATA%\\npm\\dsh-tui.cmd` / `.ps1`) and declares nothing. The self-test silently SKIPPED arms (d) and (e) when the lookups failed, so it passed green while the tool was unusable.",
+    "measuredEvidence": [
+      "BEFORE (real machine): `node scripts/mpd-tui-panels.ts` -> `[mpd-tui-panels] launcher profile: (the installed dsh-tui launcher could not be read)` then `[mpd-tui-panels] REFUSED: cannot find the installed \\`dsh\\` package (needed to prove the settings document path)`; exit 1.",
+      "BEFORE: `node scripts/mpd-tui-panels.ts --self-test` printed `SKIP (e) the installed \\`dsh\\` was not found: the path-proof arm cannot run` and still exited 0 with `SELF-TEST PASS (all arms held)` — a vacuous pass on win32.",
+      "Layout confirmed on the machine: `where dsh` -> `%APPDATA%\\npm\\dsh` + `dsh.cmd`; `@deepseek-ai/dsh` 0.2.0-rc.2 is installed at `%APPDATA%\\npm\\node_modules\\@deepseek-ai\\dsh` with the nested proof modules `dsh-app-boot` and `dsh-config-editor`; `<hostRoot>/bin/dsh-tui.js` declares `const PROFILE = 'dsh-tui'`."
+    ],
+    "fix": [
+      "`whichReal(name)` now uses the PLATFORM's own lookup — `where` on win32, `which` elsewhere — tries EVERY line it answers (win32 emits one per PATHEXT match), and accepts only a candidate that exists on disk, symlinks resolved.",
+      "NEW `packageRootFromLauncher(launcher, packageName)`: tries the POSIX two-up shape first, then walks up to the `node_modules` carrying the package, and validates every candidate by its `package.json` — an unvalidated guess is exactly how the old `dirname(dirname(...))` answered `%APPDATA%\\Roaming`.",
+      "`launcherProfile()` reads the launcher's own source first (the POSIX shape) and, when that declares no `PROFILE` (the win32 shim), follows it to `<hostRoot>/bin/dsh-tui.js` via the new resolver (extracted into `profileFromFile`).",
+      "`installedDshRoot()` uses the same resolver with `@deepseek-ai/dsh`.",
+      "The self-test arm (d) uses the resolver too, so it can no longer silently skip on win32."
+    ]
+  },
+  "userMachineRepair": {
+    "command": "node scripts/mpd-tui-panels.ts --apply",
+    "why": "The durable half of the reported symptom: the host re-applies `sidePanel.panels` from CONFIG ~4.3 s after boot, so a profile whose settings layer carries no MPD panel ids shows only the host builtins. Writing the ids into the user layer is the documented repair.",
+    "observed": "[mpd-tui-panels] WROTE C:\\Users\\zhao.yinan\\.dsh\\profiles\\dsh-tui\\cordis.patch.yml (backup: cordis.patch.yml.bak-09435300); read back: act1:team,act1:workmate",
+    "result": "The `dsh-tui` row in `~/.dsh/profiles/dsh-tui/cordis.patch.yml` now carries `sidePanel: { panels: \"act1:team,act1:workmate\" }` beside the host's own restated config; the pre-existing `llm-pi-ai` and `mpd-config` rows are preserved byte-for-byte, and the previous file is kept at `cordis.patch.yml.bak-09435300` (987 bytes). The remedy prints `restart dsh-tui for the new list to compose`."
+  },
+  "gates": [
+    { "command": "node scripts/mpd-tui-panels.ts --self-test", "exit": 0, "observed": "SELF-TEST PASS (all arms held) — arm (d) 3 ok, arm (e) 5 ok incl. both negative controls, and NO SKIP line any more" },
+    { "command": "node scripts/verify-comment-coverage.ts", "exit": 0, "observed": "VERDICT: PASS (389 files / 34301 declarations)" },
+    { "command": "bun run typecheck (tsgo --noEmit)", "exit": 0, "observed": "no diagnostics" }
+  ],
+  "residualBound": "The side panel still starts CLOSED (`sidePanel.open` schema default false) and only splits at >= 93 columns (CHAT_MIN 64 + PANEL_MIN 28 + DIVIDER 1); both are host-side switches this bundle does not own and deliberately does not reach with a further counted host-internals contact. With the ids now in the settings layer, a restart + opening the side panel shows the MPD pages (they are no longer dropped by the host's config re-apply)."
+}

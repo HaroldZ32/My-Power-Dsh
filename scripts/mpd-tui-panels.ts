@@ -517,15 +517,91 @@ export interface LocationResolution {
   readonly notes: readonly string[]
 }
 
-/** `which <name>`, resolved through symlinks; `undefined` when the tool is not on `PATH`. */
+/** How many directories an upward walk may climb before giving up. */
+const WALK_LEVELS = 8
+
+/**
+ * Resolve one executable name the way THIS platform spells it, then follow its symlink.
+ *
+ * WHY IT IS NOT `which` ALONE (win32 defect, MEASURED 2026-10-12). This script refused every run on
+ * Windows with `cannot read the profile name from the installed dsh-tui launcher` and `cannot find the
+ * installed \`dsh\` package`, because `which` is a POSIX utility that platform does not carry: the
+ * launcher AND the `dsh` package were both unresolvable, so the side-panel remedy — the documented
+ * user path when the sidebar shows only builtins, or nothing at all — could not run there at all.
+ * `where.exe` is the platform's own equivalent, and it answers one line per `PATHEXT` match, so EVERY
+ * returned line is tried rather than only the first.
+ * @param name - the executable name to resolve (`dsh`, `dsh-tui`).
+ * @returns the first candidate that exists on disk with its symlinks resolved, or `undefined`.
+ */
 function whichReal(name: string): string | undefined {
+  /** The lookup command: the platform's own equivalent of `which`. */
+  const lookup = process.platform === "win32" ? "where" : "which"
   try {
-    /** The `which` answer; an absent tool exits non-zero and is a miss. */
-    const found = spawnSync("which", [name], { encoding: "utf8" })
-    if (found.status !== 0) return undefined
-    /** The first non-empty line. */
-    const path = (found.stdout ?? "").split("\n").map((line) => line.trim()).find((line) => line !== "")
-    return path === undefined ? undefined : realpathSync(path)
+    /** The lookup's answer; an absent tool exits non-zero and is a miss. */
+    const found = spawnSync(lookup, [name], { encoding: "utf8" })
+    if (found.error !== undefined || found.status !== 0) return undefined
+    /** Every candidate the lookup printed, in its own order. */
+    const lines = (found.stdout ?? "").split(/\r?\n/u).map((line) => line.trim()).filter((line) => line !== "")
+    for (const line of lines) {
+      try {
+        if (existsSync(line)) return realpathSync(line)
+      } catch {
+        // An unreadable candidate is a miss; the next line may still be the tool.
+      }
+    }
+    return undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The installed package root behind one RESOLVED launcher path, validated by its own manifest.
+ *
+ * TWO SHAPES reach the same package, and the platform decides which one a `which`/`where` answer is:
+ *   · POSIX puts a symlink at `<root>/bin/<name>.js`, so the root is two directories up;
+ *   · win32 resolves to the npm shim `%APPDATA%\npm\<name>.cmd` / `.ps1`, whose two-up answer is the
+ *     global PREFIX (`%APPDATA%`) — never the package, which instead sits under that prefix's
+ *     `node_modules` and is found by walking up to it.
+ * The POSIX shape is tried first and the walk second, and EVERY candidate must carry a `package.json`:
+ * an unvalidated guess is exactly how `dirname(dirname(launcher))` answered `%APPDATA%\Roaming` on
+ * win32 and made the sidebar lane unresolvable.
+ * @param launcher - a resolved launcher path.
+ * @param packageName - the package name, e.g. `@deepseek-harness-tui/dsh-tui`.
+ * @returns the package root, or `undefined` when neither shape resolves one.
+ */
+function packageRootFromLauncher(launcher: string, packageName: string): string | undefined {
+  /** The candidate roots, in probe order: the POSIX two-up shape first, then the upward walk. */
+  const candidates: string[] = [dirname(dirname(launcher))]
+  /** The directory the walk is at, moved one level up per iteration. */
+  let dir = dirname(launcher)
+  for (let level = 0; level < WALK_LEVELS; level += 1) {
+    candidates.push(join(dir, "node_modules", ...packageName.split("/")))
+    /** The parent directory; equal to `dir` at the filesystem root, which ends the walk. */
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  for (const candidate of candidates) {
+    try {
+      if (existsSync(join(candidate, "package.json"))) return candidate
+    } catch {
+      // An unreadable candidate is a miss; the next one may still be the package.
+    }
+  }
+  return undefined
+}
+
+/**
+ * The `PROFILE` a launcher-shaped source declares.
+ * @param file - the candidate source file.
+ * @returns the declared profile name, or `undefined` when the file cannot be read or declares none.
+ */
+function profileFromFile(file: string): string | undefined {
+  try {
+    /** The file's source. */
+    const text = readFileSync(file, "utf8")
+    return /^const PROFILE = ['"]([^'"]+)['"]/mu.exec(text)?.[1]
   } catch {
     return undefined
   }
@@ -536,19 +612,23 @@ function whichReal(name: string): string | undefined {
  *
  * The launcher declares it (`const PROFILE = 'dsh-tui'`), so the name is taken from the host rather
  * than assumed — a launcher that renames its profile moves this script with it.
+ *
+ * TWO SHAPES (win32 defect, measured 2026-10-12): on POSIX the resolved launcher IS that source, while
+ * win32 resolves to the npm shim, which carries no declaration at all (reading the shim is why the
+ * remedy reported "the installed dsh-tui launcher could not be read" there). The shim is therefore
+ * followed to the host package's own `bin/dsh-tui.js`, where the declaration lives on both platforms.
  * @returns the declared profile name, or `undefined` when the launcher cannot be read.
  */
 function launcherProfile(): string | undefined {
   /** The installed launcher's real path. */
   const launcher = whichReal("dsh-tui")
   if (launcher === undefined) return undefined
-  try {
-    /** The launcher's source. */
-    const text = readFileSync(launcher, "utf8")
-    return /^const PROFILE = ['"]([^'"]+)['"]/mu.exec(text)?.[1]
-  } catch {
-    return undefined
-  }
+  // The launcher's OWN source first: the POSIX shape, and the cheapest read on either platform.
+  const direct = profileFromFile(launcher)
+  if (direct !== undefined) return direct
+  // The win32 shim: follow it to the host package's own entry script, where the declaration lives.
+  const hostRoot = packageRootFromLauncher(launcher, HOST_PACKAGE)
+  return hostRoot === undefined ? undefined : profileFromFile(join(hostRoot, "bin", "dsh-tui.js"))
 }
 
 /**
@@ -559,10 +639,9 @@ function installedDshRoot(): string | undefined {
   /** The `dsh` launcher's real path. */
   const dsh = whichReal("dsh")
   if (dsh === undefined) return undefined
-  // `<...>/lib/node_modules/@deepseek-ai/dsh/bin/dsh.js` -> `<...>/lib/node_modules/@deepseek-ai/dsh`.
-  /** The candidate package root, two levels above the `bin/` directory. */
-  const root = dirname(dirname(dsh))
-  return existsSync(join(root, "package.json")) ? root : undefined
+  // The POSIX shape (`<...>/lib/node_modules/@deepseek-ai/dsh/bin/dsh.js` -> the package root) is tried
+  // first inside the resolver, and the win32 shim shape is the SAME validated walk.
+  return packageRootFromLauncher(dsh, "@deepseek-ai/dsh")
 }
 
 /**
@@ -1014,7 +1093,7 @@ function selfTest(): number {
     /** The installed launcher's real path. */
     const launcher = whichReal("dsh-tui")
     /** The installed host package root, or `undefined`. */
-    const hostRoot = launcher === undefined ? undefined : dirname(dirname(launcher))
+    const hostRoot = launcher === undefined ? undefined : packageRootFromLauncher(launcher, HOST_PACKAGE)
     /** The host's own bundle patch. */
     const patch = hostRoot === undefined ? "" : join(hostRoot, "cordis.patch.yml")
     if (launcher === undefined || !existsSync(patch)) {
