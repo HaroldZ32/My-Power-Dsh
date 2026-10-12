@@ -21,7 +21,7 @@
 // roles-plugin guard would read an allowance that `mpd_verify_escape` never wrote.
 import { createHash, randomBytes } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { isAbsolute, join, relative, sep } from "node:path"
 
 /** One loop's writer seat. */
 export interface LoopWriter {
@@ -316,22 +316,48 @@ export function hashDoc(workspace: string, path: string): { path: string; sha256
   /** The digest, or `""` when the file is unreadable. */
   const digest = sha256File(path)
   if (digest === "") return undefined
-  // THE CONTAINMENT TEST IS SEPARATOR-AGNOSTIC (win32 defect, measured 2026-10-12). It compared the RAW
-  // path against `workspace + "/"`, so on win32 — where BOTH carry a backslash separator — the prefix
-  // never matched and a document INSIDE the workspace was stored with its absolute, machine-specific
-  // path (`C:\Users\...\.mpd\plans\wave.md`). The record's `basis.frozenContract.path` is the
-  // workspace-relative POSIX spelling, so on win32 the two halves of ONE record disagreed, and
-  // `packages/mpd-verify-plugin/test/row.test.ts` AC-D2 answered with the absolute form. Both sides are
-  // normalised to POSIX before the comparison, which is the spelling the ledger stores contract paths
-  // in (`normalizeContractPath`) — the same defect class the win32 waves fixed for the preset and MCP
-  // rows. Outside the workspace the caller's own spelling is returned unchanged, as before.
-  /** The workspace root in POSIX form, with any trailing separator trimmed. */
-  const rootPosix = workspace.replace(/\\/g, "/").replace(/\/+$/, "")
-  /** The document path in POSIX form. */
-  const pathPosix = path.replace(/\\/g, "/")
-  /** The workspace-relative spelling when the document is inside the workspace. */
-  const rel = rootPosix !== "" && pathPosix.startsWith(rootPosix + "/") ? pathPosix.slice(rootPosix.length + 1) : path
-  return { path: rel, sha256: digest }
+  // THE CONTAINMENT TEST IS THE PLATFORM'S OWN (win32 defect, measured 2026-10-12). It compared the RAW
+  // path against `workspace + "/"` — a POSIX-shaped prefix — so on win32, where BOTH carry a backslash
+  // separator, it never matched and a document INSIDE the workspace was stored with its absolute,
+  // machine-specific path (`C:\Users\...\.mpd\plans\wave.md`). The record's `basis.frozenContract.path`
+  // is the workspace-relative POSIX spelling, so on win32 the two halves of ONE record disagreed, and
+  // `packages/mpd-verify-plugin/test/row.test.ts` AC-D2 answered with the absolute form.
+  //
+  // `relative()` is the platform's own answer, so containment needs no prefix guessing at all: it also
+  // compares CASE-INSENSITIVELY on win32 (where a differently-cased drive or directory is the same
+  // place) and it collapses `.`/`..` the way the OS does. Outside the workspace the caller's own spelling
+  // is returned unchanged, as before.
+  /** The document's path relative to the workspace, in the platform's own spelling. */
+  const rel = relative(workspace, path)
+  /** True when the document really is INSIDE the workspace: not the root itself, no `..` escape, and not absolute (a different win32 drive answers absolutely). */
+  const inside = rel !== "" && rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel)
+  // THE SEPARATOR TRANSLATION HAPPENS ONLY WHERE A BACKSLASH IS A SEPARATOR. On POSIX a backslash is a
+  // legal FILENAME character, so rewriting it would store a path that no longer identifies the file that
+  // was hashed (CodeRabbit review, PR #38); there `relative()` already answers in POSIX form and the
+  // translation is the identity. The stored spelling is POSIX wherever a translation happens, which is
+  // what `normalizeContractPath` writes, so a record's contract and its `basis.docs[].path` agree
+  // everywhere.
+  if (!inside) return { path, sha256: digest }
+  return { path: toPosixRelative(rel), sha256: digest }
+}
+
+/**
+ * Spell one workspace-relative path in the POSIX form the ledger stores, translating separators ONLY
+ * where the platform's separator is a backslash.
+ *
+ * WHY A SEPARATOR PARAMETER. The invariant a reviewer must be able to falsify is "a POSIX filename may
+ * contain a backslash and keeps it". On win32 that filename cannot exist, so an arm written against the
+ * filesystem can only be SKIPPED on the platform most of this repository's development happens on — and
+ * a skipped arm proves nothing. Taking the separator as an argument makes BOTH branches executable
+ * everywhere, which is why `hashDoc` passes the platform's own `sep` and the arms pass `"/"` and `"\\"`
+ * explicitly.
+ *
+ * @param rel - a path relative to the workspace, in the platform's own spelling.
+ * @param separator - the separator that spelling uses; defaults to this platform's own.
+ * @returns the same path with `/` separators.
+ */
+export function toPosixRelative(rel: string, separator: string = sep): string {
+  return separator === "/" ? rel : rel.split(separator).join("/")
 }
 
 /** Read every loop this workspace knows. */

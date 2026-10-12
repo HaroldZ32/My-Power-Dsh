@@ -1788,7 +1788,7 @@ import { join as join3 } from "node:path";
 // packages/mpd-verify-plugin/src/ledger.ts
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, statSync as statSync2, writeFileSync } from "node:fs";
-import { join as join2 } from "node:path";
+import { isAbsolute, join as join2, relative, sep } from "node:path";
 function verifyRoot(workspace) {
   return join2(workspace, ".mpd", "verify");
 }
@@ -1872,10 +1872,14 @@ function hashDoc(workspace, path) {
   const digest = sha256File(path);
   if (digest === "")
     return;
-  const rootPosix = workspace.replace(/\\/g, "/").replace(/\/+$/, "");
-  const pathPosix = path.replace(/\\/g, "/");
-  const rel = rootPosix !== "" && pathPosix.startsWith(rootPosix + "/") ? pathPosix.slice(rootPosix.length + 1) : path;
-  return { path: rel, sha256: digest };
+  const rel = relative(workspace, path);
+  const inside = rel !== "" && rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel);
+  if (!inside)
+    return { path, sha256: digest };
+  return { path: toPosixRelative(rel), sha256: digest };
+}
+function toPosixRelative(rel, separator = sep) {
+  return separator === "/" ? rel : rel.split(separator).join("/");
 }
 function readLoops(workspace) {
   return listJson(loopsDir(workspace));
@@ -2139,7 +2143,7 @@ function installDelegationObserver(dsh, options) {
 // packages/mpd-verify-plugin/src/gates.ts
 import { spawnSync } from "node:child_process";
 import { existsSync as existsSync2, statSync as statSync3 } from "node:fs";
-import { basename, isAbsolute, join as join4, relative } from "node:path";
+import { basename, isAbsolute as isAbsolute2, join as join4, relative as relative2 } from "node:path";
 var GATE_TABLE = [
   { id: "gates", cmd: "bun run verify:gates", runner: "bun", argv: ["run", "verify:gates"] },
   { id: "tests", cmd: "bun test packages", runner: "bun", argv: ["test", "packages"] },
@@ -2190,9 +2194,9 @@ function runGate(workspace, spec, timeoutMs) {
 function probeArtifacts(workspace, paths) {
   const readings = [];
   for (const raw of paths.slice(0, PROBE_PATH_LIMIT)) {
-    const absolute = isAbsolute(raw) ? raw : join4(workspace, raw);
-    const rel = relative(workspace, absolute);
-    if (rel.startsWith("..") || isAbsolute(rel)) {
+    const absolute = isAbsolute2(raw) ? raw : join4(workspace, raw);
+    const rel = relative2(workspace, absolute);
+    if (rel.startsWith("..") || isAbsolute2(rel)) {
       readings.push({ path: raw, exists: false, kind: "absent", bytes: 0, sha256: "", mtime: "" });
       continue;
     }
@@ -2315,7 +2319,7 @@ function buildRecord(input, identity) {
 }
 
 // packages/mpd-verify-plugin/src/tools.ts
-import { isAbsolute as isAbsolute2, join as join5 } from "node:path";
+import { isAbsolute as isAbsolute3, join as join5 } from "node:path";
 var DEFAULT_LOOP_TTL_MS = 24 * 60 * 60 * 1000;
 var DEFAULT_GATE_TIMEOUT_MS = 15 * 60 * 1000;
 var BOOT_MARKER_FILE = "boot.json";
@@ -2331,7 +2335,7 @@ function writeBootMarker(workspace, installedAt) {
   return writeJsonAtomic(join5(verifyRoot(workspace), BOOT_MARKER_FILE), { version: 1, installedAt });
 }
 function sourceDoc(workspace, path) {
-  return hashDoc(workspace, isAbsolute2(path) ? path : join5(workspace, path));
+  return hashDoc(workspace, isAbsolute3(path) ? path : join5(workspace, path));
 }
 function registerVerifyTools(dsh, deps) {
   const definitions = [
