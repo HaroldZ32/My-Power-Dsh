@@ -8,9 +8,9 @@
 // would duplicate by inlining).
 //
 // TWO RULES, ONE HOOK:
-//   1. the CAPTAIN's write rule — the workspace's TOP-LEVEL session (not a delegated child:
-//      `origin: "subagent"` or a recorded depth of `1`+, and NOT a preset name: see `sessionIsTopLevel`
-//      in `./complexity-gate.ts`) may not write
+//   1. the CAPTAIN's write rule — the `mpd` PRESET's top-level session (a delegated child is never the
+//      captain: `origin: "subagent"` or a recorded depth of `1`+, and neither is any session running
+//      another preset — see `sessionIsMpdCaptain` in `./complexity-gate.ts`) may not write
 //      a code path without an armed loop, a counted escape, or a delegation;
 //   2. the VERIFIER's envelope — a bound verifier seat may not reach the implementation, the shell or the
 //      board before it has recorded a verdict.
@@ -20,7 +20,7 @@
 // than an outage. It degrades with ONE warning when the law's service is absent — the boot line then says
 // `verifyGate=absent`, which is the honest bound, never silence.
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
-import { sessionIsTopLevel, sessionRank } from "./complexity-gate.ts"
+import { sessionIsMpdCaptain, sessionRank } from "./complexity-gate.ts"
 import type { ArmedLoopView, VerifierSeatView } from "../../mpd-verify-plugin/src/law.ts"
 import {
   captainWriteDecision,
@@ -56,9 +56,12 @@ export interface VerifyLawAccess {
 /**
  * What installing the guard needs.
  *
- * THERE IS NO PRESET KNOB — deliberately, and it must not come back: §5's captain is the workspace's
- * TOP-LEVEL session (not a delegated child, and never a preset name), so no default here
- * may silently narrow the captain test. Both rules below read that ONE predicate (T-92).
+ * THERE IS NO PRESET KNOB in the OPTIONS below — deliberately, and it must not come back: the preset
+ * scope is a PROPERTY OF THE RULE, not a configurable, and rule 1 already reads it from the session
+ * header through `sessionIsMpdCaptain`. §5's captain is still the workspace's TOP-LEVEL session (never
+ * a delegated child, and never a preset name); what the preset scopes is which of the two rules the
+ * captain's CONTRACT covers — rule 3 (the one git writer) stays keyed on `sessionIsTopLevel` alone,
+ * because a single `.git/HEAD` on a shared checkout is protected whatever preset the writer runs.
  */
 export interface VerifyGuardOptions {
   /** Resolve the law's runtime PER CALL; `undefined` degrades the guard to a stated rule. */
@@ -145,33 +148,34 @@ export function verifyGuardDecision(
     // RULE 3 — §5's ONE-GIT-WRITER RULE. A member/child session may not run a git WRITE command; the
     // captain may, and read-only git stays open to everyone. Checked for `bash` ONLY, because that is
     // the one tool that can carry a command string at all. THE CAPTAIN IS THE WORKSPACE'S TOP-LEVEL
-    // SESSION — not a delegated child, and never a preset name (T-92).
+    // SESSION — not a delegated child, and never a preset name (T-92). THIS RULE IS NOT PRESET-SCOPED:
+    // it protects the single `.git/HEAD` of a shared checkout, so it follows the USER's preset too.
     if (toolName === "bash" || toolName === "powershell" || toolName === "pwsh") {
-      /** Whether this caller is the workspace's top-level session: §5's one git writer. */
-      const isCaptain = sessionIsTopLevel(agent)
+      /** The caller's class in this workspace's delegation tree, decided ONCE and read by both fields. */
+      const callerClass = sessionRank(agent)
       /** The §5 decision for this command. */
       const gitDeny = gitWriterDecision({
         command: (exec as { arguments?: Record<string, unknown> } | undefined)?.arguments?.command,
-        topLevelCaptain: isCaptain,
+        topLevelCaptain: callerClass === "captain",
         // THE DENIAL STATES WHAT WAS DECIDED, so the class is threaded from the SAME classification the
         // boolean above comes from — `law.ts` never re-derives (or invents) a reason of its own.
-        callerClass: sessionRank(agent),
+        callerClass,
       })
       if (gitDeny !== undefined) return advisoryOr(mode(options.mode), gitDeny, options.warn)
     }
-    // RULE 1 — THE CAPTAIN'S WRITE RULE. Only the workspace's TOP-LEVEL session is the captain — not a
-    // delegated child (`origin: "subagent"` or depth `1`+), NOT a preset name: a member, a subagent, a
-    // workflow worker and a ralph round are children, and they are precisely who the captain is supposed
-    // to hand code to. The classification is the session gate's own predicate (`sessionIsTopLevel`),
-    // reused rather than re-derived, so rules 1, 3 and the manual can never disagree about who is
-    // top-level.
+    // RULE 1 — THE CAPTAIN'S WRITE RULE, scoped to the preset that owns it. Only the `mpd` preset's
+    // TOP-LEVEL session is the captain here — not a delegated child (`origin: "subagent"` or depth
+    // `1`+), and not a session running ANY OTHER preset: this rule is part of what `mpd` means, and a
+    // user working in another preset (`cordis` is the deployment default) must keep its own writes.
+    // The classification is the session gate's own predicate (`sessionIsMpdCaptain`), reused rather
+    // than re-derived, so the rule and the manual can never disagree about which session it gates.
     /** The decision for this call. */
     const decision = captainWriteDecision({
       toolName,
       args: (exec as { arguments?: Record<string, unknown> } | undefined)?.arguments,
       workspaceRoot: options.workspaceRoot,
       sessionId,
-      topLevel: sessionIsTopLevel(agent),
+      topLevel: sessionIsMpdCaptain(agent),
       loops: law.armedLoops(options.workspaceRoot),
       escapeUses: law.escapeUses(sessionId),
       now: options.now,

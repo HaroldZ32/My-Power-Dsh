@@ -735,11 +735,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
     /** The guard's install outcome, reported on the team-plane boot signature below. */
     const verifyGuard = installVerifyGuard(dsh, {
-      // NO PRESET SCOPE: §5's captain is the workspace's TOP-LEVEL session (not a delegated child —
-      // `origin: "subagent"` or depth `1`+ — and never a preset name) — the `presets: ["mpd"]` that
-      // used to sit here made the captain branch unreachable on this deployment's `cordis`-preset
-      // top-level session (T-92), and the parent-session half did the same to the SEEDED FORK the
-      // user's own working session is (F0, 2026-10-10).
+      // NO PRESET KNOB HERE: the scope is decided per call inside the guard from the session header, not
+      // configured at install. Rule 1 (the write rule) is scoped to the `mpd` preset through
+      // `sessionIsMpdCaptain`; rule 3 (the one git writer) stays keyed on `sessionIsTopLevel` alone, so
+      // it follows the USER's preset too. The parent-session half of T-92 remains FIXED either way: a
+      // seeded fork whose depth the harness never recorded is the captain, not a child (F0, 2026-10-10).
       law: lawAccess,
       workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
       configValue,
@@ -750,11 +750,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     guardOutcome.push("verifyGate=absent reason=threw")
     warnOnce("verify-guard:threw", "the verification law's write guard could not be installed (" + errText(error) + ")")
   }
-  // THE CAPTAIN INVESTIGATION GUARD, installed at this same site: the workspace's TOP-LEVEL session
+  // THE CAPTAIN INVESTIGATION GUARD, installed at this same site: the `mpd` preset's TOP-LEVEL session
   // DELEGATES reconnaissance (finding files, reading source, grepping for symbols) instead of spending
   // its own context on it. It is its OWN registration, so `captain.investigation` is the only switch and
   // a `verify.mode` change cannot silently alter it. Read-only specialists, members, one-shot spawns and
-  // verifier seats are untouched: the rule is keyed on §5's `sessionIsTopLevel` predicate.
+  // verifier seats are untouched, and so is any session running ANOTHER preset: the rule is scoped by
+  // `sessionIsMpdCaptain` — §5's top-level predicate AND the `mpd` preset.
   try {
     /** The guard's install outcome, whose MODE the team-plane boot signature reports below. */
     const investigation = installCaptainInvestigationGuard(dsh, {

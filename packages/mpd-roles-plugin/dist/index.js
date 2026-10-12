@@ -452,6 +452,13 @@ function sessionRank(agent) {
 function sessionIsTopLevel(agent) {
   return sessionRank(agent) === "captain";
 }
+var MPD_CAPTAIN_PRESET = "mpd";
+function sessionIsMpdCaptain(agent) {
+  if (!sessionIsTopLevel(agent))
+    return false;
+  const header = agent?.session?.header;
+  return header?.agentPreset === MPD_CAPTAIN_PRESET;
+}
 
 // packages/mpd-verify-plugin/src/law.ts
 var GATED_WRITE_TOOLS = [
@@ -758,11 +765,11 @@ function verifyGuardDecision(exec, options) {
       return;
     }
     if (toolName === "bash" || toolName === "powershell" || toolName === "pwsh") {
-      const isCaptain = sessionIsTopLevel(agent);
+      const callerClass = sessionRank(agent);
       const gitDeny = gitWriterDecision({
         command: exec?.arguments?.command,
-        topLevelCaptain: isCaptain,
-        callerClass: sessionRank(agent)
+        topLevelCaptain: callerClass === "captain",
+        callerClass
       });
       if (gitDeny !== undefined)
         return advisoryOr(mode(options.mode), gitDeny, options.warn);
@@ -772,7 +779,7 @@ function verifyGuardDecision(exec, options) {
       args: exec?.arguments,
       workspaceRoot: options.workspaceRoot,
       sessionId,
-      topLevel: sessionIsTopLevel(agent),
+      topLevel: sessionIsMpdCaptain(agent),
       loops: law.armedLoops(options.workspaceRoot),
       escapeUses: law.escapeUses(sessionId),
       now: options.now
@@ -884,7 +891,7 @@ function captainInvestigationDecision(input) {
   return investigationRefusal(toolName, JSON.stringify(raw));
 }
 function investigationRefusal(toolName, target) {
-  return "captain investigation rule: `" + toolName + "` on " + target + " is refused — the workspace's" + " TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large" + " projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the" + " `Researcher` role (evidence-based search), or hand the search to a team member, and consume the" + " REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`," + " `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and" + ' `captain.investigation: "allow"` in mpd.jsonc restores full access.';
+  return "captain investigation rule: `" + toolName + "` on " + target + " is refused — the `mpd`" + " preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large" + " projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the" + " `Researcher` role (evidence-based search), or hand the search to a team member, and consume the" + " REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`," + " `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and" + ' `captain.investigation: "allow"` in mpd.jsonc restores full access.';
 }
 function installCaptainInvestigationGuard(dsh, options) {
   const mode2 = resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY));
@@ -903,7 +910,7 @@ function installCaptainInvestigationGuard(dsh, options) {
           return "";
         }
       })(),
-      topLevel: sessionIsTopLevel(exec?.agent),
+      topLevel: sessionIsMpdCaptain(exec?.agent),
       mode: resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY))
     }));
     return { installed: true, mode: mode2, ...typeof dispose === "function" ? { dispose } : {} };
