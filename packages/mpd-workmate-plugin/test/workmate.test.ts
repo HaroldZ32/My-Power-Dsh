@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test"
+import { describe, test, expect } from "bun:test"
 import { apply, sanitizeName, capText, autoNote, scoreMatch, PERSONA_CAP, MEMORY_CAP, NOTE_CAP, MATCH_THRESHOLD } from "../src/index.ts"
 import { existsSync, mkdtempSync, readFileSync, readdirSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -194,6 +194,108 @@ test("init → list → reflect → match lifecycle with a sandbox HOME", async 
 })
 
 // ── C1/C2/C3: the omo alias is gone from the workmate place ─────────────────────────────────────
+
+// AC4 of the model-config-live-refresh wave (fix/model-config-live-refresh): `mpd_workmate_spawn`
+// re-resolves the BASE's route PER SPAWN from the live config, so a change saved between two
+// spawns is what the SECOND spawn runs on — the frozen `meta.provider/model` stay provenance.
+describe("AC4 — the spawn route is re-resolved per spawn (R2)", () => {
+  test("a config change between two spawns carries to the second, and meta stays provenance", async () => {
+    /** The sandbox home the library lands under, never the real home. */
+    sandboxHome()
+    /** The route the live config serves, FLIPPED between the two spawns below. */
+    let liveRoute: { provider: string; model: string; reasoningEffort?: string } = { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }
+    /** The config-service double: the precedence read the spawn path consumes, per call. */
+    const mpdConfig = { teamModelRouteOf: (member: string) => (member === "Deep Worker" ? { ...liveRoute } : undefined) }
+    /** Every tool descriptor the plugin registered, in registration order. */
+    const tools: any[] = []
+    /** The options of every spawn the case started, asserted per spawn below. */
+    const spawned: any[] = []
+    /** The fake cordis context: the roles roster, the LIVE config service and a spawn sink. */
+    const ctx: any = {
+      get: (k: string) => (k === "mpdRoles" ? makeRoles() : k === "mpdConfig" ? mpdConfig : undefined),
+      tools: {
+        /** Records a tool registration instead of validating it — no harness sits behind this fake context. */
+        register(d: any): void { tools.push(d) }
+      },
+      subagents: {
+        /** Records the spawn options and answers a minimal structured report. */
+        start: async (_kind: string, opts: any) => {
+          spawned.push(opts)
+          return { result: { structured: { name: "alice", summary: "done" }, stopReason: "complete" } }
+        }
+      },
+      provide: () => { /* this case reads the tools, not the service */ }
+    }
+    apply(ctx)
+    /** Looks one registered tool up by its registered name. */
+    const byName = (n: string): any => tools.find((t) => t.name === n)
+    /** The minimal execution context the tools read. */
+    const exec = { agent: { id: "agent-1" }, signal: new AbortController().signal }
+    // The instance is created while the live route is the DEFAULT slot: meta freezes that route
+    // as its init-time provenance snapshot.
+    await byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "route-probe" }, exec)
+    /** The first spawn: the live config's route is what it runs on (the adapter merges the flat
+     *  route into `agentOptions`, so the three route fields are read there). */
+    await byName("mpd_workmate_spawn").execute({ name: "route-probe", task: "first" }, exec)
+    expect(spawned[0].agentOptions.provider).toBe("deepseek-official")
+    expect(spawned[0].agentOptions.model).toBe("deepseek-v4-flash")
+    expect(spawned[0].agentOptions.reasoningEffort).toBe("high")
+    // The in-process config change — an `agentRoutes` save the config row picked up live. No
+    // re-init, no restart: the NEXT spawn must carry the new route.
+    liveRoute = { provider: "gateway", model: "deepseek-v4-pro", reasoningEffort: "low" }
+    await byName("mpd_workmate_spawn").execute({ name: "route-probe", task: "second" }, exec)
+    expect(spawned[1].agentOptions.provider).toBe("gateway")
+    expect(spawned[1].agentOptions.model).toBe("deepseek-v4-pro")
+    expect(spawned[1].agentOptions.reasoningEffort).toBe("low")
+    // The frozen meta stays PROVENANCE ONLY: the init-time route, byte-untouched by the change.
+    /** The instance's metadata read back from disk, asserting the provenance values survive. */
+    const meta = JSON.parse(readFileSync(join(process.env.HOME ?? "", ".mpd", "workmate", "route-probe", "meta.json"), "utf8"))
+    expect(meta.provider).toBe("deepseek-official")
+    expect(meta.model).toBe("deepseek-v4-flash")
+  })
+
+  test("without a config service the roster base chain routes the spawn (and provenance is the last resort)", async () => {
+    /** The sandbox home the library lands under, never the real home. */
+    sandboxHome()
+    /** Every tool descriptor the plugin registered, in registration order. */
+    const tools: any[] = []
+    /** The options of the spawn the case starts. */
+    const spawned: any[] = []
+    /** The roster double whose Deep Worker chain head carries a DISTINCT model. */
+    const roles = {
+      list: () => [{ ...DEEP_WORKER, chain: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] }],
+      get: (k: string) => (k === "hephaestus" ? { ...DEEP_WORKER, chain: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] } : null),
+    }
+    /** The fake cordis context: NO config service, the roster double, a spawn sink. */
+    const ctx: any = {
+      get: (k: string) => (k === "mpdRoles" ? roles : undefined),
+      tools: {
+        /** Records a tool registration instead of validating it — no harness sits behind this fake context. */
+        register(d: any): void { tools.push(d) }
+      },
+      subagents: {
+        /** Records the spawn options and answers a minimal structured report. */
+        start: async (_kind: string, opts: any) => {
+          spawned.push(opts)
+          return { result: { structured: { name: "alice", summary: "done" }, stopReason: "complete" } }
+        }
+      },
+      provide: () => { /* this case reads the tools, not the service */ }
+    }
+    apply(ctx)
+    /** Looks one registered tool up by its registered name. */
+    const byName = (n: string): any => tools.find((t) => t.name === n)
+    /** The minimal execution context the tools read. */
+    const exec = { agent: { id: "agent-1" }, signal: new AbortController().signal }
+    await byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "roster-route" }, exec)
+    await byName("mpd_workmate_spawn").execute({ name: "roster-route", task: "go" }, exec)
+    // No config service: the roster base's CURRENT chain head is the route — already slot-spliced
+    // per call by the roles row, so a configured slot reaches the spawn even without the config row.
+    expect(spawned[0].agentOptions.provider).toBe("deepseek-official")
+    expect(spawned[0].agentOptions.model).toBe("deepseek-v4-pro")
+  })
+})
+
 test("an omo roster id is refused as a base even when roles.get(id) resolves it, and the refusal names NAMES only", async () => {
   sandboxHome()
   /** The fake harness for the retired-id refusal case. */

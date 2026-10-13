@@ -5,7 +5,7 @@
 // WHICH panels the chain opened, in which order, and — the rule the contract cares about most —
 // that a cancel at any panel reached the host as NO write at all.
 import { describe, expect, test } from "bun:test"
-import { openModelMenu, panelOptions, readStoredSlots, slotPanelOptions, storedSlot, locateNamespace, MODEL_NAMESPACE } from "../src/model-menu"
+import { openModelMenu, panelOptions, readStoredSlots, readRouteTables, memberRouteText, slotPanelOptions, targetPanelOptions, storedSlot, locateNamespace, MODEL_NAMESPACE, TARGET_CLEAR, TARGET_SLOT } from "../src/model-menu"
 import type { ModelMenuResult } from "../src/model-menu"
 import type { CatalogReadSeam } from "../src/settings"
 import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, teamModelOptionLists } from "../src/settings"
@@ -263,17 +263,20 @@ describe("R3: the /mpd-model pick-list chain", () => {
     expect(zh[3].label).toBe(`4. ${TEAM_MODEL_SLOT_GROUPS.slot4.zh}`)
   })
 
-  test("the four panels open in order slot → provider → model → effort, and settle their ids", async () => {
-    /** The dialog double: slot1, prov-a, model-a2, high. */
-    const dialogs = dialogDouble(["slot1", "prov-a", "model-a2", "high"])
+  test("the five panels open in order slot → scope → provider → model → effort, and settle their ids", async () => {
+    /** The dialog double: slot1, the whole-slot scope, prov-a, model-a2, high. */
+    const dialogs = dialogDouble(["slot1", TARGET_SLOT, "prov-a", "model-a2", "high"])
     /** The adapter double with a live catalog. */
     const adapter = adapterDouble(CATALOG)
     /** The chain's outcome. */
     const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
     expect(result.kind).toBe("success")
-    // The panel ORDER is the contract, so assert it by ids rather than by title text.
+    // The panel ORDER is the contract, so assert it by ids rather than by title text. The scope
+    // panel enumerates the SLOT branch, slot1's five members (as roster NAMES), then the clear
+    // branch — a name is picked, never typed.
     expect(dialogs.calls.map((call) => call.ids)).toEqual([
       [...TEAM_MODEL_SLOTS],
+      [TARGET_SLOT, ...TEAM_MODEL_SLOT_GROUPS.slot1.members, TARGET_CLEAR],
       ["prov-a", "prov-b"],
       ["model-a1", "model-a2"],
       ["high"],
@@ -288,6 +291,89 @@ describe("R3: the /mpd-model pick-list chain", () => {
       { op: "set", path: ["teamModels", "slot1", "model"], value: "model-a2" },
       { op: "set", path: ["teamModels", "slot1", "reasoningEffort"], value: "high" },
     ])
+  })
+
+  test("R2: a MEMBER scope writes agentRoutes.<member> and states the member in the outcome", async () => {
+    /** The dialog double: slot3, the Deep Worker override, prov-a, model-a1, low. */
+    const dialogs = dialogDouble(["slot3", "Deep Worker", "prov-a", "model-a1", "low"])
+    /** The adapter double with a live catalog. */
+    const adapter = adapterDouble(CATALOG)
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
+    expect(result.kind).toBe("success")
+    expect(adapter.writes).toHaveLength(1)
+    // The write addresses the ENTRY (the only mutable key) and carries the member's three leaves
+    // under `agentRoutes.<member>` — the R2 precedence layer, not the slot.
+    expect(adapter.writes[0].namespace).toBe("mpd-config")
+    expect(adapter.writes[0].ops).toEqual([
+      { op: "set", path: ["agentRoutes", "Deep Worker", "provider"], value: "prov-a" },
+      { op: "set", path: ["agentRoutes", "Deep Worker", "model"], value: "model-a1" },
+      { op: "set", path: ["agentRoutes", "Deep Worker", "reasoningEffort"], value: "low" },
+    ])
+    // The outcome names the MEMBER (not the slot) and still carries both disclosure constants.
+    expect(textOf(result)).toContain("Deep Worker")
+    expect(textOf(result)).toContain(BRIDGE_DISCLOSURE)
+    expect(textOf(result)).toContain(BRIDGE_NOT_LOST)
+  })
+
+  test("R2: the CLEAR branch unsets only the group's STORED override leaves; nothing stored writes nothing", async () => {
+    // Slot 3's group is Deep Worker + Junior Engineer; the entry fixture stores two leaves for
+    // Deep Worker and one for Junior Engineer, so the clear must answer exactly those three ops.
+    /** The dialog double: slot3, the clear branch. */
+    const dialogs = dialogDouble(["slot3", TARGET_CLEAR])
+    /** The adapter double whose ENTRY carries the group's stored overrides. */
+    const adapter = adapterDouble(CATALOG, {
+      stored: { "mpd-config": { agentRoutes: { "Deep Worker": { provider: "p", model: "m" }, "Junior Engineer": { reasoningEffort: "low" } } } },
+      revision: 11,
+    })
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
+    expect(result.kind).toBe("success")
+    expect(adapter.writes).toHaveLength(1)
+    expect(adapter.writes[0].namespace).toBe("mpd-config")
+    expect(adapter.writes[0].revision).toBe(11)
+    expect(adapter.writes[0].ops).toEqual([
+      { op: "unset", path: ["agentRoutes", "Deep Worker", "provider"] },
+      { op: "unset", path: ["agentRoutes", "Deep Worker", "model"] },
+      { op: "unset", path: ["agentRoutes", "Junior Engineer", "reasoningEffort"] },
+    ])
+    expect(textOf(result)).toContain("Deep Worker")
+    expect(textOf(result)).toContain("Junior Engineer")
+    // A group with NOTHING stored answers a sentence, not a write.
+    /** The dialog double: slot1 (no overrides stored), the clear branch. */
+    const emptyDialogs = dialogDouble(["slot1", TARGET_CLEAR])
+    /** The adapter double with an empty entry. */
+    const emptyAdapter = adapterDouble(CATALOG)
+    /** The empty clear's outcome. */
+    const emptyResult = await openModelMenu(NO_TUI, LOG, { dialogs: emptyDialogs.seam, adapter: emptyAdapter.seam })
+    expect(emptyResult.kind).toBe("success")
+    expect(emptyAdapter.writes).toHaveLength(0)
+    expect(textOf(emptyResult)).toContain("未写入任何设置")
+  })
+
+  test("R3: the scope panel's member options state the member's CURRENT EFFECTIVE route", async () => {
+    /** The adapter double whose ENTRY carries slot3 and a Deep Worker override. */
+    const adapter = adapterDouble(CATALOG, {
+      stored: { "mpd-config": { teamModels: { slot3: { provider: "p3", model: "m3", reasoningEffort: "high" } } } },
+    })
+    /** The tables the panel descriptions read. */
+    const tables = readRouteTables(adapter.seam)
+    expect(tables.slots.slot3).toEqual({ provider: "p3", model: "m3", reasoningEffort: "high" })
+    // The effective route: the stored override's leaf over the slot's (the R2 precedence, for display).
+    tables.agentRoutes["Deep Worker"] = { model: "own-model" }
+    expect(memberRouteText(tables, "Deep Worker", "slot3")).toBe("p3 / own-model / high")
+    expect(memberRouteText(tables, "Junior Engineer", "slot3")).toBe("p3 / m3 / high")
+    // The panel: the slot branch, the group's members (roster NAMES), the clear branch — and every
+    // member description carries the effective route just computed.
+    const options = targetPanelOptions("slot3", tables, "en")
+    expect(options.map((option) => option.id)).toEqual([TARGET_SLOT, ...TEAM_MODEL_SLOT_GROUPS.slot3.members, TARGET_CLEAR])
+    /** The Deep Worker option, whose description must carry its effective route. */
+    const deepWorker = options.find((option) => option.id === "Deep Worker")
+    expect(String(deepWorker?.description)).toContain("p3 / own-model / high")
+    // A member with a stored entry reads it from the ENTRY document too (no fixture surgery).
+    /** The adapter whose entry stores the override itself. */
+    const stored = adapterDouble(CATALOG, { stored: { "mpd-config": { agentRoutes: { Vision: { model: "v" } } } } })
+    expect(readRouteTables(stored.seam).agentRoutes.Vision).toEqual({ model: "v" })
   })
 
   test("panel 3 narrows to the picked provider's models; panel 4 to the picked model's efforts", () => {
@@ -311,35 +397,36 @@ describe("R3: the /mpd-model pick-list chain", () => {
   })
 
   test("an ABSENT catalog opens the panels over the declared fallback and says so", async () => {
-    /** The dialog double: slot2, the declared provider, the declared model, the declared effort. */
-    const dialogs = dialogDouble(["slot2", "deepseek-official", "deepseek-v4-flash", "high"])
+    /** The dialog double: slot2, the whole-slot scope, the declared provider, model, effort. */
+    const dialogs = dialogDouble(["slot2", TARGET_SLOT, "deepseek-official", "deepseek-v4-flash", "high"])
     /** The adapter double with NO catalog seam at all. */
     const adapter = adapterDouble(undefined, { withCatalog: false })
     /** The chain's outcome. */
     const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
     expect(result.kind).toBe("success")
-    // The panels still opened, over the DECLARED fallback (never an empty list).
-    expect(dialogs.calls[1].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.provider])
-    expect(dialogs.calls[2].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.model])
-    expect(dialogs.calls[3].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.reasoningEffort])
+    // The panels still opened, over the DECLARED fallback (never an empty list); the scope panel
+    // sits at index 1, so the three leaf panels are indexes 2-4.
+    expect(dialogs.calls[2].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.provider])
+    expect(dialogs.calls[3].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.model])
+    expect(dialogs.calls[4].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.reasoningEffort])
     // ...and the outcome NAMES the degradation instead of claiming a live catalog.
     expect(textOf(result)).toContain("llmCatalog")
   })
 
   test("a DEGRADED catalog is treated as no read, and the outcome names the degradation", async () => {
     /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot1", "deepseek-official", "deepseek-v4-flash", "max"])
+    const dialogs = dialogDouble(["slot1", TARGET_SLOT, "deepseek-official", "deepseek-v4-flash", "max"])
     /** The adapter double whose catalog reports `degraded`. */
     const adapter = adapterDouble({ degraded: true, providers: [{ id: "prov-a", models: [{ id: "model-a1", efforts: [] }] }] })
     /** The chain's outcome, with the language pinned so the asserted sentence is explicit. */
     const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: { env: { DSH_TUI_LANG: "zh" } } })
     expect(result.kind).toBe("success")
-    expect(dialogs.calls[1].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.provider])
+    expect(dialogs.calls[2].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.provider])
     expect(textOf(result)).toContain("读取不完整")
     // ...and the SAME arm in en says the same thing in English: the sentence is the pair, not one
     // hard-coded string.
     /** The English run of the same degraded chain. */
-    const dialogsEn = dialogDouble(["slot1", "deepseek-official", "deepseek-v4-flash", "max"])
+    const dialogsEn = dialogDouble(["slot1", TARGET_SLOT, "deepseek-official", "deepseek-v4-flash", "max"])
     /** The outcome of that English run. */
     const englishRun = await openModelMenu(NO_TUI, LOG, { dialogs: dialogsEn.seam, adapter: adapterDouble({ degraded: true }).seam, langInputs: { env: { DSH_TUI_LANG: "en" } } })
     expect(textOf(englishRun)).toContain("the catalog read was incomplete")
@@ -347,7 +434,7 @@ describe("R3: the /mpd-model pick-list chain", () => {
 
   test("a THROWING catalog read degrades instead of failing the command", async () => {
     /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot1", "deepseek-official", "deepseek-v4-flash", "max"])
+    const dialogs = dialogDouble(["slot1", TARGET_SLOT, "deepseek-official", "deepseek-v4-flash", "max"])
     /** The adapter double whose catalog read throws. */
     const adapter = adapterDouble(undefined, {})
     /** The seam with the throwing read, kept explicit so the arm is unambiguous. */
@@ -359,21 +446,24 @@ describe("R3: the /mpd-model pick-list chain", () => {
   })
 
   test("CANCEL at any panel ends the chain and writes NOTHING", async () => {
-    // Four arms, one per panel: the chain stops at the panel that was cancelled.
+    // Five arms, one per panel: the chain stops at the panel that was cancelled.
     /** The slot cancel. */
     const atSlot = dialogDouble([undefined])
+    /** The scope cancel. */
+    const atScope = dialogDouble(["slot1", undefined])
     /** The provider cancel. */
-    const atProvider = dialogDouble(["slot1", undefined])
+    const atProvider = dialogDouble(["slot1", TARGET_SLOT, undefined])
     /** The model cancel. */
-    const atModel = dialogDouble(["slot1", "prov-a", undefined])
+    const atModel = dialogDouble(["slot1", TARGET_SLOT, "prov-a", undefined])
     /** The effort cancel. */
-    const atEffort = dialogDouble(["slot1", "prov-a", "model-a1", undefined])
+    const atEffort = dialogDouble(["slot1", TARGET_SLOT, "prov-a", "model-a1", undefined])
     /** One arm: its dialog double, the panel count it must have seen, and the word its sentence carries. */
     const arms: readonly { dialogs: DialogDouble; panels: number; token: string }[] = [
       { dialogs: atSlot, panels: 1, token: "槽位" },
-      { dialogs: atProvider, panels: 2, token: "提供商" },
-      { dialogs: atModel, panels: 3, token: "模型" },
-      { dialogs: atEffort, panels: 4, token: "推理强度" },
+      { dialogs: atScope, panels: 2, token: "范围" },
+      { dialogs: atProvider, panels: 3, token: "提供商" },
+      { dialogs: atModel, panels: 4, token: "模型" },
+      { dialogs: atEffort, panels: 5, token: "推理强度" },
     ]
     for (const arm of arms) {
       /** A fresh adapter double per arm, so its write log is that arm's alone. */
@@ -402,7 +492,7 @@ describe("R3: the /mpd-model pick-list chain", () => {
 
   test("a REFUSED write is reported with the host's own error, and never as success", async () => {
     /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot1", "prov-a", "model-a1", "low"])
+    const dialogs = dialogDouble(["slot1", TARGET_SLOT, "prov-a", "model-a1", "low"])
     /** The adapter double whose mutation is refused by the host. */
     const adapter = adapterDouble(CATALOG, { write: { ok: false, error: "revision conflict" } })
     /** The chain's outcome. */
@@ -413,7 +503,7 @@ describe("R3: the /mpd-model pick-list chain", () => {
 
   test("an adapter with no settings write seam is reported, not thrown", async () => {
     /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot1", "prov-a", "model-a1", "low"])
+    const dialogs = dialogDouble(["slot1", TARGET_SLOT, "prov-a", "model-a1", "low"])
     /** The adapter double with a catalog but no mutate member. */
     const adapter = adapterDouble(CATALOG, { withMutate: false })
     /** The chain's outcome, with the language pinned so the asserted sentence is explicit. */
@@ -436,7 +526,7 @@ describe("R3: the /mpd-model pick-list chain", () => {
 
   test("the success sentence carries the SAME disclosure the section carries", async () => {
     /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot3", "prov-a", "model-a1", "low"])
+    const dialogs = dialogDouble(["slot3", TARGET_SLOT, "prov-a", "model-a1", "low"])
     /** The adapter double with a live catalog. */
     const adapter = adapterDouble(CATALOG)
     /** The chain's outcome. */

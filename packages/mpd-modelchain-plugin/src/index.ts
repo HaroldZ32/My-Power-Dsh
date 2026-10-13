@@ -117,8 +117,81 @@ function loadMemory(p: string): Record<string, string> {
 }
 
 /**
- * Register the route resolver and the two memory tools, with the role chains overlaid from the
- * `mpdConfig` service when that service is present.
+ * The runtime `mpdConfig` service, read PER CALL and never cached at apply.
+ *
+ * WHY per call (R1, wave fix/model-config-live-refresh): the OLD code read the service once in
+ * `apply()` and froze the overlay it found into a closure — two defects in one. A sibling row that
+ * applies AFTER this one (rows apply concurrently) was invisible forever, and a config the user
+ * saved LATER in the same process never reached a resolution. Reading per call fixes both; a
+ * missing service (the standalone case) reads as undefined, never a boot failure.
+ *
+ * @param ctx - the row context, whose `get` may throw on an uninjected service (agent-scoped ctx).
+ * @returns the service double, or undefined when it is absent or refuses the lookup.
+ */
+function configServiceOf(ctx: Ctx): { get?: (k?: string) => any } | undefined {
+  try {
+    return ctx.get?.("mpdConfig") as { get?: (k?: string) => any } | undefined
+  } catch {
+    // An agent-scoped cordis ctx is a proxy that THROWS on any key missing from `inject`.
+    return undefined
+  }
+}
+
+/**
+ * The chain-shape guard both live reads share: an overlay entry counts only when it is a non-empty
+ * array of `{provider, model}` string pairs — anything else is not a chain and is ignored, exactly
+ * as the frozen-closure code judged it.
+ *
+ * @param value - the raw `modelchain.<key>` value.
+ * @returns whether the value is a usable chain table entry.
+ */
+function isChainArray(value: unknown): value is Array<{ provider: string; model: string }> {
+  return Array.isArray(value) && value.length > 0 && value.every((c: any) => c && typeof c.provider === "string" && typeof c.model === "string")
+}
+
+/**
+ * The LIVE config overlay ONLY — the `modelchain.<key>` chains the user actually configured, keyed
+ * by the shipped chain keys (a legacy camelCase spelling answers under its kebab-case key).
+ *
+ * Kept APART from the merged table ({@link chainsNow}) because the resolver's precedence needs to
+ * know WHICH roles the live config explicitly routes: an overlay chain outranks even the roster's
+ * own static chain, while the row's `chains` table only fills in beneath it.
+ *
+ * @param ctx - the row context, for the per-call `mpdConfig` service lookup.
+ * @returns the overlay map; empty when no service is mounted or nothing usable is configured.
+ */
+export function overlayNow(ctx: Ctx): Record<string, Array<{ provider: string; model: string }>> {
+  /** The live config service, absent until the `mpd-config` row has applied. */
+  const mpdConfig = configServiceOf(ctx)
+  if (typeof mpdConfig?.get !== "function") return {}
+  /** Only the roles the config actually overrides, kept apart so the shipped table survives for the rest. */
+  const overlay: Record<string, Array<{ provider: string; model: string }>> = {}
+  for (const key of Object.keys(DEFAULT_CHAINS)) {
+    /** The legacy camelCase spelling of this role, if it ever had one. */
+    const legacy = LEGACY_CHAIN_KEYS[key]
+    /** The configured chain under either spelling; anything else is not a chain and is ignored. */
+    const v = mpdConfig.get("modelchain." + key) ?? (legacy ? mpdConfig.get("modelchain." + legacy) : undefined)
+    if (isChainArray(v)) overlay[key] = v
+  }
+  return overlay
+}
+
+/**
+ * The chain table ONE call resolves against: the live `mpdConfig` overlay over the row's own
+ * `chains` table, over the shipped `DEFAULT_CHAINS` (L2's fallback chain, resolved per call — the
+ * frozen closure is gone).
+ *
+ * @param ctx - the row context, for the per-call `mpdConfig` service lookup.
+ * @param config - the row config, whose `chains` key is the whole-table replacement it always was.
+ * @returns the merged table for this call.
+ */
+export function chainsNow(ctx: Ctx, config: Config): Record<string, Array<{ provider: string; model: string }>> {
+  return { ...(config?.chains ?? DEFAULT_CHAINS), ...overlayNow(ctx) }
+}
+
+/**
+ * Register the route resolver and the two memory tools, with the role chains resolved PER CALL
+ * from the live config (never a closure frozen at apply).
  *
  * @param ctx - the row context; the roster and config services are read lazily, never declared as deps.
  * @param config - row overrides for the memory file and the chain table.
@@ -126,22 +199,6 @@ function loadMemory(p: string): Record<string, string> {
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
   const dsh: any = resolveDshAdapter(ctx)
-  /** The runtime config service, when the composition mounts one; its `get` answers dotted keys. */
-  const mpdConfig = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
-  /** The chain table in force: the row's own, until the config overlay replaces it below. */
-  let chains = config?.chains ?? DEFAULT_CHAINS
-  if (mpdConfig?.get) {
-    /** Only the roles the config actually overrides, kept apart so the shipped table survives for the rest. */
-    const overlay: Record<string, Array<{ provider: string; model: string }>> = {}
-    for (const key of Object.keys(DEFAULT_CHAINS)) {
-      /** The legacy camelCase spelling of this role, if it ever had one. */
-      const legacy = LEGACY_CHAIN_KEYS[key]
-      /** The configured chain under either spelling; anything else is not a chain and is ignored. */
-      const v = mpdConfig.get("modelchain." + key) ?? (legacy ? mpdConfig.get("modelchain." + legacy) : undefined)
-      if (Array.isArray(v) && v.length > 0 && v.every((c: any) => c && typeof c.provider === "string" && typeof c.model === "string")) overlay[key] = v
-    }
-    if (Object.keys(overlay).length > 0) chains = { ...DEFAULT_CHAINS, ...overlay }
-  }
 
   dsh.registerTool({
     name: "mpd_modelchain_resolve",
@@ -167,12 +224,23 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
         throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"))
       }
+      // L2 (R1/AC2): the chain table is resolved PER CALL — `overlayNow` reads the live `mpdConfig`
+      // on every execute, so a `modelchain.<key>` change made in-process changes the NEXT call.
+      // Precedence: the LIVE overlay first (a chain the user explicitly configured outranks even
+      // the roster's own static chain — `modelchain.<chainKey>` is a documented consumed key and
+      // must be what the next resolution answers), then the roster's chain, then the merged
+      // fallback table keyed by the INTERNAL id (`resolveRole`'s keys are ids).
+      /** The configured chain for THIS role's id, when the live config routes one. */
+      const configured = overlayNow(ctx)[String(spec.id)]
+      if (isChainArray(configured)) {
+        return { provider: configured[0].provider, model: configured[0].model, chain: configured.map((c) => ({ ...c })) }
+      }
       if (Array.isArray(spec.chain) && spec.chain.length > 0) {
         return { provider: spec.chain[0].provider, model: spec.chain[0].model, chain: spec.chain.map((c: any) => ({ ...c })) }
       }
       // This role carries no chain of its own: fall back to the shipped/configured table, keyed by
       // the INTERNAL id (`resolveRole`'s keys and the `modelchain.<id>` config keys are ids).
-      return resolveRole(String(spec.id), chains)
+      return resolveRole(String(spec.id), chainsNow(ctx, config))
     }
   })
 

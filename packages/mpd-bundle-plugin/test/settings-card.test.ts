@@ -329,9 +329,14 @@ describe("W2 (static): the BUILT and served client carries the SECTION registrat
   })
 
   test("the disclosure copy is the same sentence the TUI states, and no stale claim survives", () => {
+    // Reworded by wave fix/model-config-live-refresh (L1 landed the live refresh): the copy keeps
+    // the bridge half and now states the LIVE half; the "after a restart" claim is DELETED, not
+    // softened, and the "not bridged" lie stays gone.
     expect(CARD_SOURCE).toContain("a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s)")
-    expect(CARD_SOURCE).toContain("after a restart")
+    expect(CARD_SOURCE).toContain("takes effect in the RUNNING process — no restart")
+    expect(CARD_SOURCE).toContain("read per use")
     expect(CARD_SOURCE).toContain("never lost")
+    expect(CARD_SOURCE).not.toContain("after a restart")
     expect(CARD_SOURCE).not.toContain("not bridged")
   })
 })
@@ -492,11 +497,12 @@ describe("isolation and front-door parity", () => {
     // declaration the card exports, so it needs the transpiled text too.
     const { FIELDS } = (0, eval)("(" + CARD_JS + ")")((name: "react" | "locales") => ({ react: {}, locales: {} })[name] ?? {})
     expect(Array.isArray(FIELDS)).toBe(true)
-    // 26 = the shared list after the twelve team-model slot leaves joined it (13 scalar knobs + 12
+    // 59 = the shared list after the twelve team-model slot leaves and the thirty-three
+    // agentRoutes leaves joined it (13 scalar knobs + 12 slot leaves + 11 members x 3 route
     // leaves) plus the TUI surface's own `tui.dashboardKey` (the Ctrl+A takeover toggle); the
     // element-wise loop below is what makes this a no-drift pin, not a magic number.
-    expect(FIELDS).toHaveLength(26)
-    expect(SETTINGS_KNOBS).toHaveLength(26)
+    expect(FIELDS).toHaveLength(59)
+    expect(SETTINGS_KNOBS).toHaveLength(59)
     expect(FIELDS.map((field: CardField) => field.path)).toEqual(SETTINGS_KNOBS.map((knob) => [...knob.path]))
     for (const [index, field] of FIELDS.entries()) {
       /** The shared declaration's knob at the same index. */
@@ -861,6 +867,102 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     ])
   })
 
+  // ── R2/R3 (lane L4): the agentRoutes rows and the see-before-you-edit block ─────────────────
+  test("R2: the thirty-three agentRoutes rows render as catalog-driven SELECTS, one group per member", async () => {
+    /** The section value this arm renders: one slot triple plus one member override. */
+    const section = { ...SLOT_SECTION, agentRoutes: { "Deep Worker": { model: "deepseek-v4-pro" } } }
+    /** This arm's rendered tree and client. */
+    const { tree, client } = await renderedTree(slotScope(section), catalogServices())
+    // The member rows are SELECTS driven by the same live catalog the slot pickers use.
+    expect(optionValues(controlOf(tree, "agentRoutes.Deep Worker.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-pro", "x-1"])
+    expect(optionValues(controlOf(tree, "agentRoutes.Architect.provider"))).toEqual(["deepseek-official", "other-provider"])
+    // One heading per roster member (eleven groups), in the mirrored roster order, each naming the
+    // slot the override sits on — the eleven names arrive as rows, never as a free-typed key.
+    const groups = elementsOf(tree, "div").filter((node) => node.props["data-mpd-agent-group"] !== undefined)
+    expect(groups.map((node) => node.props["data-mpd-agent-group"])).toEqual([
+      "Architect", "Planner", "Reviewer", "Lead", "Senior Engineer",
+      "Researcher", "Explorer", "Plan Reviewer",
+      "Deep Worker", "Junior Engineer",
+      "Vision Analyst",
+    ])
+    expect(textOf(tree)).toContain("Deep Worker — own route (overrides slot 3 · execution members)")
+    expect(textOf(tree)).toContain(EN["agentRoutes.impact"])
+    client.restore()
+  })
+
+  test("R2: an agentRoutes edit writes a three-deep SET, and a reset writes the UNSET", async () => {
+    /** Every mutation this arm's scope recorded. */
+    const calls: ScopeCall[] = []
+    /** This arm's client and section registration. */
+    const { registration } = mountedCard(fakeScope(READY, calls))
+    /** The section's host-facing face. */
+    const face = registration.inject()
+    face.edit("agentRoutes.Vision Analyst.model", "deepseek-v4-flash-vision-exp")
+    await face.save()
+    expect(calls).toHaveLength(1)
+    expect(calls[0].ops).toEqual([{ op: "set", path: ["agentRoutes", "Vision Analyst", "model"], value: "deepseek-v4-flash-vision-exp" }])
+    face.resetField("agentRoutes.Vision Analyst.model")
+    await face.save()
+    expect(calls).toHaveLength(2)
+    expect(calls[1].ops).toEqual([{ op: "unset", path: ["agentRoutes", "Vision Analyst", "model"] }])
+  })
+
+  test("R3: the see-before-you-edit block renders the four slots, the set overrides and the source notice", async () => {
+    /** The section value this arm renders: one slot triple plus one member override. */
+    const section = { ...SLOT_SECTION, agentRoutes: { "Deep Worker": { model: "deepseek-v4-pro" } } }
+    /** This arm's rendered tree and client. */
+    const { tree, client } = await renderedTree(slotScope(section), catalogServices())
+    /** The rendered section text, where the effective block must appear above the rows. */
+    const text = textOf(tree)
+    expect(text).toContain("Effective model config")
+    // slot 1 from the document; slots 2-4 from the declared default floor (nothing configured them)
+    expect(text).toContain("slot 1 · heavy members: deepseek-official / deepseek-v4-pro / max")
+    expect(text).toContain("slot 2 · analysis members: deepseek-official / deepseek-v4-flash / high")
+    expect(text).toContain("slot 4 · vision member: deepseek-official / deepseek-v4-flash-vision-exp / high")
+    // the set override states its leaves AND the member's effective route (the model over slot 3's)
+    expect(text).toContain("Deep Worker — override model=deepseek-v4-pro; effective deepseek-official / deepseek-v4-pro / high")
+    // the document branch says the chains half is not shown and why
+    expect(text).toContain("no configured chains — the shipped defaults are in force")
+    expect(text).toContain("the live service route is unavailable")
+    client.restore()
+  })
+
+  test("R3: the SERVICE branch projects the route body over the document and carries the chains", () => {
+    // The pure half of the projection: the live route's tables win over the document's, and the
+    // modelchain chains — which NO settings document holds — ride the service body alone.
+    /** The projection over a live route body beside a document value. */
+    const effective = CARD.effectiveModelConfigOf(
+      { teamModels: { slot1: { provider: "doc-provider", model: "doc-model", reasoningEffort: "max" } }, agentRoutes: { Architect: { provider: "doc-provider" } } },
+      { body: { ok: true, slots: { slot2: { provider: "live", model: "live-model", reasoningEffort: "low" } }, agentRoutes: { "Deep Worker": { model: "deepseek-v4-pro" } }, modelchain: { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }] } }, notice: "" },
+    )
+    expect(effective.source).toBe("service")
+    expect(effective.slots.slot2).toEqual({ provider: "live", model: "live-model", reasoningEffort: "low" })
+    expect(effective.slots.slot1.model).toBe("doc-model")
+    expect(effective.agentRoutes).toEqual({ "Deep Worker": { model: "deepseek-v4-pro" } })
+    expect(effective.modelchain.sisyphus).toHaveLength(2)
+    // The document branch: declared defaults floor the unset slots, and the notice rides.
+    /** The projection with no route answer. */
+    const documentBranch = CARD.effectiveModelConfigOf({}, { body: undefined, notice: "no route" })
+    expect(documentBranch.source).toBe("document")
+    expect(documentBranch.slots.slot3).toEqual({ provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" })
+    expect(documentBranch.notice).toBe("no route")
+    expect(CARD.MODEL_CONFIG_PATH).toBe("/plugins/mpd/model-config")
+  })
+
+  test("R3: a live-service read re-projects the card through its own store", () => {
+    /** Every mutation the bound scope records (none — this arm only reads). */
+    const calls: ScopeCall[] = []
+    /** The controller bound to a ready scope. */
+    const controller = CARD.createMpdCardController(fakeScope(READY, calls).bind({ namespace: "mpd" }))
+    expect(controller.store.getSnapshot().effective.source).toBe("document")
+    controller.setLiveService({ ok: true, slots: {}, agentRoutes: {}, modelchain: { sisyphus: [{ provider: "p", model: "m" }] } }, "")
+    /** The effective projection after the service read landed. */
+    const after = controller.store.getSnapshot().effective
+    expect(after.source).toBe("service")
+    expect(after.modelchain.sisyphus).toEqual([{ provider: "p", model: "m" }])
+    controller.dispose()
+  })
+
   test("the disclosure sentences are unchanged and still rendered with the new rows", async () => {
     /** This arm's rendered tree and client. */
     const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
@@ -869,8 +971,8 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     // The disclosure still REACHES the reader — once, at the top of the card, where the 25 rows no
     // longer repeat it (measured in a real browser: it buried every row's own sentence).
     expect(text).toContain(BRIDGE_DISCLOSURE)
-    expect(text).toContain("this knob is read at plugin mount")
-    expect(text).toContain("the file half is host-limited")
+    expect(text).toContain("the config service re-resolves on every settings save")
+    expect(text).toContain("instead of reading the live config service per use")
     expect(text).toContain(BRIDGE_NOT_LOST)
     expect(text).toContain("if no session is live, the save stays in settings")
     // ...and the ROWS do not.
@@ -1642,7 +1744,7 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     const tree = await renderReady()
     /** Every knob the card declares, in declaration order. */
     const fields = CARD.FIELDS as CardField[]
-    expect(fields).toHaveLength(26)
+    expect(fields).toHaveLength(59)
     /** One rendered row per knob (a missing row is a failure, never a skip). */
     const rows = fields.map((field) => rowOf(tree, field.path.join(".")))
     expect(rows.filter((row) => row === undefined)).toEqual([])
@@ -1650,7 +1752,7 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     // the FIRST field carries no separator; every field after it carries `.field + .field`
     expect(styleOf(rows[0]).borderTop).toBeUndefined()
     for (const row of rows.slice(1)) expect(styleOf(row).borderTop).toBe("0.5px solid var(--dsw-alias-border-l2, #0000001a)")
-    expect(rows.slice(1)).toHaveLength(25)
+    expect(rows.slice(1)).toHaveLength(58)
   })
 
   test("R2-F2: the label is 13px/500 primary over a 12px/1.5 tertiary hint", async () => {
@@ -1761,8 +1863,9 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
   test("R2-D1: the disclosure is ONE `.help` block — the SAME four sentences, hint-sized, 8px apart", async () => {
     /** This arm's rendered tree. */
     const tree = await renderReady()
-    /** The disclosure block: the one flex column with 8px between its parts and a 10px top pad. */
-    const blocks = elementsOf(tree, "div").filter((node) => styleOf(node).flexDirection === "column" && styleOf(node).gap === 8 && styleOf(node).paddingTop === 10)
+    // TWO `.help` blocks exist since R3 (the disclosure and the effective-model-config block
+    // beside it); the DISCLOSURE one is identified by its bridge marker, not by style alone.
+    const blocks = elementsOf(tree, "div").filter((node) => styleOf(node).flexDirection === "column" && styleOf(node).gap === 8 && styleOf(node).paddingTop === 10 && Array.isArray(node.props.children) && (node.props.children as ElementNode[]).some((child) => child?.props?.["data-mpd-disclosure"] === "bridge"))
     expect(blocks).toHaveLength(1)
     /** The four paragraphs, in the order the section states them. */
     const paragraphs = blocks[0].props.children as ElementNode[]
@@ -1770,12 +1873,12 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     for (const p of paragraphs) expect(styleOf(p)).toMatchObject({ margin: 0, fontSize: 12, lineHeight: 1.6, color: "var(--dsw-alias-label-tertiary, #8a94a6)" })
     /** The four sentences, as rendered. */
     const sentences = paragraphs.map((p) => textOf(p))
-    // NOTHING was dropped or shortened: each paragraph is present and still says what it said — a
-    // save is written to the file AND the behaviour change waits for a restart
+    // NOTHING was dropped or shortened: each paragraph is present and states the LIVE truth the
+    // reworded constants carry (the restart claim is gone; the capture-class limit states itself)
     expect(sentences.every((sentence) => sentence.length > 0)).toBe(true)
     expect(sentences[0]).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
-    expect(sentences[0]).toContain("after a restart")
-    expect(sentences[1]).toContain("host-limited")
+    expect(sentences[0]).toContain("no restart")
+    expect(sentences[1]).toContain("captured at its own mount")
     expect(sentences[2]).toContain("never lost")
     expect(sentences[3]).toContain("if no session is live")
     // and it reads as a NOTE beside the fields, not as a second body of prose: the title and the

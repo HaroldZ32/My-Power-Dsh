@@ -147,3 +147,30 @@ reload), so a session already running keeps the old guard.
 `<DSH_HOME>/sessions/<projectKey>/<sessionId>/session.v4.jsonl.zstd`) and compare `agentPreset` to the
 guard's configured `presets` list; then attempt `git status` (allowed) versus `git branch --show-current`
 (a write subcommand's sibling) from that session.
+
+## T-93 — a plugin entry's `describe().value` stays at its apply-time config after a save (harness gap, 0.1.7-rc.2)
+
+**Symptom.** A save to the mpd knobs — the web settings card or the TUI `/model`, both of which write the
+row's own entry config `mpd-config` — is accepted and persisted, yet the SAME process keeps resolving the
+old value: the next `mpd_role_spawn` carries the old model, and a hand edit of
+`<workspace>/.mpd/mpd.jsonc` is ignored too. A restart picks both up, so the failure is in-process only.
+
+**Cause (measured).** In `dsh-settings@0.1.7-rc.2`, `describe()` returns
+`value = projectForm(form, plainConfig(entry.fiber.config))`, `base = projectForm(form, plainConfig(
+inheritedConfig(entry.fiber.runtime, resolved)))` and `user = projectForm(form, override)`.
+`settings/mutate` writes the PROFILE patch (`configEditor.edit` → the patch document + `reconcile`) and
+moves `override`, but the running fiber's `entry.fiber.config` keeps the object it received at apply time,
+so `value` never moves; `base` is the inherited layer UNDER the override and does not move either. The mpd
+config row composed its L4 entry layer from `value`, so the frozen, materialised schema defaults sat ABOVE
+the project-file layer and buried both live surfaces under them.
+
+**Fix.** Compose that layer from `describe().user` — the override half, `{}` until something is saved —
+never from `value` or `base` (`packages/mpd-config-plugin/src/index.ts`, `readEntryConfig`). Any other
+front door has the same rule: an entry's editable layer is its SAVED override, not the resolved descriptor.
+The measured matrix and the RED legs are in
+`evidence/model-config-live-refresh/2026-10-13T15-15-39-019Z/result.json`.
+
+**Repro.** `bun skills/dsh-qa/scripts/model-config-live-refresh.ts` (isolated `DSH_HOME`/`HOME`/workspace;
+one boot, four phases, no restart). With the stale composition the save leg, the after-save child-model leg,
+the provider-side leg and the file-edit control go RED while `boot.pid` and the subscription heartbeat stay
+GREEN; the `user` composition turns all four green.

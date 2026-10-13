@@ -6893,6 +6893,19 @@ function teamModelSlotSchema(slot) {
     reasoningEffort: Schema.string().default(slot.reasoningEffort)
   });
 }
+var TEAM_MODEL_SLOT_GROUPS = {
+  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
+  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
+  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
+  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
+};
+var ROSTER_AGENT_NAMES = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members]);
+var AGENT_ROUTE_SCHEMA = Schema.object({
+  provider: Schema.string().required(false),
+  model: Schema.string().required(false),
+  reasoningEffort: Schema.string().required(false)
+});
+var AGENT_ROUTES_SCHEMA = Schema.dict(AGENT_ROUTE_SCHEMA, Schema.union(ROSTER_AGENT_NAMES.map((name) => Schema.const(name))));
 var SettingsSchema = Schema.object({
   hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
   commentChecker: Schema.object({ autoCheck: Schema.boolean().default(true) }),
@@ -6906,6 +6919,7 @@ var SettingsSchema = Schema.object({
     slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
     slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
   }),
+  agentRoutes: AGENT_ROUTES_SCHEMA,
   watchdog: Schema.object({
     enabled: Schema.boolean().default(true),
     warnSilenceMs: Schema.number().default(600000),
@@ -6917,7 +6931,7 @@ var SettingsSchema = Schema.object({
   }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
-var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
 function markVolatile(schema) {
   const node = schema;
@@ -6942,12 +6956,6 @@ function knobHint(key, semantics) {
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
 }
 var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
-var TEAM_MODEL_SLOT_GROUPS = {
-  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
-  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
-  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
-  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
-};
 var TEAM_MODEL_LEAF_TEMPLATES = {
   provider: {
     en: "The provider half of this slot. The slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.",
@@ -7006,6 +7014,45 @@ var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
     hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
   }));
 });
+var AGENT_ROUTE_LEAF_TEMPLATES = {
+  provider: {
+    en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
+    zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。"
+  },
+  model: {
+    en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
+    zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。"
+  },
+  reasoningEffort: {
+    en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
+    zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。"
+  }
+};
+function agentRouteSlotOf(name) {
+  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(name));
+}
+function agentRouteLeafSentence(name, leaf, lang) {
+  const slot = agentRouteSlotOf(name);
+  const group = slot === undefined ? lang === "zh" ? "未编组" : "ungrouped" : TEAM_MODEL_SLOT_GROUPS[slot][lang];
+  return AGENT_ROUTE_LEAF_TEMPLATES[leaf][lang].split("{name}").join(name).split("{group}").join(group);
+}
+var AGENT_ROUTE_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.flatMap((member) => {
+  const leaves = [
+    { leaf: "provider", label: "provider", zh: "提供商" },
+    { leaf: "model", label: "model", zh: "模型" },
+    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
+  ];
+  return leaves.map(({ leaf, label, zh }) => ({
+    path: ["agentRoutes", member, leaf],
+    label: `${member} ${label} (own route)`,
+    zh: `${member} ${zh}（专属路由）`,
+    kind: "select",
+    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
+    semantics: agentRouteLeafSentence(member, leaf, "en"),
+    semanticsZh: agentRouteLeafSentence(member, leaf, "zh"),
+    hint: knobHint(`agentRoutes.${member}.${leaf}`, agentRouteLeafSentence(member, leaf, "en"))
+  }));
+}));
 var SETTINGS_KNOBS = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -7021,6 +7068,7 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
+  ...AGENT_ROUTE_KNOBS,
   { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];
 
@@ -7095,6 +7143,9 @@ function slotLeafOf(path) {
   const leaf = path[2];
   return TEAM_MODEL_LEAVES.find((candidate) => candidate === leaf);
 }
+function routeLeafOf(path) {
+  return slotLeafOf(path) ?? (path[0] === "agentRoutes" ? TEAM_MODEL_LEAVES.find((candidate) => candidate === path[2]) : undefined);
+}
 function isServed(provider) {
   try {
     if (typeof provider.describe === "function") {
@@ -7115,6 +7166,72 @@ function configPluginPresent(ctx) {
   } catch {
     return false;
   }
+}
+function configServiceOf(ctx) {
+  try {
+    const service = typeof ctx.get === "function" ? ctx.get("mpdConfig") : undefined;
+    return service !== null && typeof service === "object" ? service : undefined;
+  } catch {
+    return;
+  }
+}
+function isPlainTable(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function summaryLeaf(block, leaf) {
+  const found = isPlainTable(block) ? block[leaf] : undefined;
+  return typeof found === "string" && found.length > 0 ? found : "";
+}
+function effectiveModelSummary(config) {
+  if (config === undefined || config === null || typeof config.get !== "function") {
+    return {
+      en: "effective values unavailable (no mpdConfig service in this composition)",
+      zh: "生效值不可用（该组合没有 mpdConfig 服务）"
+    };
+  }
+  const slotFragments = [];
+  try {
+    const slots = config.get("teamModels");
+    for (const slot of ["slot1", "slot2", "slot3", "slot4"]) {
+      const block = isPlainTable(slots) ? slots[slot] : undefined;
+      slotFragments.push(`${slot}:${summaryLeaf(block, "provider")}/${summaryLeaf(block, "model")}/${summaryLeaf(block, "reasoningEffort") || "-"}`);
+    }
+  } catch {
+    slotFragments.length = 0;
+  }
+  const overrideFragments = [];
+  try {
+    const routes = config.get("agentRoutes");
+    if (isPlainTable(routes)) {
+      for (const [name, entry] of Object.entries(routes)) {
+        if (!isPlainTable(entry))
+          continue;
+        const leaves = ["provider", "model", "reasoningEffort"].filter((leaf) => summaryLeaf(entry, leaf) !== "").map((leaf) => `${leaf}=${summaryLeaf(entry, leaf)}`);
+        if (leaves.length > 0)
+          overrideFragments.push(`${name}(${leaves.join(", ")})`);
+      }
+    }
+  } catch {}
+  const chainFragments = [];
+  try {
+    const chains = config.get("modelchain");
+    if (isPlainTable(chains)) {
+      for (const [key, chain] of Object.entries(chains)) {
+        if (!Array.isArray(chain) || chain.length === 0)
+          continue;
+        const first = isPlainTable(chain[0]) && typeof chain[0].provider === "string" && typeof chain[0].model === "string" ? `${chain[0].provider}/${chain[0].model}` : "";
+        if (first !== "")
+          chainFragments.push(`${key}→${first}${chain.length > 1 ? ` (+${String(chain.length - 1)})` : ""}`);
+      }
+    }
+  } catch {}
+  const slotsText = slotFragments.length > 0 ? `slots ${slotFragments.join(" · ")}` : "slots unreadable";
+  const routesText = overrideFragments.length > 0 ? overrideFragments.join(" · ") : "none set";
+  const chainsText = chainFragments.length > 0 ? chainFragments.join(" · ") : "none configured (shipped defaults in force)";
+  return {
+    en: `effective now — ${slotsText}; agentRoutes: ${routesText}; modelchain: ${chainsText}`,
+    zh: `当前生效 —— ${slotsText}；agentRoutes：${routesText}；modelchain：${chainsText}`
+  };
 }
 function declaredField(knob) {
   const hints = knobHintPair(knob);
@@ -7137,7 +7254,7 @@ function wheelInvertFrom(config, floor) {
 var SETTINGS_FIELDS = SETTINGS_KNOBS.map(declaredField);
 function settingsFields(lists) {
   return SETTINGS_KNOBS.map((knob) => {
-    const leaf = slotLeafOf(knob.path);
+    const leaf = routeLeafOf(knob.path);
     const field2 = declaredField(knob);
     return leaf === undefined ? field2 : { ...field2, options: lists[leaf] };
   });
@@ -7195,9 +7312,14 @@ function registerSettingsSection(ctx, tui, log, adapterOverride) {
       catalog = undefined;
     }
     const lists = teamModelOptionLists(catalog);
+    const summary = effectiveModelSummary(configServiceOf(ctx));
     log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})` + ` model=${lists.source.model}(${lists.model.length})` + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})` + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`);
     section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` };
-    return { ...SETTINGS_SECTION, fields: settingsFields(lists) };
+    return {
+      ...SETTINGS_SECTION,
+      fields: settingsFields(lists),
+      descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE} · ${summary.zh}`, en: `MPD bundle · ${SECTION_NOTICE} · ${summary.en}` }
+    };
   }, ctx);
   return {
     outcome: () => {
@@ -9299,6 +9421,36 @@ var MENU_TEXT = {
   providerHint: { zh: "该槽位的提供商；模型列表来自它", en: "this slot's provider; the model list comes from it" },
   modelHint: { zh: "该槽位的模型", en: "this slot's model" },
   effortHint: { zh: "该槽位的推理强度", en: "this slot's reasoning effort" },
+  titleTarget: { zh: "应用到哪个范围", en: "apply to which scope" },
+  targetSlotLabel: { zh: "整个槽位", en: "the whole slot" },
+  targetClearLabel: { zh: "清除成员覆盖", en: "clear member overrides" },
+  targetSlotHint: {
+    zh: "整个槽位——该组的所有成员（写入 teamModels，作为这组成员的默认路由）",
+    en: "the whole slot — every member of the group (writes teamModels, the group's default route)"
+  },
+  targetMemberHint: {
+    zh: "仅该成员（写入 agentRoutes，优先于槽位）。当前生效：{route}",
+    en: "this member only (writes agentRoutes, over the slot). effective now: {route}"
+  },
+  targetRouteUnreadable: { zh: "（存储值不可读）", en: " (stored values unreadable)" },
+  targetClearHint: {
+    zh: "清除本组成员的专属覆盖（删除 agentRoutes 条目，成员恢复跟随槽位）",
+    en: "clear this group's member overrides (removes their agentRoutes entries; the members fall back to the slot)"
+  },
+  memberWrote: {
+    zh: "mpd-model: 成员 {name} 的专属路由已设置 提供商 {provider} · 模型 {model} · 推理强度 {effort}；{disclosure}。{notLost}",
+    en: "mpd-model: member {name} own route set to provider {provider} · model {model} · reasoning effort {effort}; {disclosure}. {notLost}"
+  },
+  clearedWrote: {
+    zh: "mpd-model: 已清除 {count} 个成员覆盖叶子（{names}）——这些成员恢复跟随各自槽位",
+    en: "mpd-model: cleared {count} override leaf/leaves ({names}) — those members follow their slots again"
+  },
+  clearedNone: {
+    zh: "mpd-model: 该组成员没有可清除的专属覆盖，未写入任何设置",
+    en: "mpd-model: this group's members carry no overrides to clear — nothing was written"
+  },
+  sealedByCancelTarget: { zh: "mpd-model: 已取消范围选择，未写入任何设置", en: "mpd-model: the scope panel was cancelled — nothing was written" },
+  sealedByNoMember: { zh: "mpd-model: 未知成员“{member}”，未写入任何设置", en: 'mpd-model: unknown member "{member}" — nothing was written' },
   sealedByDialogs: {
     zh: "mpd-model: 该组合没有对话框接缝（无界面嵌入），未打开菜单，也未写入任何设置",
     en: "mpd-model: this composition has no dialogs seam (a headless embedder) — no menu was opened and nothing was written"
@@ -9454,6 +9606,33 @@ async function openModelMenu(tui, log, options = {}) {
     return { kind: "error", text: say("sealedByCancelSlot", lang) };
   if (!TEAM_MODEL_SLOTS.includes(slot))
     return { kind: "error", text: say("sealedByNoSlot", lang, { slot: short(slot) }) };
+  const tables = readRouteTables(adapter);
+  const scope = await dialogs.select(say("titleTarget", lang), targetPanelOptions(slot, tables, lang), PANEL_TIMEOUT_MS);
+  if (scope === undefined)
+    return { kind: "error", text: say("sealedByCancelTarget", lang) };
+  const scopeGroup = TEAM_MODEL_SLOT_GROUPS[slot];
+  const member = scope === TARGET_SLOT || scope === TARGET_CLEAR ? undefined : String(scope);
+  if (member !== undefined && !scopeGroup.members.includes(member)) {
+    return { kind: "error", text: say("sealedByNoMember", lang, { member: short(member) }) };
+  }
+  if (scope === TARGET_CLEAR) {
+    if (typeof adapter.settingsMutate !== "function")
+      return { kind: "error", text: say("sealedByNoNamespace", lang) };
+    const clearOps = scopeGroup.members.flatMap((name) => ["provider", "model", "reasoningEffort"].filter((leaf) => tables.agentRoutes[name]?.[leaf] !== undefined).map((leaf) => ({ op: "unset", path: ["agentRoutes", name, leaf] })));
+    if (clearOps.length === 0)
+      return { kind: "success", text: say("clearedNone", lang) };
+    let entryRevision;
+    try {
+      entryRevision = adapter.settingsReader?.(SETTINGS_ENTRY)?.describe()?.revision;
+    } catch {}
+    const cleared = await adapter.settingsMutate(SETTINGS_ENTRY, clearOps, entryRevision);
+    if (!cleared.ok)
+      return { kind: "error", text: say("sealedByRefused", lang, { error: short(cleared.error) }) };
+    const clearedNames = [...new Set(clearOps.map((op) => op.path[1]))].join(", ");
+    log.info(`/${MODEL_COMMAND} cleared agentRoutes for ${clearedNames} (${String(clearOps.length)} leaf/leaves)`);
+    return { kind: "success", text: say("clearedWrote", lang, { count: String(clearOps.length), names: clearedNames }) };
+  }
+  const writePrefix = member === undefined ? [TEAM_MODELS_PREFIX, slot] : ["agentRoutes", member];
   const provider = await dialogs.select(say("titleProvider", lang), lists.provider.map((option) => ({ id: option.value, label: option.label, description: say("providerHint", lang) })), PANEL_TIMEOUT_MS);
   if (provider === undefined)
     return { kind: "error", text: say("sealedByCancelProvider", lang) };
@@ -9465,23 +9644,30 @@ async function openModelMenu(tui, log, options = {}) {
   const effort = await dialogs.select(say("titleEffort", lang), efforts.map((option) => ({ id: option.value, label: option.label, description: say("effortHint", lang) })), PANEL_TIMEOUT_MS);
   if (effort === undefined)
     return { kind: "error", text: say("sealedByCancelEffort", lang) };
-  const target = locateNamespace(adapter, slot);
+  const target = member === undefined ? locateNamespace(adapter, slot) : { namespace: SETTINGS_ENTRY, revision: (() => {
+    try {
+      return adapter.settingsReader?.(SETTINGS_ENTRY)?.describe()?.revision;
+    } catch {
+      return;
+    }
+  })() };
   if (typeof adapter.settingsMutate !== "function")
     return { kind: "error", text: say("sealedByNoNamespace", lang) };
   const ops = ["provider", "model", "reasoningEffort"].map((leaf) => ({
     op: "set",
-    path: [TEAM_MODELS_PREFIX, slot, leaf],
+    path: [...writePrefix, leaf],
     value: leaf === "provider" ? provider : leaf === "model" ? model : effort
   }));
   const written = await adapter.settingsMutate(target.namespace, ops, target.revision);
   if (!written.ok)
     return { kind: "error", text: say("sealedByRefused", lang, { error: short(written.error) }) };
-  log.info(`/${MODEL_COMMAND} wrote ${target.namespace}.${TEAM_MODELS_PREFIX}.${slot} = ${provider}/${model}/${effort}`);
+  log.info(`/${MODEL_COMMAND} wrote ${target.namespace}.${writePrefix.join(".")} = ${provider}/${model}/${effort}`);
   const fallback = catalogWhy === undefined ? "" : ` · ${say("catalogFallback", lang, { why: catalogWhy })}`;
   return {
     kind: "success",
-    text: `${say("wrote", lang, {
+    text: `${say(member === undefined ? "wrote" : "memberWrote", lang, {
       slot,
+      name: member ?? "",
       provider: short(provider),
       model: short(model),
       effort: short(effort),
@@ -9489,6 +9675,74 @@ async function openModelMenu(tui, log, options = {}) {
       notLost: BRIDGE_NOT_LOST
     })}${fallback}`
   };
+}
+function readRouteTables(adapter) {
+  let value;
+  for (const namespace of [SETTINGS_ENTRY, MODEL_NAMESPACE]) {
+    const reader = adapter.settingsReader?.(namespace);
+    if (reader === undefined)
+      continue;
+    try {
+      value = reader.get();
+    } catch {
+      value = undefined;
+    }
+    if (value !== undefined)
+      break;
+  }
+  const slots = {};
+  for (const slot of TEAM_MODEL_SLOTS)
+    slots[slot] = storedSlot(value, slot);
+  const agentRoutes = {};
+  for (const candidate of [value, isRecord2(value) ? value.user : undefined, isRecord2(value) ? value.value : undefined]) {
+    if (!isRecord2(candidate))
+      continue;
+    const table = candidate["agentRoutes"];
+    if (!isRecord2(table))
+      continue;
+    for (const [name, entry] of Object.entries(table)) {
+      if (!isRecord2(entry))
+        continue;
+      const leaves = {};
+      for (const leaf of ["provider", "model", "reasoningEffort"]) {
+        const found = entry[leaf];
+        if (typeof found === "string" && found.length > 0)
+          leaves[leaf] = found;
+      }
+      if (Object.keys(leaves).length > 0)
+        agentRoutes[name] = leaves;
+    }
+  }
+  return { slots, agentRoutes };
+}
+function memberRouteText(tables, member, slot) {
+  const base = tables.slots[slot] ?? {};
+  const entry = tables.agentRoutes[member] ?? {};
+  const route = (leaf) => entry[leaf] ?? base[leaf] ?? "";
+  return `${route("provider") || "-"} / ${route("model") || "-"} / ${route("reasoningEffort") || "-"}`;
+}
+var TARGET_SLOT = "slot";
+var TARGET_CLEAR = "clear";
+function targetPanelOptions(slot, tables, lang) {
+  const group = TEAM_MODEL_SLOT_GROUPS[slot];
+  if (group === undefined)
+    return [];
+  const options = [
+    { id: TARGET_SLOT, label: `1. ${pick(MENU_TEXT.targetSlotLabel, lang)}`, description: say("targetSlotHint", lang) }
+  ];
+  for (const [index, member] of group.members.entries()) {
+    options.push({
+      id: member,
+      label: `${index + 2}. ${member}`,
+      description: say("targetMemberHint", lang, { route: memberRouteText(tables, member, slot) })
+    });
+  }
+  options.push({
+    id: TARGET_CLEAR,
+    label: `${group.members.length + 2}. ${pick(MENU_TEXT.targetClearLabel, lang)}`,
+    description: say("targetClearHint", lang)
+  });
+  return options;
 }
 
 // packages/mpd-tui-plugin/src/index.ts

@@ -77,7 +77,7 @@ TUI 会话默认使用 **mpd** 预设，由 id 定向的 `agent-preset-registry`
 | Agent Teams 面板（会话头部） | **`tuiPanels` 侧栏面板**——主入口（§3.3）——并以 `tuiScenes` 全屏界面作为其**回退**（页面自己的 `⤢` 用富形态 `mpd-tui-team` 场景，路由回退用合并的 subagents 场景），外加 `tuiStatus` 状态行 | 0.13.0 上实测到注册 + 宿主**接受**的打开——`evidence/tui/lanes/2026-10-06T10-27-53.571Z/` 与 `…/2026-10-06T10-28-57.807Z/`，从宿主自身回读中发现的 id 为 `act1:team`；全屏场景已在 0.10.1 时期的实机通道 `evidence/tui/live/20260915T063140Z/result.json` 中渲染（t8；7 个界面中 6 个） |
 | Workmate 库标签页 | `tuiCommandTrees`（`/mpd …`）+ `tuiDialogs` | 同上（同一实机通道证据） |
 | — | `tuiStatus` 状态行；`tuiRenderers` 转写行**宿主未投影** | 状态行已渲染；渲染器行**未渲染**——见明确不声明第 10 条 |
-| — | `tuiSettingsSections`（mpd.jsonc 可调项的 `/settings` 区块） | 已渲染——同上；该区块写明与 `<workspace>/.mpd/mpd.jsonc` 的**打通**、重启提示与"绝不丢失"条款（§6.2），通道以 `allPatterns` 断言这段披露文本 |
+| — | `tuiSettingsSections`（mpd.jsonc 可调项的 `/settings` 区块） | 已渲染——同上；该区块写明与 `<workspace>/.mpd/mpd.jsonc` 的**打通**、模型路由即时生效（挂载时捕获的旋钮仍需重启）与"绝不丢失"条款（§6.2），通道以 `allPatterns` 断言这段披露文本 |
 | — | `tuiShortcuts` | 已渲染——同上 |
 | 团队工作流（成员表和成员阶段、共享任务板） | `mpd-tui-team` 场景 —— `/mpd team` | 场景由 TUI 命令树注册（`packages/mpd-tui-plugin/src/command-trees.ts`）；界面契约与每一行的证据层级见一致性台账 `docs/tui-parity.md`（打开方式见下文 §3.2） |
 | — | `mpd-tui-plan` 场景 —— `/mpd plan` | 一个 TUI 场景；它当初围绕的"暂存计划批准"语义属于已退役的内置插件，现已不存在（§3.2） |
@@ -104,8 +104,9 @@ dsh-tui 自 0.12.0 起就暴露的十四条接缝，加上 0.13.0 新增的侧�
 
 ### 3.1 Web 界面的设置界面（设置 → MPD）
 
-同样的 25 个可调项 —— 原有 13 个加十二个 `teamModels` 槽位叶子，后者渲染为联动的模型 + 推理强度
-选择器 —— 也能在 Web 界面里编辑：**设置 → MPD**，即设置对话框中独立的一栏——它不再位于"插件"
+同样的 59 个可调项 —— 原有 13 个、十二个 `teamModels` 槽位叶子与 33 个 `agentRoutes` 叶子
+（十一名成员 × 三），路由叶子渲染为联动的模型 + 推理强度选择器，另加 TUI 界面自身的一个开关 ——
+也能在 Web 界面里编辑：**设置 → MPD**，即设置对话框中独立的一栏——它不再位于"插件"
 标签页内。该栏按宿主自有栏目（section）的注册方式注册（`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`，
 形状取自 `dsh-client-ui-settings-models/lib/client.js:2936` 的实测）：设置外壳收集该列表槽位、按 `order`
@@ -124,8 +125,8 @@ revision 驱动 scope 写入、拒绝非法草稿、带原因渲染为只读—�
 
 **证据级别——本环境未见证：** **真实浏览器渲染**（宿主在真实页面中分发该 key）与**点击驱动的保存**。
 本环境没有浏览器可执行文件；通道以 `cardClaim.W3.witnessed === false` 记录这一点及原因，本页重复该结论，
-绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带 25 个可调项（十二个
-团队模型槽位提供由目录驱动的选择）的
+绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带 59 个可调项（团队
+模型槽位与按成员路由提供由目录驱动的选择）的
 `mpd` 栏，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
 前提下改变；否则打通功能会大声拒绝（`no-live-session` / `ambiguous-multi-root`）并说明取值并未丢失。
 
@@ -517,7 +518,7 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 相关：`trusted-in-process` 是**兼容性/审计标签，不是安全边界**。SHA-256 摘要只能证明字节一致，
 **不能**证明发布者身份。
 
-### 6.2 `/settings` 区块**已**与 `<workspace>/.mpd/mpd.jsonc` 打通——附带一次重启与两种具名跳过情形
+### 6.2 `/settings` 区块**已**与 `<workspace>/.mpd/mpd.jsonc` 打通——模型路由即时生效，另有两种具名跳过情形
 
 该区块在宿主 settings 命名空间 `mpd` 下声明的就是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、
 `commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` 以及十二个
@@ -535,10 +536,11 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 | **多于一个** | **不虚构任何文件 base**：`base: undefined`，原因 `ambiguous-multi-root`，逐一点名全部候选并写入 `states()`。在恰好一个工作区活动之前，该命名空间显示 schema 默认值；此状态下的保存会被**拒绝**（见下），因此这种歧义不可能落到磁盘 |
 
 **base 在整个进程生命周期内固定**——宿主对一次活动注册**不提供任何注销（disposal）句柄**，它自己的
-settings 安装器同样保持 base 固定。这正是界面上的句子写作"**重启后**对 mpd 插件生效"的原因：那是诚实的
-后果，而不是含糊其辞。插件真正使用的是**已解析的值（resolved value）**加上配置层的**逐次调用文件读取**：
-L1/L2 文件层在每次解析时都会被重新读取，因此即便 base 被冻结，**按工作区读取仍然解析各自会话自己的
-文件**。本页没有任何句子承诺 base 会被实时刷新。
+settings 安装器同样保持 base 固定。这一固定不再意味着 mpd 的模型配置需要重启后才生效：界面上的句子现在
+写作"**在运行中的进程里生效——无需重启**"（配置服务在每次设置保存时、以及监听到项目文件被编辑时都会重新
+解析，且模型路由是每次使用时读取的）。插件真正使用的是**已解析的值（resolved value）**加上配置层的
+**逐次调用文件读取**：L1/L2 文件层在每次解析时都会被重新读取，因此即便 base 被冻结，**按工作区读取仍然
+解析各自会话自己的文件**。本页没有任何句子承诺 **base** 会被实时刷新——只承诺**值**会被实时解析。
 
 - **读入优先级** —— L0 schema 默认值 < L1 `$DSH_HOME/mpd.jsonc` < L2 `<workspace>/.mpd/mpd.jsonc` <
   **L3 settings 用户区段**（运行期以其为准）；此后若**文件**被再次编辑，重叠的 settings 叶子会被
@@ -553,8 +555,11 @@ L1/L2 文件层在每次解析时都会被重新读取，因此即便 base 被�
   写入该文件；**零个 ⇒ `no-live-session`**；**多于一个 ⇒ `ambiguous-multi-root`**，并逐一列出候选。
   两种跳过情形下**都不改动任何文件**，而且这次编辑**没有丢失**：它已存入宿主全局 settings 文档，配置层
   会立刻对所有工作区生效——只有**文件写入**在等"恰好一个实机会话"。TUI 状态行与 Web 卡片都写明了这一条。
-- **生效时机** —— mpd 的消费者在插件 `apply()` 时读取配置（`applies: 'restart'`），因此保存的编辑
-  **在重启后对这些插件生效**；界面提示就是这么写的。
+- **生效时机** —— 模型配置的消费者通过实时 `mpdConfig` 服务按次解析（`mpd_modelchain_resolve`
+  每次调用；槽位 / `agentRoutes` 路由在 spawn 时），而该服务在每次设置保存时、以及监听到项目文件被编辑时
+  都会重新解析，因此保存的编辑**在下一次解析或 spawn 时即生效，无需重启**（`mpd_config_reload`
+  可强制重读）；仍在插件 `apply()` 时捕获配置的消费者，正是桥接报告 `applies: 'live'` 所记的例外，
+  由用户指南 §9.1 逐个旋钮列出。界面提示就是这么写的。
 - **退化目标会大声报错** —— 文件缺失（创建并带头部注释）、只读（`denied` + 路径 + errno，settings 编辑
   仍然成功）、并发（重试 ×3 后 `conflict`，人的文件保持原样）、无法解析（`unparsable`，绝不"修复"）。
 
@@ -565,10 +570,10 @@ wheelup/wheeldown 位推导出滚轮事件的 `deltaY` 的，因此滚轮上报�
 也没有面向用户的开关。该值与上面每一个可调项一样，经**同一个 `mpdConfig` 服务、同一套层级栈**读取：在
 `<workspace>/.mpd/mpd.jsonc` 里写 `{ "tui": { "wheelInvert": true } }`，或把 `mpd-tui` 行自己的
 `wheelInvert` 设为 `true`，后者是该开关的**下限**（已保存的叶子只要是布尔值就优先；垃圾值永远无法把它打开）。
-**本节对每个可调项声明的那条重启注意事项原样适用**：经 `/settings` 保存的编辑在重启后生效，因为命名空间的
-base 在整个进程生命周期内固定。插件是**每次滚轮手势**读取该叶子，而不是在挂载时采样，因此对**文件**的编辑
-至少与配置层自身状态一样新（L1/L2 层在每次解析时都会重读，见上文）——挂载时采样会在任何"延迟的 `mpdConfig`
-绑定晚于本行 apply"的启动上读到 `undefined`。**诚实边界：** 与 `tui.dashboardKey` 不同，该叶子尚未被
+插件是**每次滚轮手势**读取该叶子，而不是在挂载时采样，因此经 `/settings` 的保存**和**对**文件**的编辑都会
+在运行中的进程内到达它——配置服务在设置保存时、以及监听到项目文件被编辑时都会重新解析，且 L1/L2 层在每次
+解析时都会重读（见上文）——而挂载时采样会在任何"延迟的 `mpdConfig` 绑定晚于本行 apply"的启动上读到
+`undefined`。**诚实边界：** 与 `tui.dashboardKey` 不同，该叶子尚未被
 `packages/mpd-config-plugin/src/settings-schema.ts` 的 `SETTINGS_KNOBS` / `SettingsSchema` 收录，因此它在
 `/settings` 表单里**没有对应的行**；文件层之所以可用，是因为 `mpd-config` 的 `loadConfig` 返回的是**原始**
 合并层级、不会剥掉未声明的键。把该叶子声明进那份共享 schema，就是补上这一行的后续工作——它落地时上面的读取
@@ -812,7 +817,7 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 | §11 版本绑定中的入口摘要 | `packages/mpd-tui-plugin/dist/index.js` sha256 `5dce2563…`，98883 字节 | sha256 `cf4b3813a344c9d5…`，**105305 字节**——打通波次改写了 `/settings` 的披露文案，因此该包被重建。`dsh-plugin.json` sha256 `84ed4a5d…` 未变（8088 字节）；该波次新增的两个产物是 `packages/mpd-config-plugin/dist/index.js` sha256 `15733c1e…`（99868 字节）与 `packages/mpd-bundle-plugin/client.js` sha256 `dd9c8893…`（282453 字节） |
 | §11 的 R3 行 | `bun run test:qa`"按设计失败"，直到船长的单次 `VENDOR_LOCK` 重钉落地 | **通过**——单次重钉已落地（`VENDOR_LOCK.json` 的 `assets/skills`：307 个文件，treeSha `ba0c3922…`），套件报告全部自测通过，退出码 0 |
 | 明确不声明第 9 条（其开头是 `/settings` 打通） | "`/settings` 打通、包内技能资源、刻意的偏离" | 打通**已是受声明、有证据的能力**（§6.2，`Observed`，两次真实启动）；第 9 条现覆盖包内技能资源与刻意的偏离（§6.3、§7） |
-| §3 的 settings 行 | "另有限制见 §6.2" | 打通后的行为，附一次重启提示与两种具名跳过情形（§6.2）、重复键规则（§6.5）与 Web 卡片证据级别（§3.1） |
+| §3 的 settings 行 | "另有限制见 §6.2" | 打通后的行为，模型路由即时生效（挂载时捕获的旋钮仍需重启），另附两种具名跳过情形（§6.2）、重复键规则（§6.5）与 Web 卡片证据级别（§3.1） |
 
 原有表述未被改写——它们在本标题下就地被取代。
 

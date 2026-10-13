@@ -115,6 +115,39 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
     }
   }
 
+  /**
+   * The member's route from the config service's FULL precedence chain (R2: `agentRoutes[name]` >
+   * `teamModels.slot{N}` > built-in defaults), resolved PER CALL.
+   *
+   * The service lookup alone is guarded: a `teamModelRouteOf` that THROWS (a malformed
+   * `agentRoutes` entry, an incomplete slot) must reach the captain unchanged — the spawn fails
+   * loudly naming the member, never silently substituted — which is the same registered contract
+   * `routeForMember` enforces on the slot-only path.
+   *
+   * @param member - the roster member's functional name.
+   * @returns the precedence-resolved route, or `undefined` when no config service is mounted (the
+   *   slot fallback below then stands, exactly as before this wave).
+   */
+  const liveRouteOf = (member: string): SlotRoute | undefined => {
+    /** The runtime config service, or undefined when the composition mounts none. */
+    let service: { teamModelRouteOf?: (m: string) => unknown } | undefined
+    try {
+      service = (typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined) as { teamModelRouteOf?: (m: string) => unknown } | undefined
+    } catch {
+      // A config service that refuses the lookup reads as ABSENT, never as a boot failure.
+      return undefined
+    }
+    if (typeof service?.teamModelRouteOf !== "function") return undefined
+    // Deliberately NOT wrapped: the service's loud route errors propagate to the spawn.
+    const value = service.teamModelRouteOf(member) as { provider?: unknown; model?: unknown; reasoningEffort?: unknown } | undefined | null
+    if (value === undefined || value === null || typeof value !== "object") return undefined
+    return {
+      provider: String(value.provider ?? ""),
+      model: String(value.model ?? ""),
+      ...(typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}),
+    }
+  }
+
   /** The names a label may match: the union of the slots' member lists. */
   const knownNames = (): string[] => Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
 
@@ -144,12 +177,18 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
    * The route one teammate takes, resolved from the descriptor label.
    *
    * A member the label does not name — or one the roster does not slot-route — inherits the Lead's
-   * route, which is the behaviour every teammate had before this row existed.
+   * route, which is the behaviour every teammate had before this row existed. A member the label
+   * DOES name resolves through the config service's precedence chain first (R2: `agentRoutes` >
+   * slot > defaults, PER CALL so a saved route reaches the NEXT teammate), and only falls back to
+   * the local slot read when no config service is mounted.
    */
   const routeFor = (request: RoutableRequest): SlotRoute | undefined => {
     /** The roster member the label names, or undefined when it names none. */
     const member = memberFromLabel(labelOf(request), knownNames())
     if (member === undefined) return undefined
+    /** The precedence-resolved route from the live config service, when it serves one. */
+    const live = liveRouteOf(member)
+    if (live !== undefined) return live
     return routeForMember(member, slotOf(member), slotsNow())
   }
 

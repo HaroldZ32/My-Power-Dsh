@@ -83,7 +83,7 @@ The bundle's former web-only faces have TUI **equivalents**, not parity:
 | Agent Teams panel (conversation header) | the **`tuiPanels` sidebar panel** — the primary entry point (§3.3) — with the `tuiScenes` full-screen surfaces as its FALLBACK (the rich `mpd-tui-team` scene for the page's own `⤢`, the merged subagents scene for the routed open), plus the `tuiStatus` keyed status line | registration + a host-ACCEPTED open measured on 0.13.0 — `evidence/tui/lanes/2026-10-06T10-27-53.571Z/` and `…/2026-10-06T10-28-57.807Z/`, where the id discovered from the host's own read-back is `act1:team`; the full-screen scene rendered in the 0.10.1-era live lane `evidence/tui/live/20260915T063140Z/result.json` (t8; 6 of 7 surfaces) |
 | Workmate library tab | `tuiCommandTrees` (`/mpd …`) + `tuiDialogs` | same lane evidence |
 | — | `tuiStatus` status line; the `tuiRenderers` transcript row is **not projected by the host** | status line rendered; renderer row **does not render** — see NOT-CLAIMED #10 |
-| — | `tuiSettingsSections` (`/settings` section for the mpd.jsonc knobs) | rendered — same lane evidence; the section states the **bridge** to `<workspace>/.mpd/mpd.jsonc`, its restart caveat and the never-lost clause (§6.2), and the lane asserts that disclosure text (`allPatterns`) |
+| — | `tuiSettingsSections` (`/settings` section for the mpd.jsonc knobs) | rendered — same lane evidence; the section states the **bridge** to `<workspace>/.mpd/mpd.jsonc`, the live-refresh truth for the model routes with a captured knob still waiting for a boot, and the never-lost clause (§6.2), and the lane asserts that disclosure text (`allPatterns`) |
 | — | `tuiShortcuts` | rendered — same lane evidence |
 | Team workflow (roster with member phases, shared task board) | `mpd-tui-team` scene — `/mpd team` | the scene is registered by the TUI command tree (`packages/mpd-tui-plugin/src/command-trees.ts`); the surface contract and the evidence level of every row are in the parity ledger `docs/tui-parity.md` (§3.2 below for the openers) |
 | — | `mpd-tui-plan` scene — `/mpd plan` | a TUI scene; the staged-plan APPROVAL semantics it was built around belonged to the retired vendored plugin and no longer exist (§3.2) |
@@ -114,8 +114,9 @@ change was needed for the seam surface**. §11.6 records what 0.14.0 does change
 
 ### 3.1 The Web GUI settings UI (Settings → MPD)
 
-The same 25 knobs — the original 13 plus the twelve `teamModels` slot leaves, the latter rendered as
-dependent model + effort pickers — are editable in the Web GUI: **Settings → MPD**, its own top-level section of
+The same 59 knobs — the original 13, the twelve `teamModels` slot leaves and the 33 `agentRoutes`
+leaves (eleven members × three), the route leaves rendered as dependent model + effort pickers, plus
+the TUI surface's own switch — are editable in the Web GUI: **Settings → MPD**, its own top-level section of
 the settings dialog — it no longer lives inside the Plugins tab. The section registers the way the
 host's own sections do (`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`,
@@ -142,7 +143,7 @@ authenticated settings API (`web-settings-bridge.ts` W1–W13).
 live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
 `cardClaim.W3.witnessed === false` with the reason, and this page repeats that instead of implying
 otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → MPD**, expect the
-`mpd` section with the 25 knobs (the twelve team-model slots offer catalog-derived selections), change
+`mpd` section with the 59 knobs (the team-model slots and the per-member routes offer catalog-derived selections), change
 one and Save — with exactly one live
 session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
 refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
@@ -630,7 +631,7 @@ documented in the research record (`.mpd/recon/UPSTREAM-RESEARCH.md`).
 Related: `trusted-in-process` is a **compatibility/audit label, not a security boundary**. A
 SHA-256 digest proves byte identity only — never publisher identity.
 
-### 6.2 The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc` — with a restart and two named skip cases
+### 6.2 The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc` — live for the model routes, with two named skip cases
 
 The section declares the real mpd.jsonc knobs (`hashline.maxDiffChars`, `commentChecker.autoCheck`,
 `ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` and the twelve
@@ -650,12 +651,14 @@ under a cardinality rule:
 | **more than one** | **no file base is invented**: `base: undefined`, reason `ambiguous-multi-root`, a warn naming every candidate, surfaced by `states()`. The namespace shows the schema defaults until exactly one workspace is live; a save in that state is REFUSED (below), so the ambiguity cannot reach disk |
 
 **The base is fixed for the process lifetime** — the host exposes **no disposal handle** for a live
-registration, and its own settings installers keep their base fixed the same way. That is exactly why
-the shipped sentence is "takes effect for the mpd plugins **after a restart**": it is the honest
-consequence, not a hedge. What the plugins actually use is the **resolved value** plus the config
-layer's **per-call file reads**: the L1/L2 file layers are re-read on every resolution, so the
-**per-workspace read-in still resolves each session's own file** even while the base is frozen. No
-sentence on this page promises a live-refreshed base.
+registration, and its own settings installers keep their base fixed the same way. That fix no longer
+implies a restart for the mpd model configuration: the shipped sentence now says the save **takes effect
+in the RUNNING process — no restart** (the config service re-resolves on every settings save and on a
+watched edit of the project file, and the model routes are read per use). What the plugins actually use
+is the **resolved value** plus the config layer's **per-call file reads**: the L1/L2 file layers are
+re-read on every resolution, so the **per-workspace read-in still resolves each session's own file**
+even while the base is frozen. No sentence on this page promises a live-refreshed **base** — only a
+live-resolved **value**.
 
 - **Read-in precedence** — L0 schema defaults < L1 `$DSH_HOME/mpd.jsonc` < L2
   `<workspace>/.mpd/mpd.jsonc` < **L3 the settings user section**, which is authoritative at runtime; a
@@ -674,8 +677,13 @@ sentence on this page promises a live-refreshed base.
   changed** and the edit is **not lost**: it is stored in the host-global settings document and the
   config layer applies it to every workspace immediately — only the FILE WRITE waits for exactly one
   live session. The TUI status line and the Web card both carry that clause.
-- **Timing** — the mpd consumers capture their config at plugin `apply()` (`applies: 'restart'`), so a
-  saved edit **takes effect for the plugins after a restart**; the on-screen hint says exactly that.
+- **Timing** — the model-config consumers resolve through the live `mpdConfig` service per use
+  (`mpd_modelchain_resolve` per call; slot/`agentRoutes` routing at spawn), and the service re-resolves
+  on every settings save and on a watched edit of the project file, so a saved edit **reaches the next
+  resolve or spawn with no restart** (`mpd_config_reload` forces a re-read). Consumers that still
+  capture at plugin `apply()` are the exception the bridge report's `applies: 'live'` documents, and
+  are named per knob in the user guide's §9.1. The
+  on-screen hint says exactly this.
 - **Degenerate targets are loud** — missing (created with a header comment), read-only (`denied` + path +
   errno, the settings edit still succeeds), concurrent (retry ×3 then `conflict`, the human's file left
   untouched), unparsable (`unparsable`, never repaired).
@@ -689,12 +697,11 @@ there was no single place to correct and no user-facing answer. The value is rea
 `mpdConfig` service and the same layer stack** as every knob above: write
 `{ "tui": { "wheelInvert": true } }` into `<workspace>/.mpd/mpd.jsonc`, or set the `mpd-tui` row's own
 `wheelInvert: true`, which is the **floor** of the toggle (a saved leaf wins when it is a boolean; a junk
-value can never arm it). The **same restart caveat this section states for every knob applies verbatim**:
-a save through `/settings` takes effect after a restart, because the namespace base is fixed for the
-process lifetime. The plugin reads the leaf **per wheel gesture** rather than sampling it at mount, so a
-FILE edit is at least as fresh as the config layer's own state (the L1/L2 layers are re-read on every
-resolution, above) — a mount-time sample would have read `undefined` on any boot where the deferred
-`mpdConfig` binding lands after this row applies. **Honest bound:** unlike `tui.dashboardKey` this leaf is
+value can never arm it). The plugin reads the leaf **per wheel gesture** rather than sampling it at
+mount, so a save through `/settings` **and** a FILE edit both reach it in the running process — the
+config service re-resolves on a settings save and on a watched edit of the project file, and the L1/L2
+layers are re-read on every resolution (above) — while a mount-time sample would have read `undefined`
+on any boot where the deferred `mpdConfig` binding lands after this row applies. **Honest bound:** unlike `tui.dashboardKey` this leaf is
 not yet carried by `SETTINGS_KNOBS` / `SettingsSchema` in
 `packages/mpd-config-plugin/src/settings-schema.ts`, so it has **no row in the `/settings` form**; the file
 layer works because `mpd-config`'s `loadConfig` returns the RAW merged layers and strips no undeclared key.
@@ -980,7 +987,7 @@ same step that wrote this block — never derived, never remembered:
 | §11 revision binding, entry digest | `packages/mpd-tui-plugin/dist/index.js` sha256 `5dce2563…`, 98883 bytes | sha256 `cf4b3813a344c9d5…`, **105305 bytes** — the bridge wave reworded the `/settings` disclosure, so the package was rebuilt. `dsh-plugin.json` sha256 `84ed4a5d…` is unchanged (8088 bytes), and the two artifacts that wave adds are `packages/mpd-config-plugin/dist/index.js` sha256 `15733c1e…` (99868 bytes) and `packages/mpd-bundle-plugin/client.js` sha256 `dd9c8893…` (282453 bytes) |
 | §11 R3 row | `bun run test:qa` "fails by design" until the captain's single `VENDOR_LOCK` re-pin lands | **PASSES** — the single re-pin landed (`VENDOR_LOCK.json` `assets/skills`: 307 files, treeSha `ba0c3922…`) and the suite reports all self-tests passed, exit 0 |
 | NOT-CLAIMED #9 (it led with the `/settings` bridge) | "the `/settings` bridge, the package-local skill asset, and the deliberate deviations" | the **bridge is a claimed, evidenced capability** (§6.2, `Observed`, two real boots); #9 now covers the package-local skill asset and the deliberate deviations (§6.3, §7) |
-| §3 settings row | "with the limitation in §6.2" | a bridged behaviour with a restart caveat and two named skip cases (§6.2), the duplicate-key rule (§6.5) and the Web card's evidence level (§3.1) |
+| §3 settings row | "with the limitation in §6.2" | a bridged behaviour that is live for the model routes (a mount-captured knob still waits for a boot) with two named skip cases (§6.2), the duplicate-key rule (§6.5) and the Web card's evidence level (§3.1) |
 
 The earlier statements were not rewritten — they are superseded here, in place, under this heading.
 

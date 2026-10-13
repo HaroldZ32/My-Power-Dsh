@@ -2490,6 +2490,19 @@ function teamModelSlotSchema(slot) {
     reasoningEffort: Schema.string().default(slot.reasoningEffort)
   });
 }
+var TEAM_MODEL_SLOT_GROUPS = {
+  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
+  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
+  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
+  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
+};
+var ROSTER_AGENT_NAMES = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members]);
+var AGENT_ROUTE_SCHEMA = Schema.object({
+  provider: Schema.string().required(false),
+  model: Schema.string().required(false),
+  reasoningEffort: Schema.string().required(false)
+});
+var AGENT_ROUTES_SCHEMA = Schema.dict(AGENT_ROUTE_SCHEMA, Schema.union(ROSTER_AGENT_NAMES.map((name) => Schema.const(name))));
 var SettingsSchema = Schema.object({
   hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
   commentChecker: Schema.object({ autoCheck: Schema.boolean().default(true) }),
@@ -2503,6 +2516,7 @@ var SettingsSchema = Schema.object({
     slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
     slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
   }),
+  agentRoutes: AGENT_ROUTES_SCHEMA,
   watchdog: Schema.object({
     enabled: Schema.boolean().default(true),
     warnSilenceMs: Schema.number().default(600000),
@@ -2514,7 +2528,7 @@ var SettingsSchema = Schema.object({
   }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
-var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
 function markVolatile(schema) {
   const node = schema;
@@ -2539,12 +2553,6 @@ function knobHint(key, semantics) {
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
 }
 var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
-var TEAM_MODEL_SLOT_GROUPS = {
-  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
-  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
-  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
-  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
-};
 var TEAM_MODEL_LEAF_TEMPLATES = {
   provider: {
     en: "The provider half of this slot. The slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.",
@@ -2603,6 +2611,45 @@ var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
     hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
   }));
 });
+var AGENT_ROUTE_LEAF_TEMPLATES = {
+  provider: {
+    en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
+    zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。"
+  },
+  model: {
+    en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
+    zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。"
+  },
+  reasoningEffort: {
+    en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
+    zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。"
+  }
+};
+function agentRouteSlotOf(name) {
+  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(name));
+}
+function agentRouteLeafSentence(name, leaf, lang) {
+  const slot = agentRouteSlotOf(name);
+  const group = slot === undefined ? lang === "zh" ? "未编组" : "ungrouped" : TEAM_MODEL_SLOT_GROUPS[slot][lang];
+  return AGENT_ROUTE_LEAF_TEMPLATES[leaf][lang].split("{name}").join(name).split("{group}").join(group);
+}
+var AGENT_ROUTE_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.flatMap((member) => {
+  const leaves = [
+    { leaf: "provider", label: "provider", zh: "提供商" },
+    { leaf: "model", label: "model", zh: "模型" },
+    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
+  ];
+  return leaves.map(({ leaf, label, zh }) => ({
+    path: ["agentRoutes", member, leaf],
+    label: `${member} ${label} (own route)`,
+    zh: `${member} ${zh}（专属路由）`,
+    kind: "select",
+    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
+    semantics: agentRouteLeafSentence(member, leaf, "en"),
+    semanticsZh: agentRouteLeafSentence(member, leaf, "zh"),
+    hint: knobHint(`agentRoutes.${member}.${leaf}`, agentRouteLeafSentence(member, leaf, "en"))
+  }));
+}));
 var SETTINGS_KNOBS = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -2618,6 +2665,7 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
+  ...AGENT_ROUTE_KNOBS,
   { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];
 
@@ -3135,11 +3183,11 @@ function isWritableFile(file) {
 }
 function writeBackLeaves(targets, leaves, options = DEFAULT_BRIDGE_OPTIONS) {
   if (!options.writeBack)
-    return { writtenTo: [], results: [], skipped: "disabled", applies: "restart" };
+    return { writtenTo: [], results: [], skipped: "disabled", applies: "live" };
   if (leaves.length === 0)
-    return { writtenTo: [], results: [], skipped: "no-changes", applies: "restart" };
+    return { writtenTo: [], results: [], skipped: "no-changes", applies: "live" };
   if (targets.length === 0)
-    return { writtenTo: [], results: [], skipped: "no-live-session", applies: "restart" };
+    return { writtenTo: [], results: [], skipped: "no-live-session", applies: "live" };
   const results = [];
   const writtenTo = [];
   for (const target of targets) {
@@ -3240,12 +3288,13 @@ function writeBackLeaves(targets, leaves, options = DEFAULT_BRIDGE_OPTIONS) {
       settled = true;
     }
   }
-  return { writtenTo, results, applies: "restart" };
+  return { writtenTo, results, applies: "live" };
 }
 
 // packages/mpd-config-plugin/src/index.ts
 var name = "mpd-config";
 var inject = dshSeamInject(DSH_SEAM_TOOLS);
+var ENTRY_CONFIG_ID = "mpd-config";
 var MARKER_PATH = ["bridge", "migratedRevision"];
 function stripJsonc(src) {
   let out = "";
@@ -3364,7 +3413,7 @@ function rowKnobLayer(config) {
   }
   return layer;
 }
-function loadConfig(config, root, settingsSection) {
+function loadConfig(config, root, settingsSection, rowKnobsOverride) {
   const dshHome = process.env.DSH_HOME ?? join3(homedir(), ".dsh");
   const userFile = config.userFile ? resolve4(config.userFile) : join3(dshHome, "mpd.jsonc");
   const projectFile = config.projectFile ? resolve4(config.projectFile) : join3(root, ".mpd", "mpd.jsonc");
@@ -3384,7 +3433,7 @@ function loadConfig(config, root, settingsSection) {
   const settingsApplied = isPlainObject2(section) && Object.keys(section).length > 0;
   if (settingsApplied)
     merged = deepMerge(merged, section);
-  const rowKnobs = rowKnobLayer(config);
+  const rowKnobs = rowKnobsOverride ?? rowKnobLayer(config);
   if (Object.keys(rowKnobs).length > 0)
     merged = deepMerge(merged, rowKnobs);
   return { config: merged, files: files.filter((f) => existsSync2(f)), errors, settingsApplied };
@@ -3408,10 +3457,38 @@ function teamModelSlotOfMember(member) {
   }
   return;
 }
+function agentRouteEntryOfMember(member, config) {
+  const table = config?.agentRoutes;
+  if (!isPlainObject2(table))
+    return {};
+  const memberKey = String(member ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const raw = Object.entries(table).find(([key]) => key.toLowerCase().replace(/[^a-z0-9]+/g, "") === memberKey)?.[1];
+  if (raw === undefined)
+    return {};
+  if (!isPlainObject2(raw)) {
+    throw new Error(`mpd-config: agentRoutes.${member} must be an object of optional provider/model/reasoningEffort strings, but it is ${JSON.stringify(raw)}`);
+  }
+  const entry = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (key !== "provider" && key !== "model" && key !== "reasoningEffort") {
+      throw new Error(`mpd-config: agentRoutes.${member} carries an unknown leaf "${key}" — only provider, model and reasoningEffort are route leaves`);
+    }
+    if (value === undefined || value === null)
+      continue;
+    if (typeof value !== "string") {
+      throw new Error(`mpd-config: agentRoutes.${member}.${key} must be a string, but it is ${JSON.stringify(value)}`);
+    }
+    const trimmed = value.trim();
+    if (trimmed !== "")
+      entry[key] = trimmed;
+  }
+  return entry;
+}
 function teamModelRouteOfMember(member, config) {
   const slot = teamModelSlotOfMember(member);
   if (slot === undefined)
     return;
+  const agentEntry = agentRouteEntryOfMember(member, config);
   const value = withTeamModelsDefaults(config).teamModels?.[slot];
   const provider = typeof value?.provider === "string" ? value.provider.trim() : "";
   const model = typeof value?.model === "string" ? value.model.trim() : "";
@@ -3419,7 +3496,10 @@ function teamModelRouteOfMember(member, config) {
   if (provider === "" || model === "") {
     throw new Error(`mpd-config: ${member} is routed by ${slot}, but that slot is incomplete (provider=${provider === "" ? "unset" : provider}, model=${model === "" ? "unset" : model})`);
   }
-  return { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } };
+  const routedProvider = agentEntry.provider ?? provider;
+  const routedModel = agentEntry.model ?? model;
+  const routedEffort = agentEntry.reasoningEffort ?? effort;
+  return { provider: routedProvider, model: routedModel, ...routedEffort === "" ? {} : { reasoningEffort: routedEffort } };
 }
 var knobDict = SettingsSchema.dict ?? {};
 var Config = markVolatile(Schema.object({
@@ -3494,8 +3574,17 @@ function apply(ctx, config = {}) {
     return described.user;
   };
   let state = loadConfig(config, dsh.workspaceRoot(), readSection());
+  let entryKnobs;
+  const readEntryConfig = () => {
+    if (typeof dsh.settingsReader !== "function")
+      return;
+    const described = dsh.settingsReader(ENTRY_CONFIG_ID)?.describe();
+    if (described === undefined)
+      return;
+    return isPlainObject2(described.user) ? described.user : undefined;
+  };
   const reloadAt = (root) => {
-    state = loadConfig(config, root, readSection());
+    state = loadConfig(config, root, readSection(), entryKnobs);
     reconcile(root);
     return state.config;
   };
@@ -3572,7 +3661,7 @@ function apply(ctx, config = {}) {
       return;
     const options = bridgeOptions();
     if (!options.writeBack) {
-      const disabled = { writtenTo: [], results: [], skipped: "disabled", applies: "restart", source, revision, at: new Date().toISOString() };
+      const disabled = { writtenTo: [], results: [], skipped: "disabled", applies: "live", source, revision, at: new Date().toISOString() };
       bridge.report = disabled;
       warnRefusal("disabled", []);
       warn(reportLine(disabled, "DISABLED"));
@@ -3580,7 +3669,7 @@ function apply(ctx, config = {}) {
     }
     const decision = resolveTargets(dsh.workspaceRootsAll(), projectFileOverride());
     if (decision.kind === "refuse") {
-      const refused = { writtenTo: [], results: [], skipped: decision.reason, candidates: decision.candidates, applies: "restart", source, revision, at: new Date().toISOString() };
+      const refused = { writtenTo: [], results: [], skipped: decision.reason, candidates: decision.candidates, applies: "live", source, revision, at: new Date().toISOString() };
       bridge.report = refused;
       warnRefusal(decision.reason, decision.candidates);
       warn(reportLine(refused, decision.reason));
@@ -3597,7 +3686,7 @@ function apply(ctx, config = {}) {
       }
       if (result.outcome === "written" || result.outcome === "created" || result.outcome === "unchanged")
         continue;
-      warn(`[mpd-config] settings bridge: ${result.outcome} for ${result.file}${result.reason ? " (" + result.reason + ")" : ""}${result.detail ? " — " + result.detail : ""} — the file is byte-untouched and the settings value still applies; the mpd plugins need a restart to act on it.`);
+      warn(`[mpd-config] settings bridge: ${result.outcome} for ${result.file}${result.reason ? " (" + result.reason + ")" : ""}${result.detail ? " — " + result.detail : ""} — the file is byte-untouched and the settings value still applies in the RUNNING process (no restart: the config service re-resolves on every save, and the model-config knobs are read per use); only a knob some plugin captured at its own mount keeps its captured value until the next dsh boot.`);
     }
     warn(reportLine(bridge.report, report.writtenTo.length > 0 ? "WROTE" : "OK"));
     watchRoot(decision.targets[0].root);
@@ -3696,13 +3785,22 @@ function apply(ctx, config = {}) {
       }
     });
   };
+  if (typeof dsh.onSettingsDocumentUpdated === "function")
+    dsh.onSettingsDocumentUpdated(ENTRY_CONFIG_ID, () => {
+      const doc = readEntryConfig();
+      if (doc === undefined)
+        return;
+      entryKnobs = rowKnobLayer(doc);
+      state = loadConfig(config, readRoot(), bridge.section, entryKnobs);
+      warn(`[mpd-config] entry-config update: state re-loaded from the "${ENTRY_CONFIG_ID}" document (${Object.keys(entryKnobs).length} knob(s) in force) — no restart needed`);
+    });
   if (typeof dsh.onSettingsDocumentUpdated !== "function") {
     bridge.degraded = bridge.degraded ?? "adapter has no onSettingsDocumentUpdated seam";
   } else
     dsh.onSettingsDocumentUpdated(SETTINGS_NS, (revision, source) => {
       const previous = bridge.section;
       const next = readSection();
-      state = loadConfig(config, readRoot(), next);
+      state = loadConfig(config, readRoot(), next, entryKnobs);
       if (source === "provider")
         return;
       const delta = changedLeaves(previous, next);
@@ -3710,6 +3808,9 @@ function apply(ctx, config = {}) {
     });
   if (typeof dsh.settingsMutate !== "function" && bridge.degraded === undefined)
     bridge.degraded = "adapter has no settingsMutate seam (the §1.2 override clearing is unavailable)";
+  watchRoot(readRoot());
+  for (const root of dsh.workspaceRootsAll())
+    watchRoot(root);
   const baseForNamespace = () => {
     const roots = dsh.workspaceRootsAll();
     if (roots.length === 1)
@@ -3765,12 +3866,12 @@ function apply(ctx, config = {}) {
       writeback: bridge.report ?? null,
       migration: bridge.migration,
       cleared: bridge.cleared,
-      applies: "restart"
+      applies: "live"
     })
   });
   dsh.registerTool({
     name: "mpd_config_get",
-    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort.",
+    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort, agentRoutes.<name>.provider/model/reasoningEffort.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a, v) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args, exec) => {
@@ -3794,7 +3895,9 @@ function apply(ctx, config = {}) {
 }
 export {
   Config,
+  ENTRY_CONFIG_ID,
   SETTINGS_NS,
+  agentRouteEntryOfMember,
   apply,
   deepMerge,
   inject,

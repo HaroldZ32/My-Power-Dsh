@@ -24,6 +24,8 @@ import { apply, WATCHDOG_WEB_READER } from "../dist/index.js"
 const STATE_PATH = "/plugins/mpd-team-watchdog/state"
 /** The bundle's acknowledge route, paired with the state route. */
 const ACK_PATH = "/plugins/mpd-team-watchdog/ack"
+/** The bundle's effective model-config route (R3, lane L4), registered beside the two above. */
+const MODEL_CONFIG_PATH = "/plugins/mpd/model-config"
 
 /** The response double the route handlers write into. */
 interface FakeRes {
@@ -133,14 +135,14 @@ describe("the watchdog routes survive a late-bound web server", () => {
     // Nothing to bind to yet: the server's fiber has not activated.
     expect([...host.routes.keys()]).toEqual([])
     host.bindService("webServer", host.webServer)
-    expect([...host.routes.keys()].sort()).toEqual([ACK_PATH, STATE_PATH])
+    expect([...host.routes.keys()].sort()).toEqual([ACK_PATH, STATE_PATH, MODEL_CONFIG_PATH])
   })
 
   test("a web server bound AT apply() registers immediately (the path that already worked)", () => {
     /** A host whose web server is already registered at apply time. */
     const host = fakeHost({ bindAtApply: true })
     apply(host.ctx)
-    expect([...host.routes.keys()].sort()).toEqual([ACK_PATH, STATE_PATH])
+    expect([...host.routes.keys()].sort()).toEqual([ACK_PATH, STATE_PATH, MODEL_CONFIG_PATH])
   })
 
   test("an unrelated late binding registers nothing and never throws", () => {
@@ -159,7 +161,7 @@ describe("the watchdog routes survive a late-bound web server", () => {
     const host = fakeHost()
     apply(host.ctx)
     host.bindService("httpServer", host.webServer)
-    expect([...host.routes.keys()].sort()).toEqual([ACK_PATH, STATE_PATH])
+    expect([...host.routes.keys()].sort()).toEqual([ACK_PATH, STATE_PATH, MODEL_CONFIG_PATH])
   })
 
   test("no effect seam keeps the plugin a headless marker and never throws", () => {
@@ -174,9 +176,9 @@ describe("the watchdog routes survive a late-bound web server", () => {
     /** A host whose server is registered at apply time. */
     const host = fakeHost({ bindAtApply: true })
     apply(host.ctx)
-    expect(host.routes.size).toBe(2)
+    expect(host.routes.size).toBe(3)
     host.bindService("webServer", host.webServer)
-    expect(host.routes.size).toBe(2)
+    expect(host.routes.size).toBe(3)
   })
 })
 

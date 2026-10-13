@@ -28,7 +28,7 @@ import { TRANSCRIPT_TYPES } from "../src/renderers"
 import { PANEL_ICON } from "../src/panel"
 import { WORKMATE_PANEL_ICON } from "../src/panel-workmate"
 import { COMMAND_ACTIONS, MODEL_COMMAND } from "../src/command-trees"
-import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
+import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, effectiveModelSummary, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
 import { createLog } from "../src/log"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
 import { SHORTCUT_BINDINGS } from "../src/shortcuts"
@@ -500,12 +500,14 @@ describe("full composition (every service injected)", () => {
     // The section is keyed by the ENTRY the settings machinery serves it under, not by the retired
     // namespace name: measured on a live boot, values resolved for "mpd-config" and never for "mpd".
     expect(calls.sections[0].ns).toBe("mpd-config")
-    // 26 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
+    // 59 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
     // thirteen original mpd knobs, the twelve team-model slot leaves (4 slots x provider / model /
-    // reasoningEffort) and the TUI surface's own `tui.dashboardKey` (the Ctrl+A takeover toggle,
-    // which this section renders through the SAME declaredField path as every other row). The
-    // per-field assertions below are the other half of the no-drift pair.
-    expect(calls.sections[0].fields).toHaveLength(26)
+    // reasoningEffort), the thirty-three agentRoutes leaves (11 roster members x the same three,
+    // R2's front door — enumerated from the declaration, never free-typed) and the TUI surface's
+    // own `tui.dashboardKey` (the Ctrl+A takeover toggle, which this section renders through the
+    // SAME declaredField path as every other row). The per-field assertions below are the other
+    // half of the no-drift pair.
+    expect(calls.sections[0].fields).toHaveLength(59)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
       // The disclosure is stated ONCE on the surface (the section's own description), never per row.
@@ -1390,9 +1392,11 @@ describe("settings section disclosure (t21)", () => {
     expect(String(slotFields[3].hint)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
     expect(String(slotFields[3].hint)).not.toContain("Architect")
     expect(String(slotFields[3].hint)).toContain("Vision Analyst")
-    // the thirteen scalar rows carry their key alone (they have no invented copy), and — having no
+    // the scalar rows carry their key alone (they have no invented copy), and — having no
     // zh sentence to translate — no `hintDescriptions` either: the host falls back to the base.
-    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "teamModels")) {
+    // The agentRoutes rows are NOT in this family: like the slot leaves they carry a declared
+    // human sentence (which member the row overrides and what setting it does).
+    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "teamModels" && candidate.path[0] !== "agentRoutes")) {
       expect(field.hint).toBe(`mpd.jsonc ${field.path.join(".")}`)
       expect(field.hintDescriptions).toBeUndefined()
     }
@@ -1428,7 +1432,60 @@ describe("settings section disclosure (t21)", () => {
     expect(String(SETTINGS_SECTION.descriptions!.en).startsWith(SETTINGS_SECTION.title)).toBe(true)
   })
 
-  test("the registered section's 22 rows mirror the declaration: labels, zh, and human-first hints", async () => {
+  test("R3: the registered section's description carries the EFFECTIVE model config from the mpdConfig service", async () => {
+    // The see-before-you-edit half of the TUI surface (AC5): the section's own description — the
+    // one prose surface a TUI section has — states the four effective slot routes, the agentRoutes
+    // overrides that are set and the configured modelchain chains, read from the LIVE service at
+    // section-request time. The disclosure constants ride the same line, ahead of the summary.
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    host.ctx.get = (name: string): unknown =>
+      name === "mpdDsh"
+        ? { llmCatalog: async () => TWO_PROVIDER_CATALOG }
+        : name === "mpdConfig"
+          ? {
+              /** The keyed config reads the summary projects (defaults materialised, as the service does). */
+              get: (key?: string): unknown =>
+                key === "teamModels"
+                  ? { slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" }, slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }, slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }, slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" } }
+                  : key === "agentRoutes"
+                    ? { "Deep Worker": { model: "deepseek-v4-pro" } }
+                    : key === "modelchain"
+                      ? { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }] }
+                      : undefined,
+            }
+          : undefined
+    mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    await settle()
+    /** The one registered section. */
+    const section = calls.sections[0]
+    /** The section's EN description, which carries disclosure plus summary. */
+    const en = String(section.descriptions?.en)
+    expect(en).toContain(BRIDGE_DISCLOSURE)
+    expect(en).toContain("effective now — slots slot1:deepseek-official/deepseek-v4-flash/max")
+    expect(en).toContain("agentRoutes: Deep Worker(model=deepseek-v4-pro)")
+    expect(en).toContain("modelchain: sisyphus→deepseek-official/deepseek-v4-pro (+1)")
+    // The zh half carries the same values under its own words.
+    expect(String(section.descriptions?.zh)).toContain("当前生效")
+    expect(String(section.descriptions?.zh)).toContain("Deep Worker(model=deepseek-v4-pro)")
+  })
+
+  test("R3: the effective summary degrades honestly when no config service is composed", () => {
+    // The guarded-fallback world (no `mpd-config` row): the summary says so in BOTH languages
+    // instead of inventing values — and a service whose read THROWS answers the same sentence.
+    const absent = effectiveModelSummary(undefined)
+    expect(absent.en).toContain("effective values unavailable")
+    expect(absent.zh).toContain("生效值不可用")
+    /** A service whose every read throws, answered the same honest way. */
+    const broken = effectiveModelSummary({ get: () => { throw new Error("boom") } })
+    expect(broken.en).toContain("slots unreadable")
+    expect(broken.en).toContain("agentRoutes: none set")
+    expect(broken.en).toContain("modelchain: none configured")
+  })
+
+  test("the registered section's rows mirror the declaration: labels, zh, and human-first hints", async () => {
     /** The call log, after the catalog read settled. */
     const { calls } = await applyWithAdapter(async () => ({ providers: [], degraded: true }))
     /** The one registered section. */
@@ -1448,11 +1505,15 @@ describe("settings section disclosure (t21)", () => {
     }
   })
 
-  test("the marker itself says the save does not rewrite the config file", () => {
-    // t35 reword: the claim is now the BRIDGE plus the restart, and the old false claim
-    // ("not bridged: a save here does not rewrite .mpd/mpd.jsonc") is DELETED, not softened.
+  test("the marker itself states the bridge write and the LIVE effect — the restart claim is gone", () => {
+    // Reworded by wave fix/model-config-live-refresh (L1 landed the live refresh): the marker keeps
+    // the BRIDGE half (a save writes the workspace file) and now states the LIVE half (the model
+    // routes resolve per use, no restart). The old "takes effect … after a restart" claim is
+    // DELETED, not softened — a hint that kept it would be a lie.
     expect(BRIDGE_DISCLOSURE).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
-    expect(BRIDGE_DISCLOSURE).toContain("takes effect for the mpd plugins after a restart")
+    expect(BRIDGE_DISCLOSURE).toContain("takes effect in the RUNNING process — no restart")
+    expect(BRIDGE_DISCLOSURE).toContain("read per use")
+    expect(BRIDGE_DISCLOSURE).not.toContain("after a restart")
     expect(BRIDGE_DISCLOSURE).not.toContain("not bridged")
     expect(BRIDGE_DISCLOSURE).not.toContain("does not rewrite")
     expect(BRIDGE_NO_WORKSPACE_NOTICE).toBe("saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)")

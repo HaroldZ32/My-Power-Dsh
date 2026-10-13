@@ -77,7 +77,7 @@ describe("target set (design §A.1 — never a guessed root)", () => {
     expect(report.skipped).toBe("no-live-session")
     expect(report.writtenTo).toEqual([])
     expect(report.results).toEqual([])
-    expect(report.applies).toBe("restart")
+    expect(report.applies).toBe("live")
   })
 
   test("the negative-control switch refuses to write even with a live root", () => {
@@ -104,7 +104,7 @@ describe("happy paths", () => {
     expect(report.results[0].outcome).toBe("written")
     expect(readFileSync(file, "utf8")).toBe(WITH_COMMENTS.replace("6", "9"))
     expect(readFileSync(file, "utf8")).toContain("// human comment above hashline")
-    expect(report.applies).toBe("restart")
+    expect(report.applies).toBe("live")
   })
 
   test("U11: a missing target is created with the header comment, and a repeat run is unchanged", () => {

@@ -148,9 +148,9 @@ export type Config = {
  * `Dict` under a virtual path, which is not portable in declaration emit; the
  * global `Schemastery` interface comes from schemastery's own declarations.
  */
-// VOLATILE — and THAT FLAG is what puts these knobs in the harness's `/settings` dialog. Its
-// `volatileForm(schema)` walks `schema.meta.volatile` (measured out of the installed
-// `dsh-settings@0.1.7-rc.2`) and an entry whose schema carries NO volatile node is not listed at all.
+// VOLATILE — and THAT FLAG is what puts these knobs in the harness's `/settings` dialog. The
+// harness's own volatile-form walk of `schema.meta.volatile` (measured out of the installed
+// `dsh-settings@0.1.7-rc.2`) skips an entry whose schema carries NO volatile node, so it is not listed at all.
 // Without it `panel` / `workmate` — the two sidebar-page switches — were invisible to the user, which is
 // what made the pages feel un-toggleable. A save writes the ENTRY CONFIG, which the loader validates
 // against THIS schema at the next boot, so the two checkboxes decide the next boot's pages.
