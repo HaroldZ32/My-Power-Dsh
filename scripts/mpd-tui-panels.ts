@@ -42,12 +42,16 @@
 // live panel. `--ids a,b,c` stays the documented escape when the user knows the ids, and a real TUI boot
 // rewrites a provable record.
 //
-// AN ABSENT `panels` LEAF IS SEEDED FROM THE HOST'S OWN DEFAULT (2026-10-12). `sidePanel.panels`
-// REPLACES the host's default rather than extending it, and the host bundle patch declares no `panels`
-// leaf — so a profile whose user layer is unset is running on the module's `DEFAULT_SIDE_PANEL_IDS`.
-// A seedless merge therefore replaced all eight builtins with our ids and the sidebar came up showing
-// MPD and nothing else; the seed is read from the installed host module, and a seed that cannot be read
-// REFUSES the run instead of guessing "none".
+// AN ABSENT `panels` LEAF IS SEEDED FROM THE HOST'S OWN DEFAULT, AND AN EXISTING ONE IS NEVER OVERRULED
+// (2026-10-12). `sidePanel.panels` REPLACES the host's default rather than extending it, and the host
+// bundle patch declares no `panels` leaf — so a profile whose user layer is unset is running on the
+// module's `DEFAULT_SIDE_PANEL_IDS`. A seedless merge therefore replaced all eight builtins with our ids
+// and the sidebar came up showing MPD and nothing else. Two rules now hold: the seed for an ABSENT leaf
+// is the host's own CURRENT default, read from the installed module (and if it cannot be read the run
+// REFUSES rather than guessing "none"); and a leaf that EXISTS is a POSITION returned byte-for-byte —
+// INCLUDING one that names none of the builtins, because "every builtin is missing" and "the user removed
+// every builtin" are the same bytes and an automatic repair would delete a real choice. Putting the
+// builtins back is therefore an EXPLICIT act, `--restore-builtins`, never an inference.
 //
 // SAFETY: dry-run is the DEFAULT and prints the resolved absolute path and the exact block it would
 // write; a write needs `--apply`. The write is atomic, keeps a `.bak-<stamp>` copy beside the document,
@@ -64,7 +68,7 @@
 //
 // Usage:
 //   node scripts/mpd-tui-panels.ts [--dsh-home <dir>] [--profile <name>] [--workspace <dir>]
-//                                  [--ids a,b,c] [--apply]
+//                                  [--ids a,b,c] [--apply] [--restore-builtins]
 //   node scripts/mpd-tui-panels.ts --self-test
 //
 // Exit: 0 dry run printed / write landed; 1 for an unprovable path, unprovable ids, or a failed
@@ -520,45 +524,58 @@ function hostDefaultPanelCsv(profileDir: string): string | undefined {
 
 /** What one run starts from, and which builtins the seed had to restore. */
 export interface PanelSeed {
-  /** The CSV the merge must consume: the leaf's own tokens, or the host's default ahead of them. */
+  /** The CSV the merge must consume: the legacy default, the host's default, or the leaf's own tokens. */
   readonly seed: string
-  /** The host-default ids the leaf was missing (all of them when the whole set was gone). */
+  /** The host-default ids that were MISSING and are therefore being restored. */
   readonly restored: readonly string[]
 }
 
 /**
  * Decide the list a run starts from, from the document's leaf and the host's own current default.
  *
- * THREE CASES, and the middle one is the damage this rule exists to repair:
- *   · the leaf is ABSENT -> the effective list is the host's default, so that default is the seed
- *     (a seedless merge would DELETE every builtin — the measured defect);
- *   · the leaf EXISTS and names NONE of the host's current builtins -> the seedless-write DAMAGE
- *     (`MPD` and only `MPD`). The default is prepended so every builtin comes back, with the leaf's own
- *     tokens preserved after it and reported through {@link PanelSeed.restored};
- *   · the leaf names ANY builtin -> that is a POSITION (the user's selection, however partial), so the
- *     seed is the leaf byte-for-byte and nothing is restored.
- * A user who deliberately removes EVERY builtin is the DECLARED residual: they read exactly like the
- * damage and are repaired once more, which is the mirror of the runtime keeper's documented residual.
+ * TWO CASES, and the second one is a hard rule rather than a heuristic:
+ *   · the leaf is ABSENT -> the host's effective list IS its default, so that default is the seed (a
+ *     seedless merge would DELETE every builtin — the measured defect this seed exists to prevent);
+ *   · the leaf EXISTS -> it is a POSITION and is returned BYTE-FOR-BYTE, whatever it names — INCLUDING a
+ *     list that names none of the host's builtins. That case is deliberately NOT repaired automatically:
+ *     "every builtin is missing" is indistinguishable from "the user removed every builtin on purpose",
+ *     and an automatic guess would delete a real choice. The deliberate repair is
+ *     {@link restoreMissingBuiltins}, reached only by the explicit `--restore-builtins` flag.
  *
  * @param current - the CSV the document's leaf carries, `undefined` when the leaf is absent.
  * @param hostDefault - the installed host's current default, `undefined` when it could not be read.
- * @returns the seed and the restored ids, or the ONE reason the run must refuse (nothing to seed from).
+ * @returns the seed, or the ONE reason the run must refuse (an absent leaf with nothing to inherit).
  */
 export function resolvePanelSeed(current: string | undefined, hostDefault: string | undefined): PanelSeed | { detail: string } {
-  /** The leaf's own tokens, normalized, for the "does it name any builtin" test. */
-  const leafTokens = (current ?? "").split(",").map((token) => token.trim().toLowerCase()).filter((token) => token !== "")
-  if (hostDefault === undefined) {
-    // No readable default: an ABSENT leaf has nothing to inherit; an EXISTING leaf is still usable.
-    if (current === undefined) return { detail: "no `panels` leaf and no readable host default" }
-    return { seed: current, restored: [] }
-  }
-  /** The default's ids, in the host's own order. */
+  if (current !== undefined) return { seed: current, restored: [] }
+  if (hostDefault === undefined) return { detail: "no `panels` leaf and no readable host default" }
+  return { seed: hostDefault, restored: [] }
+}
+
+/**
+ * Restore the host builtins a leaf has lost — the EXPLICIT repair, reached only by `--restore-builtins`.
+ *
+ * WHY THIS IS A FLAG AND NOT A RULE. A leaf that names none of the host's builtins may be a deliberate
+ * removal, so nothing automatic may touch it; but a user who ASKS for the builtins back is stating the
+ * intent the automatic path cannot read. The restore prepends the host's default (so the canonical
+ * builtin order survives the merge's dedupe) and reports exactly which ids it put back.
+ *
+ * @param current - the CSV the document's leaf carries, `undefined` when the leaf is absent.
+ * @param hostDefault - the installed host's current default, `undefined` when it could not be read.
+ * @returns the seed to merge with the restored ids, or the ONE reason nothing can be restored.
+ */
+export function restoreMissingBuiltins(current: string | undefined, hostDefault: string | undefined): PanelSeed | { detail: string } {
+  if (hostDefault === undefined) return { detail: "the installed host's default could not be read, so there is no builtin set to restore" }
+  /** The host's default ids, in the host's own canonical order. */
   const defaults = hostDefault.split(",").map((id) => id.trim()).filter((id) => id !== "")
-  /** The defaults this leaf does not name. */
+  /** The leaf's own tokens, normalized, so a differently-spelled builtin still counts as present. */
+  const leafTokens = (current ?? "").split(",").map((token) => token.trim().toLowerCase()).filter((token) => token !== "")
+  /** The defaults this leaf does not name: exactly what a restore puts back. */
   const missing = defaults.filter((id) => !leafTokens.includes(id.toLowerCase()))
-  if (current === undefined) return { seed: hostDefault, restored: [] }
-  if (missing.length > 0 && missing.length === defaults.length) return { seed: `${hostDefault},${current}`, restored: missing }
-  return { seed: current, restored: [] }
+  if (missing.length === 0) return { seed: current ?? hostDefault, restored: [] }
+  // The FULL default goes in front, not just the missing ids: the merge dedupes by first occurrence, so
+  // this is what keeps the sidebar in the host's own canonical order while the leaf's extras follow.
+  return { seed: current === undefined ? hostDefault : `${hostDefault},${current}`, restored: missing }
 }
 
 /**
@@ -967,6 +984,13 @@ interface Options {
   readonly ids?: string
   /** `--apply`; absent means dry run. */
   readonly apply: boolean
+  /**
+   * `--restore-builtins`: ALSO put back the host builtins a leaf has lost.
+   *
+   * A FLAG rather than a rule, on purpose: a leaf that names none of the builtins may be a deliberate
+   * removal, so nothing automatic may repair it — only an explicit request states that intent.
+   */
+  readonly restoreBuiltins: boolean
 }
 
 /**
@@ -987,6 +1011,7 @@ function parseArgs(argv: readonly string[]): Options {
     workspace: resolve(value("workspace") ?? process.cwd()),
     ...(value("ids") === undefined ? {} : { ids: value("ids") }),
     apply: argv.includes("--apply"),
+    restoreBuiltins: argv.includes("--restore-builtins"),
   }
 }
 
@@ -1054,15 +1079,26 @@ function main(argv: readonly string[]): number {
   // left the sidebar showing `MPD` and only `MPD`.
   /** The installed host's current default. */
   const hostDefault = hostDefaultPanelCsv(location.profileDir)
-  /** The list this run starts from, plus the builtins the seed had to restore. */
-  const seed = resolvePanelSeed(current, hostDefault)
+  /**
+   * The list this run starts from.
+   *
+   * THE AUTOMATIC PATH ONLY SEEDS AN ABSENT LEAF. An existing leaf — including one that names none of
+   * the builtins — is a POSITION and is left byte-for-byte, because "every builtin is missing" cannot be
+   * told apart from "the user removed every builtin". `--restore-builtins` is the EXPLICIT act that also
+   * puts the missing builtins back, since only the human can state that intent.
+   */
+  const seed = options.restoreBuiltins ? restoreMissingBuiltins(current, hostDefault) : resolvePanelSeed(current, hostDefault)
   if ("detail" in seed) {
     console.error(`${TAG} REFUSED: ${seed.detail}`)
     console.error(`${TAG}   Seeding an empty list here would REPLACE every builtin panel; check the install of ${HOST_PACKAGE} and re-run.`)
     return 1
   }
   if (current === undefined) console.log(`${TAG} no ${PANELS_KEY} leaf in the user layer: seeding from the installed host's own default (${String(hostDefault)})`)
-  if (seed.restored.length > 0) console.log(`${TAG} the leaf names NONE of the host's current builtins: restoring ${seed.restored.join(",")} beside the tokens it already carries`)
+  if (options.restoreBuiltins) {
+    console.log(seed.restored.length === 0
+      ? `${TAG} --restore-builtins: every builtin the host ships is already enabled — nothing to restore`
+      : `${TAG} --restore-builtins: restoring ${seed.restored.join(",")} ahead of the tokens the leaf already carries`)
+  }
   /** The merge this run would write, pruning only ids the record proves are ours. */
   const merge = mergePanelIds(seed.seed, record.ids, record.past, hostDefault)
   // A PRUNE ALONE IS A REASON TO RUN (contract D1): the current ids may already be enabled while an
@@ -1154,29 +1190,46 @@ function selfTest(): number {
     mergePanelIds(undefined, ["act1:team", "act1:workmate"], [], BUILTINS).csv === `${BUILTINS},act1:team,act1:workmate`)
   check("(a) NEGATIVE CONTROL: a SEEDLESS absent leaf drops the builtins — the hazard the seed removes",
     mergePanelIds(undefined, ["act1:team"], []).csv === "act1:team")
-  // (a) THE DAMAGE REPAIR ("the sidebar has MPD and only MPD"): a leaf that EXISTS and names none of the
-  // host's builtins is the seedless-write damage, and the seed must put the whole set back AHEAD of the
-  // tokens the leaf already carries. The two controls below are what keep the rule from overreaching: a
-  // PARTIAL selection is a position and is left byte-for-byte, and with no readable default an absent
-  // leaf REFUSES instead of guessing "none".
-  /** The seed for the damaged leaf (our two ids and no builtin). */
-  const damaged = resolvePanelSeed("act1:team,act1:workmate", BUILTINS)
-  check("(a) DAMAGE: a leaf naming NONE of the builtins is seeded with the whole default, ours preserved",
-    !("detail" in damaged) && damaged.seed === `${BUILTINS},act1:team,act1:workmate` && damaged.restored.length === BUILTINS.split(",").length)
-  check("(a) the damaged leaf's repair survives the merge as the full list",
-    mergePanelIds(("detail" in damaged ? "" : damaged.seed), ["act1:team", "act1:workmate"], [], BUILTINS).csv === `${BUILTINS},act1:team,act1:workmate`)
+  // (a) THE AUTOMATIC PATH NEVER OVERRULES A POSITION. A leaf that EXISTS is returned byte-for-byte,
+  // INCLUDING one that names none of the host's builtins: "every builtin is missing" and "the user
+  // removed every builtin" are the same bytes, so a rule that repaired it would delete a real choice.
+  // No residual remains in the automatic path — the repair is the explicit flag asserted just below.
+  /** A leaf that names none of the builtins: the old damage, or a deliberate removal. */
+  const builtinless = "act1:team,act1:workmate"
+  check("(a) a leaf naming NONE of the builtins is left BYTE-FOR-BYTE by the automatic path",
+    !("detail" in resolvePanelSeed(builtinless, BUILTINS))
+      && (resolvePanelSeed(builtinless, BUILTINS) as PanelSeed).seed === builtinless
+      && (resolvePanelSeed(builtinless, BUILTINS) as PanelSeed).restored.length === 0)
+  check("(a) so the merge writes nothing at all for it (a deliberate removal is respected)",
+    mergePanelIds((resolvePanelSeed(builtinless, BUILTINS) as PanelSeed).seed, ["act1:team", "act1:workmate"], [], BUILTINS).csv === builtinless)
+  // (a) THE EXPLICIT REPAIR: `--restore-builtins` is the ONLY path that puts the eight back, and only a
+  // human can ask for it. It prepends the host's canonical default (the merge's dedupe keeps that order)
+  // and reports exactly which ids it restored, so the act is loud and falsifiable.
+  check("(a) --restore-builtins puts the whole default back AHEAD of the leaf's own tokens",
+    !("detail" in restoreMissingBuiltins(builtinless, BUILTINS))
+      && (restoreMissingBuiltins(builtinless, BUILTINS) as PanelSeed).seed === `${BUILTINS},${builtinless}`
+      && (restoreMissingBuiltins(builtinless, BUILTINS) as PanelSeed).restored.length === BUILTINS.split(",").length)
+  check("(a) --restore-builtins on a HEALTHY list is a no-op that restores nothing",
+    !("detail" in restoreMissingBuiltins(`${BUILTINS},${builtinless}`, BUILTINS))
+      && (restoreMissingBuiltins(`${BUILTINS},${builtinless}`, BUILTINS) as PanelSeed).restored.length === 0
+      && (restoreMissingBuiltins(`${BUILTINS},${builtinless}`, BUILTINS) as PanelSeed).seed === `${BUILTINS},${builtinless}`)
+  check("(a) --restore-builtins completes a PARTIAL selection, in the host's own order",
+    !("detail" in restoreMissingBuiltins("todo,act1:team", BUILTINS))
+      && mergePanelIds((restoreMissingBuiltins("todo,act1:team", BUILTINS) as PanelSeed).seed, ["act1:team"], [], BUILTINS).csv === `${BUILTINS},act1:team`
+      && (restoreMissingBuiltins("todo,act1:team", BUILTINS) as PanelSeed).restored.length === BUILTINS.split(",").length - 1)
+  check("(a) --restore-builtins REFUSES when the host default cannot be read",
+    "detail" in restoreMissingBuiltins(builtinless, undefined))
   // (a) THE GUARANTEE THE USER ASKS FOR IN ONE SENTENCE: "the native TUI already had 8 panels — do not
-  // lose them." These three arms pin it on every path that can reach the merge: the eight survive an
-  // absent leaf, survive the damage, and a list that ALREADY holds all eight plus ours is left BYTE-FOR-
-  // BYTE — so a re-run is a no-op and cannot rewrite (or reorder) a healthy sidebar list.
-  check("(a) all EIGHT builtins survive every seeded path (absent leaf, damaged leaf, full list)",
+  // lose them." The eight survive every path that can reach the merge, and a list that ALREADY holds all
+  // eight plus ours is left BYTE-FOR-BYTE, so a re-run cannot rewrite (or reorder) a healthy list.
+  check("(a) all EIGHT builtins survive every path (absent leaf, explicit restore, healthy list)",
     [mergePanelIds(undefined, ["act1:team"], [], BUILTINS).csv,
-      mergePanelIds(("detail" in damaged ? "" : damaged.seed), ["act1:team"], [], BUILTINS).csv,
+      mergePanelIds((restoreMissingBuiltins(builtinless, BUILTINS) as PanelSeed).seed, ["act1:team"], [], BUILTINS).csv,
       mergePanelIds(`${BUILTINS},act1:team`, ["act1:team"], [], BUILTINS).csv]
       .every((csv) => BUILTINS.split(",").every((id) => csv.split(",").includes(id))))
   check("(a) a FULLY repaired list (all eight + ours) is a NO-OP, not a rewrite",
     mergePanelIds(`${BUILTINS},act1:team,act1:workmate`, ["act1:team", "act1:workmate"], [], BUILTINS).csv === `${BUILTINS},act1:team,act1:workmate`)
-  check("(a) and its SEED is that same list untouched — nothing is restored",
+  check("(a) and its AUTOMATIC SEED is that same list untouched — nothing is restored",
     !("detail" in resolvePanelSeed(`${BUILTINS},act1:team,act1:workmate`, BUILTINS))
       && (resolvePanelSeed(`${BUILTINS},act1:team,act1:workmate`, BUILTINS) as PanelSeed).seed === `${BUILTINS},act1:team,act1:workmate`
       && (resolvePanelSeed(`${BUILTINS},act1:team,act1:workmate`, BUILTINS) as PanelSeed).restored.length === 0)
