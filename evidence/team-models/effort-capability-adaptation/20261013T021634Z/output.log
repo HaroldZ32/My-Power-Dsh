@@ -1,0 +1,174 @@
+# evidence/team-models/effort-capability-adaptation/20261013T021634Z — gate transcript
+
+Host: win32, node v24.21.0, bun 1.4.0 (pinned: .toolchain/node_modules/.bin/bun.cmd), repo root
+C:\MyDoc\DshProj\My-Power-Dsh. All commands run from the repo root. Captured 2026-10-13T02:16Z.
+
+## 1. the change's own tests (targeted)
+
+$ bun test packages/mpd-dsh-adapter-plugin/test/effort-adaptation.test.ts \
+           packages/mpd-roles-plugin/test/team-models-routing.test.ts \
+           packages/mpd-roster-provider-plugin/test/effort-adaptation.test.ts
+16 pass / 0 fail / 50 expect() calls (3 files) [3.60s]
+
+  mpd-dsh-adapter-plugin/test/effort-adaptation.test.ts (6 arms)
+    (pass) modelDeclaresNoEffort > true only for a listed model whose efforts array is EMPTY
+    (pass) modelDeclaresNoEffort > an unlisted provider or model is NO KNOWLEDGE, never an inferred incapability
+    (pass) withSupportedEffort > an absent route or an absent effort is returned BY IDENTITY, and the catalog is never read
+    (pass) withSupportedEffort > THE DEFECT: a model listed with NO efforts loses the keyword, so the call runs
+    (pass) withSupportedEffort > a model that DECLARES efforts keeps the keyword UNCHANGED, supported or not
+    (pass) withSupportedEffort > NO KNOWLEDGE keeps the keyword: an unknown model, no catalog seam, and a rejected read
+  mpd-roles-plugin/test/team-models-routing.test.ts (7 arms, 2 NEW)
+    (pass) THE ADAPTATION: a slot on a model that declares NO efforts drops the keyword instead of failing
+    (pass) CONTROL: the same slot on a model that DECLARES that effort keeps it
+  mpd-roster-provider-plugin/test/effort-adaptation.test.ts (3 arms)
+    (pass) a teammate routed onto an effort-less model reaches the base provider WITHOUT the keyword
+    (pass) CONTROL: a teammate routed onto a model that DECLARES efforts still carries the slot's keyword
+    (pass) a teammate whose label names NO member still inherits, untouched by the adaptation
+
+## 2. typecheck
+
+$ bun run typecheck            # tsgo --noEmit
+exit 0 — no diagnostics
+
+## 3. dist freshness (derived artifacts)
+
+$ node scripts/verify-dist-fresh.ts
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 12356ms
+exit 0
+
+  Rebuilds that were required by this change (pinned toolchain, repo root, path-qualified args):
+    packages/mpd-dsh-adapter-plugin/dist/index.js       (the new exported helper)
+    packages/mpd-roles-plugin/dist/index.js             (inlines the adapter src)
+    packages/mpd-roster-provider-plugin/dist/index.js   (inlines the adapter src AND mpd-config's settings-schema)
+    packages/mpd-config-plugin/dist/index.js            (settings-schema.ts sentence)
+    packages/mpd-tui-plugin/dist/index.js               (inlines mpd-config's settings-schema)
+  Rebuild that verify-dist-fresh does NOT cover, and was run explicitly:
+    node scripts/build-mpd-client.ts
+    -> [build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (660947 bytes)
+       (the Web settings card ships ONLY through this artifact; the string check below proves the
+        rebuild carried the new copy)
+
+## 4. the served Web client carries the new copy
+
+$ grep -c 'EXCEPTION: a model whose catalog entry' packages/mpd-bundle-plugin/client.js
+4        # slot4 EN/ZH + shared EN/ZH, spliced into the client artifact
+
+## 5. declaration comments
+
+$ bun run verify:comments       # node scripts/verify-comment-coverage.ts
+scanned 391 TypeScript file(s) of 391 in the source set; inspected 34378 declaration(s);
+skipped 15428 inline callback(s) as out of family
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit 0
+
+## 6. doc pairs
+
+$ bun run verify:docs           # node scripts/verify-docs-parity.ts
+[verify-docs-parity] links=436 checked=404 resolved=404 dead=0 exemptProvenance=0 absentSite=0
+[verify-docs-parity] root=C:\MyDoc\DshProj\My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS
+exit 0
+
+## 7. manual paths (AGENTS.md was edited)
+
+$ node scripts/verify-manual-paths.ts
+[verify-manual-paths] PASS resolved=163 over-report=79 under-report=89 declared=2
+exit 0
+
+## 8. the whole suite, with a per-test timeout inside this machine's measured slow-tail
+
+$ bun test packages --timeout 30000
+1859 pass / 5 skip / 1 fail — 23938 expect() calls — 1865 tests across 116 files [133.83s]
+
+  the ONE failure is PRE-EXISTING and in a package this change does not touch:
+  (fail) package invariants > no source file in this package imports a filesystem WRITE primitive
+     packages/mpd-tui-plugin/test/team-surface.test.ts:983 -> received ["index.ts: rm("]
+     the offending token is a SUBSTRING of `volatileForm(schema)` at
+     packages/mpd-tui-plugin/src/index.ts:152 — the forbidden literal `rm(` matches inside it.
+  Proof it is not this change's:
+     $ git status --porcelain packages/mpd-tui-plugin
+      M packages/mpd-tui-plugin/dist/index.js      # only the dist rebuild; src is UNTOUCHED
+     $ git log -1 --format='%h %ad %s' --date=iso -- packages/mpd-tui-plugin/src/index.ts
+     880d43b6 2026-10-13 09:25:05 +0800 feat(tui): the two MPD sidebar switches become /settings CHECKBOXES
+     (that commit is NEWER than the repo's own known-failures record
+      evidence/win32-all-known-failures/20261012T101500Z, whose final state was 1847 pass / 0 fail)
+
+  `bun test packages` (bun's default 5000 ms) additionally reports 2-3 TIMEOUT-only arms in packages this
+  change does not touch (mpd-memory-plugin's git backend, mpd-team-core-plugin), which is the load flake
+  the repo already documents in evidence/win32-all-known-failures/20261012T101500Z:
+     "'git backend: write -> commit -> read -> reflection due' — 5019 ms under load (a FAIL at bun's
+      default 5000 ms per-test timeout), 3886 ms alone: PASS"
+  Re-measured here: that arm PASSES alone (6 pass / 0 fail) and passes in the --timeout 30000 run above.
+
+## 9. baseline vs now (the suite's own delta)
+
+  repo record (evidence/win32-all-known-failures/20261012T101500Z, a DIFFERENT and older commit):
+    1847 pass / 5 skip / 0 fail
+  this worktree (HEAD d1fa4a29 + this change, --timeout 30000):
+    1859 pass / 5 skip / 1 fail  — this change contributes 11 NEW arms (6 adapter + 3 roster-provider
+    + 2 roles); the recorded baseline predates two later commits (PR #39 / the TUI checkbox wave), so
+    the remaining +1 pass and the 1 fail belong to those commits, not to this change. The fail is the
+    mpd-tui-plugin regression introduced by 880d43b6 (proved above).
+
+## 10. THE VENDOR RE-PIN — the static gate this wave first MISSED
+
+The first push of this branch reddened CI's `Static gates` job on exactly one member:
+
+  [verify-gates] member vendor: exit=1 FAIL
+  [verify-vendor] FAIL - asset packages/mpd-bundle-plugin/client.js sha256 mismatch
+
+WHY: `packages/mpd-bundle-plugin/client.js` is a SINGLE-FILE `sha256` asset in VENDOR_LOCK.json, and
+rebuilding it (section 3) invalidated that fingerprint. The wave ran verify-dist-fresh/docs/comments/
+manual-paths but SKIPPED `verify:vendor`, and its own evidence claimed no VENDOR_LOCK change was
+needed. That claim was WRONG; this section is the correction, and the CI failure was the falsifier.
+
+  1. reproduce        node scripts/verify-vendor.ts
+                      -> FAIL - asset packages/mpd-bundle-plugin/client.js sha256 mismatch; exit 1
+  2. locked value     1d59f4c9d802848780a88635390736aeabb0d8d0da44b6fb78434e1fd2be3f8f (670950 raw bytes)
+     rebuilt value    485d63766ec764111a389d151071341b1477ef92e0c6f9224189c52a11c3e37d (671838 raw bytes)
+                      derived with the LOCK'S OWN single-file rule — sha256 over the RAW bytes:
+                      node -e "console.log(require('crypto').createHash('sha256').update(require('fs').readFileSync('packages/mpd-bundle-plugin/client.js')).digest('hex'))"
+  3. the TOOL cannot do it: `node scripts/repin-vendor.ts` reports
+        packages/mpd-bundle-plugin/client.js: POLICY (not a failure) - single-file sha256 asset - a
+        build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock
+     and its `RepinField` type is `"fileCount" | "treeSha"` — the helper never writes `sha256`.
+  4. the DOCUMENTED mechanism is a deliberate hand edit of the lock, the value derived by the gate's
+     own algorithm and then PROVEN by the gate. evidence/de-omo/cores/20261008T162920Z/result.json,
+     key `why_a_hand_edit` (the wave that INTRODUCED these fingerprints):
+       "scripts/repin-vendor.ts has NO add mode ... The five keys below were therefore inserted by a
+        scripted hand edit, with values computed by the same algorithm scripts/verify-vendor.ts uses
+        (readBytes: raw unless the file has no NUL ...), then PROVEN by the gate."
+     and that packet's own value line for THIS asset:
+       { "asset": "packages/mpd-bundle-plugin/client.js", "fileCount": 1, "sha256": "1d59f4c9...",
+         "fingerprint": "sha256 over RAW bytes (the lock's single-file rule), 670950 bytes" }
+     VENDOR_LOCK.json's `sha256` for that asset was therefore set to the rebuilt artifact's value, and
+     the artifact + the re-pin ride in the SAME commit (AGENTS.md §9's pairing rule).
+  5. proof            node scripts/verify-vendor.ts
+                      -> PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked; exit 0
+
+## 11. the whole static aggregate CI runs — the gate the wave should have run FIRST
+
+$ bun run verify:gates        # node ./scripts/verify-gates.ts — the 8-member declared table
+  member vendor: exit=0 PASS
+  member dist-fresh: exit=0 PASS
+  member rows-parity: exit=0 PASS
+  member docs-parity: exit=0 PASS
+  member preset-conformance: exit=0 PASS
+  member plugin-manifest: exit=0 PASS
+  member comment-coverage: exit=0 PASS
+  member workflows: exit=0 PASS
+[verify-gates] PASS - 8/8 member gate(s) green; exit 0
+
+  LOCAL DEPENDENCY NOTE: the `workflows` member exits 2 in this checkout unless `js-yaml` is
+  resolvable — "[verify-workflows] no YAML parser could be resolved — tried:
+  <repo>/node_modules/js-yaml (via this repository)". It was run here with the parser the INSTALLED
+  harness carries:
+    $env:MPD_WORKFLOW_JS_YAML = "$env:APPDATA\npm\node_modules\@deepseek-ai\dsh\node_modules\js-yaml"
+  CI resolves it on its own (its run printed `member workflows: exit=0 PASS`), so this is a LOCAL
+  environment gap, not a defect of this change.
+
+## 12. not run, and why
+
+  - vendor / rows-parity / preset-conformance / plugin-manifest / workflows — all COVERED as members of
+    the `verify:gates` run in section 11 (8/8 green), which is what CI executes.
+  - docker lane                 — not a release sweep; CI's own "Docker real-machine acceptance" job
+                                  PASSED on this branch (3m17s).

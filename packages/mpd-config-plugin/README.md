@@ -52,9 +52,13 @@ slots, twelve leaves:
   Web), falling back to `TEAM_MODEL_FALLBACK_OPTIONS` when that catalog is
   unavailable or degraded — so a slot is always a selection, never free text.
 - **A broken slot is LOUD:** a member routed through a slot that cannot be resolved
-  (missing service, missing or incomplete slot, unknown model, unsupported effort)
-  fails team creation naming the member and the slot and writes no team state; an
-  effort is never silently clamped.
+  (missing service, missing or incomplete slot, unknown model, an effort the model
+  does not offer among the efforts it declares) fails team creation naming the member
+  and the slot and writes no team state; an effort is never silently clamped. ONE
+  EXCEPTION is the model-capability adaptation: a model whose catalog entry declares
+  **no** reasoning efforts at all is sent none for that call, so it still runs — the
+  materialised slot default would otherwise fail a call no configuration error caused.
+  The runtime applies it through the adapter's `withSupportedEffort`.
 
 ## Service / tools
 

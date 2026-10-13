@@ -17,10 +17,16 @@
 // including the effort keyword the slot declares. The NEGATIVE CONTROL is the other half: a
 // composition that mounts no `mpdConfig` service must keep the static chain byte-for-byte, so a fix
 // that hard-coded a route would redden here.
+//
+// THE MODEL-CAPABILITY ADAPTATION is the third thing asserted here: the effort keyword is passed
+// through the adapter's `withSupportedEffort`, so a model the live catalog lists with NO reasoning
+// efforts at all loses the keyword (the call would otherwise fail) while a model that declares the
+// effort keeps it. Both arms drive the REAL `spawnAgent`, with only `llmCatalog` replaced.
 import { expect, test } from "bun:test"
 import { apply } from "../src/index"
 import { ROLES } from "../src/roles.data"
 import { teamModelRouteOfMember, teamModelSlotOfMember } from "../../mpd-config-plugin/src/index"
+import { createDshAdapter, type DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The route the fake config service answers, and the two members it is declared for. */
 const SLOT_ROUTE = { provider: "company-api", model: "deepseek-flash", reasoningEffort: "max" }
@@ -31,16 +37,20 @@ const ROUTED_MEMBERS: readonly string[] = ["Architect", "Deep Worker"]
 /**
  * Mount the roster row once, with an optional `mpdConfig`-shaped service behind `ctx.get`.
  * @param routeOf - what the fake config service answers for a member; omitted mounts NO service.
+ * @param catalog - the model catalog the adapter answers; omitted mounts NO `mpdDsh`, so the row's own
+ *   fallback adapter finds no `llm` seam and every effort passes through untouched.
  * @returns the provided services, the registered tools and the spawn options the fake saw.
  */
-function mounted(routeOf?: (member: string) => unknown): { provided: any; tools: any[]; spawned: any[] } {
+function mounted(routeOf?: (member: string) => unknown, catalog?: DshLlmCatalog): { provided: any; tools: any[]; spawned: any[] } {
   /** Tool definitions the plugin registered, in registration order. */
   const tools: any[] = []
   /** Subagent specs the fake `subagents.start` received, one per spawn. */
   const spawned: any[] = []
   /** The service map `ctx.provide` filled; `mpdRoles` is the surface under test. */
   const provided: any = {}
-  /** The permissive cordis-shaped ctx `apply` sees, with no real harness seam behind it. */
+  /** The `mpdConfig`-shaped service this arm answers, or undefined when it mounts none. */
+  const configService = routeOf === undefined ? undefined : { teamModelRouteOf: routeOf }
+  /** The permissive cordis-shaped ctx `apply` sees, with a real `subagents` double behind it. */
   const ctx: any = {
     tools: {
       /** Record one tool definition; the plugin never reads a registration result. */
@@ -54,7 +64,14 @@ function mounted(routeOf?: (member: string) => unknown): { provided: any; tools:
       },
     },
     provide: (n: string, v: any) => { provided[n] = v },
-    ...(routeOf === undefined ? {} : { get: (n: string) => (n === "mpdConfig" ? { teamModelRouteOf: routeOf } : undefined) }),
+    get: (n: string) => (n === "mpdConfig" ? configService : undefined),
+  }
+  if (catalog !== undefined) {
+    // THE MOUNTED ADAPTER, with ONLY its catalog read replaced: its REAL `spawnAgent` still forwards to
+    // this ctx's `subagents` double, so the adaptation arms below measure the shipped spawn path.
+    /** The shipped adapter for this ctx, whose catalog read answers `catalog`. */
+    const adapter = { ...createDshAdapter(ctx), llmCatalog: async () => catalog }
+    ctx.get = (n: string) => (n === "mpdDsh" ? adapter : n === "mpdConfig" ? configService : undefined)
   }
   apply(ctx, {})
   return { provided, tools, spawned }
@@ -107,6 +124,38 @@ test("mpd_role_spawn runs the member on the configured provider, model AND effor
   // The route travels as harness `agentOptions`, which is what the provider actually resolves.
   expect(spawned[0].agentOptions?.provider).toBe("company-api")
   expect(spawned[0].agentOptions?.model).toBe("deepseek-flash")
+  expect(spawned[0].agentOptions?.reasoningEffort).toBe("max")
+})
+
+test("THE ADAPTATION: a slot on a model that declares NO efforts drops the keyword instead of failing", async () => {
+  /** A catalog listing the configured model with an EMPTY effort array — the reported failure shape. */
+  const catalog: DshLlmCatalog = {
+    providers: [{ id: "company-api", name: "Company API", models: [{ id: "deepseek-flash", name: "Flash", efforts: [] }] }],
+    degraded: false,
+  }
+  /** The registered tools and the spawn options, behind the mounted adapter's own catalog read. */
+  const { tools, spawned } = mounted((member) => (ROUTED_MEMBERS.includes(member) ? SLOT_ROUTE : undefined), catalog)
+  /** The one-shot spawn tool this row registered. */
+  const spawnTool = tools.find((t) => t?.name === "mpd_role_spawn")
+  await spawnTool.execute({ role: "Architect", task: "do the thing" }, { agent: { id: "agent-1" }, signal: new AbortController().signal })
+  expect(spawned.length).toBe(1)
+  // The route still lands; only the keyword the model cannot take is gone.
+  expect(spawned[0].agentOptions?.provider).toBe("company-api")
+  expect(spawned[0].agentOptions?.model).toBe("deepseek-flash")
+  expect("reasoningEffort" in (spawned[0].agentOptions ?? {})).toBe(false)
+})
+
+test("CONTROL: the same slot on a model that DECLARES that effort keeps it", async () => {
+  /** A catalog listing the configured model WITH the effort the slot states. */
+  const catalog: DshLlmCatalog = {
+    providers: [{ id: "company-api", name: "Company API", models: [{ id: "deepseek-flash", name: "Flash", efforts: [{ id: "max", name: "Max" }] }] }],
+    degraded: false,
+  }
+  /** The registered tools and the spawn options, behind the mounted adapter's own catalog read. */
+  const { tools, spawned } = mounted((member) => (ROUTED_MEMBERS.includes(member) ? SLOT_ROUTE : undefined), catalog)
+  /** The one-shot spawn tool this row registered. */
+  const spawnTool = tools.find((t) => t?.name === "mpd_role_spawn")
+  await spawnTool.execute({ role: "Architect", task: "do the thing" }, { agent: { id: "agent-1" }, signal: new AbortController().signal })
   expect(spawned[0].agentOptions?.reasoningEffort).toBe("max")
 })
 
