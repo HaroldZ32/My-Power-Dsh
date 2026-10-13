@@ -1165,6 +1165,21 @@ function selfTest(): number {
     !("detail" in damaged) && damaged.seed === `${BUILTINS},act1:team,act1:workmate` && damaged.restored.length === BUILTINS.split(",").length)
   check("(a) the damaged leaf's repair survives the merge as the full list",
     mergePanelIds(("detail" in damaged ? "" : damaged.seed), ["act1:team", "act1:workmate"], [], BUILTINS).csv === `${BUILTINS},act1:team,act1:workmate`)
+  // (a) THE GUARANTEE THE USER ASKS FOR IN ONE SENTENCE: "the native TUI already had 8 panels — do not
+  // lose them." These three arms pin it on every path that can reach the merge: the eight survive an
+  // absent leaf, survive the damage, and a list that ALREADY holds all eight plus ours is left BYTE-FOR-
+  // BYTE — so a re-run is a no-op and cannot rewrite (or reorder) a healthy sidebar list.
+  check("(a) all EIGHT builtins survive every seeded path (absent leaf, damaged leaf, full list)",
+    [mergePanelIds(undefined, ["act1:team"], [], BUILTINS).csv,
+      mergePanelIds(("detail" in damaged ? "" : damaged.seed), ["act1:team"], [], BUILTINS).csv,
+      mergePanelIds(`${BUILTINS},act1:team`, ["act1:team"], [], BUILTINS).csv]
+      .every((csv) => BUILTINS.split(",").every((id) => csv.split(",").includes(id))))
+  check("(a) a FULLY repaired list (all eight + ours) is a NO-OP, not a rewrite",
+    mergePanelIds(`${BUILTINS},act1:team,act1:workmate`, ["act1:team", "act1:workmate"], [], BUILTINS).csv === `${BUILTINS},act1:team,act1:workmate`)
+  check("(a) and its SEED is that same list untouched — nothing is restored",
+    !("detail" in resolvePanelSeed(`${BUILTINS},act1:team,act1:workmate`, BUILTINS))
+      && (resolvePanelSeed(`${BUILTINS},act1:team,act1:workmate`, BUILTINS) as PanelSeed).seed === `${BUILTINS},act1:team,act1:workmate`
+      && (resolvePanelSeed(`${BUILTINS},act1:team,act1:workmate`, BUILTINS) as PanelSeed).restored.length === 0)
   check("(a) CONTROL: a PARTIAL builtin selection is a position and is left byte-for-byte",
     !("detail" in resolvePanelSeed("todo,act1:team", BUILTINS)) && (resolvePanelSeed("todo,act1:team", BUILTINS) as PanelSeed).seed === "todo,act1:team")
   check("(a) CONTROL: with no readable host default an ABSENT leaf REFUSES rather than seeding empty",
