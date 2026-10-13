@@ -643,7 +643,10 @@ slot, workmate) stay here.
   namespace. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/
   Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (the vision member — its model
   MUST accept image input). A slot that cannot be resolved fails the spawn LOUDLY, naming the member and
-  the slot, writes no state and NEVER clamps an effort. Slots apply to the ONE-SHOT paths AND to an
+  the slot, writes no state and NEVER clamps an effort. ONE ADAPTATION: a slot whose model declares NO
+  reasoning efforts at all in the live catalog is sent none (the adapter's `withSupportedEffort` drops
+  the keyword, logging it), so a materialised default cannot fail a call no configuration error caused.
+  Slots apply to the ONE-SHOT paths AND to an
   official `spawn_teammate` (routed through `mpd-roster-provider-plugin`); because the team service does
   not forward identity, **a teammate `description` that NAMES a roster member routes that member — one
   that does not inherits the Lead's route**. **Long form — the default models, the effort defaults and the

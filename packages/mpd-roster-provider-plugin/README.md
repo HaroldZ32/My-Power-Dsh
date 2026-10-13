@@ -52,6 +52,17 @@ A member that HAS a slot whose provider or model is unset **fails the spawn loud
 and the slot**, writes no state, and never clamps an effort — the rule the one-shot paths already
 follow. A member with no slot inherits, which is what every teammate did before this row existed.
 
+### The reasoning-effort adaptation
+
+A slot is read MATERIALISED over its schema defaults, so a teammate routed onto a model whose live
+catalog entry declares **no** reasoning efforts at all would otherwise be handed the slot's default
+`max`/`high` — a keyword no provider can accept, which fails the call. Before delegating, `start()`
+passes the resolved route through the adapter's `withSupportedEffort`, which **drops** exactly that
+keyword (logging the drop) and leaves every other route untouched: a model that DOES declare efforts
+keeps the slot's keyword even when the value is unsupported, because that is a configuration error
+worth seeing rather than papering over, and an unknown model or a degraded catalog read is not
+evidence of anything. Nothing is ever substituted FOR the effort, so this is not clamping.
+
 ## Configuration
 
 | Key | Default | Meaning |

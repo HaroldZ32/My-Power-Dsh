@@ -54,7 +54,7 @@
 | 只读 teammate 的纪律 | 一道 TOOL GUARD（见下），经适配器注册 |
 | session 启动复杂度闸门 | 一个 `agent/pre-step` 监听器，默认会 **stage** 一个可批准的 plan shell（见下） |
 
-**模型路由只保留在一次性路径上。** `TeamService` 只把 `{prompt, parent}` 转发给 `ctx.subagents.startContinuable`（`docs/plan-0.1.7-adaptation.md` §3），因此 teammate 继承 Lead 的路由，无法为其附加 provider/persona/tool filter。`teamModels.slot*` 路由因此只作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点，而不是承诺 Harness 无法兑现的路由。
+**模型路由只保留在一次性路径上。** `TeamService` 只把 `{prompt, parent}` 转发给 `ctx.subagents.startContinuable`（`docs/plan-0.1.7-adaptation.md` §3），因此 teammate 继承 Lead 的路由，无法为其附加 provider/persona/tool filter。`teamModels.slot*` 路由因此只作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点，而不是承诺 Harness 无法兑现的路由。路由中的推理强度还会经过适配器的 `withSupportedEffort`（`mpd-dsh-adapter-plugin`）：若槽位的模型**完全没有**推理等级，则不发送任何等级 —— spawn 照常运行，而不是因 provider 无法接受的关键字失败；而声明了推理等级的模型则保留槽位的等级。
 
 ### 只读 teammate 会被机械地拒绝
 

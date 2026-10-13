@@ -11,6 +11,12 @@ over at the previous HEAD). The block below is reproduced VERBATIM — its byte 
 recorded in `evidence/gates/agents-budget/20261006T085805Z/result.json`. `AGENTS.md` §13 carries the BINDING rules and points
 here for the full body; where the two differ, the manual wins.
 
+**LIVE AMENDMENT (2026-10-13, team-model slot):** the verbatim block below still reproduces the
+2026-10-06 text, and its effort rule gained ONE adaptation afterwards — a slot whose model declares NO
+reasoning efforts at all in the live catalog is sent none (the adapter's `withSupportedEffort` drops
+the keyword and logs it), so a materialised slot default cannot fail a call no configuration error
+caused. `AGENTS.md` §13 carries the binding wording; the block below is history.
+
 ## The former §13 body (verbatim)
 
 ## 13. Glossary

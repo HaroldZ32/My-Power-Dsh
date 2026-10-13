@@ -133,6 +133,24 @@ pick-list dialog). The read is TOTAL:
 
 The seam is built from those three calls and nothing else — no new runtime dependency.
 
+### The effort adaptation built on it (`withSupportedEffort`)
+
+The `teamModels` slots MATERIALISE an effort over their schema defaults, so a slot whose model declares
+no reasoning efforts at all would hand the provider a keyword it cannot accept, failing the call. The
+exported `withSupportedEffort(dsh, route)` is the ONE place that decision is made — `modelDeclaresNoEffort`
+is the pure predicate behind it — and it reads this seam:
+
+- it returns the route **unchanged, by identity**, when the model declares efforts, when either the
+  provider or the model is not listed, when there is no `llmCatalog` seam, when the read rejects, or
+  when the route states no effort at all;
+- it returns a **new copy without `reasoningEffort`** when the catalog lists the model with
+  `efforts: []`, and logs the drop so an adapted call is never silent;
+- it NEVER throws and never substitutes a different effort — swapping the value would be clamping,
+  which the contract forbids.
+
+Both effort-carrying callers use it: `mpd-roles-plugin` (the one-shot spawn path) and
+`mpd-roster-provider-plugin` (an official `spawn_teammate`). The seam stays the single contact surface.
+
 ## Why it exists
 
 Harness updates are normal; rewriting every call site for each of them is not. This

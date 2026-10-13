@@ -4763,8 +4763,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
       },
       reasoningEffort: {
-        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
       },
     },
   }
@@ -4790,8 +4790,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       }
     }
     return {
-      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.`,
-      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。`,
+      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.`,
+      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。`,
     }
   }
   /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */
@@ -8095,8 +8095,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
       },
       reasoningEffort: {
-        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
       },
     },
   }
@@ -8122,8 +8122,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       }
     }
     return {
-      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.`,
-      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。`,
+      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.`,
+      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。`,
     }
   }
   /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */

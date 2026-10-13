@@ -29,7 +29,7 @@ import { VERIFY_SERVICE } from "../../mpd-verify-plugin/src/service.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
 import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY } from "./complexity-gate.ts"
-import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, restrictToolsTolerant, textBlock, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, restrictToolsTolerant, textBlock, withSupportedEffort, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -679,7 +679,14 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The role's persona text, sent both inside the prompt and as the subagent's persona. */
       const persona = spec.persona
       /** The configured slot route for this member, when the roster slot-routes it (and any effort it states). */
-      const slotRoute = teamModelRoute(spec.name)
+      const configuredRoute = teamModelRoute(spec.name)
+      // THE MODEL-CAPABILITY ADAPTATION: a slot is read MATERIALISED over its schema defaults, so a slot
+      // whose model declares no reasoning efforts at all would hand the provider a keyword it cannot
+      // accept and fail the whole spawn. `withSupportedEffort` drops exactly that keyword (logging it)
+      // and leaves every other route — including an unsupported effort on a model that DOES declare
+      // efforts — untouched, so a configuration error stays visible instead of being papered over.
+      /** The slot route as this spawn will actually send it. */
+      const slotRoute = await withSupportedEffort(dsh, configuredRoute)
       /** The primary route's provider, falling back to the deployment default. */
       const provider = slotRoute?.provider ?? spec.chain[0]?.provider ?? "deepseek-official"
       /** The model for this spawn: the caller's override when given, else the role's primary. */
@@ -696,7 +703,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
-        // The slot's OWN effort keyword rides along when it states one: the contract forbids clamping or
+        // The slot's OWN effort keyword rides along when it states one — AFTER the catalog adaptation
+        // above dropped a keyword the target model cannot take. The contract still forbids clamping or
         // inventing an effort, so an absent keyword passes nothing and the harness keeps its resolution.
         ...(slotRoute?.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: slotRoute.reasoningEffort } }),
         ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})

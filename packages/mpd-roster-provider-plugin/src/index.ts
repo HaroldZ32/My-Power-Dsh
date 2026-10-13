@@ -25,7 +25,7 @@
 // IDENTITY is the one thing the team service does not forward: `request` is `{ prompt, parent }` and
 // the member's name survives only as the descriptor LABEL (the teammate's `description`). See
 // `route.ts` for the matching rule and its conservatism.
-import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, withSupportedEffort, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 // THE single declaration of which member a slot routes. Imported rather than restated: the slots'
 // membership is a contract shared with both settings front doors, and a second copy here is exactly
 // how a routing table drifts from the one the user edits.
@@ -170,7 +170,7 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
       return base.prepareContinuable(request)
     },
     /** Apply the member's route to the request, then start the run on the composition's provider. */
-    start(request: unknown): unknown {
+    async start(request: unknown): Promise<unknown> {
       /** The composition's own provider, resolved fresh so a late registration is still seen. */
       const base = baseProvider()
       if (base === undefined || typeof base.start !== "function") {
@@ -180,7 +180,16 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
       const routable = request as RoutableRequest
       // A route resolution that THROWS (an incomplete slot) must reach the captain unchanged: the
       // spawn fails loudly, naming the member and the slot, and nothing is silently substituted.
-      const routed = applyRoute(routable, routeFor(routable))
+      const resolved = routeFor(routable)
+      // THE MODEL-CAPABILITY ADAPTATION: a slot is read MATERIALISED over its schema defaults, so a
+      // teammate routed onto a model whose catalog entry declares no reasoning efforts at all would be
+      // handed a keyword the provider cannot accept and its own call would fail. `withSupportedEffort`
+      // drops exactly that keyword (logging it) and leaves every other route untouched — including an
+      // unsupported effort on a model that DOES declare efforts, which stays a visible config error.
+      /** The route as this teammate's run will actually send it. */
+      const route = await withSupportedEffort(dsh, resolved)
+      /** The request with that route applied; identity means "no route", i.e. inheritance. */
+      const routed = applyRoute(routable, route)
       if (routed !== routable) {
         /** The options the harness will actually run on, logged so a wrong label is visible at spawn time. */
         const options = routed.agentOptions ?? {}

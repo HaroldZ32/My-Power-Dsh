@@ -119,6 +119,21 @@ node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts --self-t
 
 该接缝仅由这三个调用构成，别无其他 —— 没有新增运行时依赖。
 
+### 建立在该接缝上的推理强度适配（`withSupportedEffort`）
+
+`teamModels` 槽位会按 schema 默认值**物化**一个推理强度，因此若某槽位的模型完全没有推理等级，就会把
+provider 无法接受的关键字交给它、令调用失败。导出的 `withSupportedEffort(dsh, route)` 是做出该判断的
+**唯一**位置（其背后的纯谓词是 `modelDeclaresNoEffort`），它读取的正是该接缝：
+
+- 当模型声明了推理等级、provider 或 model 未被列出、没有 `llmCatalog` 接缝、读取被 reject，或路由本身
+  不带等级时，**按对象身份原样返回**该路由；
+- 当目录把该模型列为 `efforts: []` 时，返回**一份去掉了 `reasoningEffort` 的新副本**，并记录这次丢弃，
+  因此被适配的调用绝不静默；
+- **绝不抛错**，也绝不把等级替换成别的值 —— 替换即为 clamp，是契约禁止的。
+
+两个携带推理强度的调用方都使用它：`mpd-roles-plugin`（一次性 spawn 路径）与
+`mpd-roster-provider-plugin`（官方 `spawn_teammate`）。接缝仍是唯一的接触面。
+
 ## 为什么存在
 
 Harness 更新是常态，但“每次更新都改所有调用点”不是。本包是仓库中**唯一**允许直接触碰 Harness 服务的文件。该规则具有约束力（AGENTS.md §6）：**插件行不得自行调用 `ctx.tools`、`ctx.subagents`、`ctx.skills`、`ctx.agentPresets`。**

@@ -106,7 +106,10 @@ to `ctx.subagents.startContinuable` (`docs/plan-0.1.7-adaptation.md` §3), so a 
 inherits the Lead's route and no provider/persona/tool filter can be attached to it. The
 `teamModels.slot*` routes therefore apply to `mpd_role_spawn` / `mpd_workmate_spawn` (which
 pass explicit `agentOptions`), and the roster section says exactly that instead of promising
-a route the harness cannot deliver.
+a route the harness cannot deliver. The route's effort is additionally passed through the
+adapter's `withSupportedEffort` (`mpd-dsh-adapter-plugin`), so a slot whose model declares NO
+reasoning efforts at all is sent none — the spawn runs instead of failing on a keyword the
+provider cannot accept — while a model that declares efforts keeps the slot's keyword.
 
 ### A read-only teammate is denied mechanically
 

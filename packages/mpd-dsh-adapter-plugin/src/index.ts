@@ -1121,6 +1121,93 @@ export interface DshLlmCatalog {
 }
 
 /**
+ * The route fields one child run is described by, as an effort-carrying caller states them.
+ *
+ * This is the shape `mpd-roles-plugin` resolves a `teamModels` slot into and the shape
+ * `mpd-roster-provider-plugin` resolves from a teammate's descriptor label; both hand it to
+ * {@link withSupportedEffort} before the provider ever sees it.
+ */
+export interface DshEffortRoute {
+  /** Provider id the child run will use; one half of the catalog key. */
+  provider: string
+  /** Model id the child run will use; the other half of the catalog key. */
+  model: string
+  /** The effort the caller WANTS sent; dropped when the catalog says the model declares none. */
+  reasoningEffort?: string
+}
+
+/**
+ * Whether the host catalog lists this provider/model with NO reasoning efforts at all.
+ *
+ * The distinction this module rests on: `true` means the host itself listed the model and its effort
+ * array is EMPTY — the model is known and declares no reasoning support, so ANY effort keyword handed
+ * to it is a value the provider cannot accept and the call fails. `false` is ALSO the honest "no
+ * knowledge" answer (the provider or model is not listed at all, or the read was degraded): an
+ * incapability nobody measured is never inferred.
+ *
+ * @param catalog - the catalog `DshAdapter.llmCatalog()` projected.
+ * @param provider - provider id the run will use.
+ * @param model - model id the run will use.
+ * @returns true only when both the provider AND the model are listed with an empty `efforts` array.
+ */
+export function modelDeclaresNoEffort(catalog: DshLlmCatalog, provider: string, model: string): boolean {
+  /** The catalog's own entry for this model, or undefined when the read did not list it. */
+  const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model)
+  return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0
+}
+
+/**
+ * The route to actually SEND: the caller's own, or a copy with `reasoningEffort` removed when the
+ * catalog says the model declares no reasoning efforts at all.
+ *
+ * WHY THIS EXISTS. A `teamModels` slot is read MATERIALISED over its schema defaults, so a workspace
+ * that changed only a slot's provider/model still carries the slot's default effort (`max`/`high`).
+ * Handing that keyword to a model the host lists with an EMPTY effort array fails the whole call —
+ * the reported defect, on `mpd_role_spawn`, `mpd_workmate_spawn` and a slot-routed `spawn_teammate`
+ * alike. Both settings front doors already DERIVE the effort list from the selected model's own
+ * `efforts`; this is the runtime half of the same adaptation.
+ *
+ * The rule is deliberately narrow, and it is NOT clamping:
+ *   * a model listed with NO efforts loses the keyword — the run proceeds on the model's own default
+ *     reasoning behaviour, and the drop is logged so an adapted call is never silent;
+ *   * a model that DOES declare efforts keeps the caller's keyword UNCHANGED, supported or not: an
+ *     unsupported keyword there is a configuration error that must stay visible, never be swapped for
+ *     another value;
+ *   * an unknown model, a composition without the catalog seam and a rejected catalog read keep the
+ *     keyword too, because "not listed" is not "declares none".
+ *
+ * NEVER throws: the catalog read is contained, so a degraded host cannot fail a spawn here.
+ *
+ * @param dsh - the adapter (or a double) carrying the catalog read; a missing seam adapts nothing.
+ * @param route - the caller's route, or `undefined` when the caller routes nothing.
+ * @returns the SAME route object when nothing is adapted, and a NEW copy without `reasoningEffort`
+ *   when the model declares none — object identity tells the two apart.
+ */
+export async function withSupportedEffort(
+  dsh: { llmCatalog?: (() => Promise<DshLlmCatalog>) | undefined } | undefined,
+  route: DshEffortRoute | undefined,
+): Promise<DshEffortRoute | undefined> {
+  if (route === undefined) return route
+  /** The requested keyword; an absent or empty one is nothing to adapt. */
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : ""
+  if (effort === "") return route
+  if (typeof dsh?.llmCatalog !== "function") return route
+  /** The catalog as the host projects it; a rejecting read is contained and adapts nothing. */
+  let catalog: DshLlmCatalog
+  try {
+    catalog = await dsh.llmCatalog()
+  } catch {
+    return route
+  }
+  if (!modelDeclaresNoEffort(catalog, route.provider, route.model)) return route
+  /** The route with the unusable keyword removed; every other field survives untouched. */
+  const adapted: DshEffortRoute = { ...route }
+  delete adapted.reasoningEffort
+  rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`)
+  return adapted
+}
+
+/**
  * The harness settings-service subset the mpd settings bridge needs (t34 design
  * §5 invariant 2: no mpd plugin may touch a harness service directly).
  *
