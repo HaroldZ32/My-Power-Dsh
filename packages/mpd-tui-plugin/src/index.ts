@@ -105,6 +105,15 @@ export type Config = {
    */
   panel?: boolean
   /**
+   * Contribute the WORKMATE sidebar page (dsh-tui 0.13.0+).
+   *
+   * ITS OWN KNOB, independent of `panel`: the two MPD pages toggle apart, so turning the MPD page off
+   * does not take the workmate page with it (and vice versa). With it off the page is never registered
+   * and the library stays reachable through the full-screen board scene — the same declared fallback the
+   * MPD page keeps. Restart-scoped, like every row-config knob.
+   */
+  workmate?: boolean
+  /**
    * Enable the Ctrl+A takeover — MEANINGFUL ON OLD dsh-tui BUILDS ONLY.
    *
    * On a host WITHOUT the sidebar panel seam (every dsh-tui before 0.13.0) the takeover intercepts
@@ -150,6 +159,11 @@ export const Config: Schemastery<Config> = z.object({
   shortcuts: z.boolean().default(true),
   dialogs: z.boolean().default(true),
   panel: z.boolean().default(true),
+  // The SECOND sidebar page's OWN knob (the workmate page), INDEPENDENT of `panel` so the two MPD
+  // pages can be toggled apart. A disabled page is never registered at all, which is what makes the
+  // switch stick: nothing — not the runtime enable keeper, not the config re-apply — can resurrect a
+  // panel that was never registered.
+  workmate: z.boolean().default(true),
   dashboardKey: z.boolean().default(true),
   wheelInvert: z.boolean().default(false),
   sessionEvents: z.boolean().default(true),
@@ -177,8 +191,10 @@ export interface ResolvedConfig {
   shortcuts: boolean
   /** Whether the mediated dialog facade is enabled. */
   dialogs: boolean
-  /** Whether the sidebar panel surface is contributed and the merged-view opens route through it. */
+  /** Whether the MPD sidebar page is contributed and the merged-view opens route through it. */
   panel: boolean
+  /** Whether the workmate sidebar page is contributed — its OWN knob, independent of `panel`. */
+  workmate: boolean
   /** Whether the Ctrl+A takeover may intercept at all (the per-press floor of the toggle). */
   dashboardKey: boolean
   /** Whether the wheel's sign is inverted (the floor of the `tui.wheelInvert` knob; false = today). */
@@ -212,6 +228,7 @@ export function resolveConfig(config: Config = {}): ResolvedConfig {
     shortcuts: bool(config.shortcuts, true),
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
+    workmate: bool(config.workmate, true),
     dashboardKey: bool(config.dashboardKey, true),
     // TODAY'S BEHAVIOUR IS THE DEFAULT: `false` means the raw host delta is used unchanged, which is what
     // every wheel path did before this knob existed. Only a deliberate configuration inverts it.
@@ -727,7 +744,10 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // The workmate page: the durable library under the user's HOME, with the board scene (which already
   // lists it) as the full-screen surface for a host that cannot serve a panel.
   const workmatePanel = registerWorkmatePanel(tui, {
-    enabled: resolved.panel,
+    // ITS OWN KNOB (independent of `panel`): turning the MPD page off must not take the workmate page
+    // with it, and vice versa. Restart-scoped, like every row-config knob — the registration happens at
+    // apply, and a page that is never registered cannot be re-added by the runtime enable keeper.
+    enabled: resolved.workmate,
     // The library lives under the user's HOME and is resolved per read, never cached at apply.
     home,
     // The board scene is the full-screen surface that lists the library.

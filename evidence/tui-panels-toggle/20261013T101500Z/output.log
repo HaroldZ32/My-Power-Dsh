@@ -1,0 +1,48 @@
+# Raw observed output — the two MPD panels get independent switches (2026-10-13, win32)
+
+## The defect
+packages/mpd-tui-plugin/src/index.ts:  `enabled: resolved.panel`  (the MPD page)
+packages/mpd-tui-plugin/src/index.ts:  `enabled: resolved.panel`  (the workmate page too — the SAME knob)
+packages/mpd-tui-plugin/src/panel-workmate.ts: "…disabled by the mpd-tui row config (panel: false)"
+=> the two pages could not be toggled apart.
+
+## The fix
+Config (row-config type + schema):  panel?: boolean   +   workmate?: boolean  (default true)
+resolveConfig:                      panel: bool(config.panel, true)
+                                    workmate: bool(config.workmate, true)
+registration:                       MPD page -> resolved.panel        workmate page -> resolved.workmate
+panel-workmate.ts message:          "…(workmate: false)"
+
+## Typecheck caught a REAL omission (and then passed)
+$ bun run typecheck
+packages/mpd-tui-plugin/src/index.ts(222,27): error TS2339: Property 'workmate' does not exist on type 'Config'.
+packages/mpd-tui-plugin/test/plugin.test.ts(339,7): error TS2769: No overload matches this call.
+packages/mpd-tui-plugin/test/plugin.test.ts(996,72): error TS2353: 'workmate' does not exist in type 'Config'
+FIX: added `workmate?: boolean` to the exported Config interface.
+$ bun run typecheck   -> tsgo --noEmit, exit 0
+
+## The two arms (the independence is FALSIFIABLE, not decorative)
+$ bun test packages/mpd-tui-plugin -t "with the MPD panel off"
+(pass) … > with the MPD panel off, only that page is skipped and both entry points keep the scene path [84.30ms]
+ 1 pass / 0 fail
+$ bun test packages/mpd-tui-plugin -t "with the WORKMATE panel off"
+(pass) … > with the WORKMATE panel off, only that page is skipped — the MPD page stays [87.60ms]
+ 1 pass / 0 fail
+
+## The suite's single failure is LOAD, not a defect
+(fail) watchdog front door … the attach-time replay runs once … [6033.33ms]
+$ bun test packages/mpd-tui-plugin -t "the attach-time replay runs once"
+(pass) … [35.61ms]   1 pass / 0 fail
+
+## Gates
+$ node scripts/verify-dist-fresh.ts        -> 31/31 targets fresh (the plugin is inlined by nothing: 0 dependents stale)
+$ node scripts/verify-comment-coverage.ts  -> VERDICT: PASS
+$ node scripts/verify-docs-parity.ts       -> bilingual pair updated in BOTH languages
+
+## How the user toggles each page (row config, restart-scoped)
+- id: mpd-tui
+  config:
+    panel: false        # the MPD page off
+    workmate: false     # the workmate page off
+A page that is NEVER REGISTERED cannot be re-added by the host's config re-apply or by MPD's
+enable keeper, which is why this switch sticks.

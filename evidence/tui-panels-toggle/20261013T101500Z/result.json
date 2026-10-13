@@ -1,0 +1,42 @@
+{
+  "wave": "feat(tui): the two MPD sidebar panels get INDEPENDENT on/off switches",
+  "date": "2026-10-13",
+  "userClause": "我要的是无论如何显示都正常，并且把MPD的两个PANEL也做成可以开关的",
+  "defectFound": {
+    "what": "ONE knob (`panel`, default true) gated BOTH pages: packages/mpd-tui-plugin/src/index.ts used `enabled: resolved.panel` for the MPD page AND for the workmate page, so the two sidebar pages could not be toggled apart, and `panel-workmate.ts` even reported '(panel: false)' for its own page. Nothing exposed either switch to the user as a per-page control.",
+    "soWhat": "The user could not turn one MPD page off without losing the other."
+  },
+  "fix": {
+    "schema": "`workmate: z.boolean().default(true)` added to Config (the row-config type AND the schemastery schema, which is what the loader validates).",
+    "resolver": "`workmate: bool(config.workmate, true)` in resolveConfig, so `resolveConfig({})` still equals `Config({})`.",
+    "registration": "the workmate page now takes `enabled: resolved.workmate`; the MPD page keeps `resolved.panel`.",
+    "message": "`panel-workmate.ts` now names its OWN knob: 'the workmate sidebar page is disabled by the mpd-tui row config (workmate: false)'.",
+    "whyItSticks": "A page that is NEVER REGISTERED cannot be re-added by anything: the host's config re-apply writes the panel CSV from the config, and the runtime enable keeper re-asserts only ids THIS activation registered. So a disabled page has no residual, which is what `无论如何显示都正常` needs from a switch.",
+    "fallbackKept": "With either page off, its entry point still reaches the full-screen surface (the merged scene for the MPD page, the board scene for workmate) — never a silent no-op."
+  },
+  "tests": {
+    "updated": "the whole-config `toEqual` arm carries `workmate: true`; the old arm that asserted `panel: false` registers NO panel now asserts ONE (the workmate page survives) and keeps the `/mpd panel` -> scene fallback.",
+    "added": "\"with the WORKMATE panel off, only that page is skipped — the MPD page stays\": the MIRROR arm, which is what makes 'independent' falsifiable rather than decorative (it asserts ONE registration, the `workmatePanel` seam `absent`, and the detail naming `workmate: false`).",
+    "observed": {"with the MPD panel off": "1 pass / 0 fail", "with the WORKMATE panel off": "1 pass / 0 fail", "suite": "470 pass / 1 skip / 1 fail — the one fail is `watchdog front door ... attach-time replay` at 6033 ms, which PASSES alone in 35.61 ms (load-induced, not a defect)"}
+  },
+  "gates": [
+    {"command": "bun run typecheck (tsgo --noEmit)", "exit": 0, "note": "it FIRST failed (TS2339 `workmate` does not exist on type Config) because the row-config interface lacked the field; the interface was completed and it is now clean"},
+    {"command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "31/31 targets fresh; the plugin is inlined by nothing, so 0 dependents went stale"},
+    {"command": "node scripts/verify-comment-coverage.ts", "exit": 0, "observed": "VERDICT: PASS"},
+    {"command": "node scripts/verify-docs-parity.ts", "exit": 0, "observed": "the bilingual pair carries the new row in BOTH languages"}
+  ],
+  "howToToggle": {
+    "persistent": "the `mpd-tui` row config in the profile patch: `panel: false` turns the MPD page off, `workmate: false` turns the workmate page off. Restart-scoped (the registration happens at apply).",
+    "whyThatIsEnough": "a disabled page is never registered, so nothing can bring it back — the switch cannot be undone by the host's config re-apply or by MPD's own enable keeper."
+  },
+  "notDone": [
+    "No in-session toggle COMMAND (`/mpd panel off`): the registration happens once at apply, so a runtime toggle needs a dispose/re-register seam that is not implemented yet. Current honest semantics: the switch takes effect at the next dsh boot.",
+    "The two knobs are NOT yet surfaced as checkboxes in the harness `/settings` editor (that needs the row schema marked volatile, mirroring mpd-config); today the user edits the row config.",
+    "`scripts/mpd-tui-panels.ts` does not yet write these two keys, so the per-page switch is a config edit rather than a one-command switch."
+  ],
+  "displayGuarantee": {
+    "builtins": "the 8 host panels can no longer be lost: an absent leaf is seeded from the host's own current default, an existing leaf is never overruled, and the restore is the explicit `--restore-builtins`.",
+    "ourPages": "kept against the host's boot-time config re-apply and against the `act<N>` id churn by the runtime enable keeper (`mpd-tui-plugin`'s row), with the user-layer pin as the durable half.",
+    "disabledByte": "a page switched OFF stays off for good (nothing re-adds a panel that was never registered)."
+  }
+}

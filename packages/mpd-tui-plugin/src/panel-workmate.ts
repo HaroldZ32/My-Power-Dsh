@@ -580,7 +580,7 @@ export function registerWorkmatePanel(tui: TuiAdapter, deps: WorkmatePanelDeps):
       if (panel !== undefined) return panel.outcome()
       // A surface this row deliberately did not activate: the adapter's own skipped vocabulary, so the
       // aggregate line names the reason instead of an invented state.
-      return tui.skipped("panels", "the workmate sidebar page is disabled by the mpd-tui row config (panel: false)").outcome()
+      return tui.skipped("panels", "the workmate sidebar page is disabled by the mpd-tui row config (workmate: false)").outcome()
     },
     openScene: (): boolean => deps.openScene(),
   }

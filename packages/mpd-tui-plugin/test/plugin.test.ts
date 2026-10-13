@@ -335,6 +335,8 @@ describe("plugin contract", () => {
       // The dsh-tui 0.13.0 sidebar panel surface: contributed by default, and routed to by
       // `alt+a` / `/mpd panel` (with the full-screen scene as the declared fallback).
       panel: true,
+      // The workmate page's OWN knob: independent of `panel`, so the two sidebar pages toggle apart.
+      workmate: true,
       // The Ctrl+A takeover's FLOOR: the row config default. A saved `tui.dashboardKey` (the /settings
       // row) outranks it per press, so this stays true for every composition that never saves one.
       dashboardKey: true,
@@ -965,14 +967,15 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
     expect(String(skipped.detail)).toContain("dashboardKey: false")
   })
 
-  test("with the panel surface off, no panel is registered and both entry points keep the scene path", async () => {
+  test("with the MPD panel off, only that page is skipped and both entry points keep the scene path", async () => {
     /** The recording services and the call log. */
     const { services, calls } = allServices()
     /** A host double with every service composed. */
     const host = hostDouble(services)
-    /** The report of a composition that disabled the panel surface. */
+    /** The report of a composition that disabled the MPD page. */
     const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, panel: false })
-    expect(calls.panels).toHaveLength(0)
+    // THE TWO PAGES TOGGLE APART: exactly ONE panel is registered, and it is the workmate page.
+    expect(calls.panels).toHaveLength(1)
     /** The skip's own record: `absent`, naming the knob. */
     const skipped = outcomeOf(report, "panel")
     expect(skipped.state).toBe("absent")
@@ -982,6 +985,21 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
     const handler = calls.commands[0].handler as (invocation: unknown) => Promise<{ kind: string; text?: string }>
     expect((await handler({ rawInput: "panel" })).kind).toBe("success")
     expect(calls.scenes.some((entry: { open?: string }) => entry.open === "mpd-tui-subagents")).toBe(true)
+  })
+
+  test("with the WORKMATE panel off, only that page is skipped — the MPD page stays", async () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    /** The report of a composition that disabled the workmate page. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, workmate: false })
+    // THE MIRROR of the arm above: this is what makes "independent" falsifiable rather than decorative.
+    expect(calls.panels).toHaveLength(1)
+    /** The skip's own record: `absent`, naming the WORKMATE knob and not the MPD one. */
+    const skipped = outcomeOf(report, "workmatePanel")
+    expect(skipped.state).toBe("absent")
+    expect(String(skipped.detail)).toContain("workmate: false")
   })
 
   test("every registered SCENE reports the host kit it received (the contact's arming path)", () => {

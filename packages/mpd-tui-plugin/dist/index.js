@@ -8104,7 +8104,7 @@ function registerWorkmatePanel(tui, deps) {
     outcome: () => {
       if (panel !== undefined)
         return panel.outcome();
-      return tui.skipped("panels", "the workmate sidebar page is disabled by the mpd-tui row config (panel: false)").outcome();
+      return tui.skipped("panels", "the workmate sidebar page is disabled by the mpd-tui row config (workmate: false)").outcome();
     },
     openScene: () => deps.openScene()
   };
@@ -9486,6 +9486,7 @@ var Config = Schema.object({
   shortcuts: Schema.boolean().default(true),
   dialogs: Schema.boolean().default(true),
   panel: Schema.boolean().default(true),
+  workmate: Schema.boolean().default(true),
   dashboardKey: Schema.boolean().default(true),
   wheelInvert: Schema.boolean().default(false),
   sessionEvents: Schema.boolean().default(true),
@@ -9506,6 +9507,7 @@ function resolveConfig(config = {}) {
     shortcuts: bool(config.shortcuts, true),
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
+    workmate: bool(config.workmate, true),
     dashboardKey: bool(config.dashboardKey, true),
     wheelInvert: bool(config.wheelInvert, false),
     sessionEvents: bool(config.sessionEvents, true),
@@ -9713,7 +9715,7 @@ function apply(ctx, config = {}) {
     return false;
   };
   const workmatePanel = registerWorkmatePanel(tui, {
-    enabled: resolved.panel,
+    enabled: resolved.workmate,
     home,
     openScene: () => scene.open(),
     log
