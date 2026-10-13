@@ -6919,6 +6919,24 @@ var SettingsSchema = Schema.object({
 });
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
+function markVolatile(schema) {
+  const node = schema;
+  const kind = typeof node;
+  if (node === null || kind !== "object" && kind !== "function")
+    return schema;
+  try {
+    node.meta = { ...node.meta ?? {}, volatile: true };
+  } catch {}
+  if (node.dict !== undefined && typeof node.dict === "object")
+    for (const child of Object.values(node.dict))
+      markVolatile(child);
+  if (node.inner !== undefined)
+    markVolatile(node.inner);
+  if (Array.isArray(node.list))
+    for (const child of node.list)
+      markVolatile(child);
+  return schema;
+}
 function knobHint(key, semantics) {
   const pointer = `mpd.jsonc ${key}`;
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
@@ -9475,7 +9493,7 @@ async function openModelMenu(tui, log, options = {}) {
 
 // packages/mpd-tui-plugin/src/index.ts
 var name = "mpd-tui";
-var Config = Schema.object({
+var Config = markVolatile(Schema.object({
   statusLine: Schema.boolean().default(true),
   statusIntervalMs: Schema.number().default(3000),
   renderers: Schema.boolean().default(true),
@@ -9492,7 +9510,7 @@ var Config = Schema.object({
   sessionEvents: Schema.boolean().default(true),
   decisionEvents: Schema.boolean().default(true),
   logPrefix: Schema.string().default("mpd-tui")
-});
+}));
 function resolveConfig(config = {}) {
   const bool = (value, fallback) => typeof value === "boolean" ? value : fallback;
   const valid = typeof config.statusIntervalMs === "number" && Number.isFinite(config.statusIntervalMs) && config.statusIntervalMs >= 0;

@@ -54,7 +54,7 @@ import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } f
 import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
-import { DASHBOARD_TAKEOVER_KNOB, wheelInvertFrom } from "./settings.js"
+import { DASHBOARD_TAKEOVER_KNOB, markVolatile, wheelInvertFrom } from "./settings.js"
 import { setWheelInvertRead } from "./panel-core.ts"
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
@@ -148,7 +148,13 @@ export type Config = {
  * `Dict` under a virtual path, which is not portable in declaration emit; the
  * global `Schemastery` interface comes from schemastery's own declarations.
  */
-export const Config: Schemastery<Config> = z.object({
+// VOLATILE — and THAT FLAG is what puts these knobs in the harness's `/settings` dialog. Its
+// `volatileForm(schema)` walks `schema.meta.volatile` (measured out of the installed
+// `dsh-settings@0.1.7-rc.2`) and an entry whose schema carries NO volatile node is not listed at all.
+// Without it `panel` / `workmate` — the two sidebar-page switches — were invisible to the user, which is
+// what made the pages feel un-toggleable. A save writes the ENTRY CONFIG, which the loader validates
+// against THIS schema at the next boot, so the two checkboxes decide the next boot's pages.
+export const Config: Schemastery<Config> = markVolatile(z.object({
   statusLine: z.boolean().default(true),
   statusIntervalMs: z.number().default(3000),
   renderers: z.boolean().default(true),
@@ -169,7 +175,7 @@ export const Config: Schemastery<Config> = z.object({
   sessionEvents: z.boolean().default(true),
   decisionEvents: z.boolean().default(true),
   logPrefix: z.string().default("mpd-tui"),
-})
+}))
 
 /** A config with every key resolved (nothing optional left). */
 export interface ResolvedConfig {

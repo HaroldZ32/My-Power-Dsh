@@ -475,7 +475,7 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
 | `commands` | `true` | 注册 `/mpd` 命令（面板的打开入口） |
 | `shortcuts` | `true` | 注册快捷键 |
 | `panel` | `true` | 贡献 MPD 侧栏页（dsh-tui 0.13.0）并把 `alt+a` / `/mpd panel` 路由到它。关闭 ⇒ 不再尝试注册（聚合行上报适配器自己的 `skipped("panels", …)` 结果并点名该配置），两个入口都保持面板出现之前的路径：全屏合并场景 |
-| `workmate` | `true` | 贡献 WORKMATE 侧栏页 —— 它**自己的**开关，与 `panel` **相互独立**，因此 MPD 的两个页可以分别开关。关闭 ⇒ 该页完全不注册（聚合行上报 `skipped("panels", …)` 并点名 `workmate: false`），`/mpd workmate` 保持它的全屏界面（看板场景）。因为「从未注册的页」不可能被任何东西加回来 —— 宿主的配置重写不会、运行时的启用保持器也不会 —— 所以这个开关**能真正留住**；两个开关都需要重启生效 |
+| `workmate` | `true` | 贡献 WORKMATE 侧栏页 —— 它**自己的**开关，与 `panel` **相互独立**，因此 MPD 的两个页可以分别开关。关闭 ⇒ 该页完全不注册（聚合行上报 `skipped("panels", …)` 并点名 `workmate: false`），`/mpd workmate` 保持它的全屏界面（看板场景）。因为「从未注册的页」不可能被任何东西加回来 —— 宿主的配置重写不会、运行时的启用保持器也不会 —— 所以这个开关**能真正留住**；两个开关都需要重启生效，而且**两者都作为勾选框出现在宿主的 `/settings` 对话框里** —— 因为该行配置被标记为 volatile，而那个标记正是对话框 `volatileForm` 遍历所读的字段 |
 | `dashboardKey` | `true` | 启用 `Ctrl+A` 接管：工作区存在团队时 `Ctrl+A` 打开合并面板；无团队（或本项关闭）时该键保持宿主原有含义。与本节其它旋钮不同，它**每次按键**都通过配置层重新读取，因此 `/settings` 保存后**无需重启**即生效。接管本身会在宿主把活的输入 kit 交给本会话之后就绪——即任意一次 MPD 场景/面板渲染之后（见"明确不声明"第 12 条）。**在提供侧栏面板接缝的宿主（dsh-tui 0.13.0+）上本旋钮是惰性的** —— 无论它说什么，接触面都保持解除武装，因此它只在旧宿主上有意义 |
 | `dialogs` | `true` | 启用托管对话框门面 |
 | `sessionEvents` | `true` | 追加 log-only 的 `mpd-tui/board-opened` 记录，且仅在事件类型已验证被可达的 `dsh-session` 副本认识之后 |

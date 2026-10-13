@@ -350,6 +350,17 @@ describe("plugin contract", () => {
     })
   })
 
+  test("the row config is VOLATILE, which is what lists its knobs in the harness settings dialog", () => {
+    // THE CHECKBOX ARMS EXISTENCE, not decoration: the harness's `volatileForm(schema)` walks
+    // `schema.meta.volatile` (measured out of the installed `dsh-settings@0.1.7-rc.2`) and an entry whose
+    // schema carries NO volatile node is not listed in the dialog AT ALL — so this single flag is what
+    // turns `panel` and `workmate` into the two checkboxes the user asked for. A row that dropped the
+    // flag would still pass every behavioural arm while showing the user nothing to click.
+    /** The schema node as the editor's own walk sees it: plain data on the schema object. */
+    const node = mod.Config as unknown as { meta?: { volatile?: boolean } }
+    expect(node.meta?.volatile).toBe(true)
+  })
+
   test("the schema rejects a wrong type instead of silently dropping it", () => {
     // The schema is the LAST guard on a row value the loader did not validate, so this arm feeds a
     // wrong-typed input on purpose: no well-typed literal can express the value under test.
