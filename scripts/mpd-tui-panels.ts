@@ -42,6 +42,13 @@
 // live panel. `--ids a,b,c` stays the documented escape when the user knows the ids, and a real TUI boot
 // rewrites a provable record.
 //
+// AN ABSENT `panels` LEAF IS SEEDED FROM THE HOST'S OWN DEFAULT (2026-10-12). `sidePanel.panels`
+// REPLACES the host's default rather than extending it, and the host bundle patch declares no `panels`
+// leaf — so a profile whose user layer is unset is running on the module's `DEFAULT_SIDE_PANEL_IDS`.
+// A seedless merge therefore replaced all eight builtins with our ids and the sidebar came up showing
+// MPD and nothing else; the seed is read from the installed host module, and a seed that cannot be read
+// REFUSES the run instead of guessing "none".
+//
 // SAFETY: dry-run is the DEFAULT and prints the resolved absolute path and the exact block it would
 // write; a write needs `--apply`. The write is atomic, keeps a `.bak-<stamp>` copy beside the document,
 // and READS THE DOCUMENT BACK afterwards — a write whose leaf does not come back as intended exits 1 and
@@ -160,12 +167,25 @@ export function panelTokenIsStaleMine(token: string, ids: readonly string[], pas
  * @param existing - the CSV the document carries, or `undefined` when the key is absent.
  * @param ids - the panel ids to enable, in registration order.
  * @param past - the record's bounded past registrations, oldest first; `[]` when none could be proved.
+ * @param defaultWhenAbsent - the list an ABSENT key inherits. The host does NOT treat a missing key as
+ *   "no panels": it falls back to its own schema default, so seeding from an empty list silently
+ *   REPLACES every builtin. Pass {@link hostDefaultPanelCsv}; omitting it keeps the old (seedless)
+ *   behaviour, which the self-test pins as a negative control.
  * @returns the CSV to write plus what was added, what was already there and what was pruned.
  */
-export function mergePanelIds(existing: string | undefined, ids: readonly string[], past: readonly string[]): PanelMerge {
+export function mergePanelIds(existing: string | undefined, ids: readonly string[], past: readonly string[], defaultWhenAbsent?: string): PanelMerge {
+  /**
+   * The list this merge starts from.
+   *
+   * THE ABSENT-KEY SEED (user-visible defect, MEASURED 2026-10-12): with no seed, a `panels` leaf that
+   * the user layer does not carry produced a list holding ONLY our ids — so the write REPLACED the
+   * host's eight builtins and the sidebar showed the two MPD pages and nothing else. The host's
+   * effective list for an absent key is its own default, so that is what an absent key must inherit.
+   */
+  const seed = existing ?? defaultWhenAbsent ?? ""
   /** The user's tokens, normalized and deduped in first-seen order. */
   const tokens: string[] = []
-  for (const token of (existing ?? "").split(",")) {
+  for (const token of seed.split(",")) {
     /** One normalized token; the empty string is dropped so a trailing comma adds no slot. */
     const id = token.trim().toLowerCase()
     if (id !== "" && !tokens.includes(id)) tokens.push(id)
@@ -469,6 +489,76 @@ export function composeEntry(profileDir: string, rowId: string): ComposedEntry |
     }
   }
   return { detail: `no bundle patch of ${profileDir} declares a config block for row ${rowId}` }
+}
+
+/**
+ * The enable list the INSTALLED host uses when NO configuration names one — the list an absent
+ * `sidePanel.panels` key therefore inherits.
+ *
+ * WHY THE SCRIPT MUST KNOW IT (user-visible defect, MEASURED 2026-10-12). `sidePanel.panels` REPLACES
+ * the host's default rather than extending it, and the host bundle's own patch declares no `panels`
+ * leaf — so a profile whose user layer is unset is running on the module's `DEFAULT_SIDE_PANEL_IDS`.
+ * A write that seeded the merge from an empty list therefore replaced all eight builtins with our two
+ * ids: the sidebar came up with `MPD` and `workmate` and NOTHING else. The default is read from the
+ * SAME installed module the runtime adapter's `probeHostPrefs` reads, so the seed cannot drift from
+ * the host the profile actually launches.
+ *
+ * @param profileDir - the installed profile directory.
+ * @returns the host's default CSV, or `undefined` when the installed module or the constant is unreadable.
+ */
+function hostDefaultPanelCsv(profileDir: string): string | undefined {
+  /** The installed host's display-preferences module, whose export holds the default. */
+  const file = join(profileDir, "node_modules", ...HOST_PACKAGE.split("/"), "lib", "types", "tuiDisplayPrefs.js")
+  try {
+    /** The module's source; the default is a plain string literal in it (not a computed value). */
+    const text = readFileSync(file, "utf8")
+    return /DEFAULT_SIDE_PANEL_IDS\s*=\s*['"]([^'"]+)['"]/u.exec(text)?.[1]
+  } catch {
+    return undefined
+  }
+}
+
+/** What one run starts from, and which builtins the seed had to restore. */
+export interface PanelSeed {
+  /** The CSV the merge must consume: the leaf's own tokens, or the host's default ahead of them. */
+  readonly seed: string
+  /** The host-default ids the leaf was missing (all of them when the whole set was gone). */
+  readonly restored: readonly string[]
+}
+
+/**
+ * Decide the list a run starts from, from the document's leaf and the host's own current default.
+ *
+ * THREE CASES, and the middle one is the damage this rule exists to repair:
+ *   · the leaf is ABSENT -> the effective list is the host's default, so that default is the seed
+ *     (a seedless merge would DELETE every builtin — the measured defect);
+ *   · the leaf EXISTS and names NONE of the host's current builtins -> the seedless-write DAMAGE
+ *     (`MPD` and only `MPD`). The default is prepended so every builtin comes back, with the leaf's own
+ *     tokens preserved after it and reported through {@link PanelSeed.restored};
+ *   · the leaf names ANY builtin -> that is a POSITION (the user's selection, however partial), so the
+ *     seed is the leaf byte-for-byte and nothing is restored.
+ * A user who deliberately removes EVERY builtin is the DECLARED residual: they read exactly like the
+ * damage and are repaired once more, which is the mirror of the runtime keeper's documented residual.
+ *
+ * @param current - the CSV the document's leaf carries, `undefined` when the leaf is absent.
+ * @param hostDefault - the installed host's current default, `undefined` when it could not be read.
+ * @returns the seed and the restored ids, or the ONE reason the run must refuse (nothing to seed from).
+ */
+export function resolvePanelSeed(current: string | undefined, hostDefault: string | undefined): PanelSeed | { detail: string } {
+  /** The leaf's own tokens, normalized, for the "does it name any builtin" test. */
+  const leafTokens = (current ?? "").split(",").map((token) => token.trim().toLowerCase()).filter((token) => token !== "")
+  if (hostDefault === undefined) {
+    // No readable default: an ABSENT leaf has nothing to inherit; an EXISTING leaf is still usable.
+    if (current === undefined) return { detail: "no `panels` leaf and no readable host default" }
+    return { seed: current, restored: [] }
+  }
+  /** The default's ids, in the host's own order. */
+  const defaults = hostDefault.split(",").map((id) => id.trim()).filter((id) => id !== "")
+  /** The defaults this leaf does not name. */
+  const missing = defaults.filter((id) => !leafTokens.includes(id.toLowerCase()))
+  if (current === undefined) return { seed: hostDefault, restored: [] }
+  if (missing.length > 0 && missing.length === defaults.length) return { seed: `${hostDefault},${current}`, restored: missing }
+  return { seed: current, restored: [] }
 }
 
 /**
@@ -958,12 +1048,29 @@ function main(argv: readonly string[]): number {
   }
   /** The CSV the block carries now, `undefined` when the leaf is absent. */
   const current = blockPanelCsv(text, location.rowId)
+  // THE SEED, read from the INSTALLED host module and never hard-coded: the host's current default when
+  // the leaf is absent (a seedless merge would DELETE every builtin), and that SAME default restored
+  // ahead of the leaf's own tokens when the leaf names NONE of them — the seedless-write damage that
+  // left the sidebar showing `MPD` and only `MPD`.
+  /** The installed host's current default. */
+  const hostDefault = hostDefaultPanelCsv(location.profileDir)
+  /** The list this run starts from, plus the builtins the seed had to restore. */
+  const seed = resolvePanelSeed(current, hostDefault)
+  if ("detail" in seed) {
+    console.error(`${TAG} REFUSED: ${seed.detail}`)
+    console.error(`${TAG}   Seeding an empty list here would REPLACE every builtin panel; check the install of ${HOST_PACKAGE} and re-run.`)
+    return 1
+  }
+  if (current === undefined) console.log(`${TAG} no ${PANELS_KEY} leaf in the user layer: seeding from the installed host's own default (${String(hostDefault)})`)
+  if (seed.restored.length > 0) console.log(`${TAG} the leaf names NONE of the host's current builtins: restoring ${seed.restored.join(",")} beside the tokens it already carries`)
   /** The merge this run would write, pruning only ids the record proves are ours. */
-  const merge = mergePanelIds(current, record.ids, record.past)
+  const merge = mergePanelIds(seed.seed, record.ids, record.past, hostDefault)
   // A PRUNE ALONE IS A REASON TO RUN (contract D1): the current ids may already be enabled while an
   // earlier boot's `act<N>:<slug>` tokens still sit in the list — that is precisely the accumulation the
   // remedy exists to clear, and an `added.length === 0` guard would print "already enabled" and stop.
-  if (merge.added.length === 0 && merge.pruned.length === 0) {
+  // A RESTORATION IS ONE TOO: a leaf that names no builtin at all changes the list even when every id of
+  // ours is already in it, so the early exit must not swallow it.
+  if (merge.added.length === 0 && merge.pruned.length === 0 && seed.restored.length === 0) {
     console.log(`${TAG} already enabled, and no stale id of ours to prune: ${merge.csv}`)
     return 0
   }
@@ -1039,6 +1146,31 @@ function selfTest(): number {
   check("(a) D3 every one of the eight builtins survives", BUILTINS.split(",").every((id) => stale.csv.split(",").includes(id)))
   check("(a) D3 a FOREIGN id shaped like an act id is never dropped", mergePanelIds("todo,act9:somebodyelse", ["act1:team"], []).csv === "todo,act9:somebodyelse,act1:team")
   check("(a) D1 a prune with nothing to append still changes the list", mergePanelIds("todo,act1:team,act7:team", ["act1:team"], ["act7:team"]).csv === "todo,act1:team")
+  // (a) THE ABSENT-KEY SEED — the arm for the user-visible defect MEASURED 2026-10-12 ("the sidebar has
+  // MPD and only MPD"). An absent key inherits the host's default, so the merge must KEEP every builtin;
+  // the negative control is the same call with NO seed, which is exactly how the write emptied the
+  // sidebar. Both halves are pinned so a fix that hard-coded the default would also redden.
+  check("(a) an ABSENT leaf is seeded from the host's own default, so every builtin survives",
+    mergePanelIds(undefined, ["act1:team", "act1:workmate"], [], BUILTINS).csv === `${BUILTINS},act1:team,act1:workmate`)
+  check("(a) NEGATIVE CONTROL: a SEEDLESS absent leaf drops the builtins — the hazard the seed removes",
+    mergePanelIds(undefined, ["act1:team"], []).csv === "act1:team")
+  // (a) THE DAMAGE REPAIR ("the sidebar has MPD and only MPD"): a leaf that EXISTS and names none of the
+  // host's builtins is the seedless-write damage, and the seed must put the whole set back AHEAD of the
+  // tokens the leaf already carries. The two controls below are what keep the rule from overreaching: a
+  // PARTIAL selection is a position and is left byte-for-byte, and with no readable default an absent
+  // leaf REFUSES instead of guessing "none".
+  /** The seed for the damaged leaf (our two ids and no builtin). */
+  const damaged = resolvePanelSeed("act1:team,act1:workmate", BUILTINS)
+  check("(a) DAMAGE: a leaf naming NONE of the builtins is seeded with the whole default, ours preserved",
+    !("detail" in damaged) && damaged.seed === `${BUILTINS},act1:team,act1:workmate` && damaged.restored.length === BUILTINS.split(",").length)
+  check("(a) the damaged leaf's repair survives the merge as the full list",
+    mergePanelIds(("detail" in damaged ? "" : damaged.seed), ["act1:team", "act1:workmate"], [], BUILTINS).csv === `${BUILTINS},act1:team,act1:workmate`)
+  check("(a) CONTROL: a PARTIAL builtin selection is a position and is left byte-for-byte",
+    !("detail" in resolvePanelSeed("todo,act1:team", BUILTINS)) && (resolvePanelSeed("todo,act1:team", BUILTINS) as PanelSeed).seed === "todo,act1:team")
+  check("(a) CONTROL: with no readable host default an ABSENT leaf REFUSES rather than seeding empty",
+    "detail" in resolvePanelSeed(undefined, undefined))
+  check("(a) an EXISTING leaf is still usable when the host default cannot be read",
+    !("detail" in resolvePanelSeed("act1:team", undefined)) && (resolvePanelSeed("act1:team", undefined) as PanelSeed).seed === "act1:team")
   /** A document whose sidebar row already carries its section, with a stale id in the leaf. */
   const staleDoc = ["[]", "- id: dsh-tui", "  config:", "    sidePanel:", `      panels: "${BUILTINS},act7:team"`, ""].join("\n")
   check("(a) D1 the document reader answers the leaf the merge consumes", blockPanelCsv(staleDoc, "dsh-tui") === `${BUILTINS},act7:team`)

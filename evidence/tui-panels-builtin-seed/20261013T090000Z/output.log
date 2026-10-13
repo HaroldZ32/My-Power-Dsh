@@ -1,0 +1,57 @@
+# Raw observed output — the seedless-write regression and its repair (2026-10-13, win32)
+
+## THE DAMAGE (what the earlier --apply wrote)
+$ node scripts/mpd-tui-panels.ts --apply          # the PREVIOUS wave's run
+[mpd-tui-panels] panels (before): (unset)
+[mpd-tui-panels] panels (after):  act1:team,act1:workmate
+[mpd-tui-panels] added: act1:team,act1:workmate; pruned: (none); kept: (none)
+                                  ^^^^^^^^^ the empty `kept` list IS the defect: the leaf was absent, so
+                                    the merge had nothing to preserve and `sidePanel.panels` (which
+                                    REPLACES the host's default) dropped all 8 builtins.
+[mpd-tui-panels] WROTE …dsh-tui\cordis.patch.yml …
+
+$ Select-String …\dsh-tui\cordis.patch.yml -Pattern panels:
+      panels: "act1:team,act1:workmate"                       # the user's report: "only MPD"
+
+$ node --input-type=module -e "…import tuiDisplayPrefs.js…; console.log(m.DEFAULT_SIDE_PANEL_IDS)"
+todo,jobs,agents,info,trajectory,workspace,btw,companion      # what the host was using before the write
+
+## SELF-TEST AFTER THE FIX (all arms held; the new ones are the seed + damage rules)
+$ node scripts/mpd-tui-panels.ts --self-test
+  ok   (a) an ABSENT leaf is seeded from the host's own default, so every builtin survives
+  ok   (a) NEGATIVE CONTROL: a SEEDLESS absent leaf drops the builtins — the hazard the seed removes
+  ok   (a) DAMAGE: a leaf naming NONE of the builtins is seeded with the whole default, ours preserved
+  ok   (a) the damaged leaf's repair survives the merge as the full list
+  ok   (a) CONTROL: a PARTIAL builtin selection is a position and is left byte-for-byte
+  ok   (a) CONTROL: with no readable host default an ABSENT leaf REFUSES rather than seeding empty
+  ok   (a) an EXISTING leaf is still usable when the host default cannot be read
+[mpd-tui-panels] SELF-TEST PASS (all arms held)
+
+## DRY RUN (the damaged leaf is detected and the builtins restored)
+$ node scripts/mpd-tui-panels.ts
+[mpd-tui-panels] the leaf names NONE of the host's current builtins: restoring todo,jobs,agents,info,trajectory,workspace,btw,companion beside the tokens it already carries
+[mpd-tui-panels] panels (before): act1:team,act1:workmate
+[mpd-tui-panels] panels (after):  todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate
+[mpd-tui-panels] added: (none); pruned: (none); kept: todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate
+[mpd-tui-panels] DRY RUN — nothing written. Re-run with --apply to write …
+
+## APPLIED (the user's profile repaired, with a backup and a read-back)
+$ node scripts/mpd-tui-panels.ts --apply
+[mpd-tui-panels] the leaf names NONE of the host's current builtins: restoring todo,jobs,agents,info,trajectory,workspace,btw,companion beside the tokens it already carries
+[mpd-tui-panels] panels (after):  todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate
+[mpd-tui-panels] WROTE C:\Users\zhao.yinan\.dsh\profiles\dsh-tui\cordis.patch.yml (backup: C:\Users\zhao.yinan\.dsh\profiles\dsh-tui\cordis.patch.yml.bak-88192300); read back: todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate
+[mpd-tui-panels] restart dsh-tui for the new list to compose
+exit=0
+
+$ ~/.dsh/profiles/dsh-tui/cordis.patch.yml
+    sidePanel:
+      panels: "todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate"
+
+$ Get-ChildItem ~/.dsh/profiles/dsh-tui -Filter "cordis.patch.yml*"
+cordis.patch.yml                 4320   (repaired)
+cordis.patch.yml.bak-09435300     987   (the ORIGINAL profile, before this session touched it)
+cordis.patch.yml.bak-88192300    4263   (the damaged state this wave repaired)
+
+## Gates
+$ node scripts/verify-comment-coverage.ts  -> VERDICT: PASS     exit=0
+$ bun run typecheck (tsgo --noEmit)        -> no diagnostics     exit=0
