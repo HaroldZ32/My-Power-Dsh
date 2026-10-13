@@ -59,7 +59,16 @@ slots, twelve leaves:
 ## Service / tools
 
 - Provides the `mpdConfig` service for other mpd plugins (`inject: ["mpdConfig"]`):
-  `get(key?)`, `reload()`, `states()`.
+  `get(key?)`, `reload()`, `states()`, `teamModelRouteOf(member)`.
+- `teamModelRouteOf(member)` is the read that makes a **saved** `teamModels` slot take
+  effect: it resolves the member's slot (membership comes from the one declaration both
+  settings front doors already share), resolves it over the materialised defaults, and
+  returns `{ provider, model, reasoningEffort? }` — `undefined` for a member the roster
+  does not slot-route, and a thrown error naming the member and the slot when a
+  slot-routed member's slot carries no provider or no model. The roster's one-shot paths
+  (`mpd_role_spawn`, `mpd_roles_list`, the workmate library and `mpd_modelchain_resolve`)
+  read it through this service, so a saved slot reaches them without a second
+  cross-package import.
 - `mpd_config_get` / `mpd_config_reload` tools.
 
 ## The `/settings` bridge (write-back)

@@ -3,7 +3,7 @@
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -51,7 +51,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -203,7 +206,7 @@ import { existsSync as existsSync2 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, isAbsolute, join as join2, resolve as resolve2 } from "node:path";
+import { dirname, isAbsolute as isAbsolute2, join as join2, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
 function executableSuffixes(env = process.env, platform = process.platform) {
   if (platform !== "win32")
@@ -557,15 +560,15 @@ function stablePath(file, workdir) {
   if (isWindowsPath(file) || isWindowsPath(workdir)) {
     const root2 = win32.resolve(workdir);
     const absolute2 = win32.resolve(root2, file);
-    const relative2 = win32.relative(root2, absolute2);
-    const inside2 = relative2 === "" || !relative2.startsWith("..\\") && relative2 !== ".." && !win32.isAbsolute(relative2);
-    return slash(inside2 ? relative2 || "." : absolute2);
+    const relative3 = win32.relative(root2, absolute2);
+    const inside2 = relative3 === "" || !relative3.startsWith("..\\") && relative3 !== ".." && !win32.isAbsolute(relative3);
+    return slash(inside2 ? relative3 || "." : absolute2);
   }
   const root = posix.resolve(workdir);
   const absolute = posix.resolve(root, file);
-  const relative = posix.relative(root, absolute);
-  const inside = relative === "" || !relative.startsWith("../") && relative !== ".." && !posix.isAbsolute(relative);
-  return inside ? relative || "." : absolute;
+  const relative2 = posix.relative(root, absolute);
+  const inside = relative2 === "" || !relative2.startsWith("../") && relative2 !== ".." && !posix.isAbsolute(relative2);
+  return inside ? relative2 || "." : absolute;
 }
 function nodeText(value) {
   if (typeof value === "string")

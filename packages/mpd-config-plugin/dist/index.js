@@ -15,7 +15,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -63,7 +63,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -3395,6 +3398,29 @@ function withTeamModelsDefaults(config) {
   }
   return { ...raw, teamModels };
 }
+function teamModelSlotOfMember(member) {
+  const key = String(member ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (key === "")
+    return;
+  for (const slot of TEAM_MODEL_SLOTS) {
+    if (TEAM_MODEL_SLOT_GROUPS[slot].members.some((name2) => name2.toLowerCase().replace(/[^a-z0-9]+/g, "") === key))
+      return slot;
+  }
+  return;
+}
+function teamModelRouteOfMember(member, config) {
+  const slot = teamModelSlotOfMember(member);
+  if (slot === undefined)
+    return;
+  const value = withTeamModelsDefaults(config).teamModels?.[slot];
+  const provider = typeof value?.provider === "string" ? value.provider.trim() : "";
+  const model = typeof value?.model === "string" ? value.model.trim() : "";
+  const effort = typeof value?.reasoningEffort === "string" ? value.reasoningEffort.trim() : "";
+  if (provider === "" || model === "") {
+    throw new Error(`mpd-config: ${member} is routed by ${slot}, but that slot is incomplete (provider=${provider === "" ? "unset" : provider}, model=${model === "" ? "unset" : model})`);
+  }
+  return { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } };
+}
 var knobDict = SettingsSchema.dict ?? {};
 var Config = markVolatile(Schema.object({
   projectFile: Schema.string(),
@@ -3730,6 +3756,7 @@ function apply(ctx, config = {}) {
         return state.config;
       return key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], withTeamModelsDefaults(state.config));
     },
+    teamModelRouteOf: (member) => teamModelRouteOfMember(member, state.config),
     reload,
     states: () => ({
       files: state.files,
@@ -3775,5 +3802,7 @@ export {
   name,
   parseJsonc,
   stripJsonc,
+  teamModelRouteOfMember,
+  teamModelSlotOfMember,
   withTeamModelsDefaults
 };

@@ -317,7 +317,7 @@ export interface DshSpawnSpec {
   /** Model id for the child, merged after the flat provider/model keys. */
   model?: string
   /** Harness-shaped route object; its keys are merged after the flat ones. */
-  agentOptions?: { provider?: string; model?: string }
+  agentOptions?: { provider?: string; model?: string; reasoningEffort?: string }
   /** Persona text the host injects into the child's system prompt. */
   persona?: string
   /** Tool filter forwarded verbatim; the host validates every name in it. */

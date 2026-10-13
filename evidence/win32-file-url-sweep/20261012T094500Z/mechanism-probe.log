@@ -1,0 +1,32 @@
+# The loader rule, demonstrated directly on this machine (2026-10-12, win32, node v24.21.0)
+
+Addendum to `result.json`. This is the MECHANISM proof for every site this sweep changed: it drives
+node's own ESM loader over the exact two spellings, using one of the swept modules as the subject.
+
+$ $target = "C:\MyDoc\DshProj\My-Power-Dsh\skills\dsh-qa\scripts\lib\credentials.ts"
+
+$ node --input-type=module -e "const p = process.argv[1]; try { await import(p); console.log('BARE PATH: resolved (unexpected)'); } catch (e) { console.log('BARE PATH: ' + e.code); }" $target
+BARE PATH: ERR_UNSUPPORTED_ESM_URL_SCHEME
+
+$ node --input-type=module -e "const { pathToFileURL } = await import('node:url'); const p = process.argv[1]; try { await import(pathToFileURL(p).href); console.log('FILE URL: resolved'); } catch (e) { console.log('FILE URL: ' + (e.code ?? e.message)); }" $target
+[credentials] resolution helper: false resolvable provider credential; use --self-test
+FILE URL: resolved
+
+Reading: the bare absolute Windows path is REJECTED by the loader (the drive letter is parsed as a URL
+scheme — the user's reported error), while `pathToFileURL(path).href` is ACCEPTED and the module really
+evaluates (its own top-level line printed). This is the defect and the fix, on one screen, with no
+pristine checkout required.
+
+## Correction, recorded rather than hidden
+An attempt was made AFTER the sweep was committed to re-run `verify-law.ts --self-test` "pristine" via
+`git stash push -u` / `git stash pop`. That attempt was INVALID and its output must be ignored: the tree
+was already clean at that point, so `git stash push` created no stash and `git stash pop` answered
+`No stash entries found` — the run therefore exercised the FIXED tree, not a pristine one. (The
+`exit=` reading in that same command was also polluted: `$LASTEXITCODE` reflected the trailing
+`Select-String` stage of the pipeline, not node.)
+
+The stash-based attributions that ARE valid in this wave are the ones taken while the tree was dirty:
+* the two PRE-EXISTING test failures in `result.json` (`session-start-team.ts` exit 1 and
+  `tui-deps-ctrla.ts` exit 1 both WITH and WITHOUT the sweep) — stashed before the commit;
+* the MCP handshake arm in `evidence/win32-esm-import/20261012T093500Z/` — stashed before the commit;
+* the earlier pre-existing arms in `evidence/team-models-routing/20261012T091354Z/` — same.

@@ -3,7 +3,7 @@ import { dirname, join as join2 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 // packages/mpd-mcp-shared/log-sink.ts
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 // packages/mpd-dsh-adapter-plugin/src/index.ts

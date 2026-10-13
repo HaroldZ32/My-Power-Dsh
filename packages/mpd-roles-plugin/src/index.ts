@@ -530,19 +530,75 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     return [...outcome.applied]
   }
 
+  /**
+   * The `teamModels` slot route one roster member is configured to run on, read PER CALL.
+   *
+   * THE DEFECT THIS REPAIRS (measured on a real machine, 2026-10-12). Both live profiles carried a
+   * SAVED `teamModels` block in the `mpd-config` row config (`company-api` / `deepseek-flash`, written
+   * from the settings front doors), and `mpd-config-plugin` served it resolved — but the ONLY reader was
+   * `mpd-roster-provider-plugin`, which routes an OFFICIAL `spawn_teammate`. Every one-shot path kept
+   * the STATIC `roles.data.ts` chain, so `mpd_role_spawn` ran on the shipped `deepseek-official` route
+   * even when the user had configured a gateway provider: on that machine no key exists for
+   * `deepseek-official`, so the spawn died with `MISSING_CREDENTIAL` and the save looked inert on web,
+   * desktop and TUI alike. `mpd_role_spawn`'s OWN tool description and `roster-section.ts` both promise
+   * the opposite ("THIS path applies the role's teamModels slot route").
+   *
+   * The membership map stays in `mpd-config-plugin` — the ONE declaration the settings card, the TUI
+   * section and the roster provider already share — and is reached here as a SERVICE, never as an
+   * import: a new cross-package relative import would be a new entry in the frozen coupling inventory
+   * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`, which may only
+   * shrink).
+   *
+   * @param member - the roster member's functional name.
+   * @returns the configured route, or `undefined` when the roster does not slot-route this member (or no
+   *   config service is mounted) — the static roster chain then stands unchanged.
+   * @throws when the member IS slot-routed and its slot is incomplete; the service's own loud failure is
+   *   never swallowed here, because the registered contract is to name the member and the slot.
+   */
+  const teamModelRoute = (member: string): { provider: string; model: string; reasoningEffort?: string } | undefined => {
+    /** The live config service, absent until the `mpd-config` row has applied. */
+    const live = ((): { teamModelRouteOf?: (m: string) => unknown } | undefined => {
+      try {
+        return ctx.get?.(CONFIG_SERVICE, false) as { teamModelRouteOf?: (m: string) => unknown } | undefined
+      } catch {
+        // A config service that refuses the lookup reads as ABSENT, never as a boot failure.
+        return undefined
+      }
+    })()
+    if (typeof live?.teamModelRouteOf !== "function") return undefined
+    // Deliberately NOT wrapped: an incomplete configured slot must reach the caller as the loud error.
+    const value = live.teamModelRouteOf(member) as { provider?: unknown; model?: unknown; reasoningEffort?: unknown } | undefined | null
+    if (value === undefined || value === null || typeof value !== "object") return undefined
+    return {
+      provider: String(value.provider ?? ""),
+      model: String(value.model ?? ""),
+      ...(typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}),
+    }
+  }
+
   /** The roster as THIS call sees it. Resolved per call (never an apply-time cache). */
   const roleSurface = (exec?: unknown): RoleSurface => {
     /** The base roster projected for THIS call, each persona already read. */
-    const base: ResolvedRole[] = ROLES.map((r) => ({
-      id: r.id,
-      name: r.name,
-      description: r.description,
-      readonly: r.readonly,
-      chain: r.chain.map((c) => ({ ...c })),
-      persona: readPersona(config, r),
-      personaFile: personaPath(config, r),
-      extension: null,
-    }))
+    const base: ResolvedRole[] = ROLES.map((r) => {
+      /** The static chain for this role, copied so no caller can mutate the roster table. */
+      const chain: Array<{ provider: string; model: string }> = r.chain.map((c) => ({ ...c }))
+      /** The slot route the user configured for this member, when the roster slot-routes it. */
+      const route = teamModelRoute(r.name)
+      // THE CONFIGURED SLOT IS AUTHORITATIVE for a member it routes: the chain becomes that ONE route,
+      // so `mpd_roles_list`, an `mpd_role_spawn`, a workmate initialized from this base AND
+      // `mpd_modelchain_resolve` (which prefers `spec.chain`) all report the value the user saved.
+      if (route !== undefined) chain.splice(0, chain.length, { provider: route.provider, model: route.model })
+      return {
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        readonly: r.readonly,
+        chain,
+        persona: readPersona(config, r),
+        personaFile: personaPath(config, r),
+        extension: null,
+      }
+    })
     /** The extension plane's contributions and refusals for this call. */
     const contributed = extensionRoles(ctx, exec, (line) => warnOnce("lookup:" + line, line))
     for (const refusal of contributed.refused) {
@@ -622,10 +678,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (!task) throw new Error("mpd_role_spawn: task required")
       /** The role's persona text, sent both inside the prompt and as the subagent's persona. */
       const persona = spec.persona
+      /** The configured slot route for this member, when the roster slot-routes it (and any effort it states). */
+      const slotRoute = teamModelRoute(spec.name)
       /** The primary route's provider, falling back to the deployment default. */
-      const provider = spec.chain[0]?.provider ?? "deepseek-official"
+      const provider = slotRoute?.provider ?? spec.chain[0]?.provider ?? "deepseek-official"
       /** The model for this spawn: the caller's override when given, else the role's primary. */
-      const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : spec.chain[0]?.model
+      const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : slotRoute?.model ?? spec.chain[0]?.model
       /** The assembled prompt: persona, task, optional context and the report instruction. */
       const prompt = persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
       /** The spawn result, whose structured report is echoed into this tool's output. */
@@ -638,6 +696,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
+        // The slot's OWN effort keyword rides along when it states one: the contract forbids clamping or
+        // inventing an effort, so an absent keyword passes nothing and the harness keeps its resolution.
+        ...(slotRoute?.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: slotRoute.reasoningEffort } }),
         ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
       })
       /** The structured report, or an empty object when the subagent answered none. */

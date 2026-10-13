@@ -1,0 +1,43 @@
+# Raw observed output — the two MPD switches become /settings checkboxes (2026-10-13, win32)
+
+## The mechanism (quoted from the repo's own measured doc)
+packages/mpd-config-plugin/src/settings-schema.ts :: markVolatile
+  "MEASURED out of the installed `dsh-settings@0.1.7-rc.2`: its `volatileForm(schema)` walks
+   `schema.meta.volatile`, `schema.dict`, `type`, `list` and `inner` -- PLAIN DATA on a schema object --
+   and AN ENTRY WHOSE SCHEMA CARRIES NO VOLATILE NODE IS NOT LISTED IN THE DIALOG AT ALL."
+=> mpd-config marked its own Config volatile; mpd-tui did NOT, which is why `panel`/`workmate` had
+   no checkbox and the two pages read as un-toggleable.
+
+## The change (no new cross-package edge)
+packages/mpd-tui-plugin/src/settings.ts
+  import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS,
+           TEAM_MODEL_FALLBACK_OPTIONS, markVolatile } from "../../mpd-config-plugin/src/settings-schema"
+  export { markVolatile }        // re-exported: the inventory pins ONE edge per file and may only shrink
+packages/mpd-tui-plugin/src/index.ts
+  import { DASHBOARD_TAKEOVER_KNOB, markVolatile, wheelInvertFrom } from "./settings.js"
+  export const Config: Schemastery<Config> = markVolatile(z.object({ ... }))
+packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+  the one frozen line for that edge updated to the new text (same packages, same edge, one more name)
+
+## Gates
+$ bun run typecheck                      -> tsgo --noEmit, exit 0
+$ bun test …/plugin.test.ts -t VOLATILE
+(pass) plugin contract > the row config is VOLATILE, which is what lists its knobs in the harness
+       settings dialog [0.03ms]          1 pass / 0 fail
+$ bun test …/cross-package-coupling-inventory.test.ts
+(pass) the gate reddens on a seeded violation (negative control) [193.13ms]   2 pass / 0 fail
+$ node scripts/verify-dist-fresh.ts      -> 31/31 targets fresh (0 stale after the build)
+$ node scripts/verify-comment-coverage.ts-> VERDICT: PASS
+$ node scripts/verify-docs-parity.ts     -> pairs=47 failed=0 violations=0 links=436 dead=0 PASS
+
+## What the two checkboxes do
+A save writes the ENTRY CONFIG -> the loader validates it against THIS schema at the next boot ->
+the panel registration reads it. So the checkbox decides the NEXT BOOT's pages, which is exactly what
+the mpd settings bridge already declares for this namespace (`applies: "restart"`). It STICKS because a
+page whose checkbox is OFF is never registered, and nothing re-adds a panel that was never registered.
+
+## Bounds (named, not implied)
+- NOT live: flipping + saving applies at the next dsh boot; a live flip needs runtime reconciliation
+  (dispose + re-register on a settings-document update).
+- The dialog lists the row's knobs by their schema key names (`panel`, `workmate`); no bilingual label
+  table was added for another row's config keys.

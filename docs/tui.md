@@ -300,6 +300,14 @@ settles WITH those ids and without the builtins.) Two independent routes now hol
   ours on purpose leaves a list indistinguishable from a fresh profile's, so the set is re-added once per
   boot; separating those cases needs the configured value itself, i.e. a third host-internals contact,
   which is a §6 count decision this wave deliberately does not take;
+* **never drops a builtin, and never overrules a list** — the row's `sidePanel.panels` REPLACES the
+  host's default rather than extending it, so `scripts/mpd-tui-panels.ts` seeds an ABSENT leaf from the
+  host's own current `DEFAULT_SIDE_PANEL_IDS` (read from the installed module; the run REFUSES rather
+  than guessing "none" when that cannot be read) and leaves an EXISTING leaf BYTE-FOR-BYTE — including
+  one that names none of the builtins, because "every builtin is missing" and "the user removed every
+  builtin deliberately" are the same bytes. Putting missing builtins back is therefore an explicit act:
+  `--restore-builtins` restores exactly what is missing, prints what it restored, and is a no-op on a
+  healthy list;
 * **durable, one command** — `node scripts/mpd-tui-panels.ts --apply` writes `dsh-tui.sidePanel.panels`
   into the
   profile's patch file, which IS the settings user layer (`dsh-config-editor`'s `documentPath` returns

@@ -1,0 +1,52 @@
+{
+  "wave": "fix/tui-panels-builtin-seed — the regression the previous wave's `--apply` introduced",
+  "date": "2026-10-13",
+  "host": { "platform": "win32", "repoRoot": "C:\\MyDoc\\DshProj\\My-Power-Dsh" },
+  "userReport": "修完了以后，TUI侧边栏有MPD了，但只有MPD了，其他的Panel都没了 — after the fixes the sidebar had MPD and ONLY MPD; every other panel was gone.",
+  "rootCause": {
+    "what": "The remedy script's merge seeded itself from an EMPTY list when the row's `sidePanel.panels` leaf was absent, because `mergePanelIds(existing, ids, past)` did `(existing ?? \"\")`.",
+    "whyThatIsWrong": "`sidePanel.panels` REPLACES the host's default rather than extending it, and the host bundle's own patch declares no `panels` leaf — so a profile whose user layer is unset is running on the installed module's `DEFAULT_SIDE_PANEL_IDS` (todo,jobs,agents,info,trajectory,workspace,btw,companion). Seeding from an empty list therefore wrote ONLY our two ids, and the host then applied that as the config, replacing every builtin. The runtime keeper could not repair it either: a CSV that names any of our ids is a POSITION it must not overrule, so it stands down.",
+    "measuredTrace": [
+      "the earlier `--apply` printed: `panels (before): (unset)` / `panels (after): act1:team,act1:workmate` / `added: act1:team,act1:workmate; pruned: (none); kept: (none)` — the empty `kept` list IS the defect",
+      "the damaged profile then read: `panels: \"act1:team,act1:workmate\"` (8 builtins gone) while the host default was `todo,jobs,agents,info,trajectory,workspace,btw,companion`"
+    ]
+  },
+  "fix": {
+    "prevention": "`mergePanelIds` takes a fourth parameter `defaultWhenAbsent`, and the write path passes the host's own current default (read from the INSTALLED module, `<profile>/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/tuiDisplayPrefs.js` — the same source the runtime adapter's `probeHostPrefs` reads, never hard-coded).",
+    "repair": "NEW `resolvePanelSeed(current, hostDefault)` decides the seed in three cases: (a) the leaf is ABSENT -> the host default is the seed; (b) the leaf EXISTS and names NONE of the host's current builtins -> that is the seedless-write DAMAGE, so the default is prepended with the leaf's own tokens preserved after it and the restored ids reported; (c) the leaf names ANY builtin -> a POSITION (however partial) and the seed is the leaf byte-for-byte.",
+    "refuseFirst": "with no readable host default an ABSENT leaf now REFUSES (exit 1) instead of seeding an empty list; an EXISTING leaf stays usable.",
+    "earlyExit": "the 'already enabled' early return now also requires `seed.restored.length === 0`, so a restoration can never be swallowed by it (the damaged leaf's ids are already present, so `added` was empty).",
+    "declaredResidual": "a user who deliberately removes EVERY builtin reads exactly like the damage and is repaired once more — the mirror of the runtime keeper's already-documented residual for the case where every id of OURS is removed."
+  },
+  "userMachineRepair": {
+    "command": "node scripts/mpd-tui-panels.ts --apply",
+    "observed": "the leaf names NONE of the host's current builtins: restoring todo,jobs,agents,info,trajectory,workspace,btw,companion beside the tokens it already carries / panels (before): act1:team,act1:workmate / panels (after): todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate / WROTE …\\dsh-tui\\cordis.patch.yml (backup: cordis.patch.yml.bak-88192300); read back: todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate",
+    "profileNow": "sidePanel:\\n  panels: \"todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate\"",
+    "backups": [
+      "cordis.patch.yml.bak-09435300 — 987 B, the ORIGINAL profile before this session touched it (no `dsh-tui` row at all)",
+      "cordis.patch.yml.bak-88192300 — 4263 B, the damaged state this wave repaired"
+    ]
+  },
+  "tests": {
+    "newArms": [
+      "(a) an ABSENT leaf is seeded from the host's own default, so every builtin survives",
+      "(a) NEGATIVE CONTROL: a SEEDLESS absent leaf drops the builtins — the hazard the seed removes",
+      "(a) DAMAGE: a leaf naming NONE of the builtins is seeded with the whole default, ours preserved",
+      "(a) the damaged leaf's repair survives the merge as the full list",
+      "(a) CONTROL: a PARTIAL builtin selection is a position and is left byte-for-byte",
+      "(a) CONTROL: with no readable host default an ABSENT leaf REFUSES rather than seeding empty",
+      "(a) an EXISTING leaf is still usable when the host default cannot be read"
+    ],
+    "observed": "node scripts/mpd-tui-panels.ts --self-test -> SELF-TEST PASS (all arms held), every new arm `ok`"
+  },
+  "gates": [
+    { "command": "node scripts/mpd-tui-panels.ts --self-test", "exit": 0, "observed": "SELF-TEST PASS (all arms held)" },
+    { "command": "node scripts/verify-comment-coverage.ts", "exit": 0, "observed": "VERDICT: PASS" },
+    { "command": "bun run typecheck (tsgo --noEmit)", "exit": 0, "observed": "no diagnostics" }
+  ],
+  "afterRestart": "The profile now names the 8 builtins beside our two ids, so the host's config re-apply keeps them all and the sidebar shows the builtins AND `MPD` / `MPD workmate`. The `act1:*` pair is this boot's activation: the next boot composes `act2:*`, the host appends it, and the runtime keeper prunes the now-provably-dead `act1:*` tokens; re-running `node scripts/mpd-tui-panels.ts --apply` after a boot rewrites the layer with the current ids (not required for the panels to appear).",
+  "notChanged": [
+    "docs/tui.md + docs/tui.zh-CN.md still describe the remedy WITHOUT the new seed rule (they are not false — they never claimed a seedless write — but the rule is worth a clause; the script's own header documents it in full).",
+    "No dist target is affected: `scripts/**` is not a `packages/*/dist` source."
+  ]
+}

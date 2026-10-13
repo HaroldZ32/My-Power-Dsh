@@ -86,7 +86,7 @@
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir, homedir } from "node:os"
-import { dirname, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.ts"
 import { readSessionEvents } from "./lib/session-evidence.ts"
@@ -863,8 +863,12 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
   const teamSeams = (files: Record<string, string>): LeadingTeamOptions => ({
     readDir: async (): Promise<readonly string[]> => Object.keys(files),
     readFile: async (path: string): Promise<string> => {
+      // `basename`, NOT `path.slice(path.lastIndexOf("/") + 1)` (win32 defect, MEASURED 2026-10-12):
+      // `readLeadingTeam` builds this path with `join`, so on win32 it carries `\` and the `/` search
+      // missed (-1) — the "name" became the WHOLE path, every lookup threw ENOENT, and the c7 arm below
+      // read a record that was PRESENT as `{leading:false, members:0}`. The whole QA case failed on it.
       /** The record file name this read asked for. */
-      const name = path.slice(path.lastIndexOf("/") + 1)
+      const name = basename(path)
       if (!(name in files)) throw new Error("ENOENT " + path)
       return files[name]
     },

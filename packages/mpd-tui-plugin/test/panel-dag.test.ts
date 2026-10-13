@@ -2252,8 +2252,10 @@ describe("the workmate page", () => {
     const missing = readWorkmateLibrary(join(tmpdir(), "mpd-workmate-fixture-does-not-exist"))
     expect(missing.entries).toEqual([])
     expect(missing.archived).toBe(0)
-    // The root is still reported, so the empty page can say WHERE it looked.
-    expect(missing.root).toContain(".mpd/workmate")
+    // The root is still reported, so the empty page can say WHERE it looked. The expectation is BUILT
+    // with `join`, not spelled `.mpd/workmate` (win32 defect, MEASURED 2026-10-12): win32 joins with
+    // `\`, so the POSIX literal was the only reason this arm was red there.
+    expect(missing.root).toContain(join(".mpd", "workmate"))
   })
 })
 

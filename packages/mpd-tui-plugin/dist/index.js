@@ -1047,7 +1047,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join as join2, resolve as resolve2 } from "node:path";
+import { isAbsolute, join as join2, relative, resolve as resolve2, sep } from "node:path";
 var LOG_SUBDIR = join2(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -1095,7 +1095,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -6916,6 +6919,24 @@ var SettingsSchema = Schema.object({
 });
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
+function markVolatile(schema) {
+  const node = schema;
+  const kind = typeof node;
+  if (node === null || kind !== "object" && kind !== "function")
+    return schema;
+  try {
+    node.meta = { ...node.meta ?? {}, volatile: true };
+  } catch {}
+  if (node.dict !== undefined && typeof node.dict === "object")
+    for (const child of Object.values(node.dict))
+      markVolatile(child);
+  if (node.inner !== undefined)
+    markVolatile(node.inner);
+  if (Array.isArray(node.list))
+    for (const child of node.list)
+      markVolatile(child);
+  return schema;
+}
 function knobHint(key, semantics) {
   const pointer = `mpd.jsonc ${key}`;
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
@@ -8101,7 +8122,7 @@ function registerWorkmatePanel(tui, deps) {
     outcome: () => {
       if (panel !== undefined)
         return panel.outcome();
-      return tui.skipped("panels", "the workmate sidebar page is disabled by the mpd-tui row config (panel: false)").outcome();
+      return tui.skipped("panels", "the workmate sidebar page is disabled by the mpd-tui row config (workmate: false)").outcome();
     },
     openScene: () => deps.openScene()
   };
@@ -9472,7 +9493,7 @@ async function openModelMenu(tui, log, options = {}) {
 
 // packages/mpd-tui-plugin/src/index.ts
 var name = "mpd-tui";
-var Config = Schema.object({
+var Config = markVolatile(Schema.object({
   statusLine: Schema.boolean().default(true),
   statusIntervalMs: Schema.number().default(3000),
   renderers: Schema.boolean().default(true),
@@ -9483,12 +9504,13 @@ var Config = Schema.object({
   shortcuts: Schema.boolean().default(true),
   dialogs: Schema.boolean().default(true),
   panel: Schema.boolean().default(true),
+  workmate: Schema.boolean().default(true),
   dashboardKey: Schema.boolean().default(true),
   wheelInvert: Schema.boolean().default(false),
   sessionEvents: Schema.boolean().default(true),
   decisionEvents: Schema.boolean().default(true),
   logPrefix: Schema.string().default("mpd-tui")
-});
+}));
 function resolveConfig(config = {}) {
   const bool = (value, fallback) => typeof value === "boolean" ? value : fallback;
   const valid = typeof config.statusIntervalMs === "number" && Number.isFinite(config.statusIntervalMs) && config.statusIntervalMs >= 0;
@@ -9503,6 +9525,7 @@ function resolveConfig(config = {}) {
     shortcuts: bool(config.shortcuts, true),
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
+    workmate: bool(config.workmate, true),
     dashboardKey: bool(config.dashboardKey, true),
     wheelInvert: bool(config.wheelInvert, false),
     sessionEvents: bool(config.sessionEvents, true),
@@ -9710,7 +9733,7 @@ function apply(ctx, config = {}) {
     return false;
   };
   const workmatePanel = registerWorkmatePanel(tui, {
-    enabled: resolved.panel,
+    enabled: resolved.workmate,
     home,
     openScene: () => scene.open(),
     log

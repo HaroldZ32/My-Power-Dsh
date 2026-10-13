@@ -10,7 +10,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { chmodSync, existsSync, mkdtempSync, openSync, closeSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { spawnSync } from "node:child_process"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import { installTerminalSilence, LOG_ROOT_ENV_KEYS, openLogSink, resolveLogRoots } from "./log-sink.ts"
 
 /** Every temp root this file created, removed by `afterEach` so no arm leaks a directory. */
@@ -46,7 +46,12 @@ describe("root resolution and writability", () => {
     /** The resolved chain for an env that names both keys plus a cwd. */
     const roots = resolveLogRoots({ MPD_MCP_LOG_DIR: "/a", DSH_WORKSPACE_ROOT: "/b" }, "/c")
     expect(LOG_ROOT_ENV_KEYS).toEqual(["MPD_MCP_LOG_DIR", "DSH_WORKSPACE_ROOT"])
-    expect(roots.slice(0, 3)).toEqual(["/a", "/b", "/c"])
+    // The CONTRACT is "absolute, in precedence order" — and `resolveLogRoots` normalizes with
+    // `path.resolve`, which is platform-specific by definition: `/a` stays `/a` on POSIX while win32
+    // answers `C:\a`. The expectations therefore name the same normalization the contract does, so the
+    // arm states the ORDER it is about on every platform instead of a POSIX spelling (MEASURED
+    // 2026-10-12: the literal `["/a","/b","/c"]` was the only reason this arm was red on win32).
+    expect(roots.slice(0, 3)).toEqual([resolve("/a"), resolve("/b"), resolve("/c")])
     // The tmpdir tier is always present, so the chain can never be empty.
     expect(roots.length).toBe(4)
   })
@@ -54,8 +59,8 @@ describe("root resolution and writability", () => {
   test("blank and duplicate candidates are dropped", () => {
     /** The resolved chain for an env with a blank key and a cwd that repeats the workspace root. */
     const roots = resolveLogRoots({ MPD_MCP_LOG_DIR: "   ", DSH_WORKSPACE_ROOT: "/b" }, "/b")
-    expect(roots[0]).toBe("/b")
-    expect(roots.filter((root) => root === "/b")).toHaveLength(1)
+    expect(roots[0]).toBe(resolve("/b"))
+    expect(roots.filter((root) => root === resolve("/b"))).toHaveLength(1)
   })
 
   test("the first WRITABLE root wins and the log file appears under it", () => {
@@ -206,11 +211,32 @@ describe("the descriptor rebind (POSIX)", () => {
     /** The child's result; stdout carries only its one report line. */
     const run = spawnSync(process.execPath, [script, root], { encoding: "utf8", stdio: ["ignore", "pipe", fd], timeout: 30_000 })
     closeSync(fd)
-    expect(run.stdout).toContain("rebind=rebound")
-    expect(readFileSync(captured, "utf8")).toBe("")
-    /** The log the child's sink wrote, which must hold BOTH the grandchild's line and the direct one. */
+    // A POSIX descriptor table is what makes a GRANDCHILD's raw fd write capturable, and win32 has
+    // none: the sink REPORTS that (`stderrRebind()` is a measured outcome, never an assumption). The
+    // arm is therefore platform-aware on both sides — the POSIX expectations are byte-for-byte what
+    // they always were, and win32 asserts the DOCUMENTED degradation rather than a mechanism the
+    // platform does not have (MEASURED 2026-10-12: the child answered `rebind=unsupported` there).
+    /** Whether this platform has the POSIX descriptor table the rebind needs. */
+    const posixDescriptors = process.platform !== "win32"
+    expect(run.stdout).toContain(posixDescriptors ? "rebind=rebound" : "rebind=unsupported")
+    /** The child's OWN stderr, captured by the parent's file descriptor. */
+    const ownStderr = readFileSync(captured, "utf8")
+    /** The log the child's sink wrote, which must hold the child's own stderr writes. */
     const log = readFileSync(join(root, ".mpd", "logs", "child.log"), "utf8")
-    expect(log).toContain("GRANDCHILD-LINE")
+    // The WRITER-based capture is installed on BOTH platforms: the child's own `process.stderr.write`
+    // is logged wherever the sink runs, which is the capability the row actually depends on.
     expect(log).toContain("direct-line")
+    if (posixDescriptors) {
+      // POSIX: fd 2 itself was rebound, so even the grandchild's raw write lands in the log and the
+      // inherited capture file stays untouched.
+      expect(ownStderr).toBe("")
+      expect(log).toContain("GRANDCHILD-LINE")
+    } else {
+      // win32: with no descriptor table the grandchild's raw write goes to the fd it INHERITED — the
+      // parent's capture file — and the log never sees it. Asserting both halves keeps the bound
+      // falsifiable: a build that claimed to rebind here would redden instead of passing quietly.
+      expect(log).not.toContain("GRANDCHILD-LINE")
+      expect(ownStderr).toContain("GRANDCHILD-LINE")
+    }
   })
 })

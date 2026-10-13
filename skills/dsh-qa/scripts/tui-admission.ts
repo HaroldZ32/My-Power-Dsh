@@ -346,7 +346,11 @@ async function loadHostAdmission(): Promise<HostAdmission> {
   const spec = resolveSpecDataRoot(hostRoot)
   if (spec === undefined) return { ok: false, reason: "no spec-data root with registry/registry-0.15.json (installed payload or the d248c267 checkout)" }
   /** Spell one host-relative module path as a file URL the dynamic import can resolve. */
-  const url = (relative: string): string => "file://" + join(hostRoot, relative)
+  // A FILE URL built by `pathToFileURL`, never by concatenation (win32 defect, MEASURED 2026-10-12):
+  // `"file://" + join(root, …)` is right only on POSIX, where the joined path starts with `/` and the
+  // result is `file:///…`; on win32 it is `file://C:\…` — the host becomes `C:\…` and the path is empty,
+  // so every `await import(url(...))` below could never resolve a module there.
+  const url = (relative: string): string => pathToFileURL(join(hostRoot, relative)).href
   /** Absolute path of the vendored `@dsh-std/manifest` parser the host itself loads. */
   const manifestLibPath = join(hostRoot, "node_modules", "@dsh-std", "manifest", "lib", "index.js")
   if (!existsSync(manifestLibPath)) return { ok: false, reason: "the vendored @dsh-std/manifest parser is missing at " + manifestLibPath }

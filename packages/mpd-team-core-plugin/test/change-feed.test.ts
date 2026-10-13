@@ -67,12 +67,27 @@ function storedRecord(workspace: string): TeamRecord {
   return team
 }
 
+/**
+ * A watch door that ARMS and NEVER FIRES: the S-b arms observe changes through the STORE, and the
+ * filesystem watcher must not add a second observation to the window they are counting.
+ *
+ * WHY THIS IS REQUIRED ON WIN32 (defect, MEASURED 2026-10-12). The S-b arms used the REAL `fs.watch`,
+ * so ONE store write produced TWO observations — the in-process hook and the directory event — and an
+ * arm passed only while BOTH landed inside the same fixed coalescing window. On POSIX that holds
+ * (inotify reports within the window); on win32 the directory event for the same write arrives after
+ * the 20 ms window and opens a SECOND one, so `a store write reaches a subscriber` saw 2 calls and the
+ * whole S-b block was red. The watcher's own behaviour stays pinned by the S-c/S-d arms below and by
+ * every arm that writes bytes with no store call, so making this block's observation source
+ * deterministic removes a platform race without removing a single assertion.
+ */
+const inertWatch: WatchFactory = (): { close: () => void } => ({ close: (): void => {} })
+
 describe("S-b — the feed notifies on a change, once per window", () => {
   test("a store write reaches a subscriber", async () => {
     /** The workspace under test. */
     const workspace = sandbox()
     /** The feed under test, with a short window so the arm stays fast. */
-    const feed = new ChangeFeed({ debounceMs: 20 })
+    const feed = new ChangeFeed({ debounceMs: 20, watch: inertWatch })
     /** How many times the listener fired. */
     let calls = 0
     feed.subscribe(workspace, () => { calls += 1 })
@@ -90,7 +105,7 @@ describe("S-b — the feed notifies on a change, once per window", () => {
     /** The workspace under test. */
     const workspace = sandbox()
     /** The feed under test. */
-    const feed = new ChangeFeed({ debounceMs: 20 })
+    const feed = new ChangeFeed({ debounceMs: 20, watch: inertWatch })
     /** The instants the listener fired at. */
     const fired: number[] = []
     feed.subscribe(workspace, () => { fired.push(Date.now()) })
@@ -108,7 +123,7 @@ describe("S-b — the feed notifies on a change, once per window", () => {
     /** The workspace under test. */
     const workspace = sandbox()
     /** The feed under test. */
-    const feed = new ChangeFeed({ debounceMs: 40 })
+    const feed = new ChangeFeed({ debounceMs: 40, watch: inertWatch })
     /** How many times the listener fired. */
     let calls = 0
     feed.subscribe(workspace, () => { calls += 1 })
@@ -127,7 +142,7 @@ describe("S-b — the feed notifies on a change, once per window", () => {
     /** The workspace under test. */
     const workspace = sandbox()
     /** The feed under test. */
-    const feed = new ChangeFeed({ debounceMs: 20 })
+    const feed = new ChangeFeed({ debounceMs: 20, watch: inertWatch })
     /** Every revision the listener observed, in order. */
     const seen: number[] = []
     feed.subscribe(workspace, () => { seen.push(feed.revision(workspace)) })
@@ -147,7 +162,7 @@ describe("S-b — the feed notifies on a change, once per window", () => {
     /** The diagnostics the feed produced. */
     const warned: string[] = []
     /** The feed under test. */
-    const feed = new ChangeFeed({ debounceMs: 20, warn: (line: string): void => { warned.push(line) } })
+    const feed = new ChangeFeed({ debounceMs: 20, watch: inertWatch, warn: (line: string): void => { warned.push(line) } })
     /** The listeners that ran to completion after the throwing one. */
     let survivors = 0
     feed.subscribe(workspace, () => { throw new Error("this listener is broken") })
@@ -165,7 +180,7 @@ describe("S-b — the feed notifies on a change, once per window", () => {
     /** The workspace under test. */
     const workspace = sandbox()
     /** The feed under test. */
-    const feed = new ChangeFeed({ debounceMs: 20 })
+    const feed = new ChangeFeed({ debounceMs: 20, watch: inertWatch })
     /** How many times the listener fired. */
     let calls = 0
     /** The disposer under test. */
