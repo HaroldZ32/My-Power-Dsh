@@ -553,6 +553,8 @@ export function readStoredSlots(adapter: CatalogReadSeam): Record<string, Partia
  * the point of choice): every slot's stored leaves and the stored `agentRoutes` entries, from
  * whichever settings document serves them (the ENTRY document first — its resolved value
  * materialises the slot defaults, so an unconfigured slot still shows its effective route).
+ * `agentRoutes` is merged first-half-wins across the root, `user` and `value` halves: the saved
+ * `user` half outranks the stale apply-time `value` half (T-93).
  * @param adapter - the catalog/settings seam.
  * @returns the two tables; empty when no settings document answers.
  */
@@ -586,6 +588,11 @@ export function readRouteTables(adapter: CatalogReadSeam): {
     const table = candidate["agentRoutes"]
     if (!isRecord(table)) continue
     for (const [name, entry] of Object.entries(table)) {
+      // FIRST half wins. The host document's `value` half is the APPLY-TIME config (T-93): after a
+      // save its `agentRoutes` entry stays stale, while the `user` half carries the saved leaves. A
+      // later half must therefore never overwrite a name the accumulated table already holds, or the
+      // stale `value` half would clobber the user's saved route.
+      if (agentRoutes[name] !== undefined) continue
       if (!isRecord(entry)) continue
       /** This entry's usable string leaves. */
       const leaves: Partial<Record<TeamModelLeaf, string>> = {}

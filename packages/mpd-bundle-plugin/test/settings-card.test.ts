@@ -1904,3 +1904,135 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     expect(bareTokens(JSON.stringify(styleOf(elementsOf(tree, "input")[0])))).toEqual([])
   })
 })
+
+// ── The live-service read (R3), CodeRabbit #41 finding 1: the card fetches the effective model
+// config at mount, after card saves and — since this fix — on every settings-scope update, and it
+// applies ONLY the newest answer. Before the fix the scope subscription only logged, so a save from
+// ANOTHER front door (a TUI save, a hand edit) left the card on a superseded read, and two
+// concurrent reads could land out of order with the stale one winning.
+describe("the live-service read is sequenced and re-run on a settings-scope update", () => {
+  /** A read whose settlement the arm controls, so answer ORDER can be driven. */
+  interface ControlledRead {
+    /** The read's answer, resolved by the arm. */
+    promise: Promise<unknown>
+    /** Resolve the read with its route body. */
+    resolve: (value: unknown) => void
+  }
+
+  /** Mint one arm-controlled read. */
+  function controlledRead(): ControlledRead {
+    /** The deferred's resolver, assigned synchronously by the executor below. */
+    let resolve: (value: unknown) => void = (): void => {}
+    /** The read's answer, settled by the resolver above. */
+    const promise = new Promise<unknown>((res) => { resolve = res })
+    return { promise, resolve }
+  }
+
+  /** A route body whose slot1 model is the given marker, so the APPLIED answer is identifiable. */
+  function serviceBody(model: string): unknown {
+    return { ok: true, slots: { slot1: { provider: "p", model, reasoningEffort: "low" } }, agentRoutes: {}, modelchain: {} }
+  }
+
+  /** The settings snapshot the card renders from; empty, because this arm observes only the service read. */
+  const snapshot = { status: "ready", mode: "host", writable: true, revision: 1, value: {}, user: {} }
+
+  /**
+   * Mount the card against a hand-built ctx so the arm OWNS the fetch order: `fetchJson` answers the
+   * arm's deferred reads in call order and the bound scope can be notified by hand, which is what a
+   * settings-document update from another front door does.
+   * @param reads - the deferred answers, handed out one per `fetchJson` call.
+   * @returns the requested URLs, the card store reader and the scope notifier.
+   */
+  function mountLiveService(reads: ControlledRead[]): {
+    /** Every URL the card requested, in call order. */
+    urls: string[]
+    /** The card's own store, read through the registration's inject face. */
+    state: () => CardState
+    /** Fire the bound scope's subscribers, as an external settings-document update does. */
+    notifyScope: () => void
+  } {
+    /** Every fetchJson URL the card requested, in call order. */
+    const urls: string[] = []
+    /** The index of the next deferred read to hand out. */
+    let next = 0
+    /** The entry's injected reader, answering the arm's deferred reads in call order. */
+    const fetchJson = (url: string): Promise<unknown> => {
+      urls.push(url)
+      /** This call's scripted read, when the arm supplied one. */
+      const read = reads[next]
+      next += 1
+      return read === undefined ? Promise.resolve(serviceBody("unscripted")) : read.promise
+    }
+    /** The scope's subscribers, fired by hand to simulate an external document update. */
+    const scopeListeners = new Set<() => void>()
+    /** The bound scope double; this arm only observes reads, so mutate is a no-op. */
+    const scope = {
+      getSnapshot: () => snapshot,
+      subscribe: (listener: () => void) => { scopeListeners.add(listener); return () => { scopeListeners.delete(listener) } },
+      mutate: async (): Promise<void> => {},
+      dispose: (): void => {},
+    }
+    /** The configForms service the card resolves its namespace form through. */
+    const configForms = { get: (entryId: string): unknown => { void entryId; return scope } }
+    /** The section descriptor the card registers, whose inject face carries the store. */
+    let registered: { inject?: () => CardFace } | undefined
+    /** The minimal client ctx the mount needs: slots, a dynamic inject and its configForms service. */
+    const ctx = {
+      slots: {
+        inject: (_name: string, face: () => Generator): { dispose: () => void } => {
+          /** This descriptor's face generator, advanced one step so its mount body runs. */
+          const gen = face()
+          gen.next()
+          return { dispose: (): void => {} }
+        },
+        register: (descriptor: { inject?: () => CardFace }): (() => void) => { registered = descriptor; return (): void => {} },
+      },
+      inject: (deps: string[], cb: (scoped: { get: (name: string) => unknown }) => unknown): { dispose: () => void } => {
+        if (deps.includes("configForms")) cb({ get: (name: string) => (name === "configForms" ? configForms : undefined) })
+        return { dispose: (): void => {} }
+      },
+    }
+    expect(CARD.mountSettingsCard(ctx, { fetchJson })).toBe(true)
+    return {
+      urls,
+      state: () => registered!.inject!().hooks.mpdCard.getSnapshot(),
+      notifyScope: () => { for (const listener of [...scopeListeners]) listener() },
+    }
+  }
+
+  test("F1c: the effective-source copy states the reads the card actually performs", () => {
+    // The card wires NO file watcher; it reads at mount, after its own saves and on settings-scope
+    // updates, so the copy must say exactly that and drop the old "watched edit" overclaim.
+    expect(EN.effectiveSourceService).toContain("at mount, after card saves, and on settings-document updates")
+    expect(ZH.effectiveSourceService).toContain("挂载时、卡片保存后与设置文档更新时刷新")
+    expect(EN.effectiveSourceService).not.toContain("watched edit")
+  })
+
+  test("F1a: a settings-scope update from another front door re-runs the live-service read", () => {
+    /** The two scripted reads: the mount read, then the scope-update read. */
+    const reads = [controlledRead(), controlledRead()]
+    /** The mounted card under test. */
+    const mount = mountLiveService(reads)
+    expect(mount.urls).toEqual(["/plugins/mpd/model-config"])
+    mount.notifyScope()
+    // The update RE-READS instead of leaving the card on the mount answer (the reported defect).
+    expect(mount.urls).toEqual(["/plugins/mpd/model-config", "/plugins/mpd/model-config"])
+  })
+
+  test("F1b: a LATE stale answer cannot clobber a newer one (monotonic sequence guard)", async () => {
+    /** The reads: the mount read stays in flight while the scope update starts a second one. */
+    const reads = [controlledRead(), controlledRead()]
+    /** The mounted card under test. */
+    const mount = mountLiveService(reads)
+    mount.notifyScope()
+    expect(mount.urls).toHaveLength(2)
+    // The NEWER read answers first ...
+    reads[1].resolve(serviceBody("newer"))
+    await new Promise<void>((done) => setTimeout(done, 0))
+    expect((mount.state().effective as { slots: Record<string, { model: string }> }).slots.slot1.model).toBe("newer")
+    // ... then the OLDER one answers late and must be DROPPED, not applied over the newer projection.
+    reads[0].resolve(serviceBody("older"))
+    await new Promise<void>((done) => setTimeout(done, 0))
+    expect((mount.state().effective as { slots: Record<string, { model: string }> }).slots.slot1.model).toBe("newer")
+  })
+})

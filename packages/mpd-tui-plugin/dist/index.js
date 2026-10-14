@@ -9701,6 +9701,8 @@ function readRouteTables(adapter) {
     if (!isRecord2(table))
       continue;
     for (const [name, entry] of Object.entries(table)) {
+      if (agentRoutes[name] !== undefined)
+        continue;
       if (!isRecord2(entry))
         continue;
       const leaves = {};

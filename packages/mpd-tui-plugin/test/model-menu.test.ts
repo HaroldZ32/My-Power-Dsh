@@ -376,6 +376,28 @@ describe("R3: the /mpd-model pick-list chain", () => {
     expect(readRouteTables(stored.seam).agentRoutes.Vision).toEqual({ model: "v" })
   })
 
+  test("R3+T-93: the SAVED user half outranks the stale apply-time value half (first half wins)", () => {
+    // The host document nests the live value and the saved half. After a save the `value` half keeps
+    // its APPLY-TIME `agentRoutes` entry (T-93) while the `user` half carries the saved leaves, so the
+    // merge must never let the later, staler half overwrite a name the saved half already supplied.
+    const adapter = adapterDouble(CATALOG, {
+      stored: {
+        "mpd-config": {
+          user: { teamModels: { slot3: { provider: "p3", model: "m3", reasoningEffort: "high" } }, agentRoutes: { "Deep Worker": { model: "saved-model" } } },
+          value: { agentRoutes: { "Deep Worker": { model: "stale-model", provider: "stale-provider" }, Vision: { model: "value-only" } } },
+        },
+      },
+    })
+    /** The tables the merge produced. */
+    const tables = readRouteTables(adapter.seam)
+    // A name carried by BOTH halves keeps the SAVED leaves, never the stale apply-time ones.
+    expect(tables.agentRoutes["Deep Worker"]).toEqual({ model: "saved-model" })
+    // A name only the later half carries is still merged in — first-wins must not drop it.
+    expect(tables.agentRoutes.Vision).toEqual({ model: "value-only" })
+    // The scope panel's description therefore states the user's saved route, not the stale one.
+    expect(memberRouteText(tables, "Deep Worker", "slot3")).toBe("p3 / saved-model / high")
+  })
+
   test("panel 3 narrows to the picked provider's models; panel 4 to the picked model's efforts", () => {
     /** The section's own projection of the catalog. */
     const lists = teamModelOptionLists(CATALOG as never)

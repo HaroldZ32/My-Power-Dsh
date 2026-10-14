@@ -68,8 +68,9 @@
    * The bundle's server route serving the CURRENT EFFECTIVE model config from the `mpdConfig`
    * service (R3): the four slot routes (defaults materialised), the stored `agentRoutes` table and
    * the configured `modelchain` chains. Registered by `packages/mpd-bundle-plugin/src/model-config-web.ts`
-   * on the host's web server; this card fetches it at mount and after every save, and degrades to
-   * the settings document alone when the route is absent (a webless profile).
+   * on the host's web server; this card fetches it at mount, after card saves and on
+   * settings-scope updates, and degrades to the settings document alone when the route is absent
+   * (a webless profile).
    */
   const MODEL_CONFIG_PATH = "/plugins/mpd/model-config"
 
@@ -2205,8 +2206,8 @@
     zh.effectiveNoRoutes = "agentRoutes：未设置任何成员覆盖——所有成员跟随各自槽位"
     en.effectiveNoChains = "modelchain: no configured chains — the shipped defaults are in force"
     zh.effectiveNoChains = "modelchain：未配置任何链——内置默认链生效"
-    en.effectiveSourceService = "read from the live config service — refreshed after every save and watched edit"
-    zh.effectiveSourceService = "读取自实时配置服务——每次保存与文件变更后刷新"
+    en.effectiveSourceService = "read from the live config service — refreshed at mount, after card saves, and on settings-document updates"
+    zh.effectiveSourceService = "读取自实时配置服务——挂载时、卡片保存后与设置文档更新时刷新"
     en.effectiveSourceDocument = "read from this settings document — the live service route is unavailable ({why}), so the modelchain half is not shown"
     zh.effectiveSourceDocument = "读取自当前设置文档——实时配置路由不可用（{why}），因此未显示 modelchain 部分"
     en.effectiveWhyUnknown = "reason unstated"
@@ -2275,6 +2276,11 @@
                 /** The form's snapshot after the change that fired this line. */
                 const now = scope.getSnapshot?.()
                 console.log("[mpd] settings section: form updated status=" + String(now?.status) + " value=" + (now?.value === undefined ? "absent" : "present"))
+                // A settings-document change can come from ANOTHER front door (a TUI save, a hand
+                // edit), not only from this card's own save, so the live-service read is re-run on
+                // every scope update; the read's sequence guard keeps an older answer from clobbering
+                // the fresher one.
+                readLiveService()
               })
             } catch (error) {
               console.warn("[mpd] settings section: snapshot probe failed: " + String((error as { message?: unknown })?.message ?? error))
@@ -2288,14 +2294,22 @@
              * The live-service re-reader for the effective block (R3); assigned right after the
              * controller exists because the controller's SAVE HOOK must call it. Reads
              * `/plugins/mpd/model-config` — the route the bundle's server half serves from the
-             * `mpdConfig` service — once at mount and after every successful save, through the
-             * ENTRY's injected reader (this card does no I/O of its own); without a reader the
-             * block degrades to the settings-document branch with a notice.
+             * `mpdConfig` service — at mount, after every successful save and on every
+             * settings-scope update, through the ENTRY's injected reader (this card does no I/O of
+             * its own); without a reader the block degrades to the settings-document branch with a
+             * notice.
              */
             /** The entry's JSON reader, when this client provides one. */
             const fetchJson = options.fetchJson
             /** The live-service re-reader; assigned right below, once the controller it calls exists. */
             let readLiveService: () => void = (): void => {}
+            /**
+             * The number of the newest live-service read. Concurrent reads (a mount, a save and a
+             * settings-scope update can overlap) answer in arbitrary order, so each read takes a
+             * ticket and only the newest ticket's answer is applied — a stale answer landing late
+             * must not clobber a fresher projection.
+             */
+            let liveReadSeq = 0
             // An absent form is the probe path above (it renders its warning); the controller's own
             // guarded calls keep the same behaviour the untyped original had for that case.
             /** The card's form controller, bound to the resolved scope and the save hook. */
@@ -2305,14 +2319,18 @@
                 controller.setLiveService(undefined, "this runtime provides no reader for the live config route")
                 return
               }
+              /** This read's ticket: its answer applies only while it is still the newest read. */
+              const seq = ++liveReadSeq
               fetchJson(MODEL_CONFIG_PATH)
                 .then((body: unknown) => {
+                  if (seq !== liveReadSeq) return
                   /** The body narrowed to the two fields the route serves. */
                   const parsed = (body !== null && typeof body === "object" ? body : {}) as { ok?: unknown; reason?: unknown }
                   if (parsed.ok === true) controller.setLiveService(body, "")
                   else controller.setLiveService(undefined, typeof parsed.reason === "string" && parsed.reason !== "" ? parsed.reason : "the route answered without a body")
                 })
                 .catch((error: unknown) => {
+                  if (seq !== liveReadSeq) return
                   controller.setLiveService(undefined, String((error as { message?: unknown })?.message ?? error))
                 })
             }
